@@ -5,7 +5,7 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 function isEmbeddableUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -15,7 +15,7 @@ export function WorkspaceWebPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const [searchParams] = useSearchParams();
   const { getWorkspace } = useLocalWorkspaces();
-  const { openWorkspaceView, currentNavigationState } = usePageTabs();
+  const { currentStack, openWorkspaceSection } = useDesktopRouting();
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
   const url = searchParams.get("url") ?? "";
@@ -41,9 +41,9 @@ export function WorkspaceWebPage() {
       pageSlug: searchParams.get("source_page") ?? undefined,
       url: url || undefined,
     };
-    const stack = currentNavigationState?.breadcrumbStack;
-    if (stack && stack.length > 1) {
-      const mappedSegments = stack.slice(1).map((item) => ({
+    const resolvedStack = currentStack;
+    if (resolvedStack && resolvedStack.length > 1) {
+      const mappedSegments = resolvedStack.slice(1).map((item) => ({
         id: item.id,
         label: item.label,
         href: item.target?.canonicalUrl ?? "#",
@@ -78,7 +78,7 @@ export function WorkspaceWebPage() {
         meta: webMeta,
       },
     ];
-  }, [currentNavigationState?.breadcrumbStack, searchParams, serializedSearchParams, title, url, workspaceId]);
+  }, [currentStack, searchParams, serializedSearchParams, title, url, workspaceId]);
 
   if (!workspace) {
     return (
@@ -112,12 +112,7 @@ export function WorkspaceWebPage() {
           </div>
           <Button
             variant="outline"
-            onClick={() =>
-              openWorkspaceView(workspace.id, "files", "Files", {
-                type: "lucide",
-                value: "folder-open",
-              })
-            }
+            onClick={() => openWorkspaceSection(workspace.id, "files")}
           >
             <>
               <ArrowLeft className="mr-2 h-4 w-4" />

@@ -7,7 +7,8 @@ export interface MessageAttachment {
   id: string;
   type: "image" | "file";
   name: string;
-  data?: string; // Base64 data URL for images
+  data?: string; // Base64 data URL for images (for UI preview)
+  path?: string; // Local file path (for sending to agent)
   mimeType?: string;
   isLoading?: boolean;
 }

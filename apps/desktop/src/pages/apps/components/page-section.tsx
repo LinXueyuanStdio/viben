@@ -75,7 +75,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { usePages, usePageOrder, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { CreatePageDialog } from "./create-page-dialog";
 import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
@@ -403,11 +403,30 @@ function PageTreeItemContent({
                     {t("page.openInNewTab")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    onClick={() => onCopyLink(node.page)}
+                  >
+                    <Link className="mr-2 h-4 w-4" />
+                    {t("page.copyLink")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDuplicate(node.page)}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    {t("page.duplicate")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onCreateSubpage(node.page.slug)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t("page.createSubpage")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
                     onClick={() => onEditClick(node.page)}
                   >
                     <Pencil className="mr-2 h-4 w-4" />
                     {t("common.edit", "Edit")}
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onPermissionsClick(node.page)}
                   >
@@ -563,7 +582,7 @@ export function PageSection({
   collapsed = false,
 }: PageSectionProps) {
   const { t } = useTranslation();
-  const { openPageTab, openPageInNewTab } = usePageTabs();
+  const { openWorkspacePage, pushChildPage } = useDesktopRouting();
   const { data: pages, isLoading, error } = usePages(workspacePath);
   const { data: serverPageOrder } = usePageOrder(workspacePath);
   const deletePageMutation = useDeletePage();
@@ -732,13 +751,41 @@ export function PageSection({
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
-    openPageTab(page, workspaceId, stack);
-  }, [openPageTab, workspaceId]);
+    const leaf = stack[stack.length - 1];
+    if (leaf) {
+      pushChildPage(
+        leaf,
+        {
+          kind: "workspace-page",
+          workspaceId,
+          pageSlug: page.slug,
+        },
+        { mode: "replace" }
+      );
+      return;
+    }
+
+    openWorkspacePage(workspaceId, page.slug);
+  }, [openWorkspacePage, pushChildPage, workspaceId]);
 
   // Handle open in new tab
   const handleOpenInNewTab = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
-    openPageInNewTab(page, workspaceId, stack);
-  }, [openPageInNewTab, workspaceId]);
+    const leaf = stack[stack.length - 1];
+    if (leaf) {
+      pushChildPage(
+        leaf,
+        {
+          kind: "workspace-page",
+          workspaceId,
+          pageSlug: page.slug,
+        },
+        { mode: "replace", openMode: "new-tab" }
+      );
+      return;
+    }
+
+    openWorkspacePage(workspaceId, page.slug, { openMode: "new-tab" });
+  }, [openWorkspacePage, pushChildPage, workspaceId]);
 
   // Handle copy link
   const handleCopyLink = useCallback((page: PageConfig) => {
@@ -780,19 +827,11 @@ export function PageSection({
     // Find the newly created page from the pages list
     const newPage = pages?.find(p => p.slug === slug);
     if (newPage) {
-      openPageTab(newPage, workspaceId);
+      openWorkspacePage(workspaceId, newPage.slug);
     } else {
-      // Fallback: create a minimal page object and open
-      openPageTab({
-        slug,
-        name: slug,
-        type: "static",
-        file: "index.html",
-        permission: ["read", "write"],
-        path: `pages/${slug}`,
-      } as PageConfig, workspaceId);
+      openWorkspacePage(workspaceId, slug);
     }
-  }, [pages, openPageTab, workspaceId]);
+  }, [openWorkspacePage, pages, workspaceId]);
 
   // Handle edit click
   const handleEditClick = useCallback((page: PageConfig) => {
@@ -963,6 +1002,7 @@ export function PageSection({
                     onEditClick={handleEditClick}
                     onPermissionsClick={handlePermissionsClick}
                     onCopyLink={handleCopyLink}
+                    onDuplicate={handleDuplicate}
                   />
                 ))}
               </nav>

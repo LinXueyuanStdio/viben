@@ -65,6 +65,7 @@ export async function openAndReadFiles(
           type: isImage ? "image" : "file",
           name: fileName,
           data: `data:${mimeType};base64,${base64}`,
+          path,
           mimeType,
           isLoading: false,
         });

@@ -669,10 +669,10 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
    * Send a message to the agent via WebSocket
    */
   const sendMessageWebSocket = useCallback(
-    async (content: string, _attachments?: MessageAttachment[]) => {
-      if (!content.trim()) return;
+    async (content: string, attachments?: MessageAttachment[]) => {
+      if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
-      console.log("[useAgent] sendMessageWebSocket called with:", content.slice(0, 50));
+      console.log("[useAgent] sendMessageWebSocket called with:", content.slice(0, 50), "attachments:", attachments?.length || 0);
 
       // Reset streaming state for new message
       streamingMessageIdRef.current = null;
@@ -685,13 +685,30 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       setPhase("running");
       setIsStreaming(true);
 
-      // Add user message
+      // Add user message (with attachments for UI display)
       const userMessage: AgentMessage = {
         id: generateId(),
         type: "user",
         content,
+        attachments,
       };
       setMessages((prev) => [...prev, userMessage]);
+
+      // Build prompt with attachment file paths
+      let effectivePrompt = content;
+      if (attachments && attachments.length > 0) {
+        const parts: string[] = [];
+        for (const att of attachments) {
+          if (att.path) {
+            parts.push(`[Attached image: ${att.path}]`);
+          } else if (att.type === "file" && att.name) {
+            parts.push(`[Attached file: ${att.name}]`);
+          }
+        }
+        if (parts.length > 0) {
+          effectivePrompt = parts.join("\n") + "\n\n" + content;
+        }
+      }
 
       // Ensure WebSocket is connected (connectWebSocket returns Promise and handles deduplication)
       try {
@@ -706,7 +723,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       // Send start message
       const success = sendWebSocketMessage({
         type: "start",
-        prompt: content,
+        prompt: effectivePrompt,
         agentConfig: agentConfigPath ? undefined : agentConfig,
       });
 
@@ -850,10 +867,10 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
    * Send a message to the agent (real Gateway implementation using SSE)
    */
   const sendMessageReal = useCallback(
-    async (content: string, _attachments?: MessageAttachment[]) => {
-      if (!content.trim()) return;
+    async (content: string, attachments?: MessageAttachment[]) => {
+      if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
-      console.log("[useAgent] sendMessageReal called with:", content.slice(0, 50));
+      console.log("[useAgent] sendMessageReal called with:", content.slice(0, 50), "attachments:", attachments?.length || 0);
 
       // Reset streaming state for new message
       streamingMessageIdRef.current = null;
@@ -871,13 +888,33 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
       console.log("[useAgent] State set: phase=running, isStreaming=true");
 
-      // Add user message
+      // Add user message (with attachments for UI display)
       const userMessage: AgentMessage = {
         id: generateId(),
         type: "user",
         content,
+        attachments,
       };
       setMessages((prev) => [...prev, userMessage]);
+
+      // Build prompt with attachment file paths for the agent
+      // Claude Code SDK query() only accepts string prompt, so we prepend
+      // image file paths for the agent to read via its Read tool
+      let effectivePrompt = content;
+      if (attachments && attachments.length > 0) {
+        const attachmentParts: string[] = [];
+        for (const att of attachments) {
+          if (att.path) {
+            // Use file path - agent can read images natively
+            attachmentParts.push(`[Attached image: ${att.path}]`);
+          } else if (att.type === "file" && att.name) {
+            attachmentParts.push(`[Attached file: ${att.name}]`);
+          }
+        }
+        if (attachmentParts.length > 0) {
+          effectivePrompt = attachmentParts.join("\n") + "\n\n" + content;
+        }
+      }
 
       try {
         // Use the new SSE endpoint /api/agent/run
@@ -897,7 +934,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
 
         const requestBody: Record<string, unknown> = {
-          prompt: content,
+          prompt: effectivePrompt,
           agent_config_path: agentConfigPath || undefined,
           // Agent directory for message persistence (e.g., /path/to/agents/myagent)
           agent_dir: agentDir || undefined,

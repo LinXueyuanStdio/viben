@@ -30,10 +30,10 @@ import { PagePreview } from "./components";
 import type { PageViewMode } from "./components/page-preview";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { usePage } from "@/hooks/use-pages";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import { getGatewayUrl } from "@/lib/gateway/config";
-import { getPageHref, getWorkspaceWebHref } from "./utils/page-href";
+import { getPageHref } from "./utils/page-href";
 import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
 
 /**
@@ -252,7 +252,11 @@ export function WorkspacePage() {
   const params = useParams<{ workspaceId?: string; "*": string | undefined }>();
   const [searchParams] = useSearchParams();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
-  const { navigateInTab, currentNavigationState } = usePageTabs();
+  const {
+    currentStack,
+    openWorkspacePage,
+    openWorkspaceWeb,
+  } = useDesktopRouting();
 
   const routeWorkspaceId = params.workspaceId;
   const routeSlug = params["*"]?.trim() || null;
@@ -320,7 +324,7 @@ export function WorkspacePage() {
   const [editorHeaderEl, setEditorHeaderEl] = useState<HTMLDivElement | null>(null);
 
   const pageHeaderSegments = useMemo<DesktopBreadcrumbSegment[]>(() => {
-    const stack = currentNavigationState?.breadcrumbStack;
+    const stack = currentStack;
     if (stack && stack.length > 1) {
       return stack.slice(1).map((item) => ({
         id: item.id,
@@ -359,7 +363,7 @@ export function WorkspacePage() {
         },
       },
     ];
-  }, [currentNavigationState?.breadcrumbStack, page?.icon, page?.name, slug, workspaceId]);
+  }, [currentStack, page?.icon, page?.name, slug, workspaceId]);
 
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
@@ -368,24 +372,20 @@ export function WorkspacePage() {
   const handleOpenPage = useCallback(
     (nextPageSlug: string) => {
       if (!workspaceId) return;
-      navigateInTab(getPageHref(workspaceId, nextPageSlug));
+      openWorkspacePage(workspaceId, nextPageSlug);
     },
-    [navigateInTab, workspaceId]
+    [openWorkspacePage, workspaceId]
   );
 
   const handleOpenWeb = useCallback(
     (url: string, title?: string) => {
       if (!workspaceId) return;
-      navigateInTab(
-        getWorkspaceWebHref({
-          workspaceId,
-          url,
-          title,
-          sourcePageSlug: slug ?? undefined,
-        })
-      );
+      openWorkspaceWeb(workspaceId, {
+        url,
+        title,
+      });
     },
-    [navigateInTab, slug, workspaceId]
+    [openWorkspaceWeb, workspaceId]
   );
 
   // Loading state

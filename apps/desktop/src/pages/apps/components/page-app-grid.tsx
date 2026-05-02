@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { usePages, useDeletePage } from "@/hooks/use-pages";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { CreatePageDialog } from "./create-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { PageAppIcon } from "./page-app-icon";
@@ -45,7 +45,7 @@ export interface PageAppGridProps {
 
 export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
   const { t } = useTranslation();
-  const { openPageTab, openPageInNewTab } = usePageTabs();
+  const { openWorkspacePage } = useDesktopRouting();
   const { data: pages, isLoading, error } = usePages(workspacePath);
   const deletePageMutation = useDeletePage();
 
@@ -68,16 +68,16 @@ export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
   // Handlers
   const handlePageClick = useCallback(
     (page: PageConfig) => {
-      openPageTab(page, workspaceId);
+      openWorkspacePage(workspaceId, page.slug);
     },
-    [openPageTab, workspaceId]
+    [openWorkspacePage, workspaceId]
   );
 
   const handleOpenInNewTab = useCallback(
     (page: PageConfig) => {
-      openPageInNewTab(page, workspaceId);
+      openWorkspacePage(workspaceId, page.slug, { openMode: "new-tab" });
     },
-    [openPageInNewTab, workspaceId]
+    [openWorkspacePage, workspaceId]
   );
 
   const handleDeletePage = async () => {
@@ -110,22 +110,12 @@ export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
     (slug: string) => {
       const newPage = pages?.find((p) => p.slug === slug);
       if (newPage) {
-        openPageTab(newPage, workspaceId);
+        openWorkspacePage(workspaceId, newPage.slug);
       } else {
-        openPageTab(
-          {
-            slug,
-            name: slug,
-            type: "static",
-            file: "index.html",
-            permission: ["read", "write"],
-            path: `pages/${slug}`,
-          } as PageConfig,
-          workspaceId
-        );
+        openWorkspacePage(workspaceId, slug);
       }
     },
-    [pages, openPageTab, workspaceId]
+    [openWorkspacePage, pages, workspaceId]
   );
 
   const handleNodeClick = useCallback(

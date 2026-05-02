@@ -1,11 +1,12 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useUiStore, useAppStore } from "@/stores";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import { useTabStore } from "@/stores/tab-store";
 
 /**
  * Parse a shortcut string like "Shift+Cmd+J" into components.
  */
-function parseShortcut(shortcut: string): {
+export function parseShortcut(shortcut: string): {
   ctrl: boolean;
   meta: boolean;
   shift: boolean;
@@ -26,7 +27,7 @@ function parseShortcut(shortcut: string): {
 /**
  * Check if a keyboard event matches a shortcut configuration.
  */
-function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
+export function matchesShortcut(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">, shortcut: string): boolean {
   if (!shortcut) return false;
 
   const parsed = parseShortcut(shortcut);
@@ -45,6 +46,73 @@ function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
   return modifierMatch && shiftMatch && altMatch && keyMatch;
 }
 
+export function isReopenClosedTabShortcut(
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">
+): boolean {
+  return (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "t";
+}
+
+export function isNewTabShortcut(
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">
+): boolean {
+  return (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "t";
+}
+
+export function isCloseTabShortcut(
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">
+): boolean {
+  return (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "w";
+}
+
+export function getTabSwitchIndexFromShortcut(
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">
+): number | null {
+  if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) {
+    return null;
+  }
+
+  if (!/^[1-9]$/.test(e.key)) {
+    return null;
+  }
+
+  return Number(e.key) - 1;
+}
+
+type EditableTargetLike = {
+  tagName?: string | null;
+  isContentEditable?: boolean;
+  getAttribute?: (name: string) => string | null;
+  closest?: (selector: string) => unknown;
+};
+
+export function isEditableShortcutTarget(target: EventTarget | null): boolean {
+  const element = target as EditableTargetLike | null;
+  if (!element) return false;
+
+  const tagName = element.tagName?.toUpperCase();
+  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+    return true;
+  }
+
+  if (element.isContentEditable) {
+    return true;
+  }
+
+  if (element.getAttribute?.("role") === "textbox") {
+    return true;
+  }
+
+  try {
+    return Boolean(
+      element.closest?.(
+        'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable], [role="textbox"]'
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Global keyboard shortcuts for the application.
  *
@@ -55,6 +123,21 @@ export function useGlobalShortcuts() {
   const { openCreateTaskDialog } = useUiStore();
   const { shortcuts } = useAppStore();
   const { activeWorkspaceId } = useLocalWorkspaces();
+  const openTab = useTabStore((state) => state.openTab);
+  const closeTab = useTabStore((state) => state.closeTab);
+  const setActiveTab = useTabStore((state) => state.setActiveTab);
+  const activeTabId = useTabStore((state) => state.activeTabId);
+  const reopenClosedTab = useTabStore((state) => state.reopenClosedTab);
+
+  // Read tab state via ref to avoid recreating the callback on every tab change
+  const tabStateRef = useRef({ activeTabId: "", tabIds: [] as string[], tabCount: 0 });
+  const activeTabId = useTabStore((state) => state.activeTabId);
+  const tabs = useTabStore((state) => state.tabs);
+  tabStateRef.current = {
+    activeTabId,
+    tabIds: tabs.map((tab) => tab.id),
+    tabCount: tabs.length,
+  };
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -65,9 +148,69 @@ export function useGlobalShortcuts() {
         if (activeWorkspaceId) {
           openCreateTaskDialog();
         }
+        return;
+      }
+
+      if (isEditableShortcutTarget(e.target)) {
+        return;
+      }
+
+      if (isNewTabShortcut(e)) {
+        e.preventDefault();
+        openTab(
+          {
+            type: "new-tab",
+            name: "New Tab",
+            icon: { type: "lucide", value: "plus" },
+            pinned: false,
+          },
+          "/documents"
+        );
+        return;
+      }
+
+      const { activeTabId: currentTabId, tabIds, tabCount } = tabStateRef.current;
+
+      if (isCloseTabShortcut(e)) {
+        if (!currentTabId || tabCount <= 1) {
+          return;
+        }
+        e.preventDefault();
+        closeTab(currentTabId);
+        return;
+      }
+
+      const tabSwitchIndex = getTabSwitchIndexFromShortcut(e);
+      if (tabSwitchIndex !== null) {
+        const targetTabId =
+          tabSwitchIndex >= 8
+            ? tabIds[tabIds.length - 1]
+            : tabIds[tabSwitchIndex];
+
+        if (!targetTabId) {
+          return;
+        }
+
+        e.preventDefault();
+        setActiveTab(targetTabId);
+        return;
+      }
+
+      // Browser-like shortcut: Reopen Closed Tab
+      if (isReopenClosedTabShortcut(e)) {
+        e.preventDefault();
+        reopenClosedTab();
       }
     },
-    [shortcuts.createTask, activeWorkspaceId, openCreateTaskDialog]
+    [
+      shortcuts.createTask,
+      activeWorkspaceId,
+      openCreateTaskDialog,
+      openTab,
+      closeTab,
+      setActiveTab,
+      reopenClosedTab,
+    ]
   );
 
   useEffect(() => {

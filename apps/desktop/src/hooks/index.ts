@@ -1,4 +1,15 @@
 export { useAuth } from "./use-auth";
+export {
+  useDesktopRouting,
+  useDesktopRoutingHeaderSync,
+  openWorkspaceSectionByRoutePath,
+} from "./use-desktop-routing";
+export type {
+  DesktopOpenOptions,
+  DesktopRoutingApi,
+} from "./use-desktop-routing";
+export { useDesktopDeepLink } from "./use-desktop-deep-link";
+export type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
 export { usePython } from "./use-python";
 export { useVibenCli } from "./use-viben-cli";
 export type { UseVibenCliReturn, VibenCliPath, VibenCliSource } from "./use-viben-cli";
