@@ -73,6 +73,14 @@ pub struct MonitorInfo {
     pub scale_factor: f32,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct LogicalMonitorGeometry {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
 #[derive(serde::Serialize)]
 struct ScreenshotTraceLogEntry {
     ts: String,
@@ -141,15 +149,18 @@ pub async fn list_monitors() -> Result<Vec<MonitorInfo>, String> {
 
     Ok(monitors
         .into_iter()
-        .map(|m| MonitorInfo {
-            id: m.id(),
-            name: m.name().to_string(),
-            x: m.x(),
-            y: m.y(),
-            width: m.width(),
-            height: m.height(),
-            is_primary: m.is_primary(),
-            scale_factor: m.scale_factor(),
+        .map(|m| {
+            let logical = logical_monitor_geometry(&m);
+            MonitorInfo {
+                id: m.id(),
+                name: m.name().to_string(),
+                x: logical.x,
+                y: logical.y,
+                width: logical.width,
+                height: logical.height,
+                is_primary: m.is_primary(),
+                scale_factor: m.scale_factor(),
+            }
         })
         .collect())
 }
@@ -276,6 +287,7 @@ async fn do_region_screenshot<R: Runtime>(
     } else {
         get_primary_monitor()?
     };
+    let logical_monitor = logical_monitor_geometry(&monitor);
 
     let _ = write_screenshot_trace(
         trace_id,
@@ -288,6 +300,10 @@ async fn do_region_screenshot<R: Runtime>(
             "monitor_y": monitor.y(),
             "monitor_width": monitor.width(),
             "monitor_height": monitor.height(),
+            "logical_monitor_x": logical_monitor.x,
+            "logical_monitor_y": logical_monitor.y,
+            "logical_monitor_width": logical_monitor.width,
+            "logical_monitor_height": logical_monitor.height,
             "scale_factor": monitor.scale_factor(),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
@@ -359,12 +375,11 @@ async fn do_region_screenshot<R: Runtime>(
         }),
     );
 
-    // Get monitor dimensions for overlay window sizing.
-    // xcap monitor.width()/height() returns logical pixels on macOS.
-    let monitor_width = monitor.width();
-    let monitor_height = monitor.height();
-    let monitor_x = monitor.x();
-    let monitor_y = monitor.y();
+    // Tauri window size/position APIs expect logical pixels.
+    let monitor_width = logical_monitor.width;
+    let monitor_height = logical_monitor.height;
+    let monitor_x = logical_monitor.x;
+    let monitor_y = logical_monitor.y;
     let scale_factor = monitor.scale_factor();
 
     // Overlay window URL — pass screenshot metadata and temp file path.
@@ -423,6 +438,9 @@ async fn do_region_screenshot<R: Runtime>(
             "window_height": monitor_height,
             "window_x": monitor_x,
             "window_y": monitor_y,
+            "pixel_width": original_width,
+            "pixel_height": original_height,
+            "scale_factor": scale_factor,
             "elapsed_ms": window_create_started.elapsed().as_millis(),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
@@ -620,6 +638,29 @@ fn get_monitor_by_id(id: u32) -> Result<Monitor, String> {
         .into_iter()
         .find(|m| m.id() == id)
         .ok_or_else(|| format!("Monitor with id {} not found", id))
+}
+
+fn logical_monitor_geometry(monitor: &Monitor) -> LogicalMonitorGeometry {
+    #[cfg(target_os = "windows")]
+    {
+        let scale_factor = monitor.scale_factor().max(1.0) as f64;
+        let width = ((monitor.width() as f64) / scale_factor).round().max(1.0) as u32;
+        let height = ((monitor.height() as f64) / scale_factor).round().max(1.0) as u32;
+        let x = ((monitor.x() as f64) / scale_factor).round() as i32;
+        let y = ((monitor.y() as f64) / scale_factor).round() as i32;
+
+        LogicalMonitorGeometry { x, y, width, height }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        LogicalMonitorGeometry {
+            x: monitor.x(),
+            y: monitor.y(),
+            width: monitor.width(),
+            height: monitor.height(),
+        }
+    }
 }
 
 /// Capture the primary monitor and convert to ScreenshotResult

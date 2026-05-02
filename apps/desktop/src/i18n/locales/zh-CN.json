@@ -1014,6 +1014,14 @@
     "sandboxMode": "沙箱模式",
     "selectProvider": "选择供应商"
   },
+  "steering": {
+    "label": "引导",
+    "title": "引导指令",
+    "placeholder": "添加适用于每条消息的指令...",
+    "hint": "⌘+Enter 保存",
+    "save": "保存",
+    "clear": "清除"
+  },
   "about": {
     "title": "微本",
     "version": "版本 {{version}}",
@@ -3681,7 +3689,8 @@
       "gateway": "网关",
       "python": "Python",
       "claude": "智能体执行器",
-      "login": "登录"
+      "login": "登录",
+      "agentSetup": "智能体"
     },
     "loadingTips": {
       "checkingEnvironment": "正在检查系统环境...",
@@ -4146,6 +4155,44 @@
         "message": "发生未知错误，请查看详细信息或联系支持。"
       },
       "downloadNodejs": "下载 Node.js"
+    },
+    "agentSetup": {
+      "title": "设置你的第一个智能体",
+      "description": "配置一个 AI 智能体来开始使用 Viben",
+      "skip": "暂时跳过",
+      "skipHint": "你可以稍后在设置中配置智能体",
+      "gatewayRequired": "创建智能体需要网关运行。请返回并确保环境检查完成，或跳过此步骤。",
+      "executor": {
+        "title": "选择执行器",
+        "description": "选择为你的智能体提供动力的 AI 编程助手",
+        "available": "可用"
+      },
+      "provider": {
+        "title": "配置提供商",
+        "description": "为 {{executor}} 设置 API 连接",
+        "apiKey": "API 密钥",
+        "apiKeyPlaceholder": "输入你的 API 密钥",
+        "apiKeyHint": "密钥仅存储在本地，不会发送到我们的服务器",
+        "baseUrl": "Base URL",
+        "testConnection": "测试连接",
+        "testing": "测试中...",
+        "connectionSuccess": "连接成功！",
+        "connectionFailed": "连接失败：{{error}}",
+        "saveAndContinue": "保存并继续",
+        "alreadyConfigured": "提供商已配置",
+        "useExisting": "使用现有的 {{provider}} 配置"
+      },
+      "model": {
+        "title": "选择模型",
+        "description": "为你的智能体选择 AI 模型",
+        "agentName": "智能体名称",
+        "agentNamePlaceholder": "我的第一个智能体",
+        "noModels": "没有可用的模型，请检查提供商配置。",
+        "createAgent": "创建智能体",
+        "creating": "正在创建智能体...",
+        "success": "智能体创建成功！",
+        "error": "创建智能体失败：{{error}}"
+      }
     }
   },
   "chat": {

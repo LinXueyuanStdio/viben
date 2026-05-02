@@ -1014,6 +1014,14 @@
     "sandboxMode": "Sandbox Mode",
     "selectProvider": "Select Provider"
   },
+  "steering": {
+    "label": "Steering",
+    "title": "Steering",
+    "placeholder": "Add instructions that apply to every message...",
+    "hint": "⌘+Enter to save",
+    "save": "Save",
+    "clear": "Clear"
+  },
   "about": {
     "title": "Viben",
     "version": "Version {{version}}",
@@ -3681,7 +3689,8 @@
       "gateway": "Gateway",
       "python": "Python",
       "claude": "AI Clients",
-      "login": "Login"
+      "login": "Login",
+      "agentSetup": "Agent"
     },
     "loadingTips": {
       "checkingEnvironment": "Checking system environment...",
@@ -4146,6 +4155,44 @@
         "message": "An unknown error occurred. Please check details or contact support."
       },
       "downloadNodejs": "Download Node.js"
+    },
+    "agentSetup": {
+      "title": "Set Up Your First Agent",
+      "description": "Configure an AI agent to start working with Viben",
+      "skip": "Skip for Now",
+      "skipHint": "You can set up agents later in Settings",
+      "gatewayRequired": "Gateway must be running to create agents. Please go back and ensure the environment check completes successfully, or skip this step.",
+      "executor": {
+        "title": "Choose an Executor",
+        "description": "Select the AI coding assistant that will power your agent",
+        "available": "Available"
+      },
+      "provider": {
+        "title": "Configure Provider",
+        "description": "Set up the API connection for {{executor}}",
+        "apiKey": "API Key",
+        "apiKeyPlaceholder": "Enter your API key",
+        "apiKeyHint": "Stored locally, never sent to our servers",
+        "baseUrl": "Base URL",
+        "testConnection": "Test Connection",
+        "testing": "Testing...",
+        "connectionSuccess": "Connection successful!",
+        "connectionFailed": "Connection failed: {{error}}",
+        "saveAndContinue": "Save & Continue",
+        "alreadyConfigured": "Provider already configured",
+        "useExisting": "Use existing {{provider}} configuration"
+      },
+      "model": {
+        "title": "Select a Model",
+        "description": "Choose the AI model for your agent",
+        "agentName": "Agent Name",
+        "agentNamePlaceholder": "My First Agent",
+        "noModels": "No models available. Check your provider configuration.",
+        "createAgent": "Create Agent",
+        "creating": "Creating agent...",
+        "success": "Agent created successfully!",
+        "error": "Failed to create agent: {{error}}"
+      }
     }
   },
   "chat": {
