@@ -32,6 +32,32 @@ export interface AgentCustomVariable {
   description?: string;
 }
 
+/** MCP server entry for agent configuration */
+export interface AgentMcpEntry {
+  /** Server display name / identifier */
+  name: string;
+  /** Transport type */
+  type: "builtin" | "stdio" | "sse" | "http";
+  /** Command for stdio transport */
+  command?: string;
+  /** Command arguments for stdio transport */
+  args?: string[];
+  /** Environment variables for stdio transport */
+  env?: Record<string, string>;
+  /** URL for sse/http transport */
+  url?: string;
+  /** Headers for sse/http transport */
+  headers?: Record<string, string>;
+}
+
+/** Normalize a raw mcp_servers entry (string or object) to AgentMcpEntry */
+export function normalizeAgentMcpEntry(raw: string | AgentMcpEntry): AgentMcpEntry {
+  if (typeof raw === "string") {
+    return { name: raw, type: "builtin" };
+  }
+  return raw;
+}
+
 /** Response from creating/updating an agent */
 export interface AgentResponse {
   id: string;
@@ -52,8 +78,8 @@ export interface AgentResponse {
   temperature?: number;
   max_tokens?: number;
   executor_config?: Record<string, unknown>;
-  /** MCP servers (may be omitted if empty due to skip_serializing_if) */
-  mcp_servers?: string[];
+  /** MCP servers (string for legacy compat, AgentMcpEntry for new format) */
+  mcp_servers?: (string | AgentMcpEntry)[];
   /** Skills (may be omitted if empty due to skip_serializing_if) */
   skills?: string[];
   /** Plan mode (defaults to false if omitted) */
@@ -89,7 +115,7 @@ export interface UpdateAgentOptions {
   max_tokens?: number;
   executor_type?: string;
   executor_config?: Record<string, unknown>;
-  mcp_servers?: string[];
+  mcp_servers?: (string | AgentMcpEntry)[];
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;

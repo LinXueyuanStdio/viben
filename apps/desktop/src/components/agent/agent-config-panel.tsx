@@ -38,13 +38,16 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { CustomVariable } from "./agent-variables-section";
+import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 
 // Section IDs for scroll navigation
 export type ConfigSectionId = "prompts" | "model" | "capabilities" | "memory" | "variables";
@@ -84,13 +87,14 @@ export interface AgentConfigPanelProps {
   onCheckAvailability: () => void;
   availability: AvailabilityInfo | null;
   checkingAvailability?: boolean;
+  providerConstraintHint?: string;
 
   // Capabilities
-  selectedMcpServers: string[];
+  selectedMcpServers: AgentMcpEntry[];
   selectedSkills: string[];
   onConfigureMcp: () => void;
   onConfigureSkills: () => void;
-  onRemoveMcpServer?: (serverId: string) => void;
+  onRemoveMcpServer?: (serverName: string) => void;
   onRemoveSkill?: (skillId: string) => void;
 
   // Memory
@@ -138,6 +142,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       onCheckAvailability,
       availability,
       checkingAvailability,
+      providerConstraintHint,
       // Capabilities
       selectedMcpServers,
       selectedSkills,
@@ -334,47 +339,6 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
             </div>
 
             <div className="space-y-4 pl-9">
-              {/* Model Selection */}
-              <div className="space-y-2">
-                <Label>{t("settingsAgents.model")}</Label>
-                <Select value={model} onValueChange={onModelChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settingsAgents.selectModel")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        <span className="flex items-center gap-2">
-                          {m.name}
-                          {m.provider && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {m.provider}
-                            </Badge>
-                          )}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Temperature */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>{t("settingsAgents.temperature")}</Label>
-                  <span className="text-sm font-mono text-muted-foreground">
-                    {temperature.toFixed(2)}
-                  </span>
-                </div>
-                <Slider
-                  value={[temperature]}
-                  onValueChange={([value]) => onTemperatureChange(value)}
-                  min={0}
-                  max={2}
-                  step={0.01}
-                />
-              </div>
-
               {/* Executor Selection */}
               <div className="space-y-2">
                 <Label>{t("settingsAgents.executor")}</Label>
@@ -392,7 +356,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                           {e.name}
                           {e.description && (
                             <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              - {e.description}
+                              {e.description}
                             </span>
                           )}
                         </span>
@@ -438,6 +402,56 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   </div>
                 </div>
               )}
+
+              {/* Model Selection */}
+              <div className="space-y-2">
+                <Label>{t("settingsAgents.model")}</Label>
+                {providerConstraintHint && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {providerConstraintHint}
+                  </p>
+                )}
+                <Select value={model} onValueChange={onModelChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("settingsAgents.selectModel")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(
+                      models.reduce<Record<string, ModelOption[]>>((groups, m) => {
+                        const key = m.provider || "Other";
+                        (groups[key] ??= []).push(m);
+                        return groups;
+                      }, {})
+                    ).map(([provider, providerModels]) => (
+                      <SelectGroup key={provider}>
+                        <SelectLabel>{provider}</SelectLabel>
+                        {providerModels.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Temperature */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>{t("settingsAgents.temperature")}</Label>
+                  <span className="text-sm font-mono text-muted-foreground">
+                    {temperature.toFixed(2)}
+                  </span>
+                </div>
+                <Slider
+                  value={[temperature]}
+                  onValueChange={([value]) => onTemperatureChange(value)}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                />
+              </div>
             </div>
           </section>
 
@@ -472,15 +486,18 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   <div className="space-y-1.5">
                     {selectedMcpServers.map((server) => (
                       <div
-                        key={server}
+                        key={server.name}
                         className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group"
                       >
                         <Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1 truncate">{server}</span>
+                        <span className="text-sm flex-1 truncate">{server.name}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                          {server.type.toUpperCase()}
+                        </Badge>
                         {onRemoveMcpServer && (
                           <button
                             type="button"
-                            onClick={() => onRemoveMcpServer(server)}
+                            onClick={() => onRemoveMcpServer(server.name)}
                             className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
                           >
                             <X className="h-3.5 w-3.5" />

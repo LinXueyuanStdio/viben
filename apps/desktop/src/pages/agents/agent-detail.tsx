@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
-import { filterModelsByExecutor } from "@/lib/executor-constraints";
+import { filterModelsByExecutor, getProviderConstraintDescription } from "@/lib/executor-constraints";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
@@ -48,11 +48,12 @@ import {
   AgentDebugTab,
   AgentSettingsTab,
 } from "@/components/agent";
-import type { CustomVariable } from "@/components/agent";
+import type { CustomVariable, AgentMcpEntry } from "@/components/agent";
 import { arraysEqual, shallowArrayEqual, cn } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient } from "@/lib/gateway";
 import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
+import { normalizeAgentMcpEntry } from "@/lib/gateway/types/agent";
 import type { TraceSpanNode, TraceTree } from "@/components/observability";
 import type { AgentMessage } from "@/types";
 import { toast } from "@/hooks/use-toast";
@@ -188,7 +189,7 @@ export function AgentDetailPage() {
   const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
 
   // MCP and Skills selection
-  const [selectedMcpServers, setSelectedMcpServers] = useState<string[]>([]);
+  const [selectedMcpServers, setSelectedMcpServers] = useState<AgentMcpEntry[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   // Trace visualization state
@@ -257,7 +258,7 @@ export function AgentDetailPage() {
       setFormExecutorType((agent.executor_type as ExecutorType) || "CLAUDE_CODE");
       setFormPlanMode(agent.plan_mode ?? false);
       setFormApprovals(agent.approvals ?? false);
-      setSelectedMcpServers(agent.mcp_servers || []);
+      setSelectedMcpServers((agent.mcp_servers || []).map(normalizeAgentMcpEntry));
       setSelectedSkills(agent.skills || []);
       setFormIsTemplate(agent.is_template ?? false);
       setFormTemplateDescription(agent.template_description || "");
@@ -292,7 +293,7 @@ export function AgentDetailPage() {
         formExecutorType !== (agent.executor_type || "CLAUDE_CODE") ||
         formPlanMode !== (agent.plan_mode ?? false) ||
         formApprovals !== (agent.approvals ?? false) ||
-        !arraysEqual(selectedMcpServers, agent.mcp_servers || []) ||
+        JSON.stringify(selectedMcpServers) !== JSON.stringify((agent.mcp_servers || []).map(normalizeAgentMcpEntry)) ||
         !arraysEqual(selectedSkills, agent.skills || []) ||
         formIsTemplate !== (agent.is_template ?? false) ||
         formTemplateDescription !== (agent.template_description || "") ||
@@ -544,7 +545,7 @@ export function AgentDetailPage() {
       executorType: formExecutorType,
       planMode: formPlanMode,
       approvals: formApprovals,
-      mcpServers: selectedMcpServers.length > 0 ? selectedMcpServers : undefined,
+      mcpServers: selectedMcpServers.length > 0 ? selectedMcpServers.map((s) => s.name) : undefined,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
     },
   });
@@ -1000,9 +1001,10 @@ export function AgentDetailPage() {
             onCheckAvailability={checkAvailability}
             availability={availability}
             checkingAvailability={checkingAvailability}
+            providerConstraintHint={getProviderConstraintDescription(formExecutorType)}
             onConfigureMcp={() => setMcpDialogOpen(true)}
             onConfigureSkills={() => setSkillsDialogOpen(true)}
-            onRemoveMcpServer={(id) => setSelectedMcpServers((prev) => prev.filter((s) => s !== id))}
+            onRemoveMcpServer={(name) => setSelectedMcpServers((prev) => prev.filter((s) => s.name !== name))}
             onRemoveSkill={(id) => setSelectedSkills((prev) => prev.filter((s) => s !== id))}
             onEditMemory={() => setMemoryDialogOpen(true)}
             onViewTodayLog={() => setMemoryDialogOpen(true)}
@@ -1018,7 +1020,7 @@ export function AgentDetailPage() {
       <AgentMcpDialog
         open={mcpDialogOpen}
         onOpenChange={setMcpDialogOpen}
-        selectedServerIds={selectedMcpServers}
+        selectedServers={selectedMcpServers}
         onServersChange={setSelectedMcpServers}
       />
 
@@ -1027,6 +1029,7 @@ export function AgentDetailPage() {
         onOpenChange={setSkillsDialogOpen}
         selectedSkillIds={selectedSkills}
         onSkillsChange={setSelectedSkills}
+        workspacePath={workspacePath || ""}
       />
 
       <AgentMemoryDialog
