@@ -9,6 +9,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
+import {
+  DEFAULT_SETTINGS_SECTION,
+  getSettingsSectionConfig,
+} from "@/pages/settings/constants";
+import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
 interface SidebarBottomDrawerProps {
   collapsed: boolean;
@@ -22,10 +27,20 @@ interface NavItem {
   settingsSection?: string;
 }
 
+const defaultSettingsDescriptor =
+  getSettingsSectionDescriptor(DEFAULT_SETTINGS_SECTION);
+const defaultSettingsConfig = getSettingsSectionConfig(DEFAULT_SETTINGS_SECTION);
+
 const NAV_ITEMS: NavItem[] = [
   { titleKey: "nav.documents", href: "/documents", icon: FileText, iconValue: "file-text" },
   { titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone, iconValue: "smartphone" },
-  { titleKey: "nav.settings", href: "/settings/general", icon: Settings, iconValue: "settings", settingsSection: "general" },
+  {
+    titleKey: "settings.title",
+    href: `/settings/${defaultSettingsDescriptor?.routePath ?? DEFAULT_SETTINGS_SECTION}`,
+    icon: defaultSettingsConfig?.icon ?? Settings,
+    iconValue: defaultSettingsDescriptor?.icon.value ?? "settings",
+    settingsSection: defaultSettingsDescriptor?.section ?? DEFAULT_SETTINGS_SECTION,
+  },
 ];
 
 export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {

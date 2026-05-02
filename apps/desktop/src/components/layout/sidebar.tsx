@@ -442,7 +442,7 @@ export function Sidebar() {
             </div>
           ) : (
             // Expanded: full layout with sections
-            <div className="space-y-4 px-2">
+            <div className="space-y-4 pl-2 pr-4">
               {/* Pages Section - Before Workspace navigation */}
               {activeWorkspaceId && activeWorkspace && (
                 <PageSection

@@ -7,6 +7,7 @@ import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
 import { WelcomePage } from "./welcome-page";
 import { EnvCheckPage } from "./env-check-page";
 import { StepLogin } from "./step-login";
+import { StepAgentSetup } from "./step-agent-setup";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { LANGUAGES } from "@/i18n/languages";
 import { changeLanguage, getCurrentLanguage } from "@/i18n";
@@ -54,12 +55,21 @@ export function OnboardingWizard() {
 
   const handleLoginComplete = () => {
     completeStep("login");
-    setOnboardingCompleted(true);
-    navigate("/workspace/global", { replace: true });
+    setCurrentStep("agentSetup");
   };
 
   const handleLoginBack = () => {
     setCurrentStep("envCheck");
+  };
+
+  const handleAgentSetupComplete = () => {
+    completeStep("agentSetup");
+    setOnboardingCompleted(true);
+    navigate("/workspace/global", { replace: true });
+  };
+
+  const handleAgentSetupBack = () => {
+    setCurrentStep("login");
   };
 
   return (
@@ -106,6 +116,9 @@ export function OnboardingWizard() {
           )}
           {currentStep === "login" && (
             <StepLogin onComplete={handleLoginComplete} onBack={handleLoginBack} />
+          )}
+          {currentStep === "agentSetup" && (
+            <StepAgentSetup onComplete={handleAgentSetupComplete} onBack={handleAgentSetupBack} />
           )}
         </div>
       </main>

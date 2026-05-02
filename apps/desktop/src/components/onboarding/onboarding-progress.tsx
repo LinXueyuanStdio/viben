@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type OnboardingStep = "welcome" | "envCheck" | "login";
+export type OnboardingStep = "welcome" | "envCheck" | "login" | "agentSetup";
 
 interface OnboardingProgressProps {
   currentStep: OnboardingStep;
@@ -13,6 +13,7 @@ const STEPS: { key: OnboardingStep; labelKey: string }[] = [
   { key: "welcome", labelKey: "onboarding.progress.welcome" },
   { key: "envCheck", labelKey: "onboarding.progress.envCheck" },
   { key: "login", labelKey: "onboarding.progress.login" },
+  { key: "agentSetup", labelKey: "onboarding.progress.agentSetup" },
 ];
 
 export function OnboardingProgress({ currentStep, completedSteps }: OnboardingProgressProps) {

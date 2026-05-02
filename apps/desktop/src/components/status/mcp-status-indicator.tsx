@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
@@ -51,6 +52,8 @@ type StatusPhase =
 export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation();
   const { openSettings, openPath } = useDesktopRouting();
+  const environmentSection = getSettingsSectionDescriptor("environment");
+  const mcpSection = getSettingsSectionDescriptor("mcp");
   const { mcpServers, mcpServerStatuses } = useAppStore();
   const { getStats } = useMcpStatusMonitor();
   const { selectedPython, browseMcpInfo, loading: pythonLoading } = usePython();
@@ -133,15 +136,17 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
       case "python_missing":
       case "package_checking":
       case "package_missing":
-        openSettings("environment");
+        openSettings(environmentSection?.section ?? "environment");
         break;
       default:
         // Navigate to MCP settings page with dashboard tab
         openPath("/settings/mcp?tab=dashboard", {
           type: "settings",
-          slug: "mcp",
-          title: t("settingsMcp.title", "MCP"),
-          icon: { type: "lucide", value: "boxes" },
+          slug: mcpSection?.routePath ?? "mcp",
+          title: mcpSection
+            ? t(mcpSection.titleKey, mcpSection.fallbackLabel)
+            : t("settings.sections.mcp", "MCP"),
+          icon: mcpSection?.icon ?? { type: "lucide", value: "boxes" },
         });
     }
   };

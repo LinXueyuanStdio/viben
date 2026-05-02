@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
@@ -40,6 +41,7 @@ export function GatewayStatusIndicator({
 }: GatewayStatusIndicatorProps) {
   const { t } = useTranslation();
   const { openSettings } = useDesktopRouting();
+  const gatewaySection = getSettingsSectionDescriptor("gateway");
   const { status, isChecking, error, checkConnection } =
     useGatewayStatus();
 
@@ -82,10 +84,10 @@ export function GatewayStatusIndicator({
       const connected = await checkConnection();
       if (!connected) {
         // If still not connected, navigate to gateway settings
-        openSettings("gateway");
+        openSettings(gatewaySection?.section ?? "gateway");
       }
     } else {
-      openSettings("gateway");
+      openSettings(gatewaySection?.section ?? "gateway");
     }
   };
 
