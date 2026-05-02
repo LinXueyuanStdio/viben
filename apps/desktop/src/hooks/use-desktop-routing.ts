@@ -8,7 +8,6 @@ import {
 import {
   useOptionalNavigationShell,
   useNavigationShellHeaderState,
-  useNavigationShellSlots,
 } from "@/components/navigation";
 import type { IconData } from "@/components/ui/icon-picker";
 import { urlToLocation, type DesktopLocation } from "@/navigation/location";
@@ -66,6 +65,45 @@ export interface DesktopRoutingApi {
     section?: SettingsSection | string,
     options?: DesktopOpenOptions
   ) => void;
+  openAgentDetail: (
+    agentId: string,
+    workspacePath?: string,
+    options?: DesktopOpenOptions
+  ) => void;
+  openExecutorDetail: (
+    executorType: string,
+    workspacePath?: string,
+    options?: DesktopOpenOptions
+  ) => void;
+  openSkillDetail: (
+    skillId: string,
+    input: { agentId: string; workspacePath?: string },
+    options?: DesktopOpenOptions
+  ) => void;
+  openMcpServerDetail: (
+    serverName: string,
+    input: { executorType: string; workspacePath?: string },
+    options?: DesktopOpenOptions
+  ) => void;
+  openSubagentDetail: (
+    configId: string,
+    input: { executorType: string; workspacePath?: string },
+    options?: DesktopOpenOptions
+  ) => void;
+  openPromptDetail: (
+    promptId: string,
+    input: { executorType: string; workspacePath?: string },
+    options?: DesktopOpenOptions
+  ) => void;
+  openCommandDetail: (
+    commandId: string,
+    input: { executorType: string; workspacePath?: string },
+    options?: DesktopOpenOptions
+  ) => void;
+  openDocuments: (options?: DesktopOpenOptions) => void;
+  openDevicePair: (options?: DesktopOpenOptions) => void;
+  openDashboard: (options?: DesktopOpenOptions) => void;
+  openSkillsMarket: (options?: DesktopOpenOptions) => void;
 
   pushChildPage: (
     item: BreadcrumbStackItem,
@@ -138,7 +176,6 @@ export function useDesktopRouting(): DesktopRoutingApi {
   const pageTabs = usePageTabs();
   const shell = useOptionalNavigationShell();
   const shellHeader = useNavigationShellHeaderState();
-  const shellSlots = useNavigationShellSlots();
   const ownerId = useId();
 
   const currentRoute = pageTabs.currentNavigationState?.location ?? null;
@@ -376,6 +413,247 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [pageTabs, t]
   );
 
+  const openAgentDetail = useCallback(
+    (
+      agentId: string,
+      workspacePath?: string,
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        { kind: "agent-detail", agentId, workspacePath },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: agentId,
+            name: agentId,
+            icon: { type: "lucide", value: "bot" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openExecutorDetail = useCallback(
+    (
+      executorType: string,
+      workspacePath?: string,
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        { kind: "executor-detail", executorType, workspacePath },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: executorType,
+            name: executorType,
+            icon: { type: "lucide", value: "terminal" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openSkillDetail = useCallback(
+    (
+      skillId: string,
+      input: { agentId: string; workspacePath?: string },
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        {
+          kind: "skill-detail",
+          skillId,
+          agentId: input.agentId,
+          workspacePath: input.workspacePath,
+        },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "page",
+            slug: skillId,
+            name: skillId,
+            icon: { type: "lucide", value: "sparkles" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openMcpServerDetail = useCallback(
+    (
+      serverName: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        {
+          kind: "mcp-server-detail",
+          serverName,
+          executorType: input.executorType,
+          workspacePath: input.workspacePath,
+        },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "page",
+            slug: serverName,
+            name: serverName,
+            icon: { type: "lucide", value: "server" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openSubagentDetail = useCallback(
+    (
+      configId: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        {
+          kind: "subagent-detail",
+          configId,
+          executorType: input.executorType,
+          workspacePath: input.workspacePath,
+        },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "page",
+            slug: configId,
+            name: configId,
+            icon: { type: "lucide", value: "bot" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openPromptDetail = useCallback(
+    (
+      promptId: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        {
+          kind: "prompt-detail",
+          promptId,
+          executorType: input.executorType,
+          workspacePath: input.workspacePath,
+        },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "page",
+            slug: promptId,
+            name: promptId,
+            icon: { type: "lucide", value: "quote" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openCommandDetail = useCallback(
+    (
+      commandId: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopOpenOptions
+    ) => {
+      pageTabs.openLocation(
+        {
+          kind: "command-detail",
+          commandId,
+          executorType: input.executorType,
+          workspacePath: input.workspacePath,
+        },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "page",
+            slug: commandId,
+            name: commandId,
+            icon: { type: "lucide", value: "terminal" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openDocuments = useCallback(
+    (options?: DesktopOpenOptions) => {
+      pageTabs.openLocation(
+        { kind: "documents" },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: "documents",
+            name: t("nav.documents", "Documents"),
+            icon: { type: "lucide", value: "file-text" },
+          },
+        }
+      );
+    },
+    [pageTabs, t]
+  );
+
+  const openDevicePair = useCallback(
+    (options?: DesktopOpenOptions) => {
+      pageTabs.openLocation(
+        { kind: "device-pair" },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: "device-pair",
+            name: t("nav.devices", "Devices"),
+            icon: { type: "lucide", value: "smartphone" },
+          },
+        }
+      );
+    },
+    [pageTabs, t]
+  );
+
+  const openDashboard = useCallback(
+    (options?: DesktopOpenOptions) => {
+      openPath("/mcp-services/dashboard", {
+        title: t("nav.dashboard", "Dashboard"),
+        icon: { type: "lucide", value: "layout-dashboard" },
+        type: "workspace",
+        slug: "dashboard",
+        openMode: options?.openMode,
+      });
+    },
+    [openPath, t]
+  );
+
+  const openSkillsMarket = useCallback(
+    (options?: DesktopOpenOptions) => {
+      openPath("/skills-market", {
+        title: t("nav.skillsMarket", "Skills Market"),
+        icon: { type: "lucide", value: "sparkles" },
+        type: "page",
+        slug: "skills-market",
+        openMode: options?.openMode,
+      });
+    },
+    [openPath, t]
+  );
+
   const pushChildPage = useCallback(
     (
       item: BreadcrumbStackItem,
@@ -518,6 +796,17 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openWorkspacePage,
       openWorkspaceWeb,
       openSettings,
+      openAgentDetail,
+      openExecutorDetail,
+      openSkillDetail,
+      openMcpServerDetail,
+      openSubagentDetail,
+      openPromptDetail,
+      openCommandDetail,
+      openDocuments,
+      openDevicePair,
+      openDashboard,
+      openSkillsMarket,
 
       pushChildPage,
       pushCurrentPageChild,
@@ -537,8 +826,8 @@ export function useDesktopRouting(): DesktopRoutingApi {
       setHeaderCenter,
       setHeaderRight,
       clearHeaderSlots,
-      headerCenter: shellSlots?.centerContent ?? null,
-      headerRight: shellSlots?.rightContent ?? null,
+      headerCenter: null,
+      headerRight: null,
     }),
     [
       clearHeaderSlots,
@@ -553,7 +842,18 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openCurrentPageWeb,
       openPath,
       openRoute,
+      openAgentDetail,
+      openCommandDetail,
+      openDashboard,
+      openDevicePair,
+      openDocuments,
+      openExecutorDetail,
+      openMcpServerDetail,
       openSettings,
+      openPromptDetail,
+      openSkillDetail,
+      openSkillsMarket,
+      openSubagentDetail,
       openWorkspaceAgentDetail,
       openWorkspaceAgentList,
       openWorkspaceExecutorDetail,
@@ -570,8 +870,6 @@ export function useDesktopRouting(): DesktopRoutingApi {
       pushCurrentPageChild,
       setHeaderCenter,
       setHeaderRight,
-      shellSlots?.centerContent,
-      shellSlots?.rightContent,
     ]
   );
 }

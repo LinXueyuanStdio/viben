@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   getTabSwitchIndexFromShortcut,
-  isCloseTabShortcut,
   isEditableShortcutTarget,
-  isNewTabShortcut,
-  isReopenClosedTabShortcut,
+  isShortcutPressed,
   matchesShortcut,
   parseShortcut,
 } from "./use-global-shortcuts";
@@ -37,52 +35,85 @@ describe("use-global-shortcuts helpers", () => {
 
   it("detects reopen closed tab shortcut", () => {
     expect(
-      isReopenClosedTabShortcut({
-        key: "t",
-        ctrlKey: false,
-        metaKey: true,
-        shiftKey: true,
-      })
+      isShortcutPressed(
+        {
+          key: "t",
+          ctrlKey: false,
+          metaKey: true,
+          shiftKey: true,
+          altKey: false,
+        },
+        "Cmd+Shift+T"
+      )
     ).toBe(true);
 
     expect(
-      isReopenClosedTabShortcut({
-        key: "t",
-        ctrlKey: true,
-        metaKey: false,
-        shiftKey: true,
-      })
+      isShortcutPressed(
+        {
+          key: "t",
+          ctrlKey: false,
+          metaKey: true,
+          shiftKey: true,
+          altKey: false,
+        },
+        "Cmd+Shift+T"
+      )
+    ).toBe(true);
+
+    expect(
+      isShortcutPressed(
+        {
+          key: "t",
+          ctrlKey: true,
+          metaKey: false,
+          shiftKey: true,
+          altKey: false,
+        },
+        "Cmd+Shift+T"
+      )
     ).toBe(true);
   });
 
   it("does not match reopen shortcut without shift", () => {
     expect(
-      isReopenClosedTabShortcut({
-        key: "t",
-        ctrlKey: true,
-        metaKey: false,
-        shiftKey: false,
-      })
+      isShortcutPressed(
+        {
+          key: "t",
+          ctrlKey: true,
+          metaKey: false,
+          shiftKey: false,
+          altKey: false,
+        },
+        "Cmd+Shift+T"
+      )
     ).toBe(false);
   });
 
-  it("detects new tab and close tab shortcuts", () => {
+  it("detects configurable new tab and close tab shortcuts", () => {
     expect(
-      isNewTabShortcut({
-        key: "t",
-        ctrlKey: true,
-        metaKey: false,
-        shiftKey: false,
-      })
+      isShortcutPressed(
+        {
+          key: "t",
+          ctrlKey: true,
+          metaKey: false,
+          shiftKey: false,
+          altKey: false,
+        },
+        "Cmd+T"
+      )
     ).toBe(true);
 
     expect(
-      isCloseTabShortcut({
-        key: "w",
-        ctrlKey: false,
-        metaKey: true,
-        shiftKey: false,
-      })
+      isShortcutPressed(
+        {
+          key: "w",
+          ctrlKey: false,
+          metaKey: true,
+          shiftKey: false,
+          altKey: false,
+        },
+        "Cmd+W"
+      )
     ).toBe(true);
   });
 

@@ -1,6 +1,5 @@
 import { useEffect, useCallback, useRef } from "react";
-import { useUiStore, useAppStore } from "@/stores";
-import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import { useUiStore, useAppStore, useWorkspaceStore } from "@/stores";
 import { useTabStore } from "@/stores/tab-store";
 
 /**
@@ -46,22 +45,11 @@ export function matchesShortcut(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "meta
   return modifierMatch && shiftMatch && altMatch && keyMatch;
 }
 
-export function isReopenClosedTabShortcut(
-  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">
+export function isShortcutPressed(
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">,
+  shortcut: string
 ): boolean {
-  return (e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "t";
-}
-
-export function isNewTabShortcut(
-  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">
-): boolean {
-  return (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "t";
-}
-
-export function isCloseTabShortcut(
-  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey">
-): boolean {
-  return (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "w";
+  return matchesShortcut(e, shortcut);
 }
 
 export function getTabSwitchIndexFromShortcut(
@@ -120,17 +108,18 @@ export function isEditableShortcutTarget(target: EventTarget | null): boolean {
  * - createTask: Open create task dialog (default: Shift+Cmd+J)
  */
 export function useGlobalShortcuts() {
-  const { openCreateTaskDialog } = useUiStore();
-  const { shortcuts } = useAppStore();
-  const { activeWorkspaceId } = useLocalWorkspaces();
+  const openCreateTaskDialog = useUiStore((state) => state.openCreateTaskDialog);
+  const shortcuts = useAppStore((state) => state.shortcuts);
+  const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
   const openTab = useTabStore((state) => state.openTab);
   const closeTab = useTabStore((state) => state.closeTab);
   const setActiveTab = useTabStore((state) => state.setActiveTab);
-  const activeTabId = useTabStore((state) => state.activeTabId);
   const reopenClosedTab = useTabStore((state) => state.reopenClosedTab);
 
-  // Read tab state via ref to avoid recreating the callback on every tab change
-  const tabStateRef = useRef({ activeTabId: "", tabIds: [] as string[], tabCount: 0 });
+  // Read tab state via ref to avoid recreating the callback on every tab change.
+  // Using .map() in a zustand selector creates a new array each time, which
+  // triggers infinite re-renders via useSyncExternalStore.
+  const tabStateRef = useRef({ activeTabId: null as string | null, tabIds: [] as string[], tabCount: 0 });
   const activeTabId = useTabStore((state) => state.activeTabId);
   const tabs = useTabStore((state) => state.tabs);
   tabStateRef.current = {
@@ -155,7 +144,7 @@ export function useGlobalShortcuts() {
         return;
       }
 
-      if (isNewTabShortcut(e)) {
+      if (isShortcutPressed(e, shortcuts.newTab)) {
         e.preventDefault();
         openTab(
           {
@@ -171,7 +160,7 @@ export function useGlobalShortcuts() {
 
       const { activeTabId: currentTabId, tabIds, tabCount } = tabStateRef.current;
 
-      if (isCloseTabShortcut(e)) {
+      if (isShortcutPressed(e, shortcuts.closeTab)) {
         if (!currentTabId || tabCount <= 1) {
           return;
         }
@@ -197,13 +186,16 @@ export function useGlobalShortcuts() {
       }
 
       // Browser-like shortcut: Reopen Closed Tab
-      if (isReopenClosedTabShortcut(e)) {
+      if (isShortcutPressed(e, shortcuts.reopenClosedTab)) {
         e.preventDefault();
         reopenClosedTab();
       }
     },
     [
       shortcuts.createTask,
+      shortcuts.newTab,
+      shortcuts.closeTab,
+      shortcuts.reopenClosedTab,
       activeWorkspaceId,
       openCreateTaskDialog,
       openTab,

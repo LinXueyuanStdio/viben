@@ -77,7 +77,7 @@ export interface UseScreenshotReturn {
 /**
  * Save base64 data URL to a temp file and return the file path
  */
-async function saveScreenshotToTempFile(
+export async function saveScreenshotToTempFile(
   data: string,
   fileName: string
 ): Promise<string> {
