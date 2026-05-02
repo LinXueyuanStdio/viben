@@ -16,9 +16,7 @@ import {
   useDesktopRouting,
   useDesktopRoutingHeaderSync,
 } from "@/hooks/use-desktop-routing";
-import {
-  useOptionalNavigationShell,
-} from "@/components/navigation";
+import { useOptionalNavigationShell } from "@/components/navigation";
 import { cn } from "@/lib/utils";
 import type { BreadcrumbSegment } from "./workspace-breadcrumb";
 import type { Workspace } from "@/types";

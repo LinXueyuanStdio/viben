@@ -465,23 +465,42 @@ export function Sidebar() {
                   collapsible
                   defaultOpen
                   headerAction={
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
-                          onClick={() => {
-                            openWorkspaceHome(activeWorkspaceId);
-                          }}
-                        >
-                          <Home className="h-3.5 w-3.5" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {t("sidebar.workspaceHome")}
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="flex items-center gap-0.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                            onClick={() => {
+                              handleConfigureWorkspace(activeWorkspaceId);
+                            }}
+                          >
+                            <Settings className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          {t("workspace.configure")}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                            onClick={() => {
+                              openWorkspaceHome(activeWorkspaceId);
+                            }}
+                          >
+                            <Home className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          {t("sidebar.workspaceHome")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   }
                 >
                   <nav className="flex flex-col gap-1">
@@ -516,17 +535,26 @@ export function Sidebar() {
           )}
         </ScrollArea>
 
-        {/* Bottom: Drawer + New Task */}
-        <div className="pb-2 flex flex-col gap-0.5">
-          <SidebarBottomDrawer collapsed={collapsed} />
-          <div className={collapsed ? undefined : "px-2"}>
+        {/* Bottom Navigation & New Task */}
+        {collapsed ? (
+          <div className="pb-2 flex flex-col">
+            <SidebarBottomDrawer collapsed />
             <WakeWordTaskButton
-              collapsed={collapsed}
+              collapsed
               onCreateTask={openChatPopup}
               disabled={!activeWorkspace}
             />
           </div>
-        </div>
+        ) : (
+          <div className="pb-2 px-2">
+            <SidebarBottomDrawer collapsed={false} />
+            <WakeWordTaskButton
+              collapsed={false}
+              onCreateTask={openChatPopup}
+              disabled={!activeWorkspace}
+            />
+          </div>
+        )}
 
         {/* Create Task Dialog */}
         <CreateTaskDialog

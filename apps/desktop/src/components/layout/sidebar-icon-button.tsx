@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 interface SidebarIconButtonProps {
   /** Icon component to render */
@@ -38,7 +38,7 @@ export function SidebarIconButton({
   onClick,
   disabled,
 }: SidebarIconButtonProps) {
-  const { navigateTo } = usePageTabs();
+  const { openPath } = useDesktopRouting();
   const location = useLocation();
 
   // Check if current route matches href (for active state)
@@ -55,9 +55,9 @@ export function SidebarIconButton({
     }
     // Fallback: use href for direct navigation
     if (href) {
-      navigateTo(href, {
+      openPath(href, {
         type: href.startsWith("/settings") ? "settings" : "workspace",
-        name: tooltip,
+        title: tooltip,
       });
     }
   };

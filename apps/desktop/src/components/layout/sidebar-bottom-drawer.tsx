@@ -1,29 +1,46 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Settings, FileText, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
 
 interface SidebarBottomDrawerProps {
   collapsed: boolean;
 }
 
-/**
- * Sidebar bottom drawer that shows gateway status as a trigger button.
- * On hover, it expands upward to reveal user info, navigation items,
- * and gateway status description.
- */
+interface NavItem {
+  titleKey: string;
+  href: string;
+  icon: React.ElementType;
+  iconValue: string;
+  settingsSection?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { titleKey: "nav.documents", href: "/documents", icon: FileText, iconValue: "file-text" },
+  { titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone, iconValue: "smartphone" },
+  { titleKey: "nav.settings", href: "/settings/general", icon: Settings, iconValue: "settings", settingsSection: "general" },
+];
+
 export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { openGlobalView } = usePageTabs();
+  const { openPath, openSettings } = useDesktopRouting();
   const { status, error } = useGatewayStatus();
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
 
   const clearCloseTimeout = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -41,17 +58,21 @@ export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 200);
+    }, 300);
   }, [clearCloseTimeout]);
 
   const handleNavigate = useCallback(
-    (href: string, titleKey: string, iconValue: string) => {
-      openGlobalView(href, t(titleKey), {
-        type: "lucide",
-        value: iconValue,
+    (href: string, titleKey: string, iconValue: string, settingsSection?: string) => {
+      if (settingsSection) {
+        openSettings(settingsSection);
+        return;
+      }
+      openPath(href, {
+        title: t(titleKey),
+        icon: { type: "lucide", value: iconValue },
       });
     },
-    [openGlobalView, t]
+    [openPath, openSettings, t]
   );
 
   const gatewayDescription = (() => {
@@ -70,125 +91,147 @@ export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
   })();
 
   const getInitials = (name: string): string => {
-    const parts = name.split(" ");
+    const parts = name.trim().split(/\s+/);
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
     return name.slice(0, 2).toUpperCase();
   };
 
-  const navItems = [
-    { titleKey: "nav.documents", href: "/documents", icon: FileText, iconValue: "file-text" },
-    { titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone, iconValue: "smartphone" },
-    { titleKey: "nav.settings", href: "/settings/general", icon: Settings, iconValue: "settings" },
-  ];
-
   if (collapsed) {
     return (
-      <div
-        className="relative pb-2"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        {/* Expanded drawer (appears above trigger) */}
-        <div
-          className={cn(
-            "absolute bottom-full left-1/2 -translate-x-1/2 z-50",
-            "w-[calc(100%-8px)]",
-            "transition-all duration-200 ease-out",
-            isOpen
-              ? "opacity-100 translate-y-0 pointer-events-auto"
-              : "opacity-0 translate-y-1 pointer-events-none"
-          )}
-        >
-          <div className="rounded-lg border bg-popover p-1 shadow-md flex flex-col gap-0.5 mb-1">
-            {user && (
+      <>
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <div
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <PopoverTrigger asChild>
               <div className="grid place-items-center w-full">
-                <button
-                  type="button"
-                  onClick={() => window.open("https://viben-web.vercel.app/profile", "_blank")}
-                  className="flex items-center justify-center h-8 w-8 rounded-md transition-colors hover:bg-accent"
-                >
-                  <Avatar size="sm">
-                    {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
-                    <AvatarFallback className="text-[10px]">{getInitials(user.displayName || user.username)}</AvatarFallback>
-                  </Avatar>
-                </button>
+                <GatewayStatusIndicator collapsed disableTooltip={isOpen} />
               </div>
-            )}
-            {navItems.map((item) => (
-              <div key={item.href} className="grid place-items-center w-full">
-                <button
-                  type="button"
-                  onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue)}
-                  className="flex items-center justify-center h-8 w-8 rounded-md transition-colors hover:bg-accent text-popover-foreground/70"
-                >
-                  <item.icon className="h-4 w-4" />
-                </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="right"
+              align="end"
+              sideOffset={8}
+              className="w-48 p-1"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <div className="flex flex-col gap-0.5">
+                {/* User info */}
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => window.open("https://viben-web.vercel.app/profile", "_blank")}
+                    className={cn(
+                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                      "transition-colors duration-200",
+                      "hover:bg-accent"
+                    )}
+                  >
+                    <Avatar size="default">
+                      {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
+                      <AvatarFallback>{getInitials(user.displayName || user.username)}</AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-popover-foreground">{user.displayName || user.username}</span>
+                  </button>
+                )}
+                {/* Nav items with text labels */}
+                {NAV_ITEMS.map((item) => (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
+                    className={cn(
+                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                      "transition-colors duration-200",
+                      "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+                    <span>{t(item.titleKey)}</span>
+                  </button>
+                ))}
+                {/* Gateway description */}
+                <Separator className="my-0.5" />
+                <p className="px-3 py-1.5 text-xs text-muted-foreground leading-relaxed">
+                  {gatewayDescription}
+                </p>
               </div>
-            ))}
+            </PopoverContent>
           </div>
-        </div>
-
-        {/* Trigger: Gateway Status */}
-        <div className="grid place-items-center w-full">
-          <GatewayStatusIndicator collapsed />
-        </div>
-      </div>
+        </Popover>
+      </>
     );
   }
 
   // Expanded sidebar
   return (
-    <div
-      className="relative pb-2 px-2"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Expanded drawer (appears above trigger) */}
-      <div
-        className={cn(
-          "absolute bottom-full left-2 right-2 z-50",
-          "transition-all duration-200 ease-out",
-          isOpen
-            ? "opacity-100 translate-y-0 pointer-events-auto"
-            : "opacity-0 translate-y-1 pointer-events-none"
-        )}
-      >
-        <div className="rounded-lg border bg-popover p-1 shadow-md flex flex-col gap-0.5 mb-1">
-          {user && (
-            <button
-              type="button"
-              onClick={() => window.open("https://viben-web.vercel.app/profile", "_blank")}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm w-full text-left transition-colors hover:bg-accent"
-            >
-              <Avatar size="sm">
-                {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
-                <AvatarFallback className="text-[10px]">{getInitials(user.displayName || user.username)}</AvatarFallback>
-              </Avatar>
-              <span className="truncate text-popover-foreground text-xs">{user.displayName || user.username}</span>
-            </button>
-          )}
-          {navItems.map((item) => (
-            <button
-              key={item.href}
-              type="button"
-              onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue)}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs w-full text-left transition-colors hover:bg-accent text-popover-foreground/70"
-            >
-              <item.icon className="h-3.5 w-3.5 shrink-0" />
-              <span>{t(item.titleKey)}</span>
-            </button>
-          ))}
-          {/* Gateway description */}
-          <div className="px-2 py-1">
-            <p className="text-[11px] text-muted-foreground leading-snug">{gatewayDescription}</p>
-          </div>
+    <>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <div
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <PopoverTrigger asChild>
+            <div>
+              <GatewayStatusIndicator collapsed={false} disableTooltip={isOpen} />
+            </div>
+          </PopoverTrigger>
+          <PopoverContent
+            side="top"
+            align="start"
+            sideOffset={4}
+            className="w-[var(--radix-popover-trigger-width)] p-1"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            <div className="flex flex-col gap-0.5">
+              {/* User info */}
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => window.open("https://viben-web.vercel.app/profile", "_blank")}
+                  className={cn(
+                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                    "transition-colors duration-200",
+                    "hover:bg-accent"
+                  )}
+                >
+                  <Avatar size="default">
+                    {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.displayName} />}
+                    <AvatarFallback>{getInitials(user.displayName || user.username)}</AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-popover-foreground">{user.displayName || user.username}</span>
+                </button>
+              )}
+              {/* Nav items — same gap-3 px-3 py-2 rounded-lg text-sm as NavItemComponent */}
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
+                  className={cn(
+                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                    "transition-colors duration-200",
+                    "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+                  <span>{t(item.titleKey)}</span>
+                </button>
+              ))}
+              {/* Gateway description */}
+              <Separator className="my-0.5" />
+              <p className="px-3 py-1.5 text-xs text-muted-foreground leading-relaxed">
+                {gatewayDescription}
+              </p>
+            </div>
+          </PopoverContent>
         </div>
-      </div>
-
-      {/* Trigger: Gateway Status */}
-      <GatewayStatusIndicator collapsed={false} />
-    </div>
+      </Popover>
+    </>
   );
 }

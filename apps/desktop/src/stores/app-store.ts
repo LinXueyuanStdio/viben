@@ -148,6 +148,9 @@ interface AppState {
     lock: string;
     showHideWindow: string;
     createTask: string;
+    newTab: string;
+    closeTab: string;
+    reopenClosedTab: string;
   };
   showHideWindowScope: "all" | "chatRelated";
   setShortcut: (key: keyof AppState["shortcuts"], value: string) => void;
@@ -204,6 +207,9 @@ const DEFAULT_SHORTCUTS = {
   lock: "Cmd+L",
   showHideWindow: "Shift+Cmd+W",
   createTask: "Shift+Cmd+J",
+  newTab: "Cmd+T",
+  closeTab: "Cmd+W",
+  reopenClosedTab: "Cmd+Shift+T",
 };
 
 export const useAppStore = create<AppState>()(
