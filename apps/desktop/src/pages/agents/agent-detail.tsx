@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -49,7 +49,7 @@ import {
   AgentSettingsTab,
 } from "@/components/agent";
 import type { CustomVariable } from "@/components/agent";
-import { arraysEqual, shallowArrayEqual } from "@/lib/utils";
+import { arraysEqual, shallowArrayEqual, cn } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient } from "@/lib/gateway";
 import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
@@ -817,14 +817,32 @@ export function AgentDetailPage() {
             showRefresh={false}
             showRemove={false}
             centerContent={
-              <TabsList className="h-9 border-b-0 bg-transparent p-0">
-                <TabsTrigger value="settings" className="h-9 rounded-md">
+              <div className="flex h-9 items-center gap-1 rounded-lg bg-muted p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("settings")}
+                  className={cn(
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    activeTab === "settings"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
                   {t("agentDetail.settingsTab", "Settings")}
-                </TabsTrigger>
-                <TabsTrigger value="debug" className="h-9 rounded-md">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("debug")}
+                  className={cn(
+                    "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    activeTab === "debug"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
                   {t("agentDetail.debugTab", "Debug")}
-                </TabsTrigger>
-              </TabsList>
+                </button>
+              </div>
             }
             rightContent={
               <>
@@ -984,6 +1002,8 @@ export function AgentDetailPage() {
             checkingAvailability={checkingAvailability}
             onConfigureMcp={() => setMcpDialogOpen(true)}
             onConfigureSkills={() => setSkillsDialogOpen(true)}
+            onRemoveMcpServer={(id) => setSelectedMcpServers((prev) => prev.filter((s) => s !== id))}
+            onRemoveSkill={(id) => setSelectedSkills((prev) => prev.filter((s) => s !== id))}
             onEditMemory={() => setMemoryDialogOpen(true)}
             onViewTodayLog={() => setMemoryDialogOpen(true)}
             onViewYesterdayLog={() => setMemoryDialogOpen(true)}

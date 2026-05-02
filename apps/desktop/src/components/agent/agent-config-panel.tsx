@@ -25,6 +25,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  X,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,6 +90,8 @@ export interface AgentConfigPanelProps {
   selectedSkills: string[];
   onConfigureMcp: () => void;
   onConfigureSkills: () => void;
+  onRemoveMcpServer?: (serverId: string) => void;
+  onRemoveSkill?: (skillId: string) => void;
 
   // Memory
   onEditMemory: () => void;
@@ -140,6 +143,8 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       selectedSkills,
       onConfigureMcp,
       onConfigureSkills,
+      onRemoveMcpServer,
+      onRemoveSkill,
       // Memory
       onEditMemory,
       onViewTodayLog,
@@ -452,24 +457,46 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   <Label className="flex items-center gap-1.5">
                     <Server className="h-3.5 w-3.5" />
                     {t("settingsAgents.mcpServersLabel")}
+                    {selectedMcpServers.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+                        {selectedMcpServers.length}
+                      </Badge>
+                    )}
                   </Label>
                   <Button variant="outline" size="sm" onClick={onConfigureMcp}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
                     {t("common.configure")}
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedMcpServers.length > 0 ? (
-                    selectedMcpServers.map((server) => (
-                      <Badge key={server} variant="secondary">
-                        {server}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
+                {selectedMcpServers.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {selectedMcpServers.map((server) => (
+                      <div
+                        key={server}
+                        className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group"
+                      >
+                        <Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm flex-1 truncate">{server}</span>
+                        {onRemoveMcpServer && (
+                          <button
+                            type="button"
+                            onClick={() => onRemoveMcpServer(server)}
+                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-4 text-center">
+                    <Server className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
+                    <p className="text-xs text-muted-foreground">
                       {t("settingsAgents.noMcpServers")}
-                    </span>
-                  )}
-                </div>
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Skills */}
@@ -478,24 +505,46 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   <Label className="flex items-center gap-1.5">
                     <Sparkles className="h-3.5 w-3.5" />
                     {t("settingsAgents.skillsLabel")}
+                    {selectedSkills.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+                        {selectedSkills.length}
+                      </Badge>
+                    )}
                   </Label>
                   <Button variant="outline" size="sm" onClick={onConfigureSkills}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
                     {t("common.configure")}
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedSkills.length > 0 ? (
-                    selectedSkills.map((skill) => (
-                      <Badge key={skill} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
+                {selectedSkills.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {selectedSkills.map((skill) => (
+                      <div
+                        key={skill}
+                        className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group"
+                      >
+                        <Sparkles className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm flex-1 truncate">{skill}</span>
+                        {onRemoveSkill && (
+                          <button
+                            type="button"
+                            onClick={() => onRemoveSkill(skill)}
+                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-4 text-center">
+                    <Sparkles className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
+                    <p className="text-xs text-muted-foreground">
                       {t("settingsAgents.noSkills")}
-                    </span>
-                  )}
-                </div>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </section>

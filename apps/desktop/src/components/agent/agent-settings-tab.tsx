@@ -100,11 +100,18 @@ function NavItem({
   };
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
+        "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer",
         "hover:bg-muted/50",
         isActive && "bg-primary/10 text-primary font-medium",
         !isActive && "text-muted-foreground",
@@ -126,7 +133,7 @@ function NavItem({
       )}
       <span className="shrink-0">{icon}</span>
       <span className="flex-1 text-left truncate">{label}</span>
-    </button>
+    </div>
   );
 }
 
@@ -211,6 +218,8 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     checkingAvailability,
     onConfigureMcp,
     onConfigureSkills,
+    onRemoveMcpServer,
+    onRemoveSkill,
     onEditMemory,
     onViewTodayLog,
     onViewYesterdayLog,
@@ -348,6 +357,8 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             checkingAvailability={checkingAvailability}
             onConfigureMcp={onConfigureMcp}
             onConfigureSkills={onConfigureSkills}
+            onRemoveMcpServer={onRemoveMcpServer}
+            onRemoveSkill={onRemoveSkill}
             onEditMemory={onEditMemory}
             onViewTodayLog={onViewTodayLog}
             onViewYesterdayLog={onViewYesterdayLog}

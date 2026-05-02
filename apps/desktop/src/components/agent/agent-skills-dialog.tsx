@@ -55,7 +55,7 @@ export function AgentSkillsDialog({
   onSkillsChange,
 }: AgentSkillsDialogProps) {
   const { t } = useTranslation();
-  const { openPath } = useDesktopRouting();
+  const { openSkillsMarket } = useDesktopRouting();
   const { packages, loading: isLoading, error } = useCloudSkillPackages();
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,10 +112,7 @@ export function AgentSkillsDialog({
 
   const handleGoToMarketplace = () => {
     onOpenChange(false);
-    openPath("/skills-market", {
-      title: t("nav.skillsMarket", "Skills Market"),
-      icon: { type: "lucide", value: "sparkles" },
-    });
+    openSkillsMarket();
   };
 
   const getSkillTypeBadge = (type: string) => {

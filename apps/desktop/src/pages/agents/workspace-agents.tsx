@@ -67,7 +67,6 @@ export function WorkspaceAgentsPage({
   const { t } = useTranslation();
   const {
     openDashboard,
-    openPath,
     openWorkspaceAgentDetail,
     openWorkspaceExecutorDetail,
   } = useDesktopRouting();
