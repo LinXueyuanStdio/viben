@@ -118,7 +118,7 @@ const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { openWorkspaceSection, openWorkspaceHome, openPath } = useDesktopRouting();
+  const { openWorkspaceSection, openWorkspaceHome, openPath, openDashboard } = useDesktopRouting();
 
   const {
     workspaces,
@@ -229,13 +229,7 @@ export function Sidebar() {
       toast.success(t("workspace.deleteSuccess"));
       // If deleting active workspace, navigate to home
       if (workspaceToDelete.id === activeWorkspaceId) {
-        openPath("/mcp-services/dashboard", {
-          title: t("nav.dashboard"),
-          icon: {
-            type: "lucide",
-            value: "layout-dashboard",
-          },
-        });
+        openDashboard();
       }
     } catch (error) {
       console.error("Failed to delete workspace:", error);

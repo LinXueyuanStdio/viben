@@ -39,7 +39,7 @@ interface UserMenuProps {
 export function UserMenu({ collapsed = false, className }: UserMenuProps) {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
-  const { openPath, openSettings } = useDesktopRouting();
+  const { openDashboard, openSettings } = useDesktopRouting();
 
   if (!user) return null;
 
@@ -56,11 +56,7 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
 
   const handleLogout = async () => {
     await logout();
-    openPath("/mcp-services/dashboard", {
-      type: "settings",
-      icon: { type: "lucide", value: "layout-dashboard" },
-      title: t("nav.dashboard", "Dashboard"),
-    });
+    openDashboard();
   };
 
   const handleProfileClick = () => {

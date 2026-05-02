@@ -136,7 +136,7 @@ export function WakeWordTaskButton({
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
           "border-primary bg-transparent text-primary",
-          "hover:bg-primary/10 hover:-translate-y-0.5",
+          "hover:bg-primary/10",
           "active:translate-y-0",
         )}
       >

@@ -540,7 +540,7 @@ export function IssueDetail({
                   <Button
                     onClick={handleAnalyze}
                     disabled={investigating}
-                    className="transition-all duration-200 hover:-translate-y-0.5"
+                    className="transition-all duration-200"
                   >
                     {investigating ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
