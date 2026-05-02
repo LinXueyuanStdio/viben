@@ -924,6 +924,17 @@
     "allWindows": "All windows",
     "createTask": "Create Task",
     "createTaskDescription": "Shortcut to open create task dialog",
+    "newTab": "New Tab",
+    "newTabDescription": "Shortcut to open a new top tab",
+    "closeTab": "Close Tab",
+    "closeTabDescription": "Shortcut to close the current top tab",
+    "reopenClosedTab": "Reopen Closed Tab",
+    "reopenClosedTabDescription": "Shortcut to restore the most recently closed tab",
+    "shortcutGroups": {
+      "messaging": "Messaging",
+      "application": "Application",
+      "tabNavigation": "Tab Navigation"
+    },
     "resetShortcuts": "Reset to Defaults",
     "pressKeys": "Press keys...",
     "clearShortcut": "Clear shortcut",

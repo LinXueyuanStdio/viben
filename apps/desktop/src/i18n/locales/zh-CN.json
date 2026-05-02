@@ -924,6 +924,17 @@
     "allWindows": "所有窗口",
     "createTask": "创建任务",
     "createTaskDescription": "打开创建任务弹窗的快捷键",
+    "newTab": "新建标签页",
+    "newTabDescription": "打开新的顶部标签页快捷键",
+    "closeTab": "关闭标签页",
+    "closeTabDescription": "关闭当前顶部标签页的快捷键",
+    "reopenClosedTab": "重新打开已关闭标签页",
+    "reopenClosedTabDescription": "恢复最近关闭标签页的快捷键",
+    "shortcutGroups": {
+      "messaging": "消息",
+      "application": "应用级",
+      "tabNavigation": "标签导航"
+    },
     "resetShortcuts": "恢复默认设置",
     "pressKeys": "按下快捷键...",
     "clearShortcut": "清除快捷键",
