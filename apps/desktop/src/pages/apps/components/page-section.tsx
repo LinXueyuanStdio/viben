@@ -3,9 +3,11 @@
  *
  * Sidebar section for displaying workspace pages in a tree structure.
  * Supports CRUD operations: create, delete pages.
+ * Supports drag-and-drop reordering within the same level.
+ * Supports right-click context menu with "Copy Link" action.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -19,7 +21,25 @@ import {
   ExternalLink,
   Lock,
   Pencil,
+  Link,
+  Copy,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "@/components/layout/sidebar-section";
 import { SidebarIconButton } from "@/components/layout/sidebar-icon-button";
@@ -54,15 +74,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { usePages, useDeletePage } from "@/hooks/use-pages";
+import { usePages, usePageOrder, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { CreatePageDialog } from "./create-page-dialog";
 import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
-import { buildPageTree } from "../utils";
-import type { PageTreeNode } from "../utils";
+import { buildPageTree, getPageHref } from "../utils";
+import type { PageTreeNode, PageOrderMap } from "../utils";
 import { createBreadcrumbItem } from "@/navigation/breadcrumb-stack";
 import type { BreadcrumbStackItem } from "@/navigation/view-target";
 import { urlToLocation } from "@/navigation/location";
@@ -93,9 +113,11 @@ interface PageTreeItemProps {
   onCreateSubpage: (parentSlug: string) => void;
   onEditClick: (page: PageConfig) => void;
   onPermissionsClick: (page: PageConfig) => void;
+  onCopyLink: (page: PageConfig) => void;
+  onDuplicate: (page: PageConfig) => void;
 }
 
-function PageTreeItem({
+function PageTreeItemContent({
   node,
   workspaceId,
   workspacePath,
@@ -107,7 +129,20 @@ function PageTreeItem({
   onCreateSubpage,
   onEditClick,
   onPermissionsClick,
-}: PageTreeItemProps) {
+  onCopyLink,
+  onDuplicate,
+  isDragging,
+  sortableStyle,
+  sortableRef,
+  sortableAttributes,
+  sortableListeners,
+}: PageTreeItemProps & {
+  isDragging?: boolean;
+  sortableStyle?: React.CSSProperties;
+  sortableRef?: (node: HTMLElement | null) => void;
+  sortableAttributes?: Record<string, unknown>;
+  sortableListeners?: Record<string, unknown>;
+}) {
   const { t } = useTranslation();
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(true);
@@ -188,13 +223,19 @@ function PageTreeItem({
   }, [hasChildren, isExpanded, node.page, onPageClick, pageStack]);
 
   return (
-    <div>
+    <div
+      ref={sortableRef}
+      style={sortableStyle}
+      {...sortableAttributes}
+      {...sortableListeners}
+    >
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
             className={cn(
               "group relative flex items-center gap-1 rounded-md text-sm h-7",
               "transition-all duration-200",
+              isDragging && "opacity-50",
               isActive
                 ? [
                     "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
@@ -391,6 +432,14 @@ function PageTreeItem({
             <ExternalLink className="mr-2 h-4 w-4" />
             {t("page.openInNewTab")}
           </ContextMenuItem>
+          <ContextMenuItem onClick={() => onCopyLink(node.page)}>
+            <Link className="mr-2 h-4 w-4" />
+            {t("page.copyLink")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onDuplicate(node.page)}>
+            <Copy className="mr-2 h-4 w-4" />
+            {t("page.duplicate")}
+          </ContextMenuItem>
           <ContextMenuItem onClick={() => onCreateSubpage(node.page.slug)}>
             <Plus className="mr-2 h-4 w-4" />
             {t("page.createSubpage")}
@@ -432,10 +481,74 @@ function PageTreeItem({
               onCreateSubpage={onCreateSubpage}
               onEditClick={onEditClick}
               onPermissionsClick={onPermissionsClick}
+              onCopyLink={onCopyLink}
+              onDuplicate={onDuplicate}
             />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Sortable wrapper for PageTreeItemContent.
+ * Uses @dnd-kit/sortable to enable drag-and-drop reordering.
+ */
+function PageTreeItem(props: PageTreeItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.node.page.slug });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <PageTreeItemContent
+      {...props}
+      isDragging={isDragging}
+      sortableStyle={style}
+      sortableRef={setNodeRef}
+      sortableAttributes={attributes as unknown as Record<string, unknown>}
+      sortableListeners={listeners as unknown as Record<string, unknown>}
+    />
+  );
+}
+
+/**
+ * Drag overlay content shown while dragging.
+ * Renders a simplified version of the page item.
+ */
+function DragOverlayContent({
+  node,
+  workspacePath,
+}: {
+  node: PageTreeNode;
+  workspacePath: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1 rounded-md text-sm h-7 px-2",
+        "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+        "shadow-lg ring-1 ring-border/50"
+      )}
+    >
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+        <IconDisplay
+          icon={node.page.icon}
+          size="sm"
+          workspacePath={workspacePath}
+        />
+      </span>
+      <span className="truncate text-[13px]">{node.page.name}</span>
     </div>
   );
 }
@@ -452,7 +565,9 @@ export function PageSection({
   const { t } = useTranslation();
   const { openPageTab, openPageInNewTab } = usePageTabs();
   const { data: pages, isLoading, error } = usePages(workspacePath);
+  const { data: serverPageOrder } = usePageOrder(workspacePath);
   const deletePageMutation = useDeletePage();
+  const reorderPagesMutation = useReorderPages();
 
   // Delete confirmation state
   const [pageToDelete, setPageToDelete] = useState<PageConfig | null>(null);
@@ -467,11 +582,122 @@ export function PageSection({
   // Permissions dialog state
   const [permissionsPage, setPermissionsPage] = useState<PageConfig | null>(null);
 
+  // DnD state
+  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+
+  // Custom page order (optimistic local state overrides server order during drag)
+  const [localOrder, setLocalOrder] = useState<PageOrderMap | undefined>(undefined);
+
+  // The effective order: local optimistic override if set, otherwise server order
+  const effectiveOrder = localOrder ?? serverPageOrder;
+
+  // When server order updates (after refetch), clear the local optimistic override
+  useEffect(() => {
+    if (serverPageOrder) {
+      setLocalOrder(undefined);
+    }
+  }, [serverPageOrder]);
+
   // Build tree structure from pages
   const pageTree = useMemo(() => {
     if (!pages || pages.length === 0) return [];
-    return buildPageTree(pages);
-  }, [pages]);
+    return buildPageTree(pages, effectiveOrder);
+  }, [pages, effectiveOrder]);
+
+  // Build a flat map of slug -> node for drag overlay
+  const nodeMap = useMemo(() => {
+    const map = new Map<string, PageTreeNode>();
+    function walk(nodes: PageTreeNode[]) {
+      for (const n of nodes) {
+        map.set(n.page.slug, n);
+        walk(n.children);
+      }
+    }
+    walk(pageTree);
+    return map;
+  }, [pageTree]);
+
+  // The node currently being dragged
+  const activeNode = activeSlug ? nodeMap.get(activeSlug) : undefined;
+
+  // DnD sensors - PointerSensor with 5px activation distance
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
+  // Root-level slug IDs for SortableContext
+  const rootSlugs = useMemo(() => pageTree.map((n) => n.page.slug), [pageTree]);
+
+  // Handle drag start
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveSlug(event.active.id as string);
+  }, []);
+
+  // Handle drag end
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      setActiveSlug(null);
+
+      if (!over || active.id === over.id) return;
+
+      const activeId = active.id as string;
+      const overId = over.id as string;
+
+      // Find which level these items are on
+      // Both must be at the same level for reordering
+      const activeSlugParts = activeId.split("/");
+      const overSlugParts = overId.split("/");
+
+      // Determine parent: for root items it's null, for nested items it's the parent slug
+      const activeParent = activeSlugParts.length > 1
+        ? activeSlugParts.slice(0, -1).join("/")
+        : null;
+      const overParent = overSlugParts.length > 1
+        ? overSlugParts.slice(0, -1).join("/")
+        : null;
+
+      // Only allow reordering within the same level
+      if (activeParent !== overParent) return;
+
+      // Find the sibling list at this level
+      const parentKey = activeParent ?? "root";
+      let siblings: PageTreeNode[];
+      if (activeParent === null) {
+        siblings = pageTree;
+      } else {
+        const parentNode = nodeMap.get(activeParent);
+        if (!parentNode) return;
+        siblings = parentNode.children;
+      }
+
+      // Find indices
+      const oldIndex = siblings.findIndex((n) => n.page.slug === activeId);
+      const newIndex = siblings.findIndex((n) => n.page.slug === overId);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      // Compute new order
+      const newSlugs = siblings.map((n) => n.page.slug);
+      const [moved] = newSlugs.splice(oldIndex, 1);
+      newSlugs.splice(newIndex, 0, moved);
+
+      // Optimistic update
+      const newOrder: PageOrderMap = { ...effectiveOrder, [parentKey]: newSlugs };
+      setLocalOrder(newOrder);
+
+      // Persist to backend
+      reorderPagesMutation.mutate({
+        workspace_path: workspacePath,
+        parent_slug: activeParent,
+        ordered_slugs: newSlugs,
+      });
+    },
+    [pageTree, nodeMap, effectiveOrder, reorderPagesMutation, workspacePath]
+  );
 
   // Handle delete page
   const handleDeletePage = async () => {
@@ -512,6 +738,23 @@ export function PageSection({
   const handleOpenInNewTab = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
     openPageInNewTab(page, workspaceId, stack);
   }, [openPageInNewTab, workspaceId]);
+
+  // Handle copy link
+  const handleCopyLink = useCallback((page: PageConfig) => {
+    const href = getPageHref(workspaceId, page.slug);
+    const fullUrl = `${window.location.origin}${href}`;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+      toast.success(t("page.linkCopied"));
+    }).catch(() => {
+      // Fallback: try with just the path
+      navigator.clipboard.writeText(href).then(() => {
+        toast.success(t("page.linkCopied"));
+      }).catch((err) => {
+        console.error("Failed to copy link:", err);
+        toast.error(t("common.error"));
+      });
+    });
+  }, [workspaceId, t]);
 
   // Handle page creation success - open new page in tab
   const handleCreateSuccess = useCallback((slug: string) => {
@@ -678,24 +921,42 @@ export function PageSection({
             {t("page.noPages")}
           </div>
         ) : (
-          <nav className="flex flex-col gap-0.5">
-            {pageTree.map((node) => (
-              <PageTreeItem
-                key={node.page.slug}
-                node={node}
-                workspaceId={workspaceId}
-                workspacePath={workspacePath}
-              depth={0}
-              ancestors={[]}
-              onPageClick={handlePageClick}
-                onOpenInNewTab={handleOpenInNewTab}
-                onDeleteClick={setPageToDelete}
-                onCreateSubpage={handleCreateSubpage}
-                onEditClick={handleEditClick}
-                onPermissionsClick={handlePermissionsClick}
-              />
-            ))}
-          </nav>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={rootSlugs} strategy={verticalListSortingStrategy}>
+              <nav className="flex flex-col gap-0.5">
+                {pageTree.map((node) => (
+                  <PageTreeItem
+                    key={node.page.slug}
+                    node={node}
+                    workspaceId={workspaceId}
+                    workspacePath={workspacePath}
+                    depth={0}
+                    ancestors={[]}
+                    onPageClick={handlePageClick}
+                    onOpenInNewTab={handleOpenInNewTab}
+                    onDeleteClick={setPageToDelete}
+                    onCreateSubpage={handleCreateSubpage}
+                    onEditClick={handleEditClick}
+                    onPermissionsClick={handlePermissionsClick}
+                    onCopyLink={handleCopyLink}
+                  />
+                ))}
+              </nav>
+            </SortableContext>
+            <DragOverlay dropAnimation={null}>
+              {activeNode ? (
+                <DragOverlayContent
+                  node={activeNode}
+                  workspacePath={workspacePath}
+                />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         )}
       </SidebarSection>
 
