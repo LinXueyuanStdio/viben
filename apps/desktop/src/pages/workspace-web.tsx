@@ -6,6 +6,10 @@ import { WorkspaceHeader } from "@/components/workspace";
 import { Button } from "@/components/ui/button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import {
+  buildFallbackDesktopSegment,
+  stackToDesktopSegments,
+} from "@/navigation/page-index";
 
 function isEmbeddableUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -15,11 +19,11 @@ export function WorkspaceWebPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const [searchParams] = useSearchParams();
   const { getWorkspace } = useLocalWorkspaces();
-  const { currentStack, openWorkspaceSection } = useDesktopRouting();
+  const { currentStack, currentDescriptor, openWorkspaceSection } = useDesktopRouting();
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
   const url = searchParams.get("url") ?? "";
-  const title = searchParams.get("title") || searchParams.get("web_id") || "Web";
+  const fallbackTitle = searchParams.get("title") || searchParams.get("web_id") || "Web";
   const canEmbed = isEmbeddableUrl(url);
   const serializedSearchParams = searchParams.toString();
 
@@ -31,6 +35,8 @@ export function WorkspaceWebPage() {
     }
   }, [url]);
 
+  const resolvedTitle = currentDescriptor?.label || fallbackTitle;
+
   const headerSegments = useMemo(() => {
     const fallbackHref = workspaceId
       ? `/workspace/${encodeURIComponent(workspaceId)}/web?${serializedSearchParams}`
@@ -41,44 +47,50 @@ export function WorkspaceWebPage() {
       pageSlug: searchParams.get("source_page") ?? undefined,
       url: url || undefined,
     };
-    const resolvedStack = currentStack;
-    if (resolvedStack && resolvedStack.length > 1) {
-      const mappedSegments = resolvedStack.slice(1).map((item) => ({
-        id: item.id,
-        label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
-        icon: item.icon,
-        kind: item.kind,
-        meta: item.meta,
-      }));
-
-      return mappedSegments.map((segment, index) =>
-        index === mappedSegments.length - 1
+    const stackSegments = stackToDesktopSegments(currentStack);
+    if (stackSegments.length > 0) {
+      return stackSegments.map((item, index, items) =>
+        index === items.length - 1
           ? {
-              ...segment,
-              label: title,
-              href: segment.href === "#" ? fallbackHref : segment.href,
-              icon: { type: "lucide" as const, value: "globe" },
-              kind: "workspace-web" as const,
+              id: item.id,
+              label: item.label,
+              href: item.href || fallbackHref,
+              icon: item.icon ?? { type: "lucide" as const, value: "globe" },
+              kind: item.kind,
               meta: {
-                ...segment.meta,
+                ...item.meta,
                 ...webMeta,
               },
             }
-          : segment
+          : {
+              id: item.id,
+              label: item.label,
+              href: item.href ?? "#",
+              icon: item.icon,
+              kind: item.kind,
+              meta: item.meta,
+            }
       );
     }
 
     return [
-      {
-        label: title,
-        href: fallbackHref,
-        icon: { type: "lucide" as const, value: "globe" },
-        kind: "workspace-web" as const,
+      buildFallbackDesktopSegment({
+        id: `${workspaceId ?? "global"}:web:${searchParams.get("web_id") ?? url}`,
+        label: resolvedTitle,
+        location: {
+          kind: "workspace-web",
+          workspaceId: workspaceId ?? "global",
+          title: resolvedTitle,
+          url,
+          webId: searchParams.get("web_id") ?? undefined,
+          sourcePageSlug: searchParams.get("source_page") ?? undefined,
+        },
+        kind: "workspace-web",
+        icon: { type: "lucide", value: "globe" },
         meta: webMeta,
-      },
+      }),
     ];
-  }, [currentStack, searchParams, serializedSearchParams, title, url, workspaceId]);
+  }, [currentStack, resolvedTitle, searchParams, serializedSearchParams, url, workspaceId]);
 
   if (!workspace) {
     return (
@@ -98,7 +110,7 @@ export function WorkspaceWebPage() {
           showRemove={false}
           centerContent={
             <div className="max-w-[420px] truncate text-xs text-muted-foreground">
-              Invalid web page
+              {resolvedTitle}
             </div>
           }
         />
@@ -133,7 +145,7 @@ export function WorkspaceWebPage() {
         showRemove={false}
         centerContent={
           <div className="max-w-[420px] truncate text-xs text-muted-foreground">
-            {title}
+            {resolvedTitle}
             {hostname ? ` · ${hostname}` : ""}
           </div>
         }
@@ -149,7 +161,7 @@ export function WorkspaceWebPage() {
       <div className="flex-1 bg-background">
         <iframe
           src={url}
-          title={title}
+          title={resolvedTitle}
           className="h-full w-full border-0 bg-white"
           referrerPolicy="strict-origin-when-cross-origin"
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"

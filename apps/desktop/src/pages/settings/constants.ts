@@ -23,7 +23,9 @@ import type { SettingsSection, SectionConfig } from "./types";
 import {
   SETTINGS_SECTION_DESCRIPTORS,
   VALID_SETTINGS_SECTIONS,
+  getSettingsSectionDescriptor,
 } from "@/navigation/navigation-meta";
+import type { SettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
 const SETTINGS_ICON_COMPONENTS = {
   settings: Settings,
@@ -47,13 +49,37 @@ const SETTINGS_ICON_COMPONENTS = {
   info: Info,
 } as const;
 
-export const SECTIONS: SectionConfig[] = SETTINGS_SECTION_DESCRIPTORS.map(
-  (section) => ({
+export const DEFAULT_SETTINGS_SECTION: SettingsSection = "general";
+
+export function getSettingsIconComponent(
+  iconValue?: string
+): SectionConfig["icon"] {
+  return (
+    SETTINGS_ICON_COMPONENTS[
+      (iconValue ?? "settings") as keyof typeof SETTINGS_ICON_COMPONENTS
+    ] ?? Settings
+  );
+}
+
+export function toSectionConfig(
+  section: SettingsSectionDescriptor
+): SectionConfig {
+  return {
     id: section.section,
     labelKey: section.titleKey,
-    icon: SETTINGS_ICON_COMPONENTS[section.icon.value as keyof typeof SETTINGS_ICON_COMPONENTS] ?? Settings,
-  })
-);
+    icon: getSettingsIconComponent(section.icon.value),
+  };
+}
+
+export const SECTIONS: SectionConfig[] =
+  SETTINGS_SECTION_DESCRIPTORS.map(toSectionConfig);
+
+export function getSettingsSectionConfig(
+  section?: SettingsSection
+): SectionConfig | undefined {
+  const descriptor = getSettingsSectionDescriptor(section);
+  return descriptor ? toSectionConfig(descriptor) : undefined;
+}
 
 // Valid sections for nested routes
 export const VALID_SECTIONS: SettingsSection[] = VALID_SETTINGS_SECTIONS;

@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/tooltip";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import type { SettingsSection } from "./types";
-import { SECTIONS, VALID_SECTIONS, easeOutExpo, SETTINGS_SIDEBAR_COLLAPSED_KEY } from "./constants";
+import {
+  DEFAULT_SETTINGS_SECTION,
+  SECTIONS,
+  VALID_SECTIONS,
+  easeOutExpo,
+  SETTINGS_SIDEBAR_COLLAPSED_KEY,
+} from "./constants";
 import { GeneralSection } from "./general-section";
 import { AccountSection } from "./account-section";
 import { ShortcutsSection } from "./shortcuts-section";
@@ -47,10 +53,12 @@ export function SettingsPage() {
     if (pathSection && VALID_SECTIONS.includes(pathSection as SettingsSection)) {
       return pathSection as SettingsSection;
     }
-    return "general";
+    return DEFAULT_SETTINGS_SECTION;
   };
 
-  const [activeSection, setActiveSection] = useState<SettingsSection>(getSectionFromPath);
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    getSectionFromPath
+  );
 
   // Collapsed state for settings sidebar
   const [collapsed, setCollapsed] = useState(() => {

@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useCallback } from "react";
-import { useSearchParams, useParams, Link } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Loader2,
@@ -33,8 +33,11 @@ import { usePage } from "@/hooks/use-pages";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import { getGatewayUrl } from "@/lib/gateway/config";
-import { getPageHref } from "./utils/page-href";
-import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
+import {
+  buildFallbackDesktopSegment,
+  stackToDesktopSegments,
+  type DesktopBreadcrumbSegment,
+} from "@/navigation/page-index";
 
 /**
  * Extract slug from page path
@@ -254,8 +257,10 @@ export function WorkspacePage() {
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
   const {
     currentStack,
+    openDashboard,
     openWorkspacePage,
     openWorkspaceWeb,
+    openWorkspaceSection,
   } = useDesktopRouting();
 
   const routeWorkspaceId = params.workspaceId;
@@ -324,44 +329,31 @@ export function WorkspacePage() {
   const [editorHeaderEl, setEditorHeaderEl] = useState<HTMLDivElement | null>(null);
 
   const pageHeaderSegments = useMemo<DesktopBreadcrumbSegment[]>(() => {
-    const stack = currentStack;
-    if (stack && stack.length > 1) {
-      return stack.slice(1).map((item) => ({
-        id: item.id,
-        label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
-        icon: item.icon,
-        kind: item.kind,
-        meta: item.meta,
-      }));
+    const stackSegments = stackToDesktopSegments(currentStack);
+    if (stackSegments.length > 0) {
+      return stackSegments;
     }
 
     if (!workspaceId || !slug) {
       return [];
     }
 
-    const fallbackLabel =
-      page?.name ??
-      slug
-        .split("/")
-        .filter(Boolean)
-        .pop()
-        ?.replace(/[-_]+/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase()) ??
-      "Page";
-
     return [
-      {
-        id: `workspace:${workspaceId}:page:${slug}`,
-        label: fallbackLabel,
-        href: getPageHref(workspaceId, slug),
-        icon: page?.icon ?? { type: "lucide", value: "file-text" },
+      buildFallbackDesktopSegment({
+        id: `${workspaceId}:page:${slug}`,
+        label: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+        location: {
+          kind: "workspace-page",
+          workspaceId,
+          pageSlug: slug,
+        },
         kind: "workspace-page",
+        icon: page?.icon ?? { type: "lucide", value: "file-text" },
         meta: {
           workspaceId,
           pageSlug: slug,
         },
-      },
+      }),
     ];
   }, [currentStack, page?.icon, page?.name, slug, workspaceId]);
 
@@ -416,10 +408,10 @@ export function WorkspacePage() {
             {t("workspace.notFoundDesc")}
           </p>
           <Button asChild>
-            <Link to="/mcp-services/dashboard">
+            <button type="button" onClick={() => openDashboard()}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("workspace.backToDashboard")}
-            </Link>
+            </button>
           </Button>
         </div>
       </PageWrapper>
@@ -462,10 +454,17 @@ export function WorkspacePage() {
             </p>
           )}
           <Button asChild>
-            <Link to={`/workspace/${workspaceId}/files`}>
+            <button
+              type="button"
+              onClick={() => {
+                if (workspaceId) {
+                  openWorkspaceSection(workspaceId, "files");
+                }
+              }}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("page.backToFiles", "Back to Files")}
-            </Link>
+            </button>
           </Button>
         </div>
       </PageWrapper>
@@ -511,10 +510,17 @@ export function WorkspacePage() {
               : t("page.notFoundDesc", "The requested page could not be found in this workspace.")}
           </p>
           <Button asChild>
-            <Link to={`/workspace/${workspaceId}/files`}>
+            <button
+              type="button"
+              onClick={() => {
+                if (workspaceId) {
+                  openWorkspaceSection(workspaceId, "files");
+                }
+              }}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("page.backToFiles", "Back to Files")}
-            </Link>
+            </button>
           </Button>
         </div>
       </PageWrapper>

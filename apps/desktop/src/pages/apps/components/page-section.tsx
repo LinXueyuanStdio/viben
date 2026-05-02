@@ -233,7 +233,7 @@ function PageTreeItemContent({
         <ContextMenuTrigger asChild>
           <div
             className={cn(
-              "group relative flex h-7 items-center gap-1 rounded-md pr-2 text-sm",
+              "group relative flex h-7 items-center gap-1 rounded-md text-sm",
               "transition-all duration-200",
               isDragging && "opacity-50",
               isActive
@@ -308,7 +308,7 @@ function PageTreeItemContent({
                 <button
                   type="button"
                   onClick={handlePageClick}
-                  className="flex min-w-0 flex-1 items-center gap-1.5 py-1 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-1.5 py-1 pr-1 text-left"
                 >
                   <span className="truncate text-[13px]">{node.page.name}</span>
                 </button>
@@ -342,7 +342,7 @@ function PageTreeItemContent({
             {/* Action buttons - only use opacity for show/hide to avoid layout shifts */}
             <div
               className={cn(
-                "flex shrink-0 items-center gap-0.5",
+                "flex shrink-0 items-center gap-0.5 pr-1",
                 "transition-opacity duration-150 ease-out",
                 showActions
                   ? "opacity-100"

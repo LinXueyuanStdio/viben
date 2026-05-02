@@ -46,7 +46,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLocalWorkspaces } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { stackToDesktopSegments } from "@/navigation/page-index";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues, useGitHubPRs, useGitHubReleases } from "@/hooks/use-github";
+import { getWorkspaceSectionDescriptor } from "@/navigation/navigation-meta";
 import { cn } from "@/lib/utils";
 import { IssueDetailModal } from "@/components/workspace/github/issue-detail-modal";
 import type { Workspace } from "@/types";
@@ -77,6 +79,7 @@ export function WorkspaceGitHubPage({
     openDashboard,
     openWorkspaceSection,
   } = useDesktopRouting();
+  const githubDescriptor = getWorkspaceSectionDescriptor("github");
 
   const workspaceId = workspaceOverride?.id ?? routeWorkspaceId;
   const workspace = workspaceOverride ?? (workspaceId ? getWorkspace(workspaceId) : undefined);
@@ -90,49 +93,42 @@ export function WorkspaceGitHubPage({
   const hasRepository = repo.repository !== null;
   const isIntegrated = isAuthenticated && hasRepository;
   const headerSegments = useMemo(() => {
+    const stackSegments = stackToDesktopSegments(currentStack);
     const githubSegment = {
-      label: t("nav.github"),
+      label: githubDescriptor
+        ? t(githubDescriptor.titleKey, githubDescriptor.fallbackLabel)
+        : t("nav.github"),
       href: workspaceId
         ? `/workspace/${encodeURIComponent(workspaceId)}/github`
         : "#",
-      icon: { type: "lucide" as const, value: "github" },
+      icon: githubDescriptor?.icon ?? { type: "lucide" as const, value: "github" },
       kind: "workspace-section" as const,
       meta: {
         workspaceId,
         section: "github" as const,
-        routePath: "github",
+        routePath: githubDescriptor?.routePath ?? "github",
       },
     };
-    const stack = currentStack;
-    if (stack && stack.length > 1) {
-      const mappedSegments = stack.slice(1).map((item) => ({
-        id: item.id,
-        label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
-        icon: item.icon,
-        kind: item.kind,
-        meta: item.meta,
-      }));
-
-      return mappedSegments.map((segment, index) =>
-        index === mappedSegments.length - 1
+    if (stackSegments.length > 0) {
+      return stackSegments.map((item, index, items) =>
+        index === items.length - 1
           ? {
-              ...segment,
-              ...githubSegment,
-              href: githubSegment.href || segment.href,
+              ...item,
+              label: githubSegment.label,
+              icon: item.icon ?? githubSegment.icon,
               meta: {
-                ...segment.meta,
+                ...item.meta,
                 ...githubSegment.meta,
               },
             }
-          : segment
+          : item
       );
     }
 
     return workspaceId
       ? [githubSegment]
       : [];
-  }, [currentStack, t, workspaceId]);
+  }, [currentStack, githubDescriptor, t, workspaceId]);
 
   const wrapContent = (children: React.ReactNode) => {
     if (embeddedMode) {

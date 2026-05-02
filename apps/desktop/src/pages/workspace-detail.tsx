@@ -17,6 +17,8 @@ import {
 import { Renderer, RenderScheduler } from "@viben/os";
 import { useLocalWorkspaces } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { getWorkspaceSectionDescriptor } from "@/navigation/navigation-meta";
+import type { WorkspaceSection } from "@/navigation/view-target";
 import { cn } from "@/lib/utils";
 import { WorkspaceHeader } from "@/components/workspace";
 import { PageWrapper } from "@/components/layout";
@@ -29,7 +31,7 @@ interface AppInfo {
   id: string;
   name: string;
   icon: React.ElementType;
-  path: string;
+  section?: WorkspaceSection;
   gradient: GradientColorKey;
   isSystem?: boolean;
 }
@@ -52,6 +54,7 @@ export function WorkspaceDetailPage() {
   const [clickedApp, setClickedApp] = useState<string | null>(null);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+  const agentDescriptor = getWorkspaceSectionDescriptor("agent");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -129,20 +132,28 @@ export function WorkspaceDetailPage() {
 
   // Workspace apps
   const workspaceApps: AppInfo[] = workspaceId ? [
-    { id: "chat", name: t("workspace.chat"), icon: MessageCircle, path: `/workspace/${workspaceId}/chat`, gradient: "green" },
-    { id: "kanban", name: t("workspace.kanban"), icon: KanbanSquare, path: `/workspace/${workspaceId}/kanban`, gradient: "violet" },
-    { id: "cron", name: t("workspace.scheduledTasks"), icon: Clock, path: `/workspace/${workspaceId}/cron`, gradient: "orange" },
-    { id: "ideas", name: t("workspace.ideas"), icon: Lightbulb, path: `/workspace/${workspaceId}/ideas`, gradient: "yellow" },
-    { id: "agents", name: t("workspace.sections.agents"), icon: Bot, path: `/workspace/${workspaceId}/agents`, gradient: "cyan" },
-    { id: "files", name: t("workspace.files"), icon: FolderOpen, path: `/workspace/${workspaceId}/files`, gradient: "blue" },
-    { id: "monitor", name: t("workspace.chatMonitor"), icon: Activity, path: `/workspace/${workspaceId}/chat-monitor`, gradient: "rose" },
+    { id: "chat", name: t("workspace.chat"), icon: MessageCircle, section: "chat", gradient: "green" },
+    { id: "kanban", name: t("workspace.kanban"), icon: KanbanSquare, section: "kanban", gradient: "violet" },
+    { id: "cron", name: t("workspace.scheduledTasks"), icon: Clock, section: "cron", gradient: "orange" },
+    { id: "ideas", name: t("workspace.ideas"), icon: Lightbulb, section: "ideas", gradient: "yellow" },
+    {
+      id: "agents",
+      name: agentDescriptor
+        ? t(agentDescriptor.titleKey, agentDescriptor.fallbackLabel)
+        : t("workspace.sections.agents"),
+      icon: Bot,
+      section: "agent",
+      gradient: "cyan",
+    },
+    { id: "files", name: t("workspace.files"), icon: FolderOpen, section: "files", gradient: "blue" },
+    { id: "monitor", name: t("workspace.chatMonitor"), icon: Activity, section: "chat-monitor", gradient: "rose" },
   ] : [];
 
   // System apps
   const systemApps: AppInfo[] = [
-    { id: "settings", name: t("nav.settings"), icon: Settings, path: "/settings", gradient: "zinc", isSystem: true },
-    { id: "documents", name: t("nav.documents"), icon: FileText, path: "/documents", gradient: "sky", isSystem: true },
-    { id: "devices", name: t("nav.devices"), icon: Smartphone, path: "/devices/pair", gradient: "purple", isSystem: true },
+    { id: "settings", name: t("nav.settings"), icon: Settings, gradient: "zinc", isSystem: true },
+    { id: "documents", name: t("nav.documents"), icon: FileText, gradient: "sky", isSystem: true },
+    { id: "devices", name: t("nav.devices"), icon: Smartphone, gradient: "purple", isSystem: true },
   ];
 
   // All dock apps with separator marker
@@ -170,28 +181,10 @@ export function WorkspaceDetailPage() {
         case "devices":
           openDevicePair({ openMode: "reuse" });
           return;
-        case "chat":
-          if (workspaceId) openWorkspaceSection(workspaceId, "chat", { openMode: "reuse" });
-          return;
-        case "kanban":
-          if (workspaceId) openWorkspaceSection(workspaceId, "kanban", { openMode: "reuse" });
-          return;
-        case "cron":
-          if (workspaceId) openWorkspaceSection(workspaceId, "cron", { openMode: "reuse" });
-          return;
-        case "ideas":
-          if (workspaceId) openWorkspaceSection(workspaceId, "ideas", { openMode: "reuse" });
-          return;
-        case "agents":
-          if (workspaceId) openWorkspaceSection(workspaceId, "agent", { openMode: "reuse" });
-          return;
-        case "files":
-          if (workspaceId) openWorkspaceSection(workspaceId, "files", { openMode: "reuse" });
-          return;
-        case "monitor":
-          if (workspaceId) openWorkspaceSection(workspaceId, "chat-monitor", { openMode: "reuse" });
-          return;
         default:
+          if (workspaceId && app.section) {
+            openWorkspaceSection(workspaceId, app.section, { openMode: "reuse" });
+          }
           return;
       }
     }, 400);
