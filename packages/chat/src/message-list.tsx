@@ -72,6 +72,11 @@ export interface MessageListProps {
    * Callback when an artifact badge is clicked in a tool_use message.
    */
   onArtifactClick?: (artifactId: string) => void;
+  /**
+   * When true, show full tool input/output inline in each ToolExecutionItem
+   * without requiring a click-to-open modal. Useful for capsule/overlay views.
+   */
+  toolExpandedInline?: boolean;
 }
 
 // Types for message grouping
@@ -542,6 +547,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   onScrollToMessage,
   artifacts,
   onArtifactClick,
+  toolExpandedInline,
 }, ref) {
   const { t } = useTranslation();
 
@@ -832,6 +838,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                   isPlanPending={isPlanMessage && pendingPlan !== null}
                   onLinkClick={onLinkClick}
                   maxWidth={maxMessageWidth}
+                  toolExpandedInline={toolExpandedInline}
                 />
               </div>
             );

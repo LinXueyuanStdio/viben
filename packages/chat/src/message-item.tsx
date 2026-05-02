@@ -22,6 +22,8 @@ export interface MessageItemProps {
   className?: string;
   /** Maximum width for the message card */
   maxWidth?: string;
+  /** When true, show full tool input/output inline without requiring a click-to-open modal */
+  toolExpandedInline?: boolean;
 }
 
 /**
@@ -492,6 +494,7 @@ export function MessageItem({
   onLinkClick,
   className,
   maxWidth,
+  toolExpandedInline,
 }: MessageItemProps) {
   const { t } = useTranslation();
 
@@ -550,6 +553,7 @@ export function MessageItem({
         subagentId={message.subagentId}
         subagentMessages={message.subagentMessages}
         renderMessage={renderSubagentMessage}
+        expandedInline={toolExpandedInline}
       />
     );
   }
@@ -560,6 +564,7 @@ export function MessageItem({
         name={t("chat.toolResult.label", "Tool Result")}
         output={message.output}
         isError={message.isError}
+        expandedInline={toolExpandedInline}
       />
     );
   }

@@ -48,6 +48,91 @@ export interface ToolExecutionItemProps {
   artifactInfo?: ArtifactInfo;
   /** Callback when artifact badge is clicked */
   onArtifactClick?: (artifactId: string) => void;
+  /** When true, show full tool input/output inline without requiring a click-to-open modal */
+  expandedInline?: boolean;
+}
+
+// ============================================================================
+// Content Block Parsing — render image blocks from tool results
+// ============================================================================
+
+interface TextContentBlock {
+  type: "text";
+  text: string;
+}
+
+interface ImageContentBlock {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: string;
+    data: string;
+  };
+}
+
+type ContentBlock = TextContentBlock | ImageContentBlock;
+
+/**
+ * Try to parse tool output as an array of content blocks (text / image).
+ * Returns null if the output is not a JSON content block array.
+ */
+function parseContentBlocks(output: string | undefined): ContentBlock[] | null {
+  if (!output || typeof output !== "string") return null;
+  const trimmed = output.trim();
+  if (!trimmed.startsWith("[")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length === 0 ||
+      !parsed.every(
+        (b: unknown) =>
+          typeof b === "object" &&
+          b !== null &&
+          "type" in b &&
+          (b.type === "text" || b.type === "image")
+      )
+    ) {
+      return null;
+    }
+    return parsed as ContentBlock[];
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Render parsed content blocks as React elements (text + inline images).
+ */
+function RenderContentBlocks({ blocks, maxTextLength }: { blocks: ContentBlock[]; maxTextLength?: number }) {
+  return (
+    <>
+      {blocks.map((block, i) => {
+        if (block.type === "image" && block.source?.type === "base64") {
+          return (
+            <img
+              key={i}
+              src={`data:${block.source.media_type};base64,${block.source.data}`}
+              alt="tool result"
+              style={{ maxWidth: "100%", maxHeight: 400, borderRadius: 8, marginTop: 8, marginBottom: 8 }}
+            />
+          );
+        }
+        if (block.type === "text") {
+          let text = block.text;
+          if (maxTextLength && text.length > maxTextLength) {
+            text = text.slice(0, maxTextLength) + "\n\n... (truncated)";
+          }
+          return (
+            <pre key={i} className="whitespace-pre-wrap break-words text-xs">
+              <code>{text}</code>
+            </pre>
+          );
+        }
+        return null;
+      })}
+    </>
+  );
 }
 
 // ============================================================================
@@ -172,6 +257,19 @@ function useResultSummary(
   // Handle non-string output (could be object at runtime despite types)
   if (!output || typeof output !== "string") {
     return { summary: output ? JSON.stringify(output) : "", isWarning: false };
+  }
+
+  // Detect content block arrays with images
+  const blocks = parseContentBlocks(output);
+  if (blocks) {
+    const imageCount = blocks.filter((b) => b.type === "image").length;
+    const textCount = blocks.filter((b) => b.type === "text").length;
+    if (imageCount > 0) {
+      const parts: string[] = [];
+      if (imageCount > 0) parts.push(`${imageCount} image${imageCount > 1 ? "s" : ""}`);
+      if (textCount > 0) parts.push(`${textCount} text block${textCount > 1 ? "s" : ""}`);
+      return { summary: parts.join(" + "), isWarning: false };
+    }
   }
 
   // Extract content from <tool_use_error> tag if present
@@ -340,18 +438,35 @@ function ToolDetailModal({
             <h3 className="text-muted-foreground mb-2 text-sm font-medium">
               {t("chat.toolOutput", "Output")}
             </h3>
-            <pre
-              className={cn(
-                "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap",
-                isError
-                  ? "bg-red-500/10 text-red-400"
-                  : isWarning
-                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    : "bg-muted/50"
-              )}
-            >
-              {formatOutput(output)}
-            </pre>
+            {(() => {
+              const blocks = parseContentBlocks(output);
+              if (blocks) {
+                return (
+                  <div className={cn(
+                    "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs",
+                    isError ? "bg-red-500/10 text-red-400"
+                      : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : "bg-muted/50"
+                  )}>
+                    <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
+                  </div>
+                );
+              }
+              return (
+                <pre
+                  className={cn(
+                    "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap",
+                    isError
+                      ? "bg-red-500/10 text-red-400"
+                      : isWarning
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "bg-muted/50"
+                  )}
+                >
+                  {formatOutput(output)}
+                </pre>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -411,6 +526,7 @@ export function ToolExecutionItem({
   renderMessage,
   artifactInfo,
   onArtifactClick,
+  expandedInline = false,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
@@ -705,6 +821,29 @@ export function ToolExecutionItem({
   // ============================================================================
   // Default Full Mode - Bullet-style display with click-to-expand modal
   // ============================================================================
+
+  const formatInlineInput = (val: unknown): string => {
+    if (!val) return t("chat.toolResult.noInput", "No input");
+    try {
+      return JSON.stringify(val, null, 2);
+    } catch {
+      return String(val);
+    }
+  };
+
+  const formatInlineOutput = (val: string | undefined): string => {
+    if (!val) return t("chat.toolResult.noOutputLabel", "No output");
+    if (typeof val !== "string") return JSON.stringify(val, null, 2);
+    const toolUseErrorMatch = val.match(
+      /<tool_use_error>([\s\S]*?)<\/tool_use_error>/
+    );
+    const cleanVal = toolUseErrorMatch ? toolUseErrorMatch[1].trim() : val;
+    if (cleanVal.length > 10000) {
+      return cleanVal.slice(0, 10000) + "\n\n" + t("chat.toolResult.truncated", "... (truncated)");
+    }
+    return cleanVal;
+  };
+
   return (
     <>
       <motion.div
@@ -720,10 +859,10 @@ export function ToolExecutionItem({
           <div
             className={cn(
               "rounded-xl border border-border bg-card overflow-hidden font-mono text-[13px]",
-              !isRunning && "hover:bg-accent/30 cursor-pointer",
+              !expandedInline && !isRunning && "hover:bg-accent/30 cursor-pointer",
               "transition-colors"
             )}
-            onClick={handleClick}
+            onClick={expandedInline ? undefined : handleClick}
           >
             <div className="px-4 py-3">
               {/* Line 1: bullet + tool name + params */}
@@ -750,7 +889,7 @@ export function ToolExecutionItem({
                     <span className="text-foreground font-semibold">
                       {displayName || name}
                     </span>
-                    {param && (
+                    {!expandedInline && param && (
                       <>
                         <span className="text-muted-foreground">(</span>
                         <span className="text-muted-foreground">
@@ -763,10 +902,10 @@ export function ToolExecutionItem({
                 </div>
               </div>
 
-              {/* Line 2: Result summary */}
-              {(summary || isRunning) && (
+              {/* Line 2: Result summary (only in non-inline mode) */}
+              {!expandedInline && (summary || isRunning) && (
                 <div className="mt-0.5 ml-1 flex items-start gap-2">
-                  <span className="text-muted-foreground/40 leading-none">└</span>
+                  <span className="text-muted-foreground/40 leading-none">{"\u2514"}</span>
                   <span
                     className={cn(
                       isActualError
@@ -791,12 +930,64 @@ export function ToolExecutionItem({
                 </div>
               )}
             </div>
+
+            {/* Inline expanded details (when expandedInline is true) */}
+            {expandedInline && (input || output) && (
+              <div className="border-t border-border px-4 py-3 space-y-3">
+                {input && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
+                      {t("chat.toolInput", "Input")}
+                    </p>
+                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/50 p-2 text-xs max-h-[200px] break-words whitespace-pre-wrap">
+                      <code>{formatInlineInput(input)}</code>
+                    </pre>
+                  </div>
+                )}
+                {output && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
+                      {t("chat.toolOutput", "Output")}
+                    </p>
+                    {(() => {
+                      const blocks = parseContentBlocks(output);
+                      if (blocks) {
+                        return (
+                          <div className={cn(
+                            "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[300px]",
+                            isActualError ? "bg-red-500/10 text-red-400"
+                              : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                              : "bg-muted/50"
+                          )}>
+                            <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
+                          </div>
+                        );
+                      }
+                      return (
+                        <pre
+                          className={cn(
+                            "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[300px] break-words whitespace-pre-wrap",
+                            isActualError
+                              ? "bg-red-500/10 text-red-400"
+                              : isWarning
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                : "bg-muted/50"
+                          )}
+                        >
+                          <code>{formatInlineOutput(output)}</code>
+                        </pre>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
 
-      {/* Modal */}
-      {showModal && (
+      {/* Modal (only used when not in expandedInline mode) */}
+      {!expandedInline && showModal && (
         <ToolDetailModal
           toolName={name}
           input={input}
