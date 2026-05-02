@@ -5816,7 +5816,9 @@
     "editPageDescription": "Modify page name, description, and icon",
     "untitled": "Untitled",
     "copyLink": "Copy Link",
-    "linkCopied": "Link copied to clipboard"
+    "linkCopied": "Link copied to clipboard",
+    "duplicate": "Duplicate",
+    "duplicateSuccess": "Page duplicated successfully"
   },
   "emojiPicker": {
     "categories": {
@@ -5878,7 +5880,18 @@
   "tabBar": {
     "pinTab": "Pin Tab",
     "unpinTab": "Unpin Tab",
-    "closeOthers": "Close Others"
+    "closeOthers": "Close Others",
+    "closeToRight": "Close Tabs to the Right",
+    "reopenClosedTab": "Reopen Closed Tab",
+    "duplicateTab": "Duplicate Tab",
+    "copyLink": "Copy Link",
+    "closeAllUnpinned": "Close All Unpinned Tabs",
+    "backHistory": "Back History",
+    "forwardHistory": "Forward History",
+    "noBackHistory": "No back history",
+    "noForwardHistory": "No forward history",
+    "moveToStart": "Move to Start",
+    "moveToEnd": "Move to End"
   },
   "mobile": {
     "status": {

@@ -5816,7 +5816,9 @@
     "editPageDescription": "修改页面名称、描述和图标",
     "untitled": "无标题",
     "copyLink": "复制链接",
-    "linkCopied": "链接已复制到剪贴板"
+    "linkCopied": "链接已复制到剪贴板",
+    "duplicate": "复制页面",
+    "duplicateSuccess": "页面复制成功"
   },
   "emojiPicker": {
     "categories": {
