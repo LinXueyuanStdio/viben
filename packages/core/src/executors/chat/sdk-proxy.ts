@@ -8,6 +8,7 @@
 import type { ChatProxy, ChatResult } from "./types";
 import type { ChatOptions } from "../types";
 import type * as ClaudeAgentSdk from "@anthropic-ai/claude-agent-sdk";
+import { resolveSdkMcpServers } from "./sdk-mcp-registry";
 
 // ============================================================================
 // SSE Message Types for Streaming
@@ -274,11 +275,12 @@ export class SdkChatProxy implements ChatProxy {
         queryOptions.permissionMode = "bypassPermissions";
       }
 
-      // MCP servers (if agent has custom MCP config)
-      // Note: This needs proper MCP server config format
-      // For now, we log it in verbose mode
-      if (mcpServers && mcpServers.length > 0 && verbose) {
-        log.debug({ mcpServers }, "Agent MCP servers");
+      // Resolve SDK MCP servers from registry by name
+      if (mcpServers && mcpServers.length > 0) {
+        const resolvedServers = resolveSdkMcpServers(sdk, mcpServers);
+        if (Object.keys(resolvedServers).length > 0) {
+          queryOptions.mcpServers = resolvedServers;
+        }
       }
 
       // Skills (if agent has custom skills)
@@ -459,6 +461,7 @@ export class SdkChatProxy implements ChatProxy {
       allowedTools,
       disallowedTools,
       permissionMode,
+      mcpServers,
       sandboxConfig,
     } = options;
 
@@ -588,6 +591,15 @@ export class SdkChatProxy implements ChatProxy {
         stderrOutput += data;
         verboseError('Claude stderr', { data });
       };
+
+      // Resolve SDK MCP servers from registry by name
+      if (mcpServers && mcpServers.length > 0) {
+        const resolvedServers = resolveSdkMcpServers(sdk, mcpServers);
+        if (Object.keys(resolvedServers).length > 0) {
+          queryOptions.mcpServers = resolvedServers;
+          verboseLog('Registered SDK MCP servers', { names: Object.keys(resolvedServers) });
+        }
+      }
 
       // Execute query
       const queryResult = sdk.query({

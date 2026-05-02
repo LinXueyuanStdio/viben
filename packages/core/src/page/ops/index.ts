@@ -44,6 +44,11 @@ export type {
   TemplateFile,
   TemplateVars,
   ListTemplatesResult,
+  PageOrderData,
+  ReorderPagesOptions,
+  ReorderPagesResult,
+  DuplicatePageOptions,
+  DuplicatePageResult,
 } from "./types";
 
 // Type guards for enum values
@@ -80,9 +85,12 @@ export {
   viewPage,
   createPage,
   deletePage,
+  duplicatePage,
   updatePageContent,
   updatePageConfig,
   uploadPageAsset,
+  reorderPages,
+  getPageOrder,
 } from "./crud";
 
 // Serve

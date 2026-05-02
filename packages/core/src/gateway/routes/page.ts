@@ -22,9 +22,11 @@ import {
   viewPage,
   createPage,
   deletePage,
+  duplicatePage,
   updatePageContent,
   updatePageConfig,
   uploadPageAsset,
+  reorderPages,
   // Serve
   servePage,
   // Templates
@@ -45,6 +47,8 @@ import type {
   DeletePageResult,
   UpdatePageContentResult,
   UpdatePageConfigResult,
+  ReorderPagesResult,
+  DuplicatePageResult,
   ServePageResult,
   ListTemplatesResult,
 } from "../../page/ops";
@@ -108,6 +112,7 @@ const listPagesResponseSchema = {
     success: { type: "boolean" },
     pages: { type: "array", items: pageConfigSchema },
     count: { type: "number" },
+    page_order: { type: "object", nullable: true, additionalProperties: { type: "array", items: { type: "string" } } },
     error: { type: "string", nullable: true },
   },
 } as const;
@@ -664,6 +669,120 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);
+      return result;
+    }
+
+    return result;
+  });
+
+  // ============================================================================
+  // POST /api/page/reorder - Reorder pages within a parent level
+  // ============================================================================
+  fastify.post<{
+    Body: { workspace_path: string; parent_slug: string | null; ordered_slugs: string[] };
+    Reply: ReorderPagesResult;
+  }>("/api/page/reorder", {
+    schema: {
+      description: "Reorder pages within a parent level",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          parent_slug: { type: "string", nullable: true, description: "Parent page slug (null for root level)" },
+          ordered_slugs: {
+            type: "array",
+            items: { type: "string" },
+            description: "Ordered list of page slugs",
+          },
+        },
+        required: ["workspace_path", "ordered_slugs"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string", nullable: true },
+          },
+        },
+        400: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, parent_slug, ordered_slugs } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    if (!ordered_slugs || !Array.isArray(ordered_slugs)) {
+      reply.code(400);
+      return { success: false, error: "ordered_slugs is required and must be an array" };
+    }
+
+    const result = await reorderPages({
+      workspace_path,
+      parent_slug: parent_slug ?? null,
+      ordered_slugs,
+    });
+
+    if (!result.success) {
+      reply.code(400);
+      return result;
+    }
+
+    return result;
+  });
+
+  // ============================================================================
+  // POST /api/page/duplicate - Duplicate a page
+  // ============================================================================
+  fastify.post<{
+    Body: { workspace_path: string; slug: string };
+    Reply: DuplicatePageResult;
+  }>("/api/page/duplicate", {
+    schema: {
+      description: "Duplicate a page (copy all files with a new slug)",
+      tags: ["page"],
+      body: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path (required)" },
+          slug: { type: "string", description: "Source page slug to duplicate" },
+        },
+        required: ["workspace_path", "slug"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string", nullable: true },
+            page: pageConfigSchema,
+          },
+        },
+        400: errorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    const { workspace_path, slug } = request.body;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { success: false, error: "workspace_path is required" };
+    }
+
+    if (!slug) {
+      reply.code(400);
+      return { success: false, error: "slug is required" };
+    }
+
+    const result = await duplicatePage({ workspace_path, slug });
+
+    if (!result.success) {
+      reply.code(400);
       return result;
     }
 

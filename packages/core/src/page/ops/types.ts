@@ -165,6 +165,7 @@ export interface PageResult {
 export interface ListPagesResult extends PageResult {
   pages: PageConfig[];
   count: number;
+  page_order?: PageOrderData;
 }
 
 export interface ViewPageResult extends PageResult {
@@ -241,4 +242,36 @@ export interface TemplateFile {
 
 export interface ListTemplatesResult extends PageResult {
   templates: PageTemplate[];
+}
+
+// =============================================================================
+// Reorder Types
+// =============================================================================
+
+/** Page order data stored in .page-order.json */
+export interface PageOrderData {
+  [parentKey: string]: string[];
+}
+
+export interface ReorderPagesOptions {
+  workspace_path: string;
+  parent_slug: string | null;
+  ordered_slugs: string[];
+}
+
+export interface ReorderPagesResult extends PageResult {
+  // empty on success
+}
+
+// =============================================================================
+// Duplicate Types
+// =============================================================================
+
+export interface DuplicatePageOptions {
+  workspace_path: string;
+  slug: string;
+}
+
+export interface DuplicatePageResult extends PageResult {
+  page?: PageConfig;
 }
