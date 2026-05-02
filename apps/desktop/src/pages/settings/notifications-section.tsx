@@ -161,7 +161,7 @@ export function NotificationsSection() {
       )}
 
       {/* Master Toggle */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -185,9 +185,9 @@ export function NotificationsSection() {
 
       {/* Category Settings */}
       <div className={cn(
-        "rounded-xl border bg-card p-4 transition-all duration-300",
+        "rounded-xl border bg-card p-4",
         preferences.enabled
-          ? "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          ? ""
           : "opacity-50 pointer-events-none"
       )}>
         <SectionHeader title={t("settings.notifications.categorySettings")} />
@@ -268,9 +268,9 @@ export function NotificationsSection() {
 
       {/* Sound Settings */}
       <div className={cn(
-        "rounded-xl border bg-card p-4 transition-all duration-300",
+        "rounded-xl border bg-card p-4",
         preferences.enabled
-          ? "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          ? ""
           : "opacity-50 pointer-events-none"
       )}>
         <div className="flex items-center justify-between">
@@ -303,9 +303,9 @@ export function NotificationsSection() {
 
       {/* Do Not Disturb */}
       <div className={cn(
-        "rounded-xl border bg-card p-4 transition-all duration-300",
+        "rounded-xl border bg-card p-4",
         preferences.enabled
-          ? "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          ? ""
           : "opacity-50 pointer-events-none"
       )}>
         <div className="flex items-center justify-between mb-4">

@@ -18,7 +18,7 @@ export function StorageSection() {
       </div>
 
       {/* Download Path */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <h3 className="text-sm font-semibold">{t("settings.downloadPath")}</h3>
         <div className="flex gap-2">
           <input
@@ -33,7 +33,7 @@ export function StorageSection() {
       </div>
 
       {/* Offline Cache */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <h3 className="text-sm font-semibold mb-4">{t("settings.offlineCache")}</h3>
         <CacheManager />
       </div>

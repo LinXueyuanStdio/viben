@@ -69,7 +69,7 @@ export function GeneralSection() {
       </div>
 
       {/* Preferences Section */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.sections.preferences")} />
 
         <div className="py-4 border-b border-border">
@@ -82,7 +82,7 @@ export function GeneralSection() {
       </div>
 
       {/* Language & Time Section */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.sections.languageAndTime")} />
 
         <SettingsItem
@@ -172,7 +172,7 @@ export function GeneralSection() {
       </div>
 
       {/* Onboarding Section */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.sections.setup")} />
         <div className="flex items-center justify-between py-4">
           <div className="flex items-center gap-3">

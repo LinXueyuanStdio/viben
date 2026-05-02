@@ -131,7 +131,7 @@ export function SettingsOverlay() {
       </div>
 
       {/* Global Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.overlay.global.title")} />
 
         <SettingsItem
@@ -169,7 +169,7 @@ export function SettingsOverlay() {
       </div>
 
       {/* Danmaku Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.overlay.danmaku.title")} />
 
         <SettingsItem
@@ -240,7 +240,7 @@ export function SettingsOverlay() {
       </div>
 
       {/* Subtitle Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.overlay.subtitle.title")} />
 
         <SettingsItem
@@ -288,7 +288,7 @@ export function SettingsOverlay() {
       </div>
 
       {/* Click Indicator Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.overlay.clickIndicator.title")} />
 
         <SettingsItem
@@ -336,7 +336,7 @@ export function SettingsOverlay() {
       </div>
 
       {/* Keystroke Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.overlay.keystroke.title")} />
 
         <SettingsItem
@@ -406,7 +406,7 @@ export function SettingsOverlay() {
       </div>
 
       {/* Wave Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.overlay.wave.title")} />
 
         <SettingsItem

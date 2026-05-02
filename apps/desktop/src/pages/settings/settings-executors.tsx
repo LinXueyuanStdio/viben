@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, type AvailabilityInfo } from "@/lib/gateway";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 // Executor metadata
 interface ExecutorInfo {
@@ -104,7 +104,7 @@ interface ExecutorStatus {
 
 export function SettingsExecutorsPage() {
   const { t } = useTranslation();
-  const { navigateTo } = usePageTabs();
+  const { openExecutorDetail } = useDesktopRouting();
   const { status: gatewayStatus } = useGatewayStatus();
   const [executors, setExecutors] = useState<ExecutorStatus[]>(
     EXECUTORS.map((info) => ({
@@ -323,17 +323,13 @@ export function SettingsExecutorsPage() {
             <div
               key={executor.info.id}
               className={cn(
-                "p-4 rounded-xl border bg-card transition-all duration-300",
-                "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30",
+                "rounded-xl border bg-card p-4",
                 isAvailable && "cursor-pointer"
               )}
               onClick={() => {
                 if (isAvailable) {
-                  navigateTo(`/executor/${executor.info.id}`, {
-                    type: "workspace",
-                    slug: executor.info.id,
-                    name: t(`settingsExecutors.executorNames.${executor.info.id}`, executor.info.name),
-                    icon: { type: "lucide", value: "terminal" },
+                  openExecutorDetail(executor.info.id, undefined, {
+                    openMode: "reuse",
                   });
                 }
               }}

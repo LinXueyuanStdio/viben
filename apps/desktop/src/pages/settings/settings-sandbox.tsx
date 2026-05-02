@@ -78,9 +78,9 @@ function ProviderCard({
 
   return (
     <div
-      className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${
+      className={`rounded-xl border p-4 space-y-3 ${
         isAvailable
-          ? "bg-card hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          ? "bg-card"
           : "bg-muted/30 opacity-60"
       }`}
     >
@@ -317,7 +317,7 @@ export function SettingsSandboxPage() {
       )}
 
       {/* Overview Card */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full flex items-center justify-center bg-primary/10">
@@ -381,7 +381,7 @@ export function SettingsSandboxPage() {
       </div>
 
       {/* Installation Hints */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
             <Terminal className="h-5 w-5 text-muted-foreground" />

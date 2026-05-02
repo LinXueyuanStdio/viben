@@ -508,7 +508,7 @@ function InstanceCard({
   const { t } = useTranslation();
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary/30 transition-colors">
+    <div className="flex items-center justify-between rounded-lg border bg-card p-3">
       <div className="flex items-center gap-3">
         <div
           className={cn(

@@ -247,7 +247,7 @@ export function SettingsGatewayPage() {
       )}
 
       {/* Status Card */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
@@ -393,7 +393,7 @@ export function SettingsGatewayPage() {
       </div>
 
       {/* Connectivity Test Card */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
@@ -539,7 +539,7 @@ export function SettingsGatewayPage() {
       </div>
 
       {/* Configuration Card - Base URL */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
             <Link className="h-5 w-5 text-muted-foreground" />
@@ -583,7 +583,7 @@ export function SettingsGatewayPage() {
       </div>
 
       {/* Viben CLI Selection Card */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">

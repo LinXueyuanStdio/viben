@@ -200,7 +200,7 @@ export function SettingsVoice() {
       </div>
 
       {/* API Config Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.voice.api.title", "API Configuration")} />
 
         <SettingsItem
@@ -254,7 +254,7 @@ export function SettingsVoice() {
       </div>
 
       {/* Wake Word Settings Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader
           title={t("settings.voice.wakeWord.title", "Wake Word Settings")}
         />
@@ -422,7 +422,7 @@ export function SettingsVoice() {
       </div>
 
       {/* Sound Effects Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.voice.sound.title", "Sound Effects")} />
 
         <SettingsItem
@@ -443,7 +443,7 @@ export function SettingsVoice() {
       </div>
 
       {/* Test Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.voice.test.title", "Test Voice Features")} />
 
         <div className="flex flex-col items-center py-6 gap-4">

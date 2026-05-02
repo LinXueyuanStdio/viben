@@ -12,7 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import type { SettingsSection } from "./types";
 import { SECTIONS, VALID_SECTIONS, easeOutExpo, SETTINGS_SIDEBAR_COLLAPSED_KEY } from "./constants";
 import { getSettingsSectionIcon } from "@/navigation/navigation-meta";
@@ -40,7 +40,7 @@ export function SettingsPage() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const location = useLocation();
-  const { openGlobalView } = usePageTabs();
+  const { openSettings } = useDesktopRouting();
 
   // Get section from URL path (e.g., /settings/agents -> "agents")
   const getSectionFromPath = (): SettingsSection => {
@@ -70,17 +70,13 @@ export function SettingsPage() {
   // Pre-load data when navigating to certain sections
   const handleSectionChange = useCallback((section: SettingsSection) => {
     setActiveSection(section);
-    openGlobalView(
-      `/settings/${section}`,
-      t(SECTIONS.find((item) => item.id === section)?.labelKey ?? "settings.title"),
-      getSettingsSectionIcon(section)
-    );
+    openSettings(section);
 
     // Pre-sync channel data when navigating to channels section
     if (section === "channels") {
       syncChannels();
     }
-  }, [openGlobalView, t]);
+  }, [openSettings]);
 
   // Update active section when URL changes
   useEffect(() => {

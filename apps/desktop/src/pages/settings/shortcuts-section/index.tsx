@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
-import { SettingsItem } from "../components";
+import { SettingsItem, SectionHeader } from "../components";
 import { usePlatform } from "./use-platform";
 import { ShortcutRecorder } from "./shortcut-recorder";
 
@@ -35,8 +35,10 @@ export function ShortcutsSection() {
         </p>
       </div>
 
-      {/* Shortcut Items */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      {/* Messaging Shortcuts */}
+      <div className="rounded-xl border bg-card p-4">
+        <SectionHeader title={t("settings.shortcutGroups.messaging")} />
+
         {/* Send Message */}
         <SettingsItem
           title={t("settings.sendMessage")}
@@ -59,6 +61,11 @@ export function ShortcutsSection() {
             </SelectContent>
           </Select>
         </SettingsItem>
+      </div>
+
+      {/* Application Shortcuts */}
+      <div className="rounded-xl border bg-card p-4">
+        <SectionHeader title={t("settings.shortcutGroups.application")} />
 
         {/* Screenshot */}
         <SettingsItem
@@ -150,18 +157,59 @@ export function ShortcutsSection() {
             currentPlatform={currentPlatform}
           />
         </SettingsItem>
+      </div>
 
-        {/* Reset to Defaults Button */}
-        <div className="pt-4">
-          <Button
-            variant="outline"
-            onClick={resetShortcuts}
-            className="w-full"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            {t("settings.resetShortcuts")}
-          </Button>
-        </div>
+      {/* Tab Navigation Shortcuts */}
+      <div className="rounded-xl border bg-card p-4">
+        <SectionHeader title={t("settings.shortcutGroups.tabNavigation")} />
+
+        <SettingsItem
+          title={t("settings.newTab")}
+          description={t("settings.newTabDescription")}
+        >
+          <ShortcutRecorder
+            value={shortcuts.newTab}
+            onChange={(value) => setShortcut("newTab", value)}
+            onClear={() => setShortcut("newTab", "")}
+            currentPlatform={currentPlatform}
+          />
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.closeTab")}
+          description={t("settings.closeTabDescription")}
+        >
+          <ShortcutRecorder
+            value={shortcuts.closeTab}
+            onChange={(value) => setShortcut("closeTab", value)}
+            onClear={() => setShortcut("closeTab", "")}
+            currentPlatform={currentPlatform}
+          />
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.reopenClosedTab")}
+          description={t("settings.reopenClosedTabDescription")}
+        >
+          <ShortcutRecorder
+            value={shortcuts.reopenClosedTab}
+            onChange={(value) => setShortcut("reopenClosedTab", value)}
+            onClear={() => setShortcut("reopenClosedTab", "")}
+            currentPlatform={currentPlatform}
+          />
+        </SettingsItem>
+      </div>
+
+      {/* Reset */}
+      <div className="rounded-xl border bg-card p-4">
+        <Button
+          variant="outline"
+          onClick={resetShortcuts}
+          className="w-full"
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          {t("settings.resetShortcuts")}
+        </Button>
       </div>
     </div>
   );

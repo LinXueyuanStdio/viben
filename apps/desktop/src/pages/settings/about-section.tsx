@@ -39,7 +39,7 @@ export function AboutSection() {
       </div>
 
       {/* App Info */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center gap-4 mb-4">
           <VibenLogo size="lg" />
           <div>
@@ -50,7 +50,7 @@ export function AboutSection() {
       </div>
 
       {/* Updates */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("about.updates", { defaultValue: "Updates" })}
         </h3>
@@ -78,7 +78,7 @@ export function AboutSection() {
       </div>
 
       {/* Links */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("about.links")}
         </h3>
@@ -111,7 +111,7 @@ export function AboutSection() {
       </div>
 
       {/* Author */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("about.author")}
         </h3>

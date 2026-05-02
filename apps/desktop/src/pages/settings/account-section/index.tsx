@@ -144,7 +144,7 @@ export function AccountSection() {
       {isAuthenticated && user ? (
         <>
           {/* User Profile Card */}
-          <div className="rounded-xl border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+          <div className="rounded-xl border bg-card p-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 ring-2 ring-primary/20">
                 <AvatarImage src={user.avatarUrl || undefined} alt={user.displayName || user.username} />
@@ -166,14 +166,14 @@ export function AccountSection() {
           </div>
 
           {/* Account Actions */}
-          <div className="rounded-xl border bg-card p-4 space-y-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+          <div className="rounded-xl border bg-card p-4 space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               {t("settings.account.actions")}
             </h3>
 
             <button
               onClick={() => handleExternalLink("https://viben-web.vercel.app/profile")}
-              className="flex items-center justify-between rounded-xl border bg-card p-3 hover:bg-muted hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 w-full"
+              className="flex w-full items-center justify-between rounded-xl border bg-card p-3 transition-colors duration-200 hover:bg-muted"
             >
               <div className="flex items-center gap-3">
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -185,7 +185,7 @@ export function AccountSection() {
             <button
               onClick={logout}
               disabled={isLoading}
-              className="flex items-center justify-between rounded-xl border border-destructive/30 bg-destructive/5 p-3 hover:bg-destructive/10 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 w-full text-destructive"
+              className="flex w-full items-center justify-between rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-destructive transition-colors duration-200 hover:bg-destructive/10"
             >
               <div className="flex items-center gap-3">
                 <LogOut className="h-4 w-4" />
@@ -196,7 +196,7 @@ export function AccountSection() {
         </>
       ) : (
         /* Not Logged In - OAuth Flow */
-        <div className="rounded-xl border bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="rounded-xl border bg-card p-6">
           <div className="space-y-6">
             {/* Error display */}
             {displayError && oauthStatus !== "waiting" && (

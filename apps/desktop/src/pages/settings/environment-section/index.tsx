@@ -321,7 +321,7 @@ export function EnvironmentSection() {
       </div>
 
       {/* CLI Tools - Core */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold">{t("settings.cliTools.coreTitle", { defaultValue: "Core Tools" })}</h3>
@@ -345,7 +345,7 @@ export function EnvironmentSection() {
       </div>
 
       {/* browse-mcp Package */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4 space-y-4">
         <h3 className="text-sm font-semibold">{t("settings.browseMcpPackage")}</h3>
 
         {browseMcpInfo?.installed ? (
@@ -397,7 +397,7 @@ export function EnvironmentSection() {
       </div>
 
       {/* CLI Tools - AI Assistants */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold">{t("settings.cliTools.aiTitle", { defaultValue: "AI Coding Assistants" })}</h3>

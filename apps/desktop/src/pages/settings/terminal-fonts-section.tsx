@@ -165,7 +165,7 @@ export function TerminalFontsSection() {
       </div>
 
       {/* Font Configuration */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.terminalFonts.fontConfig.title")} />
 
         {/* Font Family */}
@@ -352,7 +352,7 @@ export function TerminalFontsSection() {
       </div>
 
       {/* Cursor Configuration */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.terminalFonts.cursorConfig.title")} />
 
         <SettingsItem
@@ -382,7 +382,7 @@ export function TerminalFontsSection() {
       </div>
 
       {/* Live Preview */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.terminalFonts.preview.title")} />
         <p className="text-sm text-muted-foreground mb-4">
           {t("settings.terminalFonts.preview.description")}
@@ -410,7 +410,7 @@ export function TerminalFontsSection() {
       </div>
 
       {/* Presets */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.terminalFonts.presets.title")} />
         <p className="text-sm text-muted-foreground mb-4">
           {t("settings.terminalFonts.presets.description")}

@@ -131,7 +131,7 @@ export function DeveloperSection() {
       </div>
 
       {/* IDE Selection */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.developer.devtools")} />
 
         <SettingsItem
@@ -188,7 +188,7 @@ export function DeveloperSection() {
       </div>
 
       {/* YOLO Mode */}
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-500/20">
@@ -217,7 +217,7 @@ export function DeveloperSection() {
       </div>
 
       {/* Debug & Logs */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+      <div className="rounded-xl border bg-card p-4">
         <SectionHeader title={t("settings.developer.debugLogs")} />
 
         {/* Quick Actions */}

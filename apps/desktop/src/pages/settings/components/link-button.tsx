@@ -12,7 +12,7 @@ export function LinkButton({ icon: Icon, label, href, onClick }: LinkButtonProps
   return (
     <button
       onClick={() => onClick(href)}
-      className="flex items-center justify-between rounded-xl border bg-card p-3 hover:bg-muted hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 w-full"
+      className="flex w-full items-center justify-between rounded-xl border bg-card p-3 transition-colors duration-200 hover:bg-muted"
     >
       <div className="flex items-center gap-3">
         <Icon className="h-4 w-4 text-muted-foreground" />
