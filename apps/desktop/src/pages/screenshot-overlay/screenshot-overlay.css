@@ -31,6 +31,22 @@
   z-index: 10;
 }
 
+.screenshot-overlay-status {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+
 /* Annotation toolbar - floating below selection */
 .annotation-toolbar {
   display: flex;

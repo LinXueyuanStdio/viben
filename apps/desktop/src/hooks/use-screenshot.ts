@@ -5,6 +5,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { tempDir, join } from "@tauri-apps/api/path";
+import { writeFile, mkdir, exists } from "@tauri-apps/plugin-fs";
 import type { MessageAttachment } from "@/types";
 
 /**
@@ -14,6 +16,24 @@ interface ScreenshotResult {
   data: string;
   width: number;
   height: number;
+}
+
+async function logScreenshotTrace(
+  traceId: string,
+  source: string,
+  stage: string,
+  details: Record<string, unknown>
+): Promise<void> {
+  try {
+    await invoke("log_screenshot_trace", {
+      traceId,
+      source,
+      stage,
+      details,
+    });
+  } catch (error) {
+    console.error("[ScreenshotTrace] Failed to write trace log:", error);
+  }
 }
 
 export interface UseScreenshotOptions {
@@ -55,18 +75,53 @@ export interface UseScreenshotReturn {
 }
 
 /**
- * Create a MessageAttachment from screenshot data
+ * Save base64 data URL to a temp file and return the file path
  */
-function createScreenshotAttachment(
+async function saveScreenshotToTempFile(
+  data: string,
+  fileName: string
+): Promise<string> {
+  const dir = await tempDir();
+  const screenshotDir = await join(dir, "viben-screenshots");
+  if (!(await exists(screenshotDir))) {
+    await mkdir(screenshotDir, { recursive: true });
+  }
+  const filePath = await join(screenshotDir, fileName);
+
+  // Extract base64 content from data URL (strip "data:image/png;base64," prefix)
+  const base64Content = data.replace(/^data:image\/\w+;base64,/, "");
+  const binaryData = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
+  await writeFile(filePath, binaryData);
+
+  return filePath;
+}
+
+/**
+ * Create a MessageAttachment from screenshot data
+ * Saves the image to a temp file so agents can reference it by path
+ */
+async function createScreenshotAttachment(
   data: string,
   prefix = "screenshot"
-): MessageAttachment {
+): Promise<MessageAttachment> {
+  const mimeType = data.startsWith("data:image/jpeg") ? "image/jpeg" : "image/png";
+  const extension = mimeType === "image/jpeg" ? "jpg" : "png";
+  const fileName = `${prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.${extension}`;
+
+  let filePath: string | undefined;
+  try {
+    filePath = await saveScreenshotToTempFile(data, fileName);
+  } catch (err) {
+    console.warn("[Screenshot] Failed to save to temp file:", err);
+  }
+
   return {
     id: `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     type: "image",
-    name: `${prefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.png`,
+    name: fileName,
     data,
-    mimeType: "image/png",
+    path: filePath,
+    mimeType,
     isLoading: false,
   };
 }
@@ -96,7 +151,7 @@ export function useScreenshot(
           hideWindow,
         });
 
-        const attachment = createScreenshotAttachment(result.data, "screenshot");
+        const attachment = await createScreenshotAttachment(result.data, "screenshot");
         onSuccessRef.current?.(attachment);
         return attachment;
       } catch (err) {
@@ -128,7 +183,7 @@ export function useScreenshot(
           { x, y, width, height }
         );
 
-        const attachment = createScreenshotAttachment(result.data, "screenshot-region");
+        const attachment = await createScreenshotAttachment(result.data, "screenshot-region");
         onSuccessRef.current?.(attachment);
         return attachment;
       } catch (err) {
@@ -159,15 +214,30 @@ export function useScreenshot(
   const startRegionScreenshot = useCallback(async (monitorId?: number) => {
     setIsCapturing(true);
     setError(null);
+    const traceId = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const startedAt = Date.now();
 
     try {
+      await logScreenshotTrace(traceId, "frontend", "region_screenshot_requested", {
+        monitorId: monitorId ?? null,
+        startedAt,
+      });
       await invoke<string>("start_region_screenshot", {
         monitorId: monitorId ?? null,
+        traceId,
+        clientStartedAtMs: startedAt,
+      });
+      await logScreenshotTrace(traceId, "frontend", "region_screenshot_command_resolved", {
+        elapsedMs: Date.now() - startedAt,
       });
       // Result will come back via the screenshot-result event listener
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : String(err);
+      await logScreenshotTrace(traceId, "frontend", "region_screenshot_command_failed", {
+        elapsedMs: Date.now() - startedAt,
+        error: errorMessage,
+      });
       setError(errorMessage);
       onErrorRef.current?.(errorMessage);
       setIsCapturing(false);
@@ -197,7 +267,7 @@ export function useScreenshot(
           { windowId }
         );
 
-        const attachment = createScreenshotAttachment(result.data, "screenshot-window");
+        const attachment = await createScreenshotAttachment(result.data, "screenshot-window");
         onSuccessRef.current?.(attachment);
         return attachment;
       } catch (err) {
@@ -221,10 +291,10 @@ export function useScreenshot(
 
     const unlistenResult = listen<{ data: string; type: string }>(
       "screenshot-result",
-      (event) => {
+      async (event) => {
         gotResult = true;
         const { data } = event.payload;
-        const attachment = createScreenshotAttachment(data, "screenshot-region");
+        const attachment = await createScreenshotAttachment(data, "screenshot-region");
         onSuccessRef.current?.(attachment);
         setIsCapturing(false);
       }

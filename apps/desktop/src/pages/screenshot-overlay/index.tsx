@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Stage, Layer, Rect, Ellipse, Arrow, Line, Text } from 'react-konva';
 import './screenshot-overlay.css';
 
@@ -34,13 +34,15 @@ interface Annotation {
 }
 
 export function ScreenshotOverlayPage() {
-  const [searchParams] = useSearchParams();
+  const searchParams = new URLSearchParams(window.location.search);
   const imageId = searchParams.get('id') || '';
   const scaleFactor = parseFloat(searchParams.get('scale') || '1');
+  const traceId = searchParams.get('trace') || 'unknown';
 
   const [imageUrl, setImageUrl] = useState<string>('');
   const [imageLoaded, setImageLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const hasShownWindowRef = useRef(false);
 
   // Selection state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -66,19 +68,99 @@ export function ScreenshotOverlayPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  const logTrace = useCallback(async (stage: string, details: Record<string, unknown> = {}) => {
+    try {
+      await invoke('log_screenshot_trace', {
+        traceId,
+        source: 'overlay',
+        stage,
+        details,
+      });
+    } catch (error) {
+      console.error('[ScreenshotTrace] Failed to write overlay trace log:', error);
+    }
+  }, [traceId]);
+
+  useEffect(() => {
+    void logTrace('overlay_page_mounted', {
+      imageId,
+      scaleFactor,
+      href: window.location.href,
+    });
+  }, [imageId, logTrace, scaleFactor]);
+
   // Load screenshot image via IPC command — returns base64 data URL from memory store.
   // This bypasses all file/protocol/scope issues and is 100% reliable.
   useEffect(() => {
     if (!imageId) return;
     setImageLoaded(false);
     setLoadError(null);
-    invoke<string>('get_screenshot_image', { imageId })
-      .then((dataUrl) => setImageUrl(dataUrl))
+    hasShownWindowRef.current = false;
+    const startedAt = performance.now();
+    void logTrace('get_screenshot_image_requested', { imageId });
+    invoke<string>('get_screenshot_image', { imageId, traceId })
+      .then((dataUrl) => {
+        void logTrace('get_screenshot_image_resolved', {
+          imageId,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          dataUrlLength: dataUrl.length,
+        });
+        setImageUrl(dataUrl);
+      })
       .catch((err) => {
         console.error('[Screenshot] Failed to get image data:', err);
+        void logTrace('get_screenshot_image_failed', {
+          imageId,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          error: err instanceof Error ? err.message : String(err),
+        });
         setLoadError(err instanceof Error ? err.message : String(err));
       });
-  }, [imageId]);
+  }, [imageId, logTrace]);
+
+  useEffect(() => {
+    if (!imageLoaded || hasShownWindowRef.current) return;
+    hasShownWindowRef.current = true;
+
+    void logTrace('overlay_window_show_requested');
+    getCurrentWindow()
+      .show()
+      .then(() => {
+        void logTrace('overlay_window_shown');
+        return getCurrentWindow().setFocus();
+      })
+      .then(() => {
+        void logTrace('overlay_window_focused');
+      })
+      .catch((err) => {
+        console.error('[Screenshot] Failed to show overlay window:', err);
+        void logTrace('overlay_window_show_failed', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+  }, [imageLoaded, logTrace]);
+
+  useEffect(() => {
+    if (!loadError || hasShownWindowRef.current) return;
+    hasShownWindowRef.current = true;
+
+    void logTrace('overlay_window_show_requested_after_error', { loadError });
+    getCurrentWindow()
+      .show()
+      .then(() => {
+        void logTrace('overlay_window_shown_after_error');
+        return getCurrentWindow().setFocus();
+      })
+      .then(() => {
+        void logTrace('overlay_window_focused_after_error');
+      })
+      .catch((err) => {
+        console.error('[Screenshot] Failed to show overlay window after load error:', err);
+        void logTrace('overlay_window_show_failed_after_error', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+  }, [loadError, logTrace]);
 
   const handleClose = useCallback(async (confirmed = false) => {
     await invoke('close_screenshot_overlay', { imageId, confirmed });
@@ -404,9 +486,18 @@ export function ScreenshotOverlayPage() {
           src={imageUrl}
           className="screenshot-bg-image"
           draggable={false}
-          onLoad={() => setImageLoaded(true)}
+          onLoad={() => {
+            void logTrace('screenshot_image_dom_loaded', {
+              naturalWidth: imgRef.current?.naturalWidth ?? null,
+              naturalHeight: imgRef.current?.naturalHeight ?? null,
+            });
+            setImageLoaded(true);
+          }}
           onError={(e) => {
             console.error('[Screenshot] Image failed to load:', e);
+            void logTrace('screenshot_image_dom_failed', {
+              error: 'img onError fired',
+            });
             setLoadError('Failed to load screenshot image');
           }}
         />
