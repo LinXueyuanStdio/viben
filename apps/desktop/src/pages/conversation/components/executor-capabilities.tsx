@@ -42,7 +42,7 @@ import {
   useWorkspaceCommands,
   useWorkspacePrompts,
 } from "@/hooks/use-agent-configs";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 
 // ============================================================================
 // Types
@@ -170,7 +170,13 @@ export function ExecutorCapabilities({
   onConfigureSkills,
 }: ExecutorCapabilitiesProps) {
   const { t } = useTranslation();
-  const { navigateTo } = usePageTabs();
+  const {
+    openSkillDetail,
+    openMcpServerDetail,
+    openSubagentDetail,
+    openPromptDetail,
+    openCommandDetail,
+  } = useDesktopRouting();
 
   // Load data for executor (used in read-only mode)
   const { servers: mcpServers, loading: mcpLoading } = useWorkspaceMcpServers(
@@ -196,72 +202,37 @@ export function ExecutorCapabilities({
 
   // Navigation handlers (read-only mode)
   const handleSkillClick = (skillId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("agent_id", executorType);
-    navigateTo(`/skill/${encodeURIComponent(skillId)}?${params.toString()}`, {
-      type: "page",
-      slug: skillId,
-      name: skillId,
-      icon: { type: "lucide", value: "sparkles" },
+    openSkillDetail(skillId, {
+      agentId: executorType,
+      workspacePath,
     });
   };
 
   const handleMcpServerClick = (serverName: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigateTo(`/mcp-server/${encodeURIComponent(serverName)}?${params.toString()}`, {
-      type: "page",
-      slug: serverName,
-      name: serverName,
-      icon: { type: "lucide", value: "server" },
+    openMcpServerDetail(serverName, {
+      executorType,
+      workspacePath,
     });
   };
 
   const handleSubAgentClick = (configId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigateTo(`/subagent/${encodeURIComponent(configId)}?${params.toString()}`, {
-      type: "page",
-      slug: configId,
-      name: configId,
-      icon: { type: "lucide", value: "bot" },
+    openSubagentDetail(configId, {
+      executorType,
+      workspacePath,
     });
   };
 
   const handlePromptClick = (promptId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigateTo(`/prompt/${encodeURIComponent(promptId)}?${params.toString()}`, {
-      type: "page",
-      slug: promptId,
-      name: promptId,
-      icon: { type: "lucide", value: "quote" },
+    openPromptDetail(promptId, {
+      executorType,
+      workspacePath,
     });
   };
 
   const handleCommandClick = (commandId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigateTo(`/command/${encodeURIComponent(commandId)}?${params.toString()}`, {
-      type: "page",
-      slug: commandId,
-      name: commandId,
-      icon: { type: "lucide", value: "square-terminal" },
+    openCommandDetail(commandId, {
+      executorType,
+      workspacePath,
     });
   };
 

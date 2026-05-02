@@ -5,8 +5,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isExecutorType, buildWorkspaceUrl } from "@/hooks";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { isExecutorType } from "@/hooks";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
   RightSidebar,
@@ -36,7 +36,11 @@ import { useWorkspaceChat } from "./hooks/use-workspace-chat";
 export function WorkspaceChatPage() {
   const prefersReducedMotion = useReducedMotion();
   const chat = useWorkspaceChat();
-  const { navigateTo } = usePageTabs();
+  const {
+    openWorkspaceAgentDetail,
+    openWorkspaceExecutorDetail,
+    openWorkspaceSection,
+  } = useDesktopRouting();
 
   const {
     workspaceId,
@@ -138,13 +142,7 @@ export function WorkspaceChatPage() {
             chat.setSelectedSidebarExecutorId(executor.id);
           }}
           onExecutorSettings={(executor) => {
-            const url = buildWorkspaceUrl(`/executor/${executor.id}`, workspace.path);
-            navigateTo(url, {
-              type: "workspace",
-              slug: executor.id,
-              name: executor.id,
-              icon: { type: "lucide", value: "terminal" },
-            });
+            openWorkspaceExecutorDetail(workspaceId, executor.id);
           }}
           onRefreshExecutors={chat.loadExecutors}
           filteredChatListAgents={chat.filteredChatListAgents}
@@ -159,24 +157,11 @@ export function WorkspaceChatPage() {
             chat.setSelectedAgentId(agentId);
           }}
           onAgentSettings={(agentId) => {
-            if (workspace.path) {
-              const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-              if (isExecutorType(agentId)) {
-                navigateTo(`/executor/${agentId}${params}`, {
-                  type: "workspace",
-                  slug: agentId,
-                  name: agentId,
-                  icon: { type: "lucide", value: "terminal" },
-                });
-              } else {
-                navigateTo(`/agent/${agentId}${params}`, {
-                  type: "workspace",
-                  slug: agentId,
-                  name: agentId,
-                  icon: { type: "lucide", value: "bot" },
-                });
-              }
+            if (isExecutorType(agentId)) {
+              openWorkspaceExecutorDetail(workspaceId, agentId);
+              return;
             }
+            openWorkspaceAgentDetail(workspaceId, agentId);
           }}
           onSetDefaultAgent={chat.setDefaultAgent}
           onDeleteAgent={chat.removeAgent}
@@ -299,24 +284,11 @@ export function WorkspaceChatPage() {
               onOpenSessionFolder={chat.handleOpenSessionFolder}
               onArchiveConversation={chat.handleArchiveConversation}
               onAgentSettings={(agentId) => {
-                if (workspace.path) {
-                  const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-                  if (isExecutorType(agentId)) {
-                    navigateTo(`/executor/${agentId}${params}`, {
-                      type: "workspace",
-                      slug: agentId,
-                      name: agentId,
-                      icon: { type: "lucide", value: "terminal" },
-                    });
-                  } else {
-                    navigateTo(`/agent/${agentId}${params}`, {
-                      type: "workspace",
-                      slug: agentId,
-                      name: agentId,
-                      icon: { type: "lucide", value: "bot" },
-                    });
-                  }
+                if (isExecutorType(agentId)) {
+                  openWorkspaceExecutorDetail(workspaceId, agentId);
+                  return;
                 }
+                openWorkspaceAgentDetail(workspaceId, agentId);
               }}
             />
           )}
@@ -335,15 +307,7 @@ export function WorkspaceChatPage() {
           tasks={chat.tasks}
           isTasksLoading={chat.isTasksLoading}
           onTaskClick={(task) => {
-            if (workspace.path) {
-              navigateTo(`/workspace/${workspaceId}/kanban?task_id=${task.id}`, {
-                type: "workspace",
-                slug: "kanban",
-                workspaceId,
-                name: t("workspace.kanban", "Kanban"),
-                icon: { type: "lucide", value: "layout-dashboard" },
-              });
-            }
+            openWorkspaceSection(workspaceId, "kanban");
           }}
           highlightedArtifactId={chat.highlightedArtifactId}
           onArtifactSelect={chat.handleArtifactSelect}
@@ -364,26 +328,10 @@ export function WorkspaceChatPage() {
           executorDetail={chat.rightSidebarExecutorDetail}
           workspacePath={workspace.path}
           onAgentSettings={(agentId) => {
-            if (workspace.path) {
-              const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-              navigateTo(`/agent/${agentId}${params}`, {
-                type: "workspace",
-                slug: agentId,
-                name: agentId,
-                icon: { type: "lucide", value: "bot" },
-              });
-            }
+            openWorkspaceAgentDetail(workspaceId, agentId);
           }}
           onExecutorSettings={(executorId) => {
-            if (workspace.path) {
-              const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
-              navigateTo(`/executor/${executorId}${params}`, {
-                type: "workspace",
-                slug: executorId,
-                name: executorId,
-                icon: { type: "lucide", value: "terminal" },
-              });
-            }
+            openWorkspaceExecutorDetail(workspaceId, executorId);
           }}
           isAgentDefault={chat.rightSidebarAgentDetail?.id === chat.defaultAgentId}
           agentModels={chat.agentModelsForPanel}

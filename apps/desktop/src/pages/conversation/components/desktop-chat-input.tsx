@@ -31,6 +31,7 @@ import { useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChatInput, type ChatInputProps, type MessageAttachment, type ExecutorOption } from "@viben/chat";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
+import { saveScreenshotToTempFile } from "@/hooks/use-screenshot";
 import { useChatConfig } from "@/hooks";
 import { SandboxToggle } from "./sandbox-toggle";
 import type { ExecutorType } from "@viben/core/shared";
@@ -158,11 +159,21 @@ export function DesktopChatInput({
           hideWindow: hideWindow ?? false,
         });
 
+        const fileName = `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+
+        let filePath: string | undefined;
+        try {
+          filePath = await saveScreenshotToTempFile(result.data, fileName);
+        } catch (err) {
+          console.warn("[DesktopChatInput] Failed to save screenshot to temp file:", err);
+        }
+
         const attachment: MessageAttachment = {
           id: `screenshot-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
           type: "image",
-          name: `screenshot-${new Date().toISOString().replace(/[:.]/g, "-")}.png`,
+          name: fileName,
           data: result.data,
+          path: filePath,
           mimeType: "image/png",
           isLoading: false,
         };

@@ -20,9 +20,9 @@ import {
   useChatList,
   isExecutorType,
 } from "@/hooks";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTasks } from "@/hooks/use-kanban";
 import { useVitePreview } from "@/hooks/use-vite-preview";
-import { usePageTabs } from "@/hooks/use-page-tabs";
 import type { AgentMessage, Artifact } from "@/types";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useSlashCommands, type CommandContext } from "@/features/slash-commands";
@@ -40,7 +40,12 @@ import {
 export function useWorkspaceChat() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { navigateTo } = usePageTabs();
+  const {
+    openAgentDetail,
+    openExecutorDetail,
+    openPath,
+    openWorkspaceHome,
+  } = useDesktopRouting();
   const { workspaceId } = useParams<{ workspaceId: string }>();
 
   const navigateWithinDesktop = useCallback(
@@ -50,12 +55,11 @@ export function useWorkspaceChat() {
         return;
       }
 
-      navigateTo(url, {
-        type: "workspace",
-        name: url,
+      openPath(url, {
+        title: url,
       });
     },
-    [navigate, navigateTo]
+    [navigate, openPath]
   );
 
   // ========== UI State ==========
@@ -687,15 +691,9 @@ export function useWorkspaceChat() {
   // Navigate back if workspace not found
   useEffect(() => {
     if (!isLoadingWorkspace && !workspace && workspaceId) {
-      navigateTo(`/workspace/${workspaceId}`, {
-        type: "workspace",
-        workspaceId,
-        slug: "home",
-        name: workspaceId,
-        icon: { type: "lucide", value: "home" },
-      });
+      openWorkspaceHome(workspaceId);
     }
-  }, [isLoadingWorkspace, navigateTo, workspace, workspaceId]);
+  }, [isLoadingWorkspace, openWorkspaceHome, workspace, workspaceId]);
 
   // Load messages on session change
   const prevSessionRef = useRef<string | null>(null);
@@ -1047,15 +1045,14 @@ export function useWorkspaceChat() {
         } else if (result.type === "ui") {
           if (result.dialog) context.openDialog(result.dialog.name, result.dialog.props);
           if (result.navigateTo) {
-            navigateTo(result.navigateTo, {
-              type: "workspace",
-              name: result.navigateTo,
+            openPath(result.navigateTo, {
+              title: result.navigateTo,
             });
           }
         }
       }
     },
-    [selectedConversationId, messages, clearMessages, handleSendMessage, workspace?.path, currentAgent?.model, executeSlashCommand, navigateWithinDesktop, navigateTo, t, toast, slashCommands.length]
+    [selectedConversationId, messages, clearMessages, handleSendMessage, workspace?.path, currentAgent?.model, executeSlashCommand, navigateWithinDesktop, openPath, t, toast, slashCommands.length]
   );
 
   const handleClearMessages = () => {
@@ -1257,21 +1254,10 @@ export function useWorkspaceChat() {
   const handleNavigateToAgentSettings = () => {
     const targetAgentId = selectedAgentId || currentAgent?.id;
     if (targetAgentId && workspace?.path) {
-      const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
       if (isExecutorType(targetAgentId)) {
-        navigateTo(`/executor/${targetAgentId}${params}`, {
-          type: "workspace",
-          slug: targetAgentId,
-          name: targetAgentId,
-          icon: { type: "lucide", value: "terminal" },
-        });
+        openExecutorDetail(targetAgentId, workspace.path);
       } else {
-        navigateTo(`/agent/${targetAgentId}${params}`, {
-          type: "workspace",
-          slug: targetAgentId,
-          name: targetAgentId,
-          icon: { type: "lucide", value: "bot" },
-        });
+        openAgentDetail(targetAgentId, workspace.path);
       }
     }
   };
