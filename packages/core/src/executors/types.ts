@@ -2,7 +2,7 @@
  * Executor types for AI coding agents
  */
 import type { ChildProcess } from "child_process";
-import type { ExecutorType, AgentCapability, AvailabilityInfo } from "../types";
+import type { ExecutorType, AgentCapability, AvailabilityInfo, AgentMcpServerEntry } from "../types";
 
 export type { ExecutorType, AgentCapability, AvailabilityInfo };
 
@@ -49,8 +49,8 @@ export interface ChatOptions {
   allowedTools?: string[];
   /** Disallowed tools list */
   disallowedTools?: string[];
-  /** MCP servers to use */
-  mcpServers?: string[];
+  /** MCP servers to use (string = name-only for registry lookup, object = full connection details) */
+  mcpServers?: (string | AgentMcpServerEntry)[];
   /** Skills to use */
   skills?: string[];
   /** Permission mode */

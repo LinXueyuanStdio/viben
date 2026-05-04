@@ -5,12 +5,67 @@
  * and user preferences.
  */
 
-import type { ChatProxy, ChatProxyFactoryInterface } from "./types";
+import type { ChatProxy, ChatProxyFactoryInterface, ChatResult } from "./types";
 import type { ExecutorType } from "../../types";
+import type { ChatOptions } from "../types";
 import { SpawnChatProxy } from "./spawn-proxy";
 import { SdkChatProxy, isSdkAvailable } from "./sdk-proxy";
 import { executorSupportsChat } from "../index";
 import { ExecutorError } from "../../error";
+
+/**
+ * OpenClaw Chat Proxy adapter for the legacy ChatProxy interface.
+ *
+ * Uses the unified executor module's OpenClawExecutor internally.
+ * @openclaw/sdk is loaded lazily (optional dependency).
+ */
+class OpenClawLegacyChatProxy implements ChatProxy {
+  readonly proxyType = "openclaw" as const;
+
+  async execute(options: ChatOptions): Promise<ChatResult> {
+    try {
+      // Lazy-load the unified executor to avoid top-level @openclaw/sdk import
+      const { getExecutor } = await import("../../executor");
+      const executor = getExecutor("OPENCLAW");
+
+      // Use streaming to output text in real-time
+      const stream = executor.chatStreaming({
+        prompt: options.prompt,
+        cwd: options.cwd,
+        sessionId: options.sessionId,
+        resume: options.resume,
+        model: options.model,
+      });
+
+      let sessionId: string | undefined;
+      const isStreamJson = options.outputFormat === "stream-json";
+
+      for await (const msg of stream) {
+        if (isStreamJson) {
+          process.stdout.write(JSON.stringify(msg) + "\n");
+        } else {
+          if (msg.type === "text" && "content" in msg) {
+            process.stdout.write((msg as { content: string }).content);
+          } else if (msg.type === "error" && "message" in msg) {
+            process.stderr.write((msg as { message: string }).message + "\n");
+          }
+        }
+        if (msg.type === "sdk_session" && "sdk_session_id" in msg) {
+          sessionId = (msg as { sdk_session_id: string }).sdk_session_id;
+        }
+      }
+
+      if (!isStreamJson) {
+        process.stdout.write("\n");
+      }
+      return { exitCode: 0, sessionId };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      process.stderr.write(msg + "\n");
+      return { exitCode: 1, error: msg };
+    }
+  }
+}
 
 /**
  * Executor types that support SDK mode
@@ -41,6 +96,11 @@ export class ChatProxyFactory implements ChatProxyFactoryInterface {
       throw ExecutorError.chatNotSupported(executorType);
     }
 
+    // OpenClaw uses its own proxy (WebSocket SDK, not CLI spawn)
+    if (executorType === "OPENCLAW") {
+      return new OpenClawLegacyChatProxy();
+    }
+
     // Use SDK if available, supported, and preferred
     if (preferSdk && this.isSdkAvailable(executorType)) {
       return new SdkChatProxy();
@@ -67,6 +127,11 @@ export class ChatProxyFactory implements ChatProxyFactoryInterface {
     // Validate executor supports chat
     if (!executorSupportsChat(executorType)) {
       throw ExecutorError.chatNotSupported(executorType);
+    }
+
+    // OpenClaw uses its own proxy (WebSocket SDK, not CLI spawn)
+    if (executorType === "OPENCLAW") {
+      return new OpenClawLegacyChatProxy();
     }
 
     // Check SDK availability for supported executors

@@ -181,8 +181,8 @@ export interface Agent {
   executorType?: ExecutorType;
   /** Executor-specific configuration */
   executorConfig?: Record<string, unknown>;
-  /** List of MCP server IDs this agent can use */
-  mcpServers: string[];
+  /** List of MCP servers this agent can use (string = name-only, object = full connection details) */
+  mcpServers: (string | AgentMcpServerEntry)[];
   /** List of skill IDs this agent can use */
   skills: string[];
   /** Whether plan mode is enabled (for Claude Code) */
@@ -215,7 +215,7 @@ export interface AgentConfig {
   maxTokens?: number;
   executorType?: ExecutorType;
   executorConfig?: Record<string, unknown>;
-  mcpServers?: string[];
+  mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   planMode?: boolean;
   approvals?: boolean;
@@ -264,7 +264,7 @@ export interface CreateAgentOptions {
   max_tokens?: number;
   executor_type?: ExecutorType;
   executor_config?: Record<string, unknown>;
-  mcp_servers?: string[];
+  mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
@@ -288,7 +288,7 @@ export interface AgentUpdate {
   maxTokens?: number;
   executorType?: ExecutorType;
   executorConfig?: Record<string, unknown>;
-  mcpServers?: string[];
+  mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   planMode?: boolean;
   approvals?: boolean;
@@ -426,6 +426,17 @@ export interface McpServer {
   args?: string[];
   env?: Record<string, string>;
   enabled: boolean;
+}
+
+/** MCP server entry with full connection details (for agent config) */
+export interface AgentMcpServerEntry {
+  name: string;
+  type: "builtin" | "stdio" | "sse" | "http";
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  headers?: Record<string, string>;
 }
 
 export interface InstalledMcp {

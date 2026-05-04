@@ -4,7 +4,7 @@
  * Core type definitions for the unified executor module.
  */
 
-import type { ExecutorType, AvailabilityStatus, AvailabilityInfo } from "../../types";
+import type { ExecutorType, AvailabilityStatus, AvailabilityInfo, AgentMcpServerEntry } from "../../types";
 
 // Re-export for convenience
 export type { ExecutorType, AvailabilityStatus, AvailabilityInfo };
@@ -93,8 +93,8 @@ export interface ChatOptions {
   allowedTools?: string[];
   /** Disallowed tools list */
   disallowedTools?: string[];
-  /** MCP servers to use */
-  mcpServers?: string[];
+  /** MCP servers to use (string = name-only for registry lookup, object = full connection details) */
+  mcpServers?: (string | AgentMcpServerEntry)[];
   /** Skills to use */
   skills?: string[];
   /** Permission mode */

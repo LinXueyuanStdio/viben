@@ -175,6 +175,7 @@ export const CHAT_SUPPORTED_EXECUTORS: ExecutorType[] = [
   "CLAUDE_CODE",
   "GEMINI",
   "CODEX",
+  "OPENCLAW",
 ];
 
 /**
