@@ -40,6 +40,8 @@ export function WorkspaceChatPage() {
   const {
     openWorkspaceAgentDetail,
     openWorkspaceExecutorDetail,
+    pushWorkspaceAgentDetail,
+    pushWorkspaceExecutorDetail,
     openWorkspaceSection,
   } = useDesktopRouting();
 
@@ -157,10 +159,10 @@ export function WorkspaceChatPage() {
           onAgentSettings={(agentId) => {
             if (!resolvedWorkspaceId) return;
             if (isExecutorType(agentId)) {
-              openWorkspaceExecutorDetail(resolvedWorkspaceId, agentId);
+              pushWorkspaceExecutorDetail(resolvedWorkspaceId, agentId);
               return;
             }
-            openWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
+            pushWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
           }}
           onSetDefaultAgent={chat.setDefaultAgent}
           onDeleteAgent={chat.removeAgent}
@@ -286,10 +288,10 @@ export function WorkspaceChatPage() {
               onAgentSettings={(agentId) => {
                 if (!resolvedWorkspaceId) return;
                 if (isExecutorType(agentId)) {
-                  openWorkspaceExecutorDetail(resolvedWorkspaceId, agentId);
+                  pushWorkspaceExecutorDetail(resolvedWorkspaceId, agentId);
                   return;
                 }
-                openWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
+                pushWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
               }}
             />
           )}
@@ -331,11 +333,11 @@ export function WorkspaceChatPage() {
           workspacePath={workspace.path}
           onAgentSettings={(agentId) => {
             if (!resolvedWorkspaceId) return;
-            openWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
+            pushWorkspaceAgentDetail(resolvedWorkspaceId, agentId);
           }}
           onExecutorSettings={(executorId) => {
             if (!resolvedWorkspaceId) return;
-            openWorkspaceExecutorDetail(resolvedWorkspaceId, executorId);
+            pushWorkspaceExecutorDetail(resolvedWorkspaceId, executorId);
           }}
           isAgentDefault={chat.rightSidebarAgentDetail?.id === chat.defaultAgentId}
           agentModels={chat.agentModelsForPanel}

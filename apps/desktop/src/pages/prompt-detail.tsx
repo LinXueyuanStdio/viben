@@ -45,9 +45,9 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -237,38 +237,24 @@ export function PromptDetailPage() {
     stack: currentStack,
     fallback:
       workspace && prompt
-        ? [
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:executor:${executorType}`,
-              label: executorType,
-              location: {
-                kind: "workspace-executor-detail",
-                workspaceId: workspace.id,
-                executorType,
-              },
-              kind: "workspace-executor",
-              icon: { type: "lucide", value: "terminal" },
-              meta: {
-                workspaceId: workspace.id,
-                executorType,
-              },
-            }),
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:prompt:${prompt.id}`,
-              label: prompt.name,
-              location: {
-                kind: "prompt-detail",
-                promptId: prompt.id,
-                executorType,
-                workspacePath: effectiveWorkspacePath || undefined,
-              },
-              kind: "workspace-page",
-              icon: { type: "lucide", value: "quote" },
-              meta: {
-                workspaceId: workspace.id,
-              },
-            }),
-          ]
+        ? resolveLocationNavigation({
+            location: {
+              kind: "prompt-detail",
+              promptId: prompt.id,
+              executorType,
+              workspacePath: effectiveWorkspacePath || undefined,
+            },
+            workspace,
+            title: prompt.name,
+            icon: { type: "lucide", value: "quote" },
+          }).breadcrumbStack.slice(1).map((item) => ({
+            id: item.id,
+            label: item.label,
+            href: item.target?.canonicalUrl ?? "#",
+            icon: item.icon,
+            kind: item.kind,
+            meta: item.meta,
+          }))
         : [],
   });
 

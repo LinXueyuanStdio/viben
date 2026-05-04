@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 
 function isEmbeddableUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -41,38 +41,44 @@ export function WorkspaceWebPage() {
     const fallbackHref = workspaceId
       ? `/workspace/${encodeURIComponent(workspaceId)}/web?${serializedSearchParams}`
       : "#";
+    const sourcePageSlug = searchParams.get("source_page") ?? undefined;
     const webMeta = {
       workspaceId,
       webId: searchParams.get("web_id") ?? undefined,
-      pageSlug: searchParams.get("source_page") ?? undefined,
+      pageSlug: sourcePageSlug,
       url: url || undefined,
     };
+    const resolvedNavigation = resolveLocationNavigation({
+      location: {
+        kind: "workspace-web",
+        workspaceId: workspaceId ?? "global",
+        title: resolvedTitle,
+        url,
+        webId: searchParams.get("web_id") ?? undefined,
+        sourcePageSlug,
+      },
+      workspace,
+      title: resolvedTitle,
+      icon: { type: "lucide", value: "globe" },
+    });
+
     return resolveHeaderSegments({
       stack: currentStack,
-      fallback: [
-        buildFallbackDesktopSegment({
-          id: `${workspaceId ?? "global"}:web:${searchParams.get("web_id") ?? url}`,
-          label: resolvedTitle,
-          location: {
-            kind: "workspace-web",
-            workspaceId: workspaceId ?? "global",
-            title: resolvedTitle,
-            url,
-            webId: searchParams.get("web_id") ?? undefined,
-            sourcePageSlug: searchParams.get("source_page") ?? undefined,
-          },
-          kind: "workspace-web",
-          icon: { type: "lucide", value: "globe" },
-          meta: webMeta,
-        }),
-      ],
+      fallback: resolvedNavigation.breadcrumbStack.slice(1).map((item) => ({
+        id: item.id,
+        label: item.label,
+        href: item.target?.canonicalUrl ?? "#",
+        icon: item.icon,
+        kind: item.kind,
+        meta: item.meta,
+      })),
       patchLast: {
         href: fallbackHref,
         icon: { type: "lucide", value: "globe" },
         meta: webMeta,
       },
     });
-  }, [currentStack, resolvedTitle, searchParams, serializedSearchParams, url, workspaceId]);
+  }, [currentStack, resolvedTitle, searchParams, serializedSearchParams, url, workspace, workspaceId]);
 
   if (!workspace) {
     return (

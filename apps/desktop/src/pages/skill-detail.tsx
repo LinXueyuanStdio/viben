@@ -45,9 +45,9 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
@@ -153,6 +153,7 @@ export function SkillDetailPage() {
         openSkillDetail(newActiveTab.id, {
           agentId,
           workspacePath: workspacePath || undefined,
+          title: newActiveTab.skill.name,
         });
       } else {
         setActiveTabId(null);
@@ -170,41 +171,44 @@ export function SkillDetailPage() {
   const headerSegments = resolveHeaderSegments({
     stack: currentStack,
     fallback:
-      workspace
+      workspace && agentId
         ? [
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:executor:${agentId}`,
-              label: executor?.name || agentId,
+            ...resolveLocationNavigation({
               location: {
                 kind: "workspace-executor-detail",
                 workspaceId: workspace.id,
                 executorType: agentId,
               },
-              kind: "workspace-executor",
+              workspace,
+              title: executor?.name || agentId,
               icon: { type: "lucide", value: "terminal" },
-              meta: {
-                workspaceId: workspace.id,
-                executorType: agentId,
-              },
-            }),
+            }).breadcrumbStack.slice(1).map((item) => ({
+              id: item.id,
+              label: item.label,
+              href: item.target?.canonicalUrl ?? "#",
+              icon: item.icon,
+              kind: item.kind,
+              meta: item.meta,
+            })),
             ...(selectedSkill
-              ? [
-                  buildFallbackDesktopSegment({
-                    id: `workspace:${workspace.id}:skill:${selectedSkill.id}`,
-                    label: selectedSkill.name,
+                ? resolveLocationNavigation({
                     location: {
                       kind: "skill-detail",
                       skillId: selectedSkill.id,
                       agentId,
-                      workspacePath: workspacePath || undefined,
-                    },
-                    kind: "workspace-page",
+                    workspacePath: workspacePath || undefined,
+                  },
+                    workspace,
+                    title: selectedSkill.name,
                     icon: { type: "lucide", value: "sparkles" },
-                    meta: {
-                      workspaceId: workspace.id,
-                    },
-                  }),
-                ]
+                  }).breadcrumbStack.slice(3).map((item) => ({
+                  id: item.id,
+                  label: item.label,
+                  href: item.target?.canonicalUrl ?? "#",
+                  icon: item.icon,
+                  kind: item.kind,
+                  meta: item.meta,
+                }))
               : []),
           ]
         : [],
@@ -292,6 +296,7 @@ export function SkillDetailPage() {
                     openSkillDetail(tab.id, {
                       agentId,
                       workspacePath: workspacePath || undefined,
+                      title: tab.skill.name,
                     });
                   }}
                   className={cn(

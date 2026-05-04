@@ -41,9 +41,9 @@ import {
 } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
@@ -161,8 +161,8 @@ export function ExecutorDetailPage() {
     clearMessages,
   } = useAgentConversation(workspacePath || "", {
     agentConfig: {
-      executorType: executorTypeString,
-      planMode: false,
+      executor_type: executorTypeString,
+      plan_mode: false,
       approvals: false,
     },
   });
@@ -260,39 +260,24 @@ export function ExecutorDetailPage() {
   const headerSegments = resolveHeaderSegments({
     stack: currentStack,
     fallback:
-      workspace
-        ? [
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:agent`,
-              label: t("settingsAgents.title"),
-              location: {
-                kind: "workspace-section",
-                workspaceId: workspace.id,
-                section: "agent",
-              },
-              kind: "workspace-section",
-              icon: { type: "lucide", value: "bot" },
-              meta: {
-                section: "agent",
-                workspaceId: workspace.id,
-              },
-            }),
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:executor:${executor.type}`,
-              label: executor.name,
-              location: {
-                kind: "workspace-executor-detail",
-                workspaceId: workspace.id,
-                executorType: executor.type,
-              },
-              kind: "workspace-executor",
-              icon: { type: "lucide", value: "terminal" },
-              meta: {
-                workspaceId: workspace.id,
-                executorType: executor.type,
-              },
-            }),
-          ]
+      workspace && executor
+        ? resolveLocationNavigation({
+            location: {
+              kind: "workspace-executor-detail",
+              workspaceId: workspace.id,
+              executorType: executor.type,
+            },
+            workspace,
+            title: executor.name,
+            icon: { type: "lucide", value: "terminal" },
+          }).breadcrumbStack.slice(1).map((item) => ({
+            id: item.id,
+            label: item.label,
+            href: item.target?.canonicalUrl ?? "#",
+            icon: item.icon,
+            kind: item.kind,
+            meta: item.meta,
+          }))
         : [],
   });
 

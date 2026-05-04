@@ -202,9 +202,11 @@ export function ExecutorCapabilities({
 
   // Navigation handlers (read-only mode)
   const handleSkillClick = (skillId: string) => {
+    const skill = skills.find((item) => item.id === skillId);
     openSkillDetail(skillId, {
       agentId: executorType,
       workspacePath,
+      title: skill?.name ?? skillId,
     });
   };
 

@@ -45,9 +45,9 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -160,38 +160,24 @@ export function McpServerDetailPage() {
     stack: currentStack,
     fallback:
       workspace && server
-        ? [
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:executor:${executorType}`,
-              label: executorType,
-              location: {
-                kind: "workspace-executor-detail",
-                workspaceId: workspace.id,
-                executorType,
-              },
-              kind: "workspace-executor",
-              icon: { type: "lucide", value: "terminal" },
-              meta: {
-                workspaceId: workspace.id,
-                executorType,
-              },
-            }),
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:mcp:${server.name}`,
-              label: server.name,
-              location: {
-                kind: "mcp-server-detail",
-                serverName: server.name,
-                executorType,
-                workspacePath: effectiveWorkspacePath || undefined,
-              },
-              kind: "workspace-page",
-              icon: { type: "lucide", value: "server" },
-              meta: {
-                workspaceId: workspace.id,
-              },
-            }),
-          ]
+        ? resolveLocationNavigation({
+            location: {
+              kind: "mcp-server-detail",
+              serverName: server.name,
+              executorType,
+              workspacePath: effectiveWorkspacePath || undefined,
+            },
+            workspace,
+            title: server.name,
+            icon: { type: "lucide", value: "server" },
+          }).breadcrumbStack.slice(1).map((item) => ({
+            id: item.id,
+            label: item.label,
+            href: item.target?.canonicalUrl ?? "#",
+            icon: item.icon,
+            kind: item.kind,
+            meta: item.meta,
+          }))
         : [],
   });
 

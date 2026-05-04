@@ -33,6 +33,7 @@ import {
 import i18n from "@/i18n";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { PresentationCommand } from "@/lib/presentation/types";
+import { setCurrentSessionId } from "@/components/overlay/layers/presentation-layer";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
 
 /**
@@ -174,6 +175,28 @@ const PRESENTATION_COMPARE_TOOL_NAMES = new Set([
   "presentation_compare",
   "mcp__presentation__presentation_compare",
 ]);
+
+/**
+ * All client-side presentation tools that should be intercepted and
+ * dispatched to the overlay store (excluding clear/stop which have
+ * their own handling).
+ */
+const PRESENTATION_CLIENT_SIDE_TOOLS = new Set([
+  "presentation_draw",
+  "presentation_spotlight",
+  "presentation_callout",
+  "presentation_walkthrough",
+  "presentation_compare",
+]);
+
+/**
+ * Check if a tool name (possibly prefixed with mcp__<server>__) is a
+ * client-side presentation tool that needs interception.
+ */
+function isClientSidePresentationTool(toolName: string): boolean {
+  const bare = toolName.replace(/^mcp__\w+__/, "");
+  return PRESENTATION_CLIENT_SIDE_TOOLS.has(bare);
+}
 
 function isRect(value: unknown): value is PresentationRect {
   if (!value || typeof value !== "object") return false;
@@ -504,20 +527,20 @@ interface SSEMessageData {
 }
 
 /**
- * Agent configuration passed to the backend (inline config)
+ * Agent configuration passed to the backend (inline config, snake_case for gateway)
  */
 export interface AgentConfig {
   name?: string;
   model?: string;
   provider?: string;
-  systemPrompt?: string;
-  appendPrompt?: string;
+  system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
-  maxTokens?: number;
-  executorType?: string;
-  mcpServers?: string[];
+  max_tokens?: number;
+  executor_type?: string;
+  mcp_servers?: string[];
   skills?: string[];
-  planMode?: boolean;
+  plan_mode?: boolean;
   approvals?: boolean;
 }
 
@@ -581,6 +604,9 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   // Track current streaming message ID for text accumulation
   const streamingMessageIdRef = useRef<string | null>(null);
 
+  // Track current session ID (ref for use inside memoized callbacks)
+  const sessionIdRef = useRef<string | null>(null);
+
   // Track active task ID for background task management
   const activeTaskIdRef = useRef<string | null>(persistTaskId || null);
   const isRunningRef = useRef(false);
@@ -643,6 +669,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         const sid = data.sessionId || data.session_id;
         if (sid) {
           setSessionId(sid);
+          sessionIdRef.current = sid;
         }
         // Capture trace ID for observability
         const tid = data.traceId || data.trace_id;
@@ -737,13 +764,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // Tool names may arrive as "presentation_draw" or "mcp__presentation__presentation_draw"
         // depending on SDK version and MCP server name resolution.
         const toolName = data.name || "";
-        if (
-          PRESENTATION_DRAW_TOOL_NAMES.has(toolName) ||
-          PRESENTATION_SPOTLIGHT_TOOL_NAMES.has(toolName) ||
-          PRESENTATION_CALLOUT_TOOL_NAMES.has(toolName) ||
-          PRESENTATION_WALKTHROUGH_TOOL_NAMES.has(toolName) ||
-          PRESENTATION_COMPARE_TOOL_NAMES.has(toolName)
-        ) {
+        if (isClientSidePresentationTool(toolName)) {
           console.log("[Presentation] Tool intercepted:", toolName, JSON.stringify(toolInput));
           const store = useOverlayStore.getState();
           if (!store.presentationActive) {
@@ -751,16 +772,30 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           }
           const commands = compilePresentationCommands(toolName, toolInput);
           if (Array.isArray(commands) && commands.length > 0) {
-            console.log("[Presentation] Adding", commands.length, "commands to store");
-            store.actions.addPresentationCommands(commands);
+            console.log("[Presentation] Adding", commands.length, "steps to store");
+            store.actions.addPresentationSteps({
+              toolUseId: data.id || toolId,
+              toolName,
+              toolInput,
+              commands,
+            });
           } else {
             console.warn("[Presentation] No commands compiled for tool. Keys:", Object.keys(toolInput));
+          }
+          // Track session so presentation-layer can complete the tool call later
+          if (sessionIdRef.current) {
+            setCurrentSessionId(sessionIdRef.current);
           }
         } else if (PRESENTATION_CLEAR_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
           if (store.presentationActive) {
-            store.actions.clearPresentationCommands();
-            store.actions.addPresentationCommand({ type: "clear" });
+            // Clear is implemented as a step too, so the player can handle it
+            store.actions.addPresentationSteps({
+              toolUseId: data.id || toolId,
+              toolName,
+              toolInput,
+              commands: [{ type: "clear" }],
+            });
           }
         } else if (PRESENTATION_STOP_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
@@ -943,12 +978,13 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     // Convert http(s) to ws(s)
     const wsUrl = gatewayUrl.replace(/^http/, "ws");
 
-    // Build query params
+    // Build query params (snake_case to match gateway)
     const params = new URLSearchParams();
     if (workspaceId) params.set("cwd", workspaceId);
-    if (agentConfigPath) params.set("agentConfigPath", agentConfigPath);
-    if (persistSessionId) params.set("sessionId", persistSessionId);
-    if (persistTaskId) params.set("taskId", persistTaskId);
+    if (agentConfigPath) params.set("agent_config_path", agentConfigPath);
+    if (agentDir) params.set("agent_dir", agentDir);
+    if (persistSessionId) params.set("session_id", persistSessionId);
+    if (persistTaskId) params.set("task_id", persistTaskId);
 
     const url = `${wsUrl}/ws/agent/run?${params.toString()}`;
     console.log("[useAgent] Connecting WebSocket to:", url);
@@ -1030,7 +1066,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
     wsConnectPromiseRef.current = connectPromise;
     return connectPromise;
-  }, [workspaceId, agentConfigPath, persistSessionId, persistTaskId, handleSSEMessage, startHeartbeat, stopHeartbeat]);
+  }, [workspaceId, agentConfigPath, agentDir, persistSessionId, persistTaskId, handleSSEMessage, startHeartbeat, stopHeartbeat]);
 
   /**
    * Disconnect WebSocket
@@ -1053,10 +1089,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     (message: {
       type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer";
       prompt?: string;
-      agentConfig?: AgentConfig;
-      questionId?: string;
+      agent_config?: AgentConfig;
+      resume?: string;
+      question_id?: string;
       answers?: Record<string, string>;
-      planId?: string;
+      plan_id?: string;
       message?: string;
     }) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -1084,6 +1121,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     async (content: string, attachments?: MessageAttachment[]) => {
       if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
+      perfStart(`WS:${content.slice(0, 30)}`);
       console.log("[useAgent] sendMessageWebSocket called with:", content.slice(0, 50), "attachments:", attachments?.length || 0);
 
       // Reset streaming state for new message
@@ -1133,10 +1171,12 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       }
 
       // Send start message
+      perfMark("FE:ws:send_start", `resume=${!!sdkSessionId}`);
       const success = sendWebSocketMessage({
         type: "start",
         prompt: effectivePrompt,
-        agentConfig: agentConfigPath ? undefined : agentConfig,
+        agent_config: agentConfigPath ? undefined : agentConfig,
+        resume: sdkSessionId || undefined,
       });
 
       if (!success) {
@@ -1151,7 +1191,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         setIsStreaming(false);
       }
     },
-    [agentConfigPath, agentConfig, connectWebSocket, sendWebSocketMessage]
+    [agentConfigPath, agentConfig, connectWebSocket, sendWebSocketMessage, sdkSessionId]
   );
 
   /**
@@ -1175,7 +1215,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       // Send answer via WebSocket
       sendWebSocketMessage({
         type: "answer",
-        questionId,
+        question_id: questionId,
         answers: flatAnswers,
       });
     },
@@ -1200,7 +1240,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
     sendWebSocketMessage({
       type: "approve",
-      planId,
+      plan_id: planId,
     });
   }, [pendingPlan, sendWebSocketMessage]);
 
@@ -1220,7 +1260,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
     sendWebSocketMessage({
       type: "reject",
-      planId,
+      plan_id: planId,
     });
 
     // Update UI
@@ -1854,7 +1894,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     if (sessionId && !mockMode && gatewayConnected) {
       try {
         // Use executor type from config or default to CLAUDE_CODE
-        const executorType = (agentConfig?.executorType || "CLAUDE_CODE") as ExecutorType;
+        const executorType = (agentConfig?.executor_type || "CLAUDE_CODE") as ExecutorType;
         await client.stopAgent(executorType, sessionId);
       } catch (err) {
         console.error("[useAgent] Failed to stop agent:", err);

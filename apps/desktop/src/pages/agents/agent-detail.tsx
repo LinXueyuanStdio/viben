@@ -42,9 +42,9 @@ import {
 } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import {
   AgentMcpDialog,
   AgentSkillsDialog,
@@ -544,12 +544,12 @@ export function AgentDetailPage() {
     agentConfig: {
       name: formName || undefined,
       model: formModel || undefined,
-      systemPrompt: formSystemPrompt || undefined,
-      appendPrompt: formAppendPrompt || undefined,
-      executorType: formExecutorType,
-      planMode: formPlanMode,
+      system_prompt: formSystemPrompt || undefined,
+      append_prompt: formAppendPrompt || undefined,
+      executor_type: formExecutorType,
+      plan_mode: formPlanMode,
       approvals: formApprovals,
-      mcpServers: selectedMcpServers.length > 0 ? selectedMcpServers.map((s) => s.name) : undefined,
+      mcp_servers: selectedMcpServers.length > 0 ? selectedMcpServers.map((s) => s.name) : undefined,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
     },
   });
@@ -798,39 +798,24 @@ export function AgentDetailPage() {
   const headerSegments = resolveHeaderSegments({
     stack: currentStack,
     fallback:
-      workspace
-        ? [
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:agent`,
-              label: t("settingsAgents.title"),
-              location: {
-                kind: "workspace-section",
-                workspaceId: workspace.id,
-                section: "agent",
-              },
-              kind: "workspace-section",
-              icon: { type: "lucide", value: "bot" },
-              meta: {
-                section: "agent",
-                workspaceId: workspace.id,
-              },
-            }),
-            buildFallbackDesktopSegment({
-              id: `workspace:${workspace.id}:agent:${agentId}`,
-              label: formName || agentId || "",
-              location: {
-                kind: "workspace-agent-detail",
-                workspaceId: workspace.id,
-                agentId: agentId || "",
-              },
-              kind: "workspace-agent",
-              icon: { type: "lucide", value: "bot" },
-              meta: {
-                workspaceId: workspace.id,
-                agentId: agentId || "",
-              },
-            }),
-          ]
+      workspace && agentId
+        ? resolveLocationNavigation({
+            location: {
+              kind: "workspace-agent-detail",
+              workspaceId: workspace.id,
+              agentId,
+            },
+            workspace,
+            title: formName || agentId,
+            icon: { type: "lucide", value: "bot" },
+          }).breadcrumbStack.slice(1).map((item) => ({
+            id: item.id,
+            label: item.label,
+            href: item.target?.canonicalUrl ?? "#",
+            icon: item.icon,
+            kind: item.kind,
+            meta: item.meta,
+          }))
         : [],
   });
 
