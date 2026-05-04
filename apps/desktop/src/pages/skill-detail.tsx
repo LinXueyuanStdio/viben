@@ -34,7 +34,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
-  buildWorkspaceUrl,
   useExecutors,
   useWorkspaceSkills,
   useSkillReadme,
@@ -45,6 +44,10 @@ import {
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
 import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
@@ -54,7 +57,7 @@ interface Tab {
 
 export function SkillDetailPage() {
   const { t } = useTranslation();
-  const { openExecutorDetail, openSkillDetail } = useDesktopRouting();
+  const { currentStack, openExecutorDetail, openSkillDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { skillId, workspaceId, agentId: pathAgentId } = useParams<{
     skillId: string;
@@ -164,24 +167,56 @@ export function SkillDetailPage() {
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:executor:${agentId}`,
+              label: executor?.name || agentId,
+              location: {
+                kind: "workspace-executor-detail",
+                workspaceId: workspace.id,
+                executorType: agentId,
+              },
+              kind: "workspace-executor",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+                executorType: agentId,
+              },
+            }),
+            ...(selectedSkill
+              ? [
+                  buildFallbackDesktopSegment({
+                    id: `workspace:${workspace.id}:skill:${selectedSkill.id}`,
+                    label: selectedSkill.name,
+                    location: {
+                      kind: "skill-detail",
+                      skillId: selectedSkill.id,
+                      agentId,
+                      workspacePath: workspacePath || undefined,
+                    },
+                    kind: "workspace-page",
+                    icon: { type: "lucide", value: "sparkles" },
+                    meta: {
+                      workspaceId: workspace.id,
+                    },
+                  }),
+                ]
+              : []),
+          ]
+        : [],
+  });
+
   return (
     <PageWrapper className="flex flex-col h-full">
       {/* Header with Breadcrumb */}
       {workspace && (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              label: executor?.name || agentId,
-              href: buildWorkspaceUrl(`/executor/${agentId}`, workspacePath),
-            },
-            ...(selectedSkill
-              ? [{
-                  label: selectedSkill.name,
-                  href: buildWorkspaceUrl(`/skill/${skillId}`, workspacePath, { agent_id: agentId }),
-                }]
-              : []),
-          ]}
+          segments={headerSegments}
           showRefresh={false}
           showRemove={false}
         />

@@ -58,6 +58,7 @@ import type { Executor, ExecutorType } from "@/types";
 import { homeDir } from "@tauri-apps/api/path";
 import { FolderOpen, Globe } from "lucide-react";
 import { getGatewayClient, type AgentResponse as GatewayAgentTemplate } from "@/lib/gateway";
+import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 import type { ListItem, WorkspaceAgentsPageProps } from "./types";
 
 export function WorkspaceAgentsPage({
@@ -451,6 +452,22 @@ export function WorkspaceAgentsPage({
     );
   }
 
+  const agentSection = getWorkspaceSectionDescriptor("agent");
+  const agentHeaderSegments = agentSection
+    ? [{
+        id: `workspace:${workspace.id}:${agentSection.routePath}`,
+        label: t(agentSection.titleKey, agentSection.fallbackLabel),
+        href: `/workspace/${workspace.id}/${agentSection.routePath}`,
+        kind: "workspace-section" as const,
+        icon: agentSection.icon,
+        meta: {
+          workspaceId: workspace.id,
+          section: agentSection.section,
+          routePath: agentSection.routePath,
+        },
+      }]
+    : [];
+
   // Content wrapper - different based on mode
   const content = (
     <>
@@ -458,20 +475,7 @@ export function WorkspaceAgentsPage({
       {!settingsMode && (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              id: `workspace:${workspaceId}:agents`,
-              label: t("settingsAgents.title"),
-              href: `/workspace/${workspaceId}/agent`,
-              kind: "workspace-section",
-              icon: { type: "lucide", value: "bot" },
-              meta: {
-                workspaceId,
-                section: "agent",
-                routePath: "agent",
-              },
-            },
-          ]}
+          segments={agentHeaderSegments}
           onRefresh={refreshAll}
           isRefreshing={loading}
           showRemove={false}

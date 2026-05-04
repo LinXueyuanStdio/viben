@@ -36,7 +36,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
-  buildWorkspaceUrl,
   useWorkspaceMcpServers,
   useConfigFileContent,
   useConfigFileWriter,
@@ -45,6 +44,10 @@ import {
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -77,7 +80,7 @@ type SelectedItem = { type: "overview" } | { type: "file"; entry: SkillFileEntry
 
 export function McpServerDetailPage() {
   const { t } = useTranslation();
-  const { openExecutorDetail } = useDesktopRouting();
+  const { currentStack, openExecutorDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { serverName } = useParams<{ serverName: string }>();
 
@@ -153,6 +156,45 @@ export function McpServerDetailPage() {
     );
   };
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace && server
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:executor:${executorType}`,
+              label: executorType,
+              location: {
+                kind: "workspace-executor-detail",
+                workspaceId: workspace.id,
+                executorType,
+              },
+              kind: "workspace-executor",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+                executorType,
+              },
+            }),
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:mcp:${server.name}`,
+              label: server.name,
+              location: {
+                kind: "mcp-server-detail",
+                serverName: server.name,
+                executorType,
+                workspacePath: effectiveWorkspacePath || undefined,
+              },
+              kind: "workspace-page",
+              icon: { type: "lucide", value: "server" },
+              meta: {
+                workspaceId: workspace.id,
+              },
+            }),
+          ]
+        : [],
+  });
+
   const selectedFile = selected.type === "file" ? selected.entry : null;
 
   if (loading) {
@@ -191,16 +233,7 @@ export function McpServerDetailPage() {
       {workspace ? (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              label: executorType,
-              href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
-            },
-            {
-              label: server.name,
-              href: "#",
-            },
-          ]}
+          segments={headerSegments}
           showRefresh={false}
           showRemove={false}
         />

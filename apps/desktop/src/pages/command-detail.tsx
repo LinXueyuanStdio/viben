@@ -37,7 +37,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
-  buildWorkspaceUrl,
   useConfigFileContent,
   useConfigFileWriter,
   useConfigFiles,
@@ -47,6 +46,10 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useWorkspaceCommands } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -88,7 +91,7 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 
 export function CommandDetailPage() {
   const { t } = useTranslation();
-  const { openExecutorDetail } = useDesktopRouting();
+  const { currentStack, openExecutorDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { commandId } = useParams<{ commandId: string }>();
 
@@ -232,6 +235,45 @@ export function CommandDetailPage() {
     );
   };
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace && command
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:executor:${executorType}`,
+              label: executorType,
+              location: {
+                kind: "workspace-executor-detail",
+                workspaceId: workspace.id,
+                executorType,
+              },
+              kind: "workspace-executor",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+                executorType,
+              },
+            }),
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:command:${command.id}`,
+              label: `/${command.id}`,
+              location: {
+                kind: "command-detail",
+                commandId: command.id,
+                executorType,
+                workspacePath: effectiveWorkspacePath || undefined,
+              },
+              kind: "workspace-page",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+              },
+            }),
+          ]
+        : [],
+  });
+
   const activeTab = openTabs.find(t => t.id === activeTabId);
 
   if (loading) {
@@ -270,16 +312,7 @@ export function CommandDetailPage() {
       {workspace ? (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              label: executorType,
-              href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
-            },
-            {
-              label: `/${command.id}`,
-              href: "#",
-            },
-          ]}
+          segments={headerSegments}
           showRefresh={false}
           showRemove={false}
         />

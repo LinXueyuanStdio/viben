@@ -35,7 +35,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
-  buildWorkspaceUrl,
   useConfigFileContent,
   useConfigFileWriter,
   useConfigFiles,
@@ -45,6 +44,10 @@ import {
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -86,7 +89,7 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 
 export function PromptDetailPage() {
   const { t } = useTranslation();
-  const { openExecutorDetail } = useDesktopRouting();
+  const { currentStack, openExecutorDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { promptId } = useParams<{ promptId: string }>();
 
@@ -230,6 +233,45 @@ export function PromptDetailPage() {
     );
   };
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace && prompt
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:executor:${executorType}`,
+              label: executorType,
+              location: {
+                kind: "workspace-executor-detail",
+                workspaceId: workspace.id,
+                executorType,
+              },
+              kind: "workspace-executor",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+                executorType,
+              },
+            }),
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:prompt:${prompt.id}`,
+              label: prompt.name,
+              location: {
+                kind: "prompt-detail",
+                promptId: prompt.id,
+                executorType,
+                workspacePath: effectiveWorkspacePath || undefined,
+              },
+              kind: "workspace-page",
+              icon: { type: "lucide", value: "quote" },
+              meta: {
+                workspaceId: workspace.id,
+              },
+            }),
+          ]
+        : [],
+  });
+
   const activeTab = openTabs.find(t => t.id === activeTabId);
 
   if (loading) {
@@ -268,16 +310,7 @@ export function PromptDetailPage() {
       {workspace ? (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              label: executorType,
-              href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
-            },
-            {
-              label: prompt.name,
-              href: "#",
-            },
-          ]}
+          segments={headerSegments}
           showRefresh={false}
           showRemove={false}
         />

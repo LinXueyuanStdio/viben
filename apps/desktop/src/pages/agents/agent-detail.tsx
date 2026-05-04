@@ -42,6 +42,10 @@ import {
 } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
+import {
   AgentMcpDialog,
   AgentSkillsDialog,
   AgentMemoryDialog,
@@ -66,7 +70,7 @@ import { uiMessageToAgentMessage } from "./utils";
 export function AgentDetailPage() {
   const { t } = useTranslation();
   const { agentId, workspaceId } = useParams<{ agentId: string; workspaceId?: string }>();
-  const { openSettings, openWorkspaceSection } = useDesktopRouting();
+  const { currentStack, openSettings, openWorkspaceSection } = useDesktopRouting();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
   const { workspacePath, workspace, isGlobal } = useWorkspaceParam({ workspaceId });
@@ -791,6 +795,45 @@ export function AgentDetailPage() {
   // Render
   // ============================================================================
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:agent`,
+              label: t("settingsAgents.title"),
+              location: {
+                kind: "workspace-section",
+                workspaceId: workspace.id,
+                section: "agent",
+              },
+              kind: "workspace-section",
+              icon: { type: "lucide", value: "bot" },
+              meta: {
+                section: "agent",
+                workspaceId: workspace.id,
+              },
+            }),
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:agent:${agentId}`,
+              label: formName || agentId || "",
+              location: {
+                kind: "workspace-agent-detail",
+                workspaceId: workspace.id,
+                agentId: agentId || "",
+              },
+              kind: "workspace-agent",
+              icon: { type: "lucide", value: "bot" },
+              meta: {
+                workspaceId: workspace.id,
+                agentId: agentId || "",
+              },
+            }),
+          ]
+        : [],
+  });
+
   return (
     <PageWrapper className="h-full flex flex-col">
       <Tabs
@@ -802,19 +845,7 @@ export function AgentDetailPage() {
         {workspace ? (
           <WorkspaceHeader
             workspace={workspace}
-            segments={[
-              {
-                label: t("settingsAgents.title"),
-                href: `/workspace/${workspace.id}/agent`,
-                icon: { type: "lucide", value: "bot" },
-                kind: "workspace-section",
-                meta: { section: "agent", workspaceId: workspace.id },
-              },
-              {
-                label: formName || agentId || "",
-                href: "#",
-              },
-            ]}
+            segments={headerSegments}
             showRefresh={false}
             showRemove={false}
             centerContent={

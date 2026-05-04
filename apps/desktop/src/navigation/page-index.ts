@@ -8,6 +8,7 @@ import type {
 import { createBreadcrumbItem } from "./breadcrumb-stack";
 import type { DesktopLocation } from "./location";
 import {
+  getWorkspaceSectionDescriptor,
   getWorkspaceSectionRoutePath,
   WORKSPACE_SECTION_DESCRIPTORS,
 } from "./navigation-meta";
@@ -116,6 +117,63 @@ export function buildFallbackDesktopSegment(input: {
     kind: item.kind,
     meta: item.meta,
   };
+}
+
+export function buildWorkspaceSectionHeaderSegment(
+  workspaceId: string,
+  section: WorkspaceSection,
+  buildLabel?: (titleKey: string, fallbackLabel: string) => string
+): DesktopBreadcrumbSegment {
+  const descriptor = getWorkspaceSectionDescriptor(section);
+  const routePath = descriptor?.routePath ?? section;
+
+  return {
+    id: `workspace:${workspaceId}:${section}`,
+    label: descriptor
+      ? buildLabel?.(descriptor.titleKey, descriptor.fallbackLabel) ??
+        descriptor.fallbackLabel
+      : section,
+    href: `/workspace/${encodeURIComponent(workspaceId)}/${routePath}`,
+    icon: descriptor?.icon,
+    kind: "workspace-section",
+    meta: {
+      workspaceId,
+      section,
+      routePath,
+    },
+  };
+}
+
+export function resolveHeaderSegments(input: {
+  stack?: BreadcrumbStackItem[];
+  fallback?: DesktopBreadcrumbSegment[];
+  patchLast?: Partial<DesktopBreadcrumbSegment> & {
+    meta?: DesktopBreadcrumbSegment["meta"];
+  };
+}): DesktopBreadcrumbSegment[] {
+  const stackSegments = stackToDesktopSegments(input.stack);
+  const patchLast = input.patchLast;
+
+  if (stackSegments.length === 0) {
+    return input.fallback ?? [];
+  }
+
+  if (!patchLast) {
+    return stackSegments;
+  }
+
+  return stackSegments.map((segment, index, segments) =>
+    index === segments.length - 1
+      ? {
+          ...segment,
+          ...patchLast,
+          meta: {
+            ...segment.meta,
+            ...patchLast.meta,
+          },
+        }
+      : segment
+  );
 }
 
 export function createWorkspaceRootNode(

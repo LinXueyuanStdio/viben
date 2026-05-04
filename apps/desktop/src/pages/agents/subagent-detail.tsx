@@ -25,7 +25,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
-  buildWorkspaceUrl,
   useConfigFileContent,
   useConfigFileWriter,
   useConfigFiles,
@@ -35,6 +34,10 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useWorkspaceAgentConfigs } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
+import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
 import type { SkillFileEntry } from "@/types";
 import { SubAgentOverview } from "./components";
 import type { FileTab } from "./types";
@@ -45,7 +48,7 @@ import type { FileTab } from "./types";
 
 export function SubAgentDetailPage() {
   const { t } = useTranslation();
-  const { openExecutorDetail } = useDesktopRouting();
+  const { currentStack, openExecutorDetail } = useDesktopRouting();
   const [searchParams] = useSearchParams();
   const { configId } = useParams<{ configId: string }>();
 
@@ -189,6 +192,45 @@ export function SubAgentDetailPage() {
     );
   };
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace && config
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:executor:${executorType}`,
+              label: executorType,
+              location: {
+                kind: "workspace-executor-detail",
+                workspaceId: workspace.id,
+                executorType,
+              },
+              kind: "workspace-executor",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+                executorType,
+              },
+            }),
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:subagent:${config.id}`,
+              label: config.name,
+              location: {
+                kind: "subagent-detail",
+                configId: config.id,
+                executorType,
+                workspacePath: effectiveWorkspacePath || undefined,
+              },
+              kind: "workspace-page",
+              icon: { type: "lucide", value: "bot" },
+              meta: {
+                workspaceId: workspace.id,
+              },
+            }),
+          ]
+        : [],
+  });
+
   const activeTab = openTabs.find(t => t.id === activeTabId);
 
   if (loading) {
@@ -227,32 +269,7 @@ export function SubAgentDetailPage() {
       {workspace ? (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              id: `workspace:${workspace.id}:executor:${executorType}`,
-              label: executorType,
-              href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
-              icon: { type: "lucide", value: "terminal" },
-              kind: "workspace-executor",
-              meta: {
-                workspaceId: workspace.id,
-                executorType,
-              },
-            },
-            {
-              id: `workspace:${workspace.id}:subagent:${config.id}`,
-              label: config.name,
-              href: buildWorkspaceUrl(`/subagent/${config.id}`, effectiveWorkspacePath || undefined, {
-                executor_type: executorType,
-              }),
-              icon: { type: "lucide", value: "bot" },
-              kind: "workspace-agent",
-              meta: {
-                workspaceId: workspace.id,
-                executorType,
-              },
-            },
-          ]}
+          segments={headerSegments}
           showRefresh={false}
           showRemove={false}
         />

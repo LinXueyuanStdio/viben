@@ -40,6 +40,10 @@ import {
   useAgentConversation,
 } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import {
+  buildFallbackDesktopSegment,
+  resolveHeaderSegments,
+} from "@/navigation/page-index";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
@@ -61,7 +65,7 @@ import {
 export function ExecutorDetailPage() {
   const { t } = useTranslation();
   const { executorType, workspaceId } = useParams<{ executorType: string; workspaceId?: string }>();
-  const { openSettings, openWorkspaceSection } = useDesktopRouting();
+  const { currentStack, openSettings, openWorkspaceSection } = useDesktopRouting();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
   const { workspacePath, workspace } = useWorkspaceParam({ workspaceId });
@@ -253,6 +257,45 @@ export function ExecutorDetailPage() {
   // Get executor colors
   const executorColor = getExecutorColor(executor.type);
 
+  const headerSegments = resolveHeaderSegments({
+    stack: currentStack,
+    fallback:
+      workspace
+        ? [
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:agent`,
+              label: t("settingsAgents.title"),
+              location: {
+                kind: "workspace-section",
+                workspaceId: workspace.id,
+                section: "agent",
+              },
+              kind: "workspace-section",
+              icon: { type: "lucide", value: "bot" },
+              meta: {
+                section: "agent",
+                workspaceId: workspace.id,
+              },
+            }),
+            buildFallbackDesktopSegment({
+              id: `workspace:${workspace.id}:executor:${executor.type}`,
+              label: executor.name,
+              location: {
+                kind: "workspace-executor-detail",
+                workspaceId: workspace.id,
+                executorType: executor.type,
+              },
+              kind: "workspace-executor",
+              icon: { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId: workspace.id,
+                executorType: executor.type,
+              },
+            }),
+          ]
+        : [],
+  });
+
   // Determine config source
   return (
     <PageWrapper className="h-full flex flex-col">
@@ -260,25 +303,7 @@ export function ExecutorDetailPage() {
       {workspace ? (
         <WorkspaceHeader
           workspace={workspace}
-          segments={[
-            {
-              label: t("settingsAgents.title"),
-              href: `/workspace/${workspace.id}/agent`,
-              icon: { type: "lucide", value: "bot" },
-              kind: "workspace-section",
-              meta: { section: "agent", workspaceId: workspace.id },
-            },
-            {
-              label: executor.name,
-              href: `/workspace/${encodeURIComponent(workspace.id)}/executor/${encodeURIComponent(executor.type)}`,
-              icon: { type: "lucide", value: "terminal" },
-              kind: "workspace-executor",
-              meta: {
-                workspaceId: workspace.id,
-                executorType: executor.type,
-              },
-            },
-          ]}
+          segments={headerSegments}
           showRefresh={false}
           showRemove={false}
           rightContent={
