@@ -37,6 +37,8 @@ export interface BreadcrumbStackItem {
   target?: ViewTarget;
   meta?: {
     workspaceId?: string;
+    section?: WorkspaceSection;
+    routePath?: string;
     pageSlug?: string;
     agentId?: string;
     executorType?: string;

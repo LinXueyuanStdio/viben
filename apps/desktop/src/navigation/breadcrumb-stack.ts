@@ -1,6 +1,10 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import type { DesktopLocation } from "./location";
-import { buildViewTarget, type BreadcrumbStackItem } from "./view-target";
+import {
+  buildViewTarget,
+  type BreadcrumbItemKind,
+  type BreadcrumbStackItem,
+} from "./view-target";
 import { locationToUrl } from "./location";
 import {
   getSettingsSectionIcon,
@@ -8,6 +12,7 @@ import {
   getWorkspaceSectionDescriptor,
   getWorkspaceSectionLabel,
 } from "./navigation-meta";
+import i18n from "@/i18n";
 
 const DEFAULT_ICONS: Record<string, BreadcrumbStackItem["icon"]> = {
   "workspace-root": { type: "lucide", value: "home" },
@@ -67,6 +72,8 @@ function humanizeSlugSegment(value: string): string {
 
 function getSystemLocationLabel(location: DesktopLocation): string | undefined {
   switch (location.kind) {
+    case "workspace-apps":
+      return i18n.t("page.pages", "Apps");
     case "workspace-section":
       return getWorkspaceSectionLabel(location.section) || location.section;
     case "settings":
@@ -89,6 +96,8 @@ function getSystemLocationLabel(location: DesktopLocation): string | undefined {
 
 function getSystemLocationIcon(location: DesktopLocation): IconData | undefined {
   switch (location.kind) {
+    case "workspace-apps":
+      return { type: "lucide", value: "layout-grid" };
     case "workspace-section":
       return getWorkspaceSectionDescriptor(location.section)?.icon;
     case "settings":
@@ -156,13 +165,13 @@ function createWorkspacePagesRootItem(
   return createBreadcrumbItem({
     id: `${workspaceId}:pages`,
     kind: "virtual-folder",
-    label: "Pages",
-    icon: { type: "lucide", value: "files" },
+    label: i18n.t("page.pages", "Apps"),
+    icon: { type: "lucide", value: "layout-grid" },
     meta: {
       workspaceId,
     },
     location: {
-      kind: "workspace-home",
+      kind: "workspace-apps",
       workspaceId,
     },
   });
@@ -218,6 +227,27 @@ export function createBreadcrumbItem(
   };
 }
 
+export function createLocationBreadcrumbItem(
+  location: DesktopLocation,
+  item: Partial<Omit<BreadcrumbStackItem, "target">> & {
+    kind: BreadcrumbItemKind;
+  }
+): BreadcrumbStackItem {
+  return createBreadcrumbItem({
+    id: item?.id ?? locationToUrl(location),
+    kind: item.kind,
+    label:
+      item?.label ??
+      getSystemLocationLabel(location) ??
+      locationToUrl(location),
+    icon: item?.icon ?? getSystemLocationIcon(location),
+    meta: item?.meta,
+    parentNodeId: item?.parentNodeId,
+    sourceNodeId: item?.sourceNodeId,
+    location,
+  });
+}
+
 export function createStackForLocation(
   location: DesktopLocation,
   title?: string,
@@ -242,6 +272,8 @@ export function createStackForLocation(
   switch (location.kind) {
     case "workspace-home":
       return [root];
+    case "workspace-apps":
+      return [root, createWorkspacePagesRootItem(location.workspaceId)];
     case "workspace-section":
       return [
         root,
@@ -257,6 +289,8 @@ export function createStackForLocation(
             getWorkspaceSectionDescriptor(location.section)?.icon,
           meta: {
             workspaceId: location.workspaceId,
+            section: location.section,
+            routePath: getWorkspaceSectionDescriptor(location.section)?.routePath,
           },
           location,
         }),

@@ -11,6 +11,7 @@ type LocationUrlSuffix = {
 
 export type DesktopLocation = (
   | { kind: "workspace-home"; workspaceId: string }
+  | { kind: "workspace-apps"; workspaceId: string }
   | {
       kind: "workspace-section";
       workspaceId: string;
@@ -161,6 +162,11 @@ export function locationToUrl(location: DesktopLocation): string {
     case "workspace-home":
       return appendUrlSuffix(
         `/workspace/${encodeURIComponent(location.workspaceId)}`,
+        location
+      );
+    case "workspace-apps":
+      return appendUrlSuffix(
+        `/workspace/${encodeURIComponent(location.workspaceId)}/apps`,
         location
       );
     case "workspace-section":
@@ -385,6 +391,14 @@ export function urlToLocation(url: string): DesktopLocation | null {
 
     if (segments.length === 2) {
       return { kind: "workspace-home", workspaceId, ...suffix };
+    }
+
+    if (segments[2] === "apps" && !segments[3]) {
+      return {
+        kind: "workspace-apps",
+        workspaceId,
+        ...suffix,
+      };
     }
 
     if (segments[2] === "agents" && !segments[3]) {
