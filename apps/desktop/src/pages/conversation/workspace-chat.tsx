@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { isExecutorType } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { buildWorkspaceSectionHeaderSegment } from "@/navigation/page-index";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
   RightSidebar,
@@ -95,18 +96,13 @@ export function WorkspaceChatPage() {
       {/* Header */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{
-          id: `workspace:${workspaceId}:chat`,
-          label: t("workspace.chat", "Chat"),
-          href: `/workspace/${workspaceId}/chat`,
-          icon: { type: "lucide", value: "message-square" },
-          kind: "workspace-section",
-          meta: {
-            workspaceId,
-            section: "chat",
-            routePath: "chat",
-          },
-        }]}
+        segments={resolvedWorkspaceId ? [
+          buildWorkspaceSectionHeaderSegment(
+            resolvedWorkspaceId,
+            "chat",
+            (key, fallback) => t(key, fallback)
+          ),
+        ] : []}
         showRefresh={false}
         showRemove={false}
         rightContent={rightSidebarToggle}
@@ -260,6 +256,7 @@ export function WorkspaceChatPage() {
               onRefreshSessions={chat.refreshAgentSessions}
               onCheckGateway={chat.checkGatewayConnection}
               onSendMessage={chat.handleSendMessage}
+              onSteerMessage={chat.steerMessage}
               onCancel={chat.cancel}
               onApprovePlan={chat.approvePlan}
               onRejectPlan={chat.rejectPlan}

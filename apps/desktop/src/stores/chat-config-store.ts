@@ -32,9 +32,6 @@ interface ChatConfigState {
   // Sandbox configuration (session-level)
   sandboxConfig: SandboxConfig;
 
-  // Steering prompt (persistent instructions prepended to agent's appendPrompt)
-  steeringPrompt: string;
-
   // Loading state
   isLoading: boolean;
   error: string | null;
@@ -52,9 +49,6 @@ interface ChatConfigState {
   setSandboxEnabled: (enabled: boolean) => void;
   setSandboxProvider: (provider: SandboxProviderType | undefined) => void;
   setSandboxConfig: (config: Partial<SandboxConfig>) => void;
-
-  // Actions - Steering
-  setSteeringPrompt: (prompt: string) => void;
 
   // Actions - Loading state
   setLoading: (loading: boolean) => void;
@@ -82,7 +76,6 @@ export const useChatConfigStore = create<ChatConfigState>()(
         enabled: false,
         provider: undefined,
       },
-      steeringPrompt: "",
       isLoading: false,
       error: null,
 
@@ -126,9 +119,6 @@ export const useChatConfigStore = create<ChatConfigState>()(
           sandboxConfig: { ...state.sandboxConfig, ...config },
         })),
 
-      // Steering
-      setSteeringPrompt: (prompt) => set({ steeringPrompt: prompt }),
-
       // Loading state
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
@@ -152,7 +142,6 @@ export const useChatConfigStore = create<ChatConfigState>()(
         selectedModelId: state.selectedModelId,
         selectedExecutor: state.selectedExecutor,
         sandboxConfig: state.sandboxConfig,
-        steeringPrompt: state.steeringPrompt,
       }),
     }
   )

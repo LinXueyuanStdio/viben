@@ -27,14 +27,13 @@
  * ```
  */
 
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChatInput, type ChatInputProps, type MessageAttachment, type ExecutorOption } from "@viben/chat";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { saveScreenshotToTempFile } from "@/hooks/use-screenshot";
 import { useChatConfig } from "@/hooks";
 import { SandboxToggle } from "./sandbox-toggle";
-import { SteeringToggle } from "./steering-toggle";
 import type { ExecutorType } from "@viben/core/shared";
 
 // ============================================================================
@@ -75,11 +74,6 @@ export interface DesktopChatInputProps extends Omit<
    * When true, displays a toggle for sandbox mode with provider selection.
    */
   showSandboxToggle?: boolean;
-  /**
-   * Show steering toggle in the config bar.
-   * When true, displays a button for editing persistent steering instructions.
-   */
-  showSteeringToggle?: boolean;
 }
 
 // ============================================================================
@@ -97,7 +91,6 @@ export interface DesktopChatInputProps extends Omit<
 export function DesktopChatInput({
   useGlobalConfig = false,
   showSandboxToggle = false,
-  showSteeringToggle = false,
   // Agent/Model props that can be overridden
   agents: propAgents,
   selectedAgentId: propSelectedAgentId,
@@ -212,18 +205,11 @@ export function DesktopChatInput({
       return propConfigBarLeftExtra;
     }
     // Otherwise show built-in toggles
-    const extras: React.ReactNode[] = [];
     if (showSandboxToggle) {
-      extras.push(<SandboxToggle key="sandbox" />);
-    }
-    if (showSteeringToggle) {
-      extras.push(<SteeringToggle key="steering" />);
-    }
-    if (extras.length > 0) {
-      return <>{extras}</>;
+      return <SandboxToggle />;
     }
     return undefined;
-  }, [propConfigBarLeftExtra, showSandboxToggle, showSteeringToggle]);
+  }, [propConfigBarLeftExtra, showSandboxToggle]);
 
   return (
     <ChatInput

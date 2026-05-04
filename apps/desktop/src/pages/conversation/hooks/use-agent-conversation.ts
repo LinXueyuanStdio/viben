@@ -1051,12 +1051,13 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
    */
   const sendWebSocketMessage = useCallback(
     (message: {
-      type: "start" | "answer" | "approve" | "reject" | "cancel";
+      type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer";
       prompt?: string;
       agentConfig?: AgentConfig;
       questionId?: string;
       answers?: Record<string, string>;
       planId?: string;
+      message?: string;
     }) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
         console.error("[useAgent] WebSocket not connected");
@@ -1870,6 +1871,36 @@ The workspace ID for this session is: \`${workspaceId}\`
   }, [agentConfig, client, gatewayConnected, mockMode, sessionId, useWebSocket, cancelWebSocket]);
 
   /**
+   * Send a steering message to the running agent.
+   * The message is injected into the agent's context after the current tool call completes.
+   */
+  const steerMessage = useCallback(async (message: string) => {
+    if (!message.trim()) return;
+    if (!isRunningRef.current) {
+      console.warn("[useAgent] Cannot steer: agent is not running");
+      return;
+    }
+
+    // Add as a user message in UI
+    const steerMsg: AgentMessage = {
+      id: generateId(),
+      type: "user",
+      content: message,
+    };
+    setMessages((prev) => [...prev, steerMsg]);
+
+    if (useWebSocket) {
+      sendWebSocketMessage({ type: "steer", message });
+    } else if (sessionId && gatewayConnected) {
+      try {
+        await client.steerSession(sessionId, message);
+      } catch (err) {
+        console.error("[useAgent] Failed to steer:", err);
+      }
+    }
+  }, [client, gatewayConnected, sessionId, useWebSocket, sendWebSocketMessage]);
+
+  /**
    * Clear all messages
    */
   const clearMessages = useCallback(() => {
@@ -2357,6 +2388,7 @@ The workspace ID for this session is: \`${workspaceId}\`
 
     // Actions
     sendMessage,
+    steerMessage,
     approvePlan,
     rejectPlan,
     answerQuestions,

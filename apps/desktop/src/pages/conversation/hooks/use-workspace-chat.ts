@@ -422,14 +422,12 @@ export function useWorkspaceChat() {
   const currentAgent = agents.find((a) => a.id === selectedAgentId);
   const currentChatListAgent = chatListAgents.find((a) => a.id === selectedAgentId);
 
-  const steeringPrompt = useChatConfigStore((state) => state.steeringPrompt);
-
   const currentAgentConfig = currentAgent ? {
     name: currentAgent.name,
     model: currentAgent.model,
     provider: currentAgent.provider,
     systemPrompt: currentAgent.system_prompt,
-    appendPrompt: [currentAgent.append_prompt, steeringPrompt].filter(Boolean).join("\n\n") || undefined,
+    appendPrompt: currentAgent.append_prompt,
     temperature: currentAgent.temperature,
     maxTokens: currentAgent.max_tokens,
     executorType: currentAgent.executor_type,
@@ -452,6 +450,7 @@ export function useWorkspaceChat() {
     toolUsages,
     error,
     sendMessage,
+    steerMessage,
     approvePlan,
     rejectPlan,
     answerQuestions,
@@ -1458,6 +1457,7 @@ export function useWorkspaceChat() {
     handleStarSession,
     handleDuplicateSession,
     handleSendMessage,
+    steerMessage,
     handleSlashCommand,
     handleClearMessages,
     handleArchiveConversation,

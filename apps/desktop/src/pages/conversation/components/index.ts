@@ -82,5 +82,3 @@ export { BackgroundTaskIndicator } from "./background-task-indicator";
 // Sandbox Toggle
 export { SandboxToggle } from "./sandbox-toggle";
 
-// Steering Toggle
-export { SteeringToggle } from "./steering-toggle";

@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ interface AgentChatViewProps {
   onRefreshSessions: () => void;
   onCheckGateway: () => void;
   onSendMessage: (message: string) => void;
+  onSteerMessage?: (message: string) => void;
   onCancel: () => void;
   onApprovePlan: (feedback?: string) => void;
   onRejectPlan: (feedback?: string) => void;
@@ -106,6 +108,7 @@ export function AgentChatView({
   onRefreshSessions,
   onCheckGateway,
   onSendMessage,
+  onSteerMessage,
   onCancel,
   onApprovePlan,
   onRejectPlan,
@@ -126,6 +129,15 @@ export function AgentChatView({
   headerless = false,
 }: AgentChatViewProps) {
   const { t } = useTranslation();
+
+  // Route send to steer when agent is streaming
+  const handleSend = useCallback((message: string) => {
+    if (isStreaming && onSteerMessage) {
+      onSteerMessage(message);
+    } else {
+      onSendMessage(message);
+    }
+  }, [isStreaming, onSteerMessage, onSendMessage]);
 
   if (!selectedConversationId) {
     return (
@@ -218,7 +230,7 @@ export function AgentChatView({
       {/* Input */}
       <div className="border-t border-border">
         <DesktopChatInput
-          onSend={onSendMessage}
+          onSend={handleSend}
           onCancel={onCancel}
           isLoading={isStreaming}
           disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
@@ -234,12 +246,12 @@ export function AgentChatView({
           showConfigBar
           showResizeHandle
           enableWritingMode
+          allowSendWhileLoading={!!onSteerMessage}
           useGlobalConfig
           hideAgentSelector
           hideExecutorSelector
           hideModelSelector
           showSandboxToggle
-          showSteeringToggle
           slashCommands={slashCommands}
           onSlashCommand={onSlashCommand}
           onAgentSettings={(agentId) => onAgentSettings(agentId)}
