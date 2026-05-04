@@ -126,6 +126,9 @@ export function SkillDetailPage() {
       {
         agentId,
         workspacePath: workspacePath || undefined,
+      },
+      {
+        stackMode: "open",
       }
     );
 
@@ -154,6 +157,8 @@ export function SkillDetailPage() {
           agentId,
           workspacePath: workspacePath || undefined,
           title: newActiveTab.skill.name,
+        }, {
+          stackMode: "open",
         });
       } else {
         setActiveTabId(null);
@@ -297,6 +302,8 @@ export function SkillDetailPage() {
                       agentId,
                       workspacePath: workspacePath || undefined,
                       title: tab.skill.name,
+                    }, {
+                      stackMode: "open",
                     });
                   }}
                   className={cn(

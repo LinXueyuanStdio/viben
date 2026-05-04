@@ -38,8 +38,6 @@ export function WorkspaceChatPage() {
   const prefersReducedMotion = useReducedMotion();
   const chat = useWorkspaceChat();
   const {
-    openWorkspaceAgentDetail,
-    openWorkspaceExecutorDetail,
     pushWorkspaceAgentDetail,
     pushWorkspaceExecutorDetail,
     openWorkspaceSection,
@@ -142,7 +140,7 @@ export function WorkspaceChatPage() {
           }}
           onExecutorSettings={(executor) => {
             if (!resolvedWorkspaceId) return;
-            openWorkspaceExecutorDetail(resolvedWorkspaceId, executor.id);
+            pushWorkspaceExecutorDetail(resolvedWorkspaceId, executor.id);
           }}
           onRefreshExecutors={chat.loadExecutors}
           filteredChatListAgents={chat.filteredChatListAgents}

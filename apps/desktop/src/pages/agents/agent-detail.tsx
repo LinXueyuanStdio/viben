@@ -549,7 +549,7 @@ export function AgentDetailPage() {
       executor_type: formExecutorType,
       plan_mode: formPlanMode,
       approvals: formApprovals,
-      mcp_servers: selectedMcpServers.length > 0 ? selectedMcpServers.map((s) => s.name) : undefined,
+      mcp_servers: selectedMcpServers.length > 0 ? selectedMcpServers : undefined,
       skills: selectedSkills.length > 0 ? selectedSkills : undefined,
     },
   });

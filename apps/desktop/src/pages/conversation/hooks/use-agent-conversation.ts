@@ -23,6 +23,7 @@ import type {
 } from "@/types";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
+import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import type { SandboxConfig } from "@/hooks/use-sandbox";
 import {
   addBackgroundTask,
@@ -538,7 +539,7 @@ export interface AgentConfig {
   temperature?: number;
   max_tokens?: number;
   executor_type?: string;
-  mcp_servers?: string[];
+  mcp_servers?: (string | AgentMcpEntry)[];
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
