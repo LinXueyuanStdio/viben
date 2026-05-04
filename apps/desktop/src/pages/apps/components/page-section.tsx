@@ -81,10 +81,11 @@ import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
-import { buildPageTree, getPageHref } from "../utils";
+import {
+  buildPageTree,
+  getPageHref,
+} from "../utils";
 import type { PageTreeNode, PageOrderMap } from "../utils";
-import { createBreadcrumbItem } from "@/navigation/breadcrumb-stack";
-import type { BreadcrumbStackItem } from "@/navigation/view-target";
 import { urlToLocation } from "@/navigation/location";
 
 // =============================================================================
@@ -107,8 +108,8 @@ interface PageTreeItemProps {
   workspacePath: string;
   depth: number;
   ancestors: PageTreeNode[];
-  onPageClick: (page: PageConfig, stack: BreadcrumbStackItem[]) => void;
-  onOpenInNewTab: (page: PageConfig, stack: BreadcrumbStackItem[]) => void;
+  onPageClick: (page: PageConfig) => void;
+  onOpenInNewTab: (page: PageConfig) => void;
   onDeleteClick: (page: PageConfig) => void;
   onCreateSubpage: (parentSlug: string) => void;
   onEditClick: (page: PageConfig) => void;
@@ -165,51 +166,11 @@ function PageTreeItemContent({
     currentLocation.workspaceId === workspaceId &&
     currentLocation.pageSlug === node.page.slug;
 
-  const pageStack = useMemo(
-    () =>
-      [
-        createBreadcrumbItem({
-          id: `workspace:${workspaceId}`,
-          kind: "workspace-root",
-          label: workspaceId,
-          meta: { workspaceId },
-          location: {
-            kind: "workspace-home",
-            workspaceId,
-          },
-        }),
-        createBreadcrumbItem({
-          id: `${workspaceId}:pages`,
-          kind: "virtual-folder",
-          label: t("page.pages"),
-          meta: { workspaceId },
-        }),
-        ...[...ancestors, node].map((item) =>
-          createBreadcrumbItem({
-            id: `${workspaceId}:page:${item.page.slug}`,
-            kind: "workspace-page",
-            label: item.page.name,
-            icon: item.page.icon,
-            meta: {
-              workspaceId,
-              pageSlug: item.page.slug,
-            },
-            location: {
-              kind: "workspace-page",
-              workspaceId,
-              pageSlug: item.page.slug,
-            },
-          })
-        ),
-      ] satisfies BreadcrumbStackItem[],
-    [ancestors, node, t, workspaceId]
-  );
-
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    onPageClick(node.page, pageStack);
-  }, [node.page, onPageClick, pageStack]);
+    onPageClick(node.page);
+  }, [node.page, onPageClick]);
 
   // Handle icon click - toggle expand/collapse if has children, otherwise open page
   const handleIconClick = useCallback((e: React.MouseEvent) => {
@@ -218,9 +179,9 @@ function PageTreeItemContent({
     if (hasChildren) {
       setIsExpanded(!isExpanded);
     } else {
-      onPageClick(node.page, pageStack);
+      onPageClick(node.page);
     }
-  }, [hasChildren, isExpanded, node.page, onPageClick, pageStack]);
+  }, [hasChildren, isExpanded, node.page, onPageClick]);
 
   return (
     <div
@@ -397,7 +358,7 @@ function PageTreeItemContent({
                   className="w-40"
                 >
                   <DropdownMenuItem
-                    onClick={() => onOpenInNewTab(node.page, pageStack)}
+                    onClick={() => onOpenInNewTab(node.page)}
                   >
                     <ExternalLink className="mr-2 h-4 w-4" />
                     {t("page.openInNewTab")}
@@ -447,7 +408,7 @@ function PageTreeItemContent({
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={() => onOpenInNewTab(node.page, pageStack)}>
+          <ContextMenuItem onClick={() => onOpenInNewTab(node.page)}>
             <ExternalLink className="mr-2 h-4 w-4" />
             {t("page.openInNewTab")}
           </ContextMenuItem>
@@ -582,7 +543,7 @@ export function PageSection({
   collapsed = false,
 }: PageSectionProps) {
   const { t } = useTranslation();
-  const { openWorkspacePage, pushChildPage } = useDesktopRouting();
+  const { openWorkspacePage } = useDesktopRouting();
   const { data: pages, isLoading, error } = usePages(workspacePath);
   const { data: serverPageOrder } = usePageOrder(workspacePath);
   const deletePageMutation = useDeletePage();
@@ -750,42 +711,21 @@ export function PageSection({
   }, []);
 
   // Handle page click - opens page in tab system
-  const handlePageClick = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
-    const leaf = stack[stack.length - 1];
-    if (leaf) {
-      pushChildPage(
-        leaf,
-        {
-          kind: "workspace-page",
-          workspaceId,
-          pageSlug: page.slug,
-        },
-        { mode: "replace" }
-      );
-      return;
-    }
-
-    openWorkspacePage(workspaceId, page.slug);
-  }, [openWorkspacePage, pushChildPage, workspaceId]);
+  const handlePageClick = useCallback((page: PageConfig) => {
+    openWorkspacePage(workspaceId, page.slug, {
+      title: page.name,
+      icon: page.icon,
+    });
+  }, [openWorkspacePage, workspaceId]);
 
   // Handle open in new tab
-  const handleOpenInNewTab = useCallback((page: PageConfig, stack: BreadcrumbStackItem[]) => {
-    const leaf = stack[stack.length - 1];
-    if (leaf) {
-      pushChildPage(
-        leaf,
-        {
-          kind: "workspace-page",
-          workspaceId,
-          pageSlug: page.slug,
-        },
-        { mode: "replace", openMode: "new-tab" }
-      );
-      return;
-    }
-
-    openWorkspacePage(workspaceId, page.slug, { openMode: "new-tab" });
-  }, [openWorkspacePage, pushChildPage, workspaceId]);
+  const handleOpenInNewTab = useCallback((page: PageConfig) => {
+    openWorkspacePage(workspaceId, page.slug, {
+      openMode: "new-tab",
+      title: page.name,
+      icon: page.icon,
+    });
+  }, [openWorkspacePage, workspaceId]);
 
   // Handle copy link
   const handleCopyLink = useCallback((page: PageConfig) => {
@@ -824,13 +764,11 @@ export function PageSection({
 
   // Handle page creation success - open new page in tab
   const handleCreateSuccess = useCallback((slug: string) => {
-    // Find the newly created page from the pages list
-    const newPage = pages?.find(p => p.slug === slug);
-    if (newPage) {
-      openWorkspacePage(workspaceId, newPage.slug);
-    } else {
-      openWorkspacePage(workspaceId, slug);
-    }
+    const page = pages?.find((item) => item.slug === slug);
+    openWorkspacePage(workspaceId, slug, {
+      title: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+      icon: page?.icon,
+    });
   }, [openWorkspacePage, pages, workspaceId]);
 
   // Handle edit click
@@ -914,43 +852,10 @@ export function PageSection({
             <SidebarIconButton
               icon={<IconDisplay icon={node.page.icon} size="md" workspacePath={workspacePath} />}
               tooltip={node.page.name}
-            onClick={() =>
-              handlePageClick(node.page, [
-                createBreadcrumbItem({
-                  id: `workspace:${workspaceId}`,
-                  kind: "workspace-root",
-                  label: workspaceId,
-                  meta: { workspaceId },
-                  location: {
-                    kind: "workspace-home",
-                    workspaceId,
-                  },
-                }),
-                createBreadcrumbItem({
-                  id: `${workspaceId}:pages`,
-                  kind: "virtual-folder",
-                  label: t("page.pages"),
-                  icon: { type: "lucide", value: "files" },
-                  meta: { workspaceId },
-                }),
-                createBreadcrumbItem({
-                  id: `${workspaceId}:page:${node.page.slug}`,
-                  kind: "workspace-page",
-                  label: node.page.name,
-                  icon: node.page.icon,
-                  meta: {
-                    workspaceId,
-                    pageSlug: node.page.slug,
-                  },
-                  location: {
-                    kind: "workspace-page",
-                    workspaceId,
-                    pageSlug: node.page.slug,
-                  },
-                }),
-              ])
-            }
-          />
+              onClick={() => {
+                handlePageClick(node.page);
+              }}
+            />
         </div>
       ))}
         {/* Create Page Dialog - must be rendered even in collapsed state */}

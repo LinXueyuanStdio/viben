@@ -11,7 +11,7 @@
  * - Markdown-type pages should NOT show the toggle (single view only)
  */
 
-import { useRef, useCallback, useEffect, useMemo } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,9 @@ import { getGatewayUrl } from "@/lib/gateway/config";
 import { updatePageConfig } from "@/lib/gateway/modules/pages";
 import { VitePreview } from "@/pages/conversation/components/vite-preview";
 import { YooptaMarkdownRenderer } from "./yoopta-markdown-renderer";
+import { StaticPagePreview } from "./static-page-preview";
 import type { PageConfig } from "@/hooks/use-pages";
+import type { StaticPageConfig } from "@/lib/gateway/types/page";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
 /** View mode for the page preview */
@@ -54,18 +56,6 @@ export interface PagePreviewProps {
   className?: string;
   /** Portal target for editor header buttons */
   headerPortal?: HTMLElement | null;
-}
-
-/**
- * Get the gateway URL for serving a page
- */
-function getPageServeUrl(workspacePath: string, slug: string): string {
-  const baseUrl = getGatewayUrl();
-  const params = new URLSearchParams({
-    workspace_path: workspacePath,
-    slug: slug,
-  });
-  return `${baseUrl}/api/page/serve?${params.toString()}`;
 }
 
 /**
@@ -117,12 +107,6 @@ export function PagePreview({
       if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
     };
   }, []);
-
-  // Determine the gateway serve URL for static/markdown pages
-  const gatewayServeUrl = useMemo(() => {
-    if (!workspacePath || !page.slug) return null;
-    return getPageServeUrl(workspacePath, page.slug);
-  }, [workspacePath, page.slug]);
 
   // Determine page type capabilities
   const isServerType = page.type === "server";
@@ -182,16 +166,14 @@ export function PagePreview({
             {/* Page view - depends on page type */}
             {viewMode === "page" && (
               <>
-                {/* Static pages - show iframe */}
-                {page.type === "static" && gatewayServeUrl && (
-                  <div className="h-full w-full bg-white">
-                    <iframe
-                      key={iframeKey}
-                      src={gatewayServeUrl}
-                      className="h-full w-full border-0"
-                      title={page.name}
-                    />
-                  </div>
+                {/* Static pages - route to appropriate viewer based on file type */}
+                {page.type === "static" && (
+                  <StaticPagePreview
+                    page={page as StaticPageConfig}
+                    workspacePath={workspacePath}
+                    iframeKey={iframeKey}
+                    className="h-full"
+                  />
                 )}
 
                 {/* Server pages - use VitePreview */}

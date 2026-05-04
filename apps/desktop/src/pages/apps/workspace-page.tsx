@@ -34,10 +34,10 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import {
-  buildFallbackDesktopSegment,
   resolveHeaderSegments,
   type DesktopBreadcrumbSegment,
 } from "@/navigation/page-index";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 
 /**
  * Extract slug from page path
@@ -333,27 +333,30 @@ export function WorkspacePage() {
       return [];
     }
 
+    const resolvedNavigation = resolveLocationNavigation({
+      location: {
+        kind: "workspace-page",
+        workspaceId,
+        pageSlug: slug,
+      },
+      workspace,
+      pages: page ? [page] : undefined,
+      title: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+      icon: page?.icon,
+    });
+
     return resolveHeaderSegments({
       stack: currentStack,
-      fallback: [
-        buildFallbackDesktopSegment({
-          id: `${workspaceId}:page:${slug}`,
-          label: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
-          location: {
-            kind: "workspace-page",
-            workspaceId,
-            pageSlug: slug,
-          },
-          kind: "workspace-page",
-          icon: page?.icon ?? { type: "lucide", value: "file-text" },
-          meta: {
-            workspaceId,
-            pageSlug: slug,
-          },
-        }),
-      ],
+      fallback: resolvedNavigation.breadcrumbStack.slice(1).map((item) => ({
+        id: item.id,
+        label: item.label,
+        href: item.target?.canonicalUrl ?? "#",
+        icon: item.icon,
+        kind: item.kind,
+        meta: item.meta,
+      })),
     });
-  }, [currentStack, page?.icon, page?.name, slug, workspaceId]);
+  }, [currentStack, page, slug, workspace, workspaceId]);
 
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);

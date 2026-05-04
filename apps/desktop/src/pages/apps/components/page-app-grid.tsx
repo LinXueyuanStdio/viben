@@ -26,7 +26,9 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { CreatePageDialog } from "./create-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { PageAppIcon } from "./page-app-icon";
-import { buildPageTree } from "../utils";
+import {
+  buildPageTree,
+} from "../utils";
 import type { PageTreeNode } from "../utils";
 import type { PageConfig } from "@/hooks/use-pages";
 
@@ -68,14 +70,21 @@ export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
   // Handlers
   const handlePageClick = useCallback(
     (page: PageConfig) => {
-      openWorkspacePage(workspaceId, page.slug);
+      openWorkspacePage(workspaceId, page.slug, {
+        title: page.name,
+        icon: page.icon,
+      });
     },
     [openWorkspacePage, workspaceId]
   );
 
   const handleOpenInNewTab = useCallback(
     (page: PageConfig) => {
-      openWorkspacePage(workspaceId, page.slug, { openMode: "new-tab" });
+      openWorkspacePage(workspaceId, page.slug, {
+        openMode: "new-tab",
+        title: page.name,
+        icon: page.icon,
+      });
     },
     [openWorkspacePage, workspaceId]
   );
@@ -108,12 +117,11 @@ export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
 
   const handleCreateSuccess = useCallback(
     (slug: string) => {
-      const newPage = pages?.find((p) => p.slug === slug);
-      if (newPage) {
-        openWorkspacePage(workspaceId, newPage.slug);
-      } else {
-        openWorkspacePage(workspaceId, slug);
-      }
+      const page = pages?.find((item) => item.slug === slug);
+      openWorkspacePage(workspaceId, slug, {
+        title: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+        icon: page?.icon,
+      });
     },
     [openWorkspacePage, pages, workspaceId]
   );
@@ -132,10 +140,13 @@ export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
         }
         setOpenFolder(node);
       } else {
-        handlePageClick(node.page);
+        openWorkspacePage(workspaceId, node.page.slug, {
+          title: node.page.name,
+          icon: node.page.icon,
+        });
       }
     },
-    [handlePageClick]
+    [openWorkspacePage, workspaceId]
   );
 
   // Loading
@@ -366,7 +377,7 @@ function FolderOverlay({
       onPageClick(node.page);
       onClose();
     },
-    [onPageClick, onClose]
+    [onClose, onPageClick]
   );
 
   // Calculate offset from viewport center to icon position (for iPad-style expand animation)
