@@ -80,6 +80,8 @@ export interface ChatInputProps {
   onCancel?: () => void;
   /** Whether the chat is in loading/streaming state */
   isLoading?: boolean;
+  /** Allow sending messages while loading (for steering/intervention) */
+  allowSendWhileLoading?: boolean;
   /** Whether the input is disabled */
   disabled?: boolean;
   /** Placeholder text for the textarea */

@@ -79,6 +79,9 @@ export interface ChatInputConfigBarProps {
   canSubmit: boolean;
   // Style
   className?: string;
+  // Steering
+  /** Allow sending messages while loading (shows both send and stop buttons) */
+  allowSendWhileLoading?: boolean;
   // Custom content
   /** Extra content to render at the left side (after built-in selectors) */
   leftExtraContent?: React.ReactNode;
@@ -114,6 +117,7 @@ export function ChatInputConfigBar({
   isLoading,
   disabled,
   canSubmit,
+  allowSendWhileLoading,
   className,
   leftExtraContent,
 }: ChatInputConfigBarProps) {
@@ -454,7 +458,7 @@ export function ChatInputConfigBar({
 
       {/* Send/Stop Button */}
       <div className="flex items-center gap-1">
-        {isLoading ? (
+        {isLoading && (
           <Button
             size="sm"
             variant="destructive"
@@ -463,7 +467,8 @@ export function ChatInputConfigBar({
           >
             <Square className="h-3.5 w-3.5" />
           </Button>
-        ) : (
+        )}
+        {(!isLoading || allowSendWhileLoading) && (
           <Button
             size="sm"
             className="h-8 w-8 p-0"

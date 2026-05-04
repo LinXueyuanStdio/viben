@@ -56,6 +56,7 @@ export function ChatInput({
   onSend,
   onCancel,
   isLoading,
+  allowSendWhileLoading,
   disabled,
   placeholder,
   className,
@@ -315,7 +316,7 @@ export function ChatInput({
 
   // Send handler
   const handleSend = useCallback(() => {
-    if (!canSubmit || isLoading) {
+    if (!canSubmit || (isLoading && !allowSendWhileLoading)) {
       return;
     }
 
@@ -333,7 +334,7 @@ export function ChatInput({
 
     // Call onSend
     onSend(text, messageAttachments);
-  }, [canSubmit, isLoading, content, attachments, clearAttachments, onSend]);
+  }, [canSubmit, isLoading, allowSendWhileLoading, content, attachments, clearAttachments, onSend]);
 
   // Key down handler
   const handleKeyDown = useCallback(
@@ -511,7 +512,7 @@ export function ChatInput({
               : undefined
           }
           rows={1}
-          disabled={isLoading || disabled}
+          disabled={(isLoading && !allowSendWhileLoading) || disabled}
         />
       </div>
 
@@ -547,6 +548,7 @@ export function ChatInput({
           isLoading={isLoading}
           disabled={disabled}
           canSubmit={canSubmit}
+          allowSendWhileLoading={allowSendWhileLoading}
           leftExtraContent={configBarLeftExtra}
         />
       )}
