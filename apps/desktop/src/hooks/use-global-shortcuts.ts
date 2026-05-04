@@ -66,14 +66,16 @@ export function getTabSwitchIndexFromShortcut(
   return Number(e.key) - 1;
 }
 
-type EditableTargetLike = {
+export type EditableTargetLike = {
   tagName?: string | null;
   isContentEditable?: boolean;
   getAttribute?: (name: string) => string | null;
   closest?: (selector: string) => unknown;
 };
 
-export function isEditableShortcutTarget(target: EventTarget | null): boolean {
+export function isEditableShortcutTarget(
+  target: EventTarget | EditableTargetLike | null
+): boolean {
   const element = target as EditableTargetLike | null;
   if (!element) return false;
 

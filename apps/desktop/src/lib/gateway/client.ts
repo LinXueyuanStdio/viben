@@ -308,6 +308,10 @@ import {
   listTraces,
   getTelemetryStats,
 
+  // Client Tools module
+  completeClientTool,
+  type ClientToolCompletePayload,
+
   // Devices & Mesh module
   getDevices,
   getDevice,
@@ -2858,6 +2862,17 @@ export class GatewayClient {
     totalSizeMB: string;
   }> {
     return getTelemetryStats(this.baseUrl);
+  }
+
+  // ==========================================================================
+  // Client Tools Module Methods
+  // ==========================================================================
+
+  /**
+   * Complete a pending client-side tool call by posting results back to Gateway
+   */
+  async completeClientTool(params: ClientToolCompletePayload): Promise<{ success: boolean }> {
+    return completeClientTool(params);
   }
 
   // ── Device & Mesh methods ──

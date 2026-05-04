@@ -397,7 +397,7 @@ export interface StartBackgroundTaskRequest {
     name?: string;
     model?: string;
     provider?: string;
-    systemPrompt?: string;
+    system_prompt?: string;
   };
   resume?: string;
 }

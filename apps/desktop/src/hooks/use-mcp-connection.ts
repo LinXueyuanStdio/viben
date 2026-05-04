@@ -469,6 +469,56 @@ export function parseMcpConfig(jsonString: string): McpServerConfig {
 }
 
 /**
+ * Infer a reasonable server name from a config object.
+ */
+function inferServerName(config: McpServerConfig): string {
+  if (isStdioConfig(config)) {
+    // Try to extract name from last arg (e.g. "npx -y @scope/mcp-server" → "mcp-server")
+    if (config.args?.length) {
+      const last = config.args[config.args.length - 1];
+      const parts = last.split("/");
+      return parts[parts.length - 1].replace(/^@/, "");
+    }
+    const cmd = config.command;
+    return cmd.split("/").pop() || cmd;
+  }
+  if (isRemoteConfig(config)) {
+    try {
+      const u = new URL(config.url);
+      return u.hostname;
+    } catch {
+      return "mcp-server";
+    }
+  }
+  return "mcp-server";
+}
+
+/**
+ * Parse MCP server configuration from JSON string, returning ALL servers with names.
+ * Supports:
+ * - { "mcpServers": { "name1": {...}, "name2": {...} } }
+ * - Single server object: { "command": "...", ... } or { "url": "...", ... }
+ */
+export function parseMcpConfigAll(
+  jsonString: string
+): { name: string; config: McpServerConfig }[] {
+  const raw = JSON.parse(jsonString);
+
+  // Multi-server format: { mcpServers: { ... } }
+  if (raw.mcpServers && typeof raw.mcpServers === "object") {
+    return Object.entries(raw.mcpServers).map(([name, config]) => ({
+      name,
+      config: config as McpServerConfig,
+    }));
+  }
+
+  // Single server object
+  const config = raw as McpServerConfig;
+  const name = inferServerName(config);
+  return [{ name, config }];
+}
+
+/**
  * Validate MCP server configuration
  */
 export function validateMcpConfig(config: McpServerConfig): { valid: boolean; error?: string } {

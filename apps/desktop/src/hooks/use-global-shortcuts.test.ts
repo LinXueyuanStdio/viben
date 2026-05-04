@@ -150,24 +150,16 @@ describe("use-global-shortcuts helpers", () => {
   });
 
   it("treats text inputs and contenteditable as editable shortcut targets", () => {
-    expect(
-      isEditableShortcutTarget({
-        tagName: "INPUT",
-      } as EventTarget)
-    ).toBe(true);
+    expect(isEditableShortcutTarget({ tagName: "INPUT" })).toBe(true);
 
-    expect(
-      isEditableShortcutTarget({
-        isContentEditable: true,
-      } as EventTarget)
-    ).toBe(true);
+    expect(isEditableShortcutTarget({ isContentEditable: true })).toBe(true);
 
     expect(
       isEditableShortcutTarget({
         tagName: "DIV",
         closest: () => null,
         getAttribute: () => null,
-      } as EventTarget)
+      })
     ).toBe(false);
   });
 });

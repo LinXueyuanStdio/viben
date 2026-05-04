@@ -96,5 +96,8 @@ export * from "./preview";
 // Pages module
 export * from "./pages";
 
+// Client Tools module
+export * from "./client-tools";
+
 // Devices & Mesh module
 export * from "./devices";

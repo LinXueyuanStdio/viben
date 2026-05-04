@@ -15,8 +15,15 @@ export interface CreateAgentOptions {
   model?: string;
   provider?: string;
   system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
   max_tokens?: number;
+  executor_type?: string;
+  executor_config?: Record<string, unknown>;
+  mcp_servers?: string[];
+  skills?: string[];
+  plan_mode?: boolean;
+  approvals?: boolean;
   from_template?: string;
   /** Workspace path for workspace-scoped agents */
   base_path?: string;
@@ -56,6 +63,41 @@ export function normalizeAgentMcpEntry(raw: string | AgentMcpEntry): AgentMcpEnt
     return { name: raw, type: "builtin" };
   }
   return raw;
+}
+
+/** Convert a parsed MCP server config (from JSON) to AgentMcpEntry */
+export function mcpConfigToEntry(
+  name: string,
+  config: {
+    command?: string;
+    args?: string[];
+    env?: Record<string, string>;
+    url?: string;
+    headers?: Record<string, string>;
+    transport?: string;
+    type?: string;
+  }
+): AgentMcpEntry {
+  if (config.command) {
+    return {
+      name,
+      type: "stdio",
+      command: config.command,
+      args: config.args,
+      env: config.env,
+    };
+  }
+  if (config.url) {
+    const transport = config.transport || config.type;
+    const entryType: AgentMcpEntry["type"] = transport === "sse" ? "sse" : "http";
+    return {
+      name,
+      type: entryType,
+      url: config.url,
+      headers: config.headers,
+    };
+  }
+  return { name, type: "stdio" };
 }
 
 /** Response from creating/updating an agent */

@@ -3,8 +3,9 @@
  *
  * Dialog for configuring MCP servers for an agent.
  * Three-tab layout: Registered, Built-in, Custom.
+ * Custom tab supports JSON paste with auto-parse and tool probing via Gateway Inspector Proxy.
  */
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Server,
@@ -15,6 +16,11 @@ import {
   Search,
   X,
   Trash2,
+  Loader2,
+  Wrench,
+  Code2,
+  FileJson,
+  Zap,
 } from "lucide-react";
 import {
   Dialog,
@@ -38,10 +44,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
+import {
+  parseMcpConfigAll,
+  validateMcpConfig,
+  type McpServerConfig,
+} from "@/hooks/use-mcp-connection";
+import {
+  useGatewayInspector,
+  buildGatewayInspectorUrl,
+  buildGatewayInspectorHeaders,
+} from "@/hooks/use-gateway-inspector";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { type AgentMcpEntry, mcpConfigToEntry } from "@/lib/gateway/types/agent";
+import type { McpTool } from "@/types";
 
 // Re-export the type for consumers
 export type { AgentMcpEntry };
@@ -62,10 +82,20 @@ const BUILTIN_MCP_SERVERS = [
 ];
 
 type CustomFormTransport = "stdio" | "sse" | "http";
+type CustomInputMode = "json" | "form";
 
 interface KeyValuePair {
   key: string;
   value: string;
+}
+
+// Parsed server from JSON with probing state
+interface ParsedServer {
+  name: string;
+  config: McpServerConfig;
+  tools?: McpTool[];
+  probing?: boolean;
+  probeError?: string;
 }
 
 export function AgentMcpDialog({
@@ -81,6 +111,14 @@ export function AgentMcpDialog({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("registered");
 
+  // Custom mode state
+  const [customInputMode, setCustomInputMode] = useState<CustomInputMode>("json");
+
+  // Custom JSON state
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonParseError, setJsonParseError] = useState<string | null>(null);
+  const [parsedServers, setParsedServers] = useState<ParsedServer[]>([]);
+
   // Custom form state
   const [customName, setCustomName] = useState("");
   const [customType, setCustomType] = useState<CustomFormTransport>("stdio");
@@ -90,14 +128,30 @@ export function AgentMcpDialog({
   const [customEnv, setCustomEnv] = useState<KeyValuePair[]>([]);
   const [customHeaders, setCustomHeaders] = useState<KeyValuePair[]>([]);
 
+  // Gateway Inspector for tool probing
+  const { refreshStatus: refreshInspectorStatus } = useGatewayInspector();
+
+  // Track active probe client for cleanup
+  const activeProbeRef = useRef<Client | null>(null);
+
   // Sync local state when dialog opens
   useEffect(() => {
     if (open) {
       setLocalSelected(selectedServers);
       setSearchQuery("");
       setActiveTab("registered");
+      setJsonInput("");
+      setJsonParseError(null);
+      setParsedServers([]);
       resetCustomForm();
     }
+    return () => {
+      // Cleanup any active probe on close
+      if (activeProbeRef.current) {
+        activeProbeRef.current.close().catch(() => {});
+        activeProbeRef.current = null;
+      }
+    };
   }, [open, selectedServers]);
 
   const resetCustomForm = useCallback(() => {
@@ -201,7 +255,162 @@ export function AgentMcpDialog({
     }
   };
 
-  // Add custom server from form
+  // ===========================================================================
+  // JSON mode handlers
+  // ===========================================================================
+
+  const handleJsonInputChange = useCallback((value: string) => {
+    setJsonInput(value);
+    if (!value.trim()) {
+      setJsonParseError(null);
+      setParsedServers([]);
+      return;
+    }
+    try {
+      const servers = parseMcpConfigAll(value);
+      // Validate each server
+      const validated: ParsedServer[] = [];
+      for (const { name, config } of servers) {
+        const validation = validateMcpConfig(config);
+        if (!validation.valid) {
+          setJsonParseError(`${name}: ${validation.error}`);
+          setParsedServers([]);
+          return;
+        }
+        validated.push({ name, config });
+      }
+      setJsonParseError(null);
+      setParsedServers(validated);
+    } catch (e) {
+      setJsonParseError((e as Error).message);
+      setParsedServers([]);
+    }
+  }, []);
+
+  // Probe tools for a parsed server
+  const handleProbeTools = useCallback(async (serverIndex: number) => {
+    const server = parsedServers[serverIndex];
+    if (!server) return;
+
+    // Refresh inspector status for fresh auth token
+    const freshStatus = await refreshInspectorStatus();
+    if (!freshStatus?.available) {
+      setParsedServers((prev) =>
+        prev.map((s, i) =>
+          i === serverIndex
+            ? { ...s, probing: false, probeError: t("settingsAgents.mcpCustom.probeError", "Probe failed") + ": Gateway Inspector unavailable" }
+            : s
+        )
+      );
+      return;
+    }
+
+    // Set probing state
+    setParsedServers((prev) =>
+      prev.map((s, i) =>
+        i === serverIndex ? { ...s, probing: true, probeError: undefined, tools: undefined } : s
+      )
+    );
+
+    try {
+      const config = server.config;
+      let proxyUrl: string;
+      let proxyHeaders: Record<string, string>;
+
+      if ("url" in config && config.url) {
+        // Remote type (sse/http)
+        proxyUrl = buildGatewayInspectorUrl(
+          freshStatus.proxyUrl,
+          config.url,
+          (config.transport || "streamable-http") as "stdio" | "sse" | "streamable-http"
+        );
+        proxyHeaders = buildGatewayInspectorHeaders(
+          freshStatus.authToken,
+          config.headers
+        );
+      } else if ("command" in config && config.command) {
+        // stdio type - proxy via /mcp with command params
+        const base = freshStatus.proxyUrl.endsWith("/")
+          ? freshStatus.proxyUrl
+          : freshStatus.proxyUrl + "/";
+        const url = new URL("mcp", base);
+        url.searchParams.set("command", config.command);
+        if (config.args?.length) {
+          url.searchParams.set("args", JSON.stringify(config.args));
+        }
+        if (config.env) {
+          url.searchParams.set("env", JSON.stringify(config.env));
+        }
+        url.searchParams.set("transportType", "stdio");
+        proxyUrl = url.toString();
+        proxyHeaders = buildGatewayInspectorHeaders(freshStatus.authToken);
+      } else {
+        throw new Error("Invalid config: missing command or url");
+      }
+
+      // Create MCP client and connect
+      const client = new Client(
+        { name: "agent-mcp-probe", version: "1.0.0" },
+        { capabilities: {} }
+      );
+      activeProbeRef.current = client;
+
+      const transport = new StreamableHTTPClientTransport(new URL(proxyUrl), {
+        requestInit: {
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            ...proxyHeaders,
+          },
+        },
+      });
+
+      await client.connect(transport);
+      const result = await client.listTools();
+      await client.close();
+      activeProbeRef.current = null;
+
+      const tools = result.tools as McpTool[];
+      setParsedServers((prev) =>
+        prev.map((s, i) =>
+          i === serverIndex ? { ...s, probing: false, tools } : s
+        )
+      );
+    } catch (e) {
+      activeProbeRef.current = null;
+      const errMsg = e instanceof Error ? e.message : String(e);
+      setParsedServers((prev) =>
+        prev.map((s, i) =>
+          i === serverIndex ? { ...s, probing: false, probeError: errMsg } : s
+        )
+      );
+    }
+  }, [parsedServers, refreshInspectorStatus, t]);
+
+  // Add a single parsed server to selection
+  const handleAddParsedServer = useCallback((server: ParsedServer) => {
+    const entry = mcpConfigToEntry(server.name, server.config);
+    setLocalSelected((prev) => {
+      const filtered = prev.filter((s) => s.name !== entry.name);
+      return [...filtered, entry];
+    });
+  }, []);
+
+  // Add all parsed servers
+  const handleAddAllParsedServers = useCallback(() => {
+    for (const server of parsedServers) {
+      const entry = mcpConfigToEntry(server.name, server.config);
+      setLocalSelected((prev) => {
+        const filtered = prev.filter((s) => s.name !== entry.name);
+        return [...filtered, entry];
+      });
+    }
+  }, [parsedServers]);
+
+  // ===========================================================================
+  // Form mode handler
+  // ===========================================================================
+
   const handleAddCustomServer = () => {
     if (!customName.trim()) return;
 
@@ -227,7 +436,6 @@ export function AgentMcpDialog({
     }
 
     setLocalSelected((prev) => {
-      // Replace if same name already exists, otherwise append
       const filtered = prev.filter((s) => s.name !== entry.name);
       return [...filtered, entry];
     });
@@ -478,126 +686,221 @@ export function AgentMcpDialog({
 
             {/* Tab 3: Custom */}
             <TabsContent value="custom" className="mt-3">
-              <ScrollArea className="max-h-[320px]">
-                <div className="space-y-4 pb-2">
-                  {/* Custom form */}
-                  <div className="space-y-3 rounded-lg border p-3">
-                    {/* Name */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">
-                        {t("settingsAgents.mcpCustomForm.name", { defaultValue: "Server Name" })}
-                      </Label>
-                      <Input
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                        placeholder={t("settingsAgents.mcpCustomForm.namePlaceholder")}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-
-                    {/* Type */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">
-                        {t("settingsAgents.mcpCustomForm.type", { defaultValue: "Transport Type" })}
-                      </Label>
-                      <Select
-                        value={customType}
-                        onValueChange={(v) =>
-                          setCustomType(v as CustomFormTransport)
-                        }
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="stdio">stdio</SelectItem>
-                          <SelectItem value="sse">sse</SelectItem>
-                          <SelectItem value="http">http</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* stdio fields */}
-                    {customType === "stdio" && (
-                      <>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">
-                            {t("settingsAgents.mcpCustomForm.command", { defaultValue: "Command" })}
-                          </Label>
-                          <Input
-                            value={customCommand}
-                            onChange={(e) => setCustomCommand(e.target.value)}
-                            placeholder={t(
-                              "settingsAgents.mcpCustomForm.commandPlaceholder"
-                            )}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">
-                            {t("settingsAgents.mcpCustomForm.args", { defaultValue: "Arguments" })}
-                          </Label>
-                          <Input
-                            value={customArgs}
-                            onChange={(e) => setCustomArgs(e.target.value)}
-                            placeholder={t(
-                              "settingsAgents.mcpCustomForm.argsPlaceholder"
-                            )}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        {/* Env key-value pairs */}
-                        <KeyValueEditor
-                          label={t("settingsAgents.mcpCustomForm.env", { defaultValue: "Environment Variables" })}
-                          keyPlaceholder={t("settingsAgents.mcpCustomForm.envKey")}
-                          valuePlaceholder={t("settingsAgents.mcpCustomForm.envValue")}
-                          addLabel={t("settingsAgents.mcpCustomForm.addEnv")}
-                          pairs={customEnv}
-                          onChange={setCustomEnv}
-                        />
-                      </>
-                    )}
-
-                    {/* sse/http fields */}
-                    {(customType === "sse" || customType === "http") && (
-                      <>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">
-                            {t("settingsAgents.mcpCustomForm.url", { defaultValue: "URL" })}
-                          </Label>
-                          <Input
-                            value={customUrl}
-                            onChange={(e) => setCustomUrl(e.target.value)}
-                            placeholder={t(
-                              "settingsAgents.mcpCustomForm.urlPlaceholder"
-                            )}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        {/* Headers key-value pairs */}
-                        <KeyValueEditor
-                          label={t("settingsAgents.mcpCustomForm.headers", { defaultValue: "Headers" })}
-                          keyPlaceholder="Key"
-                          valuePlaceholder="Value"
-                          addLabel={t("settingsAgents.mcpCustomForm.addHeader")}
-                          pairs={customHeaders}
-                          onChange={setCustomHeaders}
-                        />
-                      </>
-                    )}
-
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      disabled={!customName.trim()}
-                      onClick={handleAddCustomServer}
+              <ScrollArea className="max-h-[380px]">
+                <div className="space-y-3 pb-2">
+                  {/* Mode toggle */}
+                  <div className="flex items-center gap-1 p-0.5 rounded-md bg-muted/50 w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setCustomInputMode("json")}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
+                        customInputMode === "json"
+                          ? "bg-background shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t("settingsAgents.mcpCustomForm.addEntry", { defaultValue: "Add Server" })}
-                    </Button>
+                      <FileJson className="h-3 w-3" />
+                      {t("settingsAgents.mcpCustom.jsonMode", { defaultValue: "JSON" })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomInputMode("form")}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors",
+                        customInputMode === "form"
+                          ? "bg-background shadow-sm text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Code2 className="h-3 w-3" />
+                      {t("settingsAgents.mcpCustom.formMode", { defaultValue: "Form" })}
+                    </button>
                   </div>
 
-                  {/* Already-added custom entries */}
+                  {/* JSON Mode */}
+                  {customInputMode === "json" && (
+                    <div className="space-y-3">
+                      {/* JSON textarea */}
+                      <div className="space-y-1.5">
+                        <Textarea
+                          value={jsonInput}
+                          onChange={(e) => handleJsonInputChange(e.target.value)}
+                          placeholder={t("settingsAgents.mcpCustom.jsonPlaceholder", {
+                            defaultValue: "Paste MCP server JSON configuration...\n\nSupported formats:\n• Single server: { \"command\": \"...\", \"args\": [...] }\n• Multiple servers: { \"mcpServers\": { \"name\": { ... } } }",
+                          })}
+                          className="min-h-[120px] font-mono text-xs resize-y"
+                        />
+                        {/* Parse error */}
+                        {jsonParseError && (
+                          <div className="flex items-start gap-1.5 text-destructive">
+                            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span className="text-xs">{jsonParseError}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Parsed servers */}
+                      {parsedServers.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">
+                              {t("settingsAgents.mcpCustom.parsedServers", {
+                                defaultValue: "Parsed {{count}} server(s)",
+                                count: parsedServers.length,
+                              })}
+                            </span>
+                            {parsedServers.length > 1 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 text-[10px] px-2"
+                                onClick={handleAddAllParsedServers}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                {t("settingsAgents.mcpCustom.addAllServers", { defaultValue: "Add all" })}
+                              </Button>
+                            )}
+                          </div>
+
+                          {parsedServers.map((server, idx) => (
+                            <ParsedServerCard
+                              key={`${server.name}-${idx}`}
+                              server={server}
+                              isAlreadyAdded={isSelected(server.name)}
+                              onProbe={() => handleProbeTools(idx)}
+                              onAdd={() => handleAddParsedServer(server)}
+                              t={t}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Form Mode */}
+                  {customInputMode === "form" && (
+                    <div className="space-y-4">
+                      {/* Custom form */}
+                      <div className="space-y-3 rounded-lg border p-3">
+                        {/* Name */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">
+                            {t("settingsAgents.mcpCustomForm.name", { defaultValue: "Server Name" })}
+                          </Label>
+                          <Input
+                            value={customName}
+                            onChange={(e) => setCustomName(e.target.value)}
+                            placeholder={t("settingsAgents.mcpCustomForm.namePlaceholder")}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+
+                        {/* Type */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">
+                            {t("settingsAgents.mcpCustomForm.type", { defaultValue: "Transport Type" })}
+                          </Label>
+                          <Select
+                            value={customType}
+                            onValueChange={(v) =>
+                              setCustomType(v as CustomFormTransport)
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="stdio">stdio</SelectItem>
+                              <SelectItem value="sse">sse</SelectItem>
+                              <SelectItem value="http">http</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* stdio fields */}
+                        {customType === "stdio" && (
+                          <>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">
+                                {t("settingsAgents.mcpCustomForm.command", { defaultValue: "Command" })}
+                              </Label>
+                              <Input
+                                value={customCommand}
+                                onChange={(e) => setCustomCommand(e.target.value)}
+                                placeholder={t(
+                                  "settingsAgents.mcpCustomForm.commandPlaceholder"
+                                )}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">
+                                {t("settingsAgents.mcpCustomForm.args", { defaultValue: "Arguments" })}
+                              </Label>
+                              <Input
+                                value={customArgs}
+                                onChange={(e) => setCustomArgs(e.target.value)}
+                                placeholder={t(
+                                  "settingsAgents.mcpCustomForm.argsPlaceholder"
+                                )}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            {/* Env key-value pairs */}
+                            <KeyValueEditor
+                              label={t("settingsAgents.mcpCustomForm.env", { defaultValue: "Environment Variables" })}
+                              keyPlaceholder={t("settingsAgents.mcpCustomForm.envKey")}
+                              valuePlaceholder={t("settingsAgents.mcpCustomForm.envValue")}
+                              addLabel={t("settingsAgents.mcpCustomForm.addEnv")}
+                              pairs={customEnv}
+                              onChange={setCustomEnv}
+                            />
+                          </>
+                        )}
+
+                        {/* sse/http fields */}
+                        {(customType === "sse" || customType === "http") && (
+                          <>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">
+                                {t("settingsAgents.mcpCustomForm.url", { defaultValue: "URL" })}
+                              </Label>
+                              <Input
+                                value={customUrl}
+                                onChange={(e) => setCustomUrl(e.target.value)}
+                                placeholder={t(
+                                  "settingsAgents.mcpCustomForm.urlPlaceholder"
+                                )}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            {/* Headers key-value pairs */}
+                            <KeyValueEditor
+                              label={t("settingsAgents.mcpCustomForm.headers", { defaultValue: "Headers" })}
+                              keyPlaceholder="Key"
+                              valuePlaceholder="Value"
+                              addLabel={t("settingsAgents.mcpCustomForm.addHeader")}
+                              pairs={customHeaders}
+                              onChange={setCustomHeaders}
+                            />
+                          </>
+                        )}
+
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          disabled={!customName.trim()}
+                          onClick={handleAddCustomServer}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          {t("settingsAgents.mcpCustomForm.addEntry", { defaultValue: "Add Server" })}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Already-added custom entries (shown in both modes) */}
                   {customEntries.length > 0 && (
                     <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground">
@@ -672,6 +975,139 @@ export function AgentMcpDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ============================================================================
+// ParsedServerCard - Shows a parsed server with probe button and tool cards
+// ============================================================================
+
+interface ParsedServerCardProps {
+  server: ParsedServer;
+  isAlreadyAdded: boolean;
+  onProbe: () => void;
+  onAdd: () => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}
+
+function ParsedServerCard({ server, isAlreadyAdded, onProbe, onAdd, t }: ParsedServerCardProps) {
+  const transportLabel = "command" in server.config ? "STDIO" :
+    (server.config as { transport?: string }).transport?.toUpperCase() || "HTTP";
+
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium text-sm truncate">{server.name}</span>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+            {transportLabel}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2"
+            onClick={onProbe}
+            disabled={server.probing}
+          >
+            {server.probing ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <Zap className="h-3 w-3 mr-1" />
+            )}
+            {server.probing
+              ? t("settingsAgents.mcpCustom.probing", { defaultValue: "Probing..." })
+              : t("settingsAgents.mcpCustom.probeTools", { defaultValue: "Probe Tools" })}
+          </Button>
+          <Button
+            variant={isAlreadyAdded ? "secondary" : "default"}
+            size="sm"
+            className="h-6 text-[10px] px-2"
+            onClick={onAdd}
+            disabled={isAlreadyAdded}
+          >
+            {isAlreadyAdded ? (
+              <Check className="h-3 w-3 mr-1" />
+            ) : (
+              <Plus className="h-3 w-3 mr-1" />
+            )}
+            {isAlreadyAdded
+              ? t("common.added", { defaultValue: "Added" })
+              : t("settingsAgents.mcpCustom.addServer", { defaultValue: "Add" })}
+          </Button>
+        </div>
+      </div>
+
+      {/* Config summary */}
+      <div className="text-[10px] text-muted-foreground truncate">
+        {"command" in server.config && server.config.command && (
+          <span>
+            {server.config.command}
+            {server.config.args ? ` ${server.config.args.join(" ")}` : ""}
+          </span>
+        )}
+        {"url" in server.config && server.config.url && (
+          <span>{server.config.url}</span>
+        )}
+      </div>
+
+      {/* Probe error */}
+      {server.probeError && (
+        <div className="flex items-start gap-1.5 text-destructive">
+          <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+          <span className="text-[10px] line-clamp-2">{server.probeError}</span>
+        </div>
+      )}
+
+      {/* Tool cards */}
+      {server.tools && server.tools.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5">
+            <Wrench className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">
+              {t("settingsAgents.mcpCustom.toolsFound", {
+                defaultValue: "{{count}} tool(s) found",
+                count: server.tools.length,
+              })}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {server.tools.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Connected but no tools */}
+      {server.tools && server.tools.length === 0 && (
+        <div className="text-[10px] text-muted-foreground italic">
+          {t("settingsAgents.mcpCustom.noTools", { defaultValue: "No tools available" })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// ToolCard - Compact tool display
+// ============================================================================
+
+function ToolCard({ tool }: { tool: McpTool }) {
+  return (
+    <div
+      className="px-2 py-1 rounded-md border bg-muted/30 max-w-[160px]"
+      title={tool.description || tool.name}
+    >
+      <div className="text-[10px] font-medium truncate">{tool.name}</div>
+      {tool.description && (
+        <div className="text-[9px] text-muted-foreground truncate mt-0.5">
+          {tool.description}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -897,7 +897,7 @@ ${task.tags && task.tags.length > 0 ? `- **Tags**: ${task.tags.map((t) => t.name
 You are helping the user work on this task. Provide relevant suggestions, code examples, and guidance based on the task context.`;
 
     return {
-      systemPrompt: taskContextPrompt,
+      system_prompt: taskContextPrompt,
     };
   }, [task]);
 
