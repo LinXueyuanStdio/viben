@@ -18,10 +18,14 @@ import {
   Key,
   Bot,
   Check,
+  Plus,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -36,6 +40,7 @@ import {
   type ExecutorInfo,
   type ExecutorType,
   type WorkspaceModel,
+  type DiscoveredModel,
 } from "@/lib/gateway";
 import {
   getAllowedProviders,
@@ -150,7 +155,6 @@ function ExecutorSelectView({
   onSelect: (type: ExecutorType) => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  // Build a map of executor info for availability display
   const executorInfoMap = useMemo(() => {
     const map: Record<string, ExecutorInfo> = {};
     for (const e of executors) {
@@ -159,7 +163,6 @@ function ExecutorSelectView({
     return map;
   }, [executors]);
 
-  // Sort: available first, then alphabetical
   const sortedTypes = useMemo(() => {
     return [...RUNTIME_EXECUTOR_TYPES].sort((a, b) => {
       const aInfo = executorInfoMap[a];
@@ -230,11 +233,13 @@ function ProviderConfigView({
   executorType,
   existingProviders,
   onProviderReady,
+  onProvidersChanged,
   t,
 }: {
   executorType: ExecutorType;
   existingProviders: Provider[];
   onProviderReady: (provider: Provider) => void;
+  onProvidersChanged: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   const { createProvider, testConnection } = useProviders();
@@ -243,16 +248,15 @@ function ProviderConfigView({
     return (getAllowedProviders(executorType) || []) as ProviderType[];
   }, [executorType]);
 
-  // Check for existing matching provider
-  const existingMatch = useMemo(() => {
-    for (const p of existingProviders) {
-      if (allowedProviders.includes(p.provider_type)) {
-        return p;
-      }
-    }
-    return null;
+  // All existing providers that match the executor constraints
+  const matchingProviders = useMemo(() => {
+    return existingProviders.filter((p) => allowedProviders.includes(p.provider_type));
   }, [existingProviders, allowedProviders]);
 
+  const [selectedExistingId, setSelectedExistingId] = useState<string | null>(
+    matchingProviders[0]?.id || null,
+  );
+  const [showAddForm, setShowAddForm] = useState(matchingProviders.length === 0);
   const [selectedProviderType, setSelectedProviderType] = useState<ProviderType>(
     allowedProviders[0] || "anthropic",
   );
@@ -264,36 +268,33 @@ function ProviderConfigView({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Update base URL when provider type changes
   useEffect(() => {
     setBaseUrl(DEFAULT_BASE_URLS[selectedProviderType] || "");
     setTestResult(null);
   }, [selectedProviderType]);
 
   const handleTest = async () => {
-    if (!existingMatch && !apiKey.trim()) return;
+    if (!apiKey.trim()) return;
     setIsTesting(true);
     setTestResult(null);
     try {
-      if (existingMatch) {
-        const result = await testConnection(existingMatch.id);
-        setTestResult({ success: result.connected, error: result.error });
-      } else {
-        // Create temp provider, test, keep if success
-        const provider = await createProvider({
-          provider_type: selectedProviderType,
-          name: PROVIDER_TYPE_LABELS[selectedProviderType] || selectedProviderType,
-          api_key: apiKey.trim(),
-          base_url: baseUrl.trim() || undefined,
-          set_as_default: true,
-        });
-        const result = await testConnection(provider.id);
-        setTestResult({ success: result.connected, error: result.error });
-        if (result.connected) {
-          onProviderReady(provider);
-          return;
-        }
+      // Create the provider first, then test
+      const provider = await createProvider({
+        provider_type: selectedProviderType,
+        name: PROVIDER_TYPE_LABELS[selectedProviderType] || selectedProviderType,
+        api_key: apiKey.trim(),
+        base_url: baseUrl.trim() || undefined,
+        set_as_default: matchingProviders.length === 0,
+      });
+      const result = await testConnection(provider.id);
+      setTestResult({ success: result.connected, error: result.error });
+      if (result.connected) {
+        onProvidersChanged();
+        onProviderReady(provider);
+        return;
       }
+      // Even if test failed, provider was created — notify parent
+      onProvidersChanged();
     } catch (err) {
       setTestResult({ success: false, error: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -302,16 +303,10 @@ function ProviderConfigView({
   };
 
   const handleSave = async () => {
-    if (existingMatch) {
-      onProviderReady(existingMatch);
-      return;
-    }
-
     if (!apiKey.trim()) {
       setError(t("onboarding.agentSetup.provider.apiKeyPlaceholder"));
       return;
     }
-
     setIsSaving(true);
     setError(null);
     try {
@@ -320,14 +315,20 @@ function ProviderConfigView({
         name: PROVIDER_TYPE_LABELS[selectedProviderType] || selectedProviderType,
         api_key: apiKey.trim(),
         base_url: baseUrl.trim() || undefined,
-        set_as_default: true,
+        set_as_default: matchingProviders.length === 0,
       });
+      onProvidersChanged();
       onProviderReady(provider);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleUseExisting = () => {
+    const p = matchingProviders.find((p) => p.id === selectedExistingId);
+    if (p) onProviderReady(p);
   };
 
   return (
@@ -339,31 +340,67 @@ function ProviderConfigView({
         </p>
       </div>
 
-      {/* Existing provider match */}
-      {existingMatch && (
-        <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            <span className="text-sm font-medium">
+      {/* Existing providers */}
+      {matchingProviders.length > 0 && (
+        <div className="space-y-3 rounded-lg border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">
               {t("onboarding.agentSetup.provider.alreadyConfigured")}
-            </span>
+            </Label>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddForm(!showAddForm)}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              {t("onboarding.agentSetup.provider.addNew")}
+            </Button>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("onboarding.agentSetup.provider.useExisting", { provider: existingMatch.name })}
-          </p>
-          <Button className="mt-3 w-full" onClick={() => onProviderReady(existingMatch)}>
+
+          {/* Provider list */}
+          <div className="space-y-2">
+            {matchingProviders.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelectedExistingId(p.id)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors",
+                  selectedExistingId === p.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:bg-accent/50",
+                )}
+              >
+                <div>
+                  <span className="text-sm font-medium">{p.name}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {PROVIDER_TYPE_LABELS[p.provider_type] || p.provider_type}
+                  </span>
+                </div>
+                {selectedExistingId === p.id && (
+                  <Check className="h-4 w-4 text-primary" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          <Button className="w-full" onClick={handleUseExisting} disabled={!selectedExistingId}>
             {t("onboarding.agentSetup.provider.saveAndContinue")}
           </Button>
         </div>
       )}
 
-      {/* New provider form */}
-      {!existingMatch && (
+      {/* Add new provider form */}
+      {showAddForm && (
         <div className="space-y-4 rounded-lg border bg-card p-4">
-          {/* Provider type selector (only if multiple allowed) */}
+          <Label className="text-sm font-medium">
+            {t("onboarding.agentSetup.provider.addNew")}
+          </Label>
+
+          {/* Provider type selector */}
           {allowedProviders.length > 1 && (
             <div className="space-y-2">
-              <Label className="text-sm">Provider</Label>
+              <Label className="text-xs text-muted-foreground">Provider</Label>
               <Select
                 value={selectedProviderType}
                 onValueChange={(v) => setSelectedProviderType(v as ProviderType)}
@@ -382,7 +419,6 @@ function ProviderConfigView({
             </div>
           )}
 
-          {/* Single provider - show name */}
           {allowedProviders.length === 1 && (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-medium">
@@ -393,7 +429,9 @@ function ProviderConfigView({
 
           {/* API Key */}
           <div className="space-y-2">
-            <Label className="text-sm">{t("onboarding.agentSetup.provider.apiKey")}</Label>
+            <Label className="text-xs text-muted-foreground">
+              {t("onboarding.agentSetup.provider.apiKey")}
+            </Label>
             <div className="relative">
               <Input
                 type={showKey ? "text" : "password"}
@@ -421,7 +459,9 @@ function ProviderConfigView({
 
           {/* Base URL */}
           <div className="space-y-2">
-            <Label className="text-sm">{t("onboarding.agentSetup.provider.baseUrl")}</Label>
+            <Label className="text-xs text-muted-foreground">
+              {t("onboarding.agentSetup.provider.baseUrl")}
+            </Label>
             <Input
               type="text"
               value={baseUrl}
@@ -455,7 +495,6 @@ function ProviderConfigView({
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-2 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -468,7 +507,7 @@ function ProviderConfigView({
             <Button
               variant="outline"
               onClick={handleTest}
-              disabled={isTesting || (!apiKey.trim() && !existingMatch)}
+              disabled={isTesting || !apiKey.trim()}
               className="flex-1"
             >
               {isTesting ? (
@@ -485,9 +524,7 @@ function ProviderConfigView({
               disabled={isSaving || !apiKey.trim()}
               className="flex-1"
             >
-              {isSaving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("onboarding.agentSetup.provider.saveAndContinue")}
             </Button>
           </div>
@@ -503,6 +540,7 @@ function ProviderConfigView({
 
 function ModelSelectView({
   executorType,
+  provider,
   models,
   modelsLoading,
   agentName,
@@ -512,9 +550,11 @@ function ModelSelectView({
   onCreateAgent,
   isCreating,
   createError,
+  onModelsRefresh,
   t,
 }: {
   executorType: ExecutorType;
+  provider: Provider | null;
   models: WorkspaceModel[];
   modelsLoading: boolean;
   agentName: string;
@@ -524,11 +564,120 @@ function ModelSelectView({
   onCreateAgent: () => void;
   isCreating: boolean;
   createError: string | null;
+  onModelsRefresh: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
+  const { discoverProviderModels, enableModelForProvider, disableModelForProvider } = useModels();
+
+  // Discovered models from provider API
+  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
+  const [enabledModelIds, setEnabledModelIds] = useState<string[]>([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [showAddModel, setShowAddModel] = useState(false);
+  const [newModelId, setNewModelId] = useState("");
+
+  // Available models from the global model list (filtered by executor)
   const filteredModels = useMemo(() => {
-    return filterModelsByExecutor(models, executorType).filter((m) => m.is_available);
+    return filterModelsByExecutor(models, executorType);
   }, [models, executorType]);
+
+  // Load discovered models and enabled model IDs on mount
+  useEffect(() => {
+    if (!provider) return;
+    let cancelled = false;
+
+    const load = async () => {
+      setIsDiscovering(true);
+      try {
+        const client = getGatewayClient();
+        const [discovered, enabledIds] = await Promise.all([
+          discoverProviderModels(provider.id).catch(() => [] as DiscoveredModel[]),
+          client.listProviderEnabledModels(provider.id).catch(() => [] as string[]),
+        ]);
+        if (!cancelled) {
+          setDiscoveredModels(discovered);
+          setEnabledModelIds(enabledIds);
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setIsDiscovering(false);
+      }
+    };
+    load();
+
+    return () => { cancelled = true; };
+  }, [provider, discoverProviderModels]);
+
+  // Merge: discovered models + already-enabled from gateway models list
+  const allDiscoveredModels = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { id: string; name: string; enabled: boolean }[] = [];
+
+    // Enabled model IDs from provider
+    for (const id of enabledModelIds) {
+      seen.add(id);
+      const disc = discoveredModels.find((d) => d.id === id);
+      result.push({ id, name: disc?.name || id, enabled: true });
+    }
+
+    // Discovered but not enabled
+    for (const d of discoveredModels) {
+      if (!seen.has(d.id)) {
+        seen.add(d.id);
+        result.push({ id: d.id, name: d.name || d.id, enabled: false });
+      }
+    }
+
+    return result;
+  }, [discoveredModels, enabledModelIds]);
+
+  const handleToggleModel = async (modelId: string, currentlyEnabled: boolean) => {
+    if (!provider) return;
+    try {
+      if (currentlyEnabled) {
+        await disableModelForProvider(provider.id, modelId);
+        setEnabledModelIds((prev) => prev.filter((id) => id !== modelId));
+      } else {
+        await enableModelForProvider(provider.id, modelId);
+        setEnabledModelIds((prev) => [...prev, modelId]);
+      }
+      onModelsRefresh();
+    } catch (err) {
+      console.error("Failed to toggle model:", err);
+    }
+  };
+
+  const handleAddModel = async () => {
+    if (!provider || !newModelId.trim()) return;
+    try {
+      await enableModelForProvider(provider.id, newModelId.trim());
+      setEnabledModelIds((prev) => [...prev, newModelId.trim()]);
+      setNewModelId("");
+      setShowAddModel(false);
+      onModelsRefresh();
+    } catch (err) {
+      console.error("Failed to add model:", err);
+    }
+  };
+
+  const handleRefreshDiscovery = async () => {
+    if (!provider) return;
+    setIsDiscovering(true);
+    try {
+      const discovered = await discoverProviderModels(provider.id).catch(() => [] as DiscoveredModel[]);
+      setDiscoveredModels(discovered);
+    } catch {
+      // ignore
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  // For the agent model selector, use the global filtered models (which reflect enabled state)
+  const selectableModels = useMemo(() => {
+    return filteredModels.filter((m) => m.is_available);
+  }, [filteredModels]);
 
   return (
     <div className="space-y-4">
@@ -539,6 +688,90 @@ function ModelSelectView({
         </p>
       </div>
 
+      {/* Model management: discover + toggle */}
+      {provider && (
+        <div className="space-y-3 rounded-lg border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">
+              {t("onboarding.agentSetup.model.manageModels")}
+            </Label>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAddModel(true)}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                {t("onboarding.agentSetup.model.addModel")}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefreshDiscovery}
+                disabled={isDiscovering}
+              >
+                {isDiscovering ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Add model manually */}
+          {showAddModel && (
+            <div className="flex gap-2">
+              <Input
+                placeholder={t("onboarding.agentSetup.model.modelIdPlaceholder")}
+                value={newModelId}
+                onChange={(e) => setNewModelId(e.target.value)}
+                className="flex-1 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddModel();
+                }}
+              />
+              <Button size="sm" onClick={handleAddModel} disabled={!newModelId.trim()}>
+                {t("onboarding.agentSetup.model.addModel")}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setShowAddModel(false); setNewModelId(""); }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+
+          {/* Model list */}
+          {isDiscovering && allDiscoveredModels.length === 0 ? (
+            <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>{t("onboarding.agentSetup.model.discovering")}</span>
+            </div>
+          ) : allDiscoveredModels.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">
+              {t("onboarding.agentSetup.model.noDiscoveredModels")}
+            </p>
+          ) : (
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {allDiscoveredModels.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-accent/50"
+                >
+                  <span className="text-sm truncate flex-1 mr-2" title={m.id}>
+                    {m.name}
+                  </span>
+                  <Switch
+                    checked={m.enabled}
+                    onCheckedChange={() => handleToggleModel(m.id, m.enabled)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Agent config: name + model selector + create */}
       <div className="space-y-4 rounded-lg border bg-card p-4">
         {/* Agent name */}
         <div className="space-y-2">
@@ -552,23 +785,23 @@ function ModelSelectView({
 
         {/* Model selection */}
         <div className="space-y-2">
-          <Label className="text-sm">{t("onboarding.agentSetup.model.title")}</Label>
+          <Label className="text-sm">{t("onboarding.agentSetup.model.selectModel")}</Label>
           {modelsLoading ? (
             <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading models...</span>
+              <span>{t("onboarding.agentSetup.model.loadingModels")}</span>
             </div>
-          ) : filteredModels.length === 0 ? (
+          ) : selectableModels.length === 0 ? (
             <div className="rounded-lg border border-dashed p-3 text-center text-sm text-muted-foreground">
               {t("onboarding.agentSetup.model.noModels")}
             </div>
           ) : (
             <Select value={selectedModel || ""} onValueChange={onModelSelect}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a model..." />
+                <SelectValue placeholder={t("onboarding.agentSetup.model.selectModelPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                {filteredModels.map((m) => (
+                {selectableModels.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     <span>{m.name || m.id}</span>
                   </SelectItem>
@@ -634,7 +867,7 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
   const { t } = useTranslation();
   const { isConnected } = useGatewayStatus();
   const { executors } = useExecutors();
-  const { providers } = useProviders();
+  const { providers, refresh: refreshProviders } = useProviders();
   const { models, loading: modelsLoading, refresh: refreshModels } = useModels();
 
   // Sub-step state
@@ -658,7 +891,6 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
     }
   };
 
-  // Handlers
   const handleExecutorSelect = (type: ExecutorType) => {
     setSelectedExecutor(type);
     completeSubStep("executor");
@@ -669,7 +901,6 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
     setSelectedProvider(provider);
     completeSubStep("provider");
     setSubStep("model");
-    // Refresh models after provider is configured
     refreshModels();
   };
 
@@ -680,13 +911,11 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
     setCreateError(null);
     try {
       const client = getGatewayClient();
-      // Create the agent
       const agent = await client.createAgent({
         name: agentName.trim(),
         model: selectedModel || undefined,
         provider: selectedProvider?.provider_type || undefined,
       });
-      // Update with executor type
       await client.updateAgent(agent.id, {
         executor_type: selectedExecutor,
       });
@@ -775,12 +1004,14 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
               executorType={selectedExecutor}
               existingProviders={providers}
               onProviderReady={handleProviderReady}
+              onProvidersChanged={refreshProviders}
               t={t}
             />
           )}
           {subStep === "model" && selectedExecutor && (
             <ModelSelectView
               executorType={selectedExecutor}
+              provider={selectedProvider}
               models={models}
               modelsLoading={modelsLoading}
               agentName={agentName}
@@ -790,6 +1021,7 @@ export function StepAgentSetup({ onComplete, onBack }: StepAgentSetupProps) {
               onCreateAgent={handleCreateAgent}
               isCreating={isCreating}
               createError={createError}
+              onModelsRefresh={refreshModels}
               t={t}
             />
           )}
