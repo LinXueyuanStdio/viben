@@ -15,6 +15,8 @@ import type {
   OverlaySettings,
 } from "@/types/overlay";
 import type { PresentationCommand } from "@/lib/presentation/types";
+import type { PresentationStep, PlayerState } from "@/lib/client-side-tool/types";
+import { describeCommand } from "@/lib/client-side-tool/types";
 import { PERFORMANCE_LIMITS } from "@/lib/overlay/constants";
 
 interface OverlayState {
@@ -55,7 +57,10 @@ interface OverlayState {
 
   // Presentation
   presentationActive: boolean;
-  presentationCommands: PresentationCommand[];
+  presentationSteps: PresentationStep[];
+  presentationCurrentStep: number;
+  presentationPlayerState: PlayerState;
+  presentationDetailsOpen: boolean;
 }
 
 interface OverlayActions {
@@ -105,9 +110,22 @@ interface OverlayActions {
   // Presentation
   startPresentation: () => void;
   stopPresentation: () => void;
-  addPresentationCommand: (cmd: PresentationCommand) => void;
-  addPresentationCommands: (cmds: PresentationCommand[]) => void;
-  clearPresentationCommands: () => void;
+  addPresentationSteps: (params: {
+    toolUseId: string;
+    toolName: string;
+    toolInput: Record<string, unknown>;
+    commands: PresentationCommand[];
+  }) => void;
+  updateStepStatus: (stepId: string, status: PresentationStep["status"]) => void;
+  completePresentationStep: (stepId: string, screenshot: string) => void;
+  playerPlay: () => void;
+  playerPause: () => void;
+  playerGoTo: (stepIndex: number) => void;
+  playerNext: () => void;
+  playerPrev: () => void;
+  playerGoToStart: () => void;
+  playerGoToEnd: () => void;
+  togglePresentationDetails: () => void;
 }
 
 const initialState: OverlayState = {
@@ -159,7 +177,10 @@ const initialState: OverlayState = {
   },
 
   presentationActive: false,
-  presentationCommands: [],
+  presentationSteps: [],
+  presentationCurrentStep: 0,
+  presentationPlayerState: "idle" as PlayerState,
+  presentationDetailsOpen: false,
 };
 
 export const useOverlayStore = create<OverlayState & { actions: OverlayActions }>((set, get) => ({
@@ -299,12 +320,58 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
     setWaveState: (state) => set({ waveState: state }),
     setWaveConfig: (config) => set((s) => ({ waveConfig: { ...s.waveConfig, ...config } })),
 
-    startPresentation: () => set({ presentationActive: true, presentationCommands: [] }),
-    stopPresentation: () => set({ presentationActive: false, presentationCommands: [] }),
-    addPresentationCommand: (cmd) =>
-      set((s) => ({ presentationCommands: [...s.presentationCommands, cmd] })),
-    addPresentationCommands: (cmds) =>
-      set((s) => ({ presentationCommands: [...s.presentationCommands, ...cmds] })),
-    clearPresentationCommands: () => set({ presentationCommands: [] }),
+    startPresentation: () => set({
+      presentationActive: true,
+      presentationSteps: [],
+      presentationCurrentStep: 0,
+      presentationPlayerState: "playing",
+      presentationDetailsOpen: false,
+    }),
+    stopPresentation: () => set({
+      presentationActive: false,
+      presentationSteps: [],
+      presentationCurrentStep: 0,
+      presentationPlayerState: "idle",
+      presentationDetailsOpen: false,
+    }),
+    addPresentationSteps: ({ toolUseId, toolName, toolInput, commands }) => {
+      const newSteps: PresentationStep[] = commands.map((cmd, i) => ({
+        id: `${toolUseId}-${i}`,
+        toolUseId,
+        toolName,
+        toolInput,
+        command: cmd,
+        description: describeCommand(cmd),
+        status: "pending" as const,
+      }));
+      set((s) => ({
+        presentationSteps: [...s.presentationSteps, ...newSteps],
+      }));
+    },
+    updateStepStatus: (stepId, status) => set((s) => ({
+      presentationSteps: s.presentationSteps.map((step) =>
+        step.id === stepId ? { ...step, status } : step
+      ),
+    })),
+    completePresentationStep: (stepId, screenshot) => set((s) => ({
+      presentationSteps: s.presentationSteps.map((step) =>
+        step.id === stepId ? { ...step, status: "done" as const, screenshot } : step
+      ),
+    })),
+    playerPlay: () => set({ presentationPlayerState: "playing" }),
+    playerPause: () => set({ presentationPlayerState: "paused" }),
+    playerGoTo: (stepIndex) => set({ presentationCurrentStep: stepIndex, presentationPlayerState: "paused" }),
+    playerNext: () => set((s) => ({
+      presentationCurrentStep: Math.min(s.presentationCurrentStep + 1, s.presentationSteps.length - 1),
+    })),
+    playerPrev: () => set((s) => ({
+      presentationCurrentStep: Math.max(s.presentationCurrentStep - 1, 0),
+    })),
+    playerGoToStart: () => set({ presentationCurrentStep: 0, presentationPlayerState: "paused" }),
+    playerGoToEnd: () => set((s) => ({
+      presentationCurrentStep: Math.max(s.presentationSteps.length - 1, 0),
+      presentationPlayerState: "paused",
+    })),
+    togglePresentationDetails: () => set((s) => ({ presentationDetailsOpen: !s.presentationDetailsOpen })),
   },
 }));
