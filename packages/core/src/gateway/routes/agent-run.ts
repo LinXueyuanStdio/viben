@@ -21,6 +21,7 @@ import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
+import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 
 // Module-level logger for agent-run (used by session logger)
 const moduleLog = globalLogger.child({ module: "agent-run" });
@@ -110,14 +111,14 @@ export interface AgentConfigPayload {
   name?: string;
   model?: string;
   provider?: string;
-  systemPrompt?: string;
-  appendPrompt?: string;
+  system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
-  maxTokens?: number;
-  executorType?: string;
-  mcpServers?: string[];
+  max_tokens?: number;
+  executor_type?: string;
+  mcp_servers?: string[];
   skills?: string[];
-  planMode?: boolean;
+  plan_mode?: boolean;
   approvals?: boolean;
 }
 
@@ -172,14 +173,14 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       name: config.name,
       model: config.model,
       provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
+      system_prompt: systemPrompt || undefined,
+      append_prompt: config.appendPrompt,
       temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType,
-      mcpServers: config.mcpServers,
+      max_tokens: config.maxTokens,
+      executor_type: config.executorType,
+      mcp_servers: config.mcpServers,
       skills: config.skills,
-      planMode: config.planMode,
+      plan_mode: config.planMode,
       approvals: config.approvals,
     };
   } catch (error) {
@@ -513,14 +514,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         name: agentConfig.name,
         model: agentConfig.model,
         provider: agentConfig.provider,
-        executorType: agentConfig.executorType,
-        mcpServers: agentConfig.mcpServers,
+        executor_type: agentConfig.executor_type,
+        mcp_servers: agentConfig.mcp_servers,
         skills: agentConfig.skills,
-        planMode: agentConfig.planMode,
+        plan_mode: agentConfig.plan_mode,
         approvals: agentConfig.approvals,
         // Don't log full system prompt, just indicate if present
-        hasSystemPrompt: !!agentConfig.systemPrompt,
-        hasAppendPrompt: !!agentConfig.appendPrompt,
+        hasSystemPrompt: !!agentConfig.system_prompt,
+        hasAppendPrompt: !!agentConfig.append_prompt,
       } : null,
     };
 
@@ -618,7 +619,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       log.info("sdk", "initializing", {
         model: agentConfig?.model,
         cwd: cwd || process.cwd(),
-        hasMcpServers: !!(agentConfig?.mcpServers?.length),
+        hasMcpServers: !!(agentConfig?.mcp_servers?.length),
         hasSkills: !!(agentConfig?.skills?.length),
         resumeSession: resumeSession || null,
       });
@@ -639,9 +640,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         // Resume from existing session for multi-turn conversations
         resume: resumeSession,
         model: agentConfig?.model,
-        systemPrompt: agentConfig?.systemPrompt,
-        appendPrompt: agentConfig?.appendPrompt,
-        mcpServers: agentConfig?.mcpServers,
+        systemPrompt: agentConfig?.system_prompt,
+        appendPrompt: agentConfig?.append_prompt,
+        mcpServers: agentConfig?.mcp_servers,
         skills: agentConfig?.skills,
         dangerouslySkipPermissions: true,
         // Sandbox configuration (session-level)
@@ -722,6 +723,12 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           toolUseCount++;
           const toolMsg = message as SSEToolUseMessage;
           toolNames.push(toolMsg.name);
+
+          // Client-side tool detection: enqueue for frontend execution
+          if (clientToolCompletionRegistry.isClientSideTool(toolMsg.name)) {
+            clientToolCompletionRegistry.enqueue(sessionId, toolMsg.id, toolMsg.name);
+          }
+
           log.info("stream", "tool_use", {
             toolId: toolMsg.id,
             toolName: toolMsg.name,

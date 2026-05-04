@@ -265,25 +265,16 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       description?: string;
       model?: string;
       provider?: string;
-      systemPrompt?: string;
       system_prompt?: string;
-      appendPrompt?: string;
       append_prompt?: string;
       temperature?: number;
-      maxTokens?: number;
       max_tokens?: number;
-      fromTemplate?: string;
       from_template?: string;
-      basePath?: string;
       base_path?: string;
-      executorType?: string;
       executor_type?: string;
-      executorConfig?: Record<string, unknown>;
       executor_config?: Record<string, unknown>;
-      mcpServers?: string[];
       mcp_servers?: string[];
       skills?: string[];
-      planMode?: boolean;
       plan_mode?: boolean;
       approvals?: boolean;
     };
@@ -296,16 +287,17 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         description: body.description,
         model: body.model,
         provider: body.provider,
-        systemPrompt: body.systemPrompt || body.system_prompt,
-        appendPrompt: body.appendPrompt || body.append_prompt,
+        system_prompt: body.system_prompt,
+        append_prompt: body.append_prompt,
         temperature: body.temperature,
-        maxTokens: body.maxTokens || body.max_tokens,
-        fromTemplate: body.fromTemplate || body.from_template,
-        executorType: (body.executorType || body.executor_type) as ExecutorType | undefined,
-        executorConfig: body.executorConfig || body.executor_config,
-        mcpServers: body.mcpServers || body.mcp_servers,
+        max_tokens: body.max_tokens,
+        from_template: body.from_template,
+        base_path: body.base_path,
+        executor_type: body.executor_type as ExecutorType | undefined,
+        executor_config: body.executor_config,
+        mcp_servers: body.mcp_servers,
         skills: body.skills,
-        planMode: body.planMode ?? body.plan_mode,
+        plan_mode: body.plan_mode,
         approvals: body.approvals,
       });
       reply.code(201);
@@ -486,7 +478,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id } = request.params;
       const { agent_id, name, base_path, template_workspace_path } = request.body;
       try {
-        const agent = await agentManager.createFromTemplate(id, agent_id, { name, basePath: base_path }, template_workspace_path);
+        const agent = await agentManager.createFromTemplate(id, agent_id, { name, base_path }, template_workspace_path);
         reply.code(201);
 
         const homeDir = process.env.HOME || "/";
@@ -1112,26 +1104,17 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       description?: string;
       model?: string;
       provider?: string;
-      systemPrompt?: string;
       system_prompt?: string;
-      appendPrompt?: string;
       append_prompt?: string;
       temperature?: number;
-      maxTokens?: number;
       max_tokens?: number;
-      executorType?: string;
       executor_type?: string;
-      executorConfig?: Record<string, unknown>;
       executor_config?: Record<string, unknown>;
-      mcpServers?: string[];
       mcp_servers?: string[];
       skills?: string[];
-      planMode?: boolean;
       plan_mode?: boolean;
       approvals?: boolean;
-      isTemplate?: boolean;
       is_template?: boolean;
-      templateDescription?: string;
       template_description?: string;
     };
   }>("/api/agent/:id", async (request, reply) => {
@@ -1143,18 +1126,18 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       description: body.description,
       model: body.model,
       provider: body.provider,
-      systemPrompt: body.systemPrompt || body.system_prompt,
-      appendPrompt: body.appendPrompt || body.append_prompt,
+      systemPrompt: body.system_prompt,
+      appendPrompt: body.append_prompt,
       temperature: body.temperature,
-      maxTokens: body.maxTokens || body.max_tokens,
-      executorType: (body.executorType || body.executor_type) as ExecutorType | undefined,
-      executorConfig: body.executorConfig || body.executor_config,
-      mcpServers: body.mcpServers || body.mcp_servers,
+      maxTokens: body.max_tokens,
+      executorType: body.executor_type as ExecutorType | undefined,
+      executorConfig: body.executor_config,
+      mcpServers: body.mcp_servers,
       skills: body.skills,
-      planMode: body.planMode ?? body.plan_mode,
+      planMode: body.plan_mode,
       approvals: body.approvals,
-      isTemplate: body.isTemplate ?? body.is_template,
-      templateDescription: body.templateDescription || body.template_description,
+      isTemplate: body.is_template,
+      templateDescription: body.template_description,
     };
     try {
       const agent = await agentManager.updateAgent(id, updates, workspace_path);

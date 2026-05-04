@@ -15,10 +15,15 @@ import { randomUUID } from "node:crypto";
 import { agentService } from "../../services/agent";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
+import { OpenClawChatProxy } from "../../executor/engines/openclaw/chat-proxy";
+import { OpenClawConnectionManager } from "../../executor/engines/openclaw/connection";
+import { OpenClawProcessManager } from "../../executor/engines/openclaw/process-manager";
+import { loadGatewayConfig } from "../../executor/engines/openclaw/config";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
 import { logger as globalLogger } from "../../telemetry";
+import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 
 // Module-level logger
 const log = globalLogger.child({ module: "agent-ws" });
@@ -32,19 +37,10 @@ const log = globalLogger.child({ module: "agent-ws" });
  * Supports both camelCase and snake_case
  */
 interface AgentWsQuery {
-  /** Working directory for the agent */
   cwd?: string;
-  /** Path to agent AGENTS.md config file - camelCase */
-  agentConfigPath?: string;
-  /** Path to agent AGENTS.md config file - snake_case */
   agent_config_path?: string;
-  /** Session ID for persistence - camelCase */
-  sessionId?: string;
-  /** Session ID for persistence - snake_case */
+  agent_dir?: string;
   session_id?: string;
-  /** Task ID for persistence - camelCase */
-  taskId?: string;
-  /** Task ID for persistence - snake_case */
   task_id?: string;
 }
 
@@ -55,14 +51,14 @@ interface AgentConfigPayload {
   name?: string;
   model?: string;
   provider?: string;
-  systemPrompt?: string;
-  appendPrompt?: string;
+  system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
-  maxTokens?: number;
-  executorType?: string;
-  mcpServers?: string[];
+  max_tokens?: number;
+  executor_type?: string;
+  mcp_servers?: string[];
   skills?: string[];
-  planMode?: boolean;
+  plan_mode?: boolean;
   approvals?: boolean;
 }
 
@@ -73,12 +69,14 @@ interface ClientMessage {
   type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer" | "ping";
   // For "start" - begin agent execution
   prompt?: string;
-  agentConfig?: AgentConfigPayload;
+  agent_config?: AgentConfigPayload;
+  /** Resume from existing SDK session for multi-turn */
+  resume?: string;
   // For "answer" - respond to AskUserQuestion
-  questionId?: string;
+  question_id?: string;
   answers?: Record<string, string>;
   // For "approve" / "reject" - plan approval
-  planId?: string;
+  plan_id?: string;
   // For "steer" - inject message during agent execution
   message?: string;
 }
@@ -130,18 +128,17 @@ interface ServerMessage {
 interface WsSession {
   id: string;
   socket: WebSocket;
-  /** Path to agent AGENTS.md config file */
   agent_config_path?: string;
+  agent_dir?: string;
   cwd: string;
   persist_session_id?: string;
   persist_task_id?: string;
   agent_config?: AgentConfigPayload;
   is_running: boolean;
-  // Promise resolver for waiting on user input
   pending_question_resolver?: (answers: Record<string, string>) => void;
   pending_plan_resolver?: (approved: boolean) => void;
-  // Active proxy for steering
   active_proxy?: import("../../executors/chat/sdk-proxy").SdkChatProxy;
+  active_openclaw_proxy?: OpenClawChatProxy;
 }
 
 // ============================================================================
@@ -191,14 +188,14 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       name: config.name,
       model: config.model,
       provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
+      system_prompt: systemPrompt || undefined,
+      append_prompt: config.appendPrompt,
       temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType,
-      mcpServers: config.mcpServers,
+      max_tokens: config.maxTokens,
+      executor_type: config.executorType,
+      mcp_servers: config.mcpServers,
       skills: config.skills,
-      planMode: config.planMode,
+      plan_mode: config.planMode,
       approvals: config.approvals,
     };
   } catch (error) {
@@ -254,6 +251,115 @@ function formatAnswersAsText(
 }
 
 /**
+ * Execute agent via OpenClaw gateway WebSocket
+ *
+ * When executor_type is "OPENCLAW", uses OpenClawChatProxy instead of SdkChatProxy.
+ */
+async function executeOpenClawAgent(session: WsSession, prompt: string): Promise<void> {
+  const { socket, persist_session_id: persistSessionId, persist_task_id: persistTaskId, agent_config_path: agentConfigPath, agent_dir: agentDir, agent_config: agentConfig } = session;
+
+  // Register session for abort control
+  agentService.registerSession(session.id);
+  session.is_running = true;
+
+  sendMessage(socket, {
+    type: "session",
+    session_id: session.id,
+  });
+
+  log.info({ sessionId: session.id }, "OpenClaw session started");
+
+  // Persist user message
+  if (persistSessionId && persistTaskId && prompt) {
+    try {
+      const agentId = resolveAgentId(agentConfigPath, agentConfig);
+      await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
+        id: generateMessageId(),
+        taskId: persistTaskId,
+        timestamp: new Date().toISOString(),
+        type: "user",
+        content: prompt,
+      }, agentDir);
+    } catch (e) {
+      log.warn({ err: e }, "Failed to persist user message");
+    }
+  }
+
+  try {
+    // Initialize OpenClaw connection
+    const gwConfig = loadGatewayConfig();
+    const processManager = new OpenClawProcessManager(gwConfig);
+    await processManager.ensureRunning();
+
+    const connectionManager = new OpenClawConnectionManager(gwConfig);
+    await connectionManager.connect();
+
+    const client = connectionManager.getClient();
+    const proxy = new OpenClawChatProxy(client);
+    session.active_openclaw_proxy = proxy;
+
+    // Stream via OpenClaw
+    const stream = proxy.stream({ prompt, sessionId: session.id });
+
+    for await (const message of stream) {
+      // Check cancellation
+      if (agentService.isSessionAborted(session.id)) {
+        await proxy.abort();
+        sendMessage(socket, { type: "error", message: "Session cancelled by user" });
+        break;
+      }
+
+      // Handle question messages
+      if (message.type === "question") {
+        const questionMsg = message as {
+          type: "question";
+          id: string;
+          questions: Array<{
+            question: string;
+            header: string;
+            options: Array<{ label: string; description?: string }>;
+            multiSelect: boolean;
+          }>;
+        };
+
+        agentService.storeQuestion(
+          session.id,
+          questionMsg.id,
+          questionMsg.questions,
+          { agent_config_path: agentConfigPath, workspace_path: session.cwd }
+        );
+
+        sendMessage(socket, message as ServerMessage);
+
+        // Wait for user answer
+        const answers = await new Promise<Record<string, string>>((resolve) => {
+          session.pending_question_resolver = resolve;
+        });
+
+        agentService.answerQuestion(questionMsg.id, answers);
+        // TODO: send answer back to OpenClaw session (steer)
+        continue;
+      }
+
+      // Send other messages
+      sendMessage(socket, message as ServerMessage);
+    }
+
+    log.info({ sessionId: session.id }, "OpenClaw stream completed");
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error({ err: error }, "OpenClaw execution error");
+    sendMessage(socket, { type: "error", message: errorMessage });
+  } finally {
+    session.is_running = false;
+    session.active_openclaw_proxy = undefined;
+    agentService.unregisterSession(session.id);
+    sendMessage(socket, { type: "done" });
+    log.info({ sessionId: session.id }, "OpenClaw session completed");
+  }
+}
+
+/**
  * Execute agent with WebSocket streaming
  *
  * This function runs the agent and streams messages back through the WebSocket.
@@ -266,8 +372,9 @@ function formatAnswersAsText(
  * terminates when AskUserQuestion is called, we continue by sending the user's
  * answer as a new message to the agent.
  */
-async function executeAgent(session: WsSession, prompt: string, isFollowUp = false): Promise<void> {
-  const { socket, cwd, agent_config_path: agentConfigPath, persist_session_id: persistSessionId, persist_task_id: persistTaskId, agent_config: agentConfig } = session;
+async function executeAgent(session: WsSession, prompt: string, isFollowUp = false, resume?: string): Promise<void> {
+  const { socket, cwd, agent_config_path: agentConfigPath, agent_dir: agentDir, persist_session_id: persistSessionId, persist_task_id: persistTaskId, agent_config: agentConfig } = session;
+  const perfT0 = Date.now();
 
   // Create trace span
   const span = tracer.startSpan("agent-ws.execute", {
@@ -308,7 +415,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
         timestamp: new Date().toISOString(),
         type: "user",
         content: prompt,
-      }, agentConfigPath);
+      }, agentDir);
     } catch (e) {
       log.warn({ err: e }, "Failed to persist user message");
     }
@@ -320,20 +427,30 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
     session.active_proxy = proxy;
 
     // Execute streaming
+    log.info({ sessionId: session.id, resume: resume || null, elapsed: Date.now() - perfT0 }, "[perf] Starting executeStreaming");
     const stream = proxy.executeStreaming({
       prompt,
       cwd,
       sessionId: session.id,
+      resume,
       model: agentConfig?.model,
-      systemPrompt: agentConfig?.systemPrompt,
-      appendPrompt: agentConfig?.appendPrompt,
-      mcpServers: agentConfig?.mcpServers,
+      systemPrompt: agentConfig?.system_prompt,
+      appendPrompt: agentConfig?.append_prompt,
+      mcpServers: agentConfig?.mcp_servers,
       skills: agentConfig?.skills,
       dangerouslySkipPermissions: true,
     });
 
     // Stream messages to client
+    let msgCount = 0;
+    let perfFirstMsgTime = 0;
     for await (const message of stream) {
+      msgCount++;
+      if (msgCount === 1) {
+        perfFirstMsgTime = Date.now() - perfT0;
+        log.info({ sessionId: session.id, firstMsgMs: perfFirstMsgTime, type: message.type }, "[perf] First SDK message");
+      }
+
       // Check if session was cancelled
       if (agentService.isSessionAborted(session.id)) {
         log.info({ sessionId: session.id }, "Session cancelled");
@@ -397,7 +514,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
               timestamp: new Date().toISOString(),
               type: "user",
               content: answerText,
-            }, agentConfigPath);
+            }, agentDir);
           } catch (e) {
             log.warn({ err: e }, "Failed to persist user answer");
           }
@@ -411,6 +528,14 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
         // This follows the workany pattern: restart conversation with user's answer
         await executeAgent(session, answerText, true);
         return; // Exit current execution, continuation handles the rest
+      }
+
+      // Client-side tool detection: enqueue for frontend execution
+      if (message.type === "tool_use") {
+        const toolMsg = message as { type: "tool_use"; id: string; name: string; input: unknown };
+        if (clientToolCompletionRegistry.isClientSideTool(toolMsg.name)) {
+          clientToolCompletionRegistry.enqueue(session.id, toolMsg.id, toolMsg.name);
+        }
       }
 
       // Send other messages directly
@@ -438,13 +563,14 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
               message.type === "tool_result" ? (message as { output: string }).output : undefined,
             isError:
               message.type === "tool_result" ? (message as { is_error?: boolean }).is_error : undefined,
-          }, agentConfigPath);
+          }, agentDir);
         } catch (e) {
           log.warn({ err: e }, "Failed to persist message");
         }
       }
     }
 
+    log.info({ sessionId: session.id, totalMs: Date.now() - perfT0, msgCount, firstMsgMs: perfFirstMsgTime }, "[perf] Stream completed");
     span.setStatus({ code: SpanStatusCode.OK });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -493,14 +619,14 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
         const query = req.query as AgentWsQuery;
         const sessionId = randomUUID();
 
-        // Create session with agent config path (support both camelCase and snake_case)
         const session: WsSession = {
           id: sessionId,
           socket,
-          agent_config_path: query.agentConfigPath || query.agent_config_path,
+          agent_config_path: query.agent_config_path,
+          agent_dir: query.agent_dir,
           cwd: query.cwd || process.cwd(),
-          persist_session_id: query.sessionId || query.session_id,
-          persist_task_id: query.taskId || query.task_id,
+          persist_session_id: query.session_id,
+          persist_task_id: query.task_id,
           is_running: false,
         };
 
@@ -528,9 +654,9 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                   return;
                 }
 
-                // Load agent config from path (support both camelCase and snake_case)
-                let agentConfig = msg.agentConfig;
-                const configPath = query.agentConfigPath || query.agent_config_path;
+                // Load agent config from path
+                let agentConfig = msg.agent_config;
+                const configPath = query.agent_config_path;
                 if (configPath) {
                   const loadedConfig = await loadAgentConfigFromPath(configPath);
                   if (loadedConfig) {
@@ -539,18 +665,25 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 }
                 session.agent_config = agentConfig;
 
-                // Start agent execution (non-blocking)
-                executeAgent(session, msg.prompt).catch((err) => {
-                  log.error({ err }, "Unhandled execution error");
-                });
+                // Route to appropriate executor based on type
+                const executorType = agentConfig?.executor_type?.toUpperCase();
+                if (executorType === "OPENCLAW") {
+                  executeOpenClawAgent(session, msg.prompt).catch((err) => {
+                    log.error({ err }, "Unhandled OpenClaw execution error");
+                  });
+                } else {
+                  executeAgent(session, msg.prompt, false, msg.resume).catch((err) => {
+                    log.error({ err }, "Unhandled execution error");
+                  });
+                }
                 break;
               }
 
               case "answer": {
-                if (!msg.questionId || !msg.answers) {
+                if (!msg.question_id || !msg.answers) {
                   sendMessage(socket, {
                     type: "error",
-                    message: "questionId and answers are required",
+                    message: "question_id and answers are required",
                   });
                   return;
                 }
@@ -560,28 +693,26 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                   session.pending_question_resolver(msg.answers);
                   session.pending_question_resolver = undefined;
                 } else {
-                  // Store answer for later use (if not waiting synchronously)
-                  agentService.answerQuestion(msg.questionId, msg.answers);
+                  agentService.answerQuestion(msg.question_id, msg.answers);
                 }
                 break;
               }
 
               case "approve": {
-                if (!msg.planId) {
-                  sendMessage(socket, { type: "error", message: "planId is required" });
+                if (!msg.plan_id) {
+                  sendMessage(socket, { type: "error", message: "plan_id is required" });
                   return;
                 }
 
-                const approved = agentService.approvePlan(msg.planId);
+                const approved = agentService.approvePlan(msg.plan_id);
                 if (!approved) {
                   sendMessage(socket, {
                     type: "error",
-                    message: `Plan not found or already processed: ${msg.planId}`,
+                    message: `Plan not found or already processed: ${msg.plan_id}`,
                   });
                   return;
                 }
 
-                // Resolve pending plan approval
                 if (session.pending_plan_resolver) {
                   session.pending_plan_resolver(true);
                   session.pending_plan_resolver = undefined;
@@ -590,21 +721,20 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
               }
 
               case "reject": {
-                if (!msg.planId) {
-                  sendMessage(socket, { type: "error", message: "planId is required" });
+                if (!msg.plan_id) {
+                  sendMessage(socket, { type: "error", message: "plan_id is required" });
                   return;
                 }
 
-                const rejected = agentService.rejectPlan(msg.planId);
+                const rejected = agentService.rejectPlan(msg.plan_id);
                 if (!rejected) {
                   sendMessage(socket, {
                     type: "error",
-                    message: `Plan not found or already processed: ${msg.planId}`,
+                    message: `Plan not found or already processed: ${msg.plan_id}`,
                   });
                   return;
                 }
 
-                // Resolve pending plan approval
                 if (session.pending_plan_resolver) {
                   session.pending_plan_resolver(false);
                   session.pending_plan_resolver = undefined;
@@ -620,6 +750,11 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
 
                 // Abort the session
                 agentService.stopSession(session.id);
+
+                // Abort OpenClaw proxy if active
+                if (session.active_openclaw_proxy) {
+                  session.active_openclaw_proxy.abort().catch(() => {});
+                }
 
                 // Reject any pending promises
                 if (session.pending_question_resolver) {

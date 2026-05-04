@@ -545,6 +545,11 @@ const EXECUTOR_METADATA: Partial<Record<ExecutorType, { name: string; descriptio
     name: "Droid",
     description: "Droid AI coding assistant",
   },
+  OPENCLAW: {
+    name: "OpenClaw",
+    description: "Personal AI assistant gateway with multi-agent routing",
+    docsUrl: "https://openclaw.dev",
+  },
   // Template-only executors (for viben init configuration)
   CURSOR: {
     name: "Cursor",

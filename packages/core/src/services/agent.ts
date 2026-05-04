@@ -10,6 +10,7 @@
 
 import { randomUUID } from "node:crypto";
 import { logger as globalLogger } from "../telemetry";
+import { clientToolCompletionRegistry } from "./client-tool-completion";
 
 // Module-level logger
 const log = globalLogger.child({ module: "agent-service" });
@@ -113,6 +114,10 @@ export class AgentService {
   stopSession(sessionId: string): boolean {
     const controller = this.abortControllers.get(sessionId);
     if (!controller) return false;
+
+    // Cancel any pending client-side tool promises FIRST
+    // This unblocks handlers waiting in waitForClient()
+    clientToolCompletionRegistry.cancelSession(sessionId);
 
     controller.abort();
     log.info({ sessionId }, "Stopped session");

@@ -139,7 +139,10 @@ export class AgentManager {
    */
   async createAgent(options: CreateAgentOptions): Promise<Agent> {
     const id = options.id || this.generateAgentId(options.name);
-    const agentDir = getAgentDir(id);
+    // Use base_path for workspace-scoped agents, otherwise global
+    const agentDir = options.base_path
+      ? join(options.base_path, ".viben", "agents", id)
+      : getAgentDir(id);
 
     // Check if agent already exists
     if (fileExists(agentDir)) {
@@ -148,8 +151,8 @@ export class AgentManager {
 
     // Create from template if specified
     let baseConfig: Partial<AgentConfig> = {};
-    if (options.fromTemplate) {
-      const template = await this.getTemplate(options.fromTemplate);
+    if (options.from_template) {
+      const template = await this.getTemplate(options.from_template);
       if (template) {
         baseConfig = {
           description: template.description,
@@ -171,21 +174,21 @@ export class AgentManager {
     }
 
     const now = new Date().toISOString();
-    const systemPrompt = options.systemPrompt || baseConfig.systemPrompt || "";
+    const systemPrompt = options.system_prompt || baseConfig.systemPrompt || "";
     const config: AgentConfigFile = {
       name: options.name,
       description: options.description || baseConfig.description,
       tools: options.tools ?? [],
       model: options.model || baseConfig.model,
       provider: options.provider || baseConfig.provider,
-      appendPrompt: options.appendPrompt,
+      appendPrompt: options.append_prompt,
       temperature: options.temperature ?? baseConfig.temperature,
-      maxTokens: options.maxTokens ?? baseConfig.maxTokens,
-      executorType: options.executorType,
-      executorConfig: options.executorConfig,
-      mcpServers: options.mcpServers ?? [],
+      maxTokens: options.max_tokens ?? baseConfig.maxTokens,
+      executorType: options.executor_type,
+      executorConfig: options.executor_config,
+      mcpServers: options.mcp_servers ?? [],
       skills: options.skills ?? [],
-      planMode: options.planMode ?? false,
+      planMode: options.plan_mode ?? false,
       approvals: options.approvals ?? false,
       isTemplate: false,
       template_tags: baseConfig.templateTags,
@@ -201,15 +204,16 @@ export class AgentManager {
 
     // Create agent directory and config (AGENTS.md)
     await ensureDir(agentDir);
-    await writeMarkdownConfig(getAgentConfigPath(id), config, systemPrompt);
+    await writeMarkdownConfig(join(agentDir, "AGENTS.md"), config, systemPrompt);
 
     // Create subdirectories
-    await ensureDir(getAgentSessionsDir(id));
-    await ensureDir(getAgentMemoryDir(id));
+    await ensureDir(join(agentDir, ".agent_sessions"));
+    await ensureDir(join(agentDir, "memory"));
 
     return {
       id,
       name: config.name,
+      path: agentDir,
       description: config.description,
       tools: config.tools ?? [],
       model: config.model,
@@ -431,7 +435,7 @@ export class AgentManager {
     newAgentId: string,
     options: {
       name: string;
-      basePath?: string; // workspace path, undefined for global
+      base_path?: string; // workspace path, undefined for global
     },
     templateWorkspacePath?: string // where to find the template
   ): Promise<Agent> {
@@ -441,8 +445,8 @@ export class AgentManager {
     }
 
     // Determine target directory
-    const targetDir = options.basePath
-      ? join(options.basePath, ".viben", "agents")
+    const targetDir = options.base_path
+      ? join(options.base_path, ".viben", "agents")
       : getAgentsDir();
 
     const agentDir = join(targetDir, newAgentId);
@@ -882,7 +886,7 @@ export class AgentManager {
   private generateAgentId(name: string): string {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/[^a-z0-9\u4e00-\u9fff\u3400-\u4dbf]+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 50) || `agent-${Date.now()}`;
   }
