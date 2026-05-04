@@ -16,7 +16,7 @@ import { agentManager } from "../../agents";
 import type { AppState } from "../state";
 import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
-import type { ExecutorType } from "../../types";
+import type { ExecutorType, AgentMcpServerEntry } from "../../types";
 import {
   encodeWorkspacePath,
   getClaudeProjectsDir,
@@ -1110,7 +1110,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       max_tokens?: number;
       executor_type?: string;
       executor_config?: Record<string, unknown>;
-      mcp_servers?: string[];
+      mcp_servers?: (string | AgentMcpServerEntry)[];
       skills?: string[];
       plan_mode?: boolean;
       approvals?: boolean;

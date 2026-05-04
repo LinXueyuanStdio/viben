@@ -1,6 +1,7 @@
 /**
  * Agent-specific types (re-exports from main types for convenience)
  */
+import type { AgentMcpServerEntry } from "../types";
 export type {
   Agent,
   AgentConfig,
@@ -15,6 +16,7 @@ export type {
   AvailabilityStatus,
   AvailabilityInfo,
   CustomVariable,
+  AgentMcpServerEntry,
 } from "../types";
 
 /**
@@ -32,7 +34,7 @@ export interface AgentConfigFile {
   maxTokens?: number;
   executorType?: string;
   executorConfig?: Record<string, unknown>;
-  mcpServers?: string[];
+  mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   planMode?: boolean;
   approvals?: boolean;

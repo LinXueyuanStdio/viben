@@ -3,10 +3,25 @@
  *
  * Wraps @openclaw/sdk's OpenClaw client for use within viben.
  * Handles connection lifecycle and configuration.
+ *
+ * Note: @openclaw/sdk is loaded lazily (optional dependency).
  */
 
-import { OpenClaw } from "@openclaw/sdk";
+import type { OpenClaw } from "@openclaw/sdk";
 import type { OpenClawGatewayConfig } from "./types";
+
+/**
+ * Lazily load the @openclaw/sdk module
+ */
+async function loadOpenClawSdk(): Promise<typeof import("@openclaw/sdk")> {
+  try {
+    return await import("@openclaw/sdk");
+  } catch {
+    throw new Error(
+      "Failed to load @openclaw/sdk. Please install it: npm install @openclaw/sdk"
+    );
+  }
+}
 
 export class OpenClawConnectionManager {
   private client: OpenClaw | null = null;
@@ -24,8 +39,9 @@ export class OpenClawConnectionManager {
       return this.client;
     }
 
+    const sdk = await loadOpenClawSdk();
     const url = `ws://${this.config.host}:${this.config.port}`;
-    const options: ConstructorParameters<typeof OpenClaw>[0] = { url };
+    const options: Record<string, unknown> = { url };
 
     if (this.config.auth.mode === "token" && this.config.auth.token) {
       options.token = this.config.auth.token;
@@ -33,7 +49,7 @@ export class OpenClawConnectionManager {
       options.password = this.config.auth.password;
     }
 
-    this.client = new OpenClaw(options);
+    this.client = new sdk.OpenClaw(options as ConstructorParameters<typeof sdk.OpenClaw>[0]);
     await this.client.connect();
     return this.client;
   }

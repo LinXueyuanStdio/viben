@@ -21,6 +21,7 @@ import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
+import type { AgentMcpServerEntry } from "../../types";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 
 // Module-level logger for agent-run (used by session logger)
@@ -116,7 +117,7 @@ export interface AgentConfigPayload {
   temperature?: number;
   max_tokens?: number;
   executor_type?: string;
-  mcp_servers?: string[];
+  mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
