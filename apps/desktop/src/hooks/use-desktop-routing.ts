@@ -2,7 +2,6 @@ import { useCallback, useEffect, useId, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   usePageTabs,
-  createChildBreadcrumbItem,
   type TabType,
 } from "@/hooks/use-page-tabs";
 import {
@@ -17,12 +16,28 @@ import {
   normalizeWorkspaceSection,
   type SettingsSection,
 } from "@/navigation/navigation-meta";
+import { createLocationBreadcrumbItem } from "@/navigation/breadcrumb-stack";
 import type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
 import type { BreadcrumbStackItem, WorkspaceSection } from "@/navigation/view-target";
 import type { Workspace } from "@/types";
 
 export interface DesktopOpenOptions {
   openMode?: "focus" | "reuse" | "new-tab";
+}
+
+export interface DesktopNavigationDescriptor {
+  title?: string;
+  icon?: IconData;
+  breadcrumbStack?: BreadcrumbStackItem[];
+}
+
+export interface DesktopNavigateOptions
+  extends DesktopOpenOptions,
+    DesktopNavigationDescriptor {}
+
+export interface DesktopChildNavigateOptions
+  extends DesktopNavigateOptions {
+  stackMode?: "open" | "push" | "replace";
 }
 
 export interface DesktopRoutingApi {
@@ -35,6 +50,7 @@ export interface DesktopRoutingApi {
   currentWorkspace: Workspace | undefined;
 
   openWorkspaceHome: (workspaceId: string, options?: DesktopOpenOptions) => void;
+  openWorkspaceApps: (workspaceId: string, options?: DesktopOpenOptions) => void;
   openWorkspaceSection: (
     workspaceId: string,
     section: WorkspaceSection,
@@ -44,17 +60,17 @@ export interface DesktopRoutingApi {
   openWorkspaceAgentDetail: (
     workspaceId: string,
     agentId: string,
-    options?: DesktopOpenOptions
+    options?: DesktopChildNavigateOptions
   ) => void;
   openWorkspaceExecutorDetail: (
     workspaceId: string,
     executorType: string,
-    options?: DesktopOpenOptions
+    options?: DesktopChildNavigateOptions
   ) => void;
   openWorkspacePage: (
     workspaceId: string,
     pageSlug: string,
-    options?: DesktopOpenOptions
+    options?: DesktopNavigateOptions
   ) => void;
   openWorkspaceWeb: (
     workspaceId: string,
@@ -77,28 +93,28 @@ export interface DesktopRoutingApi {
   ) => void;
   openSkillDetail: (
     skillId: string,
-    input: { agentId: string; workspacePath?: string },
-    options?: DesktopOpenOptions
+    input: { agentId: string; workspacePath?: string; title?: string },
+    options?: DesktopChildNavigateOptions
   ) => void;
   openMcpServerDetail: (
     serverName: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopOpenOptions
+    options?: DesktopChildNavigateOptions
   ) => void;
   openSubagentDetail: (
     configId: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopOpenOptions
+    options?: DesktopChildNavigateOptions
   ) => void;
   openPromptDetail: (
     promptId: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopOpenOptions
+    options?: DesktopChildNavigateOptions
   ) => void;
   openCommandDetail: (
     commandId: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopOpenOptions
+    options?: DesktopChildNavigateOptions
   ) => void;
   openDocuments: (options?: DesktopOpenOptions) => void;
   openDevicePair: (options?: DesktopOpenOptions) => void;
@@ -256,6 +272,25 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [pageTabs]
   );
 
+  const openWorkspaceApps = useCallback(
+    (workspaceId: string, options?: DesktopOpenOptions) => {
+      pageTabs.openLocation(
+        { kind: "workspace-apps", workspaceId },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: "apps",
+            workspaceId,
+            name: t("page.pages", "Apps"),
+            icon: { type: "lucide", value: "layout-grid" },
+          },
+        }
+      );
+    },
+    [pageTabs, t]
+  );
+
   const openWorkspaceSection = useCallback(
     (
       workspaceId: string,
@@ -293,18 +328,21 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       workspaceId: string,
       agentId: string,
-      options?: DesktopOpenOptions
+      options?: DesktopNavigateOptions
     ) => {
+      const breadcrumbStack = options?.breadcrumbStack;
+      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
       pageTabs.openLocation(
         { kind: "workspace-agent-detail", workspaceId, agentId },
         {
           openInNewTab: buildOpenTabFlag(options),
+          breadcrumbStack,
           tabInfo: {
             type: "workspace",
             slug: agentId,
             workspaceId,
-            name: agentId,
-            icon: { type: "lucide", value: "bot" },
+            name: leaf?.label ?? options?.title ?? agentId,
+            icon: leaf?.icon ?? options?.icon ?? { type: "lucide", value: "bot" },
           },
         }
       );
@@ -316,18 +354,24 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       workspaceId: string,
       executorType: string,
-      options?: DesktopOpenOptions
+      options?: DesktopNavigateOptions
     ) => {
+      const breadcrumbStack = options?.breadcrumbStack;
+      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
       pageTabs.openLocation(
         { kind: "workspace-executor-detail", workspaceId, executorType },
         {
           openInNewTab: buildOpenTabFlag(options),
+          breadcrumbStack,
           tabInfo: {
             type: "workspace",
             slug: executorType,
             workspaceId,
-            name: executorType,
-            icon: { type: "lucide", value: "terminal" },
+            name: leaf?.label ?? options?.title ?? executorType,
+            icon:
+              leaf?.icon ??
+              options?.icon ??
+              { type: "lucide", value: "terminal" },
           },
         }
       );
@@ -339,23 +383,134 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       workspaceId: string,
       pageSlug: string,
-      options?: DesktopOpenOptions
+      options?: DesktopNavigateOptions
     ) => {
+      const breadcrumbStack = options?.breadcrumbStack;
+      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
+
       pageTabs.openLocation(
         { kind: "workspace-page", workspaceId, pageSlug },
         {
           openInNewTab: buildOpenTabFlag(options),
+          breadcrumbStack: options?.breadcrumbStack,
           tabInfo: {
             type: "page",
             slug: pageSlug,
             workspaceId,
-            name: pageSlug.split("/").filter(Boolean).pop() ?? pageSlug,
-            icon: { type: "lucide", value: "file-text" },
+            name:
+              leaf?.label ??
+              options?.title ??
+              pageSlug.split("/").filter(Boolean).pop() ??
+              pageSlug,
+            icon:
+              leaf?.icon ??
+              options?.icon ??
+              { type: "lucide", value: "file-text" },
           },
         }
       );
     },
     [pageTabs]
+  );
+
+  const pushWorkspaceAgentDetail = useCallback(
+    (
+      workspaceId: string,
+      agentId: string,
+      options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
+    ) => {
+      const location: DesktopLocation = {
+        kind: "workspace-agent-detail",
+        workspaceId,
+        agentId,
+      };
+
+      if (options?.openMode === "new-tab") {
+        pageTabs.openLocation(location, {
+          openInNewTab: true,
+          breadcrumbStack: [
+            ...currentStack,
+            createLocationBreadcrumbItem(location, {
+              id: `workspace:${workspaceId}:agent:${agentId}`,
+              kind: "workspace-agent",
+              label: options?.title ?? agentId,
+              icon: options?.icon ?? { type: "lucide", value: "bot" },
+              meta: {
+                workspaceId,
+                agentId,
+              },
+            }),
+          ],
+        });
+        return;
+      }
+
+      pushChildPage(
+        createLocationBreadcrumbItem(location, {
+          id: `workspace:${workspaceId}:agent:${agentId}`,
+          kind: "workspace-agent",
+          label: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+          meta: {
+            workspaceId,
+            agentId,
+          },
+        }),
+        location,
+        { mode: options?.mode }
+      );
+    },
+    [currentStack, pageTabs, pushChildPage]
+  );
+
+  const pushWorkspaceExecutorDetail = useCallback(
+    (
+      workspaceId: string,
+      executorType: string,
+      options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
+    ) => {
+      const location: DesktopLocation = {
+        kind: "workspace-executor-detail",
+        workspaceId,
+        executorType,
+      };
+
+      if (options?.openMode === "new-tab") {
+        pageTabs.openLocation(location, {
+          openInNewTab: true,
+          breadcrumbStack: [
+            ...currentStack,
+            createLocationBreadcrumbItem(location, {
+              id: `workspace:${workspaceId}:executor:${executorType}`,
+              kind: "workspace-executor",
+              label: options?.title ?? executorType,
+              icon: options?.icon ?? { type: "lucide", value: "terminal" },
+              meta: {
+                workspaceId,
+                executorType,
+              },
+            }),
+          ],
+        });
+        return;
+      }
+
+      pushChildPage(
+        createLocationBreadcrumbItem(location, {
+          id: `workspace:${workspaceId}:executor:${executorType}`,
+          kind: "workspace-executor",
+          label: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+          meta: {
+            workspaceId,
+            executorType,
+          },
+        }),
+        location,
+        { mode: options?.mode }
+      );
+    },
+    [currentStack, pageTabs, pushChildPage]
   );
 
   const openWorkspaceWeb = useCallback(
@@ -450,33 +605,6 @@ export function useDesktopRouting(): DesktopRoutingApi {
             slug: executorType,
             name: executorType,
             icon: { type: "lucide", value: "terminal" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openSkillDetail = useCallback(
-    (
-      skillId: string,
-      input: { agentId: string; workspacePath?: string },
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        {
-          kind: "skill-detail",
-          skillId,
-          agentId: input.agentId,
-          workspacePath: input.workspacePath,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "page",
-            slug: skillId,
-            name: skillId,
-            icon: { type: "lucide", value: "sparkles" },
           },
         }
       );
@@ -675,6 +803,108 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [currentStack, pageTabs]
   );
 
+  const openChildLocation = useCallback(
+    (
+      location: DesktopLocation,
+      item: BreadcrumbStackItem,
+      tabInfo: {
+        type: TabType;
+        slug?: string;
+        workspaceId?: string;
+        name: string;
+        icon?: IconData;
+      },
+      options?: DesktopChildNavigateOptions
+    ) => {
+      const explicitStack = options?.breadcrumbStack;
+      const explicitLeaf = explicitStack?.[explicitStack.length - 1];
+      const resolvedTabInfo = {
+        ...tabInfo,
+        name: explicitLeaf?.label ?? tabInfo.name,
+        icon: explicitLeaf?.icon ?? tabInfo.icon,
+      };
+
+      if (options?.openMode === "new-tab") {
+        pageTabs.openLocation(location, {
+          openInNewTab: true,
+          breadcrumbStack: explicitStack ?? [...currentStack, item],
+          tabInfo: resolvedTabInfo,
+        });
+        return;
+      }
+
+      if (explicitStack) {
+        pageTabs.openLocation(location, {
+          breadcrumbStack: explicitStack,
+          tabInfo: resolvedTabInfo,
+        });
+        return;
+      }
+
+      const sameWorkspace =
+        !("workspaceId" in location) ||
+        !currentWorkspaceId ||
+        currentWorkspaceId === location.workspaceId;
+      const stackMode =
+        options?.stackMode ?? (currentStack.length > 0 && sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        pageTabs.openLocation(location, {
+          tabInfo: resolvedTabInfo,
+        });
+        return;
+      }
+
+      pushChildPage(item, location, {
+        mode: stackMode,
+      });
+    },
+    [currentStack, currentWorkspaceId, pageTabs, pushChildPage]
+  );
+
+  const openSkillDetail = useCallback(
+    (
+      skillId: string,
+      input: { agentId: string; workspacePath?: string; title?: string },
+      options?: DesktopOpenOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "skill-detail",
+        skillId,
+        agentId: input.agentId,
+        workspacePath: input.workspacePath,
+      };
+
+      if (options?.openMode === "new-tab") {
+        pageTabs.openLocation(location, {
+          openInNewTab: true,
+          tabInfo: {
+            type: "page",
+            slug: skillId,
+            name: input.title ?? skillId,
+            icon: { type: "lucide", value: "sparkles" },
+          },
+        });
+        return;
+      }
+
+      pushChildPage(
+        createLocationBreadcrumbItem(location, {
+          id: `skill:${skillId}`,
+          label: input.title ?? skillId,
+          kind: "workspace-page",
+          icon: { type: "lucide", value: "sparkles" },
+          meta: {
+            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
+            agentId: input.agentId,
+          },
+        }),
+        location
+      );
+    },
+    [currentStack, currentWorkspaceId, pageTabs, pushChildPage]
+  );
+
   const pushCurrentPageChild = useCallback(
     (
       pageSlug: string,
@@ -691,18 +921,15 @@ export function useDesktopRouting(): DesktopRoutingApi {
       };
 
       pushChildPage(
-        createChildBreadcrumbItem(
-          options?.title ?? pageSlug.split("/").filter(Boolean).pop() ?? pageSlug,
-          location,
-          {
-            kind: "workspace-page",
-            icon: options?.icon,
-            meta: {
-              workspaceId: currentWorkspaceId,
-              pageSlug,
-            },
-          }
-        ),
+        createLocationBreadcrumbItem(location, {
+          label: options?.title ?? pageSlug.split("/").filter(Boolean).pop() ?? pageSlug,
+          kind: "workspace-page",
+          icon: options?.icon,
+          meta: {
+            workspaceId: currentWorkspaceId,
+            pageSlug,
+          },
+        }),
         location,
         { mode: options?.mode }
       );
@@ -726,7 +953,8 @@ export function useDesktopRouting(): DesktopRoutingApi {
       };
 
       pushChildPage(
-        createChildBreadcrumbItem(title, location, {
+        createLocationBreadcrumbItem(location, {
+          label: title,
           kind: "workspace-web",
           icon: input?.icon ?? { type: "lucide", value: "globe" },
           meta: {
@@ -789,10 +1017,13 @@ export function useDesktopRouting(): DesktopRoutingApi {
       currentWorkspace,
 
       openWorkspaceHome,
+      openWorkspaceApps,
       openWorkspaceSection,
       openWorkspaceAgentList,
       openWorkspaceAgentDetail,
+      pushWorkspaceAgentDetail,
       openWorkspaceExecutorDetail,
+      pushWorkspaceExecutorDetail,
       openWorkspacePage,
       openWorkspaceWeb,
       openSettings,
@@ -857,8 +1088,11 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openWorkspaceAgentDetail,
       openWorkspaceAgentList,
       openWorkspaceExecutorDetail,
+      pushWorkspaceExecutorDetail,
       openWorkspaceHome,
+      openWorkspaceApps,
       openWorkspacePage,
+      pushWorkspaceAgentDetail,
       openWorkspaceSection,
       openWorkspaceWeb,
       pageTabs.activeTab,

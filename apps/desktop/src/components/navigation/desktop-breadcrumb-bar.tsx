@@ -1,6 +1,7 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,8 @@ import {
   type BreadcrumbDropdownItem,
   type DesktopBreadcrumbSegment,
 } from "@/navigation/page-index";
+import { getGatewayUrl, listPages } from "@/lib/gateway";
+import { pageKeys } from "@/hooks/use-pages";
 import type { Workspace } from "@/types";
 
 interface DesktopBreadcrumbBarProps {
@@ -46,7 +49,20 @@ export function DesktopBreadcrumbBar({
 }: DesktopBreadcrumbBarProps) {
   const { t } = useTranslation();
   const { workspaces, selectWorkspace } = useLocalWorkspaces();
-  const { openPath, openWorkspaceHome, openWorkspaceSection } = useDesktopRouting();
+  const {
+    openPath,
+    openWorkspaceApps,
+    openWorkspaceHome,
+    openWorkspaceSection,
+  } = useDesktopRouting();
+  const workspacePath = workspace?.path;
+  const { data: pagesResult } = useQuery({
+    queryKey: workspacePath ? pageKeys.list(workspacePath) : ["pages", "disabled"],
+    queryFn: () => listPages(getGatewayUrl(), workspacePath ?? ""),
+    enabled: Boolean(workspacePath),
+    staleTime: 30_000,
+  });
+  const pages = pagesResult?.pages ?? [];
 
   const currentSection = useMemo(() => {
     const sectionSegment = segments.find((segment) => {
@@ -54,6 +70,32 @@ export function DesktopBreadcrumbBar({
       return kind === "workspace-section";
     });
     return sectionSegment?.meta?.section;
+  }, [segments]);
+
+  const currentArea = useMemo<"home" | "apps" | "section">(() => {
+    const appsHref = workspace?.id
+      ? `/workspace/${encodeURIComponent(workspace.id)}/apps`
+      : null;
+    if (appsHref && segments.some((segment) => segment.href === appsHref)) {
+      return "apps";
+    }
+    if (currentSection) {
+      return "section";
+    }
+    return "home";
+  }, [currentSection, segments, workspace?.id]);
+
+  const currentPageSlug = useMemo(() => {
+    const pageSegments = segments.filter((segment) => segment.meta?.pageSlug);
+    return pageSegments[pageSegments.length - 1]?.meta?.pageSlug;
+  }, [segments]);
+
+  const currentSettingsSection = useMemo(() => {
+    const settingsSegment = segments.find((segment) => segment.href.startsWith("/settings/"));
+    if (!settingsSegment) {
+      return undefined;
+    }
+    return settingsSegment.href.split("/settings/")[1] || "general";
   }, [segments]);
 
   const navigateWithTab = useCallback(
@@ -85,9 +127,21 @@ export function DesktopBreadcrumbBar({
         }
       }
 
+      if (currentArea === "apps") {
+        openWorkspaceApps(workspaceId);
+        return;
+      }
+
       openWorkspaceHome(workspaceId);
     },
-    [currentSection, openWorkspaceHome, openWorkspaceSection, selectWorkspace]
+    [
+      currentArea,
+      currentSection,
+      openWorkspaceApps,
+      openWorkspaceHome,
+      openWorkspaceSection,
+      selectWorkspace,
+    ]
   );
 
   const handleSectionSelect = useCallback(
@@ -167,9 +221,13 @@ export function DesktopBreadcrumbBar({
     const items = resolvePageIndexBranch({
       segment,
       workspaceId: workspace?.id,
+      pages,
       workspaces,
       activeWorkspaceId: workspace?.id,
       currentSection,
+      currentArea,
+      currentPageSlug,
+      currentSettingsSection,
       buildLabel: (key, fallback) => t(key, fallback),
       onSelectWorkspace: handleWorkspaceSelect,
       onSelectSection: handleSectionSelect,
@@ -181,6 +239,10 @@ export function DesktopBreadcrumbBar({
         return;
       }
       if (item.href) {
+        if (item.meta?.workspaceId && item.href === `/workspace/${encodeURIComponent(item.meta.workspaceId)}/apps`) {
+          openWorkspaceApps(item.meta.workspaceId);
+          return;
+        }
         navigateWithTab({
           href: item.href,
           label: item.label,

@@ -1,12 +1,10 @@
 import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTabStore, selectActiveTab } from "@/stores/tab-store";
 import type { PageTab, TabType } from "@/stores/tab-store";
-import type { PageConfig } from "@/lib/gateway";
+import type { ListPagesResult, PageConfig } from "@/lib/gateway";
 import type { IconData } from "@/components/ui/icon-picker";
-import {
-  createBreadcrumbItem,
-  createStackForLocation,
-} from "@/navigation/breadcrumb-stack";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import {
   type DesktopLocation,
   locationToUrl,
@@ -23,6 +21,8 @@ import type {
   PushPageOptions,
   TabNavigationState,
 } from "@/navigation/view-target";
+import { pageKeys } from "@/hooks/use-pages";
+import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 
 export interface TabInfo {
   type: TabType;
@@ -36,6 +36,8 @@ function inferTabType(location: DesktopLocation, fallback?: TabType): TabType {
   if (fallback) return fallback;
 
   switch (location.kind) {
+    case "workspace-apps":
+      return "workspace";
     case "workspace-page":
     case "skill-detail":
     case "mcp-server-detail":
@@ -71,6 +73,8 @@ function inferTabName(location: DesktopLocation, fallback?: string): string {
   switch (location.kind) {
     case "workspace-home":
       return location.workspaceId;
+    case "workspace-apps":
+      return "Apps";
     case "workspace-section":
       return getWorkspaceSectionLabel(location.section) || location.section;
     case "workspace-agent-detail":
@@ -114,6 +118,8 @@ function inferTabSlug(location: DesktopLocation, fallback?: string): string | un
   if (fallback) return fallback;
 
   switch (location.kind) {
+    case "workspace-apps":
+      return "apps";
     case "workspace-section":
       return location.section;
     case "workspace-agent-detail":
@@ -153,6 +159,8 @@ function inferWorkspaceId(location: DesktopLocation, fallback?: string): string 
 }
 
 export function usePageTabs() {
+  const queryClient = useQueryClient();
+  const { getWorkspace } = useLocalWorkspaces();
   const tabs = useTabStore((state) => state.tabs);
   const activeTabId = useTabStore((state) => state.activeTabId);
   const activeTab = useTabStore(selectActiveTab);
@@ -175,6 +183,40 @@ export function usePageTabs() {
   const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
   const getCurrentNavigationState = useTabStore((state) => state.getCurrentNavigationState);
 
+  const resolveNavigation = useCallback(
+    (
+      location: DesktopLocation,
+      input?: {
+        breadcrumbStack?: BreadcrumbStackItem[];
+        title?: string;
+        icon?: IconData;
+        workspaceId?: string;
+      }
+    ) => {
+      const workspaceId =
+        input?.workspaceId ?? ("workspaceId" in location ? location.workspaceId : undefined);
+      const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+      const cachedPages = workspace?.path
+        ? queryClient.getQueryData<ListPagesResult | PageConfig[]>(
+            pageKeys.list(workspace.path)
+          )
+        : undefined;
+      const pages = Array.isArray(cachedPages)
+        ? cachedPages
+        : cachedPages?.pages;
+
+      return resolveLocationNavigation({
+        location,
+        workspace,
+        pages,
+        breadcrumbStack: input?.breadcrumbStack,
+        title: input?.title,
+        icon: input?.icon,
+      });
+    },
+    [getWorkspace, queryClient]
+  );
+
   const openLocation = useCallback(
     (
       location: DesktopLocation,
@@ -184,23 +226,24 @@ export function usePageTabs() {
         openInNewTab?: boolean;
       }
     ) => {
+      const resolvedNavigation = resolveNavigation(location, {
+        breadcrumbStack: options?.breadcrumbStack,
+        title: options?.tabInfo?.name,
+        icon: options?.tabInfo?.icon,
+        workspaceId: options?.tabInfo?.workspaceId,
+      });
       const navigationState: TabNavigationState = {
         location,
-        breadcrumbStack:
-          options?.breadcrumbStack ??
-          createStackForLocation(
-            location,
-            options?.tabInfo?.name,
-            options?.tabInfo?.icon
-          ),
+        breadcrumbStack: resolvedNavigation.breadcrumbStack,
       };
+      const leaf = resolvedNavigation.leaf;
 
       const nextTab = {
         type: inferTabType(location, options?.tabInfo?.type),
         slug: inferTabSlug(location, options?.tabInfo?.slug),
         workspaceId: inferWorkspaceId(location, options?.tabInfo?.workspaceId),
-        name: inferTabName(location, options?.tabInfo?.name),
-        icon: options?.tabInfo?.icon,
+        name: leaf?.label ?? inferTabName(location, options?.tabInfo?.name),
+        icon: leaf?.icon ?? options?.tabInfo?.icon,
         pinned: false,
       };
 
@@ -217,7 +260,7 @@ export function usePageTabs() {
       });
       return activeTabId;
     },
-    [activeTabId, navigateToLocationStore, openTab, updateTab]
+    [activeTabId, navigateToLocationStore, openTab, resolveNavigation, updateTab]
   );
 
   const replaceLocation = useCallback(
@@ -255,9 +298,14 @@ export function usePageTabs() {
       tabInfo?: Partial<TabInfo>
     ) => {
       if (!activeTabId) {
+        const resolvedNavigation = resolveNavigation(nextLocation, {
+          title: tabInfo?.name,
+          icon: tabInfo?.icon,
+          workspaceId: tabInfo?.workspaceId,
+        });
         return openLocation(nextLocation, {
           tabInfo,
-          breadcrumbStack: [...createStackForLocation(nextLocation), item],
+          breadcrumbStack: [...resolvedNavigation.breadcrumbStack, item],
           openInNewTab: true,
         });
       }
@@ -335,6 +383,11 @@ export function usePageTabs() {
       }
 
       const location = buildLocationFromLegacyUrl(url);
+      const resolvedNavigation = resolveNavigation(location, {
+        title: tabInfo.name,
+        icon: tabInfo.icon,
+        workspaceId: tabInfo.workspaceId,
+      });
       return openTab({
         type: tabInfo.type,
         slug: tabInfo.slug,
@@ -344,11 +397,11 @@ export function usePageTabs() {
         pinned: false,
         navigationState: {
           location,
-          breadcrumbStack: createStackForLocation(location),
+          breadcrumbStack: resolvedNavigation.breadcrumbStack,
         },
       });
     },
-    [activeTabId, navigate, openLocation, openTab, updateTab]
+    [activeTabId, navigate, openLocation, openTab, resolveNavigation, updateTab]
   );
 
   const openPageTab = useCallback(
@@ -628,6 +681,10 @@ function buildLocationFromLegacyUrl(url: string): DesktopLocation {
       return { kind: "workspace-home", workspaceId };
     }
 
+    if (parts[2] === "apps" && !parts[3]) {
+      return { kind: "workspace-apps", workspaceId };
+    }
+
     if (parts[2] === "page" && parts[3]) {
       return {
         kind: "workspace-page",
@@ -674,23 +731,6 @@ function buildLocationFromLegacyUrl(url: string): DesktopLocation {
   }
 
   return { kind: "global-route", path: url };
-}
-
-export function createChildBreadcrumbItem(
-  label: string,
-  location: DesktopLocation,
-  partial?: Partial<BreadcrumbStackItem>
-): BreadcrumbStackItem {
-  return createBreadcrumbItem({
-    id: partial?.id ?? locationToUrl(location),
-    kind: partial?.kind ?? "workspace-page",
-    label,
-    icon: partial?.icon,
-    meta: partial?.meta,
-    parentNodeId: partial?.parentNodeId,
-    sourceNodeId: partial?.sourceNodeId,
-    location,
-  });
 }
 
 export type { PageTab, TabType };

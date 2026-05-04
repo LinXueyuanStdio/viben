@@ -89,7 +89,9 @@ export function BreadcrumbDropdown({
               variant="ghost"
               size="sm"
               className={cn(
-                "h-auto w-full items-start justify-start gap-3 rounded-lg px-2.5 py-2 text-left text-sm hover:translate-y-0"
+                "h-auto w-full items-start justify-start gap-3 rounded-lg px-2.5 py-2 text-left text-sm hover:translate-y-0",
+                "bg-transparent focus-visible:bg-accent/40 data-[state=open]:bg-transparent",
+                item.isActive && "bg-accent text-accent-foreground hover:bg-accent"
               )}
               onClick={() => handleSelect(item)}
             >

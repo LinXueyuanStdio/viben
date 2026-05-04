@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
 import { selectActiveTab, useTabStore } from "@/stores/tab-store";
-import { createStackForLocation } from "@/navigation/breadcrumb-stack";
+import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import { locationToUrl, urlToLocation } from "@/navigation/location";
 import type { DesktopLocation } from "@/navigation/location";
+import type { ListPagesResult, PageConfig } from "@/lib/gateway";
+import { pageKeys } from "@/hooks/use-pages";
+import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 
 export function TabRouterBridge() {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const { getWorkspace } = useLocalWorkspaces();
 
   const activeTabId = useTabStore((state) => state.activeTabId);
   const activeTab = useTabStore(selectActiveTab);
@@ -32,6 +38,31 @@ export function TabRouterBridge() {
     [activeTab]
   );
 
+  const resolveNavigation = useMemo(
+    () =>
+      (nextLocation: DesktopLocation, input?: { title?: string }) => {
+        const workspaceId =
+          "workspaceId" in nextLocation ? nextLocation.workspaceId : undefined;
+        const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+        const cachedPages = workspace?.path
+          ? queryClient.getQueryData<ListPagesResult | PageConfig[]>(
+              pageKeys.list(workspace.path)
+            )
+          : undefined;
+        const pages = Array.isArray(cachedPages)
+          ? cachedPages
+          : cachedPages?.pages;
+
+        return resolveLocationNavigation({
+          location: nextLocation,
+          workspace,
+          pages,
+          title: input?.title,
+        });
+      },
+    [getWorkspace, queryClient]
+  );
+
   useEffect(() => {
     if (!activeTabId || !targetUrl) return;
     if (!targetUrl || targetUrl === currentUrl) return;
@@ -54,16 +85,17 @@ export function TabRouterBridge() {
     if (!parsed) return;
 
     if (!activeTabId) {
+      const resolved = resolveNavigation(parsed);
       openTab(
         {
           type: inferTabType(parsed),
-          name: inferTabName(parsed),
+          name: resolved.leaf?.label ?? inferTabName(parsed),
           pinned: false,
           workspaceId: "workspaceId" in parsed ? parsed.workspaceId : undefined,
           slug: inferSlug(parsed),
           navigationState: {
             location: parsed,
-            breadcrumbStack: createStackForLocation(parsed),
+            breadcrumbStack: resolved.breadcrumbStack,
           },
         },
         currentUrl
@@ -76,9 +108,10 @@ export function TabRouterBridge() {
       : null;
     if (currentStateUrl === currentUrl) return;
 
+    const resolved = resolveNavigation(parsed);
     syncLockRef.current = `router:${currentUrl}`;
     navigateToLocation(activeTabId, parsed, {
-      breadcrumbStack: createStackForLocation(parsed),
+      breadcrumbStack: resolved.breadcrumbStack,
     });
   }, [
     activeTabId,
@@ -86,6 +119,7 @@ export function TabRouterBridge() {
     currentUrl,
     navigateToLocation,
     openTab,
+    resolveNavigation,
   ]);
 
   return null;
@@ -93,6 +127,8 @@ export function TabRouterBridge() {
 
 function inferTabType(location: DesktopLocation) {
   switch (location.kind) {
+    case "workspace-apps":
+      return "workspace" as const;
     case "workspace-page":
     case "skill-detail":
     case "mcp-server-detail":
@@ -113,6 +149,8 @@ function inferTabName(location: DesktopLocation): string {
   switch (location.kind) {
     case "workspace-home":
       return location.workspaceId;
+    case "workspace-apps":
+      return "Apps";
     case "workspace-section":
       return location.section;
     case "workspace-agent-detail":
@@ -154,6 +192,8 @@ function inferTabName(location: DesktopLocation): string {
 
 function inferSlug(location: DesktopLocation): string | undefined {
   switch (location.kind) {
+    case "workspace-apps":
+      return "apps";
     case "workspace-section":
       return location.section;
     case "workspace-agent-detail":

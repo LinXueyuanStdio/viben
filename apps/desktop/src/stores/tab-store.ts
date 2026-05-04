@@ -105,6 +105,14 @@ function findLastPinnedIndex(tabs: PageTab[]): number {
 }
 
 function buildFallbackLocation(url: string): DesktopLocation {
+  if (url.startsWith("/workspace/") && url.includes("/apps")) {
+    const parts = url.split("/").filter(Boolean);
+    const workspaceId = parts[1];
+    if (workspaceId) {
+      return { kind: "workspace-apps", workspaceId };
+    }
+  }
+
   if (url.startsWith("/documents")) {
     return { kind: "documents" };
   }

@@ -35,6 +35,7 @@ import {
   DocumentsPage,
   ChatMonitorPage,
   PageDebugPage,
+  WorkspaceAppsPage,
   WorkspacePage,
   WorkspaceWebPage,
   OsPage,
@@ -185,6 +186,7 @@ function App() {
 
                 {/* Workspace routes */}
                 <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
+                <Route path="workspace/:workspaceId/apps" element={<WorkspaceAppsPage />} />
                 <Route path="workspace/page" element={<WorkspacePage />} />
                 <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
                 <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
