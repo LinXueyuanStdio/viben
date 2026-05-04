@@ -1,15 +1,14 @@
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef, useCallback, useState } from "react"
 import { Tldraw } from "tldraw"
 import type { Editor } from "tldraw"
 import "tldraw/tldraw.css"
 import "./presentation-layer.css"
 import { useOverlayStore } from "@/stores/overlay-store"
 import { animateCommand, replayToStep } from "@/lib/presentation/command-animator"
-import type { AnimationHandle } from "@/lib/presentation/command-animator"
 import { DOMZIndex } from "@/types/overlay"
-import { PresentationPlayer } from "./presentation-player"
-import { invoke } from "@tauri-apps/api/core"
+import type { AnimationHandle } from "@/lib/presentation/command-animator"
 import type { ClientToolResultContent } from "@/lib/client-side-tool/types"
+import { PresentationPlayer } from "./presentation-player"
 
 interface ScreenshotResult {
   data: string
@@ -17,7 +16,7 @@ interface ScreenshotResult {
   height: number
 }
 
-/** Current session ID for completion callbacks — set by use-agent-conversation */
+/** 当前 session ID — 由 use-agent-conversation 设置 */
 let _currentSessionId = ""
 export function setCurrentSessionId(id: string) {
   _currentSessionId = id
@@ -32,13 +31,28 @@ export function PresentationLayer() {
   const editorRef = useRef<Editor | null>(null)
   const currentAnimRef = useRef<AnimationHandle | null>(null)
   const processedIndexRef = useRef(-1)
+  // Counter incremented when editor mounts — triggers execution loop retry
+  const [editorReady, setEditorReady] = useState(0)
 
   const stepsCount = steps.length
 
   // ---- Execution engine ----
+  // When playerState changes to "playing", sync processedIndexRef with currentStep
+  // so that resuming after a rewind re-animates from the rewound position.
+  useEffect(() => {
+    if (playerState === "playing") {
+      const storeCurrentStep = useOverlayStore.getState().presentationCurrentStep
+      // If user rewound (currentStep < processedIndex), reset processedIndex
+      if (storeCurrentStep - 1 < processedIndexRef.current) {
+        processedIndexRef.current = storeCurrentStep - 1
+      }
+    }
+  }, [playerState])
+
   useEffect(() => {
     if (!presentationActive || playerState !== "playing" || !editorRef.current) return
 
+    const editor = editorRef.current
     const getSteps = () => useOverlayStore.getState().presentationSteps
     const getPlayerState = () => useOverlayStore.getState().presentationPlayerState
     let cancelled = false
@@ -50,56 +64,59 @@ export function PresentationLayer() {
         const currentSteps = getSteps()
         const nextIndex = processedIndexRef.current + 1
 
+        // No more steps yet — wait for new ones to arrive
         if (nextIndex >= currentSteps.length) break
         const step = currentSteps[nextIndex]
-        if (step.status !== "pending") {
-          processedIndexRef.current = nextIndex
-          continue
-        }
 
-        // Mark executing
+        // Mark executing (reset status if it was previously done)
         actions.updateStepStatus(step.id, "executing")
 
         // Animate
-        const anim = animateCommand(editorRef.current!, step.command)
+        const anim = animateCommand(editor, step.command)
         currentAnimRef.current = anim
         await anim.done
         currentAnimRef.current = null
 
         if (cancelled || getPlayerState() !== "playing") break
 
-        // Screenshot: hide overlay -> capture -> restore
-        const overlayEl = document.getElementById("presentation-overlay-root")
-        if (overlayEl) overlayEl.style.visibility = "hidden"
+        // Screenshot: hide player controls only, keep tldraw canvas visible
+        const playerEl = document.getElementById("presentation-player-controls")
+        const exitBtn = document.getElementById("presentation-exit-btn")
+        if (playerEl) playerEl.style.visibility = "hidden"
+        if (exitBtn) exitBtn.style.visibility = "hidden"
+        // Wait one frame for repaint
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 
         let screenshotData = ""
         try {
+          const { invoke } = await import("@tauri-apps/api/core")
           const result = await invoke<ScreenshotResult>("take_screenshot", { hideWindow: false })
           screenshotData = result.data
         } catch {
           // Screenshot failed, continue without it
         }
 
-        if (overlayEl) overlayEl.style.visibility = "visible"
+        if (playerEl) playerEl.style.visibility = "visible"
+        if (exitBtn) exitBtn.style.visibility = "visible"
         if (cancelled) break
 
         // Mark done
         actions.completePresentationStep(step.id, screenshotData)
         processedIndexRef.current = nextIndex
 
-        // Update current step display (only if still playing)
-        if (getPlayerState() === "playing") {
-          useOverlayStore.setState({ presentationCurrentStep: nextIndex })
-        }
+        // Update current step display
+        useOverlayStore.setState({ presentationCurrentStep: nextIndex })
 
-        // Check if all steps for this toolUseId are done -> POST completion
-        checkAndPostCompletion(getSteps(), step.id)
+        // Check if all steps for this toolUseId are done → POST completion
+        checkAndPostCompletion(getSteps(), step.toolUseId)
       }
     }
 
     runLoop()
-    return () => { cancelled = true }
-  }, [stepsCount, playerState, presentationActive])
+    return () => {
+      cancelled = true
+    }
+  }, [stepsCount, playerState, presentationActive, editorReady])
 
   // ---- Pause: immediately finish current animation ----
   useEffect(() => {
@@ -117,7 +134,12 @@ export function PresentationLayer() {
       currentStep !== prevCurrentStepRef.current
     ) {
       const currentSteps = useOverlayStore.getState().presentationSteps
-      const safeTarget = Math.min(currentStep, processedIndexRef.current)
+      // Replay to the requested step (limited by what's been executed)
+      const lastDoneIndex = currentSteps.reduce(
+        (max, s, i) => (s.status === "done" || s.status === "executing" ? i : max),
+        -1
+      )
+      const safeTarget = Math.min(currentStep, lastDoneIndex)
       if (safeTarget >= 0) {
         replayToStep(editorRef.current, currentSteps, safeTarget)
       }
@@ -136,6 +158,8 @@ export function PresentationLayer() {
   const handleMount = useCallback((editor: Editor) => {
     editorRef.current = editor
     editor.setCameraOptions({ isLocked: true })
+    // Trigger execution engine now that editor is ready
+    setEditorReady((n) => n + 1)
   }, [])
 
   // ---- Exit handler ----
@@ -176,18 +200,30 @@ export function PresentationLayer() {
       }}
     >
       {/* Semi-transparent backdrop */}
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.15)" }} />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.15)",
+          pointerEvents: "auto",
+        }}
+      />
 
       {/* tldraw canvas */}
       <div
         className="presentation-tldraw-container"
-        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+        }}
       >
         <Tldraw hideUi onMount={handleMount} options={{ maxPages: 1 }} />
       </div>
 
       {/* Exit button (top-right) */}
       <button
+        id="presentation-exit-btn"
         onClick={handleExit}
         style={{
           position: "absolute",
@@ -209,10 +245,18 @@ export function PresentationLayer() {
           backdropFilter: "blur(8px)",
           transition: "background 0.2s, transform 0.1s",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(220,50,50,0.8)" }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.6)" }}
-        onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)" }}
-        onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(220,50,50,0.8)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "rgba(0,0,0,0.6)"
+        }}
+        onMouseDown={(e) => {
+          e.currentTarget.style.transform = "scale(0.95)"
+        }}
+        onMouseUp={(e) => {
+          e.currentTarget.style.transform = "scale(1)"
+        }}
       >
         <span style={{ fontSize: 16 }}>✕</span>
         退出演示
@@ -230,11 +274,9 @@ export function PresentationLayer() {
 
 function checkAndPostCompletion(
   steps: Array<{ id: string; toolUseId: string; status: string; screenshot?: string; toolName: string }>,
-  completedStepId: string
+  toolUseId: string
 ) {
-  const step = steps.find((s) => s.id === completedStepId)
-  if (!step) return
-  postToolCompletion(step.toolUseId, steps, false)
+  postToolCompletion(toolUseId, steps, false)
 }
 
 function postToolCompletion(
@@ -244,7 +286,6 @@ function postToolCompletion(
 ) {
   const toolSteps = steps.filter((s) => s.toolUseId === toolUseId)
   if (!toolSteps.every((s) => s.status === "done") && !isError) return
-  if (!_currentSessionId) return
 
   const content: ClientToolResultContent[] = [
     { type: "text", text: `Executed ${toolSteps[0]?.toolName ?? "tool"} with ${toolSteps.length} command(s).` },
@@ -257,13 +298,17 @@ function postToolCompletion(
       })),
   ]
 
-  // Dynamic import to avoid circular dependency
+  // Dynamic import to avoid circular deps and allow gateway client to be added later
   import("@/lib/gateway").then(({ getGatewayClient }) => {
     const client = getGatewayClient() as any
-    client.completeClientTool({
-      tool_use_id: toolUseId,
-      session_id: _currentSessionId,
-      result: { content, isError },
-    })
+    if (typeof client.completeClientTool === "function") {
+      client.completeClientTool({
+        tool_use_id: toolUseId,
+        session_id: _currentSessionId,
+        result: { content, isError },
+      })
+    }
+  }).catch(() => {
+    // Gateway client method not available yet
   })
 }

@@ -363,9 +363,11 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
     playerGoTo: (stepIndex) => set({ presentationCurrentStep: stepIndex, presentationPlayerState: "paused" }),
     playerNext: () => set((s) => ({
       presentationCurrentStep: Math.min(s.presentationCurrentStep + 1, s.presentationSteps.length - 1),
+      presentationPlayerState: "paused" as PlayerState,
     })),
     playerPrev: () => set((s) => ({
       presentationCurrentStep: Math.max(s.presentationCurrentStep - 1, 0),
+      presentationPlayerState: "paused" as PlayerState,
     })),
     playerGoToStart: () => set({ presentationCurrentStep: 0, presentationPlayerState: "paused" }),
     playerGoToEnd: () => set((s) => ({

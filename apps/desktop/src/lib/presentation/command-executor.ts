@@ -16,8 +16,9 @@ import type { PresentationCommand } from "./types"
 
 /**
  * 执行单个命令，返回创建的 shape ID 字符串数组
+ * @param initialOpacity - 创建时的初始透明度（默认 1，动画时传 0）
  */
-export function executeCommand(editor: Editor, cmd: PresentationCommand): string[] {
+export function executeCommand(editor: Editor, cmd: PresentationCommand, initialOpacity = 1): string[] {
   switch (cmd.type) {
     case "arrow": {
       const id = createShapeId()
@@ -26,6 +27,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand): string
         type: "arrow",
         x: cmd.from.x,
         y: cmd.from.y,
+        opacity: initialOpacity,
         props: {
           start: { x: 0, y: 0 },
           end: { x: cmd.to.x - cmd.from.x, y: cmd.to.y - cmd.from.y },
@@ -46,6 +48,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand): string
         type: "geo",
         x: cmd.region.x,
         y: cmd.region.y,
+        opacity: initialOpacity,
         props: {
           geo: "rectangle",
           w: cmd.region.width,
@@ -66,6 +69,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand): string
         type: "geo",
         x: cmd.center.x - cmd.radius,
         y: cmd.center.y - cmd.radius,
+        opacity: initialOpacity,
         props: {
           geo: "ellipse",
           w: cmd.radius * 2,
@@ -85,6 +89,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand): string
         type: "text",
         x: cmd.position.x,
         y: cmd.position.y,
+        opacity: initialOpacity,
         props: {
           richText: toRichText(cmd.content),
           color: cmd.color ?? "black",
@@ -106,6 +111,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand): string
           type: "arrow",
           x: origin.x,
           y: origin.y,
+          opacity: initialOpacity,
           props: {
             start: { x: 0, y: 0 },
             end: { x: cmd.points[1].x - origin.x, y: cmd.points[1].y - origin.y },
@@ -127,6 +133,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand): string
               type: "arrow",
               x: cmd.points[i].x,
               y: cmd.points[i].y,
+              opacity: initialOpacity,
               props: {
                 start: { x: 0, y: 0 },
                 end: {

@@ -17,7 +17,7 @@ import {
   Maximize2,
   Loader2,
 } from 'lucide-react';
-import { AttachmentPreview, type MessageAttachment } from '@viben/chat';
+import { AttachmentPreview, type MessageAttachment, type SlashCommand, SlashCommandMenu, useSlashCommands } from '@viben/chat';
 import { cn } from '@/lib/utils';
 import { openAndReadFiles } from '@/lib/tauri-file-attach';
 import {
@@ -41,6 +41,8 @@ import { useUiStore } from '@/stores/ui-store';
 import { useWorkspaceStore } from '@/stores';
 import { useChatConfigStore } from '@/stores/chat-config-store';
 import { useAgentConversation, useChatConfig, useModels } from '@/hooks';
+import { useSlashCommands as useSlashCommandsDefs } from '@/features/slash-commands';
+import type { CommandContext } from '@/features/slash-commands';
 import { filterModelsByExecutor } from '@/lib/executor-constraints';
 import { useModelAutoCorrect } from '@/hooks/use-model-auto-correct';
 import { useScreenshot } from '@/hooks/use-screenshot';
@@ -74,16 +76,22 @@ type TriggerSource = 'hover' | 'click' | null;
 function ChatPopup({
   isStreaming,
   onSend,
+  onSteer,
   onCancel,
   onSendBackground,
+  onSlashCommand,
+  slashCommands = [],
   workspacePath,
   workspaceName,
   contextProgress,
 }: {
   isStreaming: boolean;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
+  onSteer: (message: string) => void;
   onCancel: () => void;
   onSendBackground: (content: string) => void;
+  onSlashCommand?: (command: SlashCommand) => void;
+  slashCommands?: SlashCommand[];
   workspacePath?: string;
   workspaceName?: string;
   /** Context token usage percentage (0-100), estimated from message content */
@@ -149,6 +157,21 @@ function ChatPopup({
 
   // Auto-correct model selection when agent changes cause filtered list to exclude current model
   useModelAutoCorrect(filteredModels, chatConfig.selectedModelId, chatConfig.setSelectedModelId);
+
+  // Slash command menu (reuses @viben/chat hook)
+  const {
+    isOpen: slashMenuOpen,
+    filteredCommands,
+    selectedIndex: slashSelectedIndex,
+    handleKeyDown: slashHandleKeyDown,
+    handleContentChange: slashHandleContentChange,
+    handleSelect: slashHandleSelect,
+    query: slashQuery,
+  } = useSlashCommands({
+    commands: slashCommands,
+    onSelect: (cmd) => onSlashCommand?.(cmd),
+    enabled: slashCommands.length > 0 && !!onSlashCommand,
+  });
 
   // ---- Lifecycle / open-close ----
 
@@ -261,7 +284,8 @@ function ChatPopup({
 
   // ---- Input / Send ----
 
-  const canSend = (content.trim().length > 0 || attachments.length > 0) && !isStreaming;
+  // Allow sending when there's content — streaming doesn't block input (steering)
+  const canSend = content.trim().length > 0 || attachments.length > 0;
 
   const handleSubmit = useCallback(() => {
     const text = content.trim();
@@ -277,16 +301,24 @@ function ChatPopup({
     setIsSendAnimating(true);
     if (backgroundTask) {
       onSendBackground(text);
+    } else if (isStreaming) {
+      // Steering: inject message while agent is running
+      onSteer(text);
     } else {
       onSend(text, currentAttachments);
     }
     setTimeout(() => {
       setIsSendAnimating(false);
-      handleClose();
+      if (!isStreaming) handleClose();
     }, 300);
-  }, [content, attachments, backgroundTask, handleClose, onSend, onSendBackground]);
+  }, [content, attachments, backgroundTask, isStreaming, handleClose, onSend, onSteer, onSendBackground]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Slash command menu handles arrow keys / Enter when open
+    if (slashMenuOpen) {
+      const handled = slashHandleKeyDown(e);
+      if (handled) return;
+    }
     if (e.key === 'Escape') {
       handleClose();
       return;
@@ -295,15 +327,17 @@ function ChatPopup({
       e.preventDefault();
       if (canSend) handleSubmit();
     }
-  }, [handleClose, handleSubmit, canSend]);
+  }, [handleClose, handleSubmit, canSend, slashMenuOpen, slashHandleKeyDown]);
 
   // Auto-resize textarea
   const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+    const value = e.target.value;
+    setContent(value);
+    slashHandleContentChange(value);
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
-  }, []);
+  }, [slashHandleContentChange]);
 
   // ---- Context progress ----
   // contextProgress is now passed as a prop from ChatPopupLayer,
@@ -383,6 +417,16 @@ function ChatPopup({
         transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
+      {/* Steering hint bar (shown when agent is running) */}
+      {isStreaming && (
+        <div className="flex items-center justify-center px-3 pt-2.5 pb-0">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>{t('chat.steering', 'Steering — type to interrupt and queue message')}</span>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar (first row) */}
       <div className="flex items-center gap-1 px-3 pt-3 pb-1">
         {/* Emoji quick-picker */}
@@ -459,6 +503,21 @@ function ChatPopup({
         className="px-3 pt-1 pb-1 border-0"
       />
 
+      {/* Slash command menu */}
+      {slashMenuOpen && filteredCommands.length > 0 && (
+        <div className="px-4 pb-1">
+          <SlashCommandMenu
+            commands={filteredCommands}
+            selectedIndex={slashSelectedIndex}
+            onSelect={slashHandleSelect}
+            onHover={() => {}}
+            isOpen={slashMenuOpen}
+            query={slashQuery}
+            className="relative z-[10001]"
+          />
+        </div>
+      )}
+
       {/* Textarea */}
       <div className="px-4 pt-1 pb-2">
         <textarea
@@ -502,7 +561,7 @@ function ChatPopup({
         <Select
           value={chatConfig.selectedAgentId || ''}
           onValueChange={chatConfig.setSelectedAgentId}
-          disabled={chatConfig.agents.length === 0}
+          disabled={chatConfig.agents.length === 0 || isStreaming}
           onOpenChange={handleSelectOpenChange}
         >
           <SelectTrigger className="h-7 w-auto max-w-[120px] bg-muted/50 border-border/30 rounded-full px-2.5 gap-1 text-xs hover:bg-muted/80 transition-colors [&>svg]:h-3 [&>svg]:w-3">
@@ -543,7 +602,7 @@ function ChatPopup({
         <Select
           value={chatConfig.selectedModelId || ''}
           onValueChange={chatConfig.setSelectedModelId}
-          disabled={filteredModels.length === 0}
+          disabled={filteredModels.length === 0 || isStreaming}
           onOpenChange={handleSelectOpenChange}
         >
           <SelectTrigger className="h-7 w-auto max-w-[120px] bg-muted/50 border-border/30 rounded-full px-2.5 gap-1 text-xs hover:bg-muted/80 transition-colors [&>svg]:h-3 [&>svg]:w-3">
@@ -691,39 +750,38 @@ function ChatPopup({
           )}
         </button>
 
-        {/* Send / Stop button */}
-        {isStreaming ? (
+        {/* Send / Stop buttons */}
+        {isStreaming && (
           <button
             type="button"
             onClick={onCancel}
             className={cn(
-              'h-8 w-8 flex items-center justify-center rounded-full',
+              'h-7 w-7 flex items-center justify-center rounded-full',
               'bg-destructive text-destructive-foreground',
               'hover:bg-destructive/90 transition-all',
             )}
             title={t('chat.stop')}
           >
-            <Square className="h-3.5 w-3.5 fill-current" />
-          </button>
-        ) : (
-          <button
-            ref={sendBtnRef}
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSend}
-            className={cn(
-              'h-8 w-8 flex items-center justify-center rounded-full',
-              'transition-all duration-150',
-              canSend
-                ? 'bg-primary text-primary-foreground hover:bg-primary/80'
-                : 'bg-muted text-muted-foreground cursor-not-allowed',
-              isSendAnimating && 'animate-send-pulse',
-            )}
-            title={t('chat.send')}
-          >
-            <Send className="h-3.5 w-3.5" />
+            <Square className="h-3 w-3 fill-current" />
           </button>
         )}
+        <button
+          ref={sendBtnRef}
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSend}
+          className={cn(
+            'h-8 w-8 flex items-center justify-center rounded-full',
+            'transition-all duration-150',
+            canSend
+              ? 'bg-primary text-primary-foreground hover:bg-primary/80'
+              : 'bg-muted text-muted-foreground cursor-not-allowed',
+            isSendAnimating && 'animate-send-pulse',
+          )}
+          title={isStreaming ? t('chat.steer', 'Steer') : t('chat.send')}
+        >
+          <Send className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   ) : null;
@@ -750,12 +808,20 @@ export function ChatPopupLayer(): ReactElement {
   const {
     messages,
     sendMessage,
+    steerMessage,
     isStreaming,
     phase,
     cancel,
   } = useAgentConversation(workspacePath, {
-    agentConfig: { mcpServers: ["presentation"] },
+    agentConfig: { mcp_servers: ["presentation"] },
+    useWebSocket: true,
   });
+
+  // Slash commands
+  const {
+    commands: slashCommands,
+    execute: executeSlashCommand,
+  } = useSlashCommandsDefs({ workspacePath });
 
   // Estimate context token usage from message content.
   // The SSE stream does not provide real-time token counts, so we approximate
@@ -783,6 +849,30 @@ export function ChatPopupLayer(): ReactElement {
     setCapsuleVisible(true);
     await sendMessage(content, attachments);
   }, [sendMessage]);
+
+  const handleSteer = useCallback((message: string) => {
+    steerMessage(message);
+  }, [steerMessage]);
+
+  const handleSlashCommand = useCallback(async (command: SlashCommand) => {
+    const context: CommandContext = {
+      messages: messages.map((m) => ({
+        role: m.type === "user" ? "user" : "assistant",
+        content: typeof m.content === "string" ? m.content : "",
+      })),
+      clearMessages: () => {},
+      sendMessage: (msg: string) => handleSend(msg),
+      workspacePath,
+      openDialog: () => {},
+      showToast: () => {},
+      navigate: () => {},
+      t: (key: string) => key,
+    };
+    const result = await executeSlashCommand(command, context);
+    if (result?.type === "prompt" && result.prompt) {
+      handleSend(result.prompt);
+    }
+  }, [messages, executeSlashCommand, workspacePath, handleSend]);
 
   const handleCancel = useCallback(() => {
     cancel();
@@ -825,8 +915,11 @@ export function ChatPopupLayer(): ReactElement {
       <ChatPopup
         isStreaming={isStreaming}
         onSend={handleSend}
+        onSteer={handleSteer}
         onCancel={handleCancel}
         onSendBackground={handleSendBackground}
+        onSlashCommand={handleSlashCommand}
+        slashCommands={slashCommands}
         workspacePath={workspacePath}
         workspaceName={activeWorkspace?.name}
         contextProgress={contextProgress}

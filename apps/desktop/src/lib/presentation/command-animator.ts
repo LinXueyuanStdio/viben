@@ -10,7 +10,7 @@ import type { Editor } from "tldraw"
 import type { PresentationCommand } from "./types"
 import { executeCommand } from "./command-executor"
 
-const ANIM_DURATION = 150
+const ANIM_DURATION = 300
 
 export interface AnimationHandle {
   /** 立即完成动画，跳到最终状态 */
@@ -49,18 +49,11 @@ export function animateCommand(editor: Editor, cmd: PresentationCommand): Animat
   }
 
   // Drawing commands: arrow, highlight, circle, text, line
-  const shapeIds = executeCommand(editor, cmd)
+  // Create shapes directly at opacity 0 (no flash)
+  const shapeIds = executeCommand(editor, cmd, 0)
 
   if (shapeIds.length === 0) {
     return resolvedHandle()
-  }
-
-  // Set all shapes to opacity 0
-  for (const id of shapeIds) {
-    const shape = editor.getShape(id as any)
-    if (shape) {
-      editor.updateShape({ id: id as any, type: shape.type, opacity: 0 })
-    }
   }
 
   // Animate opacity 0 -> 1
