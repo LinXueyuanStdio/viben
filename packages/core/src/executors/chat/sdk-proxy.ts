@@ -300,7 +300,7 @@ export class SdkChatProxy implements ChatProxy {
 
       // Resolve SDK MCP servers from registry by name
       if (mcpServers && mcpServers.length > 0) {
-        const resolvedServers = resolveSdkMcpServers(sdk, mcpServers);
+        const resolvedServers = resolveSdkMcpServers(sdk, mcpServers, { sessionId });
         if (Object.keys(resolvedServers).length > 0) {
           queryOptions.mcpServers = resolvedServers;
         }
@@ -622,7 +622,7 @@ export class SdkChatProxy implements ChatProxy {
       // Resolve SDK MCP servers from registry by name
       if (mcpServers && mcpServers.length > 0) {
         const perfMcpStart = Date.now();
-        const resolvedServers = resolveSdkMcpServers(sdk, mcpServers);
+        const resolvedServers = resolveSdkMcpServers(sdk, mcpServers, { sessionId });
         log.info({ mcpResolveMs: Date.now() - perfMcpStart, names: Object.keys(resolvedServers) }, "[perf] resolveSdkMcpServers");
         if (Object.keys(resolvedServers).length > 0) {
           queryOptions.mcpServers = resolvedServers;

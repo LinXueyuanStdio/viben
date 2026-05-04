@@ -8,17 +8,22 @@
  * or comparing two regions.
  *
  * The actual rendering is done on the frontend. Tool handlers here validate
- * input and return success; the frontend intercepts tool_use SSE events and
- * dispatches the corresponding drawing commands to the overlay store.
+ * input and then await the client-side completion via the ClientToolCompletionRegistry.
+ * The frontend intercepts tool_use SSE events and dispatches the corresponding
+ * drawing commands to the overlay store, then POSTs the result back.
  */
 
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type { ClientSideToolOptions } from "../../../services/client-tool-completion";
+import { clientToolCompletionRegistry } from "../../../services/client-tool-completion";
 import { registerSdkMcpServer } from "../sdk-mcp-registry";
 
-registerSdkMcpServer("presentation", (sdk) => {
+registerSdkMcpServer("presentation", (sdk, context) => {
   const { createSdkMcpServer, tool } = sdk;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const z = require("zod");
-  type CallToolResult = import("@modelcontextprotocol/sdk/types.js").CallToolResult;
+
+  const sessionId = context?.sessionId;
 
   function ok(message: string): CallToolResult {
     return { content: [{ type: "text" as const, text: message }] };
@@ -27,6 +32,25 @@ registerSdkMcpServer("presentation", (sdk) => {
   function error(message: string): CallToolResult {
     return { content: [{ type: "text" as const, text: message }], isError: true };
   }
+
+  // ---------------------------------------------------------------------------
+  // Register client-side tool options
+  // ---------------------------------------------------------------------------
+
+  const clientSideToolsConfig: Record<string, ClientSideToolOptions> = {
+    presentation_draw:        { timeoutMs: 30_000 },
+    presentation_spotlight:   { timeoutMs: 30_000 },
+    presentation_callout:     { timeoutMs: 30_000 },
+    presentation_compare:     { timeoutMs: 30_000 },
+    presentation_walkthrough: { timeoutMs: 0 },  // uses global max
+  };
+  for (const [toolName, options] of Object.entries(clientSideToolsConfig)) {
+    clientToolCompletionRegistry.registerToolOptions(toolName, options);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Schemas
+  // ---------------------------------------------------------------------------
 
   const pointSchema = {
     x: z.number().describe("X coordinate in CSS pixels (0 = left edge)"),
@@ -175,6 +199,10 @@ registerSdkMcpServer("presentation", (sdk) => {
     animate: animateFlag,
   });
 
+  // ---------------------------------------------------------------------------
+  // Tools
+  // ---------------------------------------------------------------------------
+
   return createSdkMcpServer({
     name: "presentation",
     version: "1.1.0",
@@ -195,7 +223,10 @@ registerSdkMcpServer("presentation", (sdk) => {
           if (!commands || !Array.isArray(commands) || commands.length === 0) {
             return error("Error: commands array is empty");
           }
-          return ok(`Queued ${commands.length} presentation command(s).`);
+          if (!sessionId) {
+            return error("Error: no sessionId available for client-side tool execution");
+          }
+          return await clientToolCompletionRegistry.waitForClient(sessionId);
         }
       ),
       tool(
@@ -207,7 +238,10 @@ registerSdkMcpServer("presentation", (sdk) => {
           if (!args.title && !args.description) {
             return error("Error: provide title or description so the user knows what is being spotlighted.");
           }
-          return ok("Queued spotlight presentation.");
+          if (!sessionId) {
+            return error("Error: no sessionId available for client-side tool execution");
+          }
+          return await clientToolCompletionRegistry.waitForClient(sessionId);
         }
       ),
       tool(
@@ -219,7 +253,10 @@ registerSdkMcpServer("presentation", (sdk) => {
           if (!args.label.trim()) {
             return error("Error: label must not be empty.");
           }
-          return ok("Queued callout presentation.");
+          if (!sessionId) {
+            return error("Error: no sessionId available for client-side tool execution");
+          }
+          return await clientToolCompletionRegistry.waitForClient(sessionId);
         }
       ),
       tool(
@@ -231,7 +268,10 @@ registerSdkMcpServer("presentation", (sdk) => {
           if (!args.steps.length) {
             return error("Error: steps array is empty.");
           }
-          return ok(`Queued walkthrough with ${args.steps.length} step(s).`);
+          if (!sessionId) {
+            return error("Error: no sessionId available for client-side tool execution");
+          }
+          return await clientToolCompletionRegistry.waitForClient(sessionId);
         }
       ),
       tool(
@@ -243,7 +283,10 @@ registerSdkMcpServer("presentation", (sdk) => {
           if (!args.left.label.trim() || !args.right.label.trim()) {
             return error("Error: both comparison labels must be non-empty.");
           }
-          return ok("Queued comparison presentation.");
+          if (!sessionId) {
+            return error("Error: no sessionId available for client-side tool execution");
+          }
+          return await clientToolCompletionRegistry.waitForClient(sessionId);
         }
       ),
       tool(

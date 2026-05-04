@@ -12,7 +12,7 @@
 
 import type * as ClaudeAgentSdk from "@anthropic-ai/claude-agent-sdk";
 
-export type McpServerFactory = (sdk: typeof ClaudeAgentSdk) => ReturnType<typeof ClaudeAgentSdk.createSdkMcpServer>;
+export type McpServerFactory = (sdk: typeof ClaudeAgentSdk, context?: { sessionId?: string }) => ReturnType<typeof ClaudeAgentSdk.createSdkMcpServer>;
 
 // Use a getter to avoid TDZ issues from circular imports in bundled output.
 // When the bundle flattens modules, side-effect imports (presentation.ts)
@@ -40,13 +40,14 @@ export function registerSdkMcpServer(name: string, factory: McpServerFactory): v
  */
 export function resolveSdkMcpServers(
   sdk: typeof ClaudeAgentSdk,
-  names: string[]
+  names: string[],
+  context?: { sessionId?: string }
 ): Record<string, ReturnType<typeof ClaudeAgentSdk.createSdkMcpServer>> {
   const result: Record<string, ReturnType<typeof ClaudeAgentSdk.createSdkMcpServer>> = {};
   for (const name of names) {
     const factory = getRegistry().get(name);
     if (factory) {
-      result[name] = factory(sdk);
+      result[name] = factory(sdk, context);
     }
   }
   return result;
