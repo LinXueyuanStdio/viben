@@ -38,7 +38,7 @@ export function SidebarSection({
   if (!collapsible) {
     return (
       <div className={cn("space-y-1", className)}>
-        <div className="flex h-7 items-center justify-between px-3">
+        <div className="flex h-7 items-center justify-between px-2">
           <span className="text-[11px] font-medium text-muted-foreground/70">
             {title}
           </span>
@@ -54,7 +54,7 @@ export function SidebarSection({
     <div className={cn("space-y-1", className)}>
       <div
         className={cn(
-          "group flex h-7 w-full items-center gap-1 px-3",
+          "group flex h-7 w-full items-center gap-1 px-2",
           "rounded-md cursor-pointer",
           "hover:bg-accent/50 transition-colors duration-200"
         )}

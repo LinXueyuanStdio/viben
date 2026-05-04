@@ -83,9 +83,9 @@ export const useChatConfigStore = create<ChatConfigState>()(
       setGlobalAgents: (agents) => {
         set({ globalAgents: agents });
         const state = get();
-        // Auto-select first agent if none selected or current selection is invalid
-        const currentValid = agents.some((a) => a.id === state.selectedAgentId);
-        if ((!state.selectedAgentId || !currentValid) && agents.length > 0) {
+        // Auto-select first agent only if none selected
+        // Don't reset if current selection is not in the list — it may be a workspace agent
+        if (!state.selectedAgentId && agents.length > 0) {
           set({ selectedAgentId: agents[0].id });
         }
       },
@@ -93,9 +93,8 @@ export const useChatConfigStore = create<ChatConfigState>()(
       setGlobalModels: (models) => {
         set({ globalModels: models });
         const state = get();
-        // Auto-select first model if none selected or current selection is invalid
-        const currentValid = models.some((m) => m.id === state.selectedModelId);
-        if ((!state.selectedModelId || !currentValid) && models.length > 0) {
+        // Auto-select first model only if none selected
+        if (!state.selectedModelId && models.length > 0) {
           set({ selectedModelId: models[0].id });
         }
       },

@@ -889,7 +889,7 @@ export function PageSection({
         collapsed={collapsed}
         headerAction={headerAction}
       >
-        <div className="px-3 py-2 text-xs text-destructive">
+        <div className="px-2 py-2 text-xs text-destructive">
           {errorMessage}
         </div>
       </SidebarSection>
@@ -975,7 +975,7 @@ export function PageSection({
         headerAction={headerAction}
       >
         {pageTree.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-muted-foreground">
+          <div className="px-2 py-2 text-xs text-muted-foreground">
             {t("page.noPages")}
           </div>
         ) : (

@@ -279,7 +279,7 @@ export function Sidebar() {
         {/* Workspace Selector & Collapse Toggle */}
         <div className={cn(
           "flex h-14 items-center border-b border-sidebar-border",
-          collapsed ? "justify-center px-2" : "justify-between px-3"
+          collapsed ? "justify-center px-2" : "justify-between px-2"
         )}>
           {collapsed ? (
             // Collapsed: clickable workspace icon to expand
@@ -395,7 +395,7 @@ export function Sidebar() {
         </div>
 
         {/* Main Navigation with Sections */}
-        <ScrollArea className="flex-1 py-4">
+        <ScrollArea className="flex-1 pt-2 px-2">
           {collapsed ? (
             // Collapsed: all items use SidebarIconButton with unified centering
             <div className="flex flex-col gap-1">
@@ -442,7 +442,7 @@ export function Sidebar() {
             </div>
           ) : (
             // Expanded: full layout with sections
-            <div className="space-y-4 pl-2 pr-4">
+            <div className="space-y-4">
               {/* Pages Section - Before Workspace navigation */}
               {activeWorkspaceId && activeWorkspace && (
                 <PageSection
@@ -660,7 +660,7 @@ function NavItemComponent({ item, collapsed, onNavigate }: NavItemComponentProps
       type="button"
       onClick={handleClick}
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+        "group relative flex items-center gap-3 px-2 py-2 rounded-lg text-sm w-full text-left",
         "transition-all duration-200",
         isActiveOrChild
           ? [
@@ -756,7 +756,7 @@ function WorkspaceNavItemComponent({ item, workspaceId, collapsed, onNavigate }:
       type="button"
       onClick={handleClick}
       className={cn(
-        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+        "group relative flex items-center gap-3 px-2 py-2 rounded-lg text-sm w-full text-left",
         "transition-all duration-200",
         isActive
           ? [

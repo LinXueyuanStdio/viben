@@ -402,7 +402,7 @@ export function useWorkspaceChat() {
     enabled: m.is_available,
   }));
 
-  const { selectedAgentId, setSelectedAgentId } = useChatConfig();
+  const { selectedAgentId, setSelectedAgentId } = useChatConfig({ workspacePath: workspace?.path });
   selectedAgentIdRef.current = selectedAgentId;
 
   // Slash commands
