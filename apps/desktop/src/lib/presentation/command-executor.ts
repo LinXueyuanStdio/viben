@@ -1,20 +1,23 @@
 /**
  * Command Executor — 将 PresentationCommand 映射为 tldraw Editor API 调用
  *
+ * 纯粹的 "创建形状并返回 ID" 函数，不处理动画。
+ * 动画由 command-animator.ts 负责。
+ *
  * 参考 tldraw 官方最佳实践:
  * - editor.createShape() 创建形状
  * - editor.run(() => {...}) 事务化批量操作
  * - createShapeId() 生成唯一 ID
- * - b64Vecs.encodePoints() 编码 draw shape 点数据
  */
 
 import type { Editor } from "tldraw"
 import { createShapeId, toRichText } from "tldraw"
 import type { PresentationCommand } from "./types"
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-function executeCommand(editor: Editor, cmd: PresentationCommand): void {
+/**
+ * 执行单个命令，返回创建的 shape ID 字符串数组
+ */
+export function executeCommand(editor: Editor, cmd: PresentationCommand): string[] {
   switch (cmd.type) {
     case "arrow": {
       const id = createShapeId()
@@ -33,13 +36,7 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
           ...(cmd.label ? { richText: toRichText(cmd.label) } : {}),
         },
       })
-      if (cmd.animate) {
-        editor.updateShape({ id, type: "arrow", opacity: 0 })
-        requestAnimationFrame(() => {
-          editor.updateShape({ id, type: "arrow", opacity: 1 })
-        })
-      }
-      break
+      return [id.toString()]
     }
 
     case "highlight": {
@@ -59,13 +56,7 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
           size: "m",
         },
       })
-      if (cmd.animate) {
-        editor.updateShape({ id, type: "geo", opacity: 0 })
-        requestAnimationFrame(() => {
-          editor.updateShape({ id, type: "geo", opacity: 1 })
-        })
-      }
-      break
+      return [id.toString()]
     }
 
     case "circle": {
@@ -84,13 +75,7 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
           size: "m",
         },
       })
-      if (cmd.animate) {
-        editor.updateShape({ id, type: "geo", opacity: 0 })
-        requestAnimationFrame(() => {
-          editor.updateShape({ id, type: "geo", opacity: 1 })
-        })
-      }
-      break
+      return [id.toString()]
     }
 
     case "text": {
@@ -106,19 +91,16 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
           size: cmd.size ?? "m",
         },
       })
-      break
+      return [id.toString()]
     }
 
     case "line": {
-      if (cmd.points.length < 2) break
-      const id = createShapeId()
+      if (cmd.points.length < 2) return []
       const origin = cmd.points[0]
-      // Use geo line shape with points for simplicity
-      // For freehand, we'd use draw shape with b64Vecs encoding
-      const points = cmd.points.map((p) => ({ x: p.x - origin.x, y: p.y - origin.y }))
 
-      // Create as arrow without arrowheads for simple line
       if (cmd.points.length === 2) {
+        // Two-point line: create as arrow without arrowheads
+        const id = createShapeId()
         editor.createShape({
           id,
           type: "arrow",
@@ -126,16 +108,17 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
           y: origin.y,
           props: {
             start: { x: 0, y: 0 },
-            end: { x: points[1].x, y: points[1].y },
+            end: { x: cmd.points[1].x - origin.x, y: cmd.points[1].y - origin.y },
             color: cmd.color ?? "red",
             size: cmd.size ?? "m",
             arrowheadEnd: "none",
             arrowheadStart: "none",
           },
         })
+        return [id.toString()]
       } else {
-        // Multi-point: use draw shape
-        // Simplified approach - connect with multiple arrow segments
+        // Multi-point: connect with multiple arrow segments
+        const segIds: string[] = []
         editor.run(() => {
           for (let i = 0; i < cmd.points.length - 1; i++) {
             const segId = createShapeId()
@@ -156,16 +139,11 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
                 arrowheadStart: "none",
               },
             })
+            segIds.push(segId.toString())
           }
         })
+        return segIds
       }
-      if (cmd.animate) {
-        editor.updateShape({ id, type: "arrow", opacity: 0 })
-        requestAnimationFrame(() => {
-          editor.updateShape({ id, type: "arrow", opacity: 1 })
-        })
-      }
-      break
     }
 
     case "clear": {
@@ -173,37 +151,10 @@ function executeCommand(editor: Editor, cmd: PresentationCommand): void {
       if (allShapes.length > 0) {
         editor.deleteShapes(allShapes.map((s) => s.id))
       }
-      break
+      return []
     }
 
     case "wait":
-      // Handled by executeQueue
-      break
+      return []
   }
 }
-
-/**
- * 执行命令队列 — 逐个消费，支持 wait 延时和最小间隔
- */
-export async function executeQueue(
-  editor: Editor,
-  commands: PresentationCommand[],
-  signal?: AbortSignal
-): Promise<void> {
-  for (const cmd of commands) {
-    if (signal?.aborted) break
-
-    if (cmd.type === "wait") {
-      await sleep(cmd.ms)
-    } else {
-      executeCommand(editor, cmd)
-      // 最小间隔保证视觉节奏
-      await sleep(50)
-    }
-  }
-}
-
-/**
- * 执行单个命令 (实时模式，Agent 逐条发送)
- */
-export { executeCommand }
