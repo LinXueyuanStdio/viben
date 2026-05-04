@@ -631,6 +631,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
       // Execute agent using SDK proxy with config from frontend
       const proxy = new SdkChatProxy();
+      agentService.registerProxy(sessionId, proxy);
       const stream = proxy.executeStreaming({
         prompt,
         cwd: cwd || process.cwd(),
@@ -1329,6 +1330,41 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         session_id: sessionId,
         status: isAborted ? "cancelled" : "active",
       };
+    }
+  );
+
+  /**
+   * Steer a running session by injecting a user message
+   * POST /api/agent/session/:sessionId/steer
+   *
+   * The message is queued and delivered to the agent after the current tool call completes.
+   */
+  fastify.post<{
+    Params: { sessionId: string };
+    Body: { message: string };
+  }>(
+    "/api/agent/session/:sessionId/steer",
+    async (request, reply) => {
+      const { sessionId } = request.params;
+      const { message } = request.body;
+
+      if (!message) {
+        reply.code(400);
+        return { error: "message is required" };
+      }
+
+      try {
+        const ok = await agentService.steerSession(sessionId, message);
+        if (!ok) {
+          reply.code(404);
+          return { error: `No active session to steer: ${sessionId}` };
+        }
+        return { success: true, session_id: sessionId };
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        reply.code(500);
+        return { error: `Steering failed: ${errMsg}` };
+      }
     }
   );
 

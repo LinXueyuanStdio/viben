@@ -70,7 +70,7 @@ interface AgentConfigPayload {
  * Client to Server message types
  */
 interface ClientMessage {
-  type: "start" | "answer" | "approve" | "reject" | "cancel" | "ping";
+  type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer" | "ping";
   // For "start" - begin agent execution
   prompt?: string;
   agentConfig?: AgentConfigPayload;
@@ -79,6 +79,8 @@ interface ClientMessage {
   answers?: Record<string, string>;
   // For "approve" / "reject" - plan approval
   planId?: string;
+  // For "steer" - inject message during agent execution
+  message?: string;
 }
 
 /**
@@ -138,6 +140,8 @@ interface WsSession {
   // Promise resolver for waiting on user input
   pending_question_resolver?: (answers: Record<string, string>) => void;
   pending_plan_resolver?: (approved: boolean) => void;
+  // Active proxy for steering
+  active_proxy?: import("../../executors/chat/sdk-proxy").SdkChatProxy;
 }
 
 // ============================================================================
@@ -313,6 +317,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
   try {
     // Create SDK proxy
     const proxy = new SdkChatProxy();
+    session.active_proxy = proxy;
 
     // Execute streaming
     const stream = proxy.executeStreaming({
@@ -453,6 +458,7 @@ async function executeAgent(session: WsSession, prompt: string, isFollowUp = fal
     // Only cleanup on the outermost call (not follow-ups that returned early)
     if (!isFollowUp || !session.is_running) {
       session.is_running = false;
+      session.active_proxy = undefined;
       agentService.unregisterSession(session.id);
 
       // Send done message
@@ -623,6 +629,30 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 if (session.pending_plan_resolver) {
                   session.pending_plan_resolver(false);
                   session.pending_plan_resolver = undefined;
+                }
+                break;
+              }
+
+              case "steer": {
+                if (!session.is_running) {
+                  sendMessage(socket, { type: "error", message: "No agent is running to steer" });
+                  return;
+                }
+                if (!msg.message) {
+                  sendMessage(socket, { type: "error", message: "message is required for steer" });
+                  return;
+                }
+                if (!session.active_proxy) {
+                  sendMessage(socket, { type: "error", message: "No active proxy to steer" });
+                  return;
+                }
+                try {
+                  await session.active_proxy.steer(msg.message);
+                  log.info({ sessionId: session.id, msgLength: msg.message.length }, "Steering message injected");
+                } catch (err) {
+                  const errMsg = err instanceof Error ? err.message : String(err);
+                  log.warn({ err }, "Failed to inject steering message");
+                  sendMessage(socket, { type: "error", message: `Steering failed: ${errMsg}` });
                 }
                 break;
               }

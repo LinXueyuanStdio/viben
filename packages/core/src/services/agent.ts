@@ -75,6 +75,7 @@ export class AgentService {
   private abortControllers = new Map<string, AbortController>();
   private plans = new Map<string, AgentPlan>();
   private questions = new Map<string, AgentQuestion>();
+  private sessionProxies = new Map<string, { steer: (message: string) => Promise<void> }>();
 
   // ==========================================================================
   // Abort Controller Management
@@ -125,6 +126,26 @@ export class AgentService {
    */
   unregisterSession(sessionId: string): void {
     this.abortControllers.delete(sessionId);
+    this.sessionProxies.delete(sessionId);
+  }
+
+  /**
+   * Register a steerable proxy for a session
+   */
+  registerProxy(sessionId: string, proxy: { steer: (message: string) => Promise<void> }): void {
+    this.sessionProxies.set(sessionId, proxy);
+  }
+
+  /**
+   * Send a steering message to a running session
+   *
+   * @returns True if message was injected, false if session not found
+   */
+  async steerSession(sessionId: string, message: string): Promise<boolean> {
+    const proxy = this.sessionProxies.get(sessionId);
+    if (!proxy) return false;
+    await proxy.steer(message);
+    return true;
   }
 
   /**

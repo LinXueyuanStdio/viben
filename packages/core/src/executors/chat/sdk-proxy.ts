@@ -180,6 +180,29 @@ export async function isSdkAvailable(): Promise<boolean> {
 export class SdkChatProxy implements ChatProxy {
   readonly proxyType = "sdk" as const;
 
+  /** Active query reference for steering (streamInput) */
+  private activeQuery: ClaudeAgentSdk.Query | null = null;
+
+  /**
+   * Inject a steering message into the running agent execution.
+   * The message is queued and delivered after the current tool call completes.
+   */
+  async steer(message: string): Promise<void> {
+    if (!this.activeQuery) {
+      throw new Error("No active query to steer");
+    }
+    // Create an async iterable that yields a single SDKUserMessage
+    const userMessage: ClaudeAgentSdk.SDKUserMessage = {
+      type: "user",
+      message: { role: "user", content: message },
+      parent_tool_use_id: null,
+    };
+    async function* singleMessage() {
+      yield userMessage;
+    }
+    await this.activeQuery.streamInput(singleMessage());
+  }
+
   /**
    * Execute chat using the Claude Agent SDK
    */
@@ -616,6 +639,9 @@ export class SdkChatProxy implements ChatProxy {
         options: queryOptions as Parameters<typeof sdk.query>[0]["options"],
       });
 
+      // Store active query reference for steering
+      this.activeQuery = queryResult;
+
       log.info({ sdkQueryCallMs: Date.now() - perfQueryStart }, "[perf] sdk.query() returned (iterator created)");
 
       // Stream messages - yield all SSE messages from each SDK message
@@ -632,11 +658,17 @@ export class SdkChatProxy implements ChatProxy {
         }
       }
 
+      // Clear active query reference
+      this.activeQuery = null;
+
       const duration = Date.now() - startTime;
 
       // Yield success result at the end
       yield { type: "result", subtype: "success", duration };
     } catch (error) {
+      // Clear active query reference on error
+      this.activeQuery = null;
+
       const errorMessage = error instanceof Error ? error.message : String(error);
 
       // Log the full error for debugging
