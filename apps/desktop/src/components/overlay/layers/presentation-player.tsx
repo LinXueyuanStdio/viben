@@ -7,6 +7,9 @@ import {
   ChevronRight,
   SkipForward,
   List,
+  CheckCircle2,
+  Circle,
+  Loader2,
 } from "lucide-react"
 import { useOverlayStore } from "@/stores/overlay-store"
 import type { PresentationStep } from "@/lib/client-side-tool/types"
@@ -356,19 +359,20 @@ function StepCard({
       </div>
 
       {/* Status */}
-      <span
-        style={{
-          fontSize: 11,
-          color: step.status === "done"
-            ? "rgba(74, 222, 128, 0.8)"
-            : step.status === "executing"
-              ? "rgba(251, 191, 36, 0.8)"
-              : "rgba(255, 255, 255, 0.25)",
-          alignSelf: "center",
-          fontWeight: 500,
-        }}
-      >
-        {step.status === "executing" ? "●" : step.status === "done" ? "✓" : "○"}
+      <span style={{ alignSelf: "center", display: "flex" }}>
+        {step.status === "executing" ? (
+          <Loader2
+            size={14}
+            style={{
+              color: "rgba(251, 191, 36, 0.9)",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+        ) : step.status === "done" ? (
+          <CheckCircle2 size={14} style={{ color: "rgba(74, 222, 128, 0.85)" }} />
+        ) : (
+          <Circle size={12} style={{ color: "rgba(255, 255, 255, 0.2)" }} />
+        )}
       </span>
     </div>
   )

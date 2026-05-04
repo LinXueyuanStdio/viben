@@ -16,6 +16,8 @@ import {
   Paperclip,
   Maximize2,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { AttachmentPreview, type MessageAttachment, type SlashCommand, SlashCommandMenu, useSlashCommands } from '@viben/chat';
 import { cn } from '@/lib/utils';
@@ -119,6 +121,8 @@ function ChatPopup({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isSendAnimating, setIsSendAnimating] = useState(false);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const [steeringQueue, setSteeringQueue] = useState<Array<{ id: string; content: string; attachments?: MessageAttachment[] }>>([]);
+  const [steeringExpanded, setSteeringExpanded] = useState(false);
   // Screenshot hook
   const {
     takeScreenshot,
@@ -191,6 +195,14 @@ function ChatPopup({
       textareaRef.current.focus();
     }
   }, [isVisible]);
+
+  // Clear steering queue when streaming ends
+  useEffect(() => {
+    if (!isStreaming) {
+      setSteeringQueue([]);
+      setSteeringExpanded(false);
+    }
+  }, [isStreaming]);
 
   const clearCloseTimeout = useCallback(() => {
     if (closeTimeoutRef.current) {
@@ -302,8 +314,12 @@ function ChatPopup({
     if (backgroundTask) {
       onSendBackground(text);
     } else if (isStreaming) {
-      // Steering: inject message while agent is running
+      // Steering: inject message while agent is running + add to queue display
       onSteer(text);
+      setSteeringQueue((prev) => [
+        ...prev,
+        { id: `steer-${Date.now()}`, content: text, attachments: currentAttachments },
+      ]);
     } else {
       onSend(text, currentAttachments);
     }
@@ -417,12 +433,38 @@ function ChatPopup({
         transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      {/* Steering hint bar (shown when agent is running) */}
-      {isStreaming && (
-        <div className="flex items-center justify-center px-3 pt-2.5 pb-0">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>{t('chat.steering', 'Steering — type to interrupt and queue message')}</span>
+      {/* Steering queue (shown only when there are queued messages) */}
+      {steeringQueue.length > 0 && (
+        <div className="px-3 pt-2.5 pb-0">
+          <div className="rounded-lg bg-primary/5 border border-primary/20 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+              <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
+              <span className="text-xs text-primary font-medium flex-1">
+                {t('chat.steeringQueued', '{{count}} queued', { count: steeringQueue.length })}
+              </span>
+              {steeringQueue.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setSteeringExpanded((v) => !v)}
+                  className="h-4 w-4 flex items-center justify-center rounded text-primary/70 hover:text-primary transition-colors"
+                >
+                  {steeringExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                </button>
+              )}
+            </div>
+            {/* Messages list */}
+            <div className={cn('px-2.5 pb-1.5 space-y-1', !steeringExpanded && 'max-h-[4.5rem] overflow-hidden')}>
+              {(steeringExpanded ? steeringQueue : steeringQueue.slice(-3)).map((item) => (
+                <div key={item.id} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <span className="shrink-0 text-primary/50 mt-0.5">›</span>
+                  <span className="truncate flex-1">{item.content}</span>
+                  {item.attachments && item.attachments.length > 0 && (
+                    <span className="shrink-0 text-primary/40">[{item.attachments.length}]</span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -879,8 +921,12 @@ export function ChatPopupLayer(): ReactElement {
   }, [cancel]);
 
   const handleDismissCapsule = useCallback(() => {
+    // Stop the agent if it's still running, then hide the capsule
+    if (isStreaming) {
+      cancel();
+    }
     setCapsuleVisible(false);
-  }, []);
+  }, [isStreaming, cancel]);
 
   const handleSendBackground = useCallback(async (content: string) => {
     try {
