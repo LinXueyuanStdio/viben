@@ -1294,6 +1294,20 @@
     "mcpBuiltinDesc": {
       "presentation": "Presentation mode tools for overlay drawing, spotlight, callout, and walkthrough annotations"
     },
+    "mcpCustom": {
+      "jsonMode": "JSON",
+      "formMode": "Form",
+      "jsonPlaceholder": "Paste MCP server JSON configuration...\n\nSupported formats:\n• Single server: { \"command\": \"...\", \"args\": [...] }\n• Multiple servers: { \"mcpServers\": { \"name\": { ... } } }",
+      "parseError": "JSON parse error",
+      "parsedServers": "Parsed {{count}} server(s)",
+      "probeTools": "Probe Tools",
+      "probing": "Probing...",
+      "probeError": "Probe failed",
+      "toolsFound": "{{count}} tool(s) found",
+      "noTools": "No tools available",
+      "addServer": "Add",
+      "addAllServers": "Add all"
+    },
     "skillsLocalPath": {
       "browse": "Browse",
       "pathPlaceholder": "Enter relative path (e.g., ./skills/my-skill)",

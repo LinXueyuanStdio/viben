@@ -10,7 +10,6 @@ icon:
   type: emoji
   value: "\U0001F408"
 ---
-
 # Second
 
 Page description here.

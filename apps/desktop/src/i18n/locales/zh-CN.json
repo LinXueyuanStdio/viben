@@ -1294,6 +1294,20 @@
     "mcpBuiltinDesc": {
       "presentation": "演示模式工具，支持画板标注、高亮、引导等功能"
     },
+    "mcpCustom": {
+      "jsonMode": "JSON",
+      "formMode": "表单",
+      "jsonPlaceholder": "粘贴 MCP 服务器 JSON 配置...\n\n支持格式：\n• 单服务器：{ \"command\": \"...\", \"args\": [...] }\n• 多服务器：{ \"mcpServers\": { \"名称\": { ... } } }",
+      "parseError": "JSON 解析错误",
+      "parsedServers": "解析到 {{count}} 个服务器",
+      "probeTools": "探测工具",
+      "probing": "探测中...",
+      "probeError": "探测失败",
+      "toolsFound": "发现 {{count}} 个工具",
+      "noTools": "无可用工具",
+      "addServer": "添加",
+      "addAllServers": "全部添加"
+    },
     "skillsLocalPath": {
       "browse": "浏览",
       "pathPlaceholder": "输入相对路径（如 ./skills/my-skill）",
