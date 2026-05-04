@@ -8,6 +8,7 @@ import {
   ClientToolCancelledError,
   ClientToolTimeoutError,
   GLOBAL_MAX_TIMEOUT_MS,
+  defaultTimeoutResult,
 } from "./client-tool-completion";
 
 describe("ClientToolCompletionRegistry", () => {
@@ -93,12 +94,15 @@ describe("ClientToolCompletionRegistry", () => {
   });
 
   describe("waitForClient", () => {
-    it("should return null if session has no queued items", async () => {
+    it("should return error CallToolResult if session has no queued items", async () => {
       const result = await registry.waitForClient("nonexistent-session");
-      expect(result).toBeNull();
+      expect(result).toEqual({
+        content: [{ type: "text", text: "No pending client tool call found." }],
+        isError: true,
+      });
     });
 
-    it("should return null for empty queue", async () => {
+    it("should return error CallToolResult for empty queue", async () => {
       registry.registerToolOptions("screenshot");
       registry.enqueue("session-1", "tool-use-1", "screenshot");
 
@@ -112,7 +116,10 @@ describe("ClientToolCompletionRegistry", () => {
 
       // Now queue is empty
       const result = await registry.waitForClient("session-1");
-      expect(result).toBeNull();
+      expect(result).toEqual({
+        content: [{ type: "text", text: "No pending client tool call found." }],
+        isError: true,
+      });
     });
 
     it("should dequeue items in FIFO order", async () => {
@@ -154,7 +161,7 @@ describe("ClientToolCompletionRegistry", () => {
       expect(registry.pendingCount).toBe(0);
     });
 
-    it("should timeout with GLOBAL_MAX_TIMEOUT_MS when no tool-specific timeout", async () => {
+    it("should resolve with fallback CallToolResult on timeout with GLOBAL_MAX_TIMEOUT_MS", async () => {
       registry.registerToolOptions("screenshot");
       registry.enqueue("session-1", "tool-use-1", "screenshot");
 
@@ -163,12 +170,16 @@ describe("ClientToolCompletionRegistry", () => {
       // Advance time past the global timeout
       vi.advanceTimersByTime(GLOBAL_MAX_TIMEOUT_MS + 1);
 
-      await expect(promise).rejects.toThrow(ClientToolTimeoutError);
-      await expect(promise).rejects.toThrow(`timed out after ${GLOBAL_MAX_TIMEOUT_MS}ms`);
+      const result = await promise;
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toEqual({
+        type: "text",
+        text: `Client-side tool "screenshot" timed out after ${Math.round(GLOBAL_MAX_TIMEOUT_MS / 1000)}s. The client may be unresponsive. You may retry or skip this step.`,
+      });
       expect(registry.pendingCount).toBe(0);
     });
 
-    it("should timeout with tool-specific timeout", async () => {
+    it("should resolve with fallback CallToolResult on tool-specific timeout", async () => {
       registry.registerToolOptions("screenshot", { timeoutMs: 5000 });
       registry.enqueue("session-1", "tool-use-1", "screenshot");
 
@@ -176,8 +187,12 @@ describe("ClientToolCompletionRegistry", () => {
 
       vi.advanceTimersByTime(5001);
 
-      await expect(promise).rejects.toThrow(ClientToolTimeoutError);
-      await expect(promise).rejects.toThrow("timed out after 5000ms");
+      const result = await promise;
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toEqual({
+        type: "text",
+        text: `Client-side tool "screenshot" timed out after 5s. The client may be unresponsive. You may retry or skip this step.`,
+      });
     });
 
     it("should use GLOBAL_MAX_TIMEOUT_MS when timeoutMs is 0", async () => {
@@ -188,12 +203,14 @@ describe("ClientToolCompletionRegistry", () => {
 
       // Should NOT timeout before global max
       vi.advanceTimersByTime(GLOBAL_MAX_TIMEOUT_MS - 1);
-      // Promise should still be pending (we can't easily check this, but it shouldn't reject)
+      // Promise should still be pending (we can't easily check this, but it shouldn't resolve with error)
 
       // Now advance past
       vi.advanceTimersByTime(2);
 
-      await expect(promise).rejects.toThrow(ClientToolTimeoutError);
+      const result = await promise;
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toHaveProperty("type", "text");
     });
 
     it("should cap tool timeout at GLOBAL_MAX_TIMEOUT_MS", async () => {
@@ -206,7 +223,12 @@ describe("ClientToolCompletionRegistry", () => {
       // Advance to just past GLOBAL_MAX_TIMEOUT_MS
       vi.advanceTimersByTime(GLOBAL_MAX_TIMEOUT_MS + 1);
 
-      await expect(promise).rejects.toThrow(ClientToolTimeoutError);
+      const result = await promise;
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toEqual({
+        type: "text",
+        text: `Client-side tool "long_tool" timed out after ${Math.round(GLOBAL_MAX_TIMEOUT_MS / 1000)}s. The client may be unresponsive. You may retry or skip this step.`,
+      });
     });
 
     it("should resolve with mcp__ prefixed tool name using registered base tool timeout", async () => {
@@ -217,8 +239,37 @@ describe("ClientToolCompletionRegistry", () => {
 
       vi.advanceTimersByTime(3001);
 
-      await expect(promise).rejects.toThrow(ClientToolTimeoutError);
-      await expect(promise).rejects.toThrow("timed out after 3000ms");
+      const result = await promise;
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toEqual({
+        type: "text",
+        text: `Client-side tool "mcp__myserver__screenshot" timed out after 3s. The client may be unresponsive. You may retry or skip this step.`,
+      });
+    });
+
+    it("should use custom onTimeout callback when provided", async () => {
+      const customTimeout = vi.fn((ctx: { toolName: string; toolUseId: string; elapsedMs: number }) => ({
+        content: [{ type: "text" as const, text: `Custom timeout for ${ctx.toolName}` }],
+        isError: true,
+      }));
+
+      registry.registerToolOptions("screenshot", { timeoutMs: 2000, onTimeout: customTimeout });
+      registry.enqueue("session-1", "tool-use-1", "screenshot");
+
+      const promise = registry.waitForClient("session-1");
+
+      vi.advanceTimersByTime(2001);
+
+      const result = await promise;
+      expect(customTimeout).toHaveBeenCalledWith({
+        toolName: "screenshot",
+        toolUseId: "tool-use-1",
+        elapsedMs: 2000,
+      });
+      expect(result).toEqual({
+        content: [{ type: "text", text: "Custom timeout for screenshot" }],
+        isError: true,
+      });
     });
   });
 
@@ -388,6 +439,7 @@ describe("ClientToolCompletionRegistry", () => {
       expect(cleaned).toBe(1);
       expect(registry.pendingCount).toBe(0);
 
+      // GC still rejects with ClientToolTimeoutError (used for internal cleanup)
       await expect(promise).rejects.toThrow(ClientToolTimeoutError);
     });
 
@@ -419,14 +471,15 @@ describe("ClientToolCompletionRegistry", () => {
       expect(registry.gc()).toBe(0);
       expect(registry.pendingCount).toBe(1);
 
-      // Now advance past GLOBAL_MAX_TIMEOUT_MS — the built-in timeout fires
+      // Now advance past GLOBAL_MAX_TIMEOUT_MS — the built-in timeout resolves with fallback
       vi.advanceTimersByTime(1001);
 
       // The built-in timeout already cleaned it up
       expect(registry.pendingCount).toBe(0);
 
-      // Catch the rejection from the built-in timeout
-      await expect(promise).rejects.toThrow(ClientToolTimeoutError);
+      // The built-in timeout resolves with a fallback CallToolResult
+      const result = await promise;
+      expect(result.isError).toBe(true);
     });
 
     it("should clean multiple old entries across sessions", async () => {
@@ -443,6 +496,7 @@ describe("ClientToolCompletionRegistry", () => {
       expect(cleaned).toBe(2);
       expect(registry.pendingCount).toBe(0);
 
+      // GC still rejects with ClientToolTimeoutError (used for internal cleanup)
       await expect(p1).rejects.toThrow(ClientToolTimeoutError);
       await expect(p2).rejects.toThrow(ClientToolTimeoutError);
     });
@@ -477,13 +531,15 @@ describe("ClientToolCompletionRegistry", () => {
       const accepted = registry.complete("tool-use-1", "session-1", result);
       expect(accepted).toBe(true);
 
-      // Now waitForClient should return null since the entry was removed from pending
-      // and the queue item was consumed
-      // Actually the queue still has the item — let's verify behavior
+      // Now waitForClient should return error CallToolResult since the entry was removed
+      // from pending and the queue item was consumed
       // The toolUseId is still in the queue but the pending entry is gone
       const waitResult = await registry.waitForClient("session-1");
-      // waitForClient dequeues the toolUseId but finds no pending entry → returns null
-      expect(waitResult).toBeNull();
+      // waitForClient dequeues the toolUseId but finds no pending entry → returns error result
+      expect(waitResult).toEqual({
+        content: [{ type: "text", text: "No pending client tool call found." }],
+        isError: true,
+      });
     });
 
     it("should handle concurrent waits on different sessions", async () => {

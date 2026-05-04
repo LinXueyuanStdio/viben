@@ -28,10 +28,15 @@ export const GLOBAL_MAX_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ClientToolOptions {
+export interface ClientSideToolOptions {
   /** Per-tool timeout in ms. 0 means use GLOBAL_MAX_TIMEOUT_MS. */
   timeoutMs?: number;
+  /** Optional callback invoked when a tool times out. Returns a fallback CallToolResult. */
+  onTimeout?: (context: { toolName: string; toolUseId: string; elapsedMs: number }) => CallToolResult;
 }
+
+/** @deprecated Use ClientSideToolOptions instead */
+export type ClientToolOptions = ClientSideToolOptions;
 
 interface PendingEntry {
   toolUseId: string;
@@ -62,12 +67,30 @@ export class ClientToolTimeoutError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// Default timeout result
+// ---------------------------------------------------------------------------
+
+/**
+ * Generates a default CallToolResult for timed-out client-side tools.
+ * This allows the LLM to retry or skip rather than crashing the handler.
+ */
+export function defaultTimeoutResult(ctx: { toolName: string; toolUseId: string; elapsedMs: number }): CallToolResult {
+  return {
+    content: [{
+      type: "text",
+      text: `Client-side tool "${ctx.toolName}" timed out after ${Math.round(ctx.elapsedMs / 1000)}s. The client may be unresponsive. You may retry or skip this step.`,
+    }],
+    isError: true,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
 export class ClientToolCompletionRegistry {
   /** Registered tool configs (toolName -> options) */
-  private toolOptions = new Map<string, ClientToolOptions>();
+  private toolOptions = new Map<string, ClientSideToolOptions>();
 
   /** Pending promises keyed by toolUseId */
   private pending = new Map<string, PendingEntry>();
@@ -82,7 +105,7 @@ export class ClientToolCompletionRegistry {
   /**
    * Register a tool as client-side with optional timeout config.
    */
-  registerToolOptions(toolName: string, options: ClientToolOptions = {}): void {
+  registerToolOptions(toolName: string, options: ClientSideToolOptions = {}): void {
     this.toolOptions.set(toolName, options);
     logger.debug({ toolName, options }, "Registered client tool options");
   }
@@ -142,13 +165,19 @@ export class ClientToolCompletionRegistry {
 
   /**
    * Dequeue the next pending tool for a session, create a promise, arm the
-   * timeout, and return the result (or throw on timeout/cancel).
+   * timeout, and return the result.
    *
-   * Returns null if the queue is empty.
+   * Returns a CallToolResult with isError: true if the queue is empty or entry not found.
+   * On timeout, resolves with a fallback CallToolResult (does not reject).
    */
-  async waitForClient(sessionId: string): Promise<CallToolResult | null> {
+  async waitForClient(sessionId: string): Promise<CallToolResult> {
     const queue = this.sessionQueues.get(sessionId);
-    if (!queue || queue.length === 0) return null;
+    if (!queue || queue.length === 0) {
+      return {
+        content: [{ type: "text", text: "No pending client tool call found." }],
+        isError: true,
+      };
+    }
 
     const toolUseId = queue.shift()!;
     // Clean up empty queue
@@ -160,14 +189,19 @@ export class ClientToolCompletionRegistry {
     if (!entry) {
       // Shouldn't happen, but be defensive
       logger.warn({ sessionId, toolUseId }, "waitForClient: no pending entry found");
-      return null;
+      return {
+        content: [{ type: "text", text: "No pending client tool call found." }],
+        isError: true,
+      };
     }
 
     // Determine timeout
-    const toolOpts = this.getToolOptions(entry.toolName);
-    const timeoutMs = toolOpts?.timeoutMs && toolOpts.timeoutMs > 0
-      ? Math.min(toolOpts.timeoutMs, GLOBAL_MAX_TIMEOUT_MS)
+    const options = this.getToolOptions(entry.toolName);
+    const effectiveTimeout = options?.timeoutMs && options.timeoutMs > 0
+      ? Math.min(options.timeoutMs, GLOBAL_MAX_TIMEOUT_MS)
       : GLOBAL_MAX_TIMEOUT_MS;
+
+    const toolName = entry.toolName;
 
     // Create the actual promise
     const promise = new Promise<CallToolResult>((resolve, reject) => {
@@ -176,11 +210,16 @@ export class ClientToolCompletionRegistry {
 
       entry.timer = setTimeout(() => {
         this.pending.delete(toolUseId);
-        reject(new ClientToolTimeoutError(toolUseId, timeoutMs));
-      }, timeoutMs);
+        const fallback = (options?.onTimeout ?? defaultTimeoutResult)({
+          toolName,
+          toolUseId,
+          elapsedMs: effectiveTimeout,
+        });
+        resolve(fallback);
+      }, effectiveTimeout);
     });
 
-    logger.debug({ sessionId, toolUseId, toolName: entry.toolName, timeoutMs }, "Waiting for client tool completion");
+    logger.debug({ sessionId, toolUseId, toolName: entry.toolName, timeoutMs: effectiveTimeout }, "Waiting for client tool completion");
 
     return promise;
   }
@@ -304,7 +343,7 @@ export class ClientToolCompletionRegistry {
   // Private
   // -------------------------------------------------------------------------
 
-  private getToolOptions(toolName: string): ClientToolOptions | undefined {
+  private getToolOptions(toolName: string): ClientSideToolOptions | undefined {
     const direct = this.toolOptions.get(toolName);
     if (direct) return direct;
 
