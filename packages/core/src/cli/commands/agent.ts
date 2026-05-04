@@ -161,23 +161,23 @@ export function registerAgentCommand(program: Command): void {
 
         // If creating from template with workspace option, use createFromTemplate
         if (options.fromTemplate && options.workspace) {
-          // Generate ID from name
+          // Generate ID from name (supports Chinese characters)
           const newId = name
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/[^a-z0-9\u4e00-\u9fff\u3400-\u4dbf]+/g, "-")
             .replace(/^-|-$/g, "")
             .slice(0, 50) || `agent-${Date.now()}`;
           agent = await agentManager.createFromTemplate(
             options.fromTemplate,
             newId,
-            { name, basePath: options.workspace },
+            { name, base_path: options.workspace },
             options.workspace // also search template in workspace
           );
         } else if (options.fromTemplate) {
           // Create from template globally
           const newId = name
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/[^a-z0-9\u4e00-\u9fff\u3400-\u4dbf]+/g, "-")
             .replace(/^-|-$/g, "")
             .slice(0, 50) || `agent-${Date.now()}`;
           agent = await agentManager.createFromTemplate(
@@ -198,12 +198,12 @@ export function registerAgentCommand(program: Command): void {
             description: options.description,
             model: options.model,
             provider: options.provider,
-            executorType: options.executorType,
-            systemPrompt: options.systemPrompt,
-            appendPrompt: options.appendPrompt,
+            executor_type: options.executorType,
+            system_prompt: options.systemPrompt,
+            append_prompt: options.appendPrompt,
             temperature: options.temperature,
-            maxTokens: options.maxTokens,
-            planMode: options.planMode,
+            max_tokens: options.maxTokens,
+            plan_mode: options.planMode,
             approvals: options.approvals,
           });
         }

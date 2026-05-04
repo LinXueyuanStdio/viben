@@ -12,7 +12,7 @@
  * These are the canonical executor IDs used throughout the system.
  * Some executors have both runtime support (can be spawned) and template support (for viben init).
  *
- * Runtime executors: CLAUDE_CODE, AMP, GEMINI, CODEX, OPENCODE, CURSOR_AGENT, QWEN_CODE, COPILOT, DROID
+ * Runtime executors: CLAUDE_CODE, AMP, GEMINI, CODEX, OPENCODE, CURSOR_AGENT, QWEN_CODE, COPILOT, DROID, OPENCLAW
  * Template-only executors: CURSOR, IFLOW, KILO, KIRO, ANTIGRAVITY, WINDSURF, AIDER, CONTINUE
  */
 export type ExecutorType =
@@ -26,6 +26,7 @@ export type ExecutorType =
   | "QWEN_CODE"
   | "COPILOT"
   | "DROID"
+  | "OPENCLAW"
   // Template-only executors (for viben init configuration)
   | "CURSOR"
   | "IFLOW"
@@ -103,6 +104,11 @@ export const AGENT_TYPES: AgentTypeInfo[] = [
     id: "DROID",
     name: "Droid",
     description: "Droid AI coding assistant",
+  },
+  {
+    id: "OPENCLAW",
+    name: "OpenClaw",
+    description: "Personal AI assistant gateway with multi-agent routing",
   },
 ];
 
@@ -252,19 +258,19 @@ export interface CreateAgentOptions {
   tools?: string[];
   model?: string;
   provider?: string;
-  systemPrompt?: string;
-  appendPrompt?: string;
+  system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
-  maxTokens?: number;
-  executorType?: ExecutorType;
-  executorConfig?: Record<string, unknown>;
-  mcpServers?: string[];
+  max_tokens?: number;
+  executor_type?: ExecutorType;
+  executor_config?: Record<string, unknown>;
+  mcp_servers?: string[];
   skills?: string[];
-  planMode?: boolean;
+  plan_mode?: boolean;
   approvals?: boolean;
-  fromTemplate?: string;
+  from_template?: string;
   /** Custom base path for storing the agent (e.g., workspace path) */
-  basePath?: string;
+  base_path?: string;
 }
 
 /**

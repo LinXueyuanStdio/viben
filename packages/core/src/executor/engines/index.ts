@@ -14,6 +14,7 @@ import "./cursor";
 import "./droid";
 import "./gemini";
 import "./opencode";
+import "./openclaw";
 import "./qwen";
 
 // Re-export for direct access
@@ -33,6 +34,8 @@ export { GeminiExecutor } from "./gemini";
 export type { GeminiExecutorConfig } from "./gemini";
 export { OpencodeExecutor } from "./opencode";
 export type { OpencodeExecutorConfig } from "./opencode";
+export { OpenClawExecutor } from "./openclaw";
+export type { OpenClawExecutorConfig } from "./openclaw";
 export { QwenCodeExecutor } from "./qwen";
 export type { QwenCodeExecutorConfig } from "./qwen";
 export { BaseExecutor } from "./base";
