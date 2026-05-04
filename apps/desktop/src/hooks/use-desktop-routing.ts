@@ -21,22 +21,11 @@ import type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
 import type { BreadcrumbStackItem, WorkspaceSection } from "@/navigation/view-target";
 import type { Workspace } from "@/types";
 
-export interface DesktopOpenOptions {
+export interface DesktopNavigationOptions {
   openMode?: "focus" | "reuse" | "new-tab";
-}
-
-export interface DesktopNavigationDescriptor {
   title?: string;
   icon?: IconData;
   breadcrumbStack?: BreadcrumbStackItem[];
-}
-
-export interface DesktopNavigateOptions
-  extends DesktopOpenOptions,
-    DesktopNavigationDescriptor {}
-
-export interface DesktopChildNavigateOptions
-  extends DesktopNavigateOptions {
   stackMode?: "open" | "push" | "replace";
 }
 
@@ -49,82 +38,92 @@ export interface DesktopRoutingApi {
   currentWorkspaceId: string | null;
   currentWorkspace: Workspace | undefined;
 
-  openWorkspaceHome: (workspaceId: string, options?: DesktopOpenOptions) => void;
-  openWorkspaceApps: (workspaceId: string, options?: DesktopOpenOptions) => void;
+  openWorkspaceHome: (workspaceId: string, options?: DesktopNavigationOptions) => void;
+  openWorkspaceApps: (workspaceId: string, options?: DesktopNavigationOptions) => void;
   openWorkspaceSection: (
     workspaceId: string,
     section: WorkspaceSection,
-    options?: DesktopOpenOptions
+    options?: DesktopNavigationOptions
   ) => void;
-  openWorkspaceAgentList: (workspaceId: string, options?: DesktopOpenOptions) => void;
+  openWorkspaceAgentList: (workspaceId: string, options?: DesktopNavigationOptions) => void;
   openWorkspaceAgentDetail: (
     workspaceId: string,
     agentId: string,
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
+  ) => void;
+  pushWorkspaceAgentDetail: (
+    workspaceId: string,
+    agentId: string,
+    options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
   ) => void;
   openWorkspaceExecutorDetail: (
     workspaceId: string,
     executorType: string,
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
+  ) => void;
+  pushWorkspaceExecutorDetail: (
+    workspaceId: string,
+    executorType: string,
+    options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
   ) => void;
   openWorkspacePage: (
     workspaceId: string,
     pageSlug: string,
-    options?: DesktopNavigateOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openWorkspaceWeb: (
     workspaceId: string,
     input: { url: string; title?: string; webId?: string },
-    options?: DesktopOpenOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openSettings: (
     section?: SettingsSection | string,
-    options?: DesktopOpenOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openAgentDetail: (
     agentId: string,
     workspacePath?: string,
-    options?: DesktopOpenOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openExecutorDetail: (
     executorType: string,
     workspacePath?: string,
-    options?: DesktopOpenOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openSkillDetail: (
     skillId: string,
     input: { agentId: string; workspacePath?: string; title?: string },
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openMcpServerDetail: (
     serverName: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openSubagentDetail: (
     configId: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openPromptDetail: (
     promptId: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
   ) => void;
   openCommandDetail: (
     commandId: string,
     input: { executorType: string; workspacePath?: string },
-    options?: DesktopChildNavigateOptions
+    options?: DesktopNavigationOptions
   ) => void;
-  openDocuments: (options?: DesktopOpenOptions) => void;
-  openDevicePair: (options?: DesktopOpenOptions) => void;
-  openDashboard: (options?: DesktopOpenOptions) => void;
-  openSkillsMarket: (options?: DesktopOpenOptions) => void;
+  openDocuments: (options?: DesktopNavigationOptions) => void;
+  openDevicePair: (options?: DesktopNavigationOptions) => void;
+  openDashboard: (options?: DesktopNavigationOptions) => void;
+  openSkillsMarket: (options?: DesktopNavigationOptions) => void;
 
   pushChildPage: (
     item: BreadcrumbStackItem,
     location: DesktopLocation,
-    options?: { mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
+    options?: { mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
   ) => void;
   pushCurrentPageChild: (
     pageSlug: string,
@@ -135,7 +134,7 @@ export interface DesktopRoutingApi {
     input?: { title?: string; icon?: IconData; webId?: string; mode?: "push" | "replace" }
   ) => void;
 
-  openRoute: (route: DesktopLocation, options?: DesktopOpenOptions) => void;
+  openRoute: (route: DesktopLocation, options?: DesktopNavigationOptions) => void;
   focusOrOpenRoute: (route: DesktopLocation) => void;
   openPath: (
     path: string,
@@ -145,7 +144,7 @@ export interface DesktopRoutingApi {
       workspaceId?: string;
       slug?: string;
       type?: TabType;
-      openMode?: DesktopOpenOptions["openMode"];
+      openMode?: DesktopNavigationOptions["openMode"];
     }
   ) => void;
   handleDeepLink: (intent: DesktopDeepLinkIntent) => void;
@@ -163,7 +162,7 @@ export interface DesktopRoutingApi {
   headerRight: ReactNode | null;
 }
 
-function buildOpenTabFlag(options?: DesktopOpenOptions): boolean {
+function buildOpenTabFlag(options?: DesktopNavigationOptions): boolean {
   return options?.openMode === "new-tab";
 }
 
@@ -201,7 +200,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
   const currentWorkspace = shellHeader?.workspace;
 
   const openRoute = useCallback(
-    (route: DesktopLocation, options?: DesktopOpenOptions) => {
+    (route: DesktopLocation, options?: DesktopNavigationOptions) => {
       pageTabs.openLocation(route, {
         openInNewTab: buildOpenTabFlag(options),
       });
@@ -225,7 +224,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         workspaceId?: string;
         slug?: string;
         type?: TabType;
-        openMode?: DesktopOpenOptions["openMode"];
+        openMode?: DesktopNavigationOptions["openMode"];
       }
     ) => {
       if (input?.openMode === "new-tab") {
@@ -255,7 +254,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
   );
 
   const openWorkspaceHome = useCallback(
-    (workspaceId: string, options?: DesktopOpenOptions) => {
+    (workspaceId: string, options?: DesktopNavigationOptions) => {
       pageTabs.openLocation(
         { kind: "workspace-home", workspaceId },
         {
@@ -273,7 +272,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
   );
 
   const openWorkspaceApps = useCallback(
-    (workspaceId: string, options?: DesktopOpenOptions) => {
+    (workspaceId: string, options?: DesktopNavigationOptions) => {
       pageTabs.openLocation(
         { kind: "workspace-apps", workspaceId },
         {
@@ -295,7 +294,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       workspaceId: string,
       section: WorkspaceSection,
-      options?: DesktopOpenOptions
+      options?: DesktopNavigationOptions
     ) => {
       const descriptor = getWorkspaceSectionDescriptor(section);
       pageTabs.openLocation(
@@ -318,422 +317,17 @@ export function useDesktopRouting(): DesktopRoutingApi {
   );
 
   const openWorkspaceAgentList = useCallback(
-    (workspaceId: string, options?: DesktopOpenOptions) => {
+    (workspaceId: string, options?: DesktopNavigationOptions) => {
       openWorkspaceSection(workspaceId, "agent", options);
     },
     [openWorkspaceSection]
-  );
-
-  const openWorkspaceAgentDetail = useCallback(
-    (
-      workspaceId: string,
-      agentId: string,
-      options?: DesktopChildNavigateOptions
-    ) => {
-      const location: DesktopLocation = {
-        kind: "workspace-agent-detail",
-        workspaceId,
-        agentId,
-      };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `workspace:${workspaceId}:agent:${agentId}`,
-          kind: "workspace-agent",
-          label: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-          meta: {
-            workspaceId,
-            agentId,
-          },
-        }),
-        {
-          type: "workspace",
-          slug: agentId,
-          workspaceId,
-          name: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-        },
-        options
-      );
-    },
-    [openChildLocation]
-  );
-
-  const openWorkspaceExecutorDetail = useCallback(
-    (
-      workspaceId: string,
-      executorType: string,
-      options?: DesktopChildNavigateOptions
-    ) => {
-      const location: DesktopLocation = {
-        kind: "workspace-executor-detail",
-        workspaceId,
-        executorType,
-      };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `workspace:${workspaceId}:executor:${executorType}`,
-          kind: "workspace-executor",
-          label: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-          meta: {
-            workspaceId,
-            executorType,
-          },
-        }),
-        {
-          type: "workspace",
-          slug: executorType,
-          workspaceId,
-          name: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-        },
-        options
-      );
-    },
-    [openChildLocation]
-  );
-
-  const openWorkspacePage = useCallback(
-    (
-      workspaceId: string,
-      pageSlug: string,
-      options?: DesktopNavigateOptions
-    ) => {
-      const breadcrumbStack = options?.breadcrumbStack;
-      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
-
-      pageTabs.openLocation(
-        { kind: "workspace-page", workspaceId, pageSlug },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          breadcrumbStack: options?.breadcrumbStack,
-          tabInfo: {
-            type: "page",
-            slug: pageSlug,
-            workspaceId,
-            name:
-              leaf?.label ??
-              options?.title ??
-              pageSlug.split("/").filter(Boolean).pop() ??
-              pageSlug,
-            icon:
-              leaf?.icon ??
-              options?.icon ??
-              { type: "lucide", value: "file-text" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const pushWorkspaceAgentDetail = useCallback(
-    (
-      workspaceId: string,
-      agentId: string,
-      options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
-    ) =>
-      openWorkspaceAgentDetail(workspaceId, agentId, {
-        title: options?.title,
-        icon: options?.icon,
-        openMode: options?.openMode,
-        stackMode: options?.mode === "replace" ? "replace" : "push",
-      }),
-    [openWorkspaceAgentDetail]
-  );
-
-  const pushWorkspaceExecutorDetail = useCallback(
-    (
-      workspaceId: string,
-      executorType: string,
-      options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
-    ) =>
-      openWorkspaceExecutorDetail(workspaceId, executorType, {
-        title: options?.title,
-        icon: options?.icon,
-        openMode: options?.openMode,
-        stackMode: options?.mode === "replace" ? "replace" : "push",
-      }),
-    [openWorkspaceExecutorDetail]
-  );
-
-  const openWorkspaceWeb = useCallback(
-    (
-      workspaceId: string,
-      input: { url: string; title?: string; webId?: string },
-      options?: DesktopOpenOptions
-    ) => {
-      const title = input.title ?? safeHostname(input.url);
-      pageTabs.openLocation(
-        {
-          kind: "workspace-web",
-          workspaceId,
-          title,
-          url: input.url,
-          webId: input.webId,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "web",
-            slug: input.webId ?? input.url,
-            workspaceId,
-            name: title,
-            icon: { type: "lucide", value: "globe" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openSettings = useCallback(
-    (
-      section?: SettingsSection | string,
-      options?: DesktopOpenOptions
-    ) => {
-      const normalizedSection = section ?? "general";
-      const descriptor = getSettingsSectionDescriptor(normalizedSection);
-      pageTabs.openLocation(
-        { kind: "settings", section: normalizedSection },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "settings",
-            slug: normalizedSection,
-            name: descriptor
-              ? t(descriptor.titleKey, descriptor.fallbackLabel)
-              : normalizedSection,
-            icon: descriptor?.icon ?? { type: "lucide", value: "settings" },
-          },
-        }
-      );
-    },
-    [pageTabs, t]
-  );
-
-  const openAgentDetail = useCallback(
-    (
-      agentId: string,
-      workspacePath?: string,
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        { kind: "agent-detail", agentId, workspacePath },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: agentId,
-            name: agentId,
-            icon: { type: "lucide", value: "bot" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openExecutorDetail = useCallback(
-    (
-      executorType: string,
-      workspacePath?: string,
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        { kind: "executor-detail", executorType, workspacePath },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: executorType,
-            name: executorType,
-            icon: { type: "lucide", value: "terminal" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openMcpServerDetail = useCallback(
-    (
-      serverName: string,
-      input: { executorType: string; workspacePath?: string },
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        {
-          kind: "mcp-server-detail",
-          serverName,
-          executorType: input.executorType,
-          workspacePath: input.workspacePath,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "page",
-            slug: serverName,
-            name: serverName,
-            icon: { type: "lucide", value: "server" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openSubagentDetail = useCallback(
-    (
-      configId: string,
-      input: { executorType: string; workspacePath?: string },
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        {
-          kind: "subagent-detail",
-          configId,
-          executorType: input.executorType,
-          workspacePath: input.workspacePath,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "page",
-            slug: configId,
-            name: configId,
-            icon: { type: "lucide", value: "bot" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openPromptDetail = useCallback(
-    (
-      promptId: string,
-      input: { executorType: string; workspacePath?: string },
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        {
-          kind: "prompt-detail",
-          promptId,
-          executorType: input.executorType,
-          workspacePath: input.workspacePath,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "page",
-            slug: promptId,
-            name: promptId,
-            icon: { type: "lucide", value: "quote" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openCommandDetail = useCallback(
-    (
-      commandId: string,
-      input: { executorType: string; workspacePath?: string },
-      options?: DesktopOpenOptions
-    ) => {
-      pageTabs.openLocation(
-        {
-          kind: "command-detail",
-          commandId,
-          executorType: input.executorType,
-          workspacePath: input.workspacePath,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "page",
-            slug: commandId,
-            name: commandId,
-            icon: { type: "lucide", value: "terminal" },
-          },
-        }
-      );
-    },
-    [pageTabs]
-  );
-
-  const openDocuments = useCallback(
-    (options?: DesktopOpenOptions) => {
-      pageTabs.openLocation(
-        { kind: "documents" },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: "documents",
-            name: t("nav.documents", "Documents"),
-            icon: { type: "lucide", value: "file-text" },
-          },
-        }
-      );
-    },
-    [pageTabs, t]
-  );
-
-  const openDevicePair = useCallback(
-    (options?: DesktopOpenOptions) => {
-      pageTabs.openLocation(
-        { kind: "device-pair" },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: "device-pair",
-            name: t("nav.devices", "Devices"),
-            icon: { type: "lucide", value: "smartphone" },
-          },
-        }
-      );
-    },
-    [pageTabs, t]
-  );
-
-  const openDashboard = useCallback(
-    (options?: DesktopOpenOptions) => {
-      openPath("/mcp-services/dashboard", {
-        title: t("nav.dashboard", "Dashboard"),
-        icon: { type: "lucide", value: "layout-dashboard" },
-        type: "workspace",
-        slug: "dashboard",
-        openMode: options?.openMode,
-      });
-    },
-    [openPath, t]
-  );
-
-  const openSkillsMarket = useCallback(
-    (options?: DesktopOpenOptions) => {
-      openPath("/skills-market", {
-        title: t("nav.skillsMarket", "Skills Market"),
-        icon: { type: "lucide", value: "sparkles" },
-        type: "page",
-        slug: "skills-market",
-        openMode: options?.openMode,
-      });
-    },
-    [openPath, t]
   );
 
   const pushChildPage = useCallback(
     (
       item: BreadcrumbStackItem,
       location: DesktopLocation,
-      options?: { mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
+      options?: { mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
     ) => {
       if (options?.openMode === "new-tab") {
         pageTabs.openLocation(location, {
@@ -761,7 +355,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         name: string;
         icon?: IconData;
       },
-      options?: DesktopChildNavigateOptions
+      options?: DesktopNavigationOptions
     ) => {
       const explicitStack = options?.breadcrumbStack;
       const explicitLeaf = explicitStack?.[explicitStack.length - 1];
@@ -809,11 +403,452 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [currentStack, currentWorkspaceId, pageTabs, pushChildPage]
   );
 
+  const openWorkspaceAgentDetail = useCallback(
+    (
+      workspaceId: string,
+      agentId: string,
+      options?: DesktopNavigationOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "workspace-agent-detail",
+        workspaceId,
+        agentId,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `workspace:${workspaceId}:agent:${agentId}`,
+          kind: "workspace-agent",
+          label: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+          meta: {
+            workspaceId,
+            agentId,
+          },
+        }),
+        {
+          type: "workspace",
+          slug: agentId,
+          workspaceId,
+          name: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+        },
+        options
+      );
+    },
+    [openChildLocation]
+  );
+
+  const openWorkspaceExecutorDetail = useCallback(
+    (
+      workspaceId: string,
+      executorType: string,
+      options?: DesktopNavigationOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "workspace-executor-detail",
+        workspaceId,
+        executorType,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `workspace:${workspaceId}:executor:${executorType}`,
+          kind: "workspace-executor",
+          label: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+          meta: {
+            workspaceId,
+            executorType,
+          },
+        }),
+        {
+          type: "workspace",
+          slug: executorType,
+          workspaceId,
+          name: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+        },
+        options
+      );
+    },
+    [openChildLocation]
+  );
+
+  const openWorkspacePage = useCallback(
+    (
+      workspaceId: string,
+      pageSlug: string,
+      options?: DesktopNavigationOptions
+    ) => {
+      const breadcrumbStack = options?.breadcrumbStack;
+      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
+
+      pageTabs.openLocation(
+        { kind: "workspace-page", workspaceId, pageSlug },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          breadcrumbStack: options?.breadcrumbStack,
+          tabInfo: {
+            type: "page",
+            slug: pageSlug,
+            workspaceId,
+            name:
+              leaf?.label ??
+              options?.title ??
+              pageSlug.split("/").filter(Boolean).pop() ??
+              pageSlug,
+            icon:
+              leaf?.icon ??
+              options?.icon ??
+              { type: "lucide", value: "file-text" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const pushWorkspaceAgentDetail = useCallback(
+    (
+      workspaceId: string,
+      agentId: string,
+      options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
+    ) =>
+      openWorkspaceAgentDetail(workspaceId, agentId, {
+        title: options?.title,
+        icon: options?.icon,
+        openMode: options?.openMode,
+        stackMode: options?.mode === "replace" ? "replace" : "push",
+      }),
+    [openWorkspaceAgentDetail]
+  );
+
+  const pushWorkspaceExecutorDetail = useCallback(
+    (
+      workspaceId: string,
+      executorType: string,
+      options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
+    ) =>
+      openWorkspaceExecutorDetail(workspaceId, executorType, {
+        title: options?.title,
+        icon: options?.icon,
+        openMode: options?.openMode,
+        stackMode: options?.mode === "replace" ? "replace" : "push",
+      }),
+    [openWorkspaceExecutorDetail]
+  );
+
+  const openWorkspaceWeb = useCallback(
+    (
+      workspaceId: string,
+      input: { url: string; title?: string; webId?: string },
+      options?: DesktopNavigationOptions
+    ) => {
+      const title = input.title ?? safeHostname(input.url);
+      pageTabs.openLocation(
+        {
+          kind: "workspace-web",
+          workspaceId,
+          title,
+          url: input.url,
+          webId: input.webId,
+        },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "web",
+            slug: input.webId ?? input.url,
+            workspaceId,
+            name: title,
+            icon: { type: "lucide", value: "globe" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openSettings = useCallback(
+    (
+      section?: SettingsSection | string,
+      options?: DesktopNavigationOptions
+    ) => {
+      const normalizedSection = section ?? "general";
+      const descriptor = getSettingsSectionDescriptor(normalizedSection);
+      pageTabs.openLocation(
+        { kind: "settings", section: normalizedSection },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "settings",
+            slug: normalizedSection,
+            name: descriptor
+              ? t(descriptor.titleKey, descriptor.fallbackLabel)
+              : normalizedSection,
+            icon: descriptor?.icon ?? { type: "lucide", value: "settings" },
+          },
+        }
+      );
+    },
+    [pageTabs, t]
+  );
+
+  const openAgentDetail = useCallback(
+    (
+      agentId: string,
+      workspacePath?: string,
+      options?: DesktopNavigationOptions
+    ) => {
+      pageTabs.openLocation(
+        { kind: "agent-detail", agentId, workspacePath },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: agentId,
+            name: agentId,
+            icon: { type: "lucide", value: "bot" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openExecutorDetail = useCallback(
+    (
+      executorType: string,
+      workspacePath?: string,
+      options?: DesktopNavigationOptions
+    ) => {
+      pageTabs.openLocation(
+        { kind: "executor-detail", executorType, workspacePath },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: executorType,
+            name: executorType,
+            icon: { type: "lucide", value: "terminal" },
+          },
+        }
+      );
+    },
+    [pageTabs]
+  );
+
+  const openMcpServerDetail = useCallback(
+    (
+      serverName: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopNavigationOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "mcp-server-detail",
+        serverName,
+        executorType: input.executorType,
+        workspacePath: input.workspacePath,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `mcp:${serverName}`,
+          kind: "workspace-page",
+          label: serverName,
+          icon: { type: "lucide", value: "server" },
+          meta: {
+            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
+            executorType: input.executorType,
+          },
+        }),
+        {
+          type: "page",
+          slug: serverName,
+          name: serverName,
+          icon: { type: "lucide", value: "server" },
+        },
+        options
+      );
+    },
+    [currentStack, currentWorkspaceId, openChildLocation]
+  );
+
+  const openSubagentDetail = useCallback(
+    (
+      configId: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopNavigationOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "subagent-detail",
+        configId,
+        executorType: input.executorType,
+        workspacePath: input.workspacePath,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `subagent:${configId}`,
+          kind: "workspace-agent",
+          label: configId,
+          icon: { type: "lucide", value: "bot" },
+          meta: {
+            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
+            executorType: input.executorType,
+          },
+        }),
+        {
+          type: "page",
+          slug: configId,
+          name: configId,
+          icon: { type: "lucide", value: "bot" },
+        },
+        options
+      );
+    },
+    [currentStack, currentWorkspaceId, openChildLocation]
+  );
+
+  const openPromptDetail = useCallback(
+    (
+      promptId: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopNavigationOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "prompt-detail",
+        promptId,
+        executorType: input.executorType,
+        workspacePath: input.workspacePath,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `prompt:${promptId}`,
+          kind: "workspace-page",
+          label: promptId,
+          icon: { type: "lucide", value: "quote" },
+          meta: {
+            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
+            executorType: input.executorType,
+          },
+        }),
+        {
+          type: "page",
+          slug: promptId,
+          name: promptId,
+          icon: { type: "lucide", value: "quote" },
+        },
+        options
+      );
+    },
+    [currentStack, currentWorkspaceId, openChildLocation]
+  );
+
+  const openCommandDetail = useCallback(
+    (
+      commandId: string,
+      input: { executorType: string; workspacePath?: string },
+      options?: DesktopNavigationOptions
+    ) => {
+      const location: DesktopLocation = {
+        kind: "command-detail",
+        commandId,
+        executorType: input.executorType,
+        workspacePath: input.workspacePath,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `command:${commandId}`,
+          kind: "workspace-page",
+          label: commandId,
+          icon: { type: "lucide", value: "terminal" },
+          meta: {
+            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
+            executorType: input.executorType,
+          },
+        }),
+        {
+          type: "page",
+          slug: commandId,
+          name: commandId,
+          icon: { type: "lucide", value: "terminal" },
+        },
+        options
+      );
+    },
+    [currentStack, currentWorkspaceId, openChildLocation]
+  );
+
+  const openDocuments = useCallback(
+    (options?: DesktopNavigationOptions) => {
+      pageTabs.openLocation(
+        { kind: "documents" },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: "documents",
+            name: t("nav.documents", "Documents"),
+            icon: { type: "lucide", value: "file-text" },
+          },
+        }
+      );
+    },
+    [pageTabs, t]
+  );
+
+  const openDevicePair = useCallback(
+    (options?: DesktopNavigationOptions) => {
+      pageTabs.openLocation(
+        { kind: "device-pair" },
+        {
+          openInNewTab: buildOpenTabFlag(options),
+          tabInfo: {
+            type: "workspace",
+            slug: "device-pair",
+            name: t("nav.devices", "Devices"),
+            icon: { type: "lucide", value: "smartphone" },
+          },
+        }
+      );
+    },
+    [pageTabs, t]
+  );
+
+  const openDashboard = useCallback(
+    (options?: DesktopNavigationOptions) => {
+      openPath("/mcp-services/dashboard", {
+        title: t("nav.dashboard", "Dashboard"),
+        icon: { type: "lucide", value: "layout-dashboard" },
+        type: "workspace",
+        slug: "dashboard",
+        openMode: options?.openMode,
+      });
+    },
+    [openPath, t]
+  );
+
+  const openSkillsMarket = useCallback(
+    (options?: DesktopNavigationOptions) => {
+      openPath("/skills-market", {
+        title: t("nav.skillsMarket", "Skills Market"),
+        icon: { type: "lucide", value: "sparkles" },
+        type: "page",
+        slug: "skills-market",
+        openMode: options?.openMode,
+      });
+    },
+    [openPath, t]
+  );
+
   const openSkillDetail = useCallback(
     (
       skillId: string,
       input: { agentId: string; workspacePath?: string; title?: string },
-      options?: DesktopChildNavigateOptions
+      options?: DesktopNavigationOptions
     ) => {
       const location: DesktopLocation = {
         kind: "skill-detail",

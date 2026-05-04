@@ -5,7 +5,7 @@ export {
   openWorkspaceSectionByRoutePath,
 } from "./use-desktop-routing";
 export type {
-  DesktopOpenOptions,
+  DesktopNavigationOptions,
   DesktopRoutingApi,
 } from "./use-desktop-routing";
 export { useDesktopDeepLink } from "./use-desktop-deep-link";

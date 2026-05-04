@@ -254,7 +254,7 @@ export function inferBreadcrumbSegmentKind(
   return undefined;
 }
 
-export function buildWorkspaceRootDropdownItems({
+export function buildSystemRootDropdownItems({
   workspaces = [],
   currentArea = "home",
   activeWorkspaceId,
@@ -344,6 +344,8 @@ export function buildWorkspaceRootDropdownItems({
 
   return [...workspaceItems, ...systemItems];
 }
+
+export const buildWorkspaceRootDropdownItems = buildSystemRootDropdownItems;
 
 export function buildWorkspaceSectionDropdownItems({
   workspaceId,
@@ -473,7 +475,24 @@ export function resolvePageIndexBranch({
     {
       matches: (_input, kind) => kind === "workspace-root",
       build: (input) =>
-        buildWorkspaceRootDropdownItems({
+        buildSystemRootDropdownItems({
+          workspaces: input.workspaces,
+          currentArea: input.currentArea,
+          activeWorkspaceId: input.activeWorkspaceId,
+          currentSection: input.currentSection,
+          activeHref: input.segment.href,
+          buildLabel: input.buildLabel,
+          onSelectWorkspace: input.onSelectWorkspace,
+          labelGlobalWorkspace: input.labelGlobalWorkspace,
+        }),
+    },
+    {
+      matches: (input, kind) =>
+        (kind === "virtual-folder" || kind === "global-route") &&
+        input.segment.href.startsWith("/settings/") &&
+        input.segment.label === getSettingsSectionLabel(),
+      build: (input) =>
+        buildSystemRootDropdownItems({
           workspaces: input.workspaces,
           currentArea: input.currentArea,
           activeWorkspaceId: input.activeWorkspaceId,
