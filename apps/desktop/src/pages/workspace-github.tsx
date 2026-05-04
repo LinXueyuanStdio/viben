@@ -46,7 +46,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLocalWorkspaces } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import { stackToDesktopSegments } from "@/navigation/page-index";
+import { resolveHeaderSegments } from "@/navigation/page-index";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues, useGitHubPRs, useGitHubReleases } from "@/hooks/use-github";
 import { getWorkspaceSectionDescriptor } from "@/navigation/navigation-meta";
 import { cn } from "@/lib/utils";
@@ -93,7 +93,6 @@ export function WorkspaceGitHubPage({
   const hasRepository = repo.repository !== null;
   const isIntegrated = isAuthenticated && hasRepository;
   const headerSegments = useMemo(() => {
-    const stackSegments = stackToDesktopSegments(currentStack);
     const githubSegment = {
       label: githubDescriptor
         ? t(githubDescriptor.titleKey, githubDescriptor.fallbackLabel)
@@ -109,25 +108,15 @@ export function WorkspaceGitHubPage({
         routePath: githubDescriptor?.routePath ?? "github",
       },
     };
-    if (stackSegments.length > 0) {
-      return stackSegments.map((item, index, items) =>
-        index === items.length - 1
-          ? {
-              ...item,
-              label: githubSegment.label,
-              icon: item.icon ?? githubSegment.icon,
-              meta: {
-                ...item.meta,
-                ...githubSegment.meta,
-              },
-            }
-          : item
-      );
-    }
-
-    return workspaceId
-      ? [githubSegment]
-      : [];
+    return resolveHeaderSegments({
+      stack: currentStack,
+      fallback: workspaceId ? [githubSegment] : [],
+      patchLast: {
+        label: githubSegment.label,
+        icon: githubSegment.icon,
+        meta: githubSegment.meta,
+      },
+    });
   }, [currentStack, githubDescriptor, t, workspaceId]);
 
   const wrapContent = (children: React.ReactNode) => {

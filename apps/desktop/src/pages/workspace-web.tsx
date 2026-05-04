@@ -8,7 +8,7 @@ import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   buildFallbackDesktopSegment,
-  stackToDesktopSegments,
+  resolveHeaderSegments,
 } from "@/navigation/page-index";
 
 function isEmbeddableUrl(url: string): boolean {
@@ -47,48 +47,31 @@ export function WorkspaceWebPage() {
       pageSlug: searchParams.get("source_page") ?? undefined,
       url: url || undefined,
     };
-    const stackSegments = stackToDesktopSegments(currentStack);
-    if (stackSegments.length > 0) {
-      return stackSegments.map((item, index, items) =>
-        index === items.length - 1
-          ? {
-              id: item.id,
-              label: item.label,
-              href: item.href || fallbackHref,
-              icon: item.icon ?? { type: "lucide" as const, value: "globe" },
-              kind: item.kind,
-              meta: {
-                ...item.meta,
-                ...webMeta,
-              },
-            }
-          : {
-              id: item.id,
-              label: item.label,
-              href: item.href ?? "#",
-              icon: item.icon,
-              kind: item.kind,
-              meta: item.meta,
-            }
-      );
-    }
-
-    return [
-      buildFallbackDesktopSegment({
-        id: `${workspaceId ?? "global"}:web:${searchParams.get("web_id") ?? url}`,
-        label: resolvedTitle,
-        location: {
+    return resolveHeaderSegments({
+      stack: currentStack,
+      fallback: [
+        buildFallbackDesktopSegment({
+          id: `${workspaceId ?? "global"}:web:${searchParams.get("web_id") ?? url}`,
+          label: resolvedTitle,
+          location: {
+            kind: "workspace-web",
+            workspaceId: workspaceId ?? "global",
+            title: resolvedTitle,
+            url,
+            webId: searchParams.get("web_id") ?? undefined,
+            sourcePageSlug: searchParams.get("source_page") ?? undefined,
+          },
           kind: "workspace-web",
-          workspaceId: workspaceId ?? "global",
-          title: resolvedTitle,
-          url,
-          webId: searchParams.get("web_id") ?? undefined,
-          sourcePageSlug: searchParams.get("source_page") ?? undefined,
-        },
+          icon: { type: "lucide", value: "globe" },
+          meta: webMeta,
+        }),
+      ],
+      patchLast: {
+        href: fallbackHref,
         icon: { type: "lucide", value: "globe" },
         meta: webMeta,
-      }),
-    ];
+      },
+    });
   }, [currentStack, resolvedTitle, searchParams, serializedSearchParams, url, workspaceId]);
 
   if (!workspace) {

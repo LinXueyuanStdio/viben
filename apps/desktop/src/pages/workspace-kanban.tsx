@@ -169,6 +169,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings-modal";
 import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-progress-indicator";
+import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 
 // Kanban column IDs - 9-column layout
 // backlog → queue → in_progress → paused → review → completed → failed → cancelled → archived
@@ -2170,24 +2171,29 @@ export function WorkspaceKanbanPage() {
     );
   }
 
+  const kanbanSection = getWorkspaceSectionDescriptor("kanban");
+  const kanbanHeaderSegments = kanbanSection
+    ? [{
+        id: `workspace:${workspace.id}:${kanbanSection.routePath}`,
+        label: t(kanbanSection.titleKey, kanbanSection.fallbackLabel),
+        href: `/workspace/${workspace.id}/${kanbanSection.routePath}`,
+        icon: kanbanSection.icon,
+        kind: "workspace-section" as const,
+        meta: {
+          workspaceId: workspace.id,
+          section: kanbanSection.section,
+          routePath: kanbanSection.routePath,
+        },
+      }]
+    : [];
+
   // Error loading tasks
   if (tasksError) {
     return (
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
           workspace={workspace}
-          segments={[{
-            id: `workspace:${workspaceId}:kanban`,
-            label: t("workspace.kanban", "Kanban"),
-            href: `/workspace/${workspaceId}/kanban`,
-            icon: { type: "lucide", value: "layout-dashboard" },
-            kind: "workspace-section",
-            meta: {
-              workspaceId,
-              section: "kanban",
-              routePath: "kanban",
-            },
-          }]}
+          segments={kanbanHeaderSegments}
           showRefresh={false}
           showRemove={false}
         />
@@ -2208,18 +2214,7 @@ export function WorkspaceKanbanPage() {
       {/* Header with breadcrumb */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{
-          id: `workspace:${workspaceId}:kanban`,
-          label: t("workspace.kanban", "Kanban"),
-          href: `/workspace/${workspaceId}/kanban`,
-          icon: { type: "lucide", value: "layout-dashboard" },
-          kind: "workspace-section",
-          meta: {
-            workspaceId,
-            section: "kanban",
-            routePath: "kanban",
-          },
-        }]}
+        segments={kanbanHeaderSegments}
         onRefresh={handleRefresh}
         isRefreshing={isFetchingTasks}
         showRemove={false}

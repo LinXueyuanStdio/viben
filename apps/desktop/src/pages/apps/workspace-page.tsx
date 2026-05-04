@@ -35,7 +35,7 @@ import { useVitePreview } from "@/hooks/use-vite-preview";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import {
   buildFallbackDesktopSegment,
-  stackToDesktopSegments,
+  resolveHeaderSegments,
   type DesktopBreadcrumbSegment,
 } from "@/navigation/page-index";
 
@@ -329,31 +329,30 @@ export function WorkspacePage() {
   const [editorHeaderEl, setEditorHeaderEl] = useState<HTMLDivElement | null>(null);
 
   const pageHeaderSegments = useMemo<DesktopBreadcrumbSegment[]>(() => {
-    const stackSegments = stackToDesktopSegments(currentStack);
-    if (stackSegments.length > 0) {
-      return stackSegments;
-    }
-
     if (!workspaceId || !slug) {
       return [];
     }
 
-    return [
-      buildFallbackDesktopSegment({
-        id: `${workspaceId}:page:${slug}`,
-        label: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
-        location: {
+    return resolveHeaderSegments({
+      stack: currentStack,
+      fallback: [
+        buildFallbackDesktopSegment({
+          id: `${workspaceId}:page:${slug}`,
+          label: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+          location: {
+            kind: "workspace-page",
+            workspaceId,
+            pageSlug: slug,
+          },
           kind: "workspace-page",
-          workspaceId,
-          pageSlug: slug,
-        },
-        icon: page?.icon ?? { type: "lucide", value: "file-text" },
-        meta: {
-          workspaceId,
-          pageSlug: slug,
-        },
-      }),
-    ];
+          icon: page?.icon ?? { type: "lucide", value: "file-text" },
+          meta: {
+            workspaceId,
+            pageSlug: slug,
+          },
+        }),
+      ],
+    });
   }, [currentStack, page?.icon, page?.name, slug, workspaceId]);
 
   const handleRefresh = useCallback(() => {

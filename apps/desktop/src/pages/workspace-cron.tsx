@@ -93,6 +93,7 @@ import {
   useChannelInstances,
   useCronExecutionLogs,
 } from "@/hooks";
+import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 import { useUnifiedAgents } from "@/hooks/use-unified-agents";
 import { useTranslation } from "react-i18next";
 import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings, CronJobType } from "@/types/cron";
@@ -746,25 +747,28 @@ export function WorkspaceCronPage() {
     );
   }
 
+  const cronSection = getWorkspaceSectionDescriptor("cron");
+  const cronHeaderSegments = cronSection
+    ? [{
+        id: `workspace:${workspace.id}:${cronSection.routePath}`,
+        label: t(cronSection.titleKey, cronSection.fallbackLabel),
+        href: `/workspace/${workspace.id}/${cronSection.routePath}`,
+        icon: cronSection.icon,
+        kind: "workspace-section" as const,
+        meta: {
+          workspaceId: workspace.id,
+          section: cronSection.section,
+          routePath: cronSection.routePath,
+        },
+      }]
+    : [];
+
   return (
     <PageWrapper className="flex flex-col h-full">
       {/* Header with breadcrumb */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[
-          {
-            id: `workspace:${workspaceId}:cron`,
-            label: t("workspace.scheduledTasks", "Scheduled Tasks"),
-            href: `/workspace/${workspaceId}/cron`,
-            icon: { type: "lucide", value: "clock" },
-            kind: "workspace-section",
-            meta: {
-              workspaceId,
-              section: "cron",
-              routePath: "cron",
-            },
-          },
-        ]}
+        segments={cronHeaderSegments}
         onRefresh={refreshJobs}
         isRefreshing={loadingJobs}
         showRemove={false}

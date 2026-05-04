@@ -77,6 +77,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import {
   getGradientByName,
 } from "@/pages/conversation/components/list-item";
+import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 
 // =============================================================================
 // Helpers
@@ -753,23 +754,28 @@ export function WorkspaceIdeasPage() {
     );
   }
 
+  const ideasSection = getWorkspaceSectionDescriptor("ideas");
+  const ideasHeaderSegments = ideasSection
+    ? [{
+        id: `workspace:${workspace.id}:${ideasSection.routePath}`,
+        label: t(ideasSection.titleKey, ideasSection.fallbackLabel),
+        href: `/workspace/${workspace.id}/${ideasSection.routePath}`,
+        icon: ideasSection.icon,
+        kind: "workspace-section" as const,
+        meta: {
+          workspaceId: workspace.id,
+          section: ideasSection.section,
+          routePath: ideasSection.routePath,
+        },
+      }]
+    : [];
+
   return (
     <PageWrapper className="flex flex-col h-full">
       {/* Header */}
       <WorkspaceHeader
         workspace={workspace}
-        segments={[{
-          id: `workspace:${workspaceId}:ideas`,
-          label: t("workspace.ideas", "Ideas"),
-          href: `/workspace/${workspaceId}/ideas`,
-          icon: { type: "lucide", value: "lightbulb" },
-          kind: "workspace-section",
-          meta: {
-            workspaceId,
-            section: "ideas",
-            routePath: "ideas",
-          },
-        }]}
+        segments={ideasHeaderSegments}
         onRefresh={handleRefresh}
         isRefreshing={loading}
         showRemove={false}
