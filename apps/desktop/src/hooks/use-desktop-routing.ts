@@ -328,55 +328,72 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       workspaceId: string,
       agentId: string,
-      options?: DesktopNavigateOptions
+      options?: DesktopChildNavigateOptions
     ) => {
-      const breadcrumbStack = options?.breadcrumbStack;
-      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
-      pageTabs.openLocation(
-        { kind: "workspace-agent-detail", workspaceId, agentId },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          breadcrumbStack,
-          tabInfo: {
-            type: "workspace",
-            slug: agentId,
+      const location: DesktopLocation = {
+        kind: "workspace-agent-detail",
+        workspaceId,
+        agentId,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `workspace:${workspaceId}:agent:${agentId}`,
+          kind: "workspace-agent",
+          label: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+          meta: {
             workspaceId,
-            name: leaf?.label ?? options?.title ?? agentId,
-            icon: leaf?.icon ?? options?.icon ?? { type: "lucide", value: "bot" },
+            agentId,
           },
-        }
+        }),
+        {
+          type: "workspace",
+          slug: agentId,
+          workspaceId,
+          name: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+        },
+        options
       );
     },
-    [pageTabs]
+    [openChildLocation]
   );
 
   const openWorkspaceExecutorDetail = useCallback(
     (
       workspaceId: string,
       executorType: string,
-      options?: DesktopNavigateOptions
+      options?: DesktopChildNavigateOptions
     ) => {
-      const breadcrumbStack = options?.breadcrumbStack;
-      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
-      pageTabs.openLocation(
-        { kind: "workspace-executor-detail", workspaceId, executorType },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          breadcrumbStack,
-          tabInfo: {
-            type: "workspace",
-            slug: executorType,
+      const location: DesktopLocation = {
+        kind: "workspace-executor-detail",
+        workspaceId,
+        executorType,
+      };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `workspace:${workspaceId}:executor:${executorType}`,
+          kind: "workspace-executor",
+          label: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+          meta: {
             workspaceId,
-            name: leaf?.label ?? options?.title ?? executorType,
-            icon:
-              leaf?.icon ??
-              options?.icon ??
-              { type: "lucide", value: "terminal" },
+            executorType,
           },
-        }
+        }),
+        {
+          type: "workspace",
+          slug: executorType,
+          workspaceId,
+          name: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+        },
+        options
       );
     },
-    [pageTabs]
+    [openChildLocation]
   );
 
   const openWorkspacePage = useCallback(
@@ -418,49 +435,14 @@ export function useDesktopRouting(): DesktopRoutingApi {
       workspaceId: string,
       agentId: string,
       options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
-    ) => {
-      const location: DesktopLocation = {
-        kind: "workspace-agent-detail",
-        workspaceId,
-        agentId,
-      };
-
-      if (options?.openMode === "new-tab") {
-        pageTabs.openLocation(location, {
-          openInNewTab: true,
-          breadcrumbStack: [
-            ...currentStack,
-            createLocationBreadcrumbItem(location, {
-              id: `workspace:${workspaceId}:agent:${agentId}`,
-              kind: "workspace-agent",
-              label: options?.title ?? agentId,
-              icon: options?.icon ?? { type: "lucide", value: "bot" },
-              meta: {
-                workspaceId,
-                agentId,
-              },
-            }),
-          ],
-        });
-        return;
-      }
-
-      pushChildPage(
-        createLocationBreadcrumbItem(location, {
-          id: `workspace:${workspaceId}:agent:${agentId}`,
-          kind: "workspace-agent",
-          label: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-          meta: {
-            workspaceId,
-            agentId,
-          },
-        }),
-        location,
-        { mode: options?.mode }
-      );
-    },
-    [currentStack, pageTabs, pushChildPage]
+    ) =>
+      openWorkspaceAgentDetail(workspaceId, agentId, {
+        title: options?.title,
+        icon: options?.icon,
+        openMode: options?.openMode,
+        stackMode: options?.mode === "replace" ? "replace" : "push",
+      }),
+    [openWorkspaceAgentDetail]
   );
 
   const pushWorkspaceExecutorDetail = useCallback(
@@ -468,49 +450,14 @@ export function useDesktopRouting(): DesktopRoutingApi {
       workspaceId: string,
       executorType: string,
       options?: { title?: string; icon?: IconData; mode?: "push" | "replace"; openMode?: DesktopOpenOptions["openMode"] }
-    ) => {
-      const location: DesktopLocation = {
-        kind: "workspace-executor-detail",
-        workspaceId,
-        executorType,
-      };
-
-      if (options?.openMode === "new-tab") {
-        pageTabs.openLocation(location, {
-          openInNewTab: true,
-          breadcrumbStack: [
-            ...currentStack,
-            createLocationBreadcrumbItem(location, {
-              id: `workspace:${workspaceId}:executor:${executorType}`,
-              kind: "workspace-executor",
-              label: options?.title ?? executorType,
-              icon: options?.icon ?? { type: "lucide", value: "terminal" },
-              meta: {
-                workspaceId,
-                executorType,
-              },
-            }),
-          ],
-        });
-        return;
-      }
-
-      pushChildPage(
-        createLocationBreadcrumbItem(location, {
-          id: `workspace:${workspaceId}:executor:${executorType}`,
-          kind: "workspace-executor",
-          label: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-          meta: {
-            workspaceId,
-            executorType,
-          },
-        }),
-        location,
-        { mode: options?.mode }
-      );
-    },
-    [currentStack, pageTabs, pushChildPage]
+    ) =>
+      openWorkspaceExecutorDetail(workspaceId, executorType, {
+        title: options?.title,
+        icon: options?.icon,
+        openMode: options?.openMode,
+        stackMode: options?.mode === "replace" ? "replace" : "push",
+      }),
+    [openWorkspaceExecutorDetail]
   );
 
   const openWorkspaceWeb = useCallback(
@@ -866,7 +813,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       skillId: string,
       input: { agentId: string; workspacePath?: string; title?: string },
-      options?: DesktopOpenOptions
+      options?: DesktopChildNavigateOptions
     ) => {
       const location: DesktopLocation = {
         kind: "skill-detail",
@@ -874,21 +821,8 @@ export function useDesktopRouting(): DesktopRoutingApi {
         agentId: input.agentId,
         workspacePath: input.workspacePath,
       };
-
-      if (options?.openMode === "new-tab") {
-        pageTabs.openLocation(location, {
-          openInNewTab: true,
-          tabInfo: {
-            type: "page",
-            slug: skillId,
-            name: input.title ?? skillId,
-            icon: { type: "lucide", value: "sparkles" },
-          },
-        });
-        return;
-      }
-
-      pushChildPage(
+      openChildLocation(
+        location,
         createLocationBreadcrumbItem(location, {
           id: `skill:${skillId}`,
           label: input.title ?? skillId,
@@ -899,10 +833,16 @@ export function useDesktopRouting(): DesktopRoutingApi {
             agentId: input.agentId,
           },
         }),
-        location
+        {
+          type: "page",
+          slug: skillId,
+          name: input.title ?? skillId,
+          icon: { type: "lucide", value: "sparkles" },
+        },
+        options
       );
     },
-    [currentStack, currentWorkspaceId, pageTabs, pushChildPage]
+    [currentStack, currentWorkspaceId, openChildLocation]
   );
 
   const pushCurrentPageChild = useCallback(
