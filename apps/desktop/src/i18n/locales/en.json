@@ -4220,7 +4220,8 @@
         "connectionFailed": "Connection failed: {{error}}",
         "saveAndContinue": "Save & Continue",
         "alreadyConfigured": "Provider already configured",
-        "useExisting": "Use existing {{provider}} configuration"
+        "useExisting": "Use existing {{provider}} configuration",
+        "addNew": "Add New"
       },
       "model": {
         "title": "Select a Model",
@@ -4228,6 +4229,14 @@
         "agentName": "Agent Name",
         "agentNamePlaceholder": "My First Agent",
         "noModels": "No models available. Check your provider configuration.",
+        "manageModels": "Manage Models",
+        "addModel": "Add Model",
+        "modelIdPlaceholder": "Enter model ID (e.g. claude-4-sonnet)",
+        "discovering": "Discovering available models...",
+        "noDiscoveredModels": "No models discovered. Try adding one manually.",
+        "selectModel": "Model",
+        "loadingModels": "Loading models...",
+        "selectModelPlaceholder": "Select a model",
         "createAgent": "Create Agent",
         "creating": "Creating agent...",
         "success": "Agent created successfully!",

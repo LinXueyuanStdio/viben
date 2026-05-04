@@ -4220,7 +4220,8 @@
         "connectionFailed": "连接失败：{{error}}",
         "saveAndContinue": "保存并继续",
         "alreadyConfigured": "提供商已配置",
-        "useExisting": "使用现有的 {{provider}} 配置"
+        "useExisting": "使用现有的 {{provider}} 配置",
+        "addNew": "新增"
       },
       "model": {
         "title": "选择模型",
@@ -4228,6 +4229,14 @@
         "agentName": "智能体名称",
         "agentNamePlaceholder": "我的第一个智能体",
         "noModels": "没有可用的模型，请检查提供商配置。",
+        "manageModels": "管理模型",
+        "addModel": "添加模型",
+        "modelIdPlaceholder": "输入模型 ID（如 claude-4-sonnet）",
+        "discovering": "正在发现可用模型...",
+        "noDiscoveredModels": "未发现模型，请尝试手动添加。",
+        "selectModel": "模型",
+        "loadingModels": "加载模型中...",
+        "selectModelPlaceholder": "选择模型",
         "createAgent": "创建智能体",
         "creating": "正在创建智能体...",
         "success": "智能体创建成功！",

@@ -228,6 +228,36 @@ export async function stopAgent(
 }
 
 /**
+ * Send a steering message to a running agent session.
+ * The message is injected after the current tool call completes.
+ */
+export async function steerSession(
+  baseUrl: string,
+  sessionId: string,
+  message: string
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/agent/session/${encodeURIComponent(sessionId)}/steer`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ message }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to steer session: ${errorMessage}`,
+      response.status
+    );
+  }
+}
+
+/**
  * Send input to agent (for interactive questions)
  */
 export async function sendAgentInput(

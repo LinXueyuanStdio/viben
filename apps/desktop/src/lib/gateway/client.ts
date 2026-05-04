@@ -19,6 +19,7 @@ import {
   spawnAgentStream,
   continueSessionStream,
   stopAgent,
+  steerSession,
   sendAgentInput,
   checkAvailability,
   stopBackgroundTask,
@@ -660,6 +661,13 @@ export class GatewayClient {
     // Cancel any ongoing stream
     this.cancelStream();
     return stopAgent(this.baseUrl, executorType, sessionId);
+  }
+
+  /**
+   * Send a steering message to a running agent session
+   */
+  async steerSession(sessionId: string, message: string): Promise<void> {
+    return steerSession(this.baseUrl, sessionId, message);
   }
 
   /**
