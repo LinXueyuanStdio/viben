@@ -921,12 +921,8 @@ export function ChatPopupLayer(): ReactElement {
   }, [cancel]);
 
   const handleDismissCapsule = useCallback(() => {
-    // Stop the agent if it's still running, then hide the capsule
-    if (isStreaming) {
-      cancel();
-    }
     setCapsuleVisible(false);
-  }, [isStreaming, cancel]);
+  }, []);
 
   const handleSendBackground = useCallback(async (content: string) => {
     try {
@@ -947,8 +943,24 @@ export function ChatPopupLayer(): ReactElement {
     }
   }, [messages.length]);
 
+  // Show top trigger zone when capsule is dismissed but messages exist
+  const showCapsuleTrigger = !capsuleVisible && messages.length > 0;
+
+  const handleCapsuleTriggerEnter = useCallback(() => {
+    setCapsuleVisible(true);
+  }, []);
+
   return (
     <>
+      {/* Top-center hover detection zone to bring back dismissed capsule */}
+      {showCapsuleTrigger && createPortal(
+        <div
+          onMouseEnter={handleCapsuleTriggerEnter}
+          className="fixed top-0 left-1/2 -translate-x-1/2 z-[9998]"
+          style={{ width: 380, height: 40 }}
+        />,
+        document.body,
+      )}
       <ChatCapsule
         visible={capsuleVisible}
         messages={messages}

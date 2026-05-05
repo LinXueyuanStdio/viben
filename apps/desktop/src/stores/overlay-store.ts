@@ -57,6 +57,7 @@ interface OverlayState {
 
   // Presentation
   presentationActive: boolean;
+  presentationSessionId: string;
   presentationSteps: PresentationStep[];
   presentationCurrentStep: number;
   presentationPlayerState: PlayerState;
@@ -108,7 +109,7 @@ interface OverlayActions {
   setWaveConfig: (config: Partial<WaveConfig>) => void;
 
   // Presentation
-  startPresentation: () => void;
+  startPresentation: (sessionId: string) => void;
   stopPresentation: () => void;
   addPresentationSteps: (params: {
     toolUseId: string;
@@ -177,6 +178,7 @@ const initialState: OverlayState = {
   },
 
   presentationActive: false,
+  presentationSessionId: "",
   presentationSteps: [],
   presentationCurrentStep: 0,
   presentationPlayerState: "idle" as PlayerState,
@@ -320,8 +322,9 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
     setWaveState: (state) => set({ waveState: state }),
     setWaveConfig: (config) => set((s) => ({ waveConfig: { ...s.waveConfig, ...config } })),
 
-    startPresentation: () => set({
+    startPresentation: (sessionId: string) => set({
       presentationActive: true,
+      presentationSessionId: sessionId,
       presentationSteps: [],
       presentationCurrentStep: 0,
       presentationPlayerState: "playing",
@@ -329,6 +332,7 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
     }),
     stopPresentation: () => set({
       presentationActive: false,
+      presentationSessionId: "",
       presentationSteps: [],
       presentationCurrentStep: 0,
       presentationPlayerState: "idle",

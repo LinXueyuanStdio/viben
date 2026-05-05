@@ -16,10 +16,18 @@ interface ScreenshotResult {
   height: number
 }
 
-/** 当前 session ID — 由 use-agent-conversation 设置 */
-let _currentSessionId = ""
-export function setCurrentSessionId(id: string) {
-  _currentSessionId = id
+/** Post error completion for all incomplete tool groups */
+function postIncompleteCompletions() {
+  const currentSteps = useOverlayStore.getState().presentationSteps
+  const incompleteToolUseIds = new Set<string>()
+  for (const step of currentSteps) {
+    if (step.status !== "done") {
+      incompleteToolUseIds.add(step.toolUseId)
+    }
+  }
+  for (const toolUseId of incompleteToolUseIds) {
+    postToolCompletion(toolUseId, currentSteps, true)
+  }
 }
 
 export function PresentationLayer() {
@@ -115,6 +123,8 @@ export function PresentationLayer() {
     runLoop()
     return () => {
       cancelled = true
+      currentAnimRef.current?.finish()
+      postIncompleteCompletions()
     }
   }, [stepsCount, playerState, presentationActive, editorReady])
 
@@ -157,6 +167,8 @@ export function PresentationLayer() {
   // ---- Tldraw mount ----
   const handleMount = useCallback((editor: Editor) => {
     editorRef.current = editor
+    // Reset camera to origin with zoom=1 so tldraw page coords match CSS pixels
+    editor.setCamera({ x: 0, y: 0, z: 1 })
     editor.setCameraOptions({ isLocked: true })
     // Trigger execution engine now that editor is ready
     setEditorReady((n) => n + 1)
@@ -173,16 +185,7 @@ export function PresentationLayer() {
     }
 
     // POST error result for any incomplete tool_use groups
-    const currentSteps = useOverlayStore.getState().presentationSteps
-    const incompleteToolUseIds = new Set<string>()
-    for (const step of currentSteps) {
-      if (step.status !== "done") {
-        incompleteToolUseIds.add(step.toolUseId)
-      }
-    }
-    for (const toolUseId of incompleteToolUseIds) {
-      postToolCompletion(toolUseId, currentSteps, true)
-    }
+    postIncompleteCompletions()
 
     actions.stopPresentation()
   }, [actions])
@@ -298,17 +301,19 @@ function postToolCompletion(
       })),
   ]
 
+  const sessionId = useOverlayStore.getState().presentationSessionId
+
   // Dynamic import to avoid circular deps and allow gateway client to be added later
   import("@/lib/gateway").then(({ getGatewayClient }) => {
     const client = getGatewayClient() as any
     if (typeof client.completeClientTool === "function") {
       client.completeClientTool({
         tool_use_id: toolUseId,
-        session_id: _currentSessionId,
+        session_id: sessionId,
         result: { content, isError },
       })
     }
-  }).catch(() => {
-    // Gateway client method not available yet
+  }).catch((err) => {
+    console.warn("[Presentation] Failed to POST tool completion:", err)
   })
 }

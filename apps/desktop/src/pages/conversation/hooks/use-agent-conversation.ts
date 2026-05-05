@@ -34,7 +34,6 @@ import {
 import i18n from "@/i18n";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { PresentationCommand } from "@/lib/presentation/types";
-import { setCurrentSessionId } from "@/components/overlay/layers/presentation-layer";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
 
 /**
@@ -769,7 +768,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           console.log("[Presentation] Tool intercepted:", toolName, JSON.stringify(toolInput));
           const store = useOverlayStore.getState();
           if (!store.presentationActive) {
-            store.actions.startPresentation();
+            store.actions.startPresentation(sessionIdRef.current || "");
           }
           const commands = compilePresentationCommands(toolName, toolInput);
           if (Array.isArray(commands) && commands.length > 0) {
@@ -782,10 +781,6 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
             });
           } else {
             console.warn("[Presentation] No commands compiled for tool. Keys:", Object.keys(toolInput));
-          }
-          // Track session so presentation-layer can complete the tool call later
-          if (sessionIdRef.current) {
-            setCurrentSessionId(sessionIdRef.current);
           }
         } else if (PRESENTATION_CLEAR_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
@@ -1296,7 +1291,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     setPendingPlan(null);
     setPendingQuestions(null);
     setIsStreaming(false);
-    setPhase("idle");
+    setPhase("completed");
   }, [sendWebSocketMessage]);
 
   // Connect WebSocket on mount if useWebSocket is enabled
@@ -1399,7 +1394,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           // Resume from existing SDK session for multi-turn conversations
           // Use sdkSessionId (from sdk_session message) which is the Claude Agent SDK's internal session ID
           // This is required for multi-turn conversations to work correctly
-          resume: sdkSessionId || undefined,
+          resume_session: sdkSessionId || undefined,
           // Sandbox configuration (session-level)
           sandbox_config: sandboxConfig?.enabled ? {
             enabled: true,
