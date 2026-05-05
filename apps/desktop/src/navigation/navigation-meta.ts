@@ -470,7 +470,9 @@ export function urlToLocation(url: string): DesktopLocation | null {
   }
 
   if (segments[0] === "settings") {
-    return { kind: "settings", section: segments[1] ? decodePathPart(segments[1]) : "general", ...suffix };
+    const raw = segments[1] ? decodePathPart(segments[1]) : "general";
+    const section = isSettingsSection(raw) ? raw : "general";
+    return { kind: "settings", section, ...suffix };
   }
 
   if (segments[0] === "agent" && segments[1]) {
