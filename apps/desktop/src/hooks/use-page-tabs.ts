@@ -7,20 +7,16 @@ import type { IconData } from "@/components/ui/icon-picker";
 import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import {
   type DesktopLocation,
+  type BreadcrumbStackItem,
+  type PushPageOptions,
+  type TabNavigationState,
   locationToUrl,
   urlToLocation,
-} from "@/navigation/location";
-import {
   getSettingsSectionIcon,
   getSettingsSectionLabel,
   getWorkspaceSectionLabel,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
-import type {
-  BreadcrumbStackItem,
-  PushPageOptions,
-  TabNavigationState,
-} from "@/navigation/view-target";
 import { pageKeys } from "@/hooks/use-pages";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 

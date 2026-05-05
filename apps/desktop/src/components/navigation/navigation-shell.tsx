@@ -11,7 +11,7 @@ import { DesktopBreadcrumbBar } from "./desktop-breadcrumb-bar";
 import { usePageTabs } from "@/hooks/use-page-tabs";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
-import type { BreadcrumbStackItem } from "@/navigation/view-target";
+import type { BreadcrumbStackItem } from "@/navigation/navigation-meta";
 import type { Workspace } from "@/types";
 
 interface NavigationShellHeaderState {

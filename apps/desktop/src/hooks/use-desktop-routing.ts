@@ -9,16 +9,18 @@ import {
   useNavigationShellHeaderState,
 } from "@/components/navigation";
 import type { IconData } from "@/components/ui/icon-picker";
-import { urlToLocation, type DesktopLocation } from "@/navigation/location";
 import {
+  urlToLocation,
+  type DesktopLocation,
   getSettingsSectionDescriptor,
   getWorkspaceSectionDescriptor,
   normalizeWorkspaceSection,
   type SettingsSection,
+  type BreadcrumbStackItem,
+  type WorkspaceSection,
 } from "@/navigation/navigation-meta";
 import { createLocationBreadcrumbItem } from "@/navigation/breadcrumb-stack";
 import type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
-import type { BreadcrumbStackItem, WorkspaceSection } from "@/navigation/view-target";
 import type { Workspace } from "@/types";
 
 export interface DesktopNavigationOptions {

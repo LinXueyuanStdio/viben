@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { IconData } from "@/components/ui/icon-picker";
-import { createStackForLocation } from "@/navigation/breadcrumb-stack";
+import { createStackForLocation } from "@/navigation/location-navigation";
 import {
   createTabNavigationState,
   popTo as popNavigationState,
@@ -9,12 +9,13 @@ import {
   replaceLocation as replaceNavigationState,
   resetStack as resetNavigationState,
 } from "@/navigation/tab-navigation";
-import { locationToUrl, type DesktopLocation, urlToLocation } from "@/navigation/location";
+import { locationToUrl, urlToLocation } from "@/navigation/navigation-meta";
 import type {
+  DesktopLocation,
   BreadcrumbStackItem,
   PushPageOptions,
   TabNavigationState,
-} from "@/navigation/view-target";
+} from "@/navigation/navigation-meta";
 
 export type TabType =
   | "page"
