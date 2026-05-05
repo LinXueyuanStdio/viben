@@ -62,6 +62,8 @@ interface OverlayState {
   presentationCurrentStep: number;
   presentationPlayerState: PlayerState;
   presentationDetailsOpen: boolean;
+  /** True when the agent stream has finished sending all presentation steps */
+  presentationStreamDone: boolean;
 }
 
 interface OverlayActions {
@@ -111,6 +113,7 @@ interface OverlayActions {
   // Presentation
   startPresentation: (sessionId: string) => void;
   stopPresentation: () => void;
+  markPresentationStreamDone: () => void;
   addPresentationSteps: (params: {
     toolUseId: string;
     toolName: string;
@@ -183,6 +186,7 @@ const initialState: OverlayState = {
   presentationCurrentStep: 0,
   presentationPlayerState: "idle" as PlayerState,
   presentationDetailsOpen: false,
+  presentationStreamDone: false,
 };
 
 export const useOverlayStore = create<OverlayState & { actions: OverlayActions }>((set, get) => ({
@@ -329,6 +333,7 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
       presentationCurrentStep: 0,
       presentationPlayerState: "playing",
       presentationDetailsOpen: false,
+      presentationStreamDone: false,
     }),
     stopPresentation: () => set({
       presentationActive: false,
@@ -337,7 +342,9 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
       presentationCurrentStep: 0,
       presentationPlayerState: "idle",
       presentationDetailsOpen: false,
+      presentationStreamDone: false,
     }),
+    markPresentationStreamDone: () => set({ presentationStreamDone: true }),
     addPresentationSteps: ({ toolUseId, toolName, toolInput, commands }) => {
       const newSteps: PresentationStep[] = commands.map((cmd, i) => ({
         id: `${toolUseId}-${i}`,

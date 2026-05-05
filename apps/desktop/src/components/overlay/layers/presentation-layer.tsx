@@ -3,6 +3,7 @@ import { Tldraw } from "tldraw"
 import type { Editor } from "tldraw"
 import "tldraw/tldraw.css"
 import "./presentation-layer.css"
+import { toPng } from "html-to-image"
 import { CheckCircle } from "lucide-react"
 import { useOverlayStore } from "@/stores/overlay-store"
 import { animateCommand, replayToStep } from "@/lib/presentation/command-animator"
@@ -10,12 +11,6 @@ import { DOMZIndex } from "@/types/overlay"
 import type { AnimationHandle } from "@/lib/presentation/command-animator"
 import type { ClientToolResultContent } from "@/lib/client-side-tool/types"
 import { PresentationPlayer } from "./presentation-player"
-
-interface ScreenshotResult {
-  data: string
-  width: number
-  height: number
-}
 
 /** Post error completion for all incomplete tool groups */
 function postIncompleteCompletions() {
@@ -45,6 +40,28 @@ export function PresentationLayer() {
 
   const stepsCount = steps.length
 
+  // ---- Auto-finish: when all steps done, stream finished, no user interaction ----
+  const autoFinish = useCallback(() => {
+    const editor = editorRef.current
+    if (editor) {
+      const allShapes = editor.getCurrentPageShapes()
+      if (allShapes.length > 0) {
+        editor.deleteShapes(allShapes.map((s) => s.id))
+      }
+    }
+    // Flush deferred + post all completed
+    flushDeferredCompletions()
+    const currentSteps = useOverlayStore.getState().presentationSteps
+    const doneToolUseIds = new Set<string>()
+    for (const step of currentSteps) {
+      if (step.status === "done") doneToolUseIds.add(step.toolUseId)
+    }
+    for (const toolUseId of doneToolUseIds) {
+      postToolCompletion(toolUseId, currentSteps, false)
+    }
+    actions.stopPresentation()
+  }, [actions])
+
   // ---- Execution engine ----
   // When playerState changes to "playing", sync processedIndexRef with currentStep
   // so that resuming after a rewind re-animates from the rewound position.
@@ -60,13 +77,23 @@ export function PresentationLayer() {
     }
   }, [playerState])
 
+  const streamDone = useOverlayStore((s) => s.presentationStreamDone)
+
   useEffect(() => {
     if (!presentationActive || playerState !== "playing" || !editorRef.current) return
 
     const editor = editorRef.current
     const getSteps = () => useOverlayStore.getState().presentationSteps
     const getPlayerState = () => useOverlayStore.getState().presentationPlayerState
+    const getStreamDone = () => useOverlayStore.getState().presentationStreamDone
     let cancelled = false
+    /** Tracks whether user interacted (paused/skipped) during this playback */
+    let userInteracted = false
+    const unsub = useOverlayStore.subscribe((state, prev) => {
+      if (state.presentationPlayerState !== prev.presentationPlayerState && state.presentationPlayerState === "paused") {
+        userInteracted = true
+      }
+    })
 
     const runLoop = async () => {
       while (!cancelled) {
@@ -75,8 +102,14 @@ export function PresentationLayer() {
         const currentSteps = getSteps()
         const nextIndex = processedIndexRef.current + 1
 
-        // No more steps yet — wait for new ones to arrive
-        if (nextIndex >= currentSteps.length) break
+        // No more steps yet — check if stream is done (auto-finish)
+        if (nextIndex >= currentSteps.length) {
+          if (getStreamDone() && !userInteracted) {
+            // All steps played, stream finished, user didn't interact → auto-finish
+            autoFinish()
+          }
+          break
+        }
         const step = currentSteps[nextIndex]
 
         // Mark executing (reset status if it was previously done)
@@ -90,25 +123,21 @@ export function PresentationLayer() {
 
         if (cancelled || getPlayerState() !== "playing") break
 
-        // Screenshot: hide player controls only, keep tldraw canvas visible
-        const playerEl = document.getElementById("presentation-player-controls")
-        const exitBtn = document.getElementById("presentation-exit-btn")
-        if (playerEl) playerEl.style.visibility = "hidden"
-        if (exitBtn) exitBtn.style.visibility = "hidden"
-        // Wait one frame for repaint
-        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-
+        // Screenshot: capture DOM (excluding player controls & exit buttons)
         let screenshotData = ""
         try {
-          const { invoke } = await import("@tauri-apps/api/core")
-          const result = await invoke<ScreenshotResult>("take_screenshot", { hideWindow: false })
-          screenshotData = result.data
+          const dataUrl = await toPng(document.documentElement, {
+            filter: (node) => {
+              if (!(node instanceof HTMLElement)) return true
+              const id = node.id
+              return id !== "presentation-player-controls" && id !== "presentation-exit-btn"
+            },
+          })
+          // Strip data:image/png;base64, prefix
+          screenshotData = dataUrl.replace(/^data:image\/\w+;base64,/, "")
         } catch {
           // Screenshot failed, continue without it
         }
-
-        if (playerEl) playerEl.style.visibility = "visible"
-        if (exitBtn) exitBtn.style.visibility = "visible"
         if (cancelled) break
 
         // Mark done
@@ -126,10 +155,11 @@ export function PresentationLayer() {
     runLoop()
     return () => {
       cancelled = true
+      unsub()
       currentAnimRef.current?.finish()
       postIncompleteCompletions()
     }
-  }, [stepsCount, playerState, presentationActive, editorReady])
+  }, [stepsCount, playerState, presentationActive, editorReady, streamDone])
 
   // ---- Pause: immediately finish current animation ----
   useEffect(() => {
