@@ -33,7 +33,7 @@ import type { VibenCliSource } from "@/hooks";
 import { useState, useCallback, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { getGatewayClient, getGatewayUrl, setGatewayUrl } from "@/lib/gateway";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 // Connectivity test result type
 interface ConnectivityResult {

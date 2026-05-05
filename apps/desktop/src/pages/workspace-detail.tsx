@@ -18,7 +18,7 @@ import { Renderer, RenderScheduler } from "@viben/os";
 import { useLocalWorkspaces } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { getWorkspaceSectionDescriptor } from "@/navigation/navigation-meta";
-import type { WorkspaceSection } from "@/navigation/view-target";
+import type { WorkspaceSection } from "@/navigation/navigation-meta";
 import { cn } from "@/lib/utils";
 import { WorkspaceHeader } from "@/components/workspace";
 import { PageWrapper } from "@/components/layout";

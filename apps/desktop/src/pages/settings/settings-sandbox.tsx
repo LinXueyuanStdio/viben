@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useSandbox, type SandboxProviderType, type SandboxProviderDetails } from "@/hooks/use-sandbox";
 import { useState, useCallback } from "react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 // Provider icon based on type
 function ProviderIcon({ type, className }: { type: SandboxProviderType; className?: string }) {

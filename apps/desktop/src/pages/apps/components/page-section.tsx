@@ -86,7 +86,7 @@ import {
   getPageHref,
 } from "../utils";
 import type { PageTreeNode, PageOrderMap } from "../utils";
-import { urlToLocation } from "@/navigation/location";
+import { urlToLocation } from "@/navigation/navigation-meta";
 
 // =============================================================================
 // Types

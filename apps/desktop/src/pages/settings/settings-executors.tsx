@@ -92,6 +92,12 @@ const EXECUTORS: ExecutorInfo[] = [
     description: "DROID",
     website: "https://developer.android.com",
   },
+  {
+    id: "OPENCLAW",
+    name: "OPENCLAW",
+    description: "OPENCLAW",
+    website: "https://openclaw.ai",
+  },
 ];
 
 // Executor status
