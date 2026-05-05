@@ -11,7 +11,7 @@ function createWorkspacePagesIndexDescriptor(
 ): BreadcrumbNodeDescriptor {
   return {
     id: `${workspaceId}:pages`,
-    kind: "virtual-folder",
+    descriptorId: "virtual-folder",
     label: i18n.t("page.pages", "Apps"),
     icon: { type: "lucide", value: "layout-grid" },
     meta: { workspaceId },
@@ -27,7 +27,7 @@ function createWorkspaceRootDescriptor(
 ): BreadcrumbNodeDescriptor {
   return {
     id: `workspace:${workspaceId}`,
-    kind: "workspace-root",
+    descriptorId: "workspace",
     label: workspaceId,
     meta: { workspaceId },
     location: {
@@ -70,7 +70,7 @@ function buildWorkspacePagePathDescriptors(
 
     return {
       id: `${workspaceId}:page:${slugAtDepth}`,
-      kind: "workspace-page",
+      descriptorId: "workspace-page",
       label: matchedPage?.name ?? segment,
       icon: matchedPage?.icon,
       meta: {
@@ -92,7 +92,7 @@ function buildWorkspacePageTreeDescriptors(
 ): BreadcrumbNodeDescriptor[] {
   return path.map((item) => ({
     id: `${workspaceId}:page:${item.page.slug}`,
-    kind: "workspace-page",
+    descriptorId: "workspace-page",
     label: item.page.name,
     icon: item.page.icon,
     meta: {

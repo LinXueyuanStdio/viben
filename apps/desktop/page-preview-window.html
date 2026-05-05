@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Page Preview</title>
+    <script>
+      (function() {
+        try {
+          var storage = localStorage.getItem('viben-storage');
+          if (storage) {
+            var parsed = JSON.parse(storage);
+            var theme = parsed.state && parsed.state.theme ? parsed.state.theme : 'system';
+            var isDark = theme === 'dark' ||
+              (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (isDark) {
+              document.documentElement.classList.add('dark');
+            }
+          } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          // Ignore theme bootstrap failures.
+        }
+      })();
+    </script>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/page-preview-window-main.tsx"></script>
+  </body>
+</html>

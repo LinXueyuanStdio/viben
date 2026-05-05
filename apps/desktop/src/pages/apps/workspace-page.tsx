@@ -8,6 +8,8 @@
 import { useMemo, useState, useCallback } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   Loader2,
   FileQuestion,
@@ -16,6 +18,7 @@ import {
   FileText,
   Eye,
   ExternalLink,
+  PanelTopOpen,
   Maximize2,
   Minimize2,
   RefreshCw,
@@ -26,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
+import { toast } from "@/hooks/use-toast";
 import { PagePreview } from "./components";
 import type { PageViewMode } from "./components/page-preview";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
@@ -89,6 +93,7 @@ function PageToolbar({
   gatewayServeUrl,
   onStopLivePreview,
   onRefresh,
+  onDetach,
   isFullscreen,
   onToggleFullscreen,
 }: {
@@ -100,6 +105,7 @@ function PageToolbar({
   gatewayServeUrl: string | null;
   onStopLivePreview?: () => void;
   onRefresh: () => void;
+  onDetach: () => void | Promise<void>;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
 }) {
@@ -145,7 +151,6 @@ function PageToolbar({
     const url = viewMode === "page" && page.type === "server" ? livePreviewUrl : gatewayServeUrl;
     if (url) {
       try {
-        const { openUrl } = await import("@tauri-apps/plugin-opener");
         await openUrl(url);
       } catch {
         window.open(url, "_blank");
@@ -198,6 +203,14 @@ function PageToolbar({
       )}
 
       {/* Action buttons */}
+      <button
+        onClick={onDetach}
+        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        title={t("tabBar.detachToNewWindow", "Detach to New Window")}
+      >
+        <PanelTopOpen className="h-3.5 w-3.5" />
+      </button>
+
       {viewMode === "page" && (
         <>
           <button
@@ -261,6 +274,7 @@ export function WorkspacePage() {
     openWorkspacePage,
     openWorkspaceWeb,
     openWorkspaceSection,
+    closeCurrentTab,
   } = useDesktopRouting();
 
   const routeWorkspaceId = params.workspaceId;
@@ -352,7 +366,7 @@ export function WorkspacePage() {
         label: item.label,
         href: item.target?.canonicalUrl ?? "#",
         icon: item.icon,
-        kind: item.kind,
+        descriptorId: item.descriptorId,
         meta: item.meta,
       })),
     });
@@ -361,6 +375,28 @@ export function WorkspacePage() {
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
   }, []);
+
+  const handleDetach = useCallback(async () => {
+    const workspacePath = workspace?.path;
+    if (!workspaceId || !workspacePath || !page?.slug) {
+      toast.error(t("tabBar.detachUnavailable", "This tab cannot be detached"));
+      return;
+    }
+
+    try {
+      await invoke("open_workspace_page_preview_window", {
+        workspaceId,
+        workspacePath,
+        slug: page.slug,
+        title: page.name,
+        view: viewMode,
+      });
+      closeCurrentTab();
+    } catch (error) {
+      console.error("Failed to detach workspace page:", error);
+      toast.error(t("common.error"));
+    }
+  }, [closeCurrentTab, page, t, viewMode, workspace?.path, workspaceId]);
 
   const handleOpenPage = useCallback(
     (nextPageSlug: string) => {
@@ -548,6 +584,7 @@ export function WorkspacePage() {
               gatewayServeUrl={gatewayServeUrl}
               onStopLivePreview={stopPreview}
               onRefresh={handleRefresh}
+              onDetach={handleDetach}
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
             />
