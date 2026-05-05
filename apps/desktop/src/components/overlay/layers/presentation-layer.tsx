@@ -3,6 +3,7 @@ import { Tldraw } from "tldraw"
 import type { Editor } from "tldraw"
 import "tldraw/tldraw.css"
 import "./presentation-layer.css"
+import { CheckCircle } from "lucide-react"
 import { useOverlayStore } from "@/stores/overlay-store"
 import { animateCommand, replayToStep } from "@/lib/presentation/command-animator"
 import { DOMZIndex } from "@/types/overlay"
@@ -174,7 +175,34 @@ export function PresentationLayer() {
     setEditorReady((n) => n + 1)
   }, [])
 
-  // ---- Exit handler ----
+  // ---- Finish handler (user confirms presentation is done) ----
+  const handleFinish = useCallback(() => {
+    const editor = editorRef.current
+    if (editor) {
+      const allShapes = editor.getCurrentPageShapes()
+      if (allShapes.length > 0) {
+        editor.deleteShapes(allShapes.map((s) => s.id))
+      }
+    }
+
+    // Flush deferred completions (fully done tool groups)
+    flushDeferredCompletions()
+    // POST completion for any remaining completed tool groups
+    const currentSteps = useOverlayStore.getState().presentationSteps
+    const doneToolUseIds = new Set<string>()
+    for (const step of currentSteps) {
+      if (step.status === "done") doneToolUseIds.add(step.toolUseId)
+    }
+    for (const toolUseId of doneToolUseIds) {
+      postToolCompletion(toolUseId, currentSteps, false)
+    }
+    // POST error for incomplete groups
+    postIncompleteCompletions()
+
+    actions.stopPresentation()
+  }, [actions])
+
+  // ---- Exit handler (abort — cancel everything) ----
   const handleExit = useCallback(() => {
     const editor = editorRef.current
     if (editor) {
@@ -184,8 +212,16 @@ export function PresentationLayer() {
       }
     }
 
-    // POST error result for any incomplete tool_use groups
-    postIncompleteCompletions()
+    // POST error result for ALL tool_use groups (abort)
+    _deferredCompletions.clear()
+    const currentSteps = useOverlayStore.getState().presentationSteps
+    const allToolUseIds = new Set<string>()
+    for (const step of currentSteps) {
+      allToolUseIds.add(step.toolUseId)
+    }
+    for (const toolUseId of allToolUseIds) {
+      postToolCompletion(toolUseId, currentSteps, true)
+    }
 
     actions.stopPresentation()
   }, [actions])
@@ -275,11 +311,33 @@ export function PresentationLayer() {
 // Completion helpers
 // ============================================================================
 
+/** Track toolUseIds that are fully done but deferred (user paused before POST) */
+const _deferredCompletions = new Set<string>()
+
 function checkAndPostCompletion(
   steps: Array<{ id: string; toolUseId: string; status: string; screenshot?: string; toolName: string }>,
   toolUseId: string
 ) {
+  const playerState = useOverlayStore.getState().presentationPlayerState
+  if (playerState === "paused") {
+    // Defer: remember this toolUseId and POST when user finishes/resumes
+    const toolSteps = steps.filter((s) => s.toolUseId === toolUseId)
+    if (toolSteps.every((s) => s.status === "done")) {
+      _deferredCompletions.add(toolUseId)
+    }
+    return
+  }
   postToolCompletion(toolUseId, steps, false)
+}
+
+/** Flush all deferred completions (called when user finishes presentation) */
+function flushDeferredCompletions() {
+  if (_deferredCompletions.size === 0) return
+  const steps = useOverlayStore.getState().presentationSteps
+  for (const toolUseId of _deferredCompletions) {
+    postToolCompletion(toolUseId, steps, false)
+  }
+  _deferredCompletions.clear()
 }
 
 function postToolCompletion(
