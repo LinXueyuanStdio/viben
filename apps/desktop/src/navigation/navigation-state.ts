@@ -1,7 +1,6 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import type {
   DesktopLocation,
-  BreadcrumbItemKind,
   BreadcrumbStackItem,
 } from "./navigation-meta";
 import {
@@ -11,7 +10,7 @@ import {
 
 export interface BreadcrumbNodeDescriptor {
   id?: string;
-  kind?: BreadcrumbItemKind;
+  descriptorId?: string;
   label: string;
   icon?: IconData;
   meta?: BreadcrumbStackItem["meta"];
@@ -29,24 +28,20 @@ export function createBreadcrumbNode(
   descriptor: BreadcrumbNodeDescriptor
 ): BreadcrumbStackItem {
   if (descriptor.location) {
-    if (!descriptor.kind) {
-      throw new Error("Breadcrumb node with location requires explicit kind");
-    }
-
     return createLocationBreadcrumbItem(descriptor.location, {
       ...descriptor,
-      kind: descriptor.kind,
+      descriptorId: descriptor.descriptorId,
     });
   }
 
   return createBreadcrumbItem({
     id: descriptor.id ?? descriptor.label,
-    kind: descriptor.kind ?? "virtual-folder",
     label: descriptor.label,
     icon: descriptor.icon,
     meta: descriptor.meta,
     sourceNodeId: descriptor.sourceNodeId,
     parentNodeId: descriptor.parentNodeId,
+    descriptorId: descriptor.descriptorId,
   });
 }
 

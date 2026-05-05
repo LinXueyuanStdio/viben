@@ -1,7 +1,34 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import i18n from "@/i18n";
 
-// ─── Core Types ──────────────────────────────────────────────────────────────
+// ─── Navigation DAG ──────────────────────────────────────────────────────────
+//
+// The navigation structure is a DAG (Directed Acyclic Graph):
+//
+//   Nodes = BreadcrumbItemDescriptor (entities with id + routePath)
+//   Edges = BreadcrumbEdge (transitions between nodes, carrying injected context)
+//
+// GLOBAL_ROUTE_DESCRIPTORS are the DAG root nodes.
+// Items do NOT carry a "kind" field. To resolve an item's descriptor,
+// use the edge index: given a parent descriptor and an item id,
+// the edge tells you which descriptor the child resolves to.
+//
+// The breadcrumb stack is a path through this graph.
+
+// ── Node (Descriptor) ──
+
+export interface BreadcrumbItemDescriptor {
+  id: string;
+  routePath: string;
+  icon: IconData;
+  titleKey: string;
+  fallbackLabel: string;
+  isContainer?: boolean;
+}
+
+// ── Edges ──
+
+/** Context keys that an edge injects into the child node's meta */
 
 export type WorkspaceSection =
   | "apps"
@@ -120,21 +147,13 @@ export interface ViewTarget {
   canonicalUrl: string;
 }
 
-export type BreadcrumbItemKind =
-  | "workspace-root"
-  | "workspace-section"
-  | "workspace-page"
-  | "workspace-agent"
-  | "workspace-executor"
-  | "workspace-web"
-  | "virtual-folder"
-  | "global-route";
+// ── Runtime Instances ──
 
 export interface BreadcrumbStackItem {
   id: string;
-  kind: BreadcrumbItemKind;
   label: string;
   icon?: IconData;
+  descriptorId?: string;
   sourceNodeId?: string;
   parentNodeId?: string;
   target?: ViewTarget;
@@ -151,19 +170,10 @@ export interface BreadcrumbStackItem {
   };
 }
 
-export type VirtualNodeKind =
-  | "workspace-root"
-  | "workspace-section"
-  | "workspace-page"
-  | "workspace-agent"
-  | "workspace-executor"
-  | "external-web"
-  | "virtual-folder"
-  | "related-link";
-
 export interface VirtualPageIndexNode {
   id: string;
-  kind: VirtualNodeKind;
+  /** References a BreadcrumbItemDescriptor.id */
+  descriptorId: string;
   label: string;
   icon?: IconData;
   parentId?: string;
@@ -185,6 +195,11 @@ export interface VirtualPageIndexNode {
     blockId?: string;
   };
 }
+
+// ── Edge Index ──
+// Pre-built lookup: given a parent descriptor id, returns valid child descriptor ids.
+// Use `getChildDescriptors(parentId)` to query valid transitions.
+// Use `resolveItemDescriptor(item, parentDescriptorId)` to find an item's descriptor.
 
 export interface TabNavigationState {
   location: DesktopLocation;
@@ -224,89 +239,148 @@ export function buildViewTarget(
   };
 }
 
-// ─── Descriptors ─────────────────────────────────────────────────────────────
+// ─── Concrete Descriptors ────────────────────────────────────────────────────
+// All descriptors extend BreadcrumbItemDescriptor with domain-specific fields.
 
-export interface WorkspaceSectionDescriptor {
+export interface WorkspaceSectionDescriptor extends BreadcrumbItemDescriptor {
   section: WorkspaceSection;
-  routePath: string;
-  titleKey: string;
-  fallbackLabel: string;
-  icon: IconData;
-  nodeKind: VirtualPageIndexNode["kind"];
 }
 
-export interface SettingsSectionDescriptor {
+export interface SettingsSectionDescriptor extends BreadcrumbItemDescriptor {
   section: SettingsSection;
-  routePath: string;
-  titleKey: string;
-  fallbackLabel: string;
-  icon: IconData;
 }
 
-export const WORKSPACE_SECTION_DESCRIPTORS: WorkspaceSectionDescriptor[] = [
-  { section: "chat", routePath: "chat", titleKey: "workspace.chat", fallbackLabel: "Chat", icon: { type: "lucide", value: "message-square" }, nodeKind: "workspace-section" },
-  { section: "kanban", routePath: "kanban", titleKey: "workspace.kanban", fallbackLabel: "Kanban", icon: { type: "lucide", value: "layout-dashboard" }, nodeKind: "workspace-section" },
-  { section: "cron", routePath: "cron", titleKey: "workspace.scheduledTasks", fallbackLabel: "Scheduled Tasks", icon: { type: "lucide", value: "clock" }, nodeKind: "workspace-section" },
-  { section: "ideas", routePath: "ideas", titleKey: "workspace.ideas", fallbackLabel: "Ideas", icon: { type: "lucide", value: "lightbulb" }, nodeKind: "workspace-section" },
-  { section: "agent", routePath: "agent", titleKey: "workspace.sections.agents", fallbackLabel: "Agents", icon: { type: "lucide", value: "bot" }, nodeKind: "workspace-section" },
-  { section: "files", routePath: "files", titleKey: "workspace.files", fallbackLabel: "Files", icon: { type: "lucide", value: "folder-open" }, nodeKind: "workspace-section" },
-  { section: "github", routePath: "github", titleKey: "workspace.github.label", fallbackLabel: "GitHub", icon: { type: "lucide", value: "github" }, nodeKind: "workspace-section" },
-  { section: "chat-monitor", routePath: "chat-monitor", titleKey: "workspace.chatMonitor", fallbackLabel: "Chat Monitor", icon: { type: "lucide", value: "activity" }, nodeKind: "workspace-section" },
+// ─── DAG: Root Nodes (GLOBAL_ROUTE_DESCRIPTORS) ──────────────────────────────
+// These are the top-level entry points of the navigation graph.
+
+export const GLOBAL_ROUTE_DESCRIPTORS: BreadcrumbItemDescriptor[] = [
+  { id: "workspace", routePath: "/workspace/:workspaceId", titleKey: "breadcrumb.workspace", fallbackLabel: "Workspace", icon: { type: "lucide", value: "home" }, isContainer: true },
+  { id: "settings", routePath: "/settings", titleKey: "settings.title", fallbackLabel: "Settings", icon: { type: "lucide", value: "settings" }, isContainer: true },
+  { id: "documents", routePath: "/documents", titleKey: "nav.documents", fallbackLabel: "Documents", icon: { type: "lucide", value: "file-text" } },
+  { id: "devices", routePath: "/devices/pair", titleKey: "nav.devices", fallbackLabel: "Devices", icon: { type: "lucide", value: "smartphone" } },
+  { id: "mcp-dashboard", routePath: "/mcp-services/dashboard", titleKey: "globalRoute.mcpDashboard", fallbackLabel: "Dashboard", icon: { type: "lucide", value: "layout-dashboard" } },
+  { id: "mcp-data-sources", routePath: "/mcp-services/data-sources", titleKey: "globalRoute.mcpDataSources", fallbackLabel: "Data Sources", icon: { type: "lucide", value: "database" } },
+  { id: "mcp-search-service", routePath: "/mcp-services/search-service", titleKey: "globalRoute.mcpSearchService", fallbackLabel: "Search Service", icon: { type: "lucide", value: "search" } },
+  { id: "mcp-page-debug", routePath: "/mcp-services/page-debug", titleKey: "globalRoute.mcpPageDebug", fallbackLabel: "Page Debug", icon: { type: "lucide", value: "bug" } },
+  { id: "mcp-logs", routePath: "/mcp-services/logs", titleKey: "globalRoute.mcpLogs", fallbackLabel: "Logs", icon: { type: "lucide", value: "scroll-text" } },
+  { id: "publish", routePath: "/publish", titleKey: "globalRoute.publish", fallbackLabel: "Publish", icon: { type: "lucide", value: "upload" } },
+  { id: "my-packages", routePath: "/my-packages", titleKey: "globalRoute.myPackages", fallbackLabel: "My Packages", icon: { type: "lucide", value: "package" } },
+  { id: "analytics", routePath: "/analytics", titleKey: "globalRoute.analytics", fallbackLabel: "Analytics", icon: { type: "lucide", value: "chart-column" } },
 ];
 
+// ─── DAG: Workspace Children ─────────────────────────────────────────────────
+
+export const WORKSPACE_SECTION_DESCRIPTORS: WorkspaceSectionDescriptor[] = [
+  { id: "workspace-section:apps", section: "apps", routePath: "apps", titleKey: "page.pages", fallbackLabel: "Apps", icon: { type: "lucide", value: "layers" }, isContainer: true },
+  { id: "workspace-section:chat", section: "chat", routePath: "chat", titleKey: "workspace.chat", fallbackLabel: "Chat", icon: { type: "lucide", value: "message-square" } },
+  { id: "workspace-section:kanban", section: "kanban", routePath: "kanban", titleKey: "workspace.kanban", fallbackLabel: "Kanban", icon: { type: "lucide", value: "layout-dashboard" } },
+  { id: "workspace-section:cron", section: "cron", routePath: "cron", titleKey: "workspace.scheduledTasks", fallbackLabel: "Scheduled Tasks", icon: { type: "lucide", value: "clock" } },
+  { id: "workspace-section:ideas", section: "ideas", routePath: "ideas", titleKey: "workspace.ideas", fallbackLabel: "Ideas", icon: { type: "lucide", value: "lightbulb" } },
+  { id: "workspace-section:agent", section: "agent", routePath: "agent", titleKey: "workspace.sections.agents", fallbackLabel: "Agents", icon: { type: "lucide", value: "bot" } },
+  { id: "workspace-section:files", section: "files", routePath: "files", titleKey: "workspace.files", fallbackLabel: "Files", icon: { type: "lucide", value: "folder-open" } },
+  { id: "workspace-section:github", section: "github", routePath: "github", titleKey: "workspace.github.label", fallbackLabel: "GitHub", icon: { type: "lucide", value: "github" } },
+  { id: "workspace-section:chat-monitor", section: "chat-monitor", routePath: "chat-monitor", titleKey: "workspace.chatMonitor", fallbackLabel: "Chat Monitor", icon: { type: "lucide", value: "activity" } },
+];
+
+// ─── DAG: Settings Children ──────────────────────────────────────────────────
+
 export const SETTINGS_SECTION_DESCRIPTORS: SettingsSectionDescriptor[] = [
-  { section: "general", routePath: "general", titleKey: "settings.sections.general", fallbackLabel: "General", icon: { type: "lucide", value: "settings" } },
-  { section: "account", routePath: "account", titleKey: "settings.sections.account", fallbackLabel: "Account", icon: { type: "lucide", value: "user" } },
-  { section: "shortcuts", routePath: "shortcuts", titleKey: "settings.sections.shortcuts", fallbackLabel: "Shortcuts", icon: { type: "lucide", value: "keyboard" } },
-  { section: "notifications", routePath: "notifications", titleKey: "settings.sections.notifications", fallbackLabel: "Notifications", icon: { type: "lucide", value: "bell" } },
-  { section: "gateway", routePath: "gateway", titleKey: "settings.sections.gateway", fallbackLabel: "Gateway", icon: { type: "lucide", value: "network" } },
-  { section: "channels", routePath: "channels", titleKey: "settings.sections.channels", fallbackLabel: "Channels", icon: { type: "lucide", value: "message-square" } },
-  { section: "executors", routePath: "executors", titleKey: "settings.sections.executors", fallbackLabel: "Executors", icon: { type: "lucide", value: "play" } },
-  { section: "model", routePath: "model", titleKey: "settings.sections.model", fallbackLabel: "Model", icon: { type: "lucide", value: "cpu" } },
-  { section: "agents", routePath: "agents", titleKey: "settings.sections.agents", fallbackLabel: "Agents", icon: { type: "lucide", value: "bot" } },
-  { section: "mcp", routePath: "mcp", titleKey: "settings.sections.mcp", fallbackLabel: "MCP", icon: { type: "lucide", value: "boxes" } },
-  { section: "skills", routePath: "skills", titleKey: "settings.sections.skills", fallbackLabel: "Skills", icon: { type: "lucide", value: "sparkles" } },
-  { section: "sandbox", routePath: "sandbox", titleKey: "settings.sections.sandbox", fallbackLabel: "Sandbox", icon: { type: "lucide", value: "box" } },
-  { section: "environment", routePath: "environment", titleKey: "settings.sections.environment", fallbackLabel: "Environment", icon: { type: "lucide", value: "terminal" } },
-  { section: "terminalFonts", routePath: "terminalFonts", titleKey: "settings.sections.terminalFonts", fallbackLabel: "Terminal Fonts", icon: { type: "lucide", value: "type" } },
-  { section: "overlay", routePath: "overlay", titleKey: "settings.sections.overlay", fallbackLabel: "Overlay", icon: { type: "lucide", value: "layers" } },
-  { section: "voice", routePath: "voice", titleKey: "settings.sections.voice", fallbackLabel: "Voice", icon: { type: "lucide", value: "mic" } },
-  { section: "storage", routePath: "storage", titleKey: "settings.sections.storage", fallbackLabel: "Storage", icon: { type: "lucide", value: "hard-drive" } },
-  { section: "developer", routePath: "developer", titleKey: "settings.sections.developer", fallbackLabel: "Developer", icon: { type: "lucide", value: "bug" } },
-  { section: "about", routePath: "about", titleKey: "settings.sections.about", fallbackLabel: "About", icon: { type: "lucide", value: "info" } },
+  { id: "settings:general", section: "general", routePath: "general", titleKey: "settings.sections.general", fallbackLabel: "General", icon: { type: "lucide", value: "settings" } },
+  { id: "settings:account", section: "account", routePath: "account", titleKey: "settings.sections.account", fallbackLabel: "Account", icon: { type: "lucide", value: "user" } },
+  { id: "settings:shortcuts", section: "shortcuts", routePath: "shortcuts", titleKey: "settings.sections.shortcuts", fallbackLabel: "Shortcuts", icon: { type: "lucide", value: "keyboard" } },
+  { id: "settings:notifications", section: "notifications", routePath: "notifications", titleKey: "settings.sections.notifications", fallbackLabel: "Notifications", icon: { type: "lucide", value: "bell" } },
+  { id: "settings:gateway", section: "gateway", routePath: "gateway", titleKey: "settings.sections.gateway", fallbackLabel: "Gateway", icon: { type: "lucide", value: "network" } },
+  { id: "settings:channels", section: "channels", routePath: "channels", titleKey: "settings.sections.channels", fallbackLabel: "Channels", icon: { type: "lucide", value: "message-square" } },
+  { id: "settings:executors", section: "executors", routePath: "executors", titleKey: "settings.sections.executors", fallbackLabel: "Executors", icon: { type: "lucide", value: "play" } },
+  { id: "settings:model", section: "model", routePath: "model", titleKey: "settings.sections.model", fallbackLabel: "Model", icon: { type: "lucide", value: "cpu" } },
+  { id: "settings:agents", section: "agents", routePath: "agents", titleKey: "settings.sections.agents", fallbackLabel: "Agents", icon: { type: "lucide", value: "bot" } },
+  { id: "settings:mcp", section: "mcp", routePath: "mcp", titleKey: "settings.sections.mcp", fallbackLabel: "MCP", icon: { type: "lucide", value: "boxes" } },
+  { id: "settings:skills", section: "skills", routePath: "skills", titleKey: "settings.sections.skills", fallbackLabel: "Skills", icon: { type: "lucide", value: "sparkles" } },
+  { id: "settings:sandbox", section: "sandbox", routePath: "sandbox", titleKey: "settings.sections.sandbox", fallbackLabel: "Sandbox", icon: { type: "lucide", value: "box" } },
+  { id: "settings:environment", section: "environment", routePath: "environment", titleKey: "settings.sections.environment", fallbackLabel: "Environment", icon: { type: "lucide", value: "terminal" } },
+  { id: "settings:terminalFonts", section: "terminalFonts", routePath: "terminalFonts", titleKey: "settings.sections.terminalFonts", fallbackLabel: "Terminal Fonts", icon: { type: "lucide", value: "type" } },
+  { id: "settings:overlay", section: "overlay", routePath: "overlay", titleKey: "settings.sections.overlay", fallbackLabel: "Overlay", icon: { type: "lucide", value: "layers" } },
+  { id: "settings:voice", section: "voice", routePath: "voice", titleKey: "settings.sections.voice", fallbackLabel: "Voice", icon: { type: "lucide", value: "mic" } },
+  { id: "settings:storage", section: "storage", routePath: "storage", titleKey: "settings.sections.storage", fallbackLabel: "Storage", icon: { type: "lucide", value: "hard-drive" } },
+  { id: "settings:developer", section: "developer", routePath: "developer", titleKey: "settings.sections.developer", fallbackLabel: "Developer", icon: { type: "lucide", value: "bug" } },
+  { id: "settings:about", section: "about", routePath: "about", titleKey: "settings.sections.about", fallbackLabel: "About", icon: { type: "lucide", value: "info" } },
 ];
 
 export const VALID_SETTINGS_SECTIONS = SETTINGS_SECTION_DESCRIPTORS.map(
   (item) => item.section
 );
 
-// ─── Global Route Meta ───────────────────────────────────────────────────────
+// ─── Edge Index Map ──────────────────────────────────────────────────────────
+// Maps a DesktopLocation.kind to its descriptor id.
+// To find what descriptor an item belongs to, look up its location kind here.
 
-export const GLOBAL_ROUTE_META: Record<string, { label: string; icon: IconData }> = {
-  "/mcp-services/dashboard": { label: "Dashboard", icon: { type: "lucide", value: "layout-dashboard" } },
-  "/mcp-services/data-sources": { label: "Data Sources", icon: { type: "lucide", value: "database" } },
-  "/mcp-services/search-service": { label: "Search Service", icon: { type: "lucide", value: "search" } },
-  "/mcp-services/page-debug": { label: "Page Debug", icon: { type: "lucide", value: "bug" } },
-  "/mcp-services/logs": { label: "Logs", icon: { type: "lucide", value: "scroll-text" } },
-  "/publish": { label: "Publish", icon: { type: "lucide", value: "upload" } },
-  "/my-packages": { label: "My Packages", icon: { type: "lucide", value: "package" } },
-  "/analytics": { label: "Analytics", icon: { type: "lucide", value: "chart-column" } },
+export const LOCATION_DESCRIPTOR_MAP: Record<DesktopLocation["kind"], string> = {
+  "workspace-home": "workspace",
+  "workspace-apps": "workspace-section:apps",
+  "workspace-section": "workspace-section:*",
+  "workspace-agent-detail": "workspace-agent",
+  "workspace-executor-detail": "workspace-executor",
+  "workspace-page": "workspace-page",
+  "workspace-web": "workspace-web",
+  "agent-detail": "workspace-agent",
+  "executor-detail": "workspace-executor",
+  "skill-detail": "workspace-agent",
+  "mcp-server-detail": "workspace-executor",
+  "subagent-detail": "workspace-agent",
+  "prompt-detail": "workspace-executor",
+  "command-detail": "workspace-executor",
+  "settings": "settings",
+  "documents": "documents",
+  "device-pair": "devices",
+  "global-route": "workspace",
 };
 
-// ─── Default Icons ───────────────────────────────────────────────────────────
+// ─── Deprecated Compat ───────────────────────────────────────────────────────
 
-export const DEFAULT_BREADCRUMB_ICONS: Record<string, BreadcrumbStackItem["icon"]> = {
-  "workspace-root": { type: "lucide", value: "home" },
-  "workspace-section": { type: "lucide", value: "panel-left" },
-  "workspace-page": { type: "lucide", value: "file-text" },
-  "workspace-agent": { type: "lucide", value: "bot" },
-  "workspace-executor": { type: "lucide", value: "terminal" },
-  "workspace-web": { type: "lucide", value: "globe" },
-  "virtual-folder": { type: "lucide", value: "folder" },
-  "global-route": { type: "lucide", value: "panel-top" },
-};
+/** @deprecated Use `GLOBAL_ROUTE_DESCRIPTORS` instead */
+export const GLOBAL_ROUTE_META: Record<string, { label: string; icon: IconData }> = Object.fromEntries(
+  GLOBAL_ROUTE_DESCRIPTORS.map((d) => [d.routePath, { label: d.fallbackLabel, icon: d.icon }])
+);
+
+/** Resolve icon for an item by looking up its descriptor */
+export function getDescriptorIcon(descriptorId: string | undefined): IconData | undefined {
+  if (!descriptorId) return undefined;
+  return DESCRIPTOR_BY_ID.get(descriptorId)?.icon;
+}
 
 // ─── Lookup Helpers ──────────────────────────────────────────────────────────
+
+/** All descriptors in the DAG (roots + children) */
+export const ALL_DESCRIPTORS: BreadcrumbItemDescriptor[] = [
+  ...GLOBAL_ROUTE_DESCRIPTORS,
+  ...WORKSPACE_SECTION_DESCRIPTORS,
+  ...SETTINGS_SECTION_DESCRIPTORS,
+];
+
+const DESCRIPTOR_BY_ID = new Map<string, BreadcrumbItemDescriptor>(
+  ALL_DESCRIPTORS.map((d) => [d.id, d])
+);
+
+/** Look up a descriptor by id */
+export function getDescriptor(id: string): BreadcrumbItemDescriptor | undefined {
+  return DESCRIPTOR_BY_ID.get(id);
+}
+
+/** Resolve descriptor for a DesktopLocation */
+export function getDescriptorForLocation(location: DesktopLocation): BreadcrumbItemDescriptor | undefined {
+  const descriptorId = LOCATION_DESCRIPTOR_MAP[location.kind];
+  if (!descriptorId) return undefined;
+  // Handle wildcard patterns like "workspace-section:*"
+  if (descriptorId.endsWith(":*") && "section" in location) {
+    const prefix = descriptorId.slice(0, -1);
+    return DESCRIPTOR_BY_ID.get(prefix + (location as { section: string }).section);
+  }
+  return DESCRIPTOR_BY_ID.get(descriptorId);
+}
+
+export function getGlobalRouteDescriptor(path: string): BreadcrumbItemDescriptor | undefined {
+  return GLOBAL_ROUTE_DESCRIPTORS.find((d) => d.routePath === path);
+}
 
 export function getWorkspaceSectionDescriptor(section?: string): WorkspaceSectionDescriptor | undefined {
   return WORKSPACE_SECTION_DESCRIPTORS.find((item) => item.section === section);
@@ -332,6 +406,11 @@ export function getSettingsSectionDescriptor(section?: string): SettingsSectionD
 
 export function isSettingsSection(value: string): value is SettingsSection {
   return Boolean(getSettingsSectionDescriptor(value));
+}
+
+export function normalizeSettingsSection(value?: string | null): SettingsSection {
+  if (!value) return "general";
+  return isSettingsSection(value) ? value : "general";
 }
 
 export function getSettingsSectionLabel(section?: string): string {
@@ -470,8 +549,7 @@ export function urlToLocation(url: string): DesktopLocation | null {
   }
 
   if (segments[0] === "settings") {
-    const raw = segments[1] ? decodePathPart(segments[1]) : "general";
-    const section = isSettingsSection(raw) ? raw : "general";
+    const section = normalizeSettingsSection(segments[1] ? decodePathPart(segments[1]) : "general");
     return { kind: "settings", section, ...suffix };
   }
 

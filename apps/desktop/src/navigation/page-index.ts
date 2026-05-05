@@ -1,7 +1,6 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import type {
   BreadcrumbStackItem,
-  BreadcrumbItemKind,
   VirtualPageIndexNode,
   WorkspaceSection,
   DesktopLocation,
@@ -25,7 +24,7 @@ export interface DesktopBreadcrumbSegment {
   path?: string;
   onClick?: () => void;
   icon?: IconData;
-  kind?: BreadcrumbItemKind;
+  descriptorId?: string;
   meta?: {
     workspaceId?: string;
     section?: WorkspaceSection;
@@ -45,9 +44,10 @@ export interface BreadcrumbDropdownItem {
   href?: string;
   icon?: IconData;
   description?: string;
+  separator?: boolean;
   onSelect?: () => void;
   isActive?: boolean;
-  kind?: BreadcrumbItemKind | "external-web";
+  descriptorId?: string;
   meta?: DesktopBreadcrumbSegment["meta"];
 }
 
@@ -80,7 +80,7 @@ export interface ResolvePageIndexBranchInput {
 }
 
 interface BreadcrumbDropdownRule {
-  matches: (input: ResolvePageIndexBranchInput, segmentKind: BreadcrumbItemKind | undefined) => boolean;
+  matches: (input: ResolvePageIndexBranchInput, descriptorId: string | undefined) => boolean;
   build: (input: ResolvePageIndexBranchInput) => BreadcrumbDropdownItem[];
 }
 
@@ -121,7 +121,7 @@ export function stackToDesktopSegments(
     label: item.label,
     href: item.target?.canonicalUrl ?? "#",
     icon: item.icon,
-    kind: item.kind,
+    descriptorId: item.descriptorId,
     meta: item.meta,
   }));
 }
@@ -130,7 +130,7 @@ export function buildFallbackDesktopSegment(input: {
   id: string;
   label: string;
   location: DesktopLocation;
-  kind: BreadcrumbItemKind;
+  descriptorId: string;
   icon?: IconData;
   meta?: DesktopBreadcrumbSegment["meta"];
 }): DesktopBreadcrumbSegment {
@@ -138,7 +138,7 @@ export function buildFallbackDesktopSegment(input: {
     id: input.id,
     label: input.label,
     location: input.location,
-    kind: input.kind,
+    descriptorId: input.descriptorId,
     icon: input.icon,
     meta: input.meta,
   });
@@ -148,7 +148,7 @@ export function buildFallbackDesktopSegment(input: {
     label: item.label,
     href: item.target?.canonicalUrl ?? "#",
     icon: item.icon,
-    kind: item.kind,
+    descriptorId: item.descriptorId,
     meta: item.meta,
   };
 }
@@ -169,7 +169,7 @@ export function buildWorkspaceSectionHeaderSegment(
       : section,
     href: `/workspace/${encodeURIComponent(workspaceId)}/${routePath}`,
     icon: descriptor?.icon,
-    kind: "workspace-section",
+    descriptorId: `workspace-section:${section}`,
     meta: {
       workspaceId,
       section,
@@ -216,7 +216,7 @@ export function createWorkspaceRootNode(
 ): VirtualPageIndexNode {
   return {
     id: `workspace:${workspaceId}`,
-    kind: "workspace-root",
+    descriptorId: "workspace",
     label,
     icon: { type: "lucide", value: "folder-open" },
     order: 0,
@@ -230,7 +230,7 @@ export function createStaticWorkspaceIndexNodes(
   const root = createWorkspaceRootNode(workspaceId);
   const sectionNodes = WORKSPACE_SECTION_DESCRIPTORS.map((section, index) => ({
     id: `${root.id}:${section.section}`,
-    kind: section.nodeKind,
+    descriptorId: section.id,
     label: section.fallbackLabel,
     icon: section.icon,
     parentId: root.id,
@@ -249,23 +249,26 @@ export function createStaticWorkspaceIndexNodes(
   return [root, ...sectionNodes];
 }
 
-export function inferBreadcrumbSegmentKind(
+export function resolveSegmentDescriptorId(
   segment: DesktopBreadcrumbSegment
-): BreadcrumbItemKind | undefined {
-  if (segment.kind) {
-    return segment.kind;
+): string | undefined {
+  if (segment.descriptorId) {
+    return segment.descriptorId;
   }
 
   if (/^\/workspace\/[^/]+$/.test(segment.href)) {
-    return "workspace-root";
+    return "workspace";
   }
 
-  if (/^\/workspace\/[^/]+\/(chat|kanban|cron|ideas|files|github|chat-monitor)$/.test(segment.href)) {
-    return "workspace-section";
+  const sectionMatch = segment.href.match(
+    /^\/workspace\/[^/]+\/(chat|kanban|cron|ideas|files|github|chat-monitor)$/
+  );
+  if (sectionMatch) {
+    return `workspace-section:${sectionMatch[1]}`;
   }
 
   if (/^\/workspace\/[^/]+\/(agent|agents)$/.test(segment.href)) {
-    return "workspace-section";
+    return "workspace-section:agent";
   }
 
   if (/^\/agent\/[^/]+/.test(segment.href)) {
@@ -326,7 +329,7 @@ export function buildRootDropdownItems({
         value: workspace.type === "global" ? "globe" : "folder-open",
       } as IconData,
       isActive: workspace.id === activeWorkspaceId,
-      kind: "workspace-root",
+      descriptorId: "workspace",
       meta: {
         workspaceId: workspace.id,
         section: currentSection,
@@ -364,7 +367,7 @@ export function buildRootDropdownItems({
     ],
     (item) => ({
       ...item,
-      kind: "global-route",
+      descriptorId: item.id.replace("root:", ""),
     })
   );
 
@@ -401,7 +404,7 @@ function buildWorkspaceSectionMenuDropdownItems({
         href,
         icon: item.icon,
         isActive: item.section === activeSection,
-        kind: "workspace-section",
+        descriptorId: item.id,
         meta: {
           workspaceId,
           section: item.section,
@@ -461,14 +464,24 @@ export function buildWorkspaceIdeasDropdownItems(
 
 export function buildWorkspaceAppsDropdownItems({
   workspaceId,
+  activeSection,
+  buildLabel,
+  onSelectSection,
+  allowGithub = true,
   pages = [],
   currentPageSlug,
-}: {
-  workspaceId: string;
+}: WorkspaceSectionDropdownInput & {
   pages?: PageConfig[];
   currentPageSlug?: string;
 }): BreadcrumbDropdownItem[] {
-  return buildDropdownItems(
+  const sectionItems = buildWorkspaceSectionMenuDropdownItems({
+    workspaceId,
+    activeSection,
+    buildLabel,
+    onSelectSection,
+    allowGithub,
+  });
+  const pageItems = buildDropdownItems(
     pages.filter((page) => !page.slug.includes("/")),
     (page) => ({
       id: `workspace:${workspaceId}:page:${page.slug}`,
@@ -482,13 +495,17 @@ export function buildWorkspaceAppsDropdownItems({
       isActive:
         currentPageSlug === page.slug ||
         Boolean(currentPageSlug?.startsWith(`${page.slug}/`)),
-      kind: "workspace-page",
+      descriptorId: "workspace-page",
       meta: {
         workspaceId,
         pageSlug: page.slug,
       },
     })
   );
+
+  return pageItems.length > 0
+    ? [...sectionItems, { id: `workspace:${workspaceId}:apps-pages-separator`, label: "", separator: true }, ...pageItems]
+    : sectionItems;
 }
 
 export function buildWorkspaceAgentsDropdownItems({
@@ -544,6 +561,7 @@ export const WORKSPACE_SECTION_DROPDOWN_BUILDERS: Record<
   cron: buildWorkspaceCronDropdownItems,
   ideas: buildWorkspaceIdeasDropdownItems,
   agent: buildWorkspaceAgentsDropdownItems,
+  apps: buildWorkspaceAppsDropdownItems,
   files: buildWorkspaceFilesDropdownItems,
   github: buildWorkspaceGithubDropdownItems,
   "chat-monitor": buildWorkspaceChatMonitorDropdownItems,
@@ -571,7 +589,7 @@ export function buildSettingsDropdownItems({
     href: `/settings/${item.routePath}`,
     icon: item.icon,
     isActive: item.section === activeSection,
-    kind: "global-route",
+    descriptorId: item.id,
   }));
 }
 
@@ -591,7 +609,7 @@ export function resolvePageIndexBranch({
   onSelectSection,
   labelGlobalWorkspace,
 }: ResolvePageIndexBranchInput): BreadcrumbDropdownItem[] {
-  const segmentKind = inferBreadcrumbSegmentKind(segment);
+  const descriptorId = resolveSegmentDescriptorId(segment);
   const input: ResolvePageIndexBranchInput = {
     segment,
     workspaceId,
@@ -611,7 +629,7 @@ export function resolvePageIndexBranch({
 
   const rules: BreadcrumbDropdownRule[] = [
     {
-      matches: (_input, kind) => kind === "workspace-root",
+      matches: (_input, descriptorId) => descriptorId === "workspace",
       build: (input) =>
         buildRootDropdownItems({
           workspaces: input.workspaces,
@@ -625,8 +643,8 @@ export function resolvePageIndexBranch({
         }),
     },
     {
-      matches: (input, kind) =>
-        (kind === "virtual-folder" || kind === "global-route") &&
+      matches: (input, descriptorId) =>
+        (descriptorId === "virtual-folder" || descriptorId === "settings") &&
         input.segment.href.startsWith("/settings/") &&
         input.segment.label === getSettingsSectionLabel(),
       build: (input) =>
@@ -642,31 +660,38 @@ export function resolvePageIndexBranch({
         }),
     },
     {
-      matches: (input, kind) =>
-        kind === "virtual-folder" &&
+      matches: (input, descriptorId) =>
+        (descriptorId === "virtual-folder" || descriptorId === "workspace-section:apps") &&
         Boolean(input.segment.meta?.workspaceId) &&
         input.segment.href ===
           `/workspace/${encodeURIComponent(input.segment.meta?.workspaceId ?? "")}/apps`,
       build: (input) =>
         buildWorkspaceAppsDropdownItems({
           workspaceId: input.segment.meta?.workspaceId ?? "",
+          activeSection: "apps",
+          buildLabel: input.buildLabel,
+          onSelectSection: input.onSelectSection,
+          allowGithub: input.allowGithub,
           pages: input.pages,
           currentPageSlug: input.currentPageSlug,
         }),
     },
     {
-      matches: (input, kind) =>
-        kind === "global-route" &&
+      matches: (input, descriptorId) =>
+        Boolean(descriptorId?.startsWith("settings")) &&
         input.segment.href.startsWith("/settings/"),
       build: (input) =>
         buildSettingsDropdownItems({
-          activeSection: input.currentSettingsSection,
+          activeSection:
+            input.segment.href.split("/settings/")[1] ||
+            input.currentSettingsSection ||
+            "general",
           buildLabel: input.buildLabel,
         }),
     },
     {
-      matches: (input, kind) =>
-        kind === "workspace-section" &&
+      matches: (input, descriptorId) =>
+        Boolean(descriptorId?.startsWith("workspace-section:")) &&
         Boolean(input.workspaceId ?? input.segment.meta?.workspaceId),
       build: (input) => {
         const section = input.segment.meta?.section ?? input.currentSection ?? "chat";
@@ -681,7 +706,7 @@ export function resolvePageIndexBranch({
     },
   ];
 
-  const matchedRule = rules.find((rule) => rule.matches(input, segmentKind));
+  const matchedRule = rules.find((rule) => rule.matches(input, descriptorId));
 
   if (matchedRule) {
     return matchedRule.build(input);

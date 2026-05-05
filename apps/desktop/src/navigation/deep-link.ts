@@ -1,4 +1,4 @@
-import { type DesktopLocation, normalizeWorkspaceSection } from "./navigation-meta";
+import { type DesktopLocation, normalizeSettingsSection, normalizeWorkspaceSection } from "./navigation-meta";
 
 export interface DesktopDeepLinkIntent {
   route: DesktopLocation;
@@ -38,7 +38,7 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
     return {
       route: {
         kind: "settings",
-        section: pathnameParts[0] ?? "general",
+        section: normalizeSettingsSection(pathnameParts[0]),
       },
       openMode,
     };

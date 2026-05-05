@@ -2,9 +2,8 @@ import {
   type DesktopLocation,
   locationToUrl,
   buildViewTarget,
-  type BreadcrumbItemKind,
   type BreadcrumbStackItem,
-  DEFAULT_BREADCRUMB_ICONS,
+  getDescriptorIcon,
 } from "./navigation-meta";
 
 // ─── Atomic Stack Operations ─────────────────────────────────────────────────
@@ -49,12 +48,13 @@ export function popTo(
 
 export function createBreadcrumbItem(
   item: Omit<BreadcrumbStackItem, "target"> & {
+    descriptorId?: string;
     location?: DesktopLocation;
   }
 ): BreadcrumbStackItem {
   return {
     ...item,
-    icon: item.icon ?? DEFAULT_BREADCRUMB_ICONS[item.kind],
+    icon: item.icon ?? getDescriptorIcon(item.descriptorId),
     target: item.location
       ? buildViewTarget(item.location, locationToUrl(item.location))
       : undefined,
@@ -64,17 +64,17 @@ export function createBreadcrumbItem(
 export function createLocationBreadcrumbItem(
   location: DesktopLocation,
   item: Partial<Omit<BreadcrumbStackItem, "target">> & {
-    kind: BreadcrumbItemKind;
+    descriptorId?: string;
   }
 ): BreadcrumbStackItem {
   return createBreadcrumbItem({
     id: item?.id ?? locationToUrl(location),
-    kind: item.kind,
     label: item?.label ?? locationToUrl(location),
     icon: item?.icon,
     meta: item?.meta,
     parentNodeId: item?.parentNodeId,
     sourceNodeId: item?.sourceNodeId,
+    descriptorId: item?.descriptorId,
     location,
   });
 }

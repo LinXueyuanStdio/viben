@@ -89,7 +89,7 @@ function createWorkspacePagePathItems(
     items.push(
       createBreadcrumbItem({
         id: `${workspaceId}:page:${slugAtDepth}`,
-        kind: "workspace-page",
+        descriptorId: "workspace-page",
         label:
           index === segments.length - 1 && leaf?.title
             ? leaf.title
@@ -119,7 +119,7 @@ function createWorkspacePagesRootItem(
 ): BreadcrumbStackItem {
   return createBreadcrumbItem({
     id: `${workspaceId}:pages`,
-    kind: "virtual-folder",
+    descriptorId: "virtual-folder",
     label: i18n.t("page.pages", "Apps"),
     icon: { type: "lucide", value: "layout-grid" },
     meta: {
@@ -144,7 +144,7 @@ export function createStackForLocation(
   const agentSection = getWorkspaceSectionDescriptor("agent");
   const root = createBreadcrumbItem({
     id: `workspace:${"workspaceId" in location ? location.workspaceId : "global"}`,
-    kind: "workspace-root",
+    descriptorId: "workspace",
     label: "workspaceId" in location ? location.workspaceId : "Viben",
     meta: "workspaceId" in location
       ? { workspaceId: location.workspaceId }
@@ -165,7 +165,7 @@ export function createStackForLocation(
         root,
         createBreadcrumbItem({
           id: `${location.workspaceId}:${location.section}`,
-          kind: "workspace-section",
+          descriptorId: `workspace-section:${location.section}`,
           label:
             resolvedTitle ??
             getWorkspaceSectionLabel(location.section) ??
@@ -186,7 +186,7 @@ export function createStackForLocation(
         root,
         createBreadcrumbItem({
           id: `${location.workspaceId}:agent`,
-          kind: "workspace-section",
+          descriptorId: "workspace-section:agent",
           label: getWorkspaceSectionLabel("agent") || agentSection?.fallbackLabel || "Agents",
           icon: agentSection?.icon,
           meta: { workspaceId: location.workspaceId },
@@ -198,7 +198,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `${location.workspaceId}:agent:${location.agentId}`,
-          kind: "workspace-agent",
+          descriptorId: "workspace-agent",
           label: title ?? location.agentId,
           icon: icon ?? { type: "lucide", value: "bot" },
           meta: {
@@ -213,7 +213,7 @@ export function createStackForLocation(
         root,
         createBreadcrumbItem({
           id: `${location.workspaceId}:agent`,
-          kind: "workspace-section",
+          descriptorId: "workspace-section:agent",
           label: getWorkspaceSectionLabel("agent") || agentSection?.fallbackLabel || "Agents",
           icon: agentSection?.icon,
           meta: { workspaceId: location.workspaceId },
@@ -225,7 +225,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `${location.workspaceId}:executor:${location.executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: title ?? location.executorType,
           icon: icon ?? { type: "lucide", value: "terminal" },
           meta: {
@@ -258,7 +258,7 @@ export function createStackForLocation(
           : []),
         createBreadcrumbItem({
           id: `${location.workspaceId}:web:${location.webId ?? location.url}`,
-          kind: "workspace-web",
+          descriptorId: "workspace-web",
           label: title ?? location.title,
           icon: icon ?? { type: "lucide", value: "globe" },
           meta: {
@@ -274,14 +274,14 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: "settings:agents",
-          kind: "virtual-folder",
+          descriptorId: "virtual-folder",
           label: getSettingsSectionLabel("agents"),
           icon: getSettingsSectionIcon("agents"),
           location: { kind: "settings", section: "agents" },
         }),
         createBreadcrumbItem({
           id: `agent:${location.agentId}`,
-          kind: "workspace-agent",
+          descriptorId: "workspace-agent",
           label: title ?? location.agentId,
           icon: icon ?? { type: "lucide", value: "bot" },
           meta: {
@@ -294,14 +294,14 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: "settings:executors",
-          kind: "virtual-folder",
+          descriptorId: "virtual-folder",
           label: getSettingsSectionLabel("executors"),
           icon: getSettingsSectionIcon("executors"),
           location: { kind: "settings", section: "executors" },
         }),
         createBreadcrumbItem({
           id: `executor:${location.executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: title ?? location.executorType,
           icon: icon ?? { type: "lucide", value: "terminal" },
           meta: {
@@ -314,7 +314,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: `executor:${location.agentId}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: location.agentId,
           icon: { type: "lucide", value: "terminal" },
           location: {
@@ -325,7 +325,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `skill:${location.skillId}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: title ?? location.skillId,
           icon: icon ?? { type: "lucide", value: "sparkles" },
           meta: {
@@ -338,7 +338,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: `executor:${location.executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: location.executorType,
           icon: { type: "lucide", value: "terminal" },
           location: {
@@ -349,7 +349,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `mcp:${location.serverName}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: title ?? location.serverName,
           icon: icon ?? { type: "lucide", value: "server" },
           meta: {
@@ -362,7 +362,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: `executor:${location.executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: location.executorType,
           icon: { type: "lucide", value: "terminal" },
           location: {
@@ -373,7 +373,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `subagent:${location.configId}`,
-          kind: "workspace-agent",
+          descriptorId: "workspace-agent",
           label: title ?? location.configId,
           icon: icon ?? { type: "lucide", value: "bot" },
           meta: {
@@ -386,7 +386,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: `executor:${location.executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: location.executorType,
           icon: { type: "lucide", value: "terminal" },
           location: {
@@ -397,7 +397,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `prompt:${location.promptId}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: title ?? location.promptId,
           icon: icon ?? { type: "lucide", value: "quote" },
           meta: {
@@ -410,7 +410,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: `executor:${location.executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: location.executorType,
           icon: { type: "lucide", value: "terminal" },
           location: {
@@ -421,7 +421,7 @@ export function createStackForLocation(
         }),
         createBreadcrumbItem({
           id: `command:${location.commandId}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: title ?? location.commandId,
           icon: icon ?? { type: "lucide", value: "square-terminal" },
           meta: {
@@ -434,7 +434,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: "settings",
-          kind: "virtual-folder",
+          descriptorId: "settings",
           label: getSettingsSectionLabel(),
           icon: { type: "lucide", value: "settings" },
           location: { kind: "settings" },
@@ -443,7 +443,7 @@ export function createStackForLocation(
           ? [
               createBreadcrumbItem({
                 id: `settings:${location.section}`,
-                kind: "global-route",
+                descriptorId: `settings:${location.section}`,
                 label: resolvedTitle ?? getSettingsSectionLabel(location.section),
                 icon: resolvedIcon ?? getSettingsSectionIcon(location.section),
                 location,
@@ -455,7 +455,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: "documents",
-          kind: "virtual-folder",
+          descriptorId: "virtual-folder",
           label: resolvedTitle ?? "Documents",
           icon: resolvedIcon,
           location,
@@ -465,7 +465,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: "device-pair",
-          kind: "virtual-folder",
+          descriptorId: "virtual-folder",
           label: resolvedTitle ?? "Devices",
           icon: resolvedIcon,
           location,
@@ -477,7 +477,7 @@ export function createStackForLocation(
       return [
         createBreadcrumbItem({
           id: `global:${location.path}`,
-          kind: "global-route",
+          descriptorId: `settings:${normalizedPath.replace(/^\//, "")}`,
           label:
             resolvedTitle ??
             routeMeta?.label ??
@@ -515,7 +515,7 @@ function createWorkspaceRootItem(
 ): BreadcrumbStackItem {
   return createBreadcrumbItem({
     id: `workspace:${workspaceId}`,
-    kind: "workspace-root",
+    descriptorId: "workspace",
     label: workspace?.name ?? workspaceId,
     meta: { workspaceId },
     location: {
@@ -528,7 +528,7 @@ function createWorkspaceRootItem(
 function createWorkspacePagesItem(workspaceId: string): BreadcrumbStackItem {
   return createBreadcrumbItem({
     id: `${workspaceId}:pages`,
-    kind: "virtual-folder",
+    descriptorId: "virtual-folder",
     label: i18n.t("page.pages", "Apps"),
     icon: { type: "lucide", value: "layout-grid" },
     meta: { workspaceId },
@@ -581,7 +581,7 @@ function buildWorkspacePageBreadcrumbStack(
       },
       {
         id: `${workspaceId}:page:${slug}`,
-        kind: "workspace-page",
+        descriptorId: "workspace-page",
         label: matchedPage?.name ?? fallbackLabel,
         icon: matchedPage?.icon,
         meta: {
@@ -620,7 +620,7 @@ function buildWorkspaceWebBreadcrumbStack(
     ...pageStack,
     createLocationBreadcrumbItem(location, {
       id: `${location.workspaceId}:web:${location.webId ?? location.url}`,
-      kind: "workspace-web",
+      descriptorId: "workspace-web",
       label: patch?.title ?? location.title,
       icon: patch?.icon ?? { type: "lucide", value: "globe" },
       meta: {
@@ -648,13 +648,13 @@ function buildWorkspaceAgentDetailBreadcrumbStack(
       },
       {
         id: `${location.workspaceId}:agent`,
-        kind: "workspace-section",
+        descriptorId: "workspace-section:agent",
         meta: { workspaceId: location.workspaceId },
       }
     ),
     createLocationBreadcrumbItem(location, {
       id: `${location.workspaceId}:agent:${location.agentId}`,
-      kind: "workspace-agent",
+      descriptorId: "workspace-agent",
       label: patch?.title ?? location.agentId,
       icon: patch?.icon,
       meta: {
@@ -680,13 +680,13 @@ function buildWorkspaceExecutorDetailBreadcrumbStack(
       },
       {
         id: `${location.workspaceId}:agent`,
-        kind: "workspace-section",
+        descriptorId: "workspace-section:agent",
         meta: { workspaceId: location.workspaceId },
       }
     ),
     createLocationBreadcrumbItem(location, {
       id: `${location.workspaceId}:executor:${location.executorType}`,
-      kind: "workspace-executor",
+      descriptorId: "workspace-executor",
       label: patch?.title ?? location.executorType,
       icon: patch?.icon,
       meta: {
@@ -723,7 +723,7 @@ function buildExecutorChildBreadcrumbStack(
 
   let id = "";
   let label = patch?.title;
-  let kind: BreadcrumbStackItem["kind"] = "workspace-page";
+  let descriptorId = "workspace-page";
   let meta: BreadcrumbStackItem["meta"] = {
     workspaceId: workspace.id,
     executorType:
@@ -758,7 +758,7 @@ function buildExecutorChildBreadcrumbStack(
     ...base,
     createLocationBreadcrumbItem(location, {
       id,
-      kind,
+      descriptorId,
       label,
       icon: patch?.icon,
       meta,
