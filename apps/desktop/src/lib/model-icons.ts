@@ -89,6 +89,11 @@ export function getExecutorIcon(
         className,
         style: { width: size, height: size },
       });
+    case "OPENCLAW":
+      return React.createElement(Bot, {
+        className: className ? `${className} text-red-500` : "text-red-500",
+        style: { width: size, height: size },
+      });
     case "DROID":
       return React.createElement(Bot, {
         className,
@@ -230,6 +235,8 @@ export function getExecutorDisplayName(
       return i18n.t("executor.displayNames.amp");
     case "OPENCODE":
       return i18n.t("executor.displayNames.opencode");
+    case "OPENCLAW":
+      return i18n.t("executor.displayNames.openclaw");
     case "DROID":
       return i18n.t("executor.displayNames.droid");
     default:
@@ -265,6 +272,8 @@ export function getExecutorAvatarGradient(
       return "from-pink-500 to-rose-400";
     case "OPENCODE":
       return "from-green-500 to-emerald-400";
+    case "OPENCLAW":
+      return "from-red-500 to-orange-400";
     case "DROID":
       return "from-yellow-500 to-orange-400";
     default:

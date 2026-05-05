@@ -53,6 +53,9 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   // Droid supports multiple providers
   DROID: ["anthropic", "openai", "google"],
 
+  // OpenClaw has its own model routing, supports all providers
+  OPENCLAW: [],
+
   // Aider supports multiple providers
   AIDER: ["anthropic", "openai", "ollama"],
 

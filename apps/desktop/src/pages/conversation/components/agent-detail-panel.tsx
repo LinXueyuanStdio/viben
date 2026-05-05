@@ -154,6 +154,7 @@ export function AgentDetailPanel({
       CODEX: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/30" },
       GEMINI_CLI: { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-500/30" },
       AIDER: { bg: "bg-violet-500/10", text: "text-violet-600", border: "border-violet-500/30" },
+      OPENCLAW: { bg: "bg-red-500/10", text: "text-red-600", border: "border-red-500/30" },
     };
     return colors[executorType || ""] || { bg: "bg-primary/20", text: "text-primary", border: "border-primary/30" };
   };

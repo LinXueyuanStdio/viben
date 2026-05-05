@@ -134,6 +134,20 @@ export interface DroidConfig {
 }
 
 /**
+ * OpenClaw executor configuration
+ */
+export interface OpenClawConfig {
+  /** Gateway host (default: 127.0.0.1) */
+  gateway_host?: string;
+  /** Gateway port (default: 18789) */
+  gateway_port?: number;
+  /** Authentication token */
+  gateway_token?: string;
+  /** Authentication password */
+  gateway_password?: string;
+}
+
+/**
  * Union type for all executor configurations
  */
 export type ExecutorConfig =
@@ -145,7 +159,8 @@ export type ExecutorConfig =
   | { type: "CURSOR_AGENT"; config: CursorAgentConfig }
   | { type: "QWEN_CODE"; config: QwenCodeConfig }
   | { type: "COPILOT"; config: CopilotConfig }
-  | { type: "DROID"; config: DroidConfig };
+  | { type: "DROID"; config: DroidConfig }
+  | { type: "OPENCLAW"; config: OpenClawConfig };
 
 /**
  * Get default config for an agent type
@@ -177,6 +192,8 @@ export function getDefaultConfig(agentType: ExecutorType): ExecutorConfig {
       return { type: "COPILOT", config: {} };
     case "DROID":
       return { type: "DROID", config: {} };
+    case "OPENCLAW":
+      return { type: "OPENCLAW", config: {} };
     default:
       return { type: "CLAUDE_CODE", config: {} };
   }

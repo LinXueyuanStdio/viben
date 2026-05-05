@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
+import { OpenClawConfigSection } from "./openclaw-config-section";
 
 // Section IDs for scroll navigation
 export type ConfigSectionId = "prompts" | "model" | "capabilities" | "memory" | "variables";
@@ -402,6 +403,9 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                   </div>
                 </div>
               )}
+
+              {/* OpenClaw Options */}
+              {executorType === "OPENCLAW" && <OpenClawConfigSection />}
 
               {/* Model Selection */}
               <div className="space-y-2">

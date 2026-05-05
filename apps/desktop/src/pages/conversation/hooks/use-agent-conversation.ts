@@ -877,6 +877,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         streamingMessageIdRef.current = null;
         setPhase("completed");
         setIsStreaming(false);
+        useOverlayStore.getState().actions.markPresentationStreamDone();
         perfMark("SSE:result:phase=completed", `cost=${data.cost}, duration=${data.duration}`);
         break;
 
@@ -901,6 +902,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // End text streaming on done
         streamingMessageIdRef.current = null;
         setIsStreaming(false);
+        useOverlayStore.getState().actions.markPresentationStreamDone();
         // Use functional update to check current phase value (avoids stale closure)
         setPhase((currentPhase) => currentPhase === "running" ? "completed" : currentPhase);
         perfEnd("SSE:done - stream finished");
