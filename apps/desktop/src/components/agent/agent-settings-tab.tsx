@@ -1,19 +1,15 @@
 /**
  * Agent Settings Tab Component
  *
- * Settings tab with left navigation menu and right content area.
- * - Left side: Navigation menu with Overview and Configuration items
- * - Right side: Content area showing selected panel
- * - Configuration has expandable subsections that scroll to specific sections
+ * Settings tab with left navigation menu and right unified content area.
+ * - Left side: Flat navigation menu with Overview and configuration sections
+ * - Right side: Single scrollable list: Overview followed by configuration details
  */
 import * as React from "react";
-import { useState, useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ChevronRight,
-  ChevronDown,
   LayoutDashboard,
-  Settings2,
   FileText,
   Cpu,
   Wrench,
@@ -37,10 +33,16 @@ import {
 // Types
 // ============================================================================
 
-type NavPage = "overview" | "configuration";
-
 interface ConfigSubsection {
   id: ConfigSectionId;
+  labelKey: string;
+  icon: React.ReactNode;
+}
+
+type NavSectionId = "overview" | ConfigSectionId;
+
+interface NavSection {
+  id: NavSectionId;
   labelKey: string;
   icon: React.ReactNode;
 }
@@ -63,6 +65,16 @@ const CONFIG_SUBSECTIONS: ConfigSubsection[] = [
   { id: "variables", labelKey: "agentDetail.variables", icon: <Variable className="h-3.5 w-3.5" /> },
 ];
 
+const NAV_SECTIONS: NavSection[] = [
+  { id: "overview", labelKey: "agentDetail.overview", icon: <LayoutDashboard className="h-4 w-4" /> },
+  ...CONFIG_SUBSECTIONS.map((section) => ({
+    ...section,
+    icon: React.cloneElement(section.icon as React.ReactElement<{ className?: string }>, {
+      className: "h-4 w-4",
+    }),
+  })),
+];
+
 // ============================================================================
 // Navigation Item Component
 // ============================================================================
@@ -72,10 +84,6 @@ interface NavItemProps {
   label: string;
   isActive: boolean;
   onClick: () => void;
-  hasChildren?: boolean;
-  isExpanded?: boolean;
-  onToggleExpand?: () => void;
-  indent?: boolean;
 }
 
 function NavItem({
@@ -83,26 +91,16 @@ function NavItem({
   label,
   isActive,
   onClick,
-  hasChildren,
-  isExpanded,
-  onToggleExpand,
-  indent,
 }: NavItemProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     onClick();
   };
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onToggleExpand?.();
-  };
-
   return (
-    <div
+    <button
+      type="button"
       role="button"
-      tabIndex={0}
       onClick={handleClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -114,53 +112,10 @@ function NavItem({
         "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer",
         "hover:bg-muted/50",
         isActive && "bg-primary/10 text-primary font-medium",
-        !isActive && "text-muted-foreground",
-        indent && "pl-6"
-      )}
-    >
-      {hasChildren && (
-        <button
-          type="button"
-          onClick={handleToggle}
-          className="p-0.5 -ml-1 hover:bg-muted rounded transition-colors"
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
-          )}
-        </button>
-      )}
-      <span className="shrink-0">{icon}</span>
-      <span className="flex-1 text-left truncate">{label}</span>
-    </div>
-  );
-}
-
-// ============================================================================
-// Subsection Nav Item (for config sections)
-// ============================================================================
-
-interface SubsectionNavItemProps {
-  icon: React.ReactNode;
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}
-
-function SubsectionNavItem({ icon, label, isActive, onClick }: SubsectionNavItemProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-2 pl-10 pr-3 py-1.5 text-xs rounded-md transition-colors",
-        "hover:bg-muted/50",
-        isActive && "bg-muted/30 text-foreground",
         !isActive && "text-muted-foreground"
       )}
     >
-      <span className="shrink-0 opacity-70">{icon}</span>
+      <span className="shrink-0">{icon}</span>
       <span className="flex-1 text-left truncate">{label}</span>
     </button>
   );
@@ -224,40 +179,26 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     onEditMemory,
     onViewTodayLog,
     onViewYesterdayLog,
+    executorConfig,
+    onExecutorConfigChange,
     onCustomVariablesChange,
     onEnvVariablesChange,
 
     className,
   } = props;
 
-  // State
-  const [activePage, setActivePage] = useState<NavPage>("overview");
-  const [configExpanded, setConfigExpanded] = useState(true);
-  const [activeSection, setActiveSection] = useState<ConfigSectionId | null>(null);
-
   // Ref to config panel for scroll-to-section
   const configPanelRef = useRef<AgentConfigPanelRef>(null);
+  const overviewRef = useRef<HTMLDivElement>(null);
+  const [activeSection, setActiveSection] = useState<NavSectionId>("overview");
 
-  // Handle clicking on a config subsection
-  const handleSubsectionClick = useCallback((sectionId: ConfigSectionId) => {
-    setActivePage("configuration");
+  const handleNavClick = useCallback((sectionId: NavSectionId) => {
     setActiveSection(sectionId);
-    // Small delay to ensure the config panel is mounted
-    setTimeout(() => {
-      configPanelRef.current?.scrollToSection(sectionId);
-    }, 50);
-  }, []);
-
-  // Handle clicking on configuration nav item
-  const handleConfigClick = useCallback(() => {
-    setActivePage("configuration");
-    setActiveSection(null);
-  }, []);
-
-  // Handle clicking on overview nav item
-  const handleOverviewClick = useCallback(() => {
-    setActivePage("overview");
-    setActiveSection(null);
+    if (sectionId === "overview") {
+      overviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    configPanelRef.current?.scrollToSection(sectionId);
   }, []);
 
   return (
@@ -266,49 +207,23 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
       <div className="w-48 shrink-0 border-r">
         <ScrollArea className="h-full">
           <nav className="p-2 space-y-1">
-            {/* Overview */}
-            <NavItem
-              icon={<LayoutDashboard className="h-4 w-4" />}
-              label={t("agentDetail.overview")}
-              isActive={activePage === "overview"}
-              onClick={handleOverviewClick}
-            />
-
-            {/* Configuration with expandable subsections */}
-            <div className="space-y-0.5">
+            {NAV_SECTIONS.map((section) => (
               <NavItem
-                icon={<Settings2 className="h-4 w-4" />}
-                label={t("agentDetail.configuration")}
-                isActive={activePage === "configuration" && activeSection === null}
-                onClick={handleConfigClick}
-                hasChildren
-                isExpanded={configExpanded}
-                onToggleExpand={() => setConfigExpanded(!configExpanded)}
+                key={section.id}
+                icon={section.icon}
+                label={t(section.labelKey)}
+                isActive={activeSection === section.id}
+                onClick={() => handleNavClick(section.id)}
               />
-
-              {/* Subsections */}
-              {configExpanded && (
-                <div className="space-y-0.5 pt-0.5">
-                  {CONFIG_SUBSECTIONS.map((subsection) => (
-                    <SubsectionNavItem
-                      key={subsection.id}
-                      icon={subsection.icon}
-                      label={t(subsection.labelKey)}
-                      isActive={activePage === "configuration" && activeSection === subsection.id}
-                      onClick={() => handleSubsectionClick(subsection.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            ))}
           </nav>
         </ScrollArea>
       </div>
 
       {/* Right Content Area */}
       <div className="flex-1 min-w-0 overflow-hidden">
-        {activePage === "overview" ? (
-          <ScrollArea className="h-full">
+        <ScrollArea className="h-full">
+          <div ref={overviewRef} id="overview">
             <AgentOverviewPanel
               name={name}
               description={description}
@@ -326,8 +241,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
               onOpenFolder={onOpenFolder}
               onCopyPath={onCopyPath}
             />
-          </ScrollArea>
-        ) : (
+          </div>
           <AgentConfigPanel
             ref={configPanelRef}
             systemPrompt={systemPrompt}
@@ -364,10 +278,13 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             onEditMemory={onEditMemory}
             onViewTodayLog={onViewTodayLog}
             onViewYesterdayLog={onViewYesterdayLog}
+            executorConfig={executorConfig}
+            onExecutorConfigChange={onExecutorConfigChange}
             onCustomVariablesChange={onCustomVariablesChange}
             onEnvVariablesChange={onEnvVariablesChange}
+            embedded
           />
-        )}
+        </ScrollArea>
       </div>
     </div>
   );

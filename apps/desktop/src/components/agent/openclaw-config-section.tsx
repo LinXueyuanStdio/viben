@@ -2,7 +2,7 @@
  * OpenClaw Configuration Section
  *
  * Provides gateway connection settings (host, port, auth)
- * and a "Test Connection" button that checks availability via gateway API.
+ * and a "Test Connection" button that attempts a real WebSocket connection.
  */
 
 import { useState } from "react";
@@ -11,29 +11,68 @@ import { Loader2, CheckCircle2, XCircle, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getGatewayClient } from "@/lib/gateway";
 
 type ConnectionStatus = "idle" | "connecting" | "connected" | "failed";
 
-export function OpenClawConfigSection() {
+export interface OpenClawConfigSectionProps {
+  config?: Record<string, unknown>;
+  onConfigChange?: (config: Record<string, unknown>) => void;
+}
+
+export function OpenClawConfigSection({ config, onConfigChange }: OpenClawConfigSectionProps) {
   const { t } = useTranslation();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("idle");
   const [connectionError, setConnectionError] = useState("");
+
+  const gateway = (config?.gateway ?? {}) as Record<string, unknown>;
+  const host = (gateway.host as string) ?? "127.0.0.1";
+  const port = (gateway.port as number) ?? 18789;
+  const token = (gateway.token as string) ?? "";
+  const password = (gateway.password as string) ?? "";
+
+  const updateGateway = (field: string, value: unknown) => {
+    const newGateway = { ...gateway, [field]: value };
+    onConfigChange?.({ ...config, gateway: newGateway });
+  };
 
   const handleTestConnection = async () => {
     setConnectionStatus("connecting");
     setConnectionError("");
 
     try {
-      const client = getGatewayClient();
-      const result = await client.checkAvailability("OPENCLAW");
+      // Build WebSocket URL to the OpenClaw gateway
+      const wsUrl = `ws://${host}:${port}`;
 
-      if (result.type === "LOGIN_DETECTED" || result.type === "INSTALLATION_FOUND") {
-        setConnectionStatus("connected");
-      } else {
+      const ws = new WebSocket(wsUrl);
+      const timeout = setTimeout(() => {
+        ws.close();
         setConnectionStatus("failed");
-        setConnectionError("OpenClaw gateway not detected");
-      }
+        setConnectionError("Connection timeout (5s)");
+      }, 5000);
+
+      ws.onopen = () => {
+        clearTimeout(timeout);
+        setConnectionStatus("connected");
+        // Close after successful test
+        ws.close(1000);
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timeout);
+        setConnectionStatus("failed");
+        setConnectionError(`Cannot connect to ${host}:${port}`);
+      };
+
+      ws.onclose = (event) => {
+        clearTimeout(timeout);
+        // Only mark failed if we haven't already set connected
+        if (connectionStatus === "connecting") {
+          if (event.code !== 1000) {
+            setConnectionStatus("failed");
+            setConnectionError(`Connection closed: ${event.reason || `code ${event.code}`}`);
+          }
+        }
+      };
     } catch (err) {
       setConnectionStatus("failed");
       setConnectionError(err instanceof Error ? err.message : "Connection failed");
@@ -52,7 +91,8 @@ export function OpenClawConfigSection() {
           {t("settingsAgents.openclawGatewayHost")}
         </Label>
         <Input
-          defaultValue="127.0.0.1"
+          value={host}
+          onChange={(e) => updateGateway("host", e.target.value)}
           placeholder="127.0.0.1"
           className="h-8 text-sm"
         />
@@ -65,7 +105,8 @@ export function OpenClawConfigSection() {
         </Label>
         <Input
           type="number"
-          defaultValue={18789}
+          value={port}
+          onChange={(e) => updateGateway("port", parseInt(e.target.value) || 18789)}
           placeholder="18789"
           className="h-8 text-sm"
         />
@@ -78,7 +119,23 @@ export function OpenClawConfigSection() {
         </Label>
         <Input
           type="password"
-          placeholder="Optional"
+          value={token}
+          onChange={(e) => updateGateway("token", e.target.value || undefined)}
+          placeholder={t("settingsAgents.openclawOptional")}
+          className="h-8 text-sm"
+        />
+      </div>
+
+      {/* Auth Password */}
+      <div className="space-y-1">
+        <Label className="text-sm font-normal">
+          {t("settingsAgents.openclawGatewayPassword")}
+        </Label>
+        <Input
+          type="password"
+          value={password}
+          onChange={(e) => updateGateway("password", e.target.value || undefined)}
+          placeholder={t("settingsAgents.openclawOptional")}
           className="h-8 text-sm"
         />
       </div>

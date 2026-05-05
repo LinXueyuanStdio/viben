@@ -111,6 +111,16 @@ export interface AgentConfigPanelProps {
   agentName: string;
   onCustomVariablesChange: (vars: CustomVariable[]) => void;
   onEnvVariablesChange: (vars: string[]) => void;
+
+  // Executor-specific config
+  executorConfig?: Record<string, unknown>;
+  onExecutorConfigChange?: (config: Record<string, unknown>) => void;
+
+  /**
+   * Render only the section list without its own ScrollArea.
+   * Used when the parent owns the unified scroll container.
+   */
+  embedded?: boolean;
 }
 
 export interface AgentConfigPanelRef {
@@ -163,6 +173,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       agentName,
       onCustomVariablesChange,
       onEnvVariablesChange,
+      embedded = false,
     } = props;
 
     // Section refs for scroll-to functionality
@@ -185,7 +196,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
         };
 
         const targetRef = sectionRefs[sectionId];
-        if (targetRef.current && scrollViewportRef.current) {
+        if (targetRef.current) {
           targetRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       },
@@ -276,9 +287,8 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     // Check if executor is Claude Code
     const isClaudeCode = executorType === "CLAUDE_CODE";
 
-    return (
-      <ScrollArea className="h-full" viewportRef={scrollViewportRef}>
-        <div className="p-4 space-y-6">
+    const content = (
+      <div className={cn("space-y-6", embedded ? "px-4 pb-4 pt-0" : "p-4")}>
           {/* Section 1: Prompts */}
           <section ref={promptsRef} id="prompts" className="space-y-4">
             <div className="flex items-center gap-2">
@@ -405,7 +415,12 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               )}
 
               {/* OpenClaw Options */}
-              {executorType === "OPENCLAW" && <OpenClawConfigSection />}
+              {executorType === "OPENCLAW" && (
+                <OpenClawConfigSection
+                  config={props.executorConfig}
+                  onConfigChange={props.onExecutorConfigChange}
+                />
+              )}
 
               {/* Model Selection */}
               <div className="space-y-2">
@@ -776,7 +791,16 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               </div>
             </div>
           </section>
-        </div>
+      </div>
+    );
+
+    if (embedded) {
+      return content;
+    }
+
+    return (
+      <ScrollArea className="h-full" viewportRef={scrollViewportRef}>
+        {content}
       </ScrollArea>
     );
   }
