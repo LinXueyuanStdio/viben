@@ -1,5 +1,4 @@
-import type { DesktopLocation } from "./location";
-import { normalizeWorkspaceSection } from "./navigation-meta";
+import { type DesktopLocation, normalizeWorkspaceSection } from "./navigation-meta";
 
 export interface DesktopDeepLinkIntent {
   route: DesktopLocation;

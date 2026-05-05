@@ -5,10 +5,495 @@ import type { Workspace } from "@/types";
 import {
   createBreadcrumbItem,
   createLocationBreadcrumbItem,
-  createStackForLocation,
 } from "./breadcrumb-stack";
-import type { DesktopLocation } from "./location";
-import type { BreadcrumbStackItem } from "./view-target";
+import {
+  type DesktopLocation,
+  type BreadcrumbStackItem,
+  GLOBAL_ROUTE_META,
+  getSettingsSectionIcon,
+  getSettingsSectionLabel,
+  getWorkspaceSectionDescriptor,
+  getWorkspaceSectionLabel,
+} from "./navigation-meta";
+
+// ─── Internal Helpers ────────────────────────────────────────────────────────
+
+function humanizeSlugSegment(value: string): string {
+  const raw = value.split("/").filter(Boolean).pop() ?? value;
+  return raw
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getSystemLocationLabel(location: DesktopLocation): string | undefined {
+  switch (location.kind) {
+    case "workspace-apps":
+      return i18n.t("page.pages", "Apps");
+    case "workspace-section":
+      return getWorkspaceSectionLabel(location.section) || location.section;
+    case "settings":
+      return location.section
+        ? getSettingsSectionLabel(location.section)
+        : getSettingsSectionLabel();
+    case "documents":
+      return "Documents";
+    case "device-pair":
+      return "Devices";
+    case "global-route": {
+      const normalizedPath =
+        location.path.split("?")[0]?.split("#")[0] ?? location.path;
+      return GLOBAL_ROUTE_META[normalizedPath]?.label;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function getSystemLocationIcon(location: DesktopLocation): IconData | undefined {
+  switch (location.kind) {
+    case "workspace-apps":
+      return { type: "lucide", value: "layout-grid" };
+    case "workspace-section":
+      return getWorkspaceSectionDescriptor(location.section)?.icon;
+    case "settings":
+      return location.section
+        ? getSettingsSectionIcon(location.section)
+        : { type: "lucide", value: "settings" };
+    case "documents":
+      return { type: "lucide", value: "file-text" };
+    case "device-pair":
+      return { type: "lucide", value: "smartphone" };
+    case "global-route": {
+      const normalizedPath =
+        location.path.split("?")[0]?.split("#")[0] ?? location.path;
+      return GLOBAL_ROUTE_META[normalizedPath]?.icon;
+    }
+    default:
+      return undefined;
+  }
+}
+
+function createWorkspacePagePathItems(
+  workspaceId: string,
+  pageSlug: string,
+  leaf?: {
+    title?: string;
+    icon?: IconData;
+  }
+): BreadcrumbStackItem[] {
+  const segments = pageSlug.split("/").filter(Boolean);
+  const items: BreadcrumbStackItem[] = [];
+
+  for (let index = 0; index < segments.length; index += 1) {
+    const slugAtDepth = segments.slice(0, index + 1).join("/");
+    items.push(
+      createBreadcrumbItem({
+        id: `${workspaceId}:page:${slugAtDepth}`,
+        kind: "workspace-page",
+        label:
+          index === segments.length - 1 && leaf?.title
+            ? leaf.title
+            : humanizeSlugSegment(segments[index]),
+        icon:
+          index === segments.length - 1
+            ? leaf?.icon
+            : undefined,
+        meta: {
+          workspaceId,
+          pageSlug: slugAtDepth,
+        },
+        location: {
+          kind: "workspace-page",
+          workspaceId,
+          pageSlug: slugAtDepth,
+        },
+      })
+    );
+  }
+
+  return items;
+}
+
+function createWorkspacePagesRootItem(
+  workspaceId: string
+): BreadcrumbStackItem {
+  return createBreadcrumbItem({
+    id: `${workspaceId}:pages`,
+    kind: "virtual-folder",
+    label: i18n.t("page.pages", "Apps"),
+    icon: { type: "lucide", value: "layout-grid" },
+    meta: {
+      workspaceId,
+    },
+    location: {
+      kind: "workspace-apps",
+      workspaceId,
+    },
+  });
+}
+
+// ─── createStackForLocation ──────────────────────────────────────────────────
+
+export function createStackForLocation(
+  location: DesktopLocation,
+  title?: string,
+  icon?: IconData
+): BreadcrumbStackItem[] {
+  const resolvedTitle = getSystemLocationLabel(location) ?? title;
+  const resolvedIcon = getSystemLocationIcon(location) ?? icon;
+  const agentSection = getWorkspaceSectionDescriptor("agent");
+  const root = createBreadcrumbItem({
+    id: `workspace:${"workspaceId" in location ? location.workspaceId : "global"}`,
+    kind: "workspace-root",
+    label: "workspaceId" in location ? location.workspaceId : "Viben",
+    meta: "workspaceId" in location
+      ? { workspaceId: location.workspaceId }
+      : undefined,
+    location:
+      "workspaceId" in location
+        ? { kind: "workspace-home", workspaceId: location.workspaceId }
+        : undefined,
+  });
+
+  switch (location.kind) {
+    case "workspace-home":
+      return [root];
+    case "workspace-apps":
+      return [root, createWorkspacePagesRootItem(location.workspaceId)];
+    case "workspace-section":
+      return [
+        root,
+        createBreadcrumbItem({
+          id: `${location.workspaceId}:${location.section}`,
+          kind: "workspace-section",
+          label:
+            resolvedTitle ??
+            getWorkspaceSectionLabel(location.section) ??
+            location.section,
+          icon:
+            resolvedIcon ??
+            getWorkspaceSectionDescriptor(location.section)?.icon,
+          meta: {
+            workspaceId: location.workspaceId,
+            section: location.section,
+            routePath: getWorkspaceSectionDescriptor(location.section)?.routePath,
+          },
+          location,
+        }),
+      ];
+    case "workspace-agent-detail":
+      return [
+        root,
+        createBreadcrumbItem({
+          id: `${location.workspaceId}:agent`,
+          kind: "workspace-section",
+          label: getWorkspaceSectionLabel("agent") || agentSection?.fallbackLabel || "Agents",
+          icon: agentSection?.icon,
+          meta: { workspaceId: location.workspaceId },
+          location: {
+            kind: "workspace-section",
+            workspaceId: location.workspaceId,
+            section: "agent",
+          },
+        }),
+        createBreadcrumbItem({
+          id: `${location.workspaceId}:agent:${location.agentId}`,
+          kind: "workspace-agent",
+          label: title ?? location.agentId,
+          icon: icon ?? { type: "lucide", value: "bot" },
+          meta: {
+            workspaceId: location.workspaceId,
+            agentId: location.agentId,
+          },
+          location,
+        }),
+      ];
+    case "workspace-executor-detail":
+      return [
+        root,
+        createBreadcrumbItem({
+          id: `${location.workspaceId}:agent`,
+          kind: "workspace-section",
+          label: getWorkspaceSectionLabel("agent") || agentSection?.fallbackLabel || "Agents",
+          icon: agentSection?.icon,
+          meta: { workspaceId: location.workspaceId },
+          location: {
+            kind: "workspace-section",
+            workspaceId: location.workspaceId,
+            section: "agent",
+          },
+        }),
+        createBreadcrumbItem({
+          id: `${location.workspaceId}:executor:${location.executorType}`,
+          kind: "workspace-executor",
+          label: title ?? location.executorType,
+          icon: icon ?? { type: "lucide", value: "terminal" },
+          meta: {
+            workspaceId: location.workspaceId,
+            executorType: location.executorType,
+          },
+          location,
+        }),
+      ];
+    case "workspace-page":
+      return [
+        root,
+        createWorkspacePagesRootItem(location.workspaceId),
+        ...createWorkspacePagePathItems(location.workspaceId, location.pageSlug, {
+          title,
+          icon,
+        }),
+      ];
+    case "workspace-web":
+      return [
+        root,
+        ...(location.sourcePageSlug
+          ? [createWorkspacePagesRootItem(location.workspaceId)]
+          : []),
+        ...(location.sourcePageSlug
+          ? createWorkspacePagePathItems(
+              location.workspaceId,
+              location.sourcePageSlug
+            )
+          : []),
+        createBreadcrumbItem({
+          id: `${location.workspaceId}:web:${location.webId ?? location.url}`,
+          kind: "workspace-web",
+          label: title ?? location.title,
+          icon: icon ?? { type: "lucide", value: "globe" },
+          meta: {
+            workspaceId: location.workspaceId,
+            webId: location.webId,
+            pageSlug: location.sourcePageSlug,
+            url: location.url,
+          },
+          location,
+        }),
+      ];
+    case "agent-detail":
+      return [
+        createBreadcrumbItem({
+          id: "settings:agents",
+          kind: "virtual-folder",
+          label: getSettingsSectionLabel("agents"),
+          icon: getSettingsSectionIcon("agents"),
+          location: { kind: "settings", section: "agents" },
+        }),
+        createBreadcrumbItem({
+          id: `agent:${location.agentId}`,
+          kind: "workspace-agent",
+          label: title ?? location.agentId,
+          icon: icon ?? { type: "lucide", value: "bot" },
+          meta: {
+            agentId: location.agentId,
+          },
+          location,
+        }),
+      ];
+    case "executor-detail":
+      return [
+        createBreadcrumbItem({
+          id: "settings:executors",
+          kind: "virtual-folder",
+          label: getSettingsSectionLabel("executors"),
+          icon: getSettingsSectionIcon("executors"),
+          location: { kind: "settings", section: "executors" },
+        }),
+        createBreadcrumbItem({
+          id: `executor:${location.executorType}`,
+          kind: "workspace-executor",
+          label: title ?? location.executorType,
+          icon: icon ?? { type: "lucide", value: "terminal" },
+          meta: {
+            executorType: location.executorType,
+          },
+          location,
+        }),
+      ];
+    case "skill-detail":
+      return [
+        createBreadcrumbItem({
+          id: `executor:${location.agentId}`,
+          kind: "workspace-executor",
+          label: location.agentId,
+          icon: { type: "lucide", value: "terminal" },
+          location: {
+            kind: "executor-detail",
+            executorType: location.agentId,
+            workspacePath: location.workspacePath,
+          },
+        }),
+        createBreadcrumbItem({
+          id: `skill:${location.skillId}`,
+          kind: "workspace-page",
+          label: title ?? location.skillId,
+          icon: icon ?? { type: "lucide", value: "sparkles" },
+          meta: {
+            agentId: location.agentId,
+          },
+          location,
+        }),
+      ];
+    case "mcp-server-detail":
+      return [
+        createBreadcrumbItem({
+          id: `executor:${location.executorType}`,
+          kind: "workspace-executor",
+          label: location.executorType,
+          icon: { type: "lucide", value: "terminal" },
+          location: {
+            kind: "executor-detail",
+            executorType: location.executorType,
+            workspacePath: location.workspacePath,
+          },
+        }),
+        createBreadcrumbItem({
+          id: `mcp:${location.serverName}`,
+          kind: "workspace-page",
+          label: title ?? location.serverName,
+          icon: icon ?? { type: "lucide", value: "server" },
+          meta: {
+            executorType: location.executorType,
+          },
+          location,
+        }),
+      ];
+    case "subagent-detail":
+      return [
+        createBreadcrumbItem({
+          id: `executor:${location.executorType}`,
+          kind: "workspace-executor",
+          label: location.executorType,
+          icon: { type: "lucide", value: "terminal" },
+          location: {
+            kind: "executor-detail",
+            executorType: location.executorType,
+            workspacePath: location.workspacePath,
+          },
+        }),
+        createBreadcrumbItem({
+          id: `subagent:${location.configId}`,
+          kind: "workspace-agent",
+          label: title ?? location.configId,
+          icon: icon ?? { type: "lucide", value: "bot" },
+          meta: {
+            executorType: location.executorType,
+          },
+          location,
+        }),
+      ];
+    case "prompt-detail":
+      return [
+        createBreadcrumbItem({
+          id: `executor:${location.executorType}`,
+          kind: "workspace-executor",
+          label: location.executorType,
+          icon: { type: "lucide", value: "terminal" },
+          location: {
+            kind: "executor-detail",
+            executorType: location.executorType,
+            workspacePath: location.workspacePath,
+          },
+        }),
+        createBreadcrumbItem({
+          id: `prompt:${location.promptId}`,
+          kind: "workspace-page",
+          label: title ?? location.promptId,
+          icon: icon ?? { type: "lucide", value: "quote" },
+          meta: {
+            executorType: location.executorType,
+          },
+          location,
+        }),
+      ];
+    case "command-detail":
+      return [
+        createBreadcrumbItem({
+          id: `executor:${location.executorType}`,
+          kind: "workspace-executor",
+          label: location.executorType,
+          icon: { type: "lucide", value: "terminal" },
+          location: {
+            kind: "executor-detail",
+            executorType: location.executorType,
+            workspacePath: location.workspacePath,
+          },
+        }),
+        createBreadcrumbItem({
+          id: `command:${location.commandId}`,
+          kind: "workspace-page",
+          label: title ?? location.commandId,
+          icon: icon ?? { type: "lucide", value: "square-terminal" },
+          meta: {
+            executorType: location.executorType,
+          },
+          location,
+        }),
+      ];
+    case "settings":
+      return [
+        createBreadcrumbItem({
+          id: "settings",
+          kind: "virtual-folder",
+          label: getSettingsSectionLabel(),
+          icon: { type: "lucide", value: "settings" },
+          location: { kind: "settings" },
+        }),
+        ...(location.section
+          ? [
+              createBreadcrumbItem({
+                id: `settings:${location.section}`,
+                kind: "global-route",
+                label: resolvedTitle ?? getSettingsSectionLabel(location.section),
+                icon: resolvedIcon ?? getSettingsSectionIcon(location.section),
+                location,
+              }),
+            ]
+          : []),
+      ];
+    case "documents":
+      return [
+        createBreadcrumbItem({
+          id: "documents",
+          kind: "virtual-folder",
+          label: resolvedTitle ?? "Documents",
+          icon: resolvedIcon,
+          location,
+        }),
+      ];
+    case "device-pair":
+      return [
+        createBreadcrumbItem({
+          id: "device-pair",
+          kind: "virtual-folder",
+          label: resolvedTitle ?? "Devices",
+          icon: resolvedIcon,
+          location,
+        }),
+      ];
+    case "global-route":
+      const normalizedPath = location.path.split("?")[0]?.split("#")[0] ?? location.path;
+      const routeMeta = GLOBAL_ROUTE_META[normalizedPath];
+      return [
+        createBreadcrumbItem({
+          id: `global:${location.path}`,
+          kind: "global-route",
+          label:
+            resolvedTitle ??
+            routeMeta?.label ??
+            normalizedPath.replace(/^\//, ""),
+          icon: resolvedIcon ?? routeMeta?.icon,
+          location,
+        }),
+      ];
+    default: {
+      const exhaustive: never = location;
+      return exhaustive;
+    }
+  }
+}
+
+// ─── resolveLocationNavigation ───────────────────────────────────────────────
 
 interface ResolveLocationNavigationInput {
   location: DesktopLocation;

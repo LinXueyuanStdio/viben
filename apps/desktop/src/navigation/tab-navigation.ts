@@ -1,11 +1,12 @@
-import { type DesktopLocation, locationToUrl } from "./location";
-import { popTo as popBreadcrumbStack, pushStackItem, replaceStackTop } from "./breadcrumb-stack";
 import {
+  type DesktopLocation,
+  locationToUrl,
   buildViewTarget,
   type BreadcrumbStackItem,
   type PushPageOptions,
   type TabNavigationState,
-} from "./view-target";
+} from "./navigation-meta";
+import { popTo as popBreadcrumbStack, pushStackItem, replaceStackTop } from "./breadcrumb-stack";
 
 function ensureItemTarget(
   item: BreadcrumbStackItem,

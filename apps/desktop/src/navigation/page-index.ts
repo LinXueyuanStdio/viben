@@ -4,10 +4,8 @@ import type {
   BreadcrumbItemKind,
   VirtualPageIndexNode,
   WorkspaceSection,
-} from "./view-target";
-import { createBreadcrumbItem } from "./breadcrumb-stack";
-import type { DesktopLocation } from "./location";
-import type { PageConfig } from "@/hooks/use-pages";
+  DesktopLocation,
+} from "./navigation-meta";
 import {
   SETTINGS_SECTION_DESCRIPTORS,
   getWorkspaceSectionDescriptor,
@@ -16,6 +14,8 @@ import {
   getSettingsSectionIcon,
   getSettingsSectionLabel,
 } from "./navigation-meta";
+import { createBreadcrumbItem } from "./breadcrumb-stack";
+import type { PageConfig } from "@/hooks/use-pages";
 export { getWorkspaceSectionDescriptor } from "./navigation-meta";
 
 export interface DesktopBreadcrumbSegment {

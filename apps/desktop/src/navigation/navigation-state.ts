@@ -1,9 +1,9 @@
 import type { IconData } from "@/components/ui/icon-picker";
-import type { DesktopLocation } from "./location";
 import type {
+  DesktopLocation,
   BreadcrumbItemKind,
   BreadcrumbStackItem,
-} from "./view-target";
+} from "./navigation-meta";
 import {
   createBreadcrumbItem,
   createLocationBreadcrumbItem,
