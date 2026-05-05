@@ -48,8 +48,10 @@ export function PresentationLayer() {
   // ---- Execution engine ----
   // When playerState changes to "playing", sync processedIndexRef with currentStep
   // so that resuming after a rewind re-animates from the rewound position.
+  // Also flush any deferred completions that were waiting for user to resume.
   useEffect(() => {
     if (playerState === "playing") {
+      flushDeferredCompletions()
       const storeCurrentStep = useOverlayStore.getState().presentationCurrentStep
       // If user rewound (currentStep < processedIndex), reset processedIndex
       if (storeCurrentStep - 1 < processedIndexRef.current) {
