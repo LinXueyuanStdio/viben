@@ -1004,7 +1004,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     Querystring: {
       transportType?: string;
       url?: string;
-      sessionId?: string;
+      session_id?: string;
     };
   }>("/api/mcp/inspector/sse", async (request, reply) => {
     // Set CORS headers
@@ -1015,7 +1015,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
 
     if (!checkAuth(request, reply)) return;
 
-    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const sessionId = request.query.session_id || request.headers["mcp-session-id"] as string;
     log.debug({ sessionId }, "SSE POST received");
 
     // If no sessionId but has URL, this is a new connection attempt

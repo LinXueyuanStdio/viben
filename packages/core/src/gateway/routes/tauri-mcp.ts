@@ -745,7 +745,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
    * The sessionId is passed as a query parameter.
    */
   fastify.post<{
-    Querystring: { sessionId?: string };
+    Querystring: { session_id?: string };
     Body: McpMessage;
   }>("/api/mcp/tauri/message", async (request, reply) => {
     // CORS headers
@@ -756,14 +756,14 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       "Content-Type, Authorization, Accept, Mcp-Session-Id"
     );
 
-    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const sessionId = request.query.session_id || request.headers["mcp-session-id"] as string;
     const message = request.body;
 
     log.debug({ sessionId, message: JSON.stringify(message).slice(0, 100) }, "POST /message received");
 
     if (!sessionId) {
       reply.code(400);
-      return { error: "sessionId query parameter required" };
+      return { error: "session_id query parameter required" };
     }
 
     if (!message || !message.jsonrpc) {
@@ -803,7 +803,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
    * POST /api/mcp/tauri/sse
    */
   fastify.post<{
-    Querystring: { sessionId?: string };
+    Querystring: { session_id?: string };
     Body: McpMessage;
   }>("/api/mcp/tauri/sse", async (request, reply) => {
     // CORS headers
@@ -814,12 +814,12 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       "Content-Type, Authorization, Accept, Mcp-Session-Id"
     );
 
-    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const sessionId = request.query.session_id || request.headers["mcp-session-id"] as string;
     const message = request.body;
 
     if (!sessionId) {
       reply.code(400);
-      return { error: "sessionId query parameter or Mcp-Session-Id header required" };
+      return { error: "session_id query parameter or Mcp-Session-Id header required" };
     }
 
     if (!message || !message.jsonrpc) {

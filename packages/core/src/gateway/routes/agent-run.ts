@@ -379,33 +379,19 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       prompt: string;
       cwd?: string;
       attachments?: Array<{ type: string; data: string; name?: string }>;
-      /** Path to agent AGENTS.md config file (preferred) - camelCase */
-      agentConfigPath?: string;
-      /** Path to agent AGENTS.md config file (preferred) - snake_case */
+      /** Path to agent AGENTS.md config file (preferred) */
       agent_config_path?: string;
-      /** Path to agent directory for message persistence - camelCase */
-      agentDir?: string;
-      /** Path to agent directory for message persistence - snake_case */
+      /** Path to agent directory for message persistence */
       agent_dir?: string;
-      /** Inline agent configuration (fallback) - camelCase */
-      agentConfig?: AgentConfigPayload;
-      /** Inline agent configuration (fallback) - snake_case */
+      /** Inline agent configuration (fallback) */
       agent_config?: AgentConfigPayload;
-      /** File system session ID for persistence (optional) - camelCase */
-      sessionId?: string;
-      /** File system session ID for persistence (optional) - snake_case */
+      /** File system session ID for persistence (optional) */
       session_id?: string;
-      /** File system task ID for persistence (optional) - camelCase */
-      taskId?: string;
-      /** File system task ID for persistence (optional) - snake_case */
+      /** File system task ID for persistence (optional) */
       task_id?: string;
-      /** Resume from existing SDK session (for multi-turn) - camelCase */
-      resume?: string;
-      /** Resume from existing SDK session (for multi-turn) - snake_case */
+      /** Resume from existing SDK session (for multi-turn) */
       resume_session?: string;
-      /** Sandbox configuration (session-level) - camelCase */
-      sandboxConfig?: { enabled: boolean; provider?: string };
-      /** Sandbox configuration (session-level) - snake_case */
+      /** Sandbox configuration (session-level) */
       sandbox_config?: { enabled: boolean; provider?: string };
     };
   }>("/api/agent/run", async (request, reply) => {
@@ -434,18 +420,17 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       return { error: "Request body is required" };
     }
 
-    // Support both camelCase and snake_case
     const {
       prompt,
       cwd,
+      agent_config_path: agentConfigPath,
+      agent_dir: agentDir,
+      agent_config: inlineConfig,
+      session_id: persistSessionId,
+      task_id: persistTaskId,
+      resume_session: resumeSession,
+      sandbox_config: sandboxConfig,
     } = request.body;
-    const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path;
-    const agentDir = request.body.agentDir || request.body.agent_dir;
-    const inlineConfig = request.body.agentConfig || request.body.agent_config;
-    const persistSessionId = request.body.sessionId || request.body.session_id;
-    const persistTaskId = request.body.taskId || request.body.task_id;
-    const resumeSession = request.body.resume || request.body.resume_session;
-    const sandboxConfig = request.body.sandboxConfig || request.body.sandbox_config;
 
     // Validate required fields
     if (!prompt || typeof prompt !== "string") {
@@ -1218,23 +1203,16 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     Params: { questionId: string };
     Body: {
       answers: Record<string, string>;
-      /** Agent config path for workspace-level agents - camelCase */
-      agentConfigPath?: string;
-      /** Agent config path for workspace-level agents - snake_case */
+      /** Agent config path for workspace-level agents */
       agent_config_path?: string;
-      /** Workspace path - camelCase */
-      workspacePath?: string;
-      /** Workspace path - snake_case */
+      /** Workspace path */
       workspace_path?: string;
     };
   }>(
     "/api/agent/answer/:questionId",
     async (request, reply) => {
       const { questionId } = request.params;
-      const { answers } = request.body;
-      // Support both camelCase and snake_case
-      const agentConfigPath = request.body.agentConfigPath || request.body.agent_config_path;
-      const workspacePath = request.body.workspacePath || request.body.workspace_path;
+      const { answers, agent_config_path: agentConfigPath, workspace_path: workspacePath } = request.body;
 
       if (!answers || typeof answers !== "object") {
         reply.code(400);

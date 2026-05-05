@@ -461,7 +461,7 @@ function updateIndexWithNewSession(params: {
 }
 
 /**
- * Input type for creating a task (supports both camelCase and snake_case)
+ * Input type for creating a task
  */
 interface CreateTaskInput {
   title?: string;
@@ -471,23 +471,20 @@ interface CreateTaskInput {
   priority?: string;
   creator?: string;
   assignee?: string;
-  sessionId?: string;
   session_id?: string;
-  agentId?: string;
   agent_id?: string;
-  taskIndex?: number;
   task_index?: number;
-  // Workspace is REQUIRED
-  workspacePath?: string;
+  /** Workspace path (REQUIRED) */
   workspace_path?: string;
   executor?: string;
   auto_start?: boolean;
   model_id?: string;
   branch?: string;
   base_branch?: string;
-  // Template support
-  copy_from?: string;    // Source task directory to copy config from
-  is_template?: boolean; // Mark this task as a template
+  /** Source task directory to copy config from */
+  copy_from?: string;
+  /** Mark this task as a template */
+  is_template?: boolean;
 }
 
 /**
@@ -503,18 +500,15 @@ interface UpdateTaskInput {
   cost?: number;
   duration?: number;
   favorite?: boolean;
-  // Template support
+  /** Template support */
   is_template?: boolean;
-  // Session/Agent fields
-  sessionId?: string;
+  /** Session/Agent fields */
   session_id?: string;
-  agentId?: string;
   agent_id?: string;
-  // Kanban fields
-  workspacePath?: string;
+  /** Kanban fields */
   workspace_path?: string;
   executor?: string;
-  // Git fields
+  /** Git fields */
   branch?: string;
   base_branch?: string;
   commit?: string;
@@ -822,7 +816,7 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
   // - is_template: Mark as a template
   fastify.post<{ Body: CreateTaskInput }>("/api/tasks", async (request, reply) => {
     const input = request.body;
-    const workspacePath = input.workspace_path || input.workspace_path;
+    const workspacePath = input.workspace_path;
 
     // Require workspace_path
     if (!workspacePath) {
@@ -864,9 +858,9 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       priority: (input.priority ?? sourceTask?.priority ?? DEFAULT_PRIORITY) as IssuePriority,
       creator: input.creator ?? sourceTask?.creator,
       assignee: input.assignee ?? sourceTask?.assignee,
-      agent: input.agentId || input.agent_id || sourceTask?.agent,
-      session_id: input.sessionId || input.session_id, // Don't copy sessionId - each task needs its own
-      task_index: input.taskIndex || input.task_index || 0,
+      agent: input.agent_id || sourceTask?.agent,
+      session_id: input.session_id,
+      task_index: input.task_index || 0,
       branch: input.branch ?? sourceTask?.branch,
       base_branch: input.base_branch ?? sourceTask?.base_branch,
       executor: input.executor ?? sourceTask?.executor ?? "Agent",
@@ -944,14 +938,11 @@ export function registerTasksRoutes(fastify: FastifyInstance, state: AppState): 
       if (updates.is_template !== undefined) taskUpdates.is_template = updates.is_template;
 
       // Session/Agent fields
-      const sessionId = updates.session_id ?? updates.session_id;
-      if (sessionId !== undefined) taskUpdates.session_id = sessionId;
-      const agentId = updates.agentId ?? updates.agent_id;
-      if (agentId !== undefined) taskUpdates.agent = agentId;
+      if (updates.session_id !== undefined) taskUpdates.session_id = updates.session_id;
+      if (updates.agent_id !== undefined) taskUpdates.agent = updates.agent_id;
 
       // Kanban fields
-      const newWorkspacePath = updates.workspace_path ?? updates.workspace_path;
-      if (newWorkspacePath !== undefined) taskUpdates.workspace_path = newWorkspacePath;
+      if (updates.workspace_path !== undefined) taskUpdates.workspace_path = updates.workspace_path;
       if (updates.executor !== undefined) taskUpdates.executor = updates.executor;
 
       // Git fields

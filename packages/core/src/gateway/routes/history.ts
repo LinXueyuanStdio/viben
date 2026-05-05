@@ -49,25 +49,21 @@ function toResponseEntry(entry: HistoryEntry): HistoryEntryResponse {
 }
 
 /**
- * Query parameters for listing history (supports both camelCase and snake_case)
+ * Query parameters for listing history
  */
 interface ListHistoryQuery {
   limit?: number;
   offset?: number;
-  agentId?: string;
   agent_id?: string;
 }
 
 /**
- * Request body for creating a history entry (supports both camelCase and snake_case)
+ * Request body for creating a history entry
  */
 interface CreateHistoryBody {
-  agentId?: string;
   agent_id?: string;
   command: string;
-  workspacePath?: string;
   workspace_path?: string;
-  exitCode?: number;
   exit_code?: number;
   duration?: number;
 }
@@ -89,16 +85,15 @@ const historyStore: Map<string, HistoryEntry> = new Map();
 
 /**
  * Generate a new history entry with auto-generated id and timestamp
- * Supports both camelCase and snake_case input fields
  */
 function createHistoryEntry(data: CreateHistoryBody): HistoryEntry {
   return {
     id: randomUUID(),
-    agent_id: data.agentId || data.agent_id,
+    agent_id: data.agent_id,
     command: data.command,
     timestamp: new Date().toISOString(),
-    workspace_path: data.workspacePath || data.workspace_path,
-    exit_code: data.exitCode ?? data.exit_code,
+    workspace_path: data.workspace_path,
+    exit_code: data.exit_code,
     duration: data.duration,
   };
 }
@@ -122,9 +117,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
   fastify.get<{
     Querystring: ListHistoryQuery;
   }>("/api/history", async (request): Promise<ListHistoryResponse> => {
-    const { limit = 100, offset = 0 } = request.query;
-    // Support both camelCase and snake_case
-    const agentId = request.query.agentId || request.query.agent_id;
+    const { limit = 100, offset = 0, agent_id: agentId } = request.query;
 
     const allEntries = getHistoryEntries(agentId);
     // Sort by timestamp descending (newest first)

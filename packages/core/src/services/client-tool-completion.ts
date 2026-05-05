@@ -43,6 +43,7 @@ interface PendingEntry {
   toolName: string;
   sessionId: string;
   createdAt: number;
+  promise: Promise<CallToolResult>;
   resolve: (result: CallToolResult) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout> | null;
@@ -98,6 +99,27 @@ export class ClientToolCompletionRegistry {
   /** Per-session FIFO queues of toolUseIds awaiting pickup by waitForClient */
   private sessionQueues = new Map<string, string[]>();
 
+  /** GC interval handle */
+  private gcInterval: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    this.gcInterval = setInterval(() => this.gc(), 60_000);
+    // Allow the process to exit even if the interval is still active
+    if (this.gcInterval && typeof this.gcInterval === "object" && "unref" in this.gcInterval) {
+      this.gcInterval.unref();
+    }
+  }
+
+  /**
+   * Stop the periodic GC interval. Call this for clean shutdown.
+   */
+  destroy(): void {
+    if (this.gcInterval) {
+      clearInterval(this.gcInterval);
+      this.gcInterval = null;
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Registration
   // -------------------------------------------------------------------------
@@ -144,84 +166,86 @@ export class ClientToolCompletionRegistry {
     }
     queue.push(toolUseId);
 
-    // Pre-create the pending entry (without promise yet — that's set in waitForClient)
-    // Actually we need to store toolName/sessionId for later lookup.
-    // We'll store a "queued" entry that gets its promise set when waitForClient picks it up.
-    // For simplicity, store metadata in a separate lightweight structure and create the
-    // full PendingEntry in waitForClient.
-    // Use a temporary entry with dummy resolve/reject — they'll be replaced.
-    this.pending.set(toolUseId, {
-      toolUseId,
-      toolName,
-      sessionId,
-      createdAt: Date.now(),
-      resolve: () => {},
-      reject: () => {},
-      timer: null,
-    });
+    // If waitForClient already created the entry (called before enqueue), skip.
+    if (this.pending.has(toolUseId)) {
+      // Update toolName in case waitForClient created the entry without it
+      const existing = this.pending.get(toolUseId)!;
+      if (!existing.toolName) {
+        existing.toolName = toolName;
+      }
+      logger.debug({ sessionId, toolUseId, toolName }, "Enqueued client tool (entry already exists)");
+      return;
+    }
+
+    // Create the entry with a real promise from the start so that
+    // cancelSession can properly reject it even before waitForClient is called.
+    this.createPendingEntry(sessionId, toolUseId, toolName);
 
     logger.debug({ sessionId, toolUseId, toolName }, "Enqueued client tool");
   }
 
   /**
-   * Dequeue the next pending tool for a session, create a promise, arm the
-   * timeout, and return the result.
+   * Dequeue the next pending tool for a session, arm the timeout, and return
+   * the result.
+   *
+   * If called before `enqueue` for a given toolUseId, creates the entry
+   * eagerly so ordering between enqueue and waitForClient is irrelevant.
    *
    * Returns a CallToolResult with isError: true if the queue is empty or entry not found.
    * On timeout, resolves with a fallback CallToolResult (does not reject).
    */
-  async waitForClient(sessionId: string): Promise<CallToolResult> {
+  async waitForClient(sessionId: string, toolUseId?: string, toolName?: string): Promise<CallToolResult> {
+    let resolvedToolUseId: string | undefined;
+
     const queue = this.sessionQueues.get(sessionId);
-    if (!queue || queue.length === 0) {
+    if (queue && queue.length > 0) {
+      resolvedToolUseId = queue.shift()!;
+      if (queue.length === 0) {
+        this.sessionQueues.delete(sessionId);
+      }
+    } else if (toolUseId) {
+      // Called before enqueue — create the entry eagerly so the caller can await it.
+      resolvedToolUseId = toolUseId;
+      if (!this.pending.has(toolUseId)) {
+        this.createPendingEntry(sessionId, toolUseId, toolName ?? "");
+      }
+    } else {
       return {
         content: [{ type: "text", text: "No pending client tool call found." }],
         isError: true,
       };
     }
 
-    const toolUseId = queue.shift()!;
-    // Clean up empty queue
-    if (queue.length === 0) {
-      this.sessionQueues.delete(sessionId);
-    }
-
-    const entry = this.pending.get(toolUseId);
+    const entry = this.pending.get(resolvedToolUseId!);
     if (!entry) {
-      // Shouldn't happen, but be defensive
-      logger.warn({ sessionId, toolUseId }, "waitForClient: no pending entry found");
+      logger.warn({ sessionId, toolUseId: resolvedToolUseId }, "waitForClient: no pending entry found");
       return {
         content: [{ type: "text", text: "No pending client tool call found." }],
         isError: true,
       };
     }
 
-    // Determine timeout
-    const options = this.getToolOptions(entry.toolName);
-    const effectiveTimeout = options?.timeoutMs && options.timeoutMs > 0
-      ? Math.min(options.timeoutMs, GLOBAL_MAX_TIMEOUT_MS)
-      : GLOBAL_MAX_TIMEOUT_MS;
-
-    const toolName = entry.toolName;
-
-    // Create the actual promise
-    const promise = new Promise<CallToolResult>((resolve, reject) => {
-      entry.resolve = resolve;
-      entry.reject = reject;
+    // Arm timeout if not already armed
+    if (!entry.timer) {
+      const options = this.getToolOptions(entry.toolName);
+      const effectiveTimeout = options?.timeoutMs && options.timeoutMs > 0
+        ? Math.min(options.timeoutMs, GLOBAL_MAX_TIMEOUT_MS)
+        : GLOBAL_MAX_TIMEOUT_MS;
 
       entry.timer = setTimeout(() => {
-        this.pending.delete(toolUseId);
+        this.pending.delete(entry.toolUseId);
         const fallback = (options?.onTimeout ?? defaultTimeoutResult)({
-          toolName,
-          toolUseId,
+          toolName: entry.toolName,
+          toolUseId: entry.toolUseId,
           elapsedMs: effectiveTimeout,
         });
-        resolve(fallback);
+        entry.resolve(fallback);
       }, effectiveTimeout);
-    });
 
-    logger.debug({ sessionId, toolUseId, toolName: entry.toolName, timeoutMs: effectiveTimeout }, "Waiting for client tool completion");
+      logger.debug({ sessionId, toolUseId: entry.toolUseId, toolName: entry.toolName, timeoutMs: effectiveTimeout }, "Waiting for client tool completion");
+    }
 
-    return promise;
+    return entry.promise;
   }
 
   // -------------------------------------------------------------------------
@@ -342,6 +366,37 @@ export class ClientToolCompletionRegistry {
   // -------------------------------------------------------------------------
   // Private
   // -------------------------------------------------------------------------
+
+  /**
+   * Create a PendingEntry with a real Promise from the start.
+   * Used by both `enqueue` and `waitForClient` (whichever runs first).
+   */
+  private createPendingEntry(sessionId: string, toolUseId: string, toolName: string): PendingEntry {
+    let resolve: (result: CallToolResult) => void;
+    let reject: (err: Error) => void;
+    const promise = new Promise<CallToolResult>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+
+    // Prevent unhandled rejection if the promise is rejected before anyone awaits it
+    // (e.g., cancelSession called before waitForClient picks it up).
+    promise.catch(() => {});
+
+    const entry: PendingEntry = {
+      toolUseId,
+      toolName,
+      sessionId,
+      createdAt: Date.now(),
+      promise,
+      resolve: resolve!,
+      reject: reject!,
+      timer: null,
+    };
+
+    this.pending.set(toolUseId, entry);
+    return entry;
+  }
 
   private getToolOptions(toolName: string): ClientSideToolOptions | undefined {
     const direct = this.toolOptions.get(toolName);

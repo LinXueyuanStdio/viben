@@ -19,9 +19,11 @@ import { OpenClawChatProxy } from "../../executor/engines/openclaw/chat-proxy";
 import { OpenClawConnectionManager } from "../../executor/engines/openclaw/connection";
 import { OpenClawProcessManager } from "../../executor/engines/openclaw/process-manager";
 import { loadGatewayConfig } from "../../executor/engines/openclaw/config";
+import { resetEventMapper } from "../../executor/engines/openclaw/event-mapper";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
+import type { AgentMcpServerEntry } from "../../types";
 import { logger as globalLogger } from "../../telemetry";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 
@@ -56,7 +58,7 @@ interface AgentConfigPayload {
   temperature?: number;
   max_tokens?: number;
   executor_type?: string;
-  mcp_servers?: string[];
+  mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
@@ -287,6 +289,7 @@ async function executeOpenClawAgent(session: WsSession, prompt: string): Promise
 
   try {
     // Initialize OpenClaw connection
+    resetEventMapper();
     const gwConfig = loadGatewayConfig();
     const processManager = new OpenClawProcessManager(gwConfig);
     await processManager.ensureRunning();

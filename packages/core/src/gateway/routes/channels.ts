@@ -382,15 +382,15 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
   fastify.post("/api/channels/send", async (
     request: FastifyRequest<{
       Body: {
-        channelId: string;
-        chatId: string;
+        channel_id: string;
+        chat_id: string;
         message: string;
-        parseMode?: "text" | "markdown" | "html";
+        parse_mode?: "text" | "markdown" | "html";
       };
     }>,
     reply: FastifyReply
   ) => {
-    const { channelId, chatId, message, parseMode } = request.body;
+    const { channel_id: channelId, chat_id: chatId, message, parse_mode: parseMode } = request.body;
     const span = tracer.startSpan(getSpanName("channel.send"), {
       attributes: {
         "channel.id": channelId,
@@ -404,7 +404,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
       span.setStatus({ code: SpanStatusCode.ERROR, message: "Missing required parameters" });
       span.end();
       reply.code(400);
-      return { error: "channelId, chatId, and message are required" };
+      return { error: "channel_id, chat_id, and message are required" };
     }
 
     try {
@@ -732,7 +732,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
   fastify.post("/api/channels/webhook", async (
     request: FastifyRequest<{
       Body: {
-        channelId?: string;
+        channel_id?: string;
         channel_type?: string;
         channel_name?: string;
         chat_id: string;
@@ -749,7 +749,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
     const body = request.body;
     const span = tracer.startSpan(getSpanName("channel.webhook"), {
       attributes: {
-        "channel.webhook.channel_id": body.channelId || "",
+        "channel.webhook.channel_id": body.channel_id || "",
         "channel.webhook.channel_type": body.channel_type || "webhook",
         "channel.webhook.chat_id": body.chat_id,
         "channel.webhook.source": body.source || "external",
@@ -780,9 +780,9 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
       let channelType = body.channel_type || "webhook";
       let channelName = body.channel_name || body.source || "external";
 
-      // If channelId is provided, look up channel info
-      if (body.channelId) {
-        const channel = await channelManager.getChannel(body.channelId);
+      // If channel_id is provided, look up channel info
+      if (body.channel_id) {
+        const channel = await channelManager.getChannel(body.channel_id);
         if (channel) {
           channelType = channel.type;
           channelName = channel.name;

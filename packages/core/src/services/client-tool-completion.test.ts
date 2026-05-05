@@ -20,6 +20,7 @@ describe("ClientToolCompletionRegistry", () => {
   });
 
   afterEach(() => {
+    registry.destroy();
     vi.useRealTimers();
   });
 
