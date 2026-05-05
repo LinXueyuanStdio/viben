@@ -1350,6 +1350,7 @@
     "openclawGatewayPort": "网关端口",
     "openclawGatewayToken": "认证令牌",
     "openclawGatewayPassword": "认证密码",
+    "openclawOptional": "可选",
     "openclawTestConnection": "测试连接",
     "openclawConnecting": "连接中...",
     "openclawConnected": "已连接",
@@ -4492,6 +4493,9 @@
     "showPanel": "显示面板",
     "hidePanel": "隐藏面板",
     "gatewayOfflineHint": "网关离线，点击重试",
+    "openclawOfflineHint": "OpenClaw 不可用，点击重试",
+    "openclawUnavailableBanner": "OpenClaw 网关无法连接。请检查 OpenClaw 是否正在运行，以及连接设置是否正确。",
+    "openclawUnavailableAction": "检查设置",
     "refreshSessions": "刷新会话",
     "scrollToBottom": "滚动到底部",
     "selectExecutor": "执行器",
@@ -5784,6 +5788,7 @@
     "closedWithCode": "WebSocket 关闭（错误码：{{code}}）"
   },
   "agentDetail": {
+    "chat": "对话",
     "debugTab": "调试",
     "settingsTab": "设置",
     "overview": "概览",
@@ -6013,7 +6018,20 @@
   "tabBar": {
     "pinTab": "固定标签页",
     "unpinTab": "取消固定标签页",
-    "closeOthers": "关闭其他"
+    "closeOthers": "关闭其他",
+    "closeToRight": "关闭右侧标签页",
+    "reopenClosedTab": "重新打开已关闭的标签页",
+    "duplicateTab": "复制标签页",
+    "copyLink": "复制链接",
+    "detachToNewWindow": "分离到新窗口",
+    "detachUnavailable": "此标签页无法分离",
+    "closeAllUnpinned": "关闭所有未固定标签页",
+    "backHistory": "后退历史",
+    "forwardHistory": "前进历史",
+    "noBackHistory": "没有后退历史",
+    "noForwardHistory": "没有前进历史",
+    "moveToStart": "移到开头",
+    "moveToEnd": "移到末尾"
   },
   "mobile": {
     "status": {

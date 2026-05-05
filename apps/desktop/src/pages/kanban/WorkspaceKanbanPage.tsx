@@ -100,7 +100,7 @@ export function WorkspaceKanbanPage() {
             label: t("workspace.kanban", "Kanban"),
             href: `/workspace/${workspaceId}/kanban`,
             icon: { type: "lucide", value: "layout-dashboard" },
-            kind: "workspace-section",
+            descriptorId: "workspace-section:kanban",
             meta: {
               workspaceId,
               section: "kanban",
@@ -132,7 +132,7 @@ export function WorkspaceKanbanPage() {
           label: t("workspace.kanban", "Kanban"),
           href: `/workspace/${workspaceId}/kanban`,
           icon: { type: "lucide", value: "layout-dashboard" },
-          kind: "workspace-section",
+          descriptorId: "workspace-section:kanban",
           meta: {
             workspaceId,
             section: "kanban",

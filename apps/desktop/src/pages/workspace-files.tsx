@@ -636,7 +636,7 @@ export function WorkspaceFilesPage() {
         id: `workspace:${workspaceId}:files`,
         label: t("workspace.files", "Files"),
         href: `/workspace/${workspaceId}/files`,
-        kind: "workspace-section",
+        descriptorId: "workspace-section:files",
         icon: { type: "lucide", value: "folder-open" },
         path: workspace?.path,
         meta: {
@@ -657,7 +657,7 @@ export function WorkspaceFilesPage() {
         id: `workspace:${workspaceId}:files:${segment.path}`,
         label: segment.name,
         href: `/workspace/${workspaceId}/files`,
-        kind: "virtual-folder",
+        descriptorId: "virtual-folder",
         icon: { type: "lucide", value: "folder" },
         path: segment.path,
         meta: {

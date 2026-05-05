@@ -275,7 +275,7 @@ export function ExecutorDetailPage() {
             label: item.label,
             href: item.target?.canonicalUrl ?? "#",
             icon: item.icon,
-            kind: item.kind,
+            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],

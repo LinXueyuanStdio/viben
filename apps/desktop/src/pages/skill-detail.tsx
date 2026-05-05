@@ -192,7 +192,7 @@ export function SkillDetailPage() {
               label: item.label,
               href: item.target?.canonicalUrl ?? "#",
               icon: item.icon,
-              kind: item.kind,
+              descriptorId: item.descriptorId,
               meta: item.meta,
             })),
             ...(selectedSkill
@@ -211,7 +211,7 @@ export function SkillDetailPage() {
                   label: item.label,
                   href: item.target?.canonicalUrl ?? "#",
                   icon: item.icon,
-                  kind: item.kind,
+                  descriptorId: item.descriptorId,
                   meta: item.meta,
                 }))
               : []),

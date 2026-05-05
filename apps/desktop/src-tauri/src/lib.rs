@@ -259,6 +259,7 @@ pub fn run() {
                 commands::screenshot::close_screenshot_overlay,
                 // Window commands (multi-window support)
                 commands::window::open_workspace_in_new_window,
+                commands::window::open_workspace_page_preview_window,
                 commands::window::get_workspace_windows,
                 commands::window::close_workspace_window,
             ]);

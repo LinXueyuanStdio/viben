@@ -58,6 +58,7 @@ import type { Executor, ExecutorType } from "@/types";
 import { homeDir } from "@tauri-apps/api/path";
 import { FolderOpen, Globe } from "lucide-react";
 import { getGatewayClient, type AgentResponse as GatewayAgentTemplate } from "@/lib/gateway";
+import { useChatConfigStore } from "@/stores/chat-config-store";
 import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 import type { ListItem, WorkspaceAgentsPageProps } from "./types";
 
@@ -70,6 +71,7 @@ export function WorkspaceAgentsPage({
     openDashboard,
     openWorkspaceAgentDetail,
     openWorkspaceExecutorDetail,
+    openWorkspaceSection,
   } = useDesktopRouting();
 
   // Translate agent templates
@@ -689,6 +691,10 @@ export function WorkspaceAgentsPage({
               onSetDefault={isWorkspaceAgent ? () => {} : () => setDefaultAgent(selectedAgent.id)}
               onDelete={() => handleDeleteAgent(selectedAgent.id, selectedAgent.name)}
               onNavigateToEdit={() => handleEditItem(selectedAgent.id, isWorkspaceAgent ? "workspace-agent" : "agent")}
+              onNavigateToChat={workspace?.id ? () => {
+                useChatConfigStore.getState().setSelectedAgentId(selectedAgent.id);
+                openWorkspaceSection(workspace.id, "chat");
+              } : undefined}
               isWorkspaceScoped={isWorkspaceAgent}
             />
           ) : selectedExecutor ? (

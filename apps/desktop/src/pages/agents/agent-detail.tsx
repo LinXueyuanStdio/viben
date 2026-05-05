@@ -165,6 +165,7 @@ export function AgentDetailPage() {
   const [formTemperature, setFormTemperature] = useState(0.7);
   const [formModel, setFormModel] = useState("");
   const [formExecutorType, setFormExecutorType] = useState<ExecutorType>("CLAUDE_CODE");
+  const [formExecutorConfig, setFormExecutorConfig] = useState<Record<string, unknown>>({});
   const [formPlanMode, setFormPlanMode] = useState(false);
   const [formApprovals, setFormApprovals] = useState(false);
 
@@ -260,6 +261,7 @@ export function AgentDetailPage() {
       setFormTemperature(agent.temperature ?? 0.7);
       setFormModel(agent.model || "");
       setFormExecutorType((agent.executor_type as ExecutorType) || "CLAUDE_CODE");
+      setFormExecutorConfig(agent.executor_config ?? {});
       setFormPlanMode(agent.plan_mode ?? false);
       setFormApprovals(agent.approvals ?? false);
       setSelectedMcpServers((agent.mcp_servers || []).map(normalizeAgentMcpEntry));
@@ -295,6 +297,7 @@ export function AgentDetailPage() {
         formTemperature !== (agent.temperature ?? 0.7) ||
         formModel !== (agent.model || "") ||
         formExecutorType !== (agent.executor_type || "CLAUDE_CODE") ||
+        JSON.stringify(formExecutorConfig) !== JSON.stringify(agent.executor_config ?? {}) ||
         formPlanMode !== (agent.plan_mode ?? false) ||
         formApprovals !== (agent.approvals ?? false) ||
         JSON.stringify(selectedMcpServers) !== JSON.stringify((agent.mcp_servers || []).map(normalizeAgentMcpEntry)) ||
@@ -321,6 +324,7 @@ export function AgentDetailPage() {
     formTemperature,
     formModel,
     formExecutorType,
+    formExecutorConfig,
     formPlanMode,
     formApprovals,
     selectedMcpServers,
@@ -362,6 +366,7 @@ export function AgentDetailPage() {
         name: formName,
         temperature: formTemperature,
         executor_type: formExecutorType,
+        executor_config: Object.keys(formExecutorConfig).length > 0 ? formExecutorConfig : undefined,
         plan_mode: formPlanMode,
         approvals: formApprovals,
         mcp_servers: selectedMcpServers,
@@ -440,6 +445,7 @@ export function AgentDetailPage() {
     formTemperature,
     formModel,
     formExecutorType,
+    formExecutorConfig,
     formPlanMode,
     formApprovals,
     selectedMcpServers,
@@ -547,6 +553,7 @@ export function AgentDetailPage() {
       system_prompt: formSystemPrompt || undefined,
       append_prompt: formAppendPrompt || undefined,
       executor_type: formExecutorType,
+      executor_config: Object.keys(formExecutorConfig).length > 0 ? formExecutorConfig : undefined,
       plan_mode: formPlanMode,
       approvals: formApprovals,
       mcp_servers: selectedMcpServers.length > 0 ? selectedMcpServers : undefined,
@@ -813,7 +820,7 @@ export function AgentDetailPage() {
             label: item.label,
             href: item.target?.canonicalUrl ?? "#",
             icon: item.icon,
-            kind: item.kind,
+            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],
@@ -1025,6 +1032,8 @@ export function AgentDetailPage() {
             onEditMemory={() => setMemoryDialogOpen(true)}
             onViewTodayLog={() => setMemoryDialogOpen(true)}
             onViewYesterdayLog={() => setMemoryDialogOpen(true)}
+            executorConfig={formExecutorConfig}
+            onExecutorConfigChange={setFormExecutorConfig}
             onCustomVariablesChange={setFormCustomVariables}
             onEnvVariablesChange={setFormEnvVariables}
             className="h-full"

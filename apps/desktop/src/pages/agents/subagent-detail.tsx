@@ -205,7 +205,7 @@ export function SubAgentDetailPage() {
                 workspaceId: workspace.id,
                 executorType,
               },
-              kind: "workspace-executor",
+              descriptorId: "workspace-executor",
               icon: { type: "lucide", value: "terminal" },
               meta: {
                 workspaceId: workspace.id,
@@ -221,7 +221,7 @@ export function SubAgentDetailPage() {
                 executorType,
                 workspacePath: effectiveWorkspacePath || undefined,
               },
-              kind: "workspace-page",
+              descriptorId: "workspace-page",
               icon: { type: "lucide", value: "bot" },
               meta: {
                 workspaceId: workspace.id,

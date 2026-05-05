@@ -69,7 +69,7 @@ export function WorkspaceWebPage() {
         label: item.label,
         href: item.target?.canonicalUrl ?? "#",
         icon: item.icon,
-        kind: item.kind,
+        descriptorId: item.descriptorId,
         meta: item.meta,
       })),
       patchLast: {
