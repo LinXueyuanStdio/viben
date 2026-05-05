@@ -678,6 +678,22 @@ function getExecutorConfigPaths(type: ExecutorType, workspacePath?: string): {
         workspaceConfigDir,
       };
     }
+    case "OPENCLAW": {
+      // OpenClaw: ~/.openclaw/openclaw.json for global, {workspace}/.openclaw for workspace
+      const globalConfigDir = path.join(homedir, ".openclaw");
+      const globalConfigFile = path.join(globalConfigDir, "openclaw.json");
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".openclaw") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(globalConfigFile)
+          ? globalConfigFile
+          : fs.existsSync(globalConfigDir)
+            ? globalConfigDir
+            : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir,
+        workspaceConfigDir,
+      };
+    }
     default: {
       // Generic: ~/.viben for global
       const globalConfigDir = path.join(homedir, ".viben");
@@ -751,6 +767,9 @@ function checkExecutorAvailability(type: ExecutorType, workspacePath?: string): 
     case "AMP":
       capabilities.push("chat", "code-edit");
       break;
+    case "OPENCLAW":
+      capabilities.push("chat", "code-edit", "file-ops", "terminal");
+      break;
     default:
       capabilities.push("chat");
   }
@@ -782,6 +801,7 @@ function discoverExecutors(workspacePath?: string): ExecutorInfo[] {
     "CURSOR_AGENT",
     "GEMINI",
     "AMP",
+    "OPENCLAW",
   ];
   return types.map((type) => checkExecutorAvailability(type, workspacePath));
 }

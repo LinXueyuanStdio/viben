@@ -71,9 +71,11 @@ export class OpenClawChatProxy {
     const mapper = new OpenClawEventMapper();
 
     // Register connection-lost handler to abort if reconnect fails
+    let connectionLost = false;
     const unregisterLost = this.client.onConnectionLost(() => {
       this.aborted = true;
       this.turnActive = false;
+      connectionLost = true;
     });
 
     // Subscribe to relevant events before sending (to not miss any)
@@ -167,6 +169,11 @@ export class OpenClawChatProxy {
     unregisterLost();
     this.turnActive = false;
     this.currentSessionKey = null;
+
+    // Emit error if stream ended due to connection loss
+    if (connectionLost) {
+      yield { type: "error", message: "OpenClaw gateway connection lost. Please retry." };
+    }
   }
 
   /**

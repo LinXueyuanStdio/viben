@@ -25,7 +25,7 @@ import { resetEventMapper } from "./event-mapper";
 
 export type { OpenClawExecutorConfig } from "./types";
 
-class OpenClawExecutor extends BaseExecutor {
+export class OpenClawExecutor extends BaseExecutor {
   readonly type = "OPENCLAW" as const;
   protected override config: OpenClawExecutorConfig;
   private processManager: OpenClawProcessManager | null = null;
@@ -252,5 +252,3 @@ class OpenClawExecutor extends BaseExecutor {
 
 // Register executor
 registerExecutor("OPENCLAW", (config) => new OpenClawExecutor(config));
-
-export { OpenClawExecutor };

@@ -16,7 +16,7 @@ import { agentService } from "../../services/agent";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import { OpenClawChatProxy } from "../../executor/engines/openclaw/chat-proxy";
-import { OpenClawConnectionManager } from "../../executor/engines/openclaw/connection";
+import { OpenClawConnectionManager, OpenClawClient } from "../../executor/engines/openclaw/connection";
 import { OpenClawProcessManager } from "../../executor/engines/openclaw/process-manager";
 import { loadGatewayConfig } from "../../executor/engines/openclaw/config";
 import { resetEventMapper } from "../../executor/engines/openclaw/event-mapper";
@@ -58,6 +58,7 @@ interface AgentConfigPayload {
   temperature?: number;
   max_tokens?: number;
   executor_type?: string;
+  executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   plan_mode?: boolean;
@@ -88,7 +89,7 @@ interface ClientMessage {
  * Reuses the same format as SSE messages for compatibility (snake_case)
  */
 interface ServerMessage {
-  type: "session" | "text" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done" | "pong";
+  type: "session" | "sdk_session" | "status" | "text" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done" | "pong";
   // session
   session_id?: string;
   trace_id?: string;
@@ -122,6 +123,11 @@ interface ServerMessage {
   subtype?: "success" | "error" | "error_max_turns";
   // error
   message?: string;
+  // sdk_session
+  sdk_session_id?: string;
+  // status
+  status?: string;
+  status_message?: string;
 }
 
 /**
@@ -141,6 +147,8 @@ interface WsSession {
   pending_plan_resolver?: (approved: boolean) => void;
   active_proxy?: import("../../executors/chat/sdk-proxy").SdkChatProxy;
   active_openclaw_proxy?: OpenClawChatProxy;
+  active_openclaw_client?: OpenClawClient;
+  active_openclaw_session_key?: string;
 }
 
 // ============================================================================
@@ -257,7 +265,7 @@ function formatAnswersAsText(
  *
  * When executor_type is "OPENCLAW", uses OpenClawChatProxy instead of SdkChatProxy.
  */
-async function executeOpenClawAgent(session: WsSession, prompt: string): Promise<void> {
+async function executeOpenClawAgent(session: WsSession, prompt: string, resume?: string): Promise<void> {
   const { socket, persist_session_id: persistSessionId, persist_task_id: persistTaskId, agent_config_path: agentConfigPath, agent_dir: agentDir, agent_config: agentConfig } = session;
 
   // Register session for abort control
@@ -269,7 +277,7 @@ async function executeOpenClawAgent(session: WsSession, prompt: string): Promise
     session_id: session.id,
   });
 
-  log.info({ sessionId: session.id }, "OpenClaw session started");
+  log.info({ sessionId: session.id, resume: resume ?? null }, "OpenClaw session started");
 
   // Persist user message
   if (persistSessionId && persistTaskId && prompt) {
@@ -288,21 +296,45 @@ async function executeOpenClawAgent(session: WsSession, prompt: string): Promise
   }
 
   try {
-    // Initialize OpenClaw connection
+    // Initialize OpenClaw connection with executor_config overrides
     resetEventMapper();
-    const gwConfig = loadGatewayConfig();
-    const processManager = new OpenClawProcessManager(gwConfig);
-    await processManager.ensureRunning();
+    const executorConfig = agentConfig?.executor_config as { gateway?: { host?: string; port?: number; token?: string } } | undefined;
+    const gwConfig = loadGatewayConfig({
+      host: executorConfig?.gateway?.host,
+      port: executorConfig?.gateway?.port,
+      token: executorConfig?.gateway?.token,
+    });
 
-    const connectionManager = new OpenClawConnectionManager(gwConfig);
-    await connectionManager.connect();
+    // Reuse existing client if still connected
+    let client: OpenClawClient;
+    if (session.active_openclaw_client?.isConnected()) {
+      client = session.active_openclaw_client;
+      sendMessage(socket, { type: "status", status: "connected", status_message: "Reusing existing connection" });
+    } else {
+      // Status: connecting
+      sendMessage(socket, { type: "status", status: "connecting", status_message: "Starting OpenClaw gateway..." });
 
-    const client = connectionManager.getClient();
+      const processManager = new OpenClawProcessManager(gwConfig);
+      await processManager.ensureRunning();
+
+      const connectionManager = new OpenClawConnectionManager(gwConfig);
+      await connectionManager.connect();
+
+      // Status: connected
+      sendMessage(socket, { type: "status", status: "connected", status_message: "Connected to OpenClaw gateway" });
+
+      client = connectionManager.getClient();
+      session.active_openclaw_client = client;
+    }
+
     const proxy = new OpenClawChatProxy(client);
     session.active_openclaw_proxy = proxy;
 
-    // Stream via OpenClaw
-    const stream = proxy.stream({ prompt, sessionId: session.id });
+    // Stream via OpenClaw (pass resume for multi-turn session continuity)
+    const stream = proxy.stream({ prompt, sessionId: session.id, resume });
+
+    // Status: session_active
+    sendMessage(socket, { type: "status", status: "session_active", status_message: "Agent is processing..." });
 
     for await (const message of stream) {
       // Check cancellation
@@ -340,11 +372,102 @@ async function executeOpenClawAgent(session: WsSession, prompt: string): Promise
         });
 
         agentService.answerQuestion(questionMsg.id, answers);
-        // TODO: send answer back to OpenClaw session (steer)
+
+        // Send the answer back to OpenClaw session as a follow-up message
+        if (session.active_openclaw_session_key) {
+          const answerText = Object.entries(answers)
+            .map(([q, a]) => `${q}: ${a}`)
+            .join("\n");
+          try {
+            await client.chat.send({
+              sessionKey: session.active_openclaw_session_key,
+              message: answerText,
+              idempotencyKey: randomUUID(),
+            });
+            log.info({ sessionId: session.id }, "Sent question answer back to OpenClaw session");
+          } catch (err) {
+            log.warn({ err }, "Failed to send answer back to OpenClaw session");
+          }
+        }
         continue;
       }
 
-      // Send other messages
+      // Track session key for steer/follow-up support
+      if (message.type === "sdk_session") {
+        session.active_openclaw_session_key = (message as { sdk_session_id?: string }).sdk_session_id;
+      }
+
+      // Persist sdk_session message for resume support
+      if (message.type === "sdk_session" && persistSessionId && persistTaskId) {
+        try {
+          const agentId = resolveAgentId(agentConfigPath, agentConfig);
+          await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
+            id: generateMessageId(),
+            taskId: persistTaskId,
+            timestamp: new Date().toISOString(),
+            type: "sdk_session",
+            sdkSessionId: (message as { sdk_session_id?: string }).sdk_session_id,
+          }, agentDir);
+        } catch (e) {
+          log.warn({ err: e }, "Failed to persist sdk_session message");
+        }
+      }
+
+      // Persist assistant text messages
+      if (message.type === "text" && persistSessionId && persistTaskId) {
+        try {
+          const agentId = resolveAgentId(agentConfigPath, agentConfig);
+          await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
+            id: generateMessageId(),
+            taskId: persistTaskId,
+            timestamp: new Date().toISOString(),
+            type: "text",
+            content: (message as { content?: string }).content ?? "",
+          }, agentDir);
+        } catch (e) {
+          log.warn({ err: e }, "Failed to persist text message");
+        }
+      }
+
+      // Persist tool_use messages
+      if (message.type === "tool_use" && persistSessionId && persistTaskId) {
+        try {
+          const agentId = resolveAgentId(agentConfigPath, agentConfig);
+          const toolMsg = message as { id?: string; name?: string; input?: unknown };
+          await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
+            id: generateMessageId(),
+            taskId: persistTaskId,
+            timestamp: new Date().toISOString(),
+            type: "tool_use",
+            toolUseId: toolMsg.id,
+            toolName: toolMsg.name,
+            toolInput: toolMsg.input,
+          }, agentDir);
+        } catch (e) {
+          log.warn({ err: e }, "Failed to persist tool_use message");
+        }
+      }
+
+      // Persist tool_result messages
+      if (message.type === "tool_result" && persistSessionId && persistTaskId) {
+        try {
+          const agentId = resolveAgentId(agentConfigPath, agentConfig);
+          const resultMsg = message as { tool_use_id?: string; output?: string; is_error?: boolean };
+          await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
+            id: generateMessageId(),
+            taskId: persistTaskId,
+            timestamp: new Date().toISOString(),
+            type: "tool_result",
+            toolUseId: resultMsg.tool_use_id,
+            toolOutput: resultMsg.output,
+            isError: resultMsg.is_error,
+          }, agentDir);
+        } catch (e) {
+          log.warn({ err: e }, "Failed to persist tool_result message");
+        }
+      }
+
+      // Send message to client
       sendMessage(socket, message as ServerMessage);
     }
 
@@ -356,6 +479,7 @@ async function executeOpenClawAgent(session: WsSession, prompt: string): Promise
   } finally {
     session.is_running = false;
     session.active_openclaw_proxy = undefined;
+    // Keep active_openclaw_client and active_openclaw_session_key alive for follow-up steer
     agentService.unregisterSession(session.id);
     sendMessage(socket, { type: "done" });
     log.info({ sessionId: session.id }, "OpenClaw session completed");
@@ -671,7 +795,7 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 // Route to appropriate executor based on type
                 const executorType = agentConfig?.executor_type?.toUpperCase();
                 if (executorType === "OPENCLAW") {
-                  executeOpenClawAgent(session, msg.prompt).catch((err) => {
+                  executeOpenClawAgent(session, msg.prompt, msg.resume).catch((err) => {
                     log.error({ err }, "Unhandled OpenClaw execution error");
                   });
                 } else {
@@ -772,25 +896,47 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
               }
 
               case "steer": {
-                if (!session.is_running) {
-                  sendMessage(socket, { type: "error", message: "No agent is running to steer" });
-                  return;
-                }
                 if (!msg.message) {
                   sendMessage(socket, { type: "error", message: "message is required for steer" });
                   return;
                 }
-                if (!session.active_proxy) {
-                  sendMessage(socket, { type: "error", message: "No active proxy to steer" });
+
+                // OpenClaw follow-up: works both mid-stream and post-stream
+                if (session.active_openclaw_client && session.active_openclaw_session_key) {
+                  if (session.is_running) {
+                    // Mid-stream: can't send follow-up while agent is active
+                    log.info({ sessionId: session.id }, "Steer received mid-stream for OpenClaw");
+                    sendMessage(socket, { type: "error", message: "Please wait for the current response to complete before sending follow-up messages" });
+                  } else {
+                    // Post-stream: send as a new turn in the same session
+                    try {
+                      log.info({ sessionId: session.id, msgLength: msg.message.length }, "Sending OpenClaw follow-up message");
+                      await executeOpenClawAgent(session, msg.message, session.active_openclaw_session_key);
+                    } catch (err) {
+                      const errMsg = err instanceof Error ? err.message : String(err);
+                      log.warn({ err }, "Failed to send OpenClaw follow-up");
+                      sendMessage(socket, { type: "error", message: `Follow-up failed: ${errMsg}` });
+                    }
+                  }
+                  break;
+                }
+
+                // Standard SDK proxy steer
+                if (!session.is_running) {
+                  sendMessage(socket, { type: "error", message: "No agent is running to steer" });
                   return;
                 }
-                try {
-                  await session.active_proxy.steer(msg.message);
-                  log.info({ sessionId: session.id, msgLength: msg.message.length }, "Steering message injected");
-                } catch (err) {
-                  const errMsg = err instanceof Error ? err.message : String(err);
-                  log.warn({ err }, "Failed to inject steering message");
-                  sendMessage(socket, { type: "error", message: `Steering failed: ${errMsg}` });
+                if (session.active_proxy) {
+                  try {
+                    await session.active_proxy.steer(msg.message);
+                    log.info({ sessionId: session.id, msgLength: msg.message.length }, "Steering message injected");
+                  } catch (err) {
+                    const errMsg = err instanceof Error ? err.message : String(err);
+                    log.warn({ err }, "Failed to inject steering message");
+                    sendMessage(socket, { type: "error", message: `Steering failed: ${errMsg}` });
+                  }
+                } else {
+                  sendMessage(socket, { type: "error", message: "No active proxy to steer" });
                 }
                 break;
               }

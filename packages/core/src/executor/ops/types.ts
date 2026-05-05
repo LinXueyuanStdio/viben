@@ -154,6 +154,11 @@ export interface SSESdkSessionMessage {
   sdk_session_id: string;
 }
 
+export interface SSEThinkingMessage {
+  type: "thinking";
+  content: string;
+}
+
 export type SSEMessage =
   | SSETextMessage
   | SSEToolUseMessage
@@ -161,7 +166,8 @@ export type SSEMessage =
   | SSEResultMessage
   | SSEErrorMessage
   | SSEQuestionMessage
-  | SSESdkSessionMessage;
+  | SSESdkSessionMessage
+  | SSEThinkingMessage;
 
 // =============================================================================
 // Result Types

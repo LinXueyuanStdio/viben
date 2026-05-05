@@ -875,6 +875,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         "QWEN_CODE",
         "COPILOT",
         "DROID",
+        "OPENCLAW",
         "WINDSURF",
         "GOOSE",
         "ROOCODE",
@@ -961,6 +962,24 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           case "GEMINI": {
             const geminiDir = join(homeDir, ".gemini");
             if (existsSync(geminiDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "OPENCLAW": {
+            const openClawDir = join(homeDir, ".openclaw");
+            const openClawConfig = join(openClawDir, "openclaw.json");
+            if (existsSync(openClawConfig)) {
+              try {
+                const stat = statSync(openClawConfig);
+                availability = {
+                  type: "LOGIN_DETECTED",
+                  last_auth_timestamp: Math.floor(stat.mtimeMs),
+                };
+              } catch {
+                availability = { type: "INSTALLATION_FOUND" };
+              }
+            } else if (existsSync(openClawDir)) {
               availability = { type: "INSTALLATION_FOUND" };
             }
             break;

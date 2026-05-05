@@ -293,8 +293,10 @@ export class OpenClawEventMapper {
 
       case "thinking":
       case "thought":
+        return this.handleThinkingEvent(payload.data);
+
       case "lifecycle":
-        // Thinking and lifecycle events are not mapped to SSEMessage
+        // Lifecycle events are not mapped to SSEMessage
         return null;
 
       default:
@@ -349,6 +351,15 @@ export class OpenClawEventMapper {
     // But if chat:delta has NOT produced any text yet, this could be the only source.
     // We do NOT emit text here -- it will be used as fallback in handleChatFinal.
     return null;
+  }
+
+  private handleThinkingEvent(data: Record<string, unknown>): SSEMessage | null {
+    if (!data) return null;
+
+    const text = (data.text as string | undefined) ?? (data.content as string | undefined);
+    if (!text) return null;
+
+    return { type: "thinking", content: text };
   }
 
   // ===========================================================================
