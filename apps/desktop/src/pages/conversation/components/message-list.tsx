@@ -346,10 +346,22 @@ function groupMessages(
 }
 
 /**
- * Running indicator component - shows current activity
+ * Running indicator component - shows current activity and elapsed time
  */
 function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
   const { t } = useTranslation();
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+
+  // Reset timer when component mounts (new streaming session)
+  useEffect(() => {
+    startRef.current = Date.now();
+    setElapsed(0);
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Find the last tool_use message to show current activity
   const lastToolUse = [...messages].reverse().find((m) => m.type === "tool_use");
@@ -398,6 +410,14 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
     }
   };
 
+  // Format elapsed time
+  const formatElapsed = () => {
+    if (elapsed < 60) return `${elapsed}s`;
+    const min = Math.floor(elapsed / 60);
+    const sec = elapsed % 60;
+    return `${min}m ${sec}s`;
+  };
+
   return (
     <div className="flex items-center gap-2 py-2">
       {/* Spinning loader */}
@@ -425,6 +445,7 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
         </svg>
       </div>
       <span className="text-muted-foreground text-sm">{getActivityText()}</span>
+      <span className="text-muted-foreground/60 text-xs tabular-nums">{formatElapsed()}</span>
     </div>
   );
 }

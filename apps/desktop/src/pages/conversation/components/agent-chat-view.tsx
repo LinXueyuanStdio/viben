@@ -1,7 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, MessageSquare } from "lucide-react";
+import { Plus, MessageSquare, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getGatewayClient } from "@/lib/gateway";
+import { isAgentAvailable } from "@/lib/gateway/utils";
 import type { AgentMessage, Artifact, TaskPlan, PendingQuestion } from "@/types";
 import type { SlashCommand } from "@viben/chat";
 import { DesktopChatInput, DesktopMessageList } from "./index";
@@ -38,6 +40,7 @@ interface AgentChatViewProps {
 
   // Gateway
   gatewayConnected: boolean | null;
+  executorType?: string;
   isLoadingSessions: boolean;
 
   // Slash commands
@@ -95,6 +98,7 @@ export function AgentChatView({
   error,
   highlightedMessageId,
   gatewayConnected,
+  executorType,
   isLoadingSessions,
   slashCommands,
   onSelectSession,
@@ -139,6 +143,25 @@ export function AgentChatView({
     }
   }, [isStreaming, onSteerMessage, onSendMessage]);
 
+  // OpenClaw unavailability check
+  const [openclawUnavailable, setOpenclawUnavailable] = useState(false);
+  useEffect(() => {
+    if (executorType !== "OPENCLAW" || gatewayConnected !== true) {
+      setOpenclawUnavailable(false);
+      return;
+    }
+    let cancelled = false;
+    getGatewayClient()
+      .checkAvailability("OPENCLAW")
+      .then((info) => {
+        if (!cancelled) setOpenclawUnavailable(!isAgentAvailable(info));
+      })
+      .catch(() => {
+        if (!cancelled) setOpenclawUnavailable(true);
+      });
+    return () => { cancelled = true; };
+  }, [executorType, gatewayConnected]);
+
   if (!selectedConversationId) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -180,6 +203,7 @@ export function AgentChatView({
           agents={agents}
           selectedAgentId={selectedAgentId}
           gatewayConnected={gatewayConnected}
+          executorType={executorType}
           isLoadingSessions={isLoadingSessions}
           onSelectSession={onSelectSession}
           onCreateConversation={onCreateConversation}
@@ -203,6 +227,24 @@ export function AgentChatView({
           onArchiveConversation={onArchiveConversation}
         />
       ) : null}
+
+      {/* OpenClaw unavailability banner */}
+      {openclawUnavailable && (
+        <div className="flex items-center gap-2 border-b border-yellow-500/20 bg-yellow-500/5 px-4 py-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-yellow-600" />
+          <p className="flex-1 text-xs text-yellow-700 dark:text-yellow-400">
+            {t("chat.openclawUnavailableBanner")}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs"
+            onClick={onNavigateToAgentSettings}
+          >
+            {t("chat.openclawUnavailableAction")}
+          </Button>
+        </div>
+      )}
 
       {/* Messages */}
       <DesktopMessageList

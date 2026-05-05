@@ -382,6 +382,24 @@ export function MessageItem({
     );
   }
 
+  // Result message with cost/duration stats (no content)
+  if (message.type === "result" && !message.content && (message.cost != null || message.duration != null)) {
+    const costStr = message.cost != null ? `$${message.cost.toFixed(4)}` : null;
+    const durationStr = message.duration != null
+      ? message.duration >= 60000
+        ? `${Math.floor(message.duration / 60000)}m ${Math.round((message.duration % 60000) / 1000)}s`
+        : `${(message.duration / 1000).toFixed(1)}s`
+      : null;
+
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground/60 py-1">
+        {costStr && <span className="tabular-nums">{costStr}</span>}
+        {costStr && durationStr && <span>·</span>}
+        {durationStr && <span className="tabular-nums">{durationStr}</span>}
+      </div>
+    );
+  }
+
   // Text/Result message from agent
   return (
     <AssistantMessage

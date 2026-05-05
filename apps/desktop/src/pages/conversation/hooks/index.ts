@@ -29,3 +29,11 @@ export type {
   UseExecutorSessionsReturn,
   UseExecutorSessionMessagesReturn,
 } from "./use-executor-sessions";
+
+// Command Queue
+export { useCommandQueue } from "./use-command-queue";
+export type {
+  CommandQueueItem,
+  UseCommandQueueOptions,
+  UseCommandQueueReturn,
+} from "./use-command-queue";

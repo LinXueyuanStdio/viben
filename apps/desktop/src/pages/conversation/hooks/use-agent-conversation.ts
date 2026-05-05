@@ -35,6 +35,8 @@ import i18n from "@/i18n";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { PresentationCommand } from "@/lib/presentation/types";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
+import { useCommandQueue } from "./use-command-queue";
+import type { CommandQueueItem } from "./use-command-queue";
 
 /**
  * Generate a unique ID
@@ -482,7 +484,7 @@ function compilePresentationCommands(toolName: string, toolInput: Record<string,
  * SSE message data from /api/agent/run endpoint
  */
 interface SSEMessageData {
-  type: "session" | "sdk_session" | "text" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done" | "pong";
+  type: "session" | "sdk_session" | "status" | "text" | "thinking" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done" | "pong";
   // session (backend sends snake_case: session_id, trace_id)
   sessionId?: string;
   session_id?: string;
@@ -524,6 +526,9 @@ interface SSEMessageData {
   subtype?: string;
   // error
   message?: string;
+  // status (OpenClaw connection lifecycle)
+  status?: string;
+  status_message?: string;
 }
 
 /**
@@ -542,6 +547,7 @@ export interface AgentConfig {
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
+  executor_config?: Record<string, unknown>;
 }
 
 /**
@@ -596,6 +602,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   // Trace ID for observability correlation
   const [traceId, setTraceId] = useState<string | null>(null);
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -690,7 +697,35 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         break;
       }
 
+      case "status": {
+        // Connection status events from OpenClaw executor - show as transient thinking message
+        const statusMsg = data.status_message || data.status || "";
+        console.log("[useAgent] Status:", data.status, statusMsg);
+        setConnectionStatus(typeof statusMsg === "string" ? statusMsg : String(statusMsg));
+        // Show status as a thinking-style message so user sees gateway startup progress
+        if (statusMsg) {
+          setMessages((prev) => {
+            const lastMsg = prev[prev.length - 1];
+            if (lastMsg?.type === "thinking" && lastMsg.id === "__connection_status__") {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...lastMsg, content: String(statusMsg) };
+              return updated;
+            }
+            return [...prev, { id: "__connection_status__", type: "thinking", content: String(statusMsg) }];
+          });
+        }
+        break;
+      }
+
       case "text":
+        // Clear connection status message once actual content arrives
+        setConnectionStatus(null);
+        setMessages((prev) => {
+          if (prev[prev.length - 1]?.id === "__connection_status__") {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
         // Streaming text: append to existing message or create new one
         if (data.content) {
           // Get current streaming ID before setState (for consistency)
@@ -734,9 +769,42 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
         break;
 
+      case "thinking":
+        // Thinking/reasoning stream from the model (e.g., OpenClaw extended thinking)
+        if (data.content) {
+          // End any active text streaming
+          streamingMessageIdRef.current = null;
+          setMessages((prev) => {
+            // Remove connection status message if present
+            const filtered = prev[prev.length - 1]?.id === "__connection_status__"
+              ? prev.slice(0, -1)
+              : prev;
+            // Append to existing thinking message if last message is thinking
+            const lastMsg = filtered[filtered.length - 1];
+            if (lastMsg?.type === "thinking") {
+              const updated = [...filtered];
+              updated[updated.length - 1] = {
+                ...lastMsg,
+                content: (lastMsg.content || "") + data.content,
+              };
+              return updated;
+            }
+            // Create new thinking message
+            return [...filtered, { id: generateId(), type: "thinking", content: data.content }];
+          });
+        }
+        break;
+
       case "tool_use": {
         // End current text streaming when tool use starts
         streamingMessageIdRef.current = null;
+        // Remove connection status message if present
+        setMessages((prev) => {
+          if (prev[prev.length - 1]?.id === "__connection_status__") {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
 
         const toolId = data.id || generateId();
         const toolInput = (data.input || {}) as Record<string, unknown>;
@@ -872,14 +940,25 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         break;
       }
 
-      case "result":
+      case "result": {
         // End text streaming on result
         streamingMessageIdRef.current = null;
         setPhase("completed");
         setIsStreaming(false);
         useOverlayStore.getState().actions.markPresentationStreamDone();
         perfMark("SSE:result:phase=completed", `cost=${data.cost}, duration=${data.duration}`);
+        // Add result message with cost/duration for inline display
+        if (data.cost != null || data.duration != null) {
+          const resultMsg: AgentMessage = {
+            id: generateId(),
+            type: "result",
+            cost: data.cost,
+            duration: data.duration,
+          };
+          setMessages((prev) => [...prev, resultMsg]);
+        }
         break;
+      }
 
       case "error": {
         // End text streaming on error
@@ -1960,6 +2039,31 @@ The workspace ID for this session is: \`${workspaceId}\`
     setTraceId(null);
   }, [client, useWebSocket, sendWebSocketMessage]);
 
+  // ============================================================================
+  // Command Queue (integrates with steer)
+  // ============================================================================
+
+  const executorType = agentConfig?.executor_type?.toUpperCase() ?? "CLAUDE_CODE";
+  const supportsSteer = executorType !== "OPENCLAW";
+  const queueConversationId = persistSessionId || workspaceId;
+
+  const commandQueue = useCommandQueue({
+    conversationId: queueConversationId,
+    enabled: useWebSocket,
+    isBusy: isStreaming,
+    supportsSteer,
+    onSend: async (input: string, files?: string[]) => {
+      // Convert files to attachments if present
+      const attachments: MessageAttachment[] | undefined = files?.length
+        ? files.map((f) => ({ id: crypto.randomUUID(), type: "file" as const, name: f, path: f }))
+        : undefined;
+      await sendMessage(input, attachments);
+    },
+    onSteer: async (input: string) => {
+      await steerMessage(input);
+    },
+  });
+
   /**
    * Load messages (for restoring conversation history)
    * @param savedMessages - Array of messages to restore
@@ -2423,6 +2527,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     sessionId,
     traceId,
     gatewayConnected,
+    connectionStatus,
 
     // Actions
     sendMessage,
@@ -2439,6 +2544,9 @@ The workspace ID for this session is: \`${workspaceId}\`
     switchTask,
     moveToBackground,
     hasRunningBackgroundTask,
+
+    // Command Queue (unified send with steer integration)
+    commandQueue,
 
     // WebSocket-specific (optional)
     connectWebSocket,

@@ -43,6 +43,8 @@ export function useWorkspaceChat() {
   const {
     openAgentDetail,
     openExecutorDetail,
+    openWorkspaceAgentDetail,
+    openWorkspaceExecutorDetail,
     openPath,
     openWorkspaceHome,
   } = useDesktopRouting();
@@ -458,6 +460,7 @@ export function useWorkspaceChat() {
     clearMessages,
     loadMessages,
     gatewayConnected,
+    connectionStatus,
     checkGatewayConnection,
   } = useAgentConversation(workspace?.path || "", {
     agentConfigPath: currentAgent?.config_path,
@@ -1254,11 +1257,11 @@ export function useWorkspaceChat() {
 
   const handleNavigateToAgentSettings = () => {
     const targetAgentId = selectedAgentId || currentAgent?.id;
-    if (targetAgentId && workspace?.path) {
+    if (targetAgentId && workspaceId) {
       if (isExecutorType(targetAgentId)) {
-        openExecutorDetail(targetAgentId, workspace.path);
+        openWorkspaceExecutorDetail(workspaceId, targetAgentId);
       } else {
-        openAgentDetail(targetAgentId, workspace.path);
+        openWorkspaceAgentDetail(workspaceId, targetAgentId);
       }
     }
   };
@@ -1371,6 +1374,7 @@ export function useWorkspaceChat() {
     cancel,
     clearMessages,
     gatewayConnected,
+    connectionStatus,
     checkGatewayConnection,
 
     // Executor

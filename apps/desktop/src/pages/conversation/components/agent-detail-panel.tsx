@@ -111,6 +111,8 @@ export interface AgentDetailPanelProps {
   onDelete?: () => void;
   /** Called when navigate to edit is requested */
   onNavigateToEdit?: () => void;
+  /** Called when navigate to chat is requested */
+  onNavigateToChat?: () => void;
   /** Whether this is a workspace-scoped agent */
   isWorkspaceScoped?: boolean;
   /** Whether to show the header */
@@ -138,6 +140,7 @@ export function AgentDetailPanel({
   onSetDefault,
   onDelete,
   onNavigateToEdit,
+  onNavigateToChat,
   isWorkspaceScoped = false,
   showHeader = true,
   showConfigButton = true,
@@ -373,12 +376,20 @@ export function AgentDetailPanel({
                 )}
               </div>
             </div>
-            {showConfigButton && onNavigateToEdit && (
-              <Button onClick={onNavigateToEdit} size={compact ? "sm" : "default"}>
-                <Settings2 className="h-4 w-4 mr-2" />
-                {t("settingsAgents.configuration")}
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {onNavigateToChat && (
+                <Button variant="outline" onClick={onNavigateToChat} size={compact ? "sm" : "default"}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {t("agentDetail.chat", "Chat")}
+                </Button>
+              )}
+              {showConfigButton && onNavigateToEdit && (
+                <Button onClick={onNavigateToEdit} size={compact ? "sm" : "default"}>
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  {t("settingsAgents.configuration")}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -78,6 +78,8 @@ export interface AgentMessage {
   planModeAction?: "enter" | "exit"; // For plan_mode type
   subagentId?: string; // For Task tool, the subagent ID
   subagentMessages?: AgentMessage[]; // For Task tool, recursively loaded subagent messages
+  cost?: number; // For result type - cost in USD
+  duration?: number; // For result type - duration in ms
 }
 
 /** Agent phase */

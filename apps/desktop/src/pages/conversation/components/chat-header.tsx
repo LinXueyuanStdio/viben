@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Bot,
@@ -13,6 +14,8 @@ import {
   Archive,
   Trash2,
 } from "lucide-react";
+import { getGatewayClient } from "@/lib/gateway";
+import { isAgentAvailable } from "@/lib/gateway/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,6 +46,7 @@ interface ChatHeaderProps {
   agents: Array<{ id: string; name: string }>;
   selectedAgentId: string | null;
   gatewayConnected: boolean | null;
+  executorType?: string;
   isLoadingSessions: boolean;
 
   // Callbacks
@@ -85,6 +89,7 @@ interface ChatHeaderCenterProps {
     agentName?: string;
   }>;
   gatewayConnected: boolean | null;
+  executorType?: string;
   onSelectSession: (sessionId: string) => void;
   onCreateConversation: () => void;
   onRenameSession: (sessionId: string, newTitle: string) => void;
@@ -116,6 +121,7 @@ export function ChatHeaderCenter({
   currentAgent,
   agentConversations,
   gatewayConnected,
+  executorType,
   onSelectSession,
   onCreateConversation,
   onRenameSession,
@@ -128,6 +134,25 @@ export function ChatHeaderCenter({
   onAgentAvatarClick,
 }: ChatHeaderCenterProps) {
   const { t } = useTranslation();
+
+  // OpenClaw availability check (only when executor is OPENCLAW and gateway is connected)
+  const [openclawAvailable, setOpenclawAvailable] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (executorType !== "OPENCLAW" || gatewayConnected !== true) {
+      setOpenclawAvailable(null);
+      return;
+    }
+    let cancelled = false;
+    getGatewayClient()
+      .checkAvailability("OPENCLAW")
+      .then((info) => {
+        if (!cancelled) setOpenclawAvailable(isAgentAvailable(info));
+      })
+      .catch(() => {
+        if (!cancelled) setOpenclawAvailable(false);
+      });
+    return () => { cancelled = true; };
+  }, [executorType, gatewayConnected]);
 
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -193,6 +218,21 @@ export function ChatHeaderCenter({
           ) : (
             <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
               {t("chat.gatewayChecking", "...")}
+            </span>
+          )}
+          {/* OpenClaw-specific status badge */}
+          {executorType === "OPENCLAW" && openclawAvailable === true && (
+            <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-600">
+              OpenClaw
+            </span>
+          )}
+          {executorType === "OPENCLAW" && openclawAvailable === false && (
+            <span
+              className="cursor-pointer rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-400 line-through"
+              onClick={onCheckGateway}
+              title={t("chat.openclawOfflineHint", "OpenClaw unavailable, click to retry")}
+            >
+              OpenClaw
             </span>
           )}
         </div>
@@ -302,6 +342,7 @@ export function ChatHeader({
   currentAgent,
   agentConversations,
   gatewayConnected,
+  executorType,
   isLoadingSessions,
   onSelectSession,
   onCreateConversation,
@@ -331,6 +372,7 @@ export function ChatHeader({
         currentAgent={currentAgent}
         agentConversations={agentConversations}
         gatewayConnected={gatewayConnected}
+        executorType={executorType}
         onSelectSession={onSelectSession}
         onCreateConversation={onCreateConversation}
         onRenameSession={onRenameSession}

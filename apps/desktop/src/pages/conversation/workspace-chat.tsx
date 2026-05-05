@@ -243,6 +243,7 @@ export function WorkspaceChatPage() {
               error={chat.error}
               highlightedMessageId={chat.highlightedMessageId}
               gatewayConnected={chat.gatewayConnected}
+              executorType={chat.currentAgent?.executor_type}
               isLoadingSessions={chat.isLoadingSessions}
               slashCommands={chat.slashCommands}
               onSelectSession={(sessionId) => chat.setSelectedConversationId(sessionId)}
