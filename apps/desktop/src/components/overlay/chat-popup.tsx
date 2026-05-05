@@ -414,6 +414,7 @@ function ChatPopup({
   const popup = isOpen ? (
     <div
       ref={containerRef}
+      data-chat-popup
       onMouseEnter={handleContentMouseEnter}
       onMouseLeave={handleContentMouseLeave}
       className={cn(

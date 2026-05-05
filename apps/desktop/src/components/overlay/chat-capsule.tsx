@@ -148,11 +148,14 @@ export function ChatCapsule({
     setExpanded(prev => !prev);
   }, []);
 
-  // Click outside to dismiss
+  // Click outside to dismiss (but not when interacting with the bottom ChatPopup)
   useEffect(() => {
     if (!visible || !onDismiss) return;
     const handleMouseDown = (e: MouseEvent) => {
-      if (capsuleRef.current && !capsuleRef.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      if (capsuleRef.current && !capsuleRef.current.contains(target)) {
+        // Don't dismiss when clicking inside the chat popup
+        if (target.closest('[data-chat-popup]')) return;
         onDismiss();
       }
     };

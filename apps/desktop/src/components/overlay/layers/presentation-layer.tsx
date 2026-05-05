@@ -243,7 +243,7 @@ export function PresentationLayer() {
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(0,0,0,0.15)",
+          background: "rgba(0,0,0,0.06)",
           pointerEvents: "auto",
         }}
       />
@@ -260,10 +260,9 @@ export function PresentationLayer() {
         <Tldraw hideUi onMount={handleMount} options={{ maxPages: 1 }} />
       </div>
 
-      {/* Exit button (top-right) */}
-      <button
+      {/* Top-right buttons */}
+      <div
         id="presentation-exit-btn"
-        onClick={handleExit}
         style={{
           position: "absolute",
           top: 16,
@@ -271,35 +270,81 @@ export function PresentationLayer() {
           pointerEvents: "auto",
           zIndex: 1,
           display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "8px 16px",
-          borderRadius: 20,
-          border: "1px solid rgba(255,255,255,0.2)",
-          background: "rgba(0,0,0,0.6)",
-          color: "#fff",
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: "pointer",
-          backdropFilter: "blur(8px)",
-          transition: "background 0.2s, transform 0.1s",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(220,50,50,0.8)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "rgba(0,0,0,0.6)"
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.transform = "scale(0.95)"
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.transform = "scale(1)"
+          gap: 8,
         }}
       >
-        <span style={{ fontSize: 16 }}>✕</span>
-        退出演示
-      </button>
+        {/* Finish button (success — post completions) */}
+        <button
+          onClick={handleFinish}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            borderRadius: 20,
+            border: "1px solid rgba(74, 222, 128, 0.3)",
+            background: "rgba(10, 10, 14, 0.7)",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: "pointer",
+            backdropFilter: "blur(12px)",
+            transition: "background 0.2s ease-out, transform 0.1s ease-out",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(34, 197, 94, 0.7)"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(10, 10, 14, 0.7)"
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = "scale(0.95)"
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = "scale(1)"
+          }}
+        >
+          <CheckCircle size={14} />
+          完成演示
+        </button>
+
+        {/* Exit button (abort — cancel all) */}
+        <button
+          onClick={handleExit}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 34,
+            height: 34,
+            borderRadius: 17,
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: "rgba(10, 10, 14, 0.7)",
+            color: "rgba(255, 255, 255, 0.7)",
+            fontSize: 15,
+            cursor: "pointer",
+            backdropFilter: "blur(12px)",
+            transition: "background 0.2s ease-out, transform 0.1s ease-out, color 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(220, 50, 50, 0.8)"
+            e.currentTarget.style.color = "#fff"
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(10, 10, 14, 0.7)"
+            e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = "scale(0.92)"
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = "scale(1)"
+          }}
+          title="取消演示"
+        >
+          ✕
+        </button>
+      </div>
 
       {/* Player controls (bottom-center) */}
       <PresentationPlayer />

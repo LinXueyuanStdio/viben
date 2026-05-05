@@ -1360,8 +1360,8 @@ describe("Channel Routes", () => {
         method: "POST",
         url: "/api/channels/send",
         payload: {
-          channelId: "my-telegram",
-          chatId: "chat-123",
+          channel_id: "my-telegram",
+          chat_id: "chat-123",
           message: "Hello",
         },
       });
@@ -1597,7 +1597,7 @@ describe("Channel Routes", () => {
       expect(body.error).toContain("message is required");
     });
 
-    it("should look up channel info when channelId is provided", async () => {
+    it("should look up channel info when channel_id is provided", async () => {
       const mockChannel = createMockChannel({
         id: "my-telegram",
         name: "My Telegram",
@@ -1610,7 +1610,7 @@ describe("Channel Routes", () => {
         method: "POST",
         url: "/api/channels/webhook",
         payload: {
-          channelId: "my-telegram",
+          channel_id: "my-telegram",
           chat_id: "chat-123",
           message: "Hello",
         },
