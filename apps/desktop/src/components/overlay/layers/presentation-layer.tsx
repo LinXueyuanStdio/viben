@@ -11,6 +11,7 @@ import { DOMZIndex } from "@/types/overlay"
 import type { AnimationHandle } from "@/lib/presentation/command-animator"
 import type { ClientToolResultContent } from "@/lib/client-side-tool/types"
 import { PresentationPlayer } from "./presentation-player"
+import { plog, pflush, pclear } from "@/lib/presentation/logger"
 
 /** Post error completion for all incomplete tool groups */
 function postIncompleteCompletions() {
@@ -42,6 +43,7 @@ export function PresentationLayer() {
 
   // ---- Auto-finish: when all steps done, stream finished, no user interaction ----
   const autoFinish = useCallback(() => {
+    plog("[Presentation] autoFinish called")
     const editor = editorRef.current
     if (editor) {
       const allShapes = editor.getCurrentPageShapes()
@@ -59,8 +61,17 @@ export function PresentationLayer() {
     for (const toolUseId of doneToolUseIds) {
       postToolCompletion(toolUseId, currentSteps, false)
     }
+    pflush()
     actions.stopPresentation()
   }, [actions])
+
+  // ---- Clear log file when presentation activates ----
+  useEffect(() => {
+    if (presentationActive) {
+      pclear()
+      plog("[Presentation] === PRESENTATION ACTIVATED === sessionId=%s", useOverlayStore.getState().presentationSessionId)
+    }
+  }, [presentationActive])
 
   // ---- Execution engine ----
   // When playerState changes to "playing", sync processedIndexRef with currentStep
@@ -80,7 +91,11 @@ export function PresentationLayer() {
   const streamDone = useOverlayStore((s) => s.presentationStreamDone)
 
   useEffect(() => {
-    if (!presentationActive || playerState !== "playing" || !editorRef.current) return
+    if (!presentationActive || playerState !== "playing" || !editorRef.current) {
+      plog("[Presentation] Execution effect skipped: active=%s, playerState=%s, editorReady=%s", presentationActive, playerState, !!editorRef.current)
+      return
+    }
+    plog("[Presentation] Execution effect starting (stepsCount=%d, streamDone=%s)", stepsCount, streamDone)
 
     const editor = editorRef.current
     const getSteps = () => useOverlayStore.getState().presentationSteps
@@ -96,53 +111,82 @@ export function PresentationLayer() {
     })
 
     const runLoop = async () => {
+      plog("[Presentation] runLoop started, processedIndex:", processedIndexRef.current)
       while (!cancelled) {
-        if (getPlayerState() !== "playing") break
+        if (getPlayerState() !== "playing") {
+          plog("[Presentation] Loop break: playerState is not playing")
+          break
+        }
 
         const currentSteps = getSteps()
         const nextIndex = processedIndexRef.current + 1
 
         // No more steps yet — check if stream is done (auto-finish)
         if (nextIndex >= currentSteps.length) {
+          plog("[Presentation] Loop break: no more steps (next=%d, total=%d, streamDone=%s, userInteracted=%s)", nextIndex, currentSteps.length, getStreamDone(), userInteracted)
           if (getStreamDone() && !userInteracted) {
-            // All steps played, stream finished, user didn't interact → auto-finish
+            plog("[Presentation] Auto-finishing (all steps done, stream finished, no interaction)")
             autoFinish()
           }
           break
         }
         const step = currentSteps[nextIndex]
+        plog("[Presentation] Step %d/%d: %s (id=%s)", nextIndex + 1, currentSteps.length, step.command.type, step.id)
 
         // Mark executing (reset status if it was previously done)
         actions.updateStepStatus(step.id, "executing")
 
         // Animate
+        plog("[Presentation] Step %d: animating...", nextIndex + 1)
         const anim = animateCommand(editor, step.command)
         currentAnimRef.current = anim
         await anim.done
         currentAnimRef.current = null
+        plog("[Presentation] Step %d: animation done", nextIndex + 1)
 
-        if (cancelled || getPlayerState() !== "playing") break
+        if (cancelled || getPlayerState() !== "playing") {
+          plog("[Presentation] Loop break after animation: cancelled=%s, playerState=%s", cancelled, getPlayerState())
+          break
+        }
 
-        // Screenshot: capture DOM (excluding player controls & exit buttons)
+        // Screenshot: capture DOM via html-to-image (excluding player controls & exit buttons)
+        plog("[Presentation] Step %d: taking screenshot (viewport: %dx%d)...", nextIndex + 1, window.innerWidth, window.innerHeight)
+        const screenshotStart = performance.now()
         let screenshotData = ""
         try {
-          const dataUrl = await toPng(document.documentElement, {
+          const screenshotPromise = toPng(document.documentElement, {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            cacheBust: true,
+            skipAutoScale: true,
             filter: (node) => {
               if (!(node instanceof HTMLElement)) return true
               const id = node.id
               return id !== "presentation-player-controls" && id !== "presentation-exit-btn"
             },
           })
+          // Timeout after 8s to avoid hanging forever
+          const dataUrl = await Promise.race([
+            screenshotPromise,
+            new Promise<string>((_, reject) =>
+              setTimeout(() => reject(new Error("Screenshot timed out after 8s")), 8000)
+            ),
+          ])
           // Strip data:image/png;base64, prefix
           screenshotData = dataUrl.replace(/^data:image\/\w+;base64,/, "")
-        } catch {
-          // Screenshot failed, continue without it
+          plog("[Presentation] Step %d: screenshot OK (%dms, %d bytes)", nextIndex + 1, Math.round(performance.now() - screenshotStart), screenshotData.length)
+        } catch (err) {
+          plog("[Presentation] ERROR: Step %d: screenshot FAILED (%dms):", nextIndex + 1, Math.round(performance.now() - screenshotStart), err)
         }
-        if (cancelled) break
+        if (cancelled) {
+          plog("[Presentation] Loop break after screenshot: cancelled")
+          break
+        }
 
         // Mark done
         actions.completePresentationStep(step.id, screenshotData)
         processedIndexRef.current = nextIndex
+        plog("[Presentation] Step %d: marked done, processedIndex=%d", nextIndex + 1, nextIndex)
 
         // Update current step display
         useOverlayStore.setState({ presentationCurrentStep: nextIndex })
@@ -150,10 +194,12 @@ export function PresentationLayer() {
         // Check if all steps for this toolUseId are done → POST completion
         checkAndPostCompletion(getSteps(), step.toolUseId)
       }
+      plog("[Presentation] runLoop ended, cancelled=%s, processedIndex=%d", cancelled, processedIndexRef.current)
     }
 
     runLoop()
     return () => {
+      plog("[Presentation] Execution effect cleanup (cancelled)")
       cancelled = true
       unsub()
       currentAnimRef.current?.finish()
@@ -209,6 +255,7 @@ export function PresentationLayer() {
 
   // ---- Finish handler (user confirms presentation is done) ----
   const handleFinish = useCallback(() => {
+    plog("[Presentation] handleFinish called")
     const editor = editorRef.current
     if (editor) {
       const allShapes = editor.getCurrentPageShapes()
@@ -221,16 +268,19 @@ export function PresentationLayer() {
     flushDeferredCompletions()
     // POST completion for any remaining completed tool groups
     const currentSteps = useOverlayStore.getState().presentationSteps
+    plog("[Presentation] handleFinish: steps=%d, statuses=%s", currentSteps.length, JSON.stringify(currentSteps.map(s => ({ id: s.id, status: s.status, toolUseId: s.toolUseId }))))
     const doneToolUseIds = new Set<string>()
     for (const step of currentSteps) {
       if (step.status === "done") doneToolUseIds.add(step.toolUseId)
     }
+    plog("[Presentation] handleFinish: doneToolUseIds=%s", JSON.stringify([...doneToolUseIds]))
     for (const toolUseId of doneToolUseIds) {
       postToolCompletion(toolUseId, currentSteps, false)
     }
     // POST error for incomplete groups
     postIncompleteCompletions()
 
+    pflush()
     actions.stopPresentation()
   }, [actions])
 
@@ -255,6 +305,7 @@ export function PresentationLayer() {
       postToolCompletion(toolUseId, currentSteps, true)
     }
 
+    pflush()
     actions.stopPresentation()
   }, [actions])
 
@@ -396,10 +447,13 @@ function checkAndPostCompletion(
   toolUseId: string
 ) {
   const playerState = useOverlayStore.getState().presentationPlayerState
+  plog("[Presentation] checkAndPostCompletion: toolUseId=%s, playerState=%s", toolUseId, playerState)
   if (playerState === "paused") {
     // Defer: remember this toolUseId and POST when user finishes/resumes
     const toolSteps = steps.filter((s) => s.toolUseId === toolUseId)
-    if (toolSteps.every((s) => s.status === "done")) {
+    const allDone = toolSteps.every((s) => s.status === "done")
+    plog("[Presentation] checkAndPostCompletion: PAUSED, toolSteps=%d, allDone=%s", toolSteps.length, allDone)
+    if (allDone) {
       _deferredCompletions.add(toolUseId)
     }
     return
@@ -409,6 +463,7 @@ function checkAndPostCompletion(
 
 /** Flush all deferred completions (called when user finishes presentation) */
 function flushDeferredCompletions() {
+  plog("[Presentation] flushDeferredCompletions: deferred=%d, ids=%s", _deferredCompletions.size, JSON.stringify([..._deferredCompletions]))
   if (_deferredCompletions.size === 0) return
   const steps = useOverlayStore.getState().presentationSteps
   for (const toolUseId of _deferredCompletions) {
@@ -423,7 +478,13 @@ function postToolCompletion(
   isError: boolean
 ) {
   const toolSteps = steps.filter((s) => s.toolUseId === toolUseId)
-  if (!toolSteps.every((s) => s.status === "done") && !isError) return
+  const allDone = toolSteps.every((s) => s.status === "done")
+  plog("[Presentation] postToolCompletion: toolUseId=%s, isError=%s, toolSteps=%d, allDone=%s, statuses=%s",
+    toolUseId, isError, toolSteps.length, allDone, JSON.stringify(toolSteps.map(s => s.status)))
+  if (!allDone && !isError) {
+    plog("[Presentation] postToolCompletion: SKIPPED (not all done and not error)")
+    return
+  }
 
   const content: ClientToolResultContent[] = [
     { type: "text", text: `Executed ${toolSteps[0]?.toolName ?? "tool"} with ${toolSteps.length} command(s).` },
@@ -437,18 +498,33 @@ function postToolCompletion(
   ]
 
   const sessionId = useOverlayStore.getState().presentationSessionId
+  plog("[Presentation] postToolCompletion: sessionId=%s, content items=%d", sessionId, content.length)
+
+  if (!sessionId) {
+    plog("[Presentation] ERROR: postToolCompletion: ABORT - sessionId is empty!")
+    return
+  }
 
   // Dynamic import to avoid circular deps and allow gateway client to be added later
   import("@/lib/gateway").then(({ getGatewayClient }) => {
     const client = getGatewayClient() as any
+    plog("[Presentation] postToolCompletion: gateway client type=%s, hasCompleteClientTool=%s",
+      typeof client, typeof client?.completeClientTool)
     if (typeof client.completeClientTool === "function") {
+      plog("[Presentation] postToolCompletion: CALLING completeClientTool(%s)", JSON.stringify({ tool_use_id: toolUseId, session_id: sessionId, isError }))
       client.completeClientTool({
         tool_use_id: toolUseId,
         session_id: sessionId,
         result: { content, isError },
+      }).then((res: any) => {
+        plog("[Presentation] postToolCompletion: SUCCESS response=%s", JSON.stringify(res))
+      }).catch((err: any) => {
+        plog("[Presentation] ERROR: postToolCompletion: completeClientTool FAILED:", err)
       })
+    } else {
+      plog("[Presentation] ERROR: postToolCompletion: completeClientTool NOT FOUND on client!", Object.keys(client || {}))
     }
   }).catch((err) => {
-    console.warn("[Presentation] Failed to POST tool completion:", err)
+    plog("[Presentation] ERROR: postToolCompletion: dynamic import FAILED:", err)
   })
 }
