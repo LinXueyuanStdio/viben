@@ -126,6 +126,10 @@ export class OpenClawEventMapper {
       return this.mapAgentEvent(payload as AgentPayload);
     }
 
+    if (event === "exec.approval.request" || event === "exec.approval.requested") {
+      return this.mapExecApprovalEvent(payload);
+    }
+
     return null;
   }
 
@@ -224,6 +228,52 @@ export class OpenClawEventMapper {
     this.endTurn();
 
     return messages.length === 1 ? messages[0] : messages;
+  }
+
+  // ===========================================================================
+  // Exec Approval Event Mapping
+  // ===========================================================================
+
+  /**
+   * Check if an event frame is an exec.approval.request that needs a response.
+   */
+  isExecApprovalRequest(frame: EventFrame): boolean {
+    return frame.event === "exec.approval.request" || frame.event === "exec.approval.requested";
+  }
+
+  /**
+   * Extract the approval request ID from an exec.approval event.
+   */
+  getApprovalRequestId(frame: EventFrame): string | null {
+    if (!this.isExecApprovalRequest(frame)) return null;
+    const payload = frame.payload as { id?: string; request?: { id?: string } } | undefined;
+    return payload?.id ?? payload?.request?.id ?? null;
+  }
+
+  private mapExecApprovalEvent(payload: unknown): SSEMessage | null {
+    if (!payload || typeof payload !== "object") return null;
+    const p = payload as {
+      id?: string;
+      request?: {
+        command?: string;
+        commandPreview?: string;
+        cwd?: string;
+        host?: string;
+      };
+    };
+
+    const command = p.request?.command ?? p.request?.commandPreview ?? "exec approval";
+    return {
+      type: "tool_use",
+      id: p.id ?? "",
+      name: "exec_approval",
+      input: {
+        command,
+        cwd: p.request?.cwd ?? undefined,
+        host: p.request?.host ?? undefined,
+        _kind: "execute" as const,
+      },
+    };
   }
 
   // ===========================================================================

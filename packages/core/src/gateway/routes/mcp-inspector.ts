@@ -1137,7 +1137,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
    * POST /api/mcp/inspector/message
    */
   fastify.post<{
-    Querystring: { sessionId?: string };
+    Querystring: { session_id?: string };
   }>("/api/mcp/inspector/message", async (request, reply) => {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
@@ -1148,7 +1148,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     if (!checkAuth(request, reply)) return;
 
     try {
-      const sessionId = request.query.sessionId;
+      const sessionId = request.query.session_id;
       log.debug({ sessionId }, "Received POST message");
 
       if (!sessionId) {

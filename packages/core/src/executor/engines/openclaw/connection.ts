@@ -177,6 +177,9 @@ export class OpenClawClient {
   // Sequence gap tracking
   private lastSeq: number | null = null;
 
+  // Connection lost callback (fired when max reconnect attempts exhausted)
+  private connectionLostListeners: Array<() => void> = [];
+
   // Handshake state
   private connectNonce: string | null = null;
   private connectSent = false;
@@ -559,6 +562,14 @@ export class OpenClawClient {
     };
   }
 
+  get execApproval() {
+    return {
+      resolve: async (params: { id: string; decision: string }): Promise<unknown> => {
+        return this.request("exec.approval.resolve", params);
+      },
+    };
+  }
+
   get chat() {
     return {
       send: async (params: { sessionKey: string; message: string; idempotencyKey?: string; expectFinal?: boolean }): Promise<ChatSendResult> => {
@@ -651,12 +662,27 @@ export class OpenClawClient {
 
   // === Private: Reconnection ===
 
+  /**
+   * Register a callback for when the connection is permanently lost
+   * (max reconnect attempts exhausted or intentionally closed).
+   */
+  onConnectionLost(handler: () => void): () => void {
+    this.connectionLostListeners.push(handler);
+    return () => {
+      const idx = this.connectionLostListeners.indexOf(handler);
+      if (idx >= 0) this.connectionLostListeners.splice(idx, 1);
+    };
+  }
+
   private _scheduleReconnect(): void {
     if (this.closed) return;
 
     this.reconnectAttempts++;
     if (this.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
       console.error(`[OpenClawClient] Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached, giving up`);
+      for (const listener of this.connectionLostListeners) {
+        try { listener(); } catch { /* ignore */ }
+      }
       return;
     }
 

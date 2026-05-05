@@ -70,12 +70,21 @@ export class OpenClawChatProxy {
     // Create per-turn event mapper instance (instance-scoped state)
     const mapper = new OpenClawEventMapper();
 
+    // Register connection-lost handler to abort if reconnect fails
+    const unregisterLost = this.client.onConnectionLost(() => {
+      this.aborted = true;
+      this.turnActive = false;
+    });
+
     // Subscribe to relevant events before sending (to not miss any)
     const events = this.client.events((frame) => {
       return frame.event === "chat" ||
              frame.event === "chat.event" ||
              frame.event === "agent" ||
-             frame.event === "agent.event";
+             frame.event === "agent.event" ||
+             frame.event === "exec.approval.request" ||
+             frame.event === "exec.approval.requested" ||
+             frame.event === "shutdown";
     });
 
     // Send message
@@ -93,6 +102,34 @@ export class OpenClawChatProxy {
     for await (const frame of events) {
       if (this.aborted) break;
       if (!this.turnActive) break;
+
+      // Handle shutdown event - terminate gracefully
+      if (frame.event === "shutdown") {
+        const payload = frame.payload as { reason?: string } | undefined;
+        yield {
+          type: "error",
+          message: `Gateway shutdown: ${payload?.reason ?? "unknown reason"}`,
+        };
+        break;
+      }
+
+      // Handle exec.approval.request - auto-approve (YOLO mode)
+      if (mapper.isExecApprovalRequest(frame)) {
+        const approvalId = mapper.getApprovalRequestId(frame);
+        if (approvalId) {
+          // Emit tool_use for visibility
+          const result = mapper.mapEvent(frame);
+          if (result !== null) {
+            const messages = Array.isArray(result) ? result : [result];
+            for (const msg of messages) {
+              yield msg;
+            }
+          }
+          // Auto-approve the execution
+          this.autoApproveExec(approvalId);
+        }
+        continue;
+      }
 
       // Map frame to SSEMessage(s)
       const result = mapper.mapEvent(frame);
@@ -127,6 +164,7 @@ export class OpenClawChatProxy {
       }
     }
 
+    unregisterLost();
     this.turnActive = false;
     this.currentSessionKey = null;
   }
@@ -151,6 +189,23 @@ export class OpenClawChatProxy {
    */
   getSessionKey(): string | null {
     return this.currentSessionKey;
+  }
+
+  // ===========================================================================
+  // Permission Handling
+  // ===========================================================================
+
+  /**
+   * Auto-approve an exec.approval.request (YOLO mode).
+   * Sends exec.approval.resolve with decision "allow_once".
+   * Fire-and-forget: errors are logged but don't break the stream.
+   */
+  private autoApproveExec(approvalId: string): void {
+    this.client.execApproval
+      .resolve({ id: approvalId, decision: "allow_once" })
+      .catch((err) => {
+        console.warn("[OpenClawChatProxy] Failed to auto-approve exec:", err?.message ?? err);
+      });
   }
 
   // ===========================================================================
