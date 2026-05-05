@@ -3,26 +3,33 @@ import {
   DesktopMessageList,
   type SlashCommand,
 } from "@/components/chat";
-import type { AgentMessage } from "@/types";
+import type { MessageAttachment } from "@viben/chat";
+import type {
+  AgentMessage,
+  AgentPhase,
+  Artifact,
+  PendingQuestion,
+  TaskPlan,
+} from "@/types";
 
 export interface AgentChatTabProps {
   messages: AgentMessage[];
   isStreaming: boolean;
-  pendingPlan: unknown;
-  pendingQuestions: unknown;
-  artifacts: unknown;
+  pendingPlan: TaskPlan | null;
+  pendingQuestions: PendingQuestion | null;
+  artifacts: Artifact[];
   error: string | null | undefined;
-  phase: string;
+  phase: AgentPhase;
   taskStatus: string;
   slashCommands: SlashCommand[];
   placeholder: string;
   waitingForApprovalText: string;
   waitingForInputText: string;
-  onSend: (message: string) => void;
+  onSend: (message: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
   onApprovePlan: () => void;
   onRejectPlan: () => void;
-  onAnswerQuestions: (answers: unknown) => void;
+  onAnswerQuestions: (answers: Record<string, string[]>) => void;
   onSlashCommand: (command: SlashCommand) => void;
 }
 
