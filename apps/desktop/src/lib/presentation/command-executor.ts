@@ -54,7 +54,7 @@ export function executeCommand(editor: Editor, cmd: PresentationCommand, initial
           w: cmd.region.width,
           h: cmd.region.height,
           color: cmd.color ?? "yellow",
-          fill: "semi",
+          fill: "none",
           dash: "dashed",
           size: "m",
         },
