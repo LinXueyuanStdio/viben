@@ -2,7 +2,7 @@
  * OpenClaw Executor
  *
  * Executor implementation for OpenClaw AI assistant gateway.
- * Uses WebSocket (via @openclaw/sdk) instead of CLI subprocess.
+ * Uses direct WebSocket (protocol v3) instead of CLI subprocess or SDK.
  */
 
 import type { AvailabilityInfo } from "../../../types";
@@ -21,6 +21,7 @@ import { loadGatewayConfig } from "./config";
 import { OpenClawProcessManager } from "./process-manager";
 import { OpenClawConnectionManager } from "./connection";
 import { OpenClawChatProxy } from "./chat-proxy";
+import { resetEventMapper } from "./event-mapper";
 
 export type { OpenClawExecutorConfig } from "./types";
 
@@ -140,17 +141,31 @@ class OpenClawExecutor extends BaseExecutor {
       const connMgr = await this.ensureConnected();
       const client = connMgr.getClient();
 
-      const session = await client.sessions.create({
-        key: sessionId ?? `viben-task-${Date.now()}`,
-      });
+      const sessionKey = sessionId ?? `viben-task-${Date.now()}`;
+      const session = await client.sessions.reset({ key: sessionKey, reason: "new" });
 
-      const run = await session.send(prompt);
-      const result = await run.wait();
+      // Send and wait for completion via events
+      resetEventMapper();
+      await client.chat.send({ sessionKey: session.key, message: prompt });
 
-      return {
-        success: result.status === "completed",
-        sessionId: session.key,
-      };
+      // Wait for final event
+      for await (const frame of client.events((f) =>
+        f.event === "chat" || f.event === "chat.event"
+      )) {
+        const payload = frame.payload as { state?: string } | undefined;
+        if (
+          payload?.state === "final" ||
+          payload?.state === "aborted" ||
+          payload?.state === "error"
+        ) {
+          return {
+            success: payload.state === "final",
+            sessionId: session.key,
+          };
+        }
+      }
+
+      return { success: true, sessionId: session.key };
     } catch (error) {
       return {
         success: false,
@@ -170,18 +185,32 @@ class OpenClawExecutor extends BaseExecutor {
       const sessionKey = resume ?? sessionId ?? `viben-chat-${Date.now()}`;
       let session;
       if (resume) {
-        session = await client.sessions.get(sessionKey);
+        session = await client.sessions.resolve({ key: sessionKey });
       } else {
-        session = await client.sessions.create({ key: sessionKey });
+        session = await client.sessions.reset({ key: sessionKey, reason: "new" });
       }
 
-      const run = await session.send(prompt);
-      const result = await run.wait();
+      resetEventMapper();
+      await client.chat.send({ sessionKey: session.key, message: prompt });
 
-      return {
-        success: result.status === "completed",
-        sessionId: session.key,
-      };
+      // Wait for final
+      for await (const frame of client.events((f) =>
+        f.event === "chat" || f.event === "chat.event"
+      )) {
+        const payload = frame.payload as { state?: string } | undefined;
+        if (
+          payload?.state === "final" ||
+          payload?.state === "aborted" ||
+          payload?.state === "error"
+        ) {
+          return {
+            success: payload.state === "final",
+            sessionId: session.key,
+          };
+        }
+      }
+
+      return { success: true, sessionId: session.key };
     } catch (error) {
       return {
         success: false,
@@ -197,7 +226,11 @@ class OpenClawExecutor extends BaseExecutor {
       const client = connMgr.getClient();
       const proxy = new OpenClawChatProxy(client);
 
-      yield* proxy.stream(options);
+      yield* proxy.stream({
+        prompt: options.prompt,
+        sessionId: options.sessionId,
+        resume: options.resume,
+      });
     } catch (error) {
       yield {
         type: "error",
