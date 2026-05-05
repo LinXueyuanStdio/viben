@@ -1104,7 +1104,8 @@
       "CURSOR_AGENT": "Cursor Agent",
       "QWEN_CODE": "通义灵码",
       "COPILOT": "GitHub Copilot CLI",
-      "DROID": "Droid"
+      "DROID": "Droid",
+      "OPENCLAW": "OpenClaw"
     },
     "executors": {
       "CLAUDE_CODE": "Anthropic 官方 Claude CLI - 强大的编程智能体",
@@ -1115,7 +1116,8 @@
       "CURSOR_AGENT": "Cursor 后台 AI 智能体，用于自主编程",
       "QWEN_CODE": "阿里巴巴 Qwen 编程模型 CLI",
       "COPILOT": "GitHub AI 结对编程终端工具",
-      "DROID": "Android 开发 AI 助手"
+      "DROID": "Android 开发 AI 助手",
+      "OPENCLAW": "个人 AI 助手网关，支持多智能体路由"
     }
   },
   "settingsAgents": {
@@ -1343,6 +1345,15 @@
     "mcpTitle": "MCP",
     "memoryFileTitle": "MEMORY.md",
     "claudeCodeOptions": "Claude Code 选项",
+    "openclawOptions": "OpenClaw 选项",
+    "openclawGatewayHost": "网关地址",
+    "openclawGatewayPort": "网关端口",
+    "openclawGatewayToken": "认证令牌",
+    "openclawGatewayPassword": "认证密码",
+    "openclawTestConnection": "测试连接",
+    "openclawConnecting": "连接中...",
+    "openclawConnected": "已连接",
+    "openclawConnectionFailed": "连接失败",
     "mcpServersLabel": "MCP 服务器",
     "skillsLabel": "技能",
     "noMcpServers": "暂无服务器配置",
@@ -4703,6 +4714,7 @@
       "amp": "Amp",
       "opencode": "OpenCode",
       "droid": "Droid",
+      "openclaw": "OpenClaw",
       "agent": "智能体"
     },
     "providerNames": {

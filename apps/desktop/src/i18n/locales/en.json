@@ -1104,7 +1104,8 @@
       "CURSOR_AGENT": "Cursor Agent",
       "QWEN_CODE": "Qwen Coder",
       "COPILOT": "GitHub Copilot CLI",
-      "DROID": "Droid"
+      "DROID": "Droid",
+      "OPENCLAW": "OpenClaw"
     },
     "executors": {
       "CLAUDE_CODE": "Anthropic's official CLI for Claude - powerful coding agent",
@@ -1115,7 +1116,8 @@
       "CURSOR_AGENT": "Cursor's background AI agent for autonomous coding",
       "QWEN_CODE": "Alibaba's Qwen coding model CLI",
       "COPILOT": "GitHub's AI pair programmer in the terminal",
-      "DROID": "Android development AI assistant"
+      "DROID": "Android development AI assistant",
+      "OPENCLAW": "Personal AI assistant gateway with multi-agent routing"
     }
   },
   "settingsAgents": {
@@ -1343,6 +1345,15 @@
     "mcpTitle": "MCP",
     "memoryFileTitle": "MEMORY.md",
     "claudeCodeOptions": "Claude Code Options",
+    "openclawOptions": "OpenClaw Options",
+    "openclawGatewayHost": "Gateway Host",
+    "openclawGatewayPort": "Gateway Port",
+    "openclawGatewayToken": "Auth Token",
+    "openclawGatewayPassword": "Auth Password",
+    "openclawTestConnection": "Test Connection",
+    "openclawConnecting": "Connecting...",
+    "openclawConnected": "Connected",
+    "openclawConnectionFailed": "Connection failed",
     "mcpServersLabel": "MCP Servers",
     "skillsLabel": "Skills",
     "noMcpServers": "No servers configured",
@@ -4703,6 +4714,7 @@
       "amp": "Amp",
       "opencode": "OpenCode",
       "droid": "Droid",
+      "openclaw": "OpenClaw",
       "agent": "Agent"
     },
     "providerNames": {

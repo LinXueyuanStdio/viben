@@ -1,4 +1,4 @@
-# Claude Code Guidelines
+# Guidelines
 
 生成 spec 时使用中文
 
@@ -115,6 +115,7 @@ When translating to Chinese (zh-CN):
 | English | Chinese | Notes |
 |---------|---------|-------|
 | agent | 智能体 | Not "代理" |
+| token | 词元 | Not "令牌" |
 
 ## UI Components
 

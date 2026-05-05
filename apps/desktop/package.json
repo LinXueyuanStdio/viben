@@ -92,6 +92,7 @@
     "fastmcp": "^3.31.0",
     "fflate": "^0.8.2",
     "framer-motion": "^12.29.2",
+    "html-to-image": "^1.11.13",
     "i18next": "^25.8.13",
     "i18next-browser-languagedetector": "^8.2.1",
     "js-yaml": "^4.1.1",
