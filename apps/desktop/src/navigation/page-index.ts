@@ -704,6 +704,48 @@ export function resolvePageIndexBranch({
         });
       },
     },
+    {
+      matches: (input, descriptorId) =>
+        descriptorId === "workspace-page" &&
+        Boolean(input.segment.meta?.pageSlug) &&
+        Boolean(input.pages?.length),
+      build: (input) => {
+        const wId = input.workspaceId ?? input.segment.meta?.workspaceId ?? "";
+        const currentSlug = input.segment.meta?.pageSlug ?? "";
+        // Find parent prefix to get siblings
+        const parentPrefix = currentSlug.includes("/")
+          ? currentSlug.slice(0, currentSlug.lastIndexOf("/") + 1)
+          : "";
+        const depth = parentPrefix ? parentPrefix.split("/").filter(Boolean).length + 1 : 1;
+
+        const siblings = (input.pages ?? []).filter((page) => {
+          // Same depth and same parent prefix
+          const pageDepth = page.slug.split("/").filter(Boolean).length;
+          if (pageDepth !== depth) return false;
+          if (parentPrefix) {
+            return page.slug.startsWith(parentPrefix);
+          }
+          return !page.slug.includes("/");
+        });
+
+        return buildDropdownItems(siblings, (page) => ({
+          id: `workspace:${wId}:page:${page.slug}`,
+          label: page.name,
+          href: `/workspace/${encodeURIComponent(wId)}/page/${page.slug
+            .split("/")
+            .filter(Boolean)
+            .map((s) => encodeURIComponent(s))
+            .join("/")}`,
+          icon: page.icon,
+          isActive: page.slug === currentSlug,
+          descriptorId: "workspace-page",
+          meta: {
+            workspaceId: wId,
+            pageSlug: page.slug,
+          },
+        }));
+      },
+    },
   ];
 
   const matchedRule = rules.find((rule) => rule.matches(input, descriptorId));

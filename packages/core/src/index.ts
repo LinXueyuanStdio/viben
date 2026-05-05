@@ -683,6 +683,7 @@ export {
   DroidExecutor,
   GeminiExecutor,
   OpencodeExecutor,
+  OpenClawExecutor,
   QwenCodeExecutor,
   BaseExecutor,
 } from "./executor";
@@ -714,6 +715,7 @@ export type {
   CursorAgentExecutorConfig,
   DroidExecutorConfig,
   OpencodeExecutorConfig,
+  OpenClawExecutorConfig,
   QwenCodeExecutorConfig,
 } from "./executor";
 

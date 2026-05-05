@@ -26,6 +26,7 @@ export {
   DroidExecutor,
   GeminiExecutor,
   OpencodeExecutor,
+  OpenClawExecutor,
   QwenCodeExecutor,
   BaseExecutor,
 } from "./engines";
@@ -37,5 +38,6 @@ export type {
   CursorAgentExecutorConfig,
   DroidExecutorConfig,
   OpencodeExecutorConfig,
+  OpenClawExecutorConfig,
   QwenCodeExecutorConfig,
 } from "./engines";

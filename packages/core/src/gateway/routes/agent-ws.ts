@@ -298,11 +298,23 @@ async function executeOpenClawAgent(session: WsSession, prompt: string, resume?:
   try {
     // Initialize OpenClaw connection with executor_config overrides
     resetEventMapper();
-    const executorConfig = agentConfig?.executor_config as { gateway?: { host?: string; port?: number; token?: string } } | undefined;
+    const executorConfig = agentConfig?.executor_config as {
+      gateway?: {
+        host?: string;
+        port?: number;
+        token?: string;
+        password?: string;
+      };
+      cliPath?: string;
+      autoStart?: boolean;
+    } | undefined;
     const gwConfig = loadGatewayConfig({
       host: executorConfig?.gateway?.host,
       port: executorConfig?.gateway?.port,
       token: executorConfig?.gateway?.token,
+      password: executorConfig?.gateway?.password,
+      cliPath: executorConfig?.cliPath,
+      autoStart: executorConfig?.autoStart,
     });
 
     // Reuse existing client if still connected

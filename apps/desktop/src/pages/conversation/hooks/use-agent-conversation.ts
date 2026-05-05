@@ -36,7 +36,6 @@ import { useOverlayStore } from "@/stores/overlay-store";
 import type { PresentationCommand } from "@/lib/presentation/types";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
 import { useCommandQueue } from "./use-command-queue";
-import type { CommandQueueItem } from "./use-command-queue";
 
 /**
  * Generate a unique ID

@@ -18,6 +18,7 @@ const EXECUTOR_TYPES: Set<string> = new Set([
   "QWEN_CODE",
   "COPILOT",
   "DROID",
+  "OPENCLAW",
 ]);
 
 /**
