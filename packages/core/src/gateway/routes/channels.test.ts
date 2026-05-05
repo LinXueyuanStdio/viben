@@ -1288,8 +1288,8 @@ describe("Channel Routes", () => {
         method: "POST",
         url: "/api/channels/send",
         payload: {
-          channelId: "my-telegram",
-          chatId: "chat-123",
+          channel_id: "my-telegram",
+          chat_id: "chat-123",
           message: "Hello, World!",
         },
       });
@@ -1305,8 +1305,8 @@ describe("Channel Routes", () => {
         method: "POST",
         url: "/api/channels/send",
         payload: {
-          channelId: "my-telegram",
-          // Missing chatId and message
+          channel_id: "my-telegram",
+          // Missing chat_id and message
         },
       });
 
@@ -1322,8 +1322,8 @@ describe("Channel Routes", () => {
         method: "POST",
         url: "/api/channels/send",
         payload: {
-          channelId: "nonexistent",
-          chatId: "chat-123",
+          channel_id: "nonexistent",
+          chat_id: "chat-123",
           message: "Hello",
         },
       });

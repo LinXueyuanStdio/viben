@@ -435,7 +435,7 @@ export async function startBackgroundTask(
         session_id: request.sessionId,
         agent_config_path: request.agentConfigPath,
         agent_config: request.agentConfig,
-        resume: request.resume,
+        resume_session: request.resume,
       }),
       signal: controller.signal,
     });
