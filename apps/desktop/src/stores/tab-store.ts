@@ -9,7 +9,7 @@ import {
   replaceLocation as replaceNavigationState,
   resetStack as resetNavigationState,
 } from "@/navigation/tab-navigation";
-import { locationToUrl, urlToLocation } from "@/navigation/navigation-meta";
+import { locationToUrl, normalizeSettingsSection, urlToLocation } from "@/navigation/navigation-meta";
 import type {
   DesktopLocation,
   BreadcrumbStackItem,
@@ -124,7 +124,7 @@ function buildFallbackLocation(url: string): DesktopLocation {
 
   if (url.startsWith("/settings")) {
     const section = url.split("/")[2];
-    return { kind: "settings", section };
+    return { kind: "settings", section: normalizeSettingsSection(section) };
   }
 
   return { kind: "documents" };

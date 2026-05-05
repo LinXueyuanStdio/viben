@@ -14,6 +14,7 @@ import {
   type DesktopLocation,
   getSettingsSectionDescriptor,
   getWorkspaceSectionDescriptor,
+  normalizeSettingsSection,
   normalizeWorkspaceSection,
   type SettingsSection,
   type BreadcrumbStackItem,
@@ -156,6 +157,7 @@ export interface DesktopRoutingApi {
   goBack: () => void;
   goForward: () => void;
   closeCurrentTab: () => void;
+  detachCurrentTabToNewWindow: () => Promise<boolean>;
 
   setHeaderCenter: (content: ReactNode | null) => void;
   setHeaderRight: (content: ReactNode | null) => void;
@@ -420,7 +422,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         location,
         createLocationBreadcrumbItem(location, {
           id: `workspace:${workspaceId}:agent:${agentId}`,
-          kind: "workspace-agent",
+          descriptorId: "workspace-agent",
           label: options?.title ?? agentId,
           icon: options?.icon ?? { type: "lucide", value: "bot" },
           meta: {
@@ -456,7 +458,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         location,
         createLocationBreadcrumbItem(location, {
           id: `workspace:${workspaceId}:executor:${executorType}`,
-          kind: "workspace-executor",
+          descriptorId: "workspace-executor",
           label: options?.title ?? executorType,
           icon: options?.icon ?? { type: "lucide", value: "terminal" },
           meta: {
@@ -576,7 +578,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       section?: SettingsSection | string,
       options?: DesktopNavigationOptions
     ) => {
-      const normalizedSection = section ?? "general";
+      const normalizedSection = normalizeSettingsSection(section);
       const descriptor = getSettingsSectionDescriptor(normalizedSection);
       pageTabs.openLocation(
         { kind: "settings", section: normalizedSection },
@@ -602,20 +604,26 @@ export function useDesktopRouting(): DesktopRoutingApi {
       workspacePath?: string,
       options?: DesktopNavigationOptions
     ) => {
-      pageTabs.openLocation(
-        { kind: "agent-detail", agentId, workspacePath },
+      const location: DesktopLocation = { kind: "agent-detail", agentId, workspacePath };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `agent:${agentId}`,
+          descriptorId: "workspace-agent",
+          label: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+          meta: { agentId },
+        }),
         {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: agentId,
-            name: agentId,
-            icon: { type: "lucide", value: "bot" },
-          },
-        }
+          type: "workspace",
+          slug: agentId,
+          name: options?.title ?? agentId,
+          icon: options?.icon ?? { type: "lucide", value: "bot" },
+        },
+        options
       );
     },
-    [pageTabs]
+    [openChildLocation]
   );
 
   const openExecutorDetail = useCallback(
@@ -624,20 +632,26 @@ export function useDesktopRouting(): DesktopRoutingApi {
       workspacePath?: string,
       options?: DesktopNavigationOptions
     ) => {
-      pageTabs.openLocation(
-        { kind: "executor-detail", executorType, workspacePath },
+      const location: DesktopLocation = { kind: "executor-detail", executorType, workspacePath };
+      openChildLocation(
+        location,
+        createLocationBreadcrumbItem(location, {
+          id: `executor:${executorType}`,
+          descriptorId: "workspace-executor",
+          label: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+          meta: { executorType },
+        }),
         {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: executorType,
-            name: executorType,
-            icon: { type: "lucide", value: "terminal" },
-          },
-        }
+          type: "workspace",
+          slug: executorType,
+          name: options?.title ?? executorType,
+          icon: options?.icon ?? { type: "lucide", value: "terminal" },
+        },
+        options
       );
     },
-    [pageTabs]
+    [openChildLocation]
   );
 
   const openMcpServerDetail = useCallback(
@@ -656,7 +670,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         location,
         createLocationBreadcrumbItem(location, {
           id: `mcp:${serverName}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: serverName,
           icon: { type: "lucide", value: "server" },
           meta: {
@@ -692,7 +706,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         location,
         createLocationBreadcrumbItem(location, {
           id: `subagent:${configId}`,
-          kind: "workspace-agent",
+          descriptorId: "workspace-agent",
           label: configId,
           icon: { type: "lucide", value: "bot" },
           meta: {
@@ -728,7 +742,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         location,
         createLocationBreadcrumbItem(location, {
           id: `prompt:${promptId}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: promptId,
           icon: { type: "lucide", value: "quote" },
           meta: {
@@ -764,7 +778,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         location,
         createLocationBreadcrumbItem(location, {
           id: `command:${commandId}`,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           label: commandId,
           icon: { type: "lucide", value: "terminal" },
           meta: {
@@ -863,7 +877,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         createLocationBreadcrumbItem(location, {
           id: `skill:${skillId}`,
           label: input.title ?? skillId,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           icon: { type: "lucide", value: "sparkles" },
           meta: {
             workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
@@ -900,7 +914,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       pushChildPage(
         createLocationBreadcrumbItem(location, {
           label: options?.title ?? pageSlug.split("/").filter(Boolean).pop() ?? pageSlug,
-          kind: "workspace-page",
+          descriptorId: "workspace-page",
           icon: options?.icon,
           meta: {
             workspaceId: currentWorkspaceId,
@@ -932,7 +946,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       pushChildPage(
         createLocationBreadcrumbItem(location, {
           label: title,
-          kind: "workspace-web",
+          descriptorId: "workspace-web",
           icon: input?.icon ?? { type: "lucide", value: "globe" },
           meta: {
             workspaceId,
@@ -959,6 +973,13 @@ export function useDesktopRouting(): DesktopRoutingApi {
       return;
     }
     pageTabs.closeTab(pageTabs.activeTabId);
+  }, [pageTabs]);
+
+  const detachCurrentTabToNewWindow = useCallback(async () => {
+    if (!pageTabs.activeTabId) {
+      return false;
+    }
+    return pageTabs.detachTabToNewWindow(pageTabs.activeTabId);
   }, [pageTabs]);
 
   const clearHeaderSlots = useCallback(() => {
@@ -1030,6 +1051,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       goBack: pageTabs.goBackInTab,
       goForward: pageTabs.goForwardInTab,
       closeCurrentTab,
+      detachCurrentTabToNewWindow,
 
       setHeaderCenter,
       setHeaderRight,
@@ -1040,6 +1062,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [
       clearHeaderSlots,
       closeCurrentTab,
+      detachCurrentTabToNewWindow,
       currentDescriptor,
       currentRoute,
       currentStack,

@@ -14,6 +14,7 @@ import {
   Pin,
   PinOff,
   GripVertical,
+  ExternalLink,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -66,6 +67,7 @@ export interface SortableTabItemProps {
   onDuplicate: () => void;
   onReopenClosed: () => void;
   onCopyLink: () => void | Promise<void>;
+  onDetach: () => void | Promise<void>;
   onMoveToStart: () => void;
   onMoveToEnd: () => void;
   canReopenClosed?: boolean;
@@ -88,6 +90,7 @@ export function SortableTabItem({
   onDuplicate,
   onReopenClosed,
   onCopyLink,
+  onDetach,
   onMoveToStart,
   onMoveToEnd,
   canReopenClosed = false,
@@ -227,6 +230,10 @@ export function SortableTabItem({
             <ContextMenuItem onClick={onDuplicate}>
               {t("tabBar.duplicateTab", "Duplicate Tab")}
             </ContextMenuItem>
+            <ContextMenuItem onClick={onDetach}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              {t("tabBar.detachToNewWindow", "Detach to New Window")}
+            </ContextMenuItem>
             <ContextMenuSeparator />
             <ContextMenuItem onClick={onUnpin}>
               <PinOff className="h-4 w-4 mr-2" />
@@ -346,6 +353,10 @@ export function SortableTabItem({
           </ContextMenuItem>
           <ContextMenuItem onClick={onDuplicate}>
             {t("tabBar.duplicateTab", "Duplicate Tab")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onDetach}>
+            <ExternalLink className="h-4 w-4 mr-2" />
+            {t("tabBar.detachToNewWindow", "Detach to New Window")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={onPin}>

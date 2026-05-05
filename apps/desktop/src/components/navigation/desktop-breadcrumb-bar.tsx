@@ -10,7 +10,7 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { BreadcrumbDropdown } from "./breadcrumb-dropdown";
 import {
   getWorkspaceSectionDescriptor,
-  inferBreadcrumbSegmentKind,
+  resolveSegmentDescriptorId,
   resolvePageIndexBranch,
   type BreadcrumbDropdownItem,
   type DesktopBreadcrumbSegment,
@@ -27,11 +27,11 @@ interface DesktopBreadcrumbBarProps {
   rightSlot?: ReactNode;
 }
 
-function inferTabType(href: string, kind?: DesktopBreadcrumbSegment["kind"]) {
-  if (kind === "workspace-web") {
+function inferTabType(href: string, descriptorId?: DesktopBreadcrumbSegment["descriptorId"]) {
+  if (descriptorId === "workspace-web") {
     return "web" as const;
   }
-  if (kind === "workspace-page") {
+  if (descriptorId === "workspace-page") {
     return "page" as const;
   }
   if (href.startsWith("/workspace/")) {
@@ -66,8 +66,8 @@ export function DesktopBreadcrumbBar({
 
   const currentSection = useMemo(() => {
     const sectionSegment = segments.find((segment) => {
-      const kind = inferBreadcrumbSegmentKind(segment);
-      return kind === "workspace-section";
+      const id = resolveSegmentDescriptorId(segment);
+      return id?.startsWith("workspace-section:");
     });
     return sectionSegment?.meta?.section;
   }, [segments]);
@@ -99,9 +99,9 @@ export function DesktopBreadcrumbBar({
   }, [segments]);
 
   const navigateWithTab = useCallback(
-    (segment: Pick<DesktopBreadcrumbSegment, "href" | "label" | "icon" | "kind" | "meta">) => {
+    (segment: Pick<DesktopBreadcrumbSegment, "href" | "label" | "icon" | "descriptorId" | "meta">) => {
       openPath(segment.href, {
-        type: inferTabType(segment.href, segment.kind),
+        type: inferTabType(segment.href, segment.descriptorId),
         title: segment.label,
         icon: segment.icon,
         slug:
@@ -173,7 +173,7 @@ export function DesktopBreadcrumbBar({
           : workspace.name,
       href: `/workspace/${encodeURIComponent(workspace.id)}`,
       path: workspace.path,
-      kind: "workspace-root",
+      descriptorId: "workspace",
       icon: {
         type: "lucide",
         value: workspace.type === "global" ? "globe" : "folder-open",
@@ -247,7 +247,7 @@ export function DesktopBreadcrumbBar({
           href: item.href,
           label: item.label,
           icon: item.icon,
-          kind: item.kind as DesktopBreadcrumbSegment["kind"] | undefined,
+          descriptorId: item.descriptorId,
           meta: item.meta,
         });
       }

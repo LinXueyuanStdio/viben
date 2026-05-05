@@ -127,6 +127,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     canGoForward,
     switchToTab,
     closeTab,
+    detachTabToNewWindow,
     getTabLink,
     jumpToHistory,
   } = usePageTabs();
@@ -281,6 +282,21 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       }
     },
     [getTabLink, t]
+  );
+
+  const handleDetachTab = useCallback(
+    async (tabId: string) => {
+      try {
+        const detached = await detachTabToNewWindow(tabId);
+        if (!detached) {
+          toast.error(t("tabBar.detachUnavailable", "This tab cannot be detached"));
+        }
+      } catch (error) {
+        console.error("Failed to detach tab:", error);
+        toast.error(t("common.error"));
+      }
+    },
+    [detachTabToNewWindow, t]
   );
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
@@ -454,6 +470,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                   onDuplicate={() => handleDuplicateTab(tab.id)}
                   onReopenClosed={handleReopenClosedTab}
                   onCopyLink={() => handleCopyTabLink(tab.id)}
+                  onDetach={() => handleDetachTab(tab.id)}
                   onMoveToStart={() => handleMoveTabToStart(tab.id)}
                   onMoveToEnd={() => handleMoveTabToEnd(tab.id)}
                   canReopenClosed={hasRecentlyClosedTabs}

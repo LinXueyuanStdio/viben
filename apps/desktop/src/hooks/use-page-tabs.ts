@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTabStore, selectActiveTab } from "@/stores/tab-store";
 import type { PageTab, TabType } from "@/stores/tab-store";
@@ -15,6 +16,7 @@ import {
   getSettingsSectionIcon,
   getSettingsSectionLabel,
   getWorkspaceSectionLabel,
+  normalizeSettingsSection,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
 import { pageKeys } from "@/hooks/use-pages";
@@ -592,6 +594,44 @@ export function usePageTabs() {
     [getCurrentNavigationState]
   );
 
+  const detachTabToNewWindow = useCallback(
+    async (tabId: string) => {
+      const tab = tabs.find((item) => item.id === tabId);
+      const state = getCurrentNavigationState(tabId);
+
+      if (!tab || !state || !("workspaceId" in state.location)) {
+        return false;
+      }
+
+      if (state.location.kind === "workspace-page") {
+        const workspace = getWorkspace(state.location.workspaceId);
+        if (!workspace?.path) {
+          return false;
+        }
+
+        await invoke("open_workspace_page_preview_window", {
+          workspaceId: state.location.workspaceId,
+          workspacePath: workspace.path,
+          slug: state.location.pageSlug,
+          title: tab.name,
+          view: tab.viewMode ?? "page",
+        });
+        closeTabStore(tabId);
+        return true;
+      }
+
+      const routePath = locationToUrl(state.location);
+      await invoke("open_workspace_in_new_window", {
+        workspaceId: state.location.workspaceId,
+        routePath,
+        title: tab.name,
+      });
+      closeTabStore(tabId);
+      return true;
+    },
+    [closeTabStore, getCurrentNavigationState, getWorkspace, tabs]
+  );
+
   return {
     tabs,
     activeTab,
@@ -610,6 +650,7 @@ export function usePageTabs() {
     openPageInNewTab,
     switchToTab,
     closeTab,
+    detachTabToNewWindow,
     getTabLink,
     navigateInTab,
     goBackInTab,
@@ -646,7 +687,7 @@ function buildLocationFromLegacyUrl(url: string): DesktopLocation {
   }
   if (url.startsWith("/settings")) {
     const section = url.split("/")[2];
-    return { kind: "settings", section };
+    return { kind: "settings", section: normalizeSettingsSection(section) };
   }
 
   if (url === "/publish" || url === "/my-packages" || url === "/analytics") {

@@ -76,7 +76,7 @@ function mapStackItemToSegment(
     label: item.label,
     href: item.target?.canonicalUrl ?? "#",
     icon: item.icon,
-    kind: item.kind,
+    descriptorId: item.descriptorId,
     meta: item.meta,
   };
 }
@@ -90,7 +90,7 @@ function buildDerivedHeader(
   }
 
   const [root, ...rest] = stack;
-  if (root.kind === "workspace-root" && root.meta?.workspaceId) {
+  if (root.descriptorId === "workspace" && root.meta?.workspaceId) {
     const workspace = workspaces.find(
       (item) => item.id === root.meta?.workspaceId
     );
