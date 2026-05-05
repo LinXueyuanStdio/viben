@@ -84,6 +84,31 @@ interface BreadcrumbDropdownRule {
   build: (input: ResolvePageIndexBranchInput) => BreadcrumbDropdownItem[];
 }
 
+interface WorkspaceSectionDropdownInput {
+  workspaceId: string;
+  activeSection?: WorkspaceSection;
+  buildLabel?: (titleKey: string, fallbackLabel: string) => string;
+  onSelectSection?: (
+    section: WorkspaceSection,
+    routePath: string,
+    href: string
+  ) => void;
+  allowGithub?: boolean;
+}
+
+type WorkspaceSectionDropdownBuilder = (
+  input: WorkspaceSectionDropdownInput
+) => BreadcrumbDropdownItem[];
+
+function buildDropdownItems<T>(
+  items: T[],
+  mapItem: (item: T, index: number) => BreadcrumbDropdownItem | null | undefined
+): BreadcrumbDropdownItem[] {
+  return items
+    .map((item, index) => mapItem(item, index))
+    .filter((item): item is BreadcrumbDropdownItem => Boolean(item));
+}
+
 export function stackToDesktopSegments(
   stack: BreadcrumbStackItem[] | undefined
 ): DesktopBreadcrumbSegment[] {
@@ -254,7 +279,7 @@ export function inferBreadcrumbSegmentKind(
   return undefined;
 }
 
-export function buildSystemRootDropdownItems({
+export function buildRootDropdownItems({
   workspaces = [],
   currentArea = "home",
   activeWorkspaceId,
@@ -277,7 +302,7 @@ export function buildSystemRootDropdownItems({
     ? getWorkspaceSectionRoutePath(currentSection)
     : "";
 
-  const workspaceItems: BreadcrumbDropdownItem[] = workspaces.map((workspace) => {
+  const workspaceItems = buildDropdownItems(workspaces, (workspace) => {
     const workspaceLabel =
       workspace.type === "global"
         ? labelGlobalWorkspace ??
@@ -291,17 +316,15 @@ export function buildSystemRootDropdownItems({
           ? `/workspace/${encodeURIComponent(workspace.id)}/${sectionRoutePath}`
           : `/workspace/${encodeURIComponent(workspace.id)}`;
 
-    const icon: IconData = {
-      type: "lucide",
-      value: workspace.type === "global" ? "globe" : "folder-open",
-    };
-
     return {
       id: `workspace:${workspace.id}`,
       label: workspaceLabel,
       href,
       description: workspace.path,
-      icon,
+      icon: {
+        type: "lucide",
+        value: workspace.type === "global" ? "globe" : "folder-open",
+      } as IconData,
       isActive: workspace.id === activeWorkspaceId,
       kind: "workspace-root",
       meta: {
@@ -315,39 +338,40 @@ export function buildSystemRootDropdownItems({
     };
   });
 
-  const systemItems: BreadcrumbDropdownItem[] = [
-    {
-      id: "root:settings",
-      label: getSettingsSectionLabel(),
-      href: "/settings/general",
-      icon: getSettingsSectionIcon(),
-      isActive: activeHref?.startsWith("/settings") ?? false,
+  const systemItems = buildDropdownItems(
+    [
+      {
+        id: "root:settings",
+        label: getSettingsSectionLabel(),
+        href: "/settings/general",
+        icon: getSettingsSectionIcon(),
+        isActive: activeHref?.startsWith("/settings") ?? false,
+      },
+      {
+        id: "root:documents",
+        label: buildLabel?.("nav.documents", "Documents") ?? "Documents",
+        href: "/documents",
+        icon: { type: "lucide", value: "file-text" } as IconData,
+        isActive: activeHref === "/documents",
+      },
+      {
+        id: "root:devices",
+        label: buildLabel?.("nav.devices", "Devices") ?? "Devices",
+        href: "/devices/pair",
+        icon: { type: "lucide", value: "smartphone" } as IconData,
+        isActive: activeHref === "/devices/pair",
+      },
+    ],
+    (item) => ({
+      ...item,
       kind: "global-route",
-    },
-    {
-      id: "root:documents",
-      label: buildLabel?.("nav.documents", "Documents") ?? "Documents",
-      href: "/documents",
-      icon: { type: "lucide", value: "file-text" } as IconData,
-      isActive: activeHref === "/documents",
-      kind: "global-route",
-    },
-    {
-      id: "root:devices",
-      label: buildLabel?.("nav.devices", "Devices") ?? "Devices",
-      href: "/devices/pair",
-      icon: { type: "lucide", value: "smartphone" } as IconData,
-      isActive: activeHref === "/devices/pair",
-      kind: "global-route",
-    },
-  ];
+    })
+  );
 
   return [...workspaceItems, ...systemItems];
 }
 
-export const buildWorkspaceRootDropdownItems = buildSystemRootDropdownItems;
-
-export function buildWorkspaceSectionDropdownItems({
+function buildWorkspaceSectionMenuDropdownItems({
   workspaceId,
   activeSection,
   buildLabel,
@@ -364,28 +388,75 @@ export function buildWorkspaceSectionDropdownItems({
   ) => void;
   allowGithub?: boolean;
 }): BreadcrumbDropdownItem[] {
-  return WORKSPACE_SECTION_DESCRIPTORS.filter((item) =>
-    allowGithub ? true : item.section !== "github"
-  ).map((item) => {
-    const href = `/workspace/${encodeURIComponent(workspaceId)}/${item.routePath}`;
-    return {
-      id: `workspace:${workspaceId}:${item.section}`,
-      label:
-        buildLabel?.(item.titleKey, item.fallbackLabel) ?? item.fallbackLabel,
-      href,
-      icon: item.icon,
-      isActive: item.section === activeSection,
-      kind: "workspace-section",
-      meta: {
-        workspaceId,
-        section: item.section,
-        routePath: item.routePath,
-      },
-      onSelect: onSelectSection
-        ? () => onSelectSection(item.section, item.routePath, href)
-        : undefined,
-    };
+  return buildDropdownItems(
+    WORKSPACE_SECTION_DESCRIPTORS.filter((item) =>
+      allowGithub ? true : item.section !== "github"
+    ),
+    (item) => {
+      const href = `/workspace/${encodeURIComponent(workspaceId)}/${item.routePath}`;
+      return {
+        id: `workspace:${workspaceId}:${item.section}`,
+        label:
+          buildLabel?.(item.titleKey, item.fallbackLabel) ?? item.fallbackLabel,
+        href,
+        icon: item.icon,
+        isActive: item.section === activeSection,
+        kind: "workspace-section",
+        meta: {
+          workspaceId,
+          section: item.section,
+          routePath: item.routePath,
+        },
+        onSelect: onSelectSection
+          ? () => onSelectSection(item.section, item.routePath, href)
+          : undefined,
+      };
+    }
+  );
+}
+
+export function buildWorkspaceChatDropdownItems({
+  workspaceId,
+  activeSection,
+  buildLabel,
+  onSelectSection,
+  allowGithub = true,
+}: {
+  workspaceId: string;
+  activeSection?: WorkspaceSection;
+  buildLabel?: (titleKey: string, fallbackLabel: string) => string;
+  onSelectSection?: (
+    section: WorkspaceSection,
+    routePath: string,
+    href: string
+  ) => void;
+  allowGithub?: boolean;
+}): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems({
+    workspaceId,
+    activeSection,
+    buildLabel,
+    onSelectSection,
+    allowGithub,
   });
+}
+
+export function buildWorkspaceKanbanDropdownItems(
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems(input);
+}
+
+export function buildWorkspaceCronDropdownItems(
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems(input);
+}
+
+export function buildWorkspaceIdeasDropdownItems(
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems(input);
 }
 
 export function buildWorkspaceAppsDropdownItems({
@@ -397,9 +468,9 @@ export function buildWorkspaceAppsDropdownItems({
   pages?: PageConfig[];
   currentPageSlug?: string;
 }): BreadcrumbDropdownItem[] {
-  return pages
-    .filter((page) => !page.slug.includes("/"))
-    .map((page) => ({
+  return buildDropdownItems(
+    pages.filter((page) => !page.slug.includes("/")),
+    (page) => ({
       id: `workspace:${workspaceId}:page:${page.slug}`,
       label: page.name,
       href: `/workspace/${encodeURIComponent(workspaceId)}/page/${page.slug
@@ -416,7 +487,74 @@ export function buildWorkspaceAppsDropdownItems({
         workspaceId,
         pageSlug: page.slug,
       },
-    }));
+    })
+  );
+}
+
+export function buildWorkspaceAgentsDropdownItems({
+  workspaceId,
+  activeSection,
+  buildLabel,
+  onSelectSection,
+  allowGithub = true,
+}: {
+  workspaceId: string;
+  activeSection?: WorkspaceSection;
+  buildLabel?: (titleKey: string, fallbackLabel: string) => string;
+  onSelectSection?: (
+    section: WorkspaceSection,
+    routePath: string,
+    href: string
+  ) => void;
+  allowGithub?: boolean;
+}): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems({
+    workspaceId,
+    activeSection,
+    buildLabel,
+    onSelectSection,
+    allowGithub,
+  });
+}
+
+export function buildWorkspaceFilesDropdownItems(
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems(input);
+}
+
+export function buildWorkspaceGithubDropdownItems(
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems(input);
+}
+
+export function buildWorkspaceChatMonitorDropdownItems(
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return buildWorkspaceSectionMenuDropdownItems(input);
+}
+
+export const WORKSPACE_SECTION_DROPDOWN_BUILDERS: Record<
+  WorkspaceSection,
+  WorkspaceSectionDropdownBuilder
+> = {
+  chat: buildWorkspaceChatDropdownItems,
+  kanban: buildWorkspaceKanbanDropdownItems,
+  cron: buildWorkspaceCronDropdownItems,
+  ideas: buildWorkspaceIdeasDropdownItems,
+  agent: buildWorkspaceAgentsDropdownItems,
+  files: buildWorkspaceFilesDropdownItems,
+  github: buildWorkspaceGithubDropdownItems,
+  "chat-monitor": buildWorkspaceChatMonitorDropdownItems,
+};
+
+export function buildWorkspaceSectionDropdownItems(
+  section: WorkspaceSection,
+  input: WorkspaceSectionDropdownInput
+): BreadcrumbDropdownItem[] {
+  return (WORKSPACE_SECTION_DROPDOWN_BUILDERS[section] ??
+    buildWorkspaceChatDropdownItems)(input);
 }
 
 export function buildSettingsDropdownItems({
@@ -426,7 +564,7 @@ export function buildSettingsDropdownItems({
   activeSection?: string;
   buildLabel?: (titleKey: string, fallbackLabel: string) => string;
 }): BreadcrumbDropdownItem[] {
-  return SETTINGS_SECTION_DESCRIPTORS.map((item) => ({
+  return buildDropdownItems(SETTINGS_SECTION_DESCRIPTORS, (item) => ({
     id: `settings:${item.section}`,
     label:
       buildLabel?.(item.titleKey, item.fallbackLabel) ?? item.fallbackLabel,
@@ -475,7 +613,7 @@ export function resolvePageIndexBranch({
     {
       matches: (_input, kind) => kind === "workspace-root",
       build: (input) =>
-        buildSystemRootDropdownItems({
+        buildRootDropdownItems({
           workspaces: input.workspaces,
           currentArea: input.currentArea,
           activeWorkspaceId: input.activeWorkspaceId,
@@ -492,7 +630,7 @@ export function resolvePageIndexBranch({
         input.segment.href.startsWith("/settings/") &&
         input.segment.label === getSettingsSectionLabel(),
       build: (input) =>
-        buildSystemRootDropdownItems({
+        buildRootDropdownItems({
           workspaces: input.workspaces,
           currentArea: input.currentArea,
           activeWorkspaceId: input.activeWorkspaceId,
@@ -530,14 +668,16 @@ export function resolvePageIndexBranch({
       matches: (input, kind) =>
         kind === "workspace-section" &&
         Boolean(input.workspaceId ?? input.segment.meta?.workspaceId),
-      build: (input) =>
-        buildWorkspaceSectionDropdownItems({
+      build: (input) => {
+        const section = input.segment.meta?.section ?? input.currentSection ?? "chat";
+        return buildWorkspaceSectionDropdownItems(section, {
           workspaceId: input.workspaceId ?? input.segment.meta?.workspaceId ?? "",
-          activeSection: input.segment.meta?.section ?? input.currentSection,
+          activeSection: section,
           buildLabel: input.buildLabel,
           onSelectSection: input.onSelectSection,
           allowGithub: input.allowGithub,
-        }),
+        });
+      },
     },
   ];
 
