@@ -11,7 +11,7 @@ import type { ExecutorType } from "../../types";
 /**
  * Proxy type identifier
  */
-export type ChatProxyType = "spawn" | "sdk" | "openclaw";
+export type ChatProxyType = "spawn" | "sdk" | "gateway";
 
 /**
  * Result from a chat execution

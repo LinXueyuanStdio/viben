@@ -28,7 +28,7 @@ export default defineConfig({
   // Optional dependencies that are dynamically imported at runtime
   // Note: fastify and ws must be external to avoid "Dynamic require of events is not supported" error
   // Note: yaml must be external because yaml@2.8+ uses CJS require("process") which breaks in ESM bundles
-  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws", "yaml", "@openclaw/sdk"],
+  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws", "yaml"],
   // Inject version at build time
   define: {
     __VERSION__: JSON.stringify(VERSION),

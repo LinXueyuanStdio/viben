@@ -15,7 +15,7 @@
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { ClientSideToolOptions } from "../../../services/client-tool-completion";
-import { clientToolCompletionRegistry } from "../../../services/client-tool-completion";
+import { ClientToolCancelledError, clientToolCompletionRegistry } from "../../../services/client-tool-completion";
 import { registerSdkMcpServer } from "../sdk-mcp-registry";
 
 registerSdkMcpServer("presentation", (sdk, context) => {
@@ -31,6 +31,21 @@ registerSdkMcpServer("presentation", (sdk, context) => {
 
   function error(message: string): CallToolResult {
     return { content: [{ type: "text" as const, text: message }], isError: true };
+  }
+
+  /**
+   * Wrapper around waitForClient that catches ClientToolCancelledError
+   * and returns a graceful error result instead of letting the exception propagate.
+   */
+  async function safeWaitForClient(sid: string): Promise<CallToolResult> {
+    try {
+      return await clientToolCompletionRegistry.waitForClient(sid);
+    } catch (err) {
+      if (err instanceof ClientToolCancelledError) {
+        return { content: [{ type: "text" as const, text: "Presentation cancelled by user." }], isError: true };
+      }
+      throw err;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -226,7 +241,7 @@ registerSdkMcpServer("presentation", (sdk, context) => {
           if (!sessionId) {
             return error("Error: no sessionId available for client-side tool execution");
           }
-          return await clientToolCompletionRegistry.waitForClient(sessionId);
+          return await safeWaitForClient(sessionId);
         }
       ),
       tool(
@@ -241,7 +256,7 @@ registerSdkMcpServer("presentation", (sdk, context) => {
           if (!sessionId) {
             return error("Error: no sessionId available for client-side tool execution");
           }
-          return await clientToolCompletionRegistry.waitForClient(sessionId);
+          return await safeWaitForClient(sessionId);
         }
       ),
       tool(
@@ -256,7 +271,7 @@ registerSdkMcpServer("presentation", (sdk, context) => {
           if (!sessionId) {
             return error("Error: no sessionId available for client-side tool execution");
           }
-          return await clientToolCompletionRegistry.waitForClient(sessionId);
+          return await safeWaitForClient(sessionId);
         }
       ),
       tool(
@@ -271,7 +286,7 @@ registerSdkMcpServer("presentation", (sdk, context) => {
           if (!sessionId) {
             return error("Error: no sessionId available for client-side tool execution");
           }
-          return await clientToolCompletionRegistry.waitForClient(sessionId);
+          return await safeWaitForClient(sessionId);
         }
       ),
       tool(
@@ -286,7 +301,7 @@ registerSdkMcpServer("presentation", (sdk, context) => {
           if (!sessionId) {
             return error("Error: no sessionId available for client-side tool execution");
           }
-          return await clientToolCompletionRegistry.waitForClient(sessionId);
+          return await safeWaitForClient(sessionId);
         }
       ),
       tool(

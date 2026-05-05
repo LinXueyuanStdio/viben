@@ -20,10 +20,14 @@ import { ExecutorError } from "../../error";
  * @openclaw/sdk is loaded lazily (optional dependency).
  */
 class OpenClawLegacyChatProxy implements ChatProxy {
-  readonly proxyType = "openclaw" as const;
+  readonly proxyType = "gateway" as const;
 
   async execute(options: ChatOptions): Promise<ChatResult> {
     try {
+      if (!options.prompt) {
+        return { exitCode: 1, error: "prompt is required" };
+      }
+
       // Lazy-load the unified executor to avoid top-level @openclaw/sdk import
       const { getExecutor } = await import("../../executor");
       const executor = getExecutor("OPENCLAW");
