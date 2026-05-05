@@ -126,7 +126,17 @@ export interface DesktopRoutingApi {
   pushChildPage: (
     item: BreadcrumbStackItem,
     location: DesktopLocation,
-    options?: { mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
+    options?: {
+      mode?: "push" | "replace";
+      openMode?: DesktopNavigationOptions["openMode"];
+      tabInfo?: Partial<{
+        type: TabType;
+        name: string;
+        icon: IconData;
+        slug: string;
+        workspaceId: string;
+      }>;
+    }
   ) => void;
   pushCurrentPageChild: (
     pageSlug: string,
@@ -331,19 +341,30 @@ export function useDesktopRouting(): DesktopRoutingApi {
     (
       item: BreadcrumbStackItem,
       location: DesktopLocation,
-      options?: { mode?: "push" | "replace"; openMode?: DesktopNavigationOptions["openMode"] }
+      options?: {
+        mode?: "push" | "replace";
+        openMode?: DesktopNavigationOptions["openMode"];
+        tabInfo?: Partial<{
+          type: TabType;
+          name: string;
+          icon: IconData;
+          slug: string;
+          workspaceId: string;
+        }>;
+      }
     ) => {
       if (options?.openMode === "new-tab") {
         pageTabs.openLocation(location, {
           openInNewTab: true,
           breadcrumbStack: [...currentStack, item],
+          tabInfo: options?.tabInfo,
         });
         return;
       }
 
       pageTabs.pushPage(item, location, {
         mode: options?.mode,
-      });
+      }, options?.tabInfo);
     },
     [currentStack, pageTabs]
   );
@@ -402,6 +423,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       pushChildPage(item, location, {
         mode: stackMode,
+        tabInfo: resolvedTabInfo,
       });
     },
     [currentStack, currentWorkspaceId, pageTabs, pushChildPage]
