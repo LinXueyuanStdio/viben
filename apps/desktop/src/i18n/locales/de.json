@@ -4057,6 +4057,11 @@
         "message": "An unknown error occurred. Please check details or contact support."
       },
       "downloadNodejs": "Download Node.js"
+    },
+    "agentSetup": {
+      "provider": {
+        "providerLabel": "Provider"
+      }
     }
   },
   "chat": {
@@ -5761,5 +5766,24 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "screenshot": {
+    "loadFailed": "Screenshot load failed, press Esc to exit and retry",
+    "loading": "Loading screenshot...",
+    "textPlaceholder": "Enter text...",
+    "undo": "Undo (Ctrl+Z)",
+    "confirm": "Confirm (Enter)",
+    "cancel": "Cancel (Esc)"
+  },
+  "presentation": {
+    "finish": "Finish Presentation",
+    "cancel": "Cancel Presentation"
+  },
+  "workspaceWeb": {
+    "notFound": "Workspace not found.",
+    "invalidPage": "Invalid web page",
+    "missingUrl": "The requested workspace web page is missing a valid `url` query parameter.",
+    "backToFiles": "Back to files",
+    "openExternally": "Open externally"
   }
 }

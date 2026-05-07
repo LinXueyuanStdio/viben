@@ -4247,7 +4247,8 @@
         "saveAndContinue": "保存并继续",
         "alreadyConfigured": "提供商已配置",
         "useExisting": "使用现有的 {{provider}} 配置",
-        "addNew": "新增"
+        "addNew": "新增",
+        "providerLabel": "提供商"
       },
       "model": {
         "title": "选择模型",
@@ -6587,5 +6588,24 @@
       "changeCover": "更换封面",
       "remove": "移除"
     }
+  },
+  "screenshot": {
+    "loadFailed": "截图加载失败，按 Esc 退出后重试",
+    "loading": "正在加载截图...",
+    "textPlaceholder": "输入文字...",
+    "undo": "撤销 (Ctrl+Z)",
+    "confirm": "确认 (Enter)",
+    "cancel": "取消 (Esc)"
+  },
+  "presentation": {
+    "finish": "完成演示",
+    "cancel": "取消演示"
+  },
+  "workspaceWeb": {
+    "notFound": "未找到工作区",
+    "invalidPage": "无效的网页",
+    "missingUrl": "请求的工作区网页缺少有效的 `url` 查询参数。",
+    "backToFiles": "返回文件",
+    "openExternally": "在外部打开"
   }
 }

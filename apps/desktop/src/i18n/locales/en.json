@@ -4247,7 +4247,8 @@
         "saveAndContinue": "Save & Continue",
         "alreadyConfigured": "Provider already configured",
         "useExisting": "Use existing {{provider}} configuration",
-        "addNew": "Add New"
+        "addNew": "Add New",
+        "providerLabel": "Provider"
       },
       "model": {
         "title": "Select a Model",
@@ -6587,5 +6588,24 @@
       "changeCover": "Change cover",
       "remove": "Remove"
     }
+  },
+  "screenshot": {
+    "loadFailed": "Screenshot load failed, press Esc to exit and retry",
+    "loading": "Loading screenshot...",
+    "textPlaceholder": "Enter text...",
+    "undo": "Undo (Ctrl+Z)",
+    "confirm": "Confirm (Enter)",
+    "cancel": "Cancel (Esc)"
+  },
+  "presentation": {
+    "finish": "Finish Presentation",
+    "cancel": "Cancel Presentation"
+  },
+  "workspaceWeb": {
+    "notFound": "Workspace not found.",
+    "invalidPage": "Invalid web page",
+    "missingUrl": "The requested workspace web page is missing a valid `url` query parameter.",
+    "backToFiles": "Back to files",
+    "openExternally": "Open externally"
   }
 }

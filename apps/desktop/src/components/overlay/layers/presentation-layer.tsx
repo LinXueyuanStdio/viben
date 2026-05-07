@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Tldraw } from "tldraw"
 import type { Editor } from "tldraw"
 import "tldraw/tldraw.css"
@@ -28,6 +29,7 @@ function postIncompleteCompletions() {
 }
 
 export function PresentationLayer() {
+  const { t } = useTranslation()
   const presentationActive = useOverlayStore((s) => s.presentationActive)
   const steps = useOverlayStore((s) => s.presentationSteps)
   const currentStep = useOverlayStore((s) => s.presentationCurrentStep)
@@ -388,7 +390,7 @@ export function PresentationLayer() {
           }}
         >
           <CheckCircle size={14} />
-          完成演示
+          {t("presentation.finish", "Finish Presentation")}
         </button>
 
         {/* Exit button (abort — cancel all) */}
@@ -423,7 +425,7 @@ export function PresentationLayer() {
           onMouseUp={(e) => {
             e.currentTarget.style.transform = "scale(1)"
           }}
-          title="取消演示"
+          title={t("presentation.cancel", "Cancel Presentation")}
         >
           ✕
         </button>

@@ -400,7 +400,7 @@ function ProviderConfigView({
           {/* Provider type selector */}
           {allowedProviders.length > 1 && (
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Provider</Label>
+              <Label className="text-xs text-muted-foreground">{t("onboarding.agentSetup.provider.providerLabel")}</Label>
               <Select
                 value={selectedProviderType}
                 onValueChange={(v) => setSelectedProviderType(v as ProviderType)}

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useSearchParams } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, ExternalLink } from "lucide-react";
 import { PageWrapper } from "@/components/layout";
@@ -16,6 +17,7 @@ function isEmbeddableUrl(url: string): boolean {
 }
 
 export function WorkspaceWebPage() {
+  const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const [searchParams] = useSearchParams();
   const { getWorkspace } = useLocalWorkspaces();
@@ -83,7 +85,7 @@ export function WorkspaceWebPage() {
   if (!workspace) {
     return (
       <PageWrapper className="flex h-full items-center justify-center">
-        <div className="text-sm text-muted-foreground">Workspace not found.</div>
+        <div className="text-sm text-muted-foreground">{t("workspaceWeb.notFound", "Workspace not found.")}</div>
       </PageWrapper>
     );
   }
@@ -105,9 +107,9 @@ export function WorkspaceWebPage() {
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <AlertTriangle className="h-10 w-10 text-muted-foreground" />
           <div className="space-y-2">
-            <h2 className="text-lg font-semibold">Invalid web page</h2>
+            <h2 className="text-lg font-semibold">{t("workspaceWeb.invalidPage", "Invalid web page")}</h2>
             <p className="text-sm text-muted-foreground">
-              The requested workspace web page is missing a valid `url` query parameter.
+              {t("workspaceWeb.missingUrl", "The requested workspace web page is missing a valid `url` query parameter.")}
             </p>
           </div>
           <Button
@@ -116,7 +118,7 @@ export function WorkspaceWebPage() {
           >
             <>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to files
+              {t("workspaceWeb.backToFiles", "Back to files")}
             </>
           </Button>
         </div>
@@ -141,7 +143,7 @@ export function WorkspaceWebPage() {
           <Button asChild size="sm" variant="ghost">
             <a href={url} target="_blank" rel="noreferrer">
               <ExternalLink className="mr-2 h-4 w-4" />
-              Open externally
+              {t("workspaceWeb.openExternally", "Open externally")}
             </a>
           </Button>
         }
