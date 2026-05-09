@@ -60,8 +60,8 @@ export function PresentationLayer({
   currentStep,
   playerState,
   detailsOpen,
-  streamDone,
-  sessionId,
+  streamDone: _streamDone,
+  sessionId: _sessionId,
   zIndex,
   stopPresentation,
   updateStepStatus,
@@ -75,17 +75,23 @@ export function PresentationLayer({
   playerGoToStart,
   playerGoToEnd,
   togglePresentationDetails,
-  markPresentationStreamDone,
+  markPresentationStreamDone: _markPresentationStreamDone,
   postToolCompletion,
   hasCompletedTool,
-  getGatewayUrl,
+  getGatewayUrl: _getGatewayUrl,
   log,
   logFlush,
-  logClear,
+  logClear: _logClear,
   getSteps,
   getPlayerState,
   getStreamDone,
 }: PresentationLayerProps) {
+  // Props prefixed with _ are available for future use (screenshots, session management)
+  void _streamDone
+  void _sessionId
+  void _markPresentationStreamDone
+  void _getGatewayUrl
+  void _logClear
   const processedIndexRef = useRef(-1)
   const stepsCount = steps.length
 

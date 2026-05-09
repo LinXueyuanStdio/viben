@@ -37,7 +37,6 @@ import {
   DocumentsPage,
   ChatMonitorPage,
   PageDebugPage,
-  WorkspaceAppsPage,
   WorkspacePage,
   WorkspaceWebPage,
   OsPage,
@@ -188,8 +187,6 @@ function App() {
 
                 {/* Workspace routes */}
                 <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
-                <Route path="workspace/:workspaceId/apps" element={<WorkspaceAppsPage />} />
-                <Route path="workspace/page" element={<WorkspacePage />} />
                 <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
                 <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
                 <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
@@ -197,12 +194,14 @@ function App() {
                 <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
                 <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
                 <Route path="workspace/:workspaceId/executor/:executorType" element={<ExecutorDetailPage />} />
-                <Route path="workspace/:workspaceId/page/*" element={<WorkspacePage />} />
+                <Route path="workspace/:workspaceId/pages/*" element={<WorkspacePage />} />
                 <Route path="workspace/:workspaceId/web" element={<WorkspaceWebPage />} />
                 <Route path="workspace/:workspaceId/agent" element={<WorkspaceAgentsPage />} />
-                <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
                 <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
                 <Route path="workspace/:workspaceId/chat-monitor" element={<ChatMonitorPage />} />
+
+                {/* Catch-all redirect to workspace */}
+                <Route path="*" element={<Navigate to="/workspace" replace />} />
               </Route>
 
               {/* Tray popup - separate window without layout */}

@@ -686,17 +686,17 @@ export {
   OpenClawExecutor,
   QwenCodeExecutor,
   BaseExecutor,
-} from "./executor";
+} from "./executors";
 
 // Export types (no collision risk for types)
 export type {
   Executor,
   ExecutorCapability,
-  ExecutorConfig as UnifiedExecutorConfig,
+  UnifiedExecutorConfig,
   SpawnOptions,
   SpawnResult,
-  ChatOptions as UnifiedChatOptions,
-  ChatResult,
+  UnifiedChatOptions,
+  UnifiedChatResult as ChatResult,
   ExecutionResult,
   ExecutorErrorType,
   RunCommandOptions,
@@ -717,7 +717,7 @@ export type {
   OpencodeExecutorConfig,
   OpenClawExecutorConfig,
   QwenCodeExecutorConfig,
-} from "./executor";
+} from "./executors";
 
 /**
  * Initialize all core managers

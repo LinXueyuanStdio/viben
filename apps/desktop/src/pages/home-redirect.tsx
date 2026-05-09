@@ -19,5 +19,5 @@ export function HomeRedirect() {
   // Restore the active tab's current URL if available
   const activeUrl = activeTab ? getTabUrl(activeTab) : null;
 
-  return <Navigate to={activeUrl || "/workspace/global"} replace />;
+  return <Navigate to={activeUrl || "/workspace"} replace />;
 }

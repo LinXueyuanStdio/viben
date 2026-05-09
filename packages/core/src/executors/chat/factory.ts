@@ -29,7 +29,7 @@ class OpenClawLegacyChatProxy implements ChatProxy {
       }
 
       // Lazy-load the unified executor to avoid top-level @openclaw/sdk import
-      const { getExecutor } = await import("../../executor");
+      const { getExecutor } = await import("../ops");
       const executor = getExecutor("OPENCLAW");
 
       // Use streaming to output text in real-time
