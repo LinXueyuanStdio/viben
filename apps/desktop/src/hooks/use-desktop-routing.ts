@@ -1,27 +1,28 @@
 import { useCallback, useEffect, useId, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  usePageTabs,
-  type TabType,
-} from "@/hooks/use-page-tabs";
+import { useActiveTabState, useTabActions, useTabNavigation, type ActiveTabState } from "@/hooks/use-page-tabs";
 import {
   useOptionalNavigationShell,
   useNavigationShellHeaderState,
 } from "@/components/navigation";
 import type { IconData } from "@/components/ui/icon-picker";
 import {
-  urlToLocation,
-  type DesktopLocation,
-  getSettingsSectionDescriptor,
-  getWorkspaceSectionDescriptor,
   normalizeSettingsSection,
   normalizeWorkspaceSection,
   type SettingsSection,
-  type BreadcrumbStackItem,
   type WorkspaceSection,
 } from "@/navigation/navigation-meta";
-import { createLocationBreadcrumbItem } from "@/navigation/breadcrumb-stack";
+import {
+  navigate,
+  buildNavigateLeaf,
+  buildBreadcrumbItem,
+  buildColdStartBreadcrumb,
+  registry,
+} from "@/navigation/navigate";
+import type { NavigateHeaders, BreadcrumbStackItem } from "@/navigation/navigate";
 import type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
+import { locationToUrl } from "@/navigation/navigation-meta";
+import { useTabStore } from "@/stores/tab-store";
 import type { Workspace } from "@/types";
 
 export interface DesktopNavigationOptions {
@@ -33,8 +34,8 @@ export interface DesktopNavigationOptions {
 }
 
 export interface DesktopRoutingApi {
-  currentTab: ReturnType<typeof usePageTabs>["activeTab"];
-  currentRoute: DesktopLocation | null;
+  currentTab: ActiveTabState["activeTab"];
+  currentUrl: string | null;
   currentStack: BreadcrumbStackItem[];
   breadcrumb: BreadcrumbStackItem[];
   currentDescriptor: BreadcrumbStackItem | null;
@@ -125,17 +126,10 @@ export interface DesktopRoutingApi {
 
   pushChildPage: (
     item: BreadcrumbStackItem,
-    location: DesktopLocation,
+    url: string,
     options?: {
       mode?: "push" | "replace";
       openMode?: DesktopNavigationOptions["openMode"];
-      tabInfo?: Partial<{
-        type: TabType;
-        name: string;
-        icon: IconData;
-        slug: string;
-        workspaceId: string;
-      }>;
     }
   ) => void;
   pushCurrentPageChild: (
@@ -147,8 +141,8 @@ export interface DesktopRoutingApi {
     input?: { title?: string; icon?: IconData; webId?: string; mode?: "push" | "replace" }
   ) => void;
 
-  openRoute: (route: DesktopLocation, options?: DesktopNavigationOptions) => void;
-  focusOrOpenRoute: (route: DesktopLocation) => void;
+  openRoute: (url: string, options?: DesktopNavigationOptions) => void;
+  focusOrOpenRoute: (url: string) => void;
   openPath: (
     path: string,
     input?: {
@@ -156,7 +150,7 @@ export interface DesktopRoutingApi {
       icon?: IconData;
       workspaceId?: string;
       slug?: string;
-      type?: TabType;
+      descriptorId?: string;
       openMode?: DesktopNavigationOptions["openMode"];
     }
   ) => void;
@@ -168,6 +162,7 @@ export interface DesktopRoutingApi {
   goForward: () => void;
   closeCurrentTab: () => void;
   detachCurrentTabToNewWindow: () => Promise<boolean>;
+  popToBreadcrumb: (index: number) => void;
 
   setHeaderCenter: (content: ReactNode | null) => void;
   setHeaderRight: (content: ReactNode | null) => void;
@@ -176,9 +171,7 @@ export interface DesktopRoutingApi {
   headerRight: ReactNode | null;
 }
 
-function buildOpenTabFlag(options?: DesktopNavigationOptions): boolean {
-  return options?.openMode === "new-tab";
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function safeHostname(url: string): string {
   try {
@@ -188,45 +181,100 @@ function safeHostname(url: string): string {
   }
 }
 
-function inferWorkspaceId(location: DesktopLocation | null): string | null {
-  if (!location) {
-    return null;
-  }
-
-  return "workspaceId" in location ? location.workspaceId : null;
+function inferWorkspaceIdFromUrl(url: string | null): string | null {
+  if (!url) return null;
+  const match = registry.match(url);
+  return match?.params?.workspaceId ?? null;
 }
 
-function pathToDesktopLocation(path: string): DesktopLocation {
-  return urlToLocation(path) ?? { kind: "global-route", path };
+function buildTabStoreActions(activeTabId: string | null) {
+  const store = useTabStore.getState();
+  return {
+    activeTabId: activeTabId ?? "",
+    pushNavigation: store.pushNavigation,
+    replaceNavigation: store.replaceNavigation,
+    resetNavigation: store.resetNavigation,
+  };
 }
+
+// ─── Main Hook ────────────────────────────────────────────────────────────────
 
 export function useDesktopRouting(): DesktopRoutingApi {
   const { t } = useTranslation();
-  const pageTabs = usePageTabs();
+  const tabState = useActiveTabState();
+  const tabActions = useTabActions();
+  const tabNav = useTabNavigation();
   const shell = useOptionalNavigationShell();
   const shellHeader = useNavigationShellHeaderState();
   const ownerId = useId();
 
-  const currentRoute = pageTabs.currentNavigationState?.location ?? null;
-  const currentStack = pageTabs.currentNavigationState?.breadcrumbStack ?? [];
+  const currentUrl = tabState.currentUrl;
+  const currentNavigationState = tabState.currentNavigationState;
+  const currentStack = useMemo(
+    () => currentNavigationState?.breadcrumbStack ?? [],
+    [currentNavigationState]
+  );
   const currentDescriptor = currentStack[currentStack.length - 1] ?? null;
-  const currentWorkspaceId = inferWorkspaceId(currentRoute);
+  const currentWorkspaceId = inferWorkspaceIdFromUrl(currentUrl);
   const currentWorkspace = shellHeader?.workspace;
 
-  const openRoute = useCallback(
-    (route: DesktopLocation, options?: DesktopNavigationOptions) => {
-      pageTabs.openLocation(route, {
-        openInNewTab: buildOpenTabFlag(options),
+  // ─── Pattern A: Simple navigate (reset) ─────────────────────────────────────
+
+  const navigateReset = useCallback(
+    (url: string, headers?: NavigateHeaders) => {
+      if (!tabState.activeTabId) return;
+      navigate("reset", url, headers, buildTabStoreActions(tabState.activeTabId));
+    },
+    [tabState.activeTabId]
+  );
+
+  const navigatePush = useCallback(
+    (url: string, headers?: NavigateHeaders) => {
+      if (!tabState.activeTabId) return;
+      navigate("push", url, headers, buildTabStoreActions(tabState.activeTabId));
+    },
+    [tabState.activeTabId]
+  );
+
+  const navigateReplace = useCallback(
+    (url: string, headers?: NavigateHeaders) => {
+      if (!tabState.activeTabId) return;
+      navigate("replace", url, headers, buildTabStoreActions(tabState.activeTabId));
+    },
+    [tabState.activeTabId]
+  );
+
+  // ─── Open in new tab ────────────────────────────────────────────────────────
+
+  const openInNewTab = useCallback(
+    (url: string, headers?: NavigateHeaders, breadcrumbStack?: BreadcrumbStackItem[]) => {
+      const stack = breadcrumbStack ?? buildColdStartBreadcrumb(url, headers);
+      const store = useTabStore.getState();
+      store.openTab({
+        navigationState: { url, breadcrumbStack: stack },
       });
     },
-    [pageTabs]
+    []
+  );
+
+  // ─── Public API implementations ──────────────────────────────────────────────
+
+  const openRoute = useCallback(
+    (url: string, options?: DesktopNavigationOptions) => {
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, { label: options?.title, icon: options?.icon });
+        return;
+      }
+      navigateReset(url, { label: options?.title, icon: options?.icon });
+    },
+    [navigateReset, openInNewTab]
   );
 
   const focusOrOpenRoute = useCallback(
-    (route: DesktopLocation) => {
-      pageTabs.openLocation(route);
+    (url: string) => {
+      navigateReset(url);
     },
-    [pageTabs]
+    [navigateReset]
   );
 
   const openPath = useCallback(
@@ -237,71 +285,70 @@ export function useDesktopRouting(): DesktopRoutingApi {
         icon?: IconData;
         workspaceId?: string;
         slug?: string;
-        type?: TabType;
+        descriptorId?: string;
         openMode?: DesktopNavigationOptions["openMode"];
       }
     ) => {
       if (input?.openMode === "new-tab") {
-        const location = pathToDesktopLocation(path);
-        pageTabs.openLocation(location, {
-          openInNewTab: true,
-          tabInfo: {
-            type: input?.type,
-            name: input?.title,
-            icon: input?.icon,
-            slug: input?.slug,
-            workspaceId: input?.workspaceId,
-          },
-        });
+        openInNewTab(path, { label: input?.title, icon: input?.icon });
         return;
       }
-
-      pageTabs.navigateTo(path, {
-        type: input?.type ?? "workspace",
-        name: input?.title ?? path,
+      navigateReset(path, {
+        label: input?.title,
         icon: input?.icon,
-        slug: input?.slug,
-        workspaceId: input?.workspaceId,
+        meta: input?.workspaceId ? { workspaceId: input.workspaceId } : undefined,
       });
     },
-    [pageTabs]
+    [navigateReset, openInNewTab]
   );
 
   const openWorkspaceHome = useCallback(
     (workspaceId: string, options?: DesktopNavigationOptions) => {
-      pageTabs.openLocation(
-        { kind: "workspace-home", workspaceId },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: "home",
-            workspaceId,
-            name: workspaceId,
-          },
-        }
-      );
+      const url = registry.build("/workspace/:workspaceId", { workspaceId });
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url);
+        return;
+      }
+      navigateReset(url);
     },
-    [pageTabs]
+    [navigateReset, openInNewTab]
   );
 
   const openWorkspaceApps = useCallback(
     (workspaceId: string, options?: DesktopNavigationOptions) => {
-      pageTabs.openLocation(
-        { kind: "workspace-apps", workspaceId },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: "apps",
-            workspaceId,
-            name: t("page.pages", "Apps"),
-            icon: { type: "lucide", value: "layout-grid" },
-          },
-        }
-      );
+      const url = registry.build("/workspace/:workspaceId/pages", { workspaceId });
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url);
+        return;
+      }
+      navigateReset(url);
     },
-    [pageTabs, t]
+    [navigateReset, openInNewTab]
+  );
+
+  const pushChildPage = useCallback(
+    (
+      item: BreadcrumbStackItem,
+      url: string,
+      options?: {
+        mode?: "push" | "replace";
+        openMode?: DesktopNavigationOptions["openMode"];
+      }
+    ) => {
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, undefined, [...currentStack, item]);
+        return;
+      }
+
+      if (!tabState.activeTabId) return;
+      const store = useTabStore.getState();
+      if (options?.mode === "replace") {
+        store.replaceNavigation(tabState.activeTabId, url, item);
+      } else {
+        store.pushNavigation(tabState.activeTabId, url, item);
+      }
+    },
+    [currentStack, tabState.activeTabId, openInNewTab]
   );
 
   const openWorkspaceSection = useCallback(
@@ -310,24 +357,24 @@ export function useDesktopRouting(): DesktopRoutingApi {
       section: WorkspaceSection,
       options?: DesktopNavigationOptions
     ) => {
-      const descriptor = getWorkspaceSectionDescriptor(section);
-      pageTabs.openLocation(
-        { kind: "workspace-section", workspaceId, section },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: section === "chat" ? "chat" : "workspace",
-            slug: descriptor?.routePath ?? section,
-            workspaceId,
-            name: descriptor
-              ? t(descriptor.titleKey, descriptor.fallbackLabel)
-              : section,
-            icon: descriptor?.icon,
-          },
-        }
-      );
+      const url = registry.build(`/workspace/:workspaceId/${section}`, { workspaceId });
+
+      if (options?.stackMode === "push") {
+        const entry = registry.getEntry(`/workspace/:workspaceId/${section}`);
+        const leaf = entry
+          ? buildBreadcrumbItem(entry, { workspaceId })
+          : buildNavigateLeaf(url);
+        pushChildPage(leaf, url, { mode: "push" });
+        return;
+      }
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url);
+        return;
+      }
+      navigateReset(url);
     },
-    [pageTabs, t]
+    [navigateReset, openInNewTab, pushChildPage]
   );
 
   const openWorkspaceAgentList = useCallback(
@@ -337,132 +384,48 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [openWorkspaceSection]
   );
 
-  const pushChildPage = useCallback(
-    (
-      item: BreadcrumbStackItem,
-      location: DesktopLocation,
-      options?: {
-        mode?: "push" | "replace";
-        openMode?: DesktopNavigationOptions["openMode"];
-        tabInfo?: Partial<{
-          type: TabType;
-          name: string;
-          icon: IconData;
-          slug: string;
-          workspaceId: string;
-        }>;
-      }
-    ) => {
-      if (options?.openMode === "new-tab") {
-        pageTabs.openLocation(location, {
-          openInNewTab: true,
-          breadcrumbStack: [...currentStack, item],
-          tabInfo: options?.tabInfo,
-        });
-        return;
-      }
-
-      pageTabs.pushPage(item, location, {
-        mode: options?.mode,
-      }, options?.tabInfo);
-    },
-    [currentStack, pageTabs]
-  );
-
-  const openChildLocation = useCallback(
-    (
-      location: DesktopLocation,
-      item: BreadcrumbStackItem,
-      tabInfo: {
-        type: TabType;
-        slug?: string;
-        workspaceId?: string;
-        name: string;
-        icon?: IconData;
-      },
-      options?: DesktopNavigationOptions
-    ) => {
-      const explicitStack = options?.breadcrumbStack;
-      const explicitLeaf = explicitStack?.[explicitStack.length - 1];
-      const resolvedTabInfo = {
-        ...tabInfo,
-        name: explicitLeaf?.label ?? tabInfo.name,
-        icon: explicitLeaf?.icon ?? tabInfo.icon,
-      };
-
-      if (options?.openMode === "new-tab") {
-        pageTabs.openLocation(location, {
-          openInNewTab: true,
-          breadcrumbStack: explicitStack ?? [...currentStack, item],
-          tabInfo: resolvedTabInfo,
-        });
-        return;
-      }
-
-      if (explicitStack) {
-        pageTabs.openLocation(location, {
-          breadcrumbStack: explicitStack,
-          tabInfo: resolvedTabInfo,
-        });
-        return;
-      }
-
-      const sameWorkspace =
-        !("workspaceId" in location) ||
-        !currentWorkspaceId ||
-        currentWorkspaceId === location.workspaceId;
-      const stackMode =
-        options?.stackMode ?? (currentStack.length > 0 && sameWorkspace ? "push" : "open");
-
-      if (stackMode === "open") {
-        pageTabs.openLocation(location, {
-          tabInfo: resolvedTabInfo,
-        });
-        return;
-      }
-
-      pushChildPage(item, location, {
-        mode: stackMode,
-        tabInfo: resolvedTabInfo,
-      });
-    },
-    [currentStack, currentWorkspaceId, pageTabs, pushChildPage]
-  );
-
   const openWorkspaceAgentDetail = useCallback(
     (
       workspaceId: string,
       agentId: string,
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "workspace-agent-detail",
+      const url = registry.build("/workspace/:workspaceId/agent/:agentId", {
         workspaceId,
         agentId,
+      });
+      const headers: NavigateHeaders = {
+        label: options?.title ?? agentId,
+        icon: options?.icon ?? { type: "lucide", value: "bot" },
+        meta: { workspaceId, agentId },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `workspace:${workspaceId}:agent:${agentId}`,
-          descriptorId: "workspace-agent",
-          label: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-          meta: {
-            workspaceId,
-            agentId,
-          },
-        }),
-        {
-          type: "workspace",
-          slug: agentId,
-          workspaceId,
-          name: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        const stack = options?.breadcrumbStack ?? buildColdStartBreadcrumb(url, headers);
+        openInNewTab(url, headers, stack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = !currentWorkspaceId || currentWorkspaceId === workspaceId;
+      const stackMode =
+        options?.stackMode ?? (currentStack.length > 0 && sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openWorkspaceExecutorDetail = useCallback(
@@ -471,34 +434,42 @@ export function useDesktopRouting(): DesktopRoutingApi {
       executorType: string,
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "workspace-executor-detail",
+      const url = registry.build("/workspace/:workspaceId/executor/:executorType", {
         workspaceId,
         executorType,
+      });
+      const headers: NavigateHeaders = {
+        label: options?.title ?? executorType,
+        icon: options?.icon ?? { type: "lucide", value: "terminal" },
+        meta: { workspaceId, executorType },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `workspace:${workspaceId}:executor:${executorType}`,
-          descriptorId: "workspace-executor",
-          label: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-          meta: {
-            workspaceId,
-            executorType,
-          },
-        }),
-        {
-          type: "workspace",
-          slug: executorType,
-          workspaceId,
-          name: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        const stack = options?.breadcrumbStack ?? buildColdStartBreadcrumb(url, headers);
+        openInNewTab(url, headers, stack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = !currentWorkspaceId || currentWorkspaceId === workspaceId;
+      const stackMode =
+        options?.stackMode ?? (currentStack.length > 0 && sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openWorkspacePage = useCallback(
@@ -507,32 +478,26 @@ export function useDesktopRouting(): DesktopRoutingApi {
       pageSlug: string,
       options?: DesktopNavigationOptions
     ) => {
-      const breadcrumbStack = options?.breadcrumbStack;
-      const leaf = breadcrumbStack?.[breadcrumbStack.length - 1];
+      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+        workspaceId,
+        pageSlug,
+      });
 
-      pageTabs.openLocation(
-        { kind: "workspace-page", workspaceId, pageSlug },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          breadcrumbStack: options?.breadcrumbStack,
-          tabInfo: {
-            type: "page",
-            slug: pageSlug,
-            workspaceId,
-            name:
-              leaf?.label ??
-              options?.title ??
-              pageSlug.split("/").filter(Boolean).pop() ??
-              pageSlug,
-            icon:
-              leaf?.icon ??
-              options?.icon ??
-              { type: "lucide", value: "file-text" },
-          },
-        }
-      );
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, undefined, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      navigateReset(url);
     },
-    [pageTabs]
+    [navigateReset, openInNewTab, tabState.activeTabId]
   );
 
   const pushWorkspaceAgentDetail = useCallback(
@@ -572,27 +537,22 @@ export function useDesktopRouting(): DesktopRoutingApi {
       options?: DesktopNavigationOptions
     ) => {
       const title = input.title ?? safeHostname(input.url);
-      pageTabs.openLocation(
-        {
-          kind: "workspace-web",
-          workspaceId,
-          title,
-          url: input.url,
-          webId: input.webId,
-        },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "web",
-            slug: input.webId ?? input.url,
-            workspaceId,
-            name: title,
-            icon: { type: "lucide", value: "globe" },
-          },
-        }
-      );
+      const queryUrl = new URLSearchParams({ url: input.url, title });
+      if (input.webId) queryUrl.set("web_id", input.webId);
+      const url = `/workspace/${encodeURIComponent(workspaceId)}/web?${queryUrl.toString()}`;
+      const headers: NavigateHeaders = {
+        label: title,
+        icon: { type: "lucide", value: "globe" },
+        meta: { workspaceId, webId: input.webId, url: input.url },
+      };
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers);
+        return;
+      }
+      navigateReset(url, headers);
     },
-    [pageTabs]
+    [navigateReset, openInNewTab]
   );
 
   const openSettings = useCallback(
@@ -601,23 +561,15 @@ export function useDesktopRouting(): DesktopRoutingApi {
       options?: DesktopNavigationOptions
     ) => {
       const normalizedSection = normalizeSettingsSection(section);
-      const descriptor = getSettingsSectionDescriptor(normalizedSection);
-      pageTabs.openLocation(
-        { kind: "settings", section: normalizedSection },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "settings",
-            slug: normalizedSection,
-            name: descriptor
-              ? t(descriptor.titleKey, descriptor.fallbackLabel)
-              : normalizedSection,
-            icon: descriptor?.icon ?? { type: "lucide", value: "settings" },
-          },
-        }
-      );
+      const url = registry.build("/settings/:section", { section: normalizedSection });
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url);
+        return;
+      }
+      navigateReset(url);
     },
-    [pageTabs, t]
+    [navigateReset, openInNewTab]
   );
 
   const openAgentDetail = useCallback(
@@ -626,26 +578,41 @@ export function useDesktopRouting(): DesktopRoutingApi {
       workspacePath?: string,
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = { kind: "agent-detail", agentId, workspacePath };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `agent:${agentId}`,
-          descriptorId: "workspace-agent",
-          label: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-          meta: { agentId },
-        }),
-        {
-          type: "workspace",
-          slug: agentId,
-          name: options?.title ?? agentId,
-          icon: options?.icon ?? { type: "lucide", value: "bot" },
-        },
-        options
-      );
+      const params: Record<string, string> = { agentId };
+      let url = registry.build("/agent/:agentId", params);
+      if (workspacePath) {
+        url += `?workspace_path=${encodeURIComponent(workspacePath)}`;
+      }
+      const headers: NavigateHeaders = {
+        label: options?.title ?? agentId,
+        icon: options?.icon ?? { type: "lucide", value: "bot" },
+        meta: { agentId },
+      };
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [openChildLocation]
+    [currentStack, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openExecutorDetail = useCallback(
@@ -654,26 +621,40 @@ export function useDesktopRouting(): DesktopRoutingApi {
       workspacePath?: string,
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = { kind: "executor-detail", executorType, workspacePath };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `executor:${executorType}`,
-          descriptorId: "workspace-executor",
-          label: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-          meta: { executorType },
-        }),
-        {
-          type: "workspace",
-          slug: executorType,
-          name: options?.title ?? executorType,
-          icon: options?.icon ?? { type: "lucide", value: "terminal" },
-        },
-        options
-      );
+      let url = registry.build("/executor/:executorType", { executorType });
+      if (workspacePath) {
+        url += `?workspace_path=${encodeURIComponent(workspacePath)}`;
+      }
+      const headers: NavigateHeaders = {
+        label: options?.title ?? executorType,
+        icon: options?.icon ?? { type: "lucide", value: "terminal" },
+        meta: { executorType },
+      };
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [openChildLocation]
+    [currentStack, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openMcpServerDetail = useCallback(
@@ -682,34 +663,44 @@ export function useDesktopRouting(): DesktopRoutingApi {
       input: { executorType: string; workspacePath?: string },
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "mcp-server-detail",
-        serverName,
-        executorType: input.executorType,
-        workspacePath: input.workspacePath,
+      let url = registry.build("/mcp-server/:serverName", { serverName });
+      const queryParams = new URLSearchParams();
+      if (input.workspacePath) queryParams.set("workspace_path", input.workspacePath);
+      queryParams.set("executor_type", input.executorType);
+      const query = queryParams.toString();
+      if (query) url += `?${query}`;
+
+      const effectiveWorkspaceId = currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId;
+      const headers: NavigateHeaders = {
+        label: serverName,
+        icon: { type: "lucide", value: "server" },
+        meta: { workspaceId: effectiveWorkspaceId, executorType: input.executorType },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `mcp:${serverName}`,
-          descriptorId: "workspace-page",
-          label: serverName,
-          icon: { type: "lucide", value: "server" },
-          meta: {
-            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
-            executorType: input.executorType,
-          },
-        }),
-        {
-          type: "page",
-          slug: serverName,
-          name: serverName,
-          icon: { type: "lucide", value: "server" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [currentStack, currentWorkspaceId, openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openSubagentDetail = useCallback(
@@ -718,34 +709,44 @@ export function useDesktopRouting(): DesktopRoutingApi {
       input: { executorType: string; workspacePath?: string },
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "subagent-detail",
-        configId,
-        executorType: input.executorType,
-        workspacePath: input.workspacePath,
+      let url = registry.build("/subagent/:configId", { configId });
+      const queryParams = new URLSearchParams();
+      if (input.workspacePath) queryParams.set("workspace_path", input.workspacePath);
+      queryParams.set("executor_type", input.executorType);
+      const query = queryParams.toString();
+      if (query) url += `?${query}`;
+
+      const effectiveWorkspaceId = currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId;
+      const headers: NavigateHeaders = {
+        label: configId,
+        icon: { type: "lucide", value: "bot" },
+        meta: { workspaceId: effectiveWorkspaceId, executorType: input.executorType },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `subagent:${configId}`,
-          descriptorId: "workspace-agent",
-          label: configId,
-          icon: { type: "lucide", value: "bot" },
-          meta: {
-            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
-            executorType: input.executorType,
-          },
-        }),
-        {
-          type: "page",
-          slug: configId,
-          name: configId,
-          icon: { type: "lucide", value: "bot" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [currentStack, currentWorkspaceId, openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openPromptDetail = useCallback(
@@ -754,34 +755,44 @@ export function useDesktopRouting(): DesktopRoutingApi {
       input: { executorType: string; workspacePath?: string },
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "prompt-detail",
-        promptId,
-        executorType: input.executorType,
-        workspacePath: input.workspacePath,
+      let url = registry.build("/prompt/:promptId", { promptId });
+      const queryParams = new URLSearchParams();
+      if (input.workspacePath) queryParams.set("workspace_path", input.workspacePath);
+      queryParams.set("executor_type", input.executorType);
+      const query = queryParams.toString();
+      if (query) url += `?${query}`;
+
+      const effectiveWorkspaceId = currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId;
+      const headers: NavigateHeaders = {
+        label: promptId,
+        icon: { type: "lucide", value: "quote" },
+        meta: { workspaceId: effectiveWorkspaceId, executorType: input.executorType },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `prompt:${promptId}`,
-          descriptorId: "workspace-page",
-          label: promptId,
-          icon: { type: "lucide", value: "quote" },
-          meta: {
-            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
-            executorType: input.executorType,
-          },
-        }),
-        {
-          type: "page",
-          slug: promptId,
-          name: promptId,
-          icon: { type: "lucide", value: "quote" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [currentStack, currentWorkspaceId, openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openCommandDetail = useCallback(
@@ -790,70 +801,68 @@ export function useDesktopRouting(): DesktopRoutingApi {
       input: { executorType: string; workspacePath?: string },
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "command-detail",
-        commandId,
-        executorType: input.executorType,
-        workspacePath: input.workspacePath,
+      let url = registry.build("/command/:commandId", { commandId });
+      const queryParams = new URLSearchParams();
+      if (input.workspacePath) queryParams.set("workspace_path", input.workspacePath);
+      queryParams.set("executor_type", input.executorType);
+      const query = queryParams.toString();
+      if (query) url += `?${query}`;
+
+      const effectiveWorkspaceId = currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId;
+      const headers: NavigateHeaders = {
+        label: commandId,
+        icon: { type: "lucide", value: "terminal" },
+        meta: { workspaceId: effectiveWorkspaceId, executorType: input.executorType },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `command:${commandId}`,
-          descriptorId: "workspace-page",
-          label: commandId,
-          icon: { type: "lucide", value: "terminal" },
-          meta: {
-            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
-            executorType: input.executorType,
-          },
-        }),
-        {
-          type: "page",
-          slug: commandId,
-          name: commandId,
-          icon: { type: "lucide", value: "terminal" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [currentStack, currentWorkspaceId, openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const openDocuments = useCallback(
     (options?: DesktopNavigationOptions) => {
-      pageTabs.openLocation(
-        { kind: "documents" },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: "documents",
-            name: t("nav.documents", "Documents"),
-            icon: { type: "lucide", value: "file-text" },
-          },
-        }
-      );
+      const url = "/documents";
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url);
+        return;
+      }
+      navigateReset(url);
     },
-    [pageTabs, t]
+    [navigateReset, openInNewTab]
   );
 
   const openDevicePair = useCallback(
     (options?: DesktopNavigationOptions) => {
-      pageTabs.openLocation(
-        { kind: "device-pair" },
-        {
-          openInNewTab: buildOpenTabFlag(options),
-          tabInfo: {
-            type: "workspace",
-            slug: "device-pair",
-            name: t("nav.devices", "Devices"),
-            icon: { type: "lucide", value: "smartphone" },
-          },
-        }
-      );
+      const url = "/devices/pair";
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url);
+        return;
+      }
+      navigateReset(url);
     },
-    [pageTabs, t]
+    [navigateReset, openInNewTab]
   );
 
   const openDashboard = useCallback(
@@ -861,8 +870,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openPath("/mcp-services/dashboard", {
         title: t("nav.dashboard", "Dashboard"),
         icon: { type: "lucide", value: "layout-dashboard" },
-        type: "workspace",
-        slug: "dashboard",
+        descriptorId: "mcp-dashboard",
         openMode: options?.openMode,
       });
     },
@@ -874,8 +882,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openPath("/skills-market", {
         title: t("nav.skillsMarket", "Skills Market"),
         icon: { type: "lucide", value: "sparkles" },
-        type: "page",
-        slug: "skills-market",
+        descriptorId: "skills-market",
         openMode: options?.openMode,
       });
     },
@@ -888,34 +895,44 @@ export function useDesktopRouting(): DesktopRoutingApi {
       input: { agentId: string; workspacePath?: string; title?: string },
       options?: DesktopNavigationOptions
     ) => {
-      const location: DesktopLocation = {
-        kind: "skill-detail",
-        skillId,
-        agentId: input.agentId,
-        workspacePath: input.workspacePath,
+      let url = registry.build("/skill/:skillId", { skillId });
+      const queryParams = new URLSearchParams();
+      if (input.workspacePath) queryParams.set("workspace_path", input.workspacePath);
+      queryParams.set("agent_id", input.agentId);
+      const query = queryParams.toString();
+      if (query) url += `?${query}`;
+
+      const effectiveWorkspaceId = currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId;
+      const headers: NavigateHeaders = {
+        label: input.title ?? skillId,
+        icon: { type: "lucide", value: "sparkles" },
+        meta: { workspaceId: effectiveWorkspaceId, agentId: input.agentId },
       };
-      openChildLocation(
-        location,
-        createLocationBreadcrumbItem(location, {
-          id: `skill:${skillId}`,
-          label: input.title ?? skillId,
-          descriptorId: "workspace-page",
-          icon: { type: "lucide", value: "sparkles" },
-          meta: {
-            workspaceId: currentWorkspaceId ?? currentStack[0]?.meta?.workspaceId,
-            agentId: input.agentId,
-          },
-        }),
-        {
-          type: "page",
-          slug: skillId,
-          name: input.title ?? skillId,
-          icon: { type: "lucide", value: "sparkles" },
-        },
-        options
-      );
+
+      if (options?.openMode === "new-tab") {
+        openInNewTab(url, headers, options?.breadcrumbStack);
+        return;
+      }
+
+      if (options?.breadcrumbStack) {
+        if (!tabState.activeTabId) return;
+        const store = useTabStore.getState();
+        store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
+        return;
+      }
+
+      const sameWorkspace = currentStack.length > 0;
+      const stackMode = options?.stackMode ?? (sameWorkspace ? "push" : "open");
+
+      if (stackMode === "open") {
+        navigateReset(url, headers);
+      } else if (stackMode === "replace") {
+        navigateReplace(url, headers);
+      } else {
+        navigatePush(url, headers);
+      }
     },
-    [currentStack, currentWorkspaceId, openChildLocation]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
   );
 
   const pushCurrentPageChild = useCallback(
@@ -923,86 +940,84 @@ export function useDesktopRouting(): DesktopRoutingApi {
       pageSlug: string,
       options?: { title?: string; icon?: IconData; mode?: "push" | "replace" }
     ) => {
-      if (!currentWorkspaceId) {
-        return;
-      }
+      if (!currentWorkspaceId) return;
 
-      const location: DesktopLocation = {
-        kind: "workspace-page",
+      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
         workspaceId: currentWorkspaceId,
         pageSlug,
-      };
+      });
+      const leaf = buildNavigateLeaf(url, {
+        label: options?.title ?? pageSlug.split("/").filter(Boolean).pop() ?? pageSlug,
+        icon: options?.icon,
+        meta: { workspaceId: currentWorkspaceId, pageSlug },
+      });
 
-      pushChildPage(
-        createLocationBreadcrumbItem(location, {
-          label: options?.title ?? pageSlug.split("/").filter(Boolean).pop() ?? pageSlug,
-          descriptorId: "workspace-page",
-          icon: options?.icon,
-          meta: {
-            workspaceId: currentWorkspaceId,
-            pageSlug,
-          },
-        }),
-        location,
-        { mode: options?.mode }
-      );
+      pushChildPage(leaf, url, { mode: options?.mode });
     },
     [currentWorkspaceId, pushChildPage]
   );
 
   const openCurrentPageWeb = useCallback(
     (
-      url: string,
+      webUrl: string,
       input?: { title?: string; icon?: IconData; webId?: string; mode?: "push" | "replace" }
     ) => {
-      const workspaceId = currentWorkspaceId ?? pageTabs.activeTab?.workspaceId ?? "global";
-      const title = input?.title ?? safeHostname(url);
-      const location: DesktopLocation = {
-        kind: "workspace-web",
-        workspaceId,
-        title,
-        url,
-        webId: input?.webId,
-      };
+      const workspaceId = currentWorkspaceId ?? tabState.activeTab?.meta?.workspaceId ?? "global";
+      const title = input?.title ?? safeHostname(webUrl);
 
-      pushChildPage(
-        createLocationBreadcrumbItem(location, {
-          label: title,
-          descriptorId: "workspace-web",
-          icon: input?.icon ?? { type: "lucide", value: "globe" },
-          meta: {
-            workspaceId,
-            webId: input?.webId,
-            url,
-          },
-        }),
-        location,
-        { mode: input?.mode }
-      );
+      // Determine source page slug from current URL
+      let sourcePageSlug: string | undefined;
+      if (currentUrl) {
+        const match = registry.match(currentUrl);
+        if (match?.pattern === "/workspace/:workspaceId/pages/:pageSlug+") {
+          sourcePageSlug = match.params.pageSlug;
+        } else if (match?.pattern === "/workspace/:workspaceId/web") {
+          // Propagate source_page from current web view
+          const parsed = new URL(currentUrl, "http://localhost");
+          sourcePageSlug = parsed.searchParams.get("source_page") ?? undefined;
+        }
+      }
+
+      const queryParams = new URLSearchParams({ url: webUrl, title });
+      if (sourcePageSlug) queryParams.set("source_page", sourcePageSlug);
+      if (input?.webId) queryParams.set("web_id", input.webId);
+      const url = `/workspace/${encodeURIComponent(workspaceId)}/web?${queryParams.toString()}`;
+
+      const leaf = buildNavigateLeaf(url, {
+        label: title,
+        icon: input?.icon ?? { type: "lucide", value: "globe" },
+        meta: { workspaceId, webId: input?.webId, url: webUrl },
+      });
+
+      pushChildPage(leaf, url, { mode: input?.mode });
     },
-    [currentWorkspaceId, pageTabs.activeTab?.workspaceId, pushChildPage]
+    [currentUrl, currentWorkspaceId, tabState.activeTab?.meta?.workspaceId, pushChildPage]
   );
 
   const handleDeepLink = useCallback(
     (intent: DesktopDeepLinkIntent) => {
-      openRoute(intent.route, { openMode: intent.openMode });
+      const url = locationToUrl(intent.route);
+      openRoute(url, { openMode: intent.openMode });
     },
     [openRoute]
   );
 
   const closeCurrentTab = useCallback(() => {
-    if (!pageTabs.activeTabId) {
-      return;
-    }
-    pageTabs.closeTab(pageTabs.activeTabId);
-  }, [pageTabs]);
+    if (!tabState.activeTabId) return;
+    tabActions.closeTab(tabState.activeTabId);
+  }, [tabActions, tabState.activeTabId]);
 
   const detachCurrentTabToNewWindow = useCallback(async () => {
-    if (!pageTabs.activeTabId) {
-      return false;
-    }
-    return pageTabs.detachTabToNewWindow(pageTabs.activeTabId);
-  }, [pageTabs]);
+    if (!tabState.activeTabId) return false;
+    return tabActions.detachTabToNewWindow(tabState.activeTabId);
+  }, [tabActions, tabState.activeTabId]);
+
+  const popToBreadcrumb = useCallback(
+    (index: number) => {
+      tabActions.popTo(index);
+    },
+    [tabActions]
+  );
 
   const clearHeaderSlots = useCallback(() => {
     shell?.clearSlotContent(ownerId);
@@ -1028,8 +1043,8 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
   return useMemo(
     () => ({
-      currentTab: pageTabs.activeTab,
-      currentRoute,
+      currentTab: tabState.activeTab,
+      currentUrl,
       currentStack,
       breadcrumb: currentStack,
       currentDescriptor,
@@ -1068,12 +1083,13 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openPath,
       handleDeepLink,
 
-      canGoBack: pageTabs.canGoBack,
-      canGoForward: pageTabs.canGoForward,
-      goBack: pageTabs.goBackInTab,
-      goForward: pageTabs.goForwardInTab,
+      canGoBack: tabState.canGoBack,
+      canGoForward: tabState.canGoForward,
+      goBack: tabNav.goBackInTab,
+      goForward: tabNav.goForwardInTab,
       closeCurrentTab,
       detachCurrentTabToNewWindow,
+      popToBreadcrumb,
 
       setHeaderCenter,
       setHeaderRight,
@@ -1086,7 +1102,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       closeCurrentTab,
       detachCurrentTabToNewWindow,
       currentDescriptor,
-      currentRoute,
+      currentUrl,
       currentStack,
       currentWorkspace,
       currentWorkspaceId,
@@ -1117,11 +1133,12 @@ export function useDesktopRouting(): DesktopRoutingApi {
       pushWorkspaceAgentDetail,
       openWorkspaceSection,
       openWorkspaceWeb,
-      pageTabs.activeTab,
-      pageTabs.canGoBack,
-      pageTabs.canGoForward,
-      pageTabs.goBackInTab,
-      pageTabs.goForwardInTab,
+      tabState.activeTab,
+      tabState.canGoBack,
+      tabState.canGoForward,
+      tabNav.goBackInTab,
+      tabNav.goForwardInTab,
+      popToBreadcrumb,
       pushChildPage,
       pushCurrentPageChild,
       setHeaderCenter,
