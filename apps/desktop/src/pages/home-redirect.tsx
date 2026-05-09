@@ -6,7 +6,7 @@ import { getTabUrl, useTabStore, selectActiveTab } from "@/stores/tab-store";
  * Home redirect component - redirects based on app state.
  * - First-time users are redirected to /onboarding
  * - Returning users are redirected to the active tab's current URL
- * - Fallback to /workspace/global if no active tab
+ * - Fallback to /workspace if no active tab
  */
 export function HomeRedirect() {
   const { onboardingCompleted } = useAppStore();
