@@ -271,8 +271,8 @@ export function WorkspacePage() {
   const {
     currentStack,
     openDashboard,
-    openWorkspacePage,
-    openWorkspaceWeb,
+    pushCurrentPageChild,
+    openCurrentPageWeb,
     openWorkspaceSection,
     closeCurrentTab,
   } = useDesktopRouting();
@@ -401,20 +401,17 @@ export function WorkspacePage() {
   const handleOpenPage = useCallback(
     (nextPageSlug: string) => {
       if (!workspaceId) return;
-      openWorkspacePage(workspaceId, nextPageSlug);
+      pushCurrentPageChild(nextPageSlug);
     },
-    [openWorkspacePage, workspaceId]
+    [pushCurrentPageChild, workspaceId]
   );
 
   const handleOpenWeb = useCallback(
     (url: string, title?: string) => {
       if (!workspaceId) return;
-      openWorkspaceWeb(workspaceId, {
-        url,
-        title,
-      });
+      openCurrentPageWeb(url, { title });
     },
-    [openWorkspaceWeb, workspaceId]
+    [openCurrentPageWeb, workspaceId]
   );
 
   // Loading state

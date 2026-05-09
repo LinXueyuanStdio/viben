@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppLayout, McpServicesLayout } from "@/components/layout";
 import { OverlayRoot } from "@/components/overlay";
+import { ActionApprovalDialog } from "@/components/action-system";
+import { PresentationActionProvider } from "@/components/overlay/layers/presentation-action-provider";
 import {
   DashboardPage,
   ProvidersPage,
@@ -213,6 +215,8 @@ function App() {
         </Routes>
       </BrowserRouter>
       <OverlayRoot />
+      <ActionApprovalDialog />
+      <PresentationActionProvider />
     </>
   );
 }

@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { DesktopBreadcrumbBar } from "./desktop-breadcrumb-bar";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useActiveTabState } from "@/hooks/use-page-tabs";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
 import type { BreadcrumbStackItem } from "@/navigation/navigation-meta";
@@ -211,7 +211,7 @@ export function useNavigationShellSlots() {
 export function GlobalBreadcrumbShell() {
   const registeredHeader = useContext(NavigationShellHeaderContext);
   const slots = useContext(NavigationShellSlotsContext);
-  const { currentNavigationState } = usePageTabs();
+  const { currentNavigationState } = useActiveTabState();
   const { workspaces } = useLocalWorkspaces();
 
   const derivedHeader = useMemo(
@@ -225,11 +225,8 @@ export function GlobalBreadcrumbShell() {
     }
 
     return {
-      workspace: registeredHeader?.workspace ?? derivedHeader?.workspace,
-      segments:
-        registeredHeader && "segments" in registeredHeader
-          ? registeredHeader.segments ?? derivedHeader?.segments ?? EMPTY_SEGMENTS
-          : derivedHeader?.segments ?? EMPTY_SEGMENTS,
+      workspace: derivedHeader?.workspace ?? registeredHeader?.workspace,
+      segments: derivedHeader?.segments ?? registeredHeader?.segments ?? EMPTY_SEGMENTS,
       className: registeredHeader?.className,
     };
   }, [derivedHeader, registeredHeader]);

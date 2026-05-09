@@ -30,29 +30,20 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { PageTab } from "@/stores/tab-store";
+import { type TabViewModel } from "@/stores/tab-store";
+import { getDescriptorIcon } from "@/navigation/navigation-meta";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { IconData } from "@/components/ui/icon-picker";
 
-// Default icons by tab type
-const TAB_TYPE_ICONS: Record<string, IconData> = {
-  page: { type: "lucide", value: "file-text" },
-  chat: { type: "lucide", value: "message-square" },
-  settings: { type: "lucide", value: "settings" },
-  workspace: { type: "lucide", value: "layout-dashboard" },
-  web: { type: "lucide", value: "globe" },
-  "new-tab": { type: "lucide", value: "plus" },
-};
-
-function getTabIconData(tab: PageTab): IconData {
+function getTabIconData(tab: TabViewModel): IconData {
   if (tab.icon) {
     return tab.icon;
   }
-  return TAB_TYPE_ICONS[tab.type] ?? { type: "lucide", value: "file-text" };
+  return getDescriptorIcon(tab.descriptorId) ?? { type: "lucide", value: "file-text" };
 }
 
 export interface SortableTabItemProps {
-  tab: PageTab;
+  tab: TabViewModel;
   isActive: boolean;
   isOnlyTab?: boolean;
   /** Whether this is a newly created tab (for entrance animation) */
@@ -209,7 +200,7 @@ export function SortableTabItem({
               </ContextMenuTrigger>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              {tab.name}
+              {tab.label}
             </TooltipContent>
           </Tooltip>
           <ContextMenuContent className="w-48">
@@ -303,7 +294,7 @@ export function SortableTabItem({
                 )}
               />
             )}
-            <span className="truncate text-[13px]">{tab.name}</span>
+            <span className="truncate text-[13px]">{tab.label}</span>
 
             {/* Close button - use span with role="button" to avoid nested button error */}
             {canClose && (

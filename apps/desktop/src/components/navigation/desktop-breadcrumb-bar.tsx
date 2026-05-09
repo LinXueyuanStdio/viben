@@ -27,12 +27,12 @@ interface DesktopBreadcrumbBarProps {
   rightSlot?: ReactNode;
 }
 
-function inferTabType(href: string, descriptorId?: DesktopBreadcrumbSegment["descriptorId"]) {
+function inferDescriptorId(href: string, descriptorId?: DesktopBreadcrumbSegment["descriptorId"]) {
   if (descriptorId === "workspace-web") {
-    return "web" as const;
+    return "workspace-web" as const;
   }
   if (descriptorId === "workspace-page") {
-    return "page" as const;
+    return "workspace-page" as const;
   }
   if (href.startsWith("/workspace/")) {
     return "workspace" as const;
@@ -54,6 +54,7 @@ export function DesktopBreadcrumbBar({
     openWorkspaceApps,
     openWorkspaceHome,
     openWorkspaceSection,
+    popToBreadcrumb,
   } = useDesktopRouting();
   const workspacePath = workspace?.path;
   const { data: pagesResult } = useQuery({
@@ -101,7 +102,7 @@ export function DesktopBreadcrumbBar({
   const navigateWithTab = useCallback(
     (segment: Pick<DesktopBreadcrumbSegment, "href" | "label" | "icon" | "descriptorId" | "meta">) => {
       openPath(segment.href, {
-        type: inferTabType(segment.href, segment.descriptorId),
+        descriptorId: inferDescriptorId(segment.href, segment.descriptorId),
         title: segment.label,
         icon: segment.icon,
         slug:
@@ -148,7 +149,7 @@ export function DesktopBreadcrumbBar({
     (section: NonNullable<DesktopBreadcrumbSegment["meta"]>["section"], _routePath: string, href: string) => {
       if (!workspace?.id || !section) {
         openPath(href, {
-          type: "workspace",
+          descriptorId: "workspace",
           title: href,
           workspaceId: workspace?.id,
         });
@@ -186,7 +187,8 @@ export function DesktopBreadcrumbBar({
 
   const renderSegmentButton = (
     segment: DesktopBreadcrumbSegment,
-    isCurrent: boolean
+    isCurrent: boolean,
+    stackIndex: number
   ) => (
     <Button
       type="button"
@@ -199,6 +201,10 @@ export function DesktopBreadcrumbBar({
       onClick={() => {
         if (segment.onClick) {
           segment.onClick();
+          return;
+        }
+        if (!isCurrent && stackIndex >= 0) {
+          popToBreadcrumb(stackIndex);
           return;
         }
         navigateWithTab(segment);
@@ -216,7 +222,8 @@ export function DesktopBreadcrumbBar({
 
   const renderDropdown = (
     segment: DesktopBreadcrumbSegment,
-    isCurrent: boolean
+    isCurrent: boolean,
+    stackIndex: number
   ) => {
     const items = resolvePageIndexBranch({
       segment,
@@ -255,7 +262,7 @@ export function DesktopBreadcrumbBar({
 
     return (
       <BreadcrumbDropdown items={items} onSelect={onDropdownSelect}>
-        {renderSegmentButton(segment, isCurrent)}
+        {renderSegmentButton(segment, isCurrent, stackIndex)}
       </BreadcrumbDropdown>
     );
   };
@@ -283,7 +290,11 @@ export function DesktopBreadcrumbBar({
                 {index > 0 ? (
                   <ChevronRight className="h-4 w-4 text-muted-foreground/70" />
                 ) : null}
-                {renderDropdown(segment, isCurrent)}
+                {renderDropdown(
+                  segment,
+                  isCurrent,
+                  rootSegment ? index : index + 1
+                )}
               </div>
             );
           })}

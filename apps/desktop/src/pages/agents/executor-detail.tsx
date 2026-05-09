@@ -47,6 +47,7 @@ import { resolveLocationNavigation } from "@/navigation/location-navigation";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
+import { OpenClawConfigSection } from "@/components/agent/openclaw-config-section";
 import { ResizeHandle, CollapsibleSection } from "./components";
 import { getExecutorColor } from "./utils";
 import {
@@ -98,6 +99,11 @@ export function ExecutorDetailPage() {
   const [claudeMdContent, setClaudeMdContent] = useState<string>("");
   const [claudeMdLoading, setClaudeMdLoading] = useState(true);
   const [claudeMdError, setClaudeMdError] = useState<string | null>(null);
+
+  // OpenClaw config state (for testing connection; per-agent config is saved via agent settings)
+  const [openclawConfig, setOpenclawConfig] = useState<Record<string, unknown>>({
+    gateway: { host: "127.0.0.1", port: 18789 },
+  });
 
   // Load CLAUDE.md content
   useEffect(() => {
@@ -479,6 +485,16 @@ export function ExecutorDetailPage() {
                       </div>
                     </CollapsibleSection>
                   )}
+                </div>
+              )}
+
+              {/* OpenClaw Connection Config */}
+              {executorType === "OPENCLAW" && (
+                <div className="mb-4">
+                  <OpenClawConfigSection
+                    config={openclawConfig}
+                    onConfigChange={setOpenclawConfig}
+                  />
                 </div>
               )}
 

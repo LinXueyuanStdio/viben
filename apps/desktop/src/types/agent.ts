@@ -135,16 +135,17 @@ export interface DroidConfig {
 
 /**
  * OpenClaw executor configuration
+ * Matches core OpenClawExecutorConfig and openclaw-config-section.tsx
  */
 export interface OpenClawConfig {
-  /** Gateway host (default: 127.0.0.1) */
-  gateway_host?: string;
-  /** Gateway port (default: 18789) */
-  gateway_port?: number;
-  /** Authentication token */
-  gateway_token?: string;
-  /** Authentication password */
-  gateway_password?: string;
+  gateway?: {
+    host?: string;
+    port?: number;
+    token?: string;
+    password?: string;
+  };
+  autoStart?: boolean;
+  cliPath?: string;
 }
 
 /**
@@ -193,7 +194,7 @@ export function getDefaultConfig(agentType: ExecutorType): ExecutorConfig {
     case "DROID":
       return { type: "DROID", config: {} };
     case "OPENCLAW":
-      return { type: "OPENCLAW", config: {} };
+      return { type: "OPENCLAW", config: { gateway: { host: "127.0.0.1", port: 18789 } } };
     default:
       return { type: "CLAUDE_CODE", config: {} };
   }

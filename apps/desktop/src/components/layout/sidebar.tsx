@@ -201,7 +201,7 @@ export function Sidebar() {
       openPath(href, {
         title: name,
         icon,
-        type: href.startsWith("/settings") ? "settings" : "workspace",
+        descriptorId: href.startsWith("/settings") ? "settings" : "workspace",
       });
     },
     [openPath]
