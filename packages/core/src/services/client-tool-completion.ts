@@ -134,20 +134,13 @@ export class ClientToolCompletionRegistry {
 
   /**
    * Check whether a tool name is registered as a client-side tool.
-   * Handles the `mcp__<server>__<tool>` prefix convention by checking
-   * both the full name and the suffix after the last `__`.
+   * Handles only trusted built-in MCP server prefixes. Do not match arbitrary
+   * suffixes, otherwise a third-party MCP server can trigger local client tools
+   * by exposing a tool with the same name.
    */
   isClientSideTool(toolName: string): boolean {
     if (this.toolOptions.has(toolName)) return true;
-
-    // Handle mcp__<server>__<tool> → check if <tool> is registered
-    const lastSep = toolName.lastIndexOf("__");
-    if (lastSep !== -1) {
-      const suffix = toolName.slice(lastSep + 2);
-      return this.toolOptions.has(suffix);
-    }
-
-    return false;
+    return this.getTrustedPrefixedToolOptions(toolName) !== undefined;
   }
 
   // -------------------------------------------------------------------------
@@ -402,11 +395,16 @@ export class ClientToolCompletionRegistry {
     const direct = this.toolOptions.get(toolName);
     if (direct) return direct;
 
-    // Handle mcp__ prefix
-    const lastSep = toolName.lastIndexOf("__");
-    if (lastSep !== -1) {
-      const suffix = toolName.slice(lastSep + 2);
-      return this.toolOptions.get(suffix);
+    return this.getTrustedPrefixedToolOptions(toolName);
+  }
+
+  private getTrustedPrefixedToolOptions(toolName: string): ClientSideToolOptions | undefined {
+    if (toolName.startsWith("mcp__presentation__")) {
+      return this.toolOptions.get(toolName.slice("mcp__presentation__".length));
+    }
+
+    if (toolName.startsWith("mcp__gui_action__")) {
+      return this.toolOptions.get(toolName.slice("mcp__gui_action__".length));
     }
 
     return undefined;
