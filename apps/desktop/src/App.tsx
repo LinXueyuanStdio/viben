@@ -186,6 +186,7 @@ function App() {
                 <Route path="analytics" element={<AnalyticsPage />} />
 
                 {/* Workspace routes */}
+                <Route path="workspace" element={<Navigate to="/workspace/global" replace />} />
                 <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
                 <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
                 <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />

@@ -1724,8 +1724,8 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   }, async (request) => {
     const { host, port, token, password } = request.body;
     try {
-      const { loadGatewayConfig } = await import("../../executor/engines/openclaw/config.js");
-      const { loadOrCreateDeviceIdentity, publicKeyToBase64Url } = await import("../../executor/engines/openclaw/device-identity.js");
+      const { loadGatewayConfig } = await import("../../executors/engines/openclaw/config.js");
+      const { loadOrCreateDeviceIdentity, publicKeyToBase64Url } = await import("../../executors/engines/openclaw/device-identity.js");
 
       const config = loadGatewayConfig({ host, port, token, password });
       const identity = loadOrCreateDeviceIdentity();
@@ -1826,7 +1826,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   }, async () => {
     try {
       // Dynamic import to avoid coupling if openclaw engine isn't loaded
-      const { loadGatewayConfig } = await import("../../executor/engines/openclaw/config.js");
+      const { loadGatewayConfig } = await import("../../executors/engines/openclaw/config.js");
       const config = loadGatewayConfig();
       return {
         host: config.host,

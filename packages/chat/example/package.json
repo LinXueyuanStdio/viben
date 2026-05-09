@@ -10,7 +10,7 @@
   "dependencies": {
     "@viben/chat": "workspace:*",
     "@viben/ui": "workspace:*",
-    "i18next": "^24.0.0",
+    "i18next": "^25.6.2",
     "lucide-react": "^1.8.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
