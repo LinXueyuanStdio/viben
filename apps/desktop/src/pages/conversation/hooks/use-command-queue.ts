@@ -9,6 +9,7 @@
  * Also queues when there are already pending items (maintains ordering).
  */
 import { useState, useCallback, useRef, useEffect } from "react";
+import { toast } from "sonner";
 
 // ============================================================================
 // Types
@@ -210,15 +211,15 @@ export function useCommandQueue({
     if (input.length > MAX_INPUT_LENGTH) return;
     setState((prev) => {
       if (prev.items.length >= MAX_QUEUED_COMMANDS) return prev;
-      return {
-        ...prev,
-        items: [...prev.items, {
-          id: crypto.randomUUID(),
-          input: input.trim(),
-          files,
-          createdAt: Date.now(),
-        }],
-      };
+      const newItems = [...prev.items, {
+        id: crypto.randomUUID(),
+        input: input.trim(),
+        files,
+        createdAt: Date.now(),
+      }];
+      // Notify user that message was queued
+      toast.info("Message queued", { description: `${newItems.length} in queue`, duration: 2000 });
+      return { ...prev, items: newItems };
     });
   }, [supportsSteer, state.items.length]);
 

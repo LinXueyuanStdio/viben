@@ -322,6 +322,78 @@ export async function checkAvailability(
 }
 
 // ============================================================================
+// OpenClaw Runtime Config & Connection Testing
+// ============================================================================
+
+/** Runtime config as reported by the gateway */
+export interface OpenClawRuntimeConfig {
+  host: string;
+  port: number;
+  has_auth: boolean;
+  cli_path?: string;
+  config_source: string;
+}
+
+/** Result of testing connection to an OpenClaw gateway */
+export interface TestConnectionResult {
+  status: "connected" | "pairing_required" | "failed";
+  message?: string;
+  device_id?: string;
+}
+
+/**
+ * Get the effective OpenClaw runtime config from the gateway
+ */
+export async function getOpenClawRuntimeConfig(
+  baseUrl: string
+): Promise<OpenClawRuntimeConfig> {
+  const response = await fetch(
+    `${baseUrl}/api/executors/openclaw/runtime-config`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to get OpenClaw runtime config: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Test connection to an OpenClaw gateway (performs device auth handshake)
+ */
+export async function testOpenClawConnection(
+  baseUrl: string,
+  config: { host: string; port: number; token?: string; password?: string }
+): Promise<TestConnectionResult> {
+  const response = await fetch(
+    `${baseUrl}/api/executors/openclaw/test-connection`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(config),
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Test connection failed: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// ============================================================================
 // Background Task Management
 // ============================================================================
 

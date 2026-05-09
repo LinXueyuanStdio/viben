@@ -4,10 +4,14 @@ import { Plus, MessageSquare, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getGatewayClient } from "@/lib/gateway";
 import { isAgentAvailable } from "@/lib/gateway/utils";
-import type { AgentMessage, Artifact, TaskPlan, PendingQuestion } from "@/types";
+import type { AgentMessage, Artifact, TaskPlan, PendingQuestion, PendingExecApproval } from "@/types";
 import type { SlashCommand } from "@viben/chat";
 import { DesktopChatInput, DesktopMessageList } from "./index";
 import { ChatHeader } from "./chat-header";
+import { CommandQueuePanel } from "./command-queue-panel";
+import { ExecApproval } from "./exec-approval";
+import { ContextUsageIndicator } from "./context-usage-indicator";
+import type { CommandQueueItem } from "../hooks/use-command-queue";
 import type { Conversation } from "../conversation-utils";
 
 interface AgentChatViewProps {
@@ -34,6 +38,8 @@ interface AgentChatViewProps {
   isStreaming: boolean;
   pendingPlan: TaskPlan | null;
   pendingQuestions: PendingQuestion | null;
+  pendingExecApproval?: PendingExecApproval | null;
+  contextUsage?: { used: number; total: number } | null;
   artifacts: Artifact[];
   error: string | null;
   highlightedMessageId: string | null;
@@ -42,6 +48,16 @@ interface AgentChatViewProps {
   gatewayConnected: boolean | null;
   executorType?: string;
   isLoadingSessions: boolean;
+
+  // Command Queue
+  commandQueue?: {
+    items: CommandQueueItem[];
+    isPaused: boolean;
+    onRemove: (id: string) => void;
+    onClear: () => void;
+    onPause: () => void;
+    onResume: () => void;
+  };
 
   // Slash commands
   slashCommands: SlashCommand[];
@@ -63,6 +79,7 @@ interface AgentChatViewProps {
   onApprovePlan: (feedback?: string) => void;
   onRejectPlan: (feedback?: string) => void;
   onAnswerQuestions: (answers: Record<string, string[]>) => void;
+  onApproveExec?: (decision: string) => void;
   onSlashCommand: (command: SlashCommand) => void;
   onArtifactClick: (artifactId: string) => void;
   onAgentAvatarClick: () => void;
@@ -94,12 +111,15 @@ export function AgentChatView({
   isStreaming,
   pendingPlan,
   pendingQuestions,
+  pendingExecApproval,
+  contextUsage,
   artifacts,
   error,
   highlightedMessageId,
   gatewayConnected,
   executorType,
   isLoadingSessions,
+  commandQueue,
   slashCommands,
   onSelectSession,
   onCreateConversation,
@@ -117,6 +137,7 @@ export function AgentChatView({
   onApprovePlan,
   onRejectPlan,
   onAnswerQuestions,
+  onApproveExec,
   onSlashCommand,
   onArtifactClick,
   onAgentAvatarClick,
@@ -262,6 +283,16 @@ export function AgentChatView({
         onArtifactClick={onArtifactClick}
       />
 
+      {/* Exec Approval */}
+      {pendingExecApproval && onApproveExec && (
+        <div className="px-4 py-3 border-t border-border">
+          <ExecApproval
+            approval={pendingExecApproval}
+            onDecision={onApproveExec}
+          />
+        </div>
+      )}
+
       {/* Error display */}
       {error && (
         <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
@@ -269,8 +300,27 @@ export function AgentChatView({
         </div>
       )}
 
+      {/* Command Queue Panel */}
+      {commandQueue && commandQueue.items.length > 0 && (
+        <CommandQueuePanel
+          items={commandQueue.items}
+          isPaused={commandQueue.isPaused}
+          onRemove={commandQueue.onRemove}
+          onClear={commandQueue.onClear}
+          onPause={commandQueue.onPause}
+          onResume={commandQueue.onResume}
+          className="mx-4 mt-2"
+        />
+      )}
+
       {/* Input */}
-      <div className="border-t border-border">
+      <div className="border-t border-border relative">
+        {/* Context Usage Indicator - positioned top-right of input area */}
+        {contextUsage && (
+          <div className="absolute top-2 right-3 z-10">
+            <ContextUsageIndicator used={contextUsage.used} total={contextUsage.total} />
+          </div>
+        )}
         <DesktopChatInput
           onSend={handleSend}
           onCancel={onCancel}

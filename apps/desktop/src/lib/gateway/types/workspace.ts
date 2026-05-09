@@ -90,6 +90,7 @@ export interface WorkspaceModelsResponse {
 export type WorkspaceAgentType =
   | "VIBEN"
   | "CLAUDE_CODE"
+  | "OPENCLAW"
   | "CURSOR"
   | "VSCODE"
   | "CONTINUE"
