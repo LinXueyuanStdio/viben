@@ -17,7 +17,7 @@ import i18n from "@/i18n";
 
 // ── Node (Descriptor) ──
 
-export interface BreadcrumbItemDescriptor {
+interface BreadcrumbItemDescriptor {
   id: string;
   routePath: string;
   icon: IconData;
@@ -213,21 +213,6 @@ export interface PushPageOptions {
   preserveTail?: boolean;
 }
 
-export interface TabNavigationApi {
-  openLocation(next: TabNavigationState): void;
-  replaceLocation(
-    location: DesktopLocation,
-    patch?: Partial<TabNavigationState>
-  ): void;
-  pushPage(
-    item: BreadcrumbStackItem,
-    nextLocation: DesktopLocation,
-    options?: PushPageOptions
-  ): void;
-  popTo(index: number): void;
-  resetStack(next: TabNavigationState): void;
-}
-
 export function buildViewTarget(
   location: DesktopLocation,
   canonicalUrl: string
@@ -266,6 +251,7 @@ export const GLOBAL_ROUTE_DESCRIPTORS: BreadcrumbItemDescriptor[] = [
   { id: "publish", routePath: "/publish", titleKey: "globalRoute.publish", fallbackLabel: "Publish", icon: { type: "lucide", value: "upload" } },
   { id: "my-packages", routePath: "/my-packages", titleKey: "globalRoute.myPackages", fallbackLabel: "My Packages", icon: { type: "lucide", value: "package" } },
   { id: "analytics", routePath: "/analytics", titleKey: "globalRoute.analytics", fallbackLabel: "Analytics", icon: { type: "lucide", value: "chart-column" } },
+  { id: "new-tab", routePath: "/documents", titleKey: "common.newTab", fallbackLabel: "New Tab", icon: { type: "lucide", value: "plus" } },
 ];
 
 // ─── DAG: Workspace Children ─────────────────────────────────────────────────
@@ -310,30 +296,6 @@ export const VALID_SETTINGS_SECTIONS = SETTINGS_SECTION_DESCRIPTORS.map(
   (item) => item.section
 );
 
-// ─── Edge Index Map ──────────────────────────────────────────────────────────
-// Maps a DesktopLocation.kind to its descriptor id.
-// To find what descriptor an item belongs to, look up its location kind here.
-
-export const LOCATION_DESCRIPTOR_MAP: Record<DesktopLocation["kind"], string> = {
-  "workspace-home": "workspace",
-  "workspace-apps": "workspace-section:apps",
-  "workspace-section": "workspace-section:*",
-  "workspace-agent-detail": "workspace-agent",
-  "workspace-executor-detail": "workspace-executor",
-  "workspace-page": "workspace-page",
-  "workspace-web": "workspace-web",
-  "agent-detail": "workspace-agent",
-  "executor-detail": "workspace-executor",
-  "skill-detail": "workspace-agent",
-  "mcp-server-detail": "workspace-executor",
-  "subagent-detail": "workspace-agent",
-  "prompt-detail": "workspace-executor",
-  "command-detail": "workspace-executor",
-  "settings": "settings",
-  "documents": "documents",
-  "device-pair": "devices",
-  "global-route": "workspace",
-};
 
 // ─── Deprecated Compat ───────────────────────────────────────────────────────
 
@@ -351,7 +313,7 @@ export function getDescriptorIcon(descriptorId: string | undefined): IconData | 
 // ─── Lookup Helpers ──────────────────────────────────────────────────────────
 
 /** All descriptors in the DAG (roots + children) */
-export const ALL_DESCRIPTORS: BreadcrumbItemDescriptor[] = [
+const ALL_DESCRIPTORS: BreadcrumbItemDescriptor[] = [
   ...GLOBAL_ROUTE_DESCRIPTORS,
   ...WORKSPACE_SECTION_DESCRIPTORS,
   ...SETTINGS_SECTION_DESCRIPTORS,
@@ -361,26 +323,6 @@ const DESCRIPTOR_BY_ID = new Map<string, BreadcrumbItemDescriptor>(
   ALL_DESCRIPTORS.map((d) => [d.id, d])
 );
 
-/** Look up a descriptor by id */
-export function getDescriptor(id: string): BreadcrumbItemDescriptor | undefined {
-  return DESCRIPTOR_BY_ID.get(id);
-}
-
-/** Resolve descriptor for a DesktopLocation */
-export function getDescriptorForLocation(location: DesktopLocation): BreadcrumbItemDescriptor | undefined {
-  const descriptorId = LOCATION_DESCRIPTOR_MAP[location.kind];
-  if (!descriptorId) return undefined;
-  // Handle wildcard patterns like "workspace-section:*"
-  if (descriptorId.endsWith(":*") && "section" in location) {
-    const prefix = descriptorId.slice(0, -1);
-    return DESCRIPTOR_BY_ID.get(prefix + (location as { section: string }).section);
-  }
-  return DESCRIPTOR_BY_ID.get(descriptorId);
-}
-
-export function getGlobalRouteDescriptor(path: string): BreadcrumbItemDescriptor | undefined {
-  return GLOBAL_ROUTE_DESCRIPTORS.find((d) => d.routePath === path);
-}
 
 export function getWorkspaceSectionDescriptor(section?: string): WorkspaceSectionDescriptor | undefined {
   return WORKSPACE_SECTION_DESCRIPTORS.find((item) => item.section === section);
@@ -390,7 +332,7 @@ export function getWorkspaceSectionRoutePath(section: WorkspaceSection): string 
   return getWorkspaceSectionDescriptor(section)?.routePath ?? section;
 }
 
-export function isWorkspaceSection(value: string): value is WorkspaceSection {
+function isWorkspaceSection(value: string): value is WorkspaceSection {
   return Boolean(getWorkspaceSectionDescriptor(value));
 }
 
@@ -404,7 +346,7 @@ export function getSettingsSectionDescriptor(section?: string): SettingsSectionD
   return SETTINGS_SECTION_DESCRIPTORS.find((item) => item.section === section);
 }
 
-export function isSettingsSection(value: string): value is SettingsSection {
+function isSettingsSection(value: string): value is SettingsSection {
   return Boolean(getSettingsSectionDescriptor(value));
 }
 

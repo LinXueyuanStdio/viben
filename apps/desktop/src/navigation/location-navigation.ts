@@ -649,7 +649,9 @@ function buildWorkspaceAgentDetailBreadcrumbStack(
       {
         id: `${location.workspaceId}:agent`,
         descriptorId: "workspace-section:agent",
-        meta: { workspaceId: location.workspaceId },
+        label: getWorkspaceSectionLabel("agent") || "Agents",
+        icon: getWorkspaceSectionDescriptor("agent")?.icon,
+        meta: { workspaceId: location.workspaceId, section: "agent" },
       }
     ),
     createLocationBreadcrumbItem(location, {
@@ -681,7 +683,9 @@ function buildWorkspaceExecutorDetailBreadcrumbStack(
       {
         id: `${location.workspaceId}:agent`,
         descriptorId: "workspace-section:agent",
-        meta: { workspaceId: location.workspaceId },
+        label: getWorkspaceSectionLabel("agent") || "Agents",
+        icon: getWorkspaceSectionDescriptor("agent")?.icon,
+        meta: { workspaceId: location.workspaceId, section: "agent" },
       }
     ),
     createLocationBreadcrumbItem(location, {
@@ -846,6 +850,14 @@ export function resolveLocationNavigation(
         input.icon
       );
       break;
+  }
+
+  // Patch root item with workspace name if available
+  if (input.workspace && breadcrumbStack.length > 0 && breadcrumbStack[0].descriptorId === "workspace") {
+    breadcrumbStack = [
+      { ...breadcrumbStack[0], label: input.workspace.name ?? breadcrumbStack[0].label },
+      ...breadcrumbStack.slice(1),
+    ];
   }
 
   const patchedStack = patchStackLeaf(breadcrumbStack, {

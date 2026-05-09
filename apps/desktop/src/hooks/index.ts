@@ -411,8 +411,9 @@ export type {
 } from "./use-ideas";
 
 // Page Tabs
-export { usePageTabs } from "./use-page-tabs";
-export type { PageTab } from "./use-page-tabs";
+export { usePageTabs, useTabList, useActiveTabState, useTabActions, useTabNavigation } from "./use-page-tabs";
+export type { ActiveTabState, TabActions, TabNavigationActions } from "./use-page-tabs";
+export type { PageTab } from "@/stores/tab-store";
 
 // Global Shortcuts
 export { useGlobalShortcuts } from "./use-global-shortcuts";
@@ -448,3 +449,7 @@ export { useKeystroke } from "./use-keystroke";
 export { useWave } from "./use-wave";
 export { useGlobalInput } from "./use-global-input";
 export { useOverlayShortcuts } from "./use-overlay-shortcuts";
+
+// Action System
+export { useActionProvider } from "./use-action-provider";
+export type { ActionProviderEntry } from "./use-action-provider";
