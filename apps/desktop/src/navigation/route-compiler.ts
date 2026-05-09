@@ -84,8 +84,8 @@ export function compilePattern(pattern: string): CompiledPattern {
     const parts = buildParts.map((part) => {
       if (part.type === "const") return part.value;
       const value = params[part.name];
-      if (!value && part.rest) {
-        throw new Error(`Rest param "${part.name}" must be non-empty for pattern: ${pattern}`);
+      if (!value) {
+        throw new Error(`Param "${part.name}" must be non-empty for pattern: ${pattern}`);
       }
       return part.rest ? value : encodeURIComponent(value);
     });
