@@ -1355,6 +1355,10 @@
     "openclawConnecting": "连接中...",
     "openclawConnected": "已连接",
     "openclawConnectionFailed": "连接失败",
+    "openclawPairingRequired": "需要配对",
+    "openclawPairingWaiting": "等待远程 Gateway 审批。请在 Gateway 管理面板上批准此设备。",
+    "openclawPairingTimeout": "配对超时，请在远程 Gateway 上批准后重试。",
+    "openclawDeviceId": "设备 ID",
     "mcpServersLabel": "MCP 服务器",
     "skillsLabel": "技能",
     "noMcpServers": "暂无服务器配置",
@@ -4496,6 +4500,15 @@
     "openclawOfflineHint": "OpenClaw 不可用，点击重试",
     "openclawUnavailableBanner": "OpenClaw 网关无法连接。请检查 OpenClaw 是否正在运行，以及连接设置是否正确。",
     "openclawUnavailableAction": "检查设置",
+    "errors": {
+      "openclawUnavailable": "OpenClaw 不可用，请检查智能体设置。",
+      "reconnectFailed": "重新连接失败，请检查网络连接。",
+      "runtimeMismatch": "检测到配置不匹配"
+    },
+    "commandQueue": {
+      "queued": "消息已排队",
+      "pending": "条消息排队中"
+    },
     "refreshSessions": "刷新会话",
     "scrollToBottom": "滚动到底部",
     "selectExecutor": "执行器",
@@ -6587,5 +6600,8 @@
       "changeCover": "更换封面",
       "remove": "移除"
     }
+  },
+  "actionSystem": {
+    "approvalTitle": "操作审批"
   }
 }

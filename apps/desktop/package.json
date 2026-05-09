@@ -56,6 +56,7 @@
     "@viben/core": "workspace:*",
     "@viben/kanban": "workspace:*",
     "@viben/os": "workspace:*",
+    "@viben/presentation": "workspace:*",
     "@viben/ui": "workspace:*",
     "@vocalbridgeai/react": "^0.1.1",
     "@vocalbridgeai/sdk": "^0.1.1",

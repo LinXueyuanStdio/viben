@@ -1355,6 +1355,10 @@
     "openclawConnecting": "Connecting...",
     "openclawConnected": "Connected",
     "openclawConnectionFailed": "Connection failed",
+    "openclawPairingRequired": "Pairing required",
+    "openclawPairingWaiting": "Waiting for approval on the remote gateway. Please approve this device on the gateway admin panel.",
+    "openclawPairingTimeout": "Pairing timed out. Please approve on the remote gateway and try again.",
+    "openclawDeviceId": "Device ID",
     "mcpServersLabel": "MCP Servers",
     "skillsLabel": "Skills",
     "noMcpServers": "No servers configured",
@@ -4496,6 +4500,15 @@
     "openclawOfflineHint": "OpenClaw unavailable, click to retry",
     "openclawUnavailableBanner": "OpenClaw gateway is not reachable. Please check that OpenClaw is running and your connection settings are correct.",
     "openclawUnavailableAction": "Check Settings",
+    "errors": {
+      "openclawUnavailable": "OpenClaw is not available. Check agent settings.",
+      "reconnectFailed": "Failed to reconnect. Please check your connection.",
+      "runtimeMismatch": "Config mismatch detected"
+    },
+    "commandQueue": {
+      "queued": "Message queued",
+      "pending": "messages in queue"
+    },
     "refreshSessions": "Refresh sessions",
     "scrollToBottom": "Scroll to bottom",
     "selectExecutor": "Executor",
@@ -6587,5 +6600,8 @@
       "changeCover": "Change cover",
       "remove": "Remove"
     }
+  },
+  "actionSystem": {
+    "approvalTitle": "Action Approval"
   }
 }
