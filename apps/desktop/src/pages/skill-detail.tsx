@@ -47,7 +47,7 @@ import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
@@ -178,40 +178,29 @@ export function SkillDetailPage() {
     fallback:
       workspace && agentId
         ? [
-            ...resolveLocationNavigation({
-              location: {
-                kind: "workspace-executor-detail",
+            ...buildColdStartBreadcrumb(
+              registry.build("/workspace/:workspaceId/executor/:executorType", {
                 workspaceId: workspace.id,
                 executorType: agentId,
-              },
-              workspace,
-              title: executor?.name || agentId,
-              icon: { type: "lucide", value: "terminal" },
-            }).breadcrumbStack.slice(1).map((item) => ({
+              }),
+              { label: executor?.name || agentId, icon: { type: "lucide", value: "terminal" } }
+            ).slice(1).map((item) => ({
               id: item.id,
               label: item.label,
-              href: item.target?.canonicalUrl ?? "#",
+              href: item.href ?? "#",
               icon: item.icon,
-              descriptorId: item.descriptorId,
               meta: item.meta,
             })),
             ...(selectedSkill
-                ? resolveLocationNavigation({
-                    location: {
-                      kind: "skill-detail",
-                      skillId: selectedSkill.id,
-                      agentId,
-                    workspacePath: workspacePath || undefined,
-                  },
-                    workspace,
-                    title: selectedSkill.name,
-                    icon: { type: "lucide", value: "sparkles" },
-                  }).breadcrumbStack.slice(3).map((item) => ({
+              ? buildColdStartBreadcrumb(
+                  registry.build("/skill/:skillId", { skillId: selectedSkill.id }) +
+                    `?workspace_path=${encodeURIComponent(workspacePath || "")}&agent_id=${encodeURIComponent(agentId)}`,
+                  { label: selectedSkill.name, icon: { type: "lucide", value: "sparkles" } }
+                ).slice(1).map((item) => ({
                   id: item.id,
                   label: item.label,
-                  href: item.target?.canonicalUrl ?? "#",
+                  href: item.href ?? "#",
                   icon: item.icon,
-                  descriptorId: item.descriptorId,
                   meta: item.meta,
                 }))
               : []),

@@ -1,10 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useQueryClient } from "@tanstack/react-query";
 import { getTabViewModel, useTabStore } from "@/stores/tab-store";
-import type { ListPagesResult, PageConfig } from "@/lib/gateway";
 import type { IconData } from "@/components/ui/icon-picker";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 import {
   type DesktopLocation,
   type BreadcrumbStackItem,
@@ -15,7 +13,6 @@ import {
   normalizeSettingsSection,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
-import { pageKeys } from "@/hooks/use-pages";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { TabViewModel } from "@/stores/tab-store";
 
@@ -118,7 +115,6 @@ export interface TabActions {
 }
 
 export function useTabActions(): TabActions {
-  const queryClient = useQueryClient();
   const { getWorkspace } = useLocalWorkspaces();
   const activeTabId = useTabStore((state) => state.activeTabId);
   const rawTabs = useTabStore((state) => state.tabs);
@@ -146,28 +142,21 @@ export function useTabActions(): TabActions {
         workspaceId?: string;
       }
     ) => {
-      const workspaceId =
-        input?.workspaceId ?? ("workspaceId" in location ? location.workspaceId : undefined);
-      const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-      const cachedPages = workspace?.path
-        ? queryClient.getQueryData<ListPagesResult | PageConfig[]>(
-            pageKeys.list(workspace.path)
-          )
-        : undefined;
-      const pages = Array.isArray(cachedPages)
-        ? cachedPages
-        : cachedPages?.pages;
+      if (input?.breadcrumbStack?.length) {
+        return { breadcrumbStack: input.breadcrumbStack };
+      }
 
-      return resolveLocationNavigation({
-        location,
-        workspace,
-        pages,
-        breadcrumbStack: input?.breadcrumbStack,
-        title: input?.title,
+      const url = locationToUrl(location);
+      const stack = buildColdStartBreadcrumb(url, {
+        label: input?.title,
         icon: input?.icon,
       });
+
+      // Cast: breadcrumb-builder's BreadcrumbStackItem is structurally compatible
+      // with navigation-meta's version at runtime
+      return { breadcrumbStack: stack as unknown as BreadcrumbStackItem[] };
     },
-    [getWorkspace, queryClient]
+    []
   );
 
   const openLocation = useCallback(

@@ -41,7 +41,7 @@ import {
   resolveHeaderSegments,
   type DesktopBreadcrumbSegment,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 
 /**
  * Extract slug from page path
@@ -347,30 +347,26 @@ export function WorkspacePage() {
       return [];
     }
 
-    const resolvedNavigation = resolveLocationNavigation({
-      location: {
-        kind: "workspace-page",
-        workspaceId,
-        pageSlug: slug,
-      },
-      workspace,
-      pages: page ? [page] : undefined,
-      title: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+    const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+      workspaceId,
+      pageSlug: slug,
+    });
+    const stack = buildColdStartBreadcrumb(url, {
+      label: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
       icon: page?.icon,
     });
 
     return resolveHeaderSegments({
       stack: currentStack,
-      fallback: resolvedNavigation.breadcrumbStack.slice(1).map((item) => ({
+      fallback: stack.slice(1).map((item) => ({
         id: item.id,
         label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
+        href: item.href ?? "#",
         icon: item.icon,
-        descriptorId: item.descriptorId,
         meta: item.meta,
       })),
     });
-  }, [currentStack, page, slug, workspace, workspaceId]);
+  }, [currentStack, page, slug, workspaceId]);
 
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);

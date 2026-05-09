@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useUiStore, useAppStore, useWorkspaceStore } from "@/stores";
 import { useTabStore } from "@/stores/tab-store";
-import { createStackForLocation } from "@/navigation/location-navigation";
 import { createTabNavigationState } from "@/navigation/tab-navigation";
+import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 
 /**
  * Parse a shortcut string like "Shift+Cmd+J" into components.
@@ -150,9 +150,9 @@ export function useGlobalShortcuts() {
 
       if (isShortcutPressed(e, shortcuts.newTab)) {
         e.preventDefault();
-        const location = { kind: "documents" } as const;
+        const url = "/workspace";
         openTab({
-          navigationState: createTabNavigationState(location, createStackForLocation(location)),
+          navigationState: createTabNavigationState(url, buildColdStartBreadcrumb(url)),
           pinned: false,
         });
         return;

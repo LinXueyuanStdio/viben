@@ -43,7 +43,7 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
@@ -267,21 +267,17 @@ export function ExecutorDetailPage() {
     stack: currentStack,
     fallback:
       workspace && executor
-        ? resolveLocationNavigation({
-            location: {
-              kind: "workspace-executor-detail",
+        ? buildColdStartBreadcrumb(
+            registry.build("/workspace/:workspaceId/executor/:executorType", {
               workspaceId: workspace.id,
               executorType: executor.type,
-            },
-            workspace,
-            title: executor.name,
-            icon: { type: "lucide", value: "terminal" },
-          }).breadcrumbStack.slice(1).map((item) => ({
+            }),
+            { label: executor.name, icon: { type: "lucide", value: "terminal" } }
+          ).slice(1).map((item) => ({
             id: item.id,
             label: item.label,
-            href: item.target?.canonicalUrl ?? "#",
+            href: item.href ?? "#",
             icon: item.icon,
-            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],

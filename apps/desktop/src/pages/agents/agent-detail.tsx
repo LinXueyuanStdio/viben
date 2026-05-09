@@ -44,7 +44,7 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import {
   AgentMcpDialog,
   AgentSkillsDialog,
@@ -806,21 +806,17 @@ export function AgentDetailPage() {
     stack: currentStack,
     fallback:
       workspace && agentId
-        ? resolveLocationNavigation({
-            location: {
-              kind: "workspace-agent-detail",
+        ? buildColdStartBreadcrumb(
+            registry.build("/workspace/:workspaceId/agent/:agentId", {
               workspaceId: workspace.id,
               agentId,
-            },
-            workspace,
-            title: formName || agentId,
-            icon: { type: "lucide", value: "bot" },
-          }).breadcrumbStack.slice(1).map((item) => ({
+            }),
+            { label: formName || agentId, icon: { type: "lucide", value: "bot" } }
+          ).slice(1).map((item) => ({
             id: item.id,
             label: item.label,
-            href: item.target?.canonicalUrl ?? "#",
+            href: item.href ?? "#",
             icon: item.icon,
-            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],

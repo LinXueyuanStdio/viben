@@ -6,7 +6,7 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { resolveHeaderSegments } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { PageAppGrid } from "./components/page-app-grid";
 
@@ -23,26 +23,20 @@ export function WorkspaceAppsPage() {
       return [];
     }
 
-    const resolved = resolveLocationNavigation({
-      location: {
-        kind: "workspace-apps",
-        workspaceId,
-      },
-      workspace,
-    });
+    const url = registry.build("/workspace/:workspaceId/pages", { workspaceId });
+    const stack = buildColdStartBreadcrumb(url);
 
     return resolveHeaderSegments({
       stack: currentStack,
-      fallback: resolved.breadcrumbStack.slice(1).map((item) => ({
+      fallback: stack.slice(1).map((item) => ({
         id: item.id,
         label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
+        href: item.href ?? "#",
         icon: item.icon,
-        descriptorId: item.descriptorId,
         meta: item.meta,
       })),
     });
-  }, [currentStack, workspace, workspaceId]);
+  }, [currentStack, workspaceId]);
 
   if (isLoading || !workspace) {
     return (

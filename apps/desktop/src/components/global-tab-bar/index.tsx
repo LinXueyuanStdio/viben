@@ -50,7 +50,7 @@ import { useTabStore } from "@/stores/tab-store";
 import { SortableTabItem } from "./sortable-tab-item";
 import { WindowControls } from "./window-controls";
 import { createTabNavigationState } from "@/navigation/tab-navigation";
-import { createStackForLocation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 
 export interface GlobalTabBarProps {
   className?: string;
@@ -321,9 +321,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
   // Handle new tab creation
   const handleNewTab = useCallback(() => {
-    const location = { kind: "documents" } as const;
+    const url = "/workspace";
     openTab({
-      navigationState: createTabNavigationState(location, createStackForLocation(location)),
+      navigationState: createTabNavigationState(url, buildColdStartBreadcrumb(url)),
       pinned: false,
     });
   }, [openTab]);

@@ -1,7 +1,8 @@
 // apps/desktop/src/navigation/breadcrumb-builder.ts
 import { registry, humanize } from "./route-registry";
-import type { RouteEntry, RouteMatch } from "./route-compiler";
+import type { RouteEntry } from "./route-compiler";
 import type { IconData } from "@/components/ui/icon-picker";
+import type { WorkspaceSection } from "./navigation-meta";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ export interface NavigateHeaders {
 
 export interface BreadcrumbMeta {
   workspaceId?: string;
-  section?: string;
+  section?: WorkspaceSection;
   pageSlug?: string;
   agentId?: string;
   executorType?: string;
