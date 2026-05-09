@@ -208,11 +208,11 @@ export async function spawnChat(
 }
 
 // =============================================================================
-// Compatibility Layer - Forward to unified executor module
+// Unified Executor Module (engines + ops)
 // =============================================================================
 
-// Import unified module to ensure engines are registered
-import "../executor";
+// Import engines to ensure they self-register
+import "./engines";
 
 // Re-export registry functions for gradual migration
 // Note: These use the unified registry, not the old switch-based factory
@@ -221,4 +221,57 @@ export {
   hasExecutor as hasUnifiedExecutor,
   getRegisteredTypes as getUnifiedExecutorTypes,
   getAvailableExecutors as getUnifiedAvailableExecutors,
-} from "../executor";
+  registerExecutor,
+  getExecutor,
+  hasExecutor,
+  getRegisteredTypes,
+  getAvailableExecutors,
+} from "./ops";
+
+// Re-export engine classes for direct instantiation
+export {
+  AmpExecutor,
+  ClaudeExecutor,
+  CodexExecutor,
+  CopilotExecutor,
+  CursorAgentExecutor,
+  DroidExecutor,
+  GeminiExecutor,
+  OpencodeExecutor,
+  OpenClawExecutor,
+  QwenCodeExecutor,
+  BaseExecutor,
+} from "./engines";
+export type {
+  AmpExecutorConfig,
+  ClaudeExecutorConfig,
+  CodexExecutorConfig,
+  CopilotExecutorConfig,
+  CursorAgentExecutorConfig,
+  DroidExecutorConfig,
+  OpencodeExecutorConfig,
+  OpenClawExecutorConfig,
+  QwenCodeExecutorConfig,
+} from "./engines";
+
+// Re-export unified ops types (with aliases to avoid collision with ./types)
+export type {
+  Executor,
+  ExecutorCapability,
+  ExecutorConfig as UnifiedExecutorConfig,
+  SpawnOptions,
+  SpawnResult,
+  ChatOptions as UnifiedChatOptions,
+  ChatResult as UnifiedChatResult,
+  ExecutionResult,
+  ExecutorErrorType,
+  RunCommandOptions,
+  SSEMessage,
+  SSETextMessage,
+  SSEToolUseMessage,
+  SSEToolResultMessage,
+  SSEResultMessage,
+  SSEErrorMessage,
+  SSEQuestionMessage,
+  SSESdkSessionMessage,
+} from "./ops";

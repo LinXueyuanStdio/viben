@@ -218,6 +218,14 @@ export class OpenClawEventMapper {
       this.accumulatedAssistantText = this.agentAssistantFallbackText;
     }
 
+    // Emit context usage if token data is available
+    if (payload.usage?.inputTokens) {
+      const used = (payload.usage.inputTokens ?? 0) + (payload.usage.outputTokens ?? 0);
+      // Default context window: 200k tokens (Claude). Gateway may provide actual value in future.
+      const total = 200000;
+      messages.push({ type: "context_usage", used, total });
+    }
+
     // Always emit a result message at the end
     messages.push({
       type: "result" as const,

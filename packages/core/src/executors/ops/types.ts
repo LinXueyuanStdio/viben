@@ -159,6 +159,24 @@ export interface SSEThinkingMessage {
   content: string;
 }
 
+export interface SSEExecApprovalMessage {
+  type: "exec_approval";
+  id: string;
+  tool_call: {
+    title?: string;
+    kind?: "read" | "edit" | "execute";
+    command?: string;
+    cwd?: string;
+  };
+  options: Array<{ id: string; label: string }>;
+}
+
+export interface SSEContextUsageMessage {
+  type: "context_usage";
+  used: number;
+  total: number;
+}
+
 export type SSEMessage =
   | SSETextMessage
   | SSEToolUseMessage
@@ -167,7 +185,9 @@ export type SSEMessage =
   | SSEErrorMessage
   | SSEQuestionMessage
   | SSESdkSessionMessage
-  | SSEThinkingMessage;
+  | SSEThinkingMessage
+  | SSEExecApprovalMessage
+  | SSEContextUsageMessage;
 
 // =============================================================================
 // Result Types

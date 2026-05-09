@@ -17,8 +17,12 @@
 
 import { randomUUID } from "node:crypto";
 import type { OpenClawClient } from "./connection";
-import type { SSEMessage } from "../../ops/types";
+import type { SSEMessage, SSEExecApprovalMessage } from "../../ops/types";
 import { OpenClawEventMapper } from "./event-mapper";
+
+export interface OpenClawChatProxyOptions {
+  approvalMode?: "yolo" | "interactive";
+}
 
 export interface OpenClawChatOptions {
   prompt: string;
@@ -36,12 +40,15 @@ export interface OpenClawChatOptions {
  */
 export class OpenClawChatProxy {
   private client: OpenClawClient;
+  private approvalMode: "yolo" | "interactive";
+  private pendingApprovalResolver: ((decision: string) => void) | null = null;
   private currentSessionKey: string | null = null;
   private aborted = false;
   private turnActive = false;
 
-  constructor(client: OpenClawClient) {
+  constructor(client: OpenClawClient, options?: OpenClawChatProxyOptions) {
     this.client = client;
+    this.approvalMode = options?.approvalMode ?? "yolo";
   }
 
   /**
@@ -115,20 +122,74 @@ export class OpenClawChatProxy {
         break;
       }
 
-      // Handle exec.approval.request - auto-approve (YOLO mode)
+      // Handle exec.approval.request
       if (mapper.isExecApprovalRequest(frame)) {
         const approvalId = mapper.getApprovalRequestId(frame);
         if (approvalId) {
-          // Emit tool_use for visibility
-          const result = mapper.mapEvent(frame);
-          if (result !== null) {
-            const messages = Array.isArray(result) ? result : [result];
-            for (const msg of messages) {
-              yield msg;
+          if (this.approvalMode === "interactive") {
+            // Emit tool_use for visibility
+            const result = mapper.mapEvent(frame);
+            if (result !== null) {
+              const messages = Array.isArray(result) ? result : [result];
+              for (const msg of messages) {
+                yield msg;
+              }
             }
+            // Yield exec_approval message and wait for user decision
+            const payload = frame.payload as {
+              id?: string;
+              request?: { command?: string; commandPreview?: string; cwd?: string };
+            } | undefined;
+            const command = payload?.request?.command ?? payload?.request?.commandPreview ?? "exec approval";
+            yield {
+              type: "exec_approval",
+              id: approvalId,
+              tool_call: {
+                title: command,
+                kind: "execute" as const,
+                command,
+                cwd: payload?.request?.cwd,
+              },
+              options: [
+                { id: "allow_once", label: "Allow" },
+                { id: "allow_always", label: "Always Allow" },
+                { id: "reject", label: "Reject" },
+              ],
+            } as SSEExecApprovalMessage;
+
+            // Wait for user decision
+            const decision = await new Promise<string>((resolve) => {
+              this.pendingApprovalResolver = resolve;
+            });
+            this.pendingApprovalResolver = null;
+
+            // Send decision to OpenClaw
+            if (decision === "reject") {
+              // Reject: send deny decision
+              this.client.execApproval
+                .resolve({ id: approvalId, decision: "deny" })
+                .catch((err) => {
+                  console.warn("[OpenClawChatProxy] Failed to deny exec:", err?.message ?? err);
+                });
+            } else {
+              // Allow: send the decision as-is (allow_once or allow_always)
+              this.client.execApproval
+                .resolve({ id: approvalId, decision })
+                .catch((err) => {
+                  console.warn("[OpenClawChatProxy] Failed to approve exec:", err?.message ?? err);
+                });
+            }
+          } else {
+            // YOLO mode: auto-approve
+            const result = mapper.mapEvent(frame);
+            if (result !== null) {
+              const messages = Array.isArray(result) ? result : [result];
+              for (const msg of messages) {
+                yield msg;
+              }
+            }
+            this.autoApproveExec(approvalId);
           }
-          // Auto-approve the execution
-          this.autoApproveExec(approvalId);
         }
         continue;
       }
@@ -182,12 +243,28 @@ export class OpenClawChatProxy {
   async abort(): Promise<void> {
     this.aborted = true;
     this.turnActive = false;
+
+    // Resolve any pending approval with reject to unblock the stream
+    if (this.pendingApprovalResolver) {
+      this.pendingApprovalResolver("reject");
+      this.pendingApprovalResolver = null;
+    }
+
     if (this.currentSessionKey) {
       try {
         await this.client.chat.abort({ sessionKey: this.currentSessionKey });
       } catch {
         // Ignore abort errors
       }
+    }
+  }
+
+  /**
+   * Resolve a pending exec approval (called by gateway when user responds)
+   */
+  resolveApproval(decision: string): void {
+    if (this.pendingApprovalResolver) {
+      this.pendingApprovalResolver(decision);
     }
   }
 
