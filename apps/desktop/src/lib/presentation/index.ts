@@ -1,4 +1,23 @@
-export type { PresentationCommand, Point, Rect, TldrawColor } from "./types"
-export { executeCommand } from "./command-executor"
-export type { AnimationHandle } from "./command-animator"
-export { animateCommand, replayToStep } from "./command-animator"
+// Re-export everything from @viben/presentation
+export type {
+  PresentationCommand,
+  Point,
+  Rect,
+  TldrawColor,
+  AnimationHandle,
+  PresentationStep,
+  PlayerState,
+  PresentationToolName,
+  ClientToolResultContent,
+  ClientToolResult,
+} from "@viben/presentation"
+export {
+  describeCommand,
+  compilePresentationCommands,
+  normalizePresentationToolName,
+  isClientSidePresentationTool,
+  registerCompletionCallback,
+  consumeCompletionCallback,
+  hasCompletionCallback,
+  removeCompletionCallback,
+} from "@viben/presentation"

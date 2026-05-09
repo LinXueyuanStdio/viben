@@ -14,9 +14,8 @@ import type {
   WaveConfig,
   OverlaySettings,
 } from "@/types/overlay";
-import type { PresentationCommand } from "@/lib/presentation/types";
-import type { PresentationStep, PlayerState } from "@/lib/client-side-tool/types";
-import { describeCommand } from "@/lib/client-side-tool/types";
+import type { PresentationCommand, PresentationStep, PlayerState } from "@viben/presentation";
+import { describeCommand } from "@viben/presentation";
 import { PERFORMANCE_LIMITS } from "@/lib/overlay/constants";
 
 interface OverlayState {
