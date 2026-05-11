@@ -84,6 +84,8 @@ export interface ChatInputProps {
   allowSendWhileLoading?: boolean;
   /** Whether the input is disabled */
   disabled?: boolean;
+  /** When set, shows a subtle message above the input explaining why it's disabled */
+  blockedReason?: string;
   /** Placeholder text for the textarea */
   placeholder?: string;
   /** Additional CSS class */

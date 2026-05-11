@@ -19,6 +19,7 @@ import {
   Image,
 } from "lucide-react";
 import { cn } from "@viben/ui";
+import { getDisplayPath } from "./utils";
 import type { AgentMessage } from "./types";
 
 /** Artifact info for linking tool_use messages to artifacts */
@@ -28,13 +29,20 @@ export interface ArtifactInfo {
   type: string;
 }
 
+/** Execution status for a tool call */
+export type ToolExecutionStatus = "queued" | "executing" | "success" | "error";
+
 export interface ToolExecutionItemProps {
   name: string;
   displayName?: string;
   input?: Record<string, unknown>;
   output?: string;
+  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
   isExecuting?: boolean;
+  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
   isError?: boolean;
+  /** Explicit execution status. When provided, takes precedence over isExecuting/isError. */
+  status?: ToolExecutionStatus;
   className?: string;
   /** Compact mode for use within task groups */
   compact?: boolean;
@@ -140,6 +148,27 @@ function RenderContentBlocks({ blocks, maxTextLength }: { blocks: ContentBlock[]
 // ============================================================================
 
 /**
+ * Extract a human-readable label from a bash command.
+ * If the command starts with a # comment line, use that as the display label.
+ * Otherwise return null to fall through to normal truncation.
+ */
+function extractBashLabel(command: string): string | null {
+  if (!command) return null;
+  const trimmed = command.trim();
+
+  // Check if command starts with a # comment (common pattern: "# Do something\nactual-command")
+  const lines = trimmed.split("\n");
+  if (lines.length >= 2 && lines[0].startsWith("#")) {
+    const comment = lines[0].slice(1).trim();
+    if (comment.length > 0 && comment.length <= 80) {
+      return comment;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get the most relevant parameter for inline display
  */
 function getToolParam(
@@ -149,13 +178,19 @@ function getToolParam(
   if (!input) return "";
 
   switch (toolName) {
-    case "Bash":
-      return (input.command as string) || "";
+    case "Bash": {
+      const command = (input.command as string) || "";
+      const label = extractBashLabel(command);
+      if (label) return label;
+      // For multi-line commands, show only first line
+      const firstLine = command.split("\n")[0] || command;
+      return firstLine;
+    }
     case "Read":
     case "Write":
     case "Edit":
     case "MultiEdit":
-      return (input.file_path as string) || "";
+      return getDisplayPath((input.file_path as string) || "");
     case "Grep":
     case "Glob":
       return (input.pattern as string) || "";
@@ -238,6 +273,75 @@ function isExpectedWarning(toolName: string, output: string): boolean {
   }
 
   return false;
+}
+
+// ============================================================================
+// Status Dot Indicator
+// ============================================================================
+
+/**
+ * Resolve execution status from explicit `status` prop or legacy `isExecuting`/`isError` props.
+ * When `status` is provided, it takes precedence.
+ */
+function resolveStatus(
+  statusProp: ToolExecutionStatus | undefined,
+  isExecuting: boolean | undefined,
+  isError: boolean | undefined,
+  output: string | undefined,
+): ToolExecutionStatus {
+  if (statusProp) return statusProp;
+  // Legacy fallback
+  if (isExecuting && !output) return "executing";
+  if (isError) return "error";
+  if (output) return "success";
+  return "queued";
+}
+
+/**
+ * Animated status dot indicator for tool execution state.
+ *
+ * - queued: muted static dot (low opacity)
+ * - executing: pulsing/blinking dot (amber)
+ * - success: solid green dot
+ * - error: solid red dot
+ */
+function StatusDot({
+  status,
+  isWarning = false,
+  className,
+}: {
+  status: ToolExecutionStatus;
+  /** When true and status is error, show amber instead of red */
+  isWarning?: boolean;
+  className?: string;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  const dotClass = cn(
+    "mt-1.5 size-2 shrink-0 rounded-full",
+    status === "queued" && "bg-muted-foreground/40",
+    status === "executing" && "bg-amber-500",
+    status === "success" && "bg-emerald-500",
+    status === "error" && (isWarning ? "bg-amber-500" : "bg-red-500"),
+    className,
+  );
+
+  // For the executing state, use framer-motion for a smooth pulsing animation
+  if (status === "executing" && !prefersReducedMotion) {
+    return (
+      <motion.span
+        className={dotClass}
+        animate={{ opacity: [1, 0.3, 1] }}
+        transition={{
+          duration: 1.4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+    );
+  }
+
+  return <span className={dotClass} />;
 }
 
 interface ResultInfo {
@@ -509,6 +613,67 @@ function ArtifactBadge({ artifactInfo, onClick }: ArtifactBadgeProps) {
 }
 
 // ============================================================================
+// Progress Text for Executing State
+// ============================================================================
+
+/**
+ * Get tool-specific progress text for the executing state.
+ * Instead of a generic "Running...", show contextual info like the command,
+ * file path, or search pattern being processed.
+ */
+function getProgressText(
+  toolName: string,
+  input: Record<string, unknown> | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: (...args: any[]) => any,
+): string {
+  if (!input) return t("chat.running", "Running...");
+
+  switch (toolName) {
+    case "Bash": {
+      const cmd = (input.command as string) || "";
+      const label = extractBashLabel(cmd);
+      if (label) return label;
+      const truncated = cmd.length > 80 ? cmd.slice(0, 80) + "\u2026" : cmd;
+      return truncated || t("chat.running", "Running...");
+    }
+    case "Read": {
+      const filename = getDisplayPath((input.file_path as string) || "");
+      return filename
+        ? t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: filename })
+        : t("chat.running", "Running...");
+    }
+    case "Write": {
+      const filename = getDisplayPath((input.file_path as string) || "");
+      return filename
+        ? t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: filename })
+        : t("chat.running", "Running...");
+    }
+    case "Edit":
+    case "MultiEdit": {
+      const filename = getDisplayPath((input.file_path as string) || "");
+      return filename
+        ? t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: filename })
+        : t("chat.running", "Running...");
+    }
+    case "Grep": {
+      const pattern = (input.pattern as string) || "";
+      return pattern
+        ? t("chat.activity.searching", { defaultValue: "Searching \"{{pattern}}\"...", pattern: pattern.slice(0, 40) })
+        : t("chat.running", "Running...");
+    }
+    case "Glob": {
+      const pattern = (input.pattern as string) || "";
+      return pattern
+        ? t("chat.activity.findingFiles", { defaultValue: "Finding {{pattern}}...", pattern: pattern.slice(0, 40) })
+        : t("chat.running", "Running...");
+    }
+    default:
+      return t("chat.running", "Running...");
+  }
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -519,6 +684,7 @@ export function ToolExecutionItem({
   output,
   isExecuting,
   isError,
+  status: statusProp,
   className,
   compact = false,
   subagentId,
@@ -540,11 +706,14 @@ export function ToolExecutionItem({
   const truncatedParam = truncateParam(param);
   const { summary, isWarning } = useResultSummary(name, output, isError);
 
-  // Determine status
-  const isRunning = isExecuting && !output;
-  const hasError = !!isError;
+  // Resolve execution status (new prop takes precedence over legacy props)
+  const resolvedStatus = resolveStatus(statusProp, isExecuting, isError, output);
+
+  // Derive convenience booleans from resolved status
+  const isRunning = resolvedStatus === "executing";
+  const hasError = resolvedStatus === "error";
   const isActualError = hasError && !isWarning;
-  const isCompleted = !isRunning && !isActualError && output;
+  const isCompleted = resolvedStatus === "success";
 
   // Check if this is a Task tool (sub-agent)
   const isTaskTool = name === "Task";
@@ -579,21 +748,7 @@ export function ToolExecutionItem({
         >
           {/* Line 1: bullet + tool name + params */}
           <div className="flex items-start gap-2">
-            {/* Bullet indicator */}
-            <span
-              className={cn(
-                "mt-1.5 size-2 shrink-0 rounded-full",
-                isRunning
-                  ? "animate-pulse bg-amber-500"
-                  : isActualError
-                    ? "bg-red-500"
-                    : isWarning
-                      ? "bg-amber-500"
-                      : isCompleted
-                        ? "bg-emerald-500"
-                        : "bg-muted-foreground"
-              )}
-            />
+            <StatusDot status={resolvedStatus} isWarning={isWarning} />
 
             {/* Tool call text */}
             <div className="min-w-0 flex-1">
@@ -601,6 +756,11 @@ export function ToolExecutionItem({
                 <span className="text-foreground font-semibold">
                   {displayName || name}
                 </span>
+                {resolvedStatus === "queued" && (
+                  <span className="text-[11px] text-muted-foreground/60 ml-1">
+                    {t("chat.queued", "queued")}
+                  </span>
+                )}
                 {param && (
                   <>
                     <span className="text-muted-foreground">(</span>
@@ -617,7 +777,7 @@ export function ToolExecutionItem({
           {/* Line 2: Result summary */}
           {(summary || isRunning) && (
             <div className="mt-0.5 ml-1 flex items-start gap-2">
-              <span className="text-muted-foreground/40 leading-none">└</span>
+              <span className="text-muted-foreground/40 leading-none">{"\u2514"}</span>
               <span
                 className={cn(
                   isActualError
@@ -627,7 +787,7 @@ export function ToolExecutionItem({
                       : "text-muted-foreground"
                 )}
               >
-                {isRunning ? t("chat.running", "Running...") : summary}
+                {isRunning ? getProgressText(name, input, t) : summary}
               </span>
             </div>
           )}
@@ -865,23 +1025,9 @@ export function ToolExecutionItem({
             onClick={expandedInline ? undefined : handleClick}
           >
             <div className="px-4 py-3">
-              {/* Line 1: bullet + tool name + params */}
+              {/* Line 1: status dot + tool name + params */}
               <div className="flex items-start gap-2">
-                {/* Bullet indicator */}
-                <span
-                  className={cn(
-                    "mt-1.5 size-2 shrink-0 rounded-full",
-                    isRunning
-                      ? "animate-pulse bg-amber-500"
-                      : isActualError
-                        ? "bg-red-500"
-                        : isWarning
-                          ? "bg-amber-500"
-                          : isCompleted
-                            ? "bg-emerald-500"
-                            : "bg-muted-foreground"
-                  )}
-                />
+                <StatusDot status={resolvedStatus} isWarning={isWarning} />
 
                 {/* Tool call text */}
                 <div className="min-w-0 flex-1">
@@ -889,6 +1035,11 @@ export function ToolExecutionItem({
                     <span className="text-foreground font-semibold">
                       {displayName || name}
                     </span>
+                    {resolvedStatus === "queued" && (
+                      <span className="text-[11px] text-muted-foreground/60 ml-1">
+                        {t("chat.queued", "queued")}
+                      </span>
+                    )}
                     {!expandedInline && param && (
                       <>
                         <span className="text-muted-foreground">(</span>
@@ -915,7 +1066,8 @@ export function ToolExecutionItem({
                           : "text-muted-foreground"
                     )}
                   >
-                    {isRunning ? t("chat.running", "Running...") : summary}
+                    {isCompleted && <CheckCircle2 className="inline-block size-3 mr-1 align-text-bottom" />}
+                    {isRunning ? getProgressText(name, input, t) : summary}
                   </span>
                 </div>
               )}

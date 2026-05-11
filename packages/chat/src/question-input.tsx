@@ -252,8 +252,8 @@ export function QuestionInput({
     onSubmit(formattedAnswers);
   }, [questions, selectedAnswers, otherInputs, onSubmit]);
 
-  // Check if at least one answer is provided for each question
-  const hasAnswers = questions.questions.some((_, idx) => {
+  // Check if every question has at least one answer provided
+  const hasAnswers = questions.questions.every((_, idx) => {
     const hasSelected =
       selectedAnswers[idx] && selectedAnswers[idx].length > 0;
     const hasOther = otherInputs[idx]?.trim();

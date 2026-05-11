@@ -10,7 +10,8 @@
 export * from "./types";
 
 // Utilities
-export { cn, isImageFile, formatTokens, getMimeType } from "./utils";
+export { cn, isImageFile, formatTokens, getMimeType, getDisplayPath } from "./utils";
+export { useMinDisplayTime } from "./use-min-display-time";
 
 // Model icons
 export { getModelIcon } from "./model-icons";
@@ -58,6 +59,29 @@ export type { MessageListProps, MessageListHandle } from "./message-list";
 export { MessageItem } from "./message-item";
 export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
-export type { ToolExecutionItemProps, ArtifactInfo } from "./tool-execution-item";
+export type { ToolExecutionItemProps, ToolExecutionStatus, ArtifactInfo } from "./tool-execution-item";
 export { PlanApproval } from "./plan-approval";
 export { QuestionInput } from "./question-input";
+export { CollapsedToolGroup } from "./collapsed-tool-group";
+export type { CollapsedToolGroupProps } from "./collapsed-tool-group";
+
+// Command Queue
+export { useCommandQueue, CommandQueuePanel } from "./command-queue";
+export type {
+  CommandQueueItem,
+  UseCommandQueueOptions,
+  UseCommandQueueReturn,
+  CommandQueuePanelProps,
+} from "./command-queue";
+
+// Message Queue
+export { useMessageQueue } from "./message-queue";
+export type {
+  MessageQueueItem,
+  UseMessageQueueOptions,
+  UseMessageQueueReturn,
+} from "./message-queue";
+
+// Exec Approval
+export { ExecApproval } from "./exec-approval";
+export type { ExecApprovalProps, PendingExecApproval } from "./exec-approval";

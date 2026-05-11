@@ -1,11 +1,16 @@
 import * as React from "react";
 import { useState, useRef, useEffect, useMemo, useCallback, useImperativeHandle } from "react";
 import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Bot, ChevronDown, CheckCircle2, ArrowDown } from "lucide-react";
 import { cn, ScrollArea } from "@viben/ui";
 import { MessageItem } from "./message-item";
 import { ToolExecutionItem, type ArtifactInfo } from "./tool-execution-item";
+import { CollapsedToolGroup } from "./collapsed-tool-group";
 import { QuestionInput } from "./question-input";
+import { ExecApproval } from "./exec-approval";
+import type { PendingExecApproval } from "./exec-approval";
+import { getDisplayPath } from "./utils";
 import type { AgentMessage, PendingQuestion, TaskPlan } from "./types";
 
 /** Artifact definition for linking with tool_use messages */
@@ -77,6 +82,15 @@ export interface MessageListProps {
    * without requiring a click-to-open modal. Useful for capsule/overlay views.
    */
   toolExpandedInline?: boolean;
+  /**
+   * Pending exec approval - renders inline at the bottom of the message list,
+   * blocking further execution until the user makes a decision.
+   */
+  pendingApproval?: PendingExecApproval | null;
+  /**
+   * Called when the user makes an approval decision (allow_once, allow_always, reject).
+   */
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
 }
 
 // Types for message grouping
@@ -127,6 +141,228 @@ function getArtifactInfoForMessage(
   };
 }
 
+/** Tool names that are considered "read-only" and can be auto-collapsed */
+const COLLAPSIBLE_TOOL_NAMES = new Set(["Read", "Glob", "Grep"]);
+
+/**
+ * A single collapsed run of consecutive read/search tools.
+ * Manages its own expanded state via useState.
+ */
+function CollapsedToolRun({
+  tools,
+  artifacts,
+  onArtifactClick,
+}: {
+  tools: ToolWithResult[];
+  artifacts?: Artifact[];
+  onArtifactClick?: (artifactId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isExecuting = tools.some((t) => !t.result);
+
+  return (
+    <CollapsedToolGroup
+      tools={tools.map(({ message, result }) => ({
+        name: message.name || "unknown",
+        input: message.input,
+        output: result?.output,
+        isError: result?.isError,
+      }))}
+      isExecuting={isExecuting}
+      expanded={expanded}
+      onToggle={() => setExpanded((prev) => !prev)}
+    >
+      {tools.map(({ message, globalIndex, result }) => (
+        <ToolExecutionItem
+          key={globalIndex}
+          name={message.name || "unknown"}
+          displayName={message.name}
+          input={message.input}
+          output={result?.output}
+          isError={result?.isError}
+          isExecuting={!result}
+          compact
+          artifactInfo={getArtifactInfoForMessage(message, artifacts)}
+          onArtifactClick={onArtifactClick}
+        />
+      ))}
+    </CollapsedToolGroup>
+  );
+}
+
+/**
+ * Walk through tools and group consecutive collapsible (Read/Glob/Grep) runs.
+ * Returns an array of React elements mixing CollapsedToolRun and individual ToolExecutionItem.
+ */
+function renderToolsWithCollapsing(
+  tools: ToolWithResult[],
+  artifacts?: Artifact[],
+  onArtifactClick?: (artifactId: string) => void
+): React.ReactNode[] {
+  const elements: React.ReactNode[] = [];
+  let collapsibleRun: ToolWithResult[] = [];
+
+  const flushRun = () => {
+    if (collapsibleRun.length >= 2) {
+      elements.push(
+        <CollapsedToolRun
+          key={`collapsed-${collapsibleRun[0].globalIndex}`}
+          tools={collapsibleRun}
+          artifacts={artifacts}
+          onArtifactClick={onArtifactClick}
+        />
+      );
+    } else if (collapsibleRun.length === 1) {
+      const { message, globalIndex, result } = collapsibleRun[0];
+      elements.push(
+        <ToolExecutionItem
+          key={globalIndex}
+          name={message.name || "unknown"}
+          displayName={message.name}
+          input={message.input}
+          output={result?.output}
+          isError={result?.isError}
+          isExecuting={!result}
+          compact
+          artifactInfo={getArtifactInfoForMessage(message, artifacts)}
+          onArtifactClick={onArtifactClick}
+        />
+      );
+    }
+    collapsibleRun = [];
+  };
+
+  for (const tool of tools) {
+    if (COLLAPSIBLE_TOOL_NAMES.has(tool.message.name || "")) {
+      collapsibleRun.push(tool);
+    } else {
+      flushRun();
+      const { message, globalIndex, result } = tool;
+      elements.push(
+        <ToolExecutionItem
+          key={globalIndex}
+          name={message.name || "unknown"}
+          displayName={message.name}
+          input={message.input}
+          output={result?.output}
+          isError={result?.isError}
+          isExecuting={!result}
+          compact
+          artifactInfo={getArtifactInfoForMessage(message, artifacts)}
+          onArtifactClick={onArtifactClick}
+        />
+      );
+    }
+  }
+
+  flushRun();
+
+  return elements;
+}
+
+/**
+ * Turn separator - subtle horizontal divider between conversation turns.
+ * Shown before each user message (except the very first group).
+ */
+function TurnSeparator({ timestamp }: { timestamp?: number }) {
+  const timeStr = timestamp
+    ? new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
+
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="flex-1 border-t border-border/40" />
+      {timeStr && (
+        <span className="text-[10px] text-muted-foreground/50 shrink-0">{timeStr}</span>
+      )}
+      <div className="flex-1 border-t border-border/40" />
+    </div>
+  );
+}
+
+/**
+ * Build a collapsed summary for task group tools.
+ * When completed: "Read 3 files, ran 2 commands"
+ * When running: "Running... (N steps)"
+ */
+function useTaskGroupSummary(
+  tools: ToolWithResult[],
+  isCompleted: boolean,
+  isRunning: boolean,
+  t: ReturnType<typeof useTranslation>["t"]
+): string {
+  return useMemo(() => {
+    if (!isCompleted && isRunning) {
+      return t("chat.taskGroup.running", {
+        count: tools.length,
+        defaultValue: `Running... (${tools.length} steps)`,
+      }).replace("{{count}}", String(tools.length));
+    }
+
+    // Build summary from tool categories
+    const counts = { read: 0, search: 0, bash: 0, write: 0, edit: 0, other: 0 };
+    for (const tool of tools) {
+      switch (tool.message.name) {
+        case "Read": counts.read++; break;
+        case "Glob":
+        case "Grep": counts.search++; break;
+        case "Bash": counts.bash++; break;
+        case "Write": counts.write++; break;
+        case "Edit":
+        case "MultiEdit": counts.edit++; break;
+        default: counts.other++; break;
+      }
+    }
+
+    const parts: string[] = [];
+    if (counts.read > 0) {
+      parts.push(t("chat.collapsedGroup.readFiles", {
+        count: counts.read,
+        defaultValue: `Read ${counts.read} files`,
+      }) as string);
+    }
+    if (counts.search > 0) {
+      parts.push(t("chat.collapsedGroup.searchedPatterns", {
+        count: counts.search,
+        defaultValue: `Searched ${counts.search} patterns`,
+      }) as string);
+    }
+    if (counts.bash > 0) {
+      parts.push(t("chat.collapsedGroup.ranCommands", {
+        count: counts.bash,
+        defaultValue: `Ran ${counts.bash} commands`,
+      }) as string);
+    }
+    if (counts.write > 0) {
+      parts.push(t("chat.collapsedGroup.wroteFiles", {
+        count: counts.write,
+        defaultValue: `Wrote ${counts.write} files`,
+      }) as string);
+    }
+    if (counts.edit > 0) {
+      parts.push(t("chat.collapsedGroup.editedFiles", {
+        count: counts.edit,
+        defaultValue: `Edited ${counts.edit} files`,
+      }) as string);
+    }
+    if (counts.other > 0) {
+      parts.push(t("chat.collapsedGroup.usedTools", {
+        count: counts.other,
+        defaultValue: `Used ${counts.other} tools`,
+      }) as string);
+    }
+
+    if (parts.length === 0) {
+      return t("chat.showSteps", {
+        count: tools.length,
+        defaultValue: `Show ${tools.length} steps`,
+      }).replace("{{count}}", String(tools.length));
+    }
+
+    return parts.join(", ");
+  }, [tools, isCompleted, isRunning, t]);
+}
+
 /**
  * Task Group Component - shows text description and collapsible tool list
  */
@@ -157,6 +393,9 @@ function TaskGroupComponent({
       setIsExpanded(false);
     }
   }, [isCompleted, isRunning]);
+
+  // Build summarized text for collapsed state
+  const collapsedSummary = useTaskGroupSummary(tools, isCompleted, isRunning, t);
 
   return (
     <div className="min-w-0 space-y-3">
@@ -195,30 +434,14 @@ function TaskGroupComponent({
             <span className="flex-1 text-left">
               {isExpanded
                 ? t("chat.hideSteps", { defaultValue: "Hide steps" })
-                : t("chat.showSteps", {
-                    count: tools.length,
-                    defaultValue: `Show ${tools.length} steps`,
-                  }).replace("{count}", String(tools.length))}
+                : collapsedSummary}
             </span>
           </button>
 
           {/* Tool list */}
           {isExpanded && (
             <div className="px-2 pb-2 space-y-1">
-              {tools.map(({ message, globalIndex, result }) => (
-                <ToolExecutionItem
-                  key={globalIndex}
-                  name={message.name || "unknown"}
-                  displayName={message.name}
-                  input={message.input}
-                  output={result?.output}
-                  isError={result?.isError}
-                  isExecuting={!result}
-                  compact
-                  artifactInfo={getArtifactInfoForMessage(message, artifacts)}
-                  onArtifactClick={onArtifactClick}
-                />
-              ))}
+              {renderToolsWithCollapsing(tools, artifacts, onArtifactClick)}
             </div>
           )}
         </div>
@@ -237,39 +460,21 @@ function groupMessages(
 ): MessageGroup[] {
   const groups: MessageGroup[] = [];
 
-  // Pre-process: find the last text message index in each segment between user messages
-  const lastTextIndicesInSegments = new Set<number>();
-
-  // Find segment boundaries (user messages and result)
-  const segmentBoundaries: number[] = [];
-  messages.forEach((msg, idx) => {
-    if (msg.type === "user" || msg.type === "result") {
-      segmentBoundaries.push(idx);
-    }
-  });
-  segmentBoundaries.push(messages.length); // End boundary
-
-  // For each segment, find the last text message
-  let segmentStart = 0;
-  for (const boundary of segmentBoundaries) {
-    for (let i = boundary - 1; i >= segmentStart; i--) {
-      if (messages[i].type === "text" && messages[i].content) {
-        lastTextIndicesInSegments.add(i);
-        break;
-      }
-    }
-    segmentStart = boundary + 1;
-  }
-
-  // Filter messages: only keep the last text message in each segment
+  // Pre-process: merge consecutive text messages (streaming pattern).
+  // When multiple text messages appear in a row with no other message types between them,
+  // keep only the last one (it's the final streaming update). But text messages separated
+  // by tool_use/tool_result or other message types are distinct and should ALL be preserved.
   const mergedMessages: AgentMessage[] = [];
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
     if (msg.type === "text" && msg.content) {
-      // Only keep text messages that are the last in their segment
-      if (lastTextIndicesInSegments.has(i)) {
-        mergedMessages.push(msg);
+      // Check if the next message is also a text message (consecutive streaming pattern)
+      const next = messages[i + 1];
+      if (next && next.type === "text" && next.content) {
+        // Skip this text message - the next one is a more complete streaming update
+        continue;
       }
+      mergedMessages.push(msg);
     } else {
       mergedMessages.push(msg);
     }
@@ -371,18 +576,11 @@ function groupMessages(
       pendingTextMessage = message;
       state.currentGroup = null;
     } else if (message.type === "tool_use" && message.name) {
-      // Text followed by tool_use - create a task group with the text as description
+      // Text followed by tool_use - emit the text as a standalone message,
+      // then start a fresh tool group. This ensures long text messages are
+      // rendered in full rather than being truncated into a task group header.
       if (pendingTextMessage) {
-        const title =
-          (pendingTextMessage.content || "").slice(0, 80) +
-          ((pendingTextMessage.content || "").length > 80 ? "..." : "");
-        state.currentGroup = {
-          type: "task",
-          title,
-          description: pendingTextMessage.content || "",
-          tools: [],
-          isCompleted: false,
-        };
+        groups.push({ type: "other", message: pendingTextMessage });
         pendingTextMessage = null;
       }
       const group = ensureCurrentGroup();
@@ -444,16 +642,63 @@ function groupMessages(
 }
 
 /**
- * Running indicator component - shows current activity
+ * Extract a short path from a full file path for display.
+ * Delegates to the centralized `getDisplayPath` utility.
+ * e.g. "/Users/foo/project/src/components/App.tsx" -> "src/components/App.tsx"
+ */
+function shortPath(filePath: string): string {
+  return getDisplayPath(filePath);
+}
+
+/**
+ * Truncate a string to maxLen characters, appending ellipsis if truncated.
+ */
+function truncate(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  return str.slice(0, maxLen) + "...";
+}
+
+/**
+ * Running indicator component - shows current activity with elapsed time
  */
 function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
   const { t } = useTranslation();
+  const [elapsed, setElapsed] = useState(0);
 
-  // Find the last tool_use message to show current activity
-  const lastToolUse = [...messages].reverse().find((m) => m.type === "tool_use");
+  // Find the last tool_use message that has no matching tool_result
+  const lastToolUse = useMemo(() => {
+    const toolResultIds = new Set<string>();
+    for (const m of messages) {
+      if (m.type === "tool_result" && m.toolUseId) {
+        toolResultIds.add(m.toolUseId);
+      }
+    }
+    // Find last unresolved tool_use
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.type === "tool_use" && m.toolUseId && !toolResultIds.has(m.toolUseId)) {
+        return m;
+      }
+    }
+    // Fallback: last tool_use regardless of result status
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].type === "tool_use") return messages[i];
+    }
+    return undefined;
+  }, [messages]);
+
+  // Stable key for the current tool invocation
+  const toolKey = lastToolUse?.id ?? lastToolUse?.toolUseId;
+
+  // Reset and start timer when the active tool changes
+  useEffect(() => {
+    setElapsed(0);
+    const interval = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [toolKey]);
 
   // Get description of current activity
-  const getActivityText = () => {
+  const activityText = useMemo(() => {
     if (!lastToolUse?.name) {
       return t("chat.thinking", { defaultValue: "Thinking..." });
     }
@@ -461,30 +706,69 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
     const input = lastToolUse.input as Record<string, unknown> | undefined;
 
     switch (lastToolUse.name) {
-      case "Bash":
-        return t("chat.activity.runningCommand", "Running command...");
+      case "Bash": {
+        const cmd = input?.command ? String(input.command).trim() : "";
+        if (cmd) {
+          return t("chat.activity.runningCommand", {
+            defaultValue: "Running: {{command}}",
+            command: truncate(cmd, 60),
+          });
+        }
+        return t("chat.activity.runningCommand", {
+          defaultValue: "Running command...",
+        });
+      }
       case "Read": {
         const readFile = input?.file_path
-          ? String(input.file_path).split("/").pop()
+          ? shortPath(String(input.file_path))
           : "";
-        return t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: readFile || "file" });
+        return t("chat.activity.readingFile", {
+          defaultValue: "Reading {{file}}...",
+          file: readFile || "file",
+        });
       }
       case "Write": {
         const writeFile = input?.file_path
-          ? String(input.file_path).split("/").pop()
+          ? shortPath(String(input.file_path))
           : "";
-        return t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: writeFile || "file" });
+        return t("chat.activity.writingFile", {
+          defaultValue: "Writing {{file}}...",
+          file: writeFile || "file",
+        });
       }
       case "Edit": {
         const editFile = input?.file_path
-          ? String(input.file_path).split("/").pop()
+          ? shortPath(String(input.file_path))
           : "";
-        return t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: editFile || "file" });
+        return t("chat.activity.editingFile", {
+          defaultValue: "Editing {{file}}...",
+          file: editFile || "file",
+        });
       }
-      case "Grep":
-        return t("chat.activity.searching", "Searching...");
-      case "Glob":
-        return t("chat.activity.findingFiles", "Finding files...");
+      case "Grep": {
+        const pattern = input?.pattern ? String(input.pattern) : "";
+        if (pattern) {
+          return t("chat.activity.searching", {
+            defaultValue: 'Searching for "{{pattern}}"...',
+            pattern: truncate(pattern, 40),
+          });
+        }
+        return t("chat.activity.searching", {
+          defaultValue: "Searching...",
+        });
+      }
+      case "Glob": {
+        const globPattern = input?.pattern ? String(input.pattern) : "";
+        if (globPattern) {
+          return t("chat.activity.findingFiles", {
+            defaultValue: "Finding files: {{pattern}}...",
+            pattern: truncate(globPattern, 40),
+          });
+        }
+        return t("chat.activity.findingFiles", {
+          defaultValue: "Finding files...",
+        });
+      }
       case "WebSearch":
         return t("chat.activity.searchingWeb", "Searching web...");
       case "WebFetch":
@@ -492,9 +776,12 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
       case "Task":
         return t("chat.activity.runningSubtask", "Running subtask...");
       default:
-        return t("chat.activity.runningTool", { defaultValue: "Running {{name}}...", name: lastToolUse.name });
+        return t("chat.activity.runningTool", {
+          defaultValue: "Running {{name}}...",
+          name: lastToolUse.name,
+        });
     }
-  };
+  }, [lastToolUse, t]);
 
   return (
     <div className="flex items-center gap-2 py-2">
@@ -522,7 +809,12 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
           />
         </svg>
       </div>
-      <span className="text-muted-foreground text-sm">{getActivityText()}</span>
+      <div className="flex flex-col">
+        <span className="text-muted-foreground text-sm">{activityText}</span>
+        {elapsed >= 3 && (
+          <span className="text-muted-foreground/60 text-xs">{elapsed}s</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -548,6 +840,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   artifacts,
   onArtifactClick,
   toolExpandedInline,
+  pendingApproval,
+  onApprovalDecision,
 }, ref) {
   const { t } = useTranslation();
 
@@ -558,12 +852,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   const [showScrollButton, setShowScrollButton] = useState(false);
   const userScrolledUpRef = useRef(false);
   const lastScrollTopRef = useRef(0);
+  // Track count of messages that arrived while user is scrolled up
+  const [unreadCount, setUnreadCount] = useState(0);
+  const lastSeenMessageCountRef = useRef(messages.length);
+  const prefersReducedMotion = useReducedMotion();
 
-  // Debug
-  useEffect(() => {
-    console.log("[MessageList] Render - messages:", messages.length, "isStreaming:", isStreaming);
-    console.log("[MessageList] Message types:", messages.map(m => m.type));
-  }, [messages, isStreaming]);
 
   // Group messages for display - must be called before any conditional returns
   // In simpleMode, skip grouping and just create "other" groups for each message
@@ -574,22 +867,24 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     [messages, isStreaming, simpleMode, t]
   );
 
-  // Debug groups
+  // Track unread messages when user is scrolled up
   useEffect(() => {
-    console.log("[MessageList] Groups:", groups.length, "from messages:", messages.length);
-    groups.forEach((g, i) => {
-      if (g.type === "task") {
-        console.log(`  [${i}] task: ${g.tools.length} tools`);
-      } else {
-        console.log(`  [${i}] ${g.message.type}: ${g.message.content?.slice(0, 50) || g.message.id}`);
+    if (userScrolledUpRef.current && showScrollButton) {
+      // Count new messages since last seen
+      const newMessages = messages.length - lastSeenMessageCountRef.current;
+      if (newMessages > 0) {
+        setUnreadCount((prev) => prev + newMessages);
       }
-    });
-  }, [groups, messages.length]);
-
+    } else {
+      setUnreadCount(0);
+    }
+    lastSeenMessageCountRef.current = messages.length;
+  }, [messages.length, showScrollButton]);
 
   // Scroll to bottom function
   const scrollToBottom = useCallback(() => {
     userScrolledUpRef.current = false;
+    setUnreadCount(0);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
@@ -644,7 +939,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         behavior: isStreaming ? "instant" : "smooth",
       });
     }
-  }, [messages, shouldAutoScroll, isStreaming, pendingQuestions]);
+  }, [messages, shouldAutoScroll, isStreaming, pendingQuestions, pendingApproval]);
 
   // Reset userScrolledUp when streaming stops
   useEffect(() => {
@@ -754,22 +1049,47 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       );
     }
 
-    // Default welcome UI
+    // Default welcome UI with fade-in animation
     return (
       <div className={cn("flex flex-1 items-center justify-center", className)}>
-        <div className="text-center max-w-md px-4">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Bot className="h-8 w-8 text-primary" />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="text-center max-w-md px-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            className="flex justify-center mb-4"
+          >
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-2xl"
+              style={{
+                background: "linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 60%, var(--secondary)))",
+              }}
+            >
+              <Bot className="h-8 w-8 text-primary-foreground" />
             </div>
-          </div>
-          <h3 className="font-serif text-xl font-semibold text-foreground mb-2">
+          </motion.div>
+          <motion.h3
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="font-serif text-xl font-semibold text-foreground mb-2"
+          >
             {welcomeTitle || t("chat.welcomeTitle", "How can I help you?")}
-          </h3>
-          <p className="text-muted-foreground text-sm">
+          </motion.h3>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="text-muted-foreground text-sm"
+          >
             {welcomeDescription || t("chat.welcomeDescription", "Ask me anything to get started.")}
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
       </div>
     );
   }
@@ -810,42 +1130,63 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             const isPlanMessage = message.type === "plan" && message.plan;
             const messageId = message.id;
             const isHighlighted = activeHighlight === messageId;
+            const isUserMessage = message.type === "user";
+            const showTurnSeparator = isUserMessage && index > 0;
 
             return (
-              <div
-                key={messageId || index}
-                ref={(el) => {
-                  if (messageId && el) {
-                    messageRefsMap.current.set(messageId, el);
-                  } else if (messageId && !el) {
-                    messageRefsMap.current.delete(messageId);
-                  }
-                }}
-                className={cn(
-                  "transition-all duration-300",
-                  isHighlighted && "ring-2 ring-primary/50 bg-primary/5 rounded-2xl"
-                )}
-              >
-                <MessageItem
-                  message={message}
-                  isStreaming={
-                    index === groups.length - 1 &&
-                    isStreaming &&
-                    message.type === "text"
-                  }
-                  onApprovePlan={onApprovePlan}
-                  onRejectPlan={onRejectPlan}
-                  isPlanPending={isPlanMessage && pendingPlan !== null}
-                  onLinkClick={onLinkClick}
-                  maxWidth={maxMessageWidth}
-                  toolExpandedInline={toolExpandedInline}
-                />
-              </div>
+              <React.Fragment key={messageId || index}>
+                {showTurnSeparator && <TurnSeparator timestamp={message.timestamp} />}
+                <div
+                  ref={(el) => {
+                    if (messageId && el) {
+                      messageRefsMap.current.set(messageId, el);
+                    } else if (messageId && !el) {
+                      messageRefsMap.current.delete(messageId);
+                    }
+                  }}
+                  className={cn(
+                    "transition-all duration-300",
+                    isHighlighted && "ring-2 ring-primary/50 bg-primary/5 rounded-2xl"
+                  )}
+                >
+                  <MessageItem
+                    message={message}
+                    isStreaming={
+                      index === groups.length - 1 &&
+                      isStreaming &&
+                      message.type === "text"
+                    }
+                    onApprovePlan={onApprovePlan}
+                    onRejectPlan={onRejectPlan}
+                    isPlanPending={isPlanMessage && pendingPlan !== null}
+                    onLinkClick={onLinkClick}
+                    maxWidth={maxMessageWidth}
+                    toolExpandedInline={toolExpandedInline}
+                  />
+                </div>
+              </React.Fragment>
             );
           })}
 
-          {/* Running indicator - shows "Thinking..." or tool execution status */}
-          {isStreaming && <RunningIndicator messages={messages} />}
+          {/* Pending exec approval - blocks further execution */}
+          {pendingApproval && onApprovalDecision && (
+            <ExecApproval
+              approval={pendingApproval}
+              onDecision={onApprovalDecision}
+              className="mx-auto max-w-lg"
+            />
+          )}
+
+          {/* Running indicator - only show when NOT blocked by approval */}
+          {isStreaming && !pendingApproval && <RunningIndicator messages={messages} />}
+
+          {/* Waiting for permission indicator - show when streaming is paused by approval */}
+          {isStreaming && pendingApproval && (
+            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+              <div className="size-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>{t("chat.waitingForPermission", "Waiting for permission...")}</span>
+            </div>
+          )}
 
           {/* Pending questions */}
           {pendingQuestions && onAnswerQuestions && (
@@ -861,21 +1202,31 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       </ScrollArea>
 
       {/* Scroll to bottom button */}
-      {showScrollButton && (
-        <button
-          onClick={scrollToBottom}
-          className={cn(
-            "absolute bottom-4 left-1/2 z-10 -translate-x-1/2",
-            "flex items-center justify-center p-2",
-            "bg-background border border-border rounded-full shadow-lg",
-            "hover:bg-accent transition-all cursor-pointer",
-            "animate-in fade-in slide-in-from-bottom-2 duration-200"
-          )}
-          title={t("chat.scrollToBottom", { defaultValue: "Scroll to bottom" })}
-        >
-          <ArrowDown className="size-4" />
-        </button>
-      )}
+      <AnimatePresence>
+        {showScrollButton && (
+          <motion.button
+            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+            onClick={scrollToBottom}
+            className={cn(
+              "absolute bottom-4 left-1/2 z-10 -translate-x-1/2",
+              "flex items-center justify-center p-2",
+              "bg-background border border-border rounded-full shadow-lg",
+              "hover:bg-accent transition-colors cursor-pointer"
+            )}
+            title={t("chat.scrollToBottom", { defaultValue: "Scroll to bottom" })}
+          >
+            <ArrowDown className="size-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

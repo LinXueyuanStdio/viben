@@ -2,8 +2,7 @@ import * as React from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { Streamdown } from "streamdown";
 import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight, HelpCircle, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { AgentMessage, MessageAttachment, AgentQuestion } from "./types";
@@ -309,12 +308,12 @@ function ThinkingMessage({
           {isExpanded && (
             <div className="px-4 pb-3 border-t border-purple-500/10 overflow-hidden">
               <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/80 overflow-hidden break-words mt-2">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
+                <Streamdown
+                  mode="static"
                   components={markdownComponents}
                 >
                   {content || ""}
-                </ReactMarkdown>
+                </Streamdown>
               </div>
             </div>
           )}
@@ -362,16 +361,13 @@ function AssistantMessage({
           )}
         >
           <div className="prose prose-sm dark:prose-invert max-w-none text-foreground overflow-hidden break-words">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+            <Streamdown
+              mode={isStreaming ? "streaming" : "static"}
               components={markdownComponents}
+              caret={isStreaming ? "block" : undefined}
             >
               {content || ""}
-            </ReactMarkdown>
-            {/* Streaming cursor - inline with text */}
-            {isStreaming && (
-              <span className="inline-block h-4 w-0.5 animate-pulse bg-primary align-text-bottom ml-0.5" />
-            )}
+            </Streamdown>
           </div>
         </div>
       </div>

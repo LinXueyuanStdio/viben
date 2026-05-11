@@ -1,0 +1,16 @@
+/* emoji-mart theme overrides for @viben/chat */
+em-emoji-picker {
+  border: none !important;
+  border-radius: 0 !important;
+  --em-rgb-background: 255, 255, 255;
+  --em-rgb-input: 245, 245, 245;
+  --em-rgb-color: 34, 34, 34;
+  --em-color-border-over: rgba(0, 0, 0, 0.08);
+}
+
+.dark em-emoji-picker {
+  --em-rgb-background: 30, 30, 30;
+  --em-rgb-input: 40, 40, 40;
+  --em-rgb-color: 240, 240, 240;
+  --em-color-border-over: rgba(255, 255, 255, 0.1);
+}
