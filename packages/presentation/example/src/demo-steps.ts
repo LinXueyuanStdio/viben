@@ -382,7 +382,7 @@ export const demoSteps: PresentationStep[] = [
   // 52s: Text insight
   t(52000, {
     type: "text",
-    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 6 },
+    position: { targetId: "card-nvidia", placement: "below-end", offsetY: 6 },
     content: "每训练5个大模型，4个用NVIDIA",
     fontSize: 14,
     fontWeight: 700,
@@ -394,7 +394,7 @@ export const demoSteps: PresentationStep[] = [
   // 55s: Comparison — NVIDIA vs Rest
   t(55000, {
     type: "comparison",
-    position: { targetId: "title", placement: "below-start", offsetY: 6 },
+    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
     width: 350,
     leftLabel: "NVIDIA",
     rightLabel: "所有对手之和",
@@ -409,7 +409,7 @@ export const demoSteps: PresentationStep[] = [
   // 58s: Badge with key insight
   t(58000, {
     type: "badge",
-    position: { targetId: "bar-nvidia", placement: "above-start" },
+    position: { targetId: "card-nvidia", placement: "above-start", offsetY: -6 },
     text: "绝对垄断",
     color: "#000",
     background: "#76B900",
@@ -436,7 +436,7 @@ export const demoSteps: PresentationStep[] = [
   // 66s: Text — the answer is CUDA
   t(66000, {
     type: "text",
-    position: { targetId: "analysis", placement: "above-start", offsetY: -6 },
+    position: { targetId: "revenue-chart", placement: "above-start", offsetY: -6 },
     content: "为什么没人能挑战NVIDIA？答案是三个字母：CUDA",
     fontSize: 17,
     fontWeight: 800,
@@ -475,11 +475,11 @@ export const demoSteps: PresentationStep[] = [
   t(73000, {
     type: "trendline",
     points: [
-      { x: 100, y: 120 },
-      { x: 200, y: 110 },
-      { x: 300, y: 85 },
-      { x: 400, y: 60 },
-      { x: 500, y: 30 },
+      { x: 660, y: 420 },
+      { x: 720, y: 390 },
+      { x: 780, y: 350 },
+      { x: 840, y: 300 },
+      { x: 900, y: 260 },
     ],
     color: "#76B900",
     strokeWidth: 3,
@@ -528,7 +528,7 @@ export const demoSteps: PresentationStep[] = [
   // 84s: Progress bar — CUDA adoption rate (below analysis text)
   t(84000, {
     type: "progress",
-    position: { targetId: "analysis", placement: "below-start", offsetY: 8 },
+    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
     width: 380,
     value: 92,
     color: "#76B900",
@@ -566,7 +566,7 @@ export const demoSteps: PresentationStep[] = [
   // 93s: Card for AMD — below title (safe zone)
   t(93000, {
     type: "card",
-    position: { targetId: "title", placement: "below-start", offsetY: 6 },
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 8 },
     width: 300,
     title: "AMD: 最强挑战者",
     content: "MI300X: 性价比之王\nROCm 6.0: 兼容性大幅提升\n微软 Azure 独家大单\n年增长率 +180%",
@@ -590,7 +590,7 @@ export const demoSteps: PresentationStep[] = [
   // 98s: Comparison — NVIDIA vs AMD performance/$
   t(98000, {
     type: "comparison",
-    position: { targetId: "title", placement: "below-start", offsetY: 6 },
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 8 },
     width: 380,
     leftLabel: "H100 性能",
     rightLabel: "MI300X 性能",
@@ -605,7 +605,7 @@ export const demoSteps: PresentationStep[] = [
   // 101s: Another comparison — price/performance
   t(101000, {
     type: "comparison",
-    position: { targetId: "title", placement: "below-start", offsetY: 66 },
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 68 },
     width: 380,
     leftLabel: "H100 性价比",
     rightLabel: "MI300X 性价比",
@@ -652,7 +652,7 @@ export const demoSteps: PresentationStep[] = [
   // 109s: Badge on AMD bar
   t(109000, {
     type: "badge",
-    position: { targetId: "bar-amd", placement: "above-start" },
+    position: { targetId: "card-amd", placement: "above-end", offsetY: -6 },
     text: "+180% YoY",
     color: "#fff",
     background: "#ED1C24",
@@ -694,7 +694,7 @@ export const demoSteps: PresentationStep[] = [
   // 116s: Card — custom silicon overview, placed LEFT of the spotlighted card-others
   t(116000, {
     type: "card",
-    position: { targetId: "card-others", placement: "left-of-start", offsetX: -16 },
+    position: { targetId: "card-others", placement: "below-start", offsetY: 8 },
     width: 260,
     title: "自研芯片：暗流涌动",
     content: "Google TPU v5: 内部首选\nAmazon Trainium2: 推理优化\nMicrosoft Maia 100\n华为昇腾910B: 国产替代",
@@ -762,7 +762,7 @@ export const demoSteps: PresentationStep[] = [
   // 128s: Pie chart — market share, placed in the analysis area (left, has space)
   t(128000, {
     type: "chart",
-    position: { targetId: "analysis", placement: "right-of-start", offsetX: 16 },
+    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
     width: 250,
     height: 200,
     chartType: "pie",
@@ -781,7 +781,7 @@ export const demoSteps: PresentationStep[] = [
   // 131s: Area chart — custom silicon growth, below title (left side, separate from pie)
   t(131000, {
     type: "chart",
-    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 8 },
     width: 260,
     height: 140,
     chartType: "area",
