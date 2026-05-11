@@ -126,22 +126,33 @@ export function App() {
 
   // ===== Implicit user message routing =====
   // When a step emits user messages, they go to pendingUserMessages.
-  // If the agent is busy → enqueue them (they'll show in CommandQueuePanel).
-  // If idle → inject directly into the message list.
+  // The ADVANCE reducer already decided whether to use queue routing
+  // (waitingForDrain=true) or direct injection (waitingForDrain=false).
   useEffect(() => {
     if (player.pendingUserMessages.length === 0) return
-    const isBusy = player.isStreaming || player.isAwaiting
-    for (const msg of player.pendingUserMessages) {
-      if (isBusy) {
-        // Route through command queue — will show in panel until agent finishes
+    if (player.waitingForDrain) {
+      // Route to command queue — items show in CommandQueuePanel.
+      // Player is blocked (waitingForDrain) and isStreaming=false,
+      // so queue will auto-dequeue when we call consumePendingUsers.
+      for (const msg of player.pendingUserMessages) {
         commandQueue.send(msg.content || "", msg.attachments)
-      } else {
-        // Inject directly
+      }
+    } else {
+      // No drain needed — inject directly into message list
+      for (const msg of player.pendingUserMessages) {
         player.injectMessage(msg)
       }
     }
     player.consumePendingUsers()
-  }, [player.pendingUserMessages, player.isStreaming, player.isAwaiting, commandQueue, player.injectMessage, player.consumePendingUsers])
+  }, [player.pendingUserMessages, player.waitingForDrain, commandQueue, player.injectMessage, player.consumePendingUsers])
+
+  // ===== Queue drain completion =====
+  // When queue empties while player is waiting for drain, unblock the player.
+  useEffect(() => {
+    if (player.waitingForDrain && commandQueue.items.length === 0) {
+      player.completeDrain()
+    }
+  }, [player.waitingForDrain, commandQueue.items.length, player.completeDrain])
 
   // ===== File Load =====
   const handleFileLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
