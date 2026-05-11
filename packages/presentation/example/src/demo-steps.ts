@@ -89,22 +89,22 @@ export const demoSteps: PresentationStep[] = [
   // 6s: Counter counting up — NVIDIA's YoY growth percentage
   t(6000, {
     type: "counter",
-    position: { targetId: "subtitle", placement: "right-of", offsetX: 24 },
+    position: { targetId: "title", placement: "below-end", offsetY: 10 },
     value: 265,
     suffix: "%",
     color: "#76B900",
-    fontSize: 56,
+    fontSize: 48,
     animate: true,
   }, "Counter: 265% YoY growth", 14000),
 
   // 7.5s: Badge labeling the counter
   t(7500, {
     type: "badge",
-    position: { targetId: "subtitle", placement: "below-end", offsetY: 6 },
+    position: { targetId: "title", placement: "below-end", offsetY: 56 },
     text: "数据中心收入同比增长",
     color: "#FFFFFF",
     background: "rgba(118, 185, 0, 0.85)",
-    size: "lg",
+    size: "md",
     animate: true,
   }, "Badge: growth label", 18000),
 
@@ -173,7 +173,7 @@ export const demoSteps: PresentationStep[] = [
   // 21s: Badge — OVERWEIGHT rating
   t(21000, {
     type: "badge",
-    position: { targetId: "subtitle", placement: "right-of", offsetX: 10 },
+    position: { targetId: "title", placement: "below-end", offsetY: 6 },
     text: "OVERWEIGHT",
     color: "#FFFFFF",
     background: "rgba(99, 102, 241, 0.9)",

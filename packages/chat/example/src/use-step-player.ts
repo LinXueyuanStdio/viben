@@ -299,6 +299,8 @@ export interface StepPlayerReturn {
   injectMessage: (message: AgentMessage) => void
   /** User messages waiting to be routed (consumed by App via consumePendingUsers) */
   pendingUserMessages: AgentMessage[]
+  /** Whether pendingUserMessages should go to queue (true) or directly to list (false) */
+  shouldQueuePending: boolean
   /** Clear pendingUserMessages after App has consumed them */
   consumePendingUsers: () => void
   /** Signal that queue drain is complete — unblocks advancement */
@@ -446,6 +448,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     loadSteps,
     injectMessage,
     pendingUserMessages: state.pendingUserMessages,
+    shouldQueuePending: state.shouldQueuePending,
     consumePendingUsers,
     completeDrain,
   }
