@@ -129,8 +129,10 @@ export interface SSEToolResultMessage {
 export interface SSEResultMessage {
   type: "result";
   subtype?: "success" | "error";
+  result?: string;
   cost?: number;
   duration?: number;
+  exitCode?: number;
 }
 
 export interface SSEErrorMessage {
@@ -177,6 +179,23 @@ export interface SSEContextUsageMessage {
   total: number;
 }
 
+export interface SSEAssistantMessage {
+  type: "assistant";
+  message: {
+    role: string;
+    content: Array<
+      | { type: "text"; text: string }
+      | { type: "tool_use"; id: string; name: string; input: unknown }
+    >;
+  };
+}
+
+export interface SSEStreamEventMessage {
+  type: "stream_event";
+  event: string;
+  data?: unknown;
+}
+
 export type SSEMessage =
   | SSETextMessage
   | SSEToolUseMessage
@@ -187,7 +206,9 @@ export type SSEMessage =
   | SSESdkSessionMessage
   | SSEThinkingMessage
   | SSEExecApprovalMessage
-  | SSEContextUsageMessage;
+  | SSEContextUsageMessage
+  | SSEAssistantMessage
+  | SSEStreamEventMessage;
 
 // =============================================================================
 // Result Types
