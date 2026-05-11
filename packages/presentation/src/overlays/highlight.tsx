@@ -1,4 +1,4 @@
-import type { HighlightCommand } from "../types"
+import type { HighlightCommand, Rect } from "../types"
 
 interface HighlightProps {
   command: HighlightCommand
@@ -7,15 +7,18 @@ interface HighlightProps {
 /**
  * Highlight overlay -- Div with CSS opacity transition.
  * Semi-transparent color block covering the target region.
+ *
+ * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
 export function Highlight({ command }: HighlightProps) {
   const {
-    region,
+    region: _region,
     color = "rgba(99, 102, 241, 0.3)",
     opacity: targetOpacity = 0.3,
     borderRadius = 4,
     animate = true,
   } = command
+  const region = _region as Rect
 
   return (
     <div

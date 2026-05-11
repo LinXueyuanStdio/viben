@@ -1,4 +1,4 @@
-import type { ArrowCommand } from "../types"
+import type { ArrowCommand, Point } from "../types"
 
 interface ArrowProps {
   command: ArrowCommand
@@ -6,9 +6,13 @@ interface ArrowProps {
 
 /**
  * Arrow overlay -- SVG arrow with CSS stroke-dasharray animation for draw-in effect.
+ *
+ * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
 export function Arrow({ command }: ArrowProps) {
-  const { from, to, color = "#FF6B6B", label, strokeWidth = 3, animate = true } = command
+  const { from: _from, to: _to, color = "#FF6B6B", label, strokeWidth = 3, animate = true } = command
+  const from = _from as Point
+  const to = _to as Point
 
   const dx = to.x - from.x
   const dy = to.y - from.y

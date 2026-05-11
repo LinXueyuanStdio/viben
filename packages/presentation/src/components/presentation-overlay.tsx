@@ -1,5 +1,7 @@
-import { useMemo } from "react"
+import { useMemo, useRef, useEffect } from "react"
 import type { PresentationStep, PresentationCommand } from "../types"
+import { useResolvedCommand } from "../hooks/use-resolved-command"
+import { logCollisionReport } from "../utils/collision-detect"
 import { Spotlight } from "../overlays/spotlight"
 import { Arrow } from "../overlays/arrow"
 import { TextAnnotation } from "../overlays/text-annotation"
@@ -12,20 +14,62 @@ import { Badge } from "../overlays/badge"
 import { Progress } from "../overlays/progress"
 import { Counter } from "../overlays/counter"
 import { Bracket } from "../overlays/bracket"
+import { Trendline } from "../overlays/trendline"
+import { Comparison } from "../overlays/comparison"
+import { Typewriter } from "../overlays/typewriter"
+import { Chart } from "../overlays/chart"
 
 export interface PresentationOverlayProps {
   /** Whether the overlay is active */
   active: boolean
   /** All presentation steps */
   steps: PresentationStep[]
-  /** Current step index being shown */
-  currentStep: number
+  /**
+   * Current step index (legacy sequential mode).
+   * If elapsedMs is provided, this is ignored.
+   */
+  currentStep?: number
+  /**
+   * Timeline mode: elapsed time in ms from presentation start.
+   * Determines which steps are visible based on startMs/endMs.
+   */
+  elapsedMs?: number
   /** z-index (default 9999) */
   zIndex?: number
   /** Callback when user clicks stop */
   onStop?: () => void
   /** Optional children (e.g., controls) rendered inside the overlay */
   children?: React.ReactNode
+}
+
+/**
+ * Resolves any TargetRef fields in a command before rendering.
+ * Returns null (renders nothing) if a target element is not found in the DOM.
+ */
+function ResolvedCommandRenderer({ command, stepId }: { command: PresentationCommand; stepId?: string }) {
+  const resolved = useResolvedCommand(command)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Set data-presentation-id on the first child element so subsequent steps can reference it
+  useEffect(() => {
+    if (wrapperRef.current && stepId) {
+      const firstChild = wrapperRef.current.firstElementChild as HTMLElement | null
+      if (firstChild) {
+        firstChild.setAttribute("data-presentation-id", `overlay-${stepId}`)
+      }
+    }
+  })
+
+  if (!resolved) {
+    console.warn(`[Overlay] ❌ step="${stepId}" type="${command.type}" → resolved to NULL (target not found, not rendering)`, command)
+    return null
+  }
+
+  return (
+    <div ref={wrapperRef} style={{ display: "contents" }}>
+      <CommandRenderer command={resolved} />
+    </div>
+  )
 }
 
 /** Render a single command as an overlay element */
@@ -55,6 +99,14 @@ function CommandRenderer({ command }: { command: PresentationCommand }) {
       return <Counter command={command} />
     case "bracket":
       return <Bracket command={command} />
+    case "trendline":
+      return <Trendline command={command} />
+    case "comparison":
+      return <Comparison command={command} />
+    case "typewriter":
+      return <Typewriter command={command} />
+    case "chart":
+      return <Chart command={command} />
     case "clear":
     case "wait":
       return null
@@ -72,21 +124,27 @@ export function PresentationOverlay({
   active,
   steps,
   currentStep,
+  elapsedMs,
   zIndex = 9999,
   onStop,
   children,
 }: PresentationOverlayProps) {
-  // Compute which commands to show (cumulative, with clear semantics)
+  // Compute which commands to show
   const visibleCommands = useMemo(() => {
     if (!active || steps.length === 0) return []
 
+    // Timeline mode: use elapsedMs to determine visible steps
+    if (elapsedMs != null) {
+      return computeTimelineVisible(steps, elapsedMs)
+    }
+
+    // Legacy sequential mode: cumulative up to currentStep
     const commands: Array<{ id: string; command: PresentationCommand }> = []
-    const maxIndex = Math.min(currentStep, steps.length - 1)
+    const maxIndex = Math.min(currentStep ?? 0, steps.length - 1)
 
     for (let i = 0; i <= maxIndex; i++) {
       const step = steps[i]
       if (step.command.type === "clear") {
-        // Clear removes all previous annotations
         commands.length = 0
       } else if (step.command.type !== "wait") {
         commands.push({ id: step.id, command: step.command })
@@ -94,7 +152,14 @@ export function PresentationOverlay({
     }
 
     return commands
-  }, [active, steps, currentStep])
+  }, [active, steps, currentStep, elapsedMs])
+
+  // Collision detection — log overlaps and boundary violations
+  useEffect(() => {
+    if (visibleCommands.length > 0 && elapsedMs != null) {
+      logCollisionReport(visibleCommands, elapsedMs)
+    }
+  }, [visibleCommands, elapsedMs])
 
   if (!active) return null
 
@@ -110,9 +175,9 @@ export function PresentationOverlay({
       {/* CSS Keyframes injection */}
       <PresentationKeyframes />
 
-      {/* Annotation layer */}
+      {/* Annotation layer -- resolves TargetRef fields to pixel coords */}
       {visibleCommands.map(({ id, command }) => (
-        <CommandRenderer key={id} command={command} />
+        <ResolvedCommandRenderer key={id} command={command} stepId={id} />
       ))}
 
       {/* Stop button (top-right) */}
@@ -151,6 +216,57 @@ export function PresentationOverlay({
 }
 
 /**
+ * Timeline mode: compute visible commands at a given elapsed time.
+ * Steps are sorted by startMs. "clear" commands at time T remove all prior visible annotations.
+ * Steps with endMs are hidden after that time.
+ */
+function computeTimelineVisible(
+  steps: PresentationStep[],
+  elapsedMs: number,
+): Array<{ id: string; command: PresentationCommand }> {
+  // Sort by startMs (stable — preserve order for same startMs)
+  const sorted = [...steps].sort((a, b) => a.startMs - b.startMs)
+
+  const commands: Array<{ id: string; command: PresentationCommand }> = []
+  const skippedFuture: string[] = []
+  const expired: string[] = []
+
+  for (const step of sorted) {
+    if (step.startMs > elapsedMs) {
+      skippedFuture.push(`${step.id}(${step.command.type}@${step.startMs}ms)`)
+      continue // don't break — steps might not be perfectly sorted if same startMs
+    }
+
+    if (step.command.type === "clear") {
+      commands.length = 0
+      continue
+    }
+    if (step.command.type === "wait") continue
+
+    // Check if step has expired
+    if (step.endMs != null && step.endMs <= elapsedMs) {
+      expired.push(`${step.id}(${step.command.type})`)
+      continue
+    }
+
+    commands.push({ id: step.id, command: step.command })
+  }
+
+  // Log every 500ms to avoid spam (use rounded time)
+  const logKey = Math.floor(elapsedMs / 500)
+  if ((globalThis as any).__lastLogKey !== logKey) {
+    (globalThis as any).__lastLogKey = logKey
+    console.log(
+      `[Timeline] t=${(elapsedMs / 1000).toFixed(1)}s → visible: [${commands.map((c) => `${c.id}(${c.command.type})`).join(", ")}]`,
+      `| expired: ${expired.length}`,
+      `| future: ${skippedFuture.length}`,
+    )
+  }
+
+  return commands
+}
+
+/**
  * Injects CSS @keyframes used by overlay components.
  * Rendered once inside the overlay container.
  */
@@ -170,6 +286,17 @@ function PresentationKeyframes() {
         to {
           opacity: 1;
           transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes presentationSlideUpCentered {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(20px) scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0) scale(1);
         }
       }
 
@@ -239,6 +366,11 @@ function PresentationKeyframes() {
       @keyframes presentationPulse {
         0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
         100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+      }
+
+      @keyframes presentationTypewriterCursor {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
       }
     `}</style>
   )

@@ -1,4 +1,4 @@
-import type { CardCommand } from "../types"
+import type { CardCommand, Point } from "../types"
 
 interface CardProps {
   command: CardCommand
@@ -6,10 +6,12 @@ interface CardProps {
 
 /**
  * Card overlay -- Div with CSS slide-in animation + backdrop-filter for glass effect.
+ *
+ * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
 export function Card({ command }: CardProps) {
   const {
-    position,
+    position: _position,
     width = 320,
     title,
     content,
@@ -23,6 +25,7 @@ export function Card({ command }: CardProps) {
     tagColor = "#6366F1",
     animate = true,
   } = command
+  const position = _position as Point
 
   const animationName = animate ? getSlideAnimation(enterFrom) : undefined
 

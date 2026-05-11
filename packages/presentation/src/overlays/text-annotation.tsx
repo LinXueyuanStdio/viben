@@ -1,4 +1,4 @@
-import type { TextCommand } from "../types"
+import type { TextCommand, Point } from "../types"
 
 interface TextAnnotationProps {
   command: TextCommand
@@ -6,17 +6,22 @@ interface TextAnnotationProps {
 
 /**
  * Text annotation overlay -- Div with CSS slideUp + fadeIn animation.
+ *
+ * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
 export function TextAnnotation({ command }: TextAnnotationProps) {
   const {
-    position,
+    position: _position,
     content,
     color = "#FFFFFF",
     fontSize = 18,
     fontWeight = 600,
     background = "rgba(99, 102, 241, 0.9)",
+    textAlign = "left",
     animate = true,
   } = command
+  const position = _position as Point
+  const isCentered = textAlign === "center"
 
   return (
     <div
@@ -35,8 +40,13 @@ export function TextAnnotation({ command }: TextAnnotationProps) {
         maxWidth: 400,
         lineHeight: 1.5,
         opacity: animate ? 0 : 1,
-        transform: animate ? "translateY(20px) scale(0.9)" : undefined,
-        animation: animate ? "presentationSlideUp 500ms ease-out forwards" : undefined,
+        transform: animate
+          ? `${isCentered ? "translateX(-50%) " : ""}translateY(20px) scale(0.9)`
+          : isCentered ? "translateX(-50%)" : undefined,
+        animation: animate
+          ? `${isCentered ? "presentationSlideUpCentered" : "presentationSlideUp"} 500ms ease-out forwards`
+          : undefined,
+        willChange: "opacity, transform",
       }}
     >
       {content}

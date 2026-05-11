@@ -13,10 +13,17 @@ export type {
   ProgressCommand,
   CounterCommand,
   BracketCommand,
+  TrendlineCommand,
+  ComparisonCommand,
+  TypewriterCommand,
+  ChartCommand,
   ClearCommand,
   WaitCommand,
   Point,
   Rect,
+  TargetRef,
+  PositionOrTarget,
+  RegionOrTarget,
   TldrawColor,
   PlayerState,
   PresentationStep,
@@ -26,7 +33,23 @@ export type {
   ClientToolResult,
   AnimationHandle,
 } from "./types"
-export { describeCommand } from "./types"
+export { describeCommand, isTargetRef } from "./types"
+
+// Target resolution utilities
+export { resolvePosition, resolveRegion } from "./utils/resolve-target"
+
+// Collision detection utilities
+export {
+  estimateBBox,
+  detectCollisions,
+  detectBoundaryViolations,
+  logCollisionReport,
+} from "./utils/collision-detect"
+export type { OverlayBBox, Collision, BoundaryViolation } from "./utils/collision-detect"
+
+// Hooks
+export { useResolvedCommand } from "./hooks/use-resolved-command"
+export { TargetRectsProvider, useTargetRects, useTargetRect } from "./hooks/use-target-rects"
 
 // Command compiler
 export {
@@ -56,6 +79,10 @@ export { Badge } from "./overlays/badge"
 export { Progress } from "./overlays/progress"
 export { Counter } from "./overlays/counter"
 export { Bracket } from "./overlays/bracket"
+export { Trendline } from "./overlays/trendline"
+export { Comparison } from "./overlays/comparison"
+export { Typewriter } from "./overlays/typewriter"
+export { Chart } from "./overlays/chart"
 
 // Main components
 export { PresentationOverlay } from "./components/presentation-overlay"

@@ -1,4 +1,4 @@
-import type { CircleCommand } from "../types"
+import type { CircleCommand, Point } from "../types"
 
 interface CircleAnnotationProps {
   command: CircleCommand
@@ -6,9 +6,12 @@ interface CircleAnnotationProps {
 
 /**
  * Circle annotation overlay -- SVG circle with CSS stroke-dashoffset animation.
+ *
+ * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
 export function CircleAnnotation({ command }: CircleAnnotationProps) {
-  const { center, radius, color = "#FF6B6B", strokeWidth = 3, animate = true } = command
+  const { center: _center, radius, color = "#FF6B6B", strokeWidth = 3, animate = true } = command
+  const center = _center as Point
 
   const circumference = 2 * Math.PI * radius
 

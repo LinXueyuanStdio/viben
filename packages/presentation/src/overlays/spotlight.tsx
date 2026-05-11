@@ -1,4 +1,4 @@
-import type { SpotlightCommand } from "../types"
+import type { SpotlightCommand, Rect } from "../types"
 
 interface SpotlightProps {
   command: SpotlightCommand
@@ -7,9 +7,12 @@ interface SpotlightProps {
 /**
  * Spotlight overlay -- SVG mask with CSS transition for smooth movement.
  * Dark overlay with a transparent cutout highlighting the target region.
+ *
+ * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
 export function Spotlight({ command }: SpotlightProps) {
-  const { region, maskOpacity = 0.7, borderRadius = 8, animate = true } = command
+  const { region: _region, maskOpacity = 0.7, borderRadius = 8, animate = true } = command
+  const region = _region as Rect
 
   const maskId = `spotlight-mask-${region.x}-${region.y}`
 

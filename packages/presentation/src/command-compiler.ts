@@ -255,6 +255,6 @@ function isValidPoint(p: unknown): p is Point {
 function isValidCommand(cmd: unknown): boolean {
   if (!cmd || typeof cmd !== "object") return false
   const obj = cmd as Record<string, unknown>
-  const validTypes = ["spotlight", "arrow", "text", "circle", "highlight", "card", "clear", "wait"]
+  const validTypes = ["spotlight", "arrow", "text", "circle", "highlight", "card", "pulse", "underline", "badge", "progress", "counter", "bracket", "trendline", "comparison", "typewriter", "clear", "wait"]
   return typeof obj.type === "string" && validTypes.includes(obj.type)
 }

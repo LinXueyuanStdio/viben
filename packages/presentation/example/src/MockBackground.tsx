@@ -1,3 +1,5 @@
+import { useEffect } from "react"
+
 /**
  * Mock "2024 Global AI Chip Market Analysis" background
  *
@@ -7,6 +9,26 @@
  * Layout: dark theme, 1024x768 viewport, 40px padding, max-width ~920px centered.
  */
 export function MockBackground() {
+  // DEBUG: Log all data-presentation-id element positions after mount
+  useEffect(() => {
+    const logPositions = () => {
+      const els = document.querySelectorAll<HTMLElement>("[data-presentation-id]")
+      console.group("[MockBackground] Element positions after mount")
+      els.forEach((el) => {
+        const id = el.dataset.presentationId
+        const rect = el.getBoundingClientRect()
+        console.log(
+          `  "${id}" → left:${rect.left.toFixed(0)} top:${rect.top.toFixed(0)} w:${rect.width.toFixed(0)} h:${rect.height.toFixed(0)}`,
+          `| offsetParent:`, el.offsetParent?.tagName,
+          `| computed position:`, getComputedStyle(el).position,
+        )
+      })
+      console.groupEnd()
+    }
+    // Log immediately and after a frame
+    logPositions()
+    requestAnimationFrame(logPositions)
+  }, [])
   return (
     <div
       style={{
@@ -62,6 +84,7 @@ export function MockBackground() {
         {/* === HEADER === */}
         <div style={{ marginBottom: 20 }}>
           <div
+            data-presentation-id="title"
             style={{
               fontSize: 28,
               fontWeight: 800,
@@ -74,6 +97,7 @@ export function MockBackground() {
             2024 全球 AI 芯片市场深度分析
           </div>
           <div
+            data-presentation-id="subtitle"
             style={{
               fontSize: 13,
               color: "rgba(255,255,255,0.45)",
@@ -109,6 +133,7 @@ export function MockBackground() {
         {/* === DATA CARDS ROW === */}
         <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
           <DataCard
+            presentationId="card-nvidia"
             label="NVIDIA"
             sublabel="H100 / H200 / B100"
             value="80%"
@@ -118,6 +143,7 @@ export function MockBackground() {
             marketCap="$2.2T"
           />
           <DataCard
+            presentationId="card-amd"
             label="AMD"
             sublabel="MI300X / MI300A"
             value="12%"
@@ -127,6 +153,7 @@ export function MockBackground() {
             marketCap="$280B"
           />
           <DataCard
+            presentationId="card-others"
             label="Others"
             sublabel="Intel / Google TPU / Huawei Ascend"
             value="8%"
@@ -208,7 +235,7 @@ export function MockBackground() {
         {/* === ANALYSIS + REVENUE CHART === */}
         <div style={{ display: "flex", gap: 20, marginBottom: 20, flex: 1, minHeight: 0 }}>
           {/* Analysis paragraph */}
-          <div style={{ flex: 1.3 }}>
+          <div data-presentation-id="analysis" style={{ flex: 1.3 }}>
             <SectionTitle>Investment Thesis</SectionTitle>
             <div
               style={{
@@ -252,6 +279,7 @@ export function MockBackground() {
 
           {/* Revenue bar chart */}
           <div
+            data-presentation-id="revenue-chart"
             style={{
               flex: 0.7,
               background: "rgba(255,255,255,0.03)",
@@ -273,11 +301,11 @@ export function MockBackground() {
                 justifyContent: "center",
               }}
             >
-              <BarRow label="NVIDIA" value={80} color="#76B900" amount="$26.0B" />
-              <BarRow label="AMD" value={12} color="#ED1C24" amount="$3.5B" />
-              <BarRow label="Intel" value={4} color="#0071C5" amount="$1.1B" />
-              <BarRow label="Google" value={3} color="#4285F4" amount="$0.8B" />
-              <BarRow label="Huawei" value={1} color="#CF0A2C" amount="$0.2B" />
+              <BarRow presentationId="bar-nvidia" label="NVIDIA" value={80} color="#76B900" amount="$26.0B" />
+              <BarRow presentationId="bar-amd" label="AMD" value={12} color="#ED1C24" amount="$3.5B" />
+              <BarRow presentationId="bar-intel" label="Intel" value={4} color="#0071C5" amount="$1.1B" />
+              <BarRow presentationId="bar-google" label="Google" value={3} color="#4285F4" amount="$0.8B" />
+              <BarRow presentationId="bar-huawei" label="Huawei" value={1} color="#CF0A2C" amount="$0.2B" />
             </div>
           </div>
         </div>
@@ -331,6 +359,7 @@ export function MockBackground() {
 // ============================================================================
 
 function DataCard({
+  presentationId,
   label,
   sublabel,
   value,
@@ -339,6 +368,7 @@ function DataCard({
   revenue,
   marketCap,
 }: {
+  presentationId?: string
   label: string
   sublabel: string
   value: string
@@ -350,6 +380,7 @@ function DataCard({
   const isPositive = change.startsWith("+")
   return (
     <div
+      data-presentation-id={presentationId}
       style={{
         flex: 1,
         background: "rgba(255,255,255,0.04)",
@@ -394,6 +425,7 @@ function DataCard({
         {sublabel}
       </div>
       <div
+        data-presentation-id={presentationId ? `${label.toLowerCase()}-value` : undefined}
         style={{
           fontSize: 32,
           fontWeight: 800,
@@ -477,18 +509,20 @@ function Separator() {
 }
 
 function BarRow({
+  presentationId,
   label,
   value,
   color,
   amount,
 }: {
+  presentationId?: string
   label: string
   value: number
   color: string
   amount: string
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div data-presentation-id={presentationId} style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <div
         style={{
           width: 48,
