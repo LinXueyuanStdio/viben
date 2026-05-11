@@ -3,48 +3,41 @@
  *
  * Tests for:
  * - CommandBuilder - build commands with various parameters
- * - createExecutionEnv - default environment creation
- * - applyEnvToSpawnOptions - environment merging
  * - Each executor type for availability, capabilities, and defaultMcpConfigPath
- * - createExecutor factory function
- * - getAllExecutorsAvailability utility
- * - EXECUTOR_TYPES constant
+ * - getExecutor factory function
+ * - getRegisteredTypes() function
  * - isExecutorType guard function
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
+import { homedir } from "node:os";
 import { join } from "node:path";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
-import { tmpdir, homedir, platform } from "node:os";
 
 import {
   // Types
   type ExecutorType,
-  type ExecutionEnv,
   type CommandParts,
 
   // Utilities
-  createExecutionEnv,
-  applyEnvToSpawnOptions,
   CommandBuilder,
   CommandBuildError,
   createCommandParts,
 
-  // Executors
-  ClaudeCode,
-  Amp,
-  Gemini,
-  Codex,
-  Opencode,
-  CursorAgent,
-  QwenCode,
-  Copilot,
-  Droid,
+  // Engines
+  ClaudeExecutor,
+  AmpExecutor,
+  GeminiExecutor,
+  CodexExecutor,
+  OpencodeExecutor,
+  CursorAgentExecutor,
+  QwenCodeExecutor,
+  CopilotExecutor,
+  DroidExecutor,
+  OpenClawExecutor,
 
-  // Factory
-  createExecutor,
-  EXECUTOR_TYPES,
+  // Registry
+  getExecutor,
+  getRegisteredTypes,
   isExecutorType,
-  getAllExecutorsAvailability,
 } from "./index";
 
 // ============================================================================
@@ -232,95 +225,27 @@ describe("createCommandParts", () => {
 });
 
 // ============================================================================
-// ExecutionEnv Tests
-// ============================================================================
-
-describe("createExecutionEnv", () => {
-  it("should create default execution environment", () => {
-    const env = createExecutionEnv();
-
-    expect(env.vars).toEqual({});
-    expect(env.repoContext.workspaceRoot).toBe("");
-    expect(env.repoContext.repoNames).toEqual([]);
-    expect(env.commitReminder).toBe(false);
-    expect(env.commitReminderPrompt).toBe("");
-  });
-
-  it("should create environment with workspace root", () => {
-    const env = createExecutionEnv("/path/to/workspace");
-
-    expect(env.repoContext.workspaceRoot).toBe("/path/to/workspace");
-    expect(env.repoContext.repoNames).toEqual([]);
-  });
-
-  it("should create environment with repo names", () => {
-    const env = createExecutionEnv("/workspace", ["repo1", "repo2"]);
-
-    expect(env.repoContext.workspaceRoot).toBe("/workspace");
-    expect(env.repoContext.repoNames).toEqual(["repo1", "repo2"]);
-  });
-});
-
-describe("applyEnvToSpawnOptions", () => {
-  it("should apply env vars to spawn options", () => {
-    const env = createExecutionEnv();
-    env.vars = { CUSTOM_VAR: "value" };
-
-    const options: { env?: NodeJS.ProcessEnv } = {};
-    applyEnvToSpawnOptions(env, options);
-
-    expect(options.env).toBeDefined();
-    expect(options.env!.CUSTOM_VAR).toBe("value");
-    // Should also include process.env
-    expect(options.env!.PATH).toBe(process.env.PATH);
-  });
-
-  it("should preserve existing spawn options env", () => {
-    const env = createExecutionEnv();
-    env.vars = { NEW_VAR: "new" };
-
-    const options: { env?: NodeJS.ProcessEnv } = {
-      env: { EXISTING_VAR: "existing" },
-    };
-    applyEnvToSpawnOptions(env, options);
-
-    expect(options.env!.NEW_VAR).toBe("new");
-    expect(options.env!.EXISTING_VAR).toBe("existing");
-  });
-
-  it("should let spawn options override env vars", () => {
-    const env = createExecutionEnv();
-    env.vars = { SHARED: "from-env" };
-
-    const options: { env?: NodeJS.ProcessEnv } = {
-      env: { SHARED: "from-options" },
-    };
-    applyEnvToSpawnOptions(env, options);
-
-    // options.env should override env.vars
-    expect(options.env!.SHARED).toBe("from-options");
-  });
-});
-
-// ============================================================================
 // Executor Type Tests
 // ============================================================================
 
-describe("EXECUTOR_TYPES", () => {
+describe("getRegisteredTypes", () => {
   it("should contain all executor types", () => {
-    expect(EXECUTOR_TYPES).toContain("CLAUDE_CODE");
-    expect(EXECUTOR_TYPES).toContain("AMP");
-    expect(EXECUTOR_TYPES).toContain("GEMINI");
-    expect(EXECUTOR_TYPES).toContain("CODEX");
-    expect(EXECUTOR_TYPES).toContain("OPENCODE");
-    expect(EXECUTOR_TYPES).toContain("CURSOR_AGENT");
-    expect(EXECUTOR_TYPES).toContain("QWEN_CODE");
-    expect(EXECUTOR_TYPES).toContain("COPILOT");
-    expect(EXECUTOR_TYPES).toContain("DROID");
+    const types = getRegisteredTypes();
+
+    expect(types).toContain("CLAUDE_CODE");
+    expect(types).toContain("AMP");
+    expect(types).toContain("GEMINI");
+    expect(types).toContain("CODEX");
+    expect(types).toContain("OPENCODE");
+    expect(types).toContain("CURSOR_AGENT");
+    expect(types).toContain("QWEN_CODE");
+    expect(types).toContain("COPILOT");
+    expect(types).toContain("DROID");
+    expect(types).toContain("OPENCLAW");
   });
 
-  it("should have exactly 9 executor types", () => {
-    expect(EXECUTOR_TYPES).toHaveLength(9);
+  it("should have exactly 10 executor types", () => {
+    expect(getRegisteredTypes()).toHaveLength(10);
   });
 });
 
@@ -335,6 +260,7 @@ describe("isExecutorType", () => {
     expect(isExecutorType("QWEN_CODE")).toBe(true);
     expect(isExecutorType("COPILOT")).toBe(true);
     expect(isExecutorType("DROID")).toBe(true);
+    expect(isExecutorType("OPENCLAW")).toBe(true);
   });
 
   it("should return false for invalid executor types", () => {
@@ -346,81 +272,88 @@ describe("isExecutorType", () => {
 });
 
 // ============================================================================
-// createExecutor Factory Tests
+// getExecutor Factory Tests
 // ============================================================================
 
-describe("createExecutor", () => {
-  it("should create ClaudeCode executor", () => {
-    const executor = createExecutor("CLAUDE_CODE");
+describe("getExecutor", () => {
+  it("should create ClaudeExecutor", () => {
+    const executor = getExecutor("CLAUDE_CODE");
 
     expect(executor.type).toBe("CLAUDE_CODE");
-    expect(executor).toBeInstanceOf(ClaudeCode);
+    expect(executor).toBeInstanceOf(ClaudeExecutor);
   });
 
-  it("should create Amp executor", () => {
-    const executor = createExecutor("AMP");
+  it("should create AmpExecutor", () => {
+    const executor = getExecutor("AMP");
 
     expect(executor.type).toBe("AMP");
-    expect(executor).toBeInstanceOf(Amp);
+    expect(executor).toBeInstanceOf(AmpExecutor);
   });
 
-  it("should create Gemini executor", () => {
-    const executor = createExecutor("GEMINI");
+  it("should create GeminiExecutor", () => {
+    const executor = getExecutor("GEMINI");
 
     expect(executor.type).toBe("GEMINI");
-    expect(executor).toBeInstanceOf(Gemini);
+    expect(executor).toBeInstanceOf(GeminiExecutor);
   });
 
-  it("should create Codex executor", () => {
-    const executor = createExecutor("CODEX");
+  it("should create CodexExecutor", () => {
+    const executor = getExecutor("CODEX");
 
     expect(executor.type).toBe("CODEX");
-    expect(executor).toBeInstanceOf(Codex);
+    expect(executor).toBeInstanceOf(CodexExecutor);
   });
 
-  it("should create Opencode executor", () => {
-    const executor = createExecutor("OPENCODE");
+  it("should create OpencodeExecutor", () => {
+    const executor = getExecutor("OPENCODE");
 
     expect(executor.type).toBe("OPENCODE");
-    expect(executor).toBeInstanceOf(Opencode);
+    expect(executor).toBeInstanceOf(OpencodeExecutor);
   });
 
-  it("should create CursorAgent executor", () => {
-    const executor = createExecutor("CURSOR_AGENT");
+  it("should create CursorAgentExecutor", () => {
+    const executor = getExecutor("CURSOR_AGENT");
 
     expect(executor.type).toBe("CURSOR_AGENT");
-    expect(executor).toBeInstanceOf(CursorAgent);
+    expect(executor).toBeInstanceOf(CursorAgentExecutor);
   });
 
-  it("should create QwenCode executor", () => {
-    const executor = createExecutor("QWEN_CODE");
+  it("should create QwenCodeExecutor", () => {
+    const executor = getExecutor("QWEN_CODE");
 
     expect(executor.type).toBe("QWEN_CODE");
-    expect(executor).toBeInstanceOf(QwenCode);
+    expect(executor).toBeInstanceOf(QwenCodeExecutor);
   });
 
-  it("should create Copilot executor", () => {
-    const executor = createExecutor("COPILOT");
+  it("should create CopilotExecutor", () => {
+    const executor = getExecutor("COPILOT");
 
     expect(executor.type).toBe("COPILOT");
-    expect(executor).toBeInstanceOf(Copilot);
+    expect(executor).toBeInstanceOf(CopilotExecutor);
   });
 
-  it("should create Droid executor", () => {
-    const executor = createExecutor("DROID");
+  it("should create DroidExecutor", () => {
+    const executor = getExecutor("DROID");
 
     expect(executor.type).toBe("DROID");
-    expect(executor).toBeInstanceOf(Droid);
+    expect(executor).toBeInstanceOf(DroidExecutor);
+  });
+
+  it("should create OpenClawExecutor", () => {
+    const executor = getExecutor("OPENCLAW");
+
+    expect(executor.type).toBe("OPENCLAW");
+    expect(executor).toBeInstanceOf(OpenClawExecutor);
   });
 
   it("should throw for unknown executor type", () => {
-    expect(() => createExecutor("UNKNOWN" as ExecutorType)).toThrow(
+    expect(() => getExecutor("UNKNOWN" as ExecutorType)).toThrow(
       "Unknown executor type: UNKNOWN"
     );
   });
 
   it("should pass config to executor", () => {
-    const executor = createExecutor("CLAUDE_CODE", { model: "claude-3-opus" });
+    const executor = getExecutor("CLAUDE_CODE", { model: "claude-3-opus" });
 
     expect(executor.type).toBe("CLAUDE_CODE");
   });
@@ -430,37 +363,37 @@ describe("createExecutor", () => {
 // Individual Executor Tests
 // ============================================================================
 
-describe("ClaudeCode", () => {
-  let tempDir: string;
-
-  beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "viben-claude-test-"));
-  });
-
-  afterEach(async () => {
-    await rm(tempDir, { recursive: true, force: true });
-  });
-
+describe("ClaudeExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new ClaudeCode();
+      const executor = getExecutor("CLAUDE_CODE");
       expect(executor.type).toBe("CLAUDE_CODE");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new ClaudeCode();
+      const executor = getExecutor("CLAUDE_CODE");
       const caps = executor.capabilities();
 
       expect(caps).toContain("SESSION_FORK");
       expect(caps).toContain("CONTEXT_USAGE");
+      expect(caps).toContain("CHAT");
+      expect(caps).toContain("CHAT_SDK");
+      expect(caps).toContain("CHAT_STREAMING");
+    });
+  });
+
+  describe("supports", () => {
+    it("should support CHAT", () => {
+      const executor = getExecutor("CLAUDE_CODE");
+      expect(executor.supports("CHAT")).toBe(true);
     });
   });
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to .claude.json", () => {
-      const executor = new ClaudeCode();
+      const executor = getExecutor("CLAUDE_CODE");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".claude.json"));
@@ -468,40 +401,28 @@ describe("ClaudeCode", () => {
   });
 
   describe("getAvailabilityInfo", () => {
-    it("should return NOT_FOUND when no auth file", () => {
-      const executor = new ClaudeCode();
+    it("should return a valid status", () => {
+      const executor = getExecutor("CLAUDE_CODE");
       const info = executor.getAvailabilityInfo();
 
       // In most test environments, .claude.json won't exist
       // Unless the test runner has Claude Code installed
-      expect(["NOT_FOUND", "LOGIN_DETECTED"]).toContain(info.status);
-    });
-  });
-
-  describe("useApprovals", () => {
-    it("should accept approval service", () => {
-      const executor = new ClaudeCode();
-      const approvalService = {
-        requestApproval: async () => true,
-      };
-
-      // Should not throw
-      expect(() => executor.useApprovals(approvalService)).not.toThrow();
+      expect(["NOT_FOUND", "LOGIN_DETECTED", "INSTALLATION_FOUND"]).toContain(info.status);
     });
   });
 });
 
-describe("Amp", () => {
+describe("AmpExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new Amp();
+      const executor = getExecutor("AMP");
       expect(executor.type).toBe("AMP");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new Amp();
+      const executor = getExecutor("AMP");
       const caps = executor.capabilities();
 
       expect(caps).toContain("SESSION_FORK");
@@ -510,7 +431,7 @@ describe("Amp", () => {
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to amp config", () => {
-      const executor = new Amp();
+      const executor = getExecutor("AMP");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".amp", "config.json"));
@@ -519,7 +440,7 @@ describe("Amp", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new Amp();
+      const executor = getExecutor("AMP");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -527,26 +448,26 @@ describe("Amp", () => {
   });
 });
 
-describe("Gemini", () => {
+describe("GeminiExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new Gemini();
+      const executor = getExecutor("GEMINI");
       expect(executor.type).toBe("GEMINI");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new Gemini();
+      const executor = getExecutor("GEMINI");
       const caps = executor.capabilities();
 
-      expect(caps).toContain("SESSION_FORK");
+      expect(caps).toContain("CHAT");
     });
   });
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to gemini config", () => {
-      const executor = new Gemini();
+      const executor = getExecutor("GEMINI");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".gemini", "config.json"));
@@ -555,7 +476,7 @@ describe("Gemini", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new Gemini();
+      const executor = getExecutor("GEMINI");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -563,28 +484,28 @@ describe("Gemini", () => {
   });
 });
 
-describe("Codex", () => {
+describe("CodexExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new Codex();
+      const executor = getExecutor("CODEX");
       expect(executor.type).toBe("CODEX");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new Codex();
+      const executor = getExecutor("CODEX");
       const caps = executor.capabilities();
 
       expect(caps).toContain("SESSION_FORK");
-      expect(caps).toContain("SETUP_HELPER");
       expect(caps).toContain("CONTEXT_USAGE");
+      expect(caps).toContain("CHAT");
     });
   });
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to codex config", () => {
-      const executor = new Codex();
+      const executor = getExecutor("CODEX");
       const path = executor.defaultMcpConfigPath();
 
       // Path depends on platform
@@ -595,46 +516,34 @@ describe("Codex", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new Codex();
+      const executor = getExecutor("CODEX");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
     });
   });
-
-  describe("useApprovals", () => {
-    it("should accept approval service", () => {
-      const executor = new Codex();
-      const approvalService = {
-        requestApproval: async () => true,
-      };
-
-      expect(() => executor.useApprovals(approvalService)).not.toThrow();
-    });
-  });
 });
 
-describe("Opencode", () => {
+describe("OpencodeExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new Opencode();
+      const executor = getExecutor("OPENCODE");
       expect(executor.type).toBe("OPENCODE");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new Opencode();
+      const executor = getExecutor("OPENCODE");
       const caps = executor.capabilities();
 
       expect(caps).toContain("SESSION_FORK");
-      expect(caps).toContain("CONTEXT_USAGE");
     });
   });
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to opencode config", () => {
-      const executor = new Opencode();
+      const executor = getExecutor("OPENCODE");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".opencode", "config.json"));
@@ -643,7 +552,7 @@ describe("Opencode", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new Opencode();
+      const executor = getExecutor("OPENCODE");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -651,26 +560,26 @@ describe("Opencode", () => {
   });
 });
 
-describe("CursorAgent", () => {
+describe("CursorAgentExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new CursorAgent();
+      const executor = getExecutor("CURSOR_AGENT");
       expect(executor.type).toBe("CURSOR_AGENT");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new CursorAgent();
+      const executor = getExecutor("CURSOR_AGENT");
       const caps = executor.capabilities();
 
-      expect(caps).toContain("SETUP_HELPER");
+      expect(caps).toContain("SPAWN");
     });
   });
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to cursor config", () => {
-      const executor = new CursorAgent();
+      const executor = getExecutor("CURSOR_AGENT");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toContain("Cursor");
@@ -680,7 +589,7 @@ describe("CursorAgent", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new CursorAgent();
+      const executor = getExecutor("CURSOR_AGENT");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -688,17 +597,17 @@ describe("CursorAgent", () => {
   });
 });
 
-describe("QwenCode", () => {
+describe("QwenCodeExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new QwenCode();
+      const executor = getExecutor("QWEN_CODE");
       expect(executor.type).toBe("QWEN_CODE");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new QwenCode();
+      const executor = getExecutor("QWEN_CODE");
       const caps = executor.capabilities();
 
       expect(caps).toContain("SESSION_FORK");
@@ -707,7 +616,7 @@ describe("QwenCode", () => {
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to qwen-code config", () => {
-      const executor = new QwenCode();
+      const executor = getExecutor("QWEN_CODE");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".qwen-code", "config.json"));
@@ -716,7 +625,7 @@ describe("QwenCode", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new QwenCode();
+      const executor = getExecutor("QWEN_CODE");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -724,26 +633,26 @@ describe("QwenCode", () => {
   });
 });
 
-describe("Copilot", () => {
+describe("CopilotExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new Copilot();
+      const executor = getExecutor("COPILOT");
       expect(executor.type).toBe("COPILOT");
     });
   });
 
   describe("capabilities", () => {
-    it("should return empty capabilities array", () => {
-      const executor = new Copilot();
+    it("should return capabilities", () => {
+      const executor = getExecutor("COPILOT");
       const caps = executor.capabilities();
 
-      expect(caps).toEqual([]);
+      expect(caps).toContain("SPAWN");
     });
   });
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to gh-copilot config", () => {
-      const executor = new Copilot();
+      const executor = getExecutor("COPILOT");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".config", "gh-copilot", "config.json"));
@@ -752,7 +661,7 @@ describe("Copilot", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new Copilot();
+      const executor = getExecutor("COPILOT");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -760,17 +669,17 @@ describe("Copilot", () => {
   });
 });
 
-describe("Droid", () => {
+describe("DroidExecutor", () => {
   describe("type", () => {
     it("should have correct type", () => {
-      const executor = new Droid();
+      const executor = getExecutor("DROID");
       expect(executor.type).toBe("DROID");
     });
   });
 
   describe("capabilities", () => {
     it("should return correct capabilities", () => {
-      const executor = new Droid();
+      const executor = getExecutor("DROID");
       const caps = executor.capabilities();
 
       expect(caps).toContain("SESSION_FORK");
@@ -779,7 +688,7 @@ describe("Droid", () => {
 
   describe("defaultMcpConfigPath", () => {
     it("should return path to droid config", () => {
-      const executor = new Droid();
+      const executor = getExecutor("DROID");
       const path = executor.defaultMcpConfigPath();
 
       expect(path).toBe(join(homedir(), ".droid", "config.json"));
@@ -788,7 +697,7 @@ describe("Droid", () => {
 
   describe("getAvailabilityInfo", () => {
     it("should return availability status", () => {
-      const executor = new Droid();
+      const executor = getExecutor("DROID");
       const info = executor.getAvailabilityInfo();
 
       expect(["NOT_FOUND", "INSTALLATION_FOUND"]).toContain(info.status);
@@ -797,95 +706,65 @@ describe("Droid", () => {
 });
 
 // ============================================================================
-// getAllExecutorsAvailability Tests
-// ============================================================================
-
-describe("getAllExecutorsAvailability", () => {
-  it("should return availability for all executor types", () => {
-    const availability = getAllExecutorsAvailability();
-
-    // Should have entry for each executor type
-    for (const type of EXECUTOR_TYPES) {
-      expect(availability[type]).toBeDefined();
-      expect(typeof availability[type].available).toBe("boolean");
-      expect(availability[type].executor).toBeDefined();
-      expect(availability[type].executor.type).toBe(type);
-    }
-  });
-
-  it("should return correct availability based on status", () => {
-    const availability = getAllExecutorsAvailability();
-
-    for (const type of EXECUTOR_TYPES) {
-      const info = availability[type].executor.getAvailabilityInfo();
-      const expected =
-        info.status === "LOGIN_DETECTED" || info.status === "INSTALLATION_FOUND";
-
-      expect(availability[type].available).toBe(expected);
-    }
-  });
-});
-
-// ============================================================================
-// Executor Config Tests
+// Executor Configuration Tests
 // ============================================================================
 
 describe("Executor Configuration", () => {
-  describe("ClaudeCode with config", () => {
+  describe("ClaudeExecutor with config", () => {
     it("should accept model config", () => {
-      const executor = new ClaudeCode({ model: "claude-3-opus" });
+      const executor = getExecutor("CLAUDE_CODE", { model: "claude-3-opus" });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should accept planMode config", () => {
-      const executor = new ClaudeCode({ planMode: true });
+      const executor = getExecutor("CLAUDE_CODE", { planMode: true });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should accept approvals config", () => {
-      const executor = new ClaudeCode({ approvals: true });
+      const executor = getExecutor("CLAUDE_CODE", { approvals: true });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should accept baseCommandOverride", () => {
-      const executor = new ClaudeCode({
+      const executor = getExecutor("CLAUDE_CODE", {
         baseCommandOverride: "custom-claude-cli",
       });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should accept custom env vars", () => {
-      const executor = new ClaudeCode({
+      const executor = getExecutor("CLAUDE_CODE", {
         env: { CUSTOM_VAR: "value" },
       });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should accept dangerouslySkipPermissions", () => {
-      const executor = new ClaudeCode({
+      const executor = getExecutor("CLAUDE_CODE", {
         dangerouslySkipPermissions: true,
       });
       expect(executor.type).toBe("CLAUDE_CODE");
     });
   });
 
-  describe("Amp with config", () => {
+  describe("AmpExecutor with config", () => {
     it("should accept model config", () => {
-      const executor = new Amp({ model: "gpt-4" });
+      const executor = getExecutor("AMP", { model: "gpt-4" });
       expect(executor.type).toBe("AMP");
     });
   });
 
-  describe("Gemini with config", () => {
+  describe("GeminiExecutor with config", () => {
     it("should accept model config", () => {
-      const executor = new Gemini({ model: "gemini-1.5-pro" });
+      const executor = getExecutor("GEMINI", { model: "gemini-1.5-pro" });
       expect(executor.type).toBe("GEMINI");
     });
   });
 
-  describe("Codex with config", () => {
+  describe("CodexExecutor with config", () => {
     it("should accept model config", () => {
-      const executor = new Codex({ model: "gpt-4-turbo" });
+      const executor = getExecutor("CODEX", { model: "gpt-4-turbo" });
       expect(executor.type).toBe("CODEX");
     });
   });
@@ -957,26 +836,14 @@ describe("Edge Cases", () => {
     });
   });
 
-  describe("ExecutionEnv edge cases", () => {
-    it("should handle empty vars object", () => {
-      const env = createExecutionEnv();
-      const options: { env?: NodeJS.ProcessEnv } = {};
-
-      applyEnvToSpawnOptions(env, options);
-
-      expect(options.env).toBeDefined();
-      expect(Object.keys(options.env!).length).toBeGreaterThan(0); // Has process.env
-    });
-  });
-
-  describe("createExecutor edge cases", () => {
+  describe("getExecutor edge cases", () => {
     it("should work with empty config", () => {
-      const executor = createExecutor("CLAUDE_CODE", {});
+      const executor = getExecutor("CLAUDE_CODE", {});
       expect(executor.type).toBe("CLAUDE_CODE");
     });
 
     it("should work with undefined config", () => {
-      const executor = createExecutor("AMP");
+      const executor = getExecutor("AMP");
       expect(executor.type).toBe("AMP");
     });
   });

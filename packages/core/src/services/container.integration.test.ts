@@ -1,39 +1,113 @@
 /**
  * Container Service Integration Tests
  *
- * Tests real process spawning and output streaming without mocking.
+ * Tests real SSE message streaming and session store persistence
+ * using mock executors that yield pre-defined SSE message sequences.
  * Uses temporary directories for session storage.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { spawn } from "node:child_process";
 import { ContainerService } from "./container";
 import { EventService } from "./events";
 import { SessionStoreService } from "./session-store";
-import type { StandardCodingAgentExecutor, SpawnedChild, ExecutionEnv, ExecutorExitResult } from "../executors/types";
-import type { ExecutorType } from "../types";
+import type { Executor, SSEMessage, ChatOptions, ExecutorCapability } from "../executors/ops/types";
 import { createTempDir, type TempDirContext } from "../test/helpers/temp-dir";
 
 /**
- * Create a mock execution environment
+ * Wait for background stream processing to complete.
  */
-function createMockEnv(): ExecutionEnv {
+async function waitForStreamProcessing(ms = 100): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Create a mock executor that yields the given SSE messages from chatStreaming.
+ * Optionally adds a delay between messages to simulate real streaming.
+ */
+function createStreamingExecutor(
+  messages: SSEMessage[],
+  delayMs = 0
+): Executor {
+  const chatStreamingMock = vi.fn(async function* (_options: ChatOptions): AsyncGenerator<SSEMessage> {
+    for (const msg of messages) {
+      if (delayMs > 0) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
+      yield msg;
+    }
+  });
+
   return {
-    vars: {},
-    repoContext: {
-      workspaceRoot: "/workspace",
-      repoNames: [],
-    },
-    commitReminder: false,
-    commitReminderPrompt: "",
-  };
+    type: "CLAUDE_CODE",
+    getAvailabilityInfo: vi.fn().mockReturnValue({ status: "INSTALLATION_FOUND" }),
+    capabilities: vi.fn().mockReturnValue(["CHAT_STREAMING"] as ExecutorCapability[]),
+    supports: vi.fn().mockReturnValue(true),
+    defaultMcpConfigPath: vi.fn().mockReturnValue(null),
+    getConfigDirName: vi.fn().mockReturnValue(".claude"),
+    getConfigDir: vi.fn().mockReturnValue("/tmp/.claude"),
+    getAgentConfigPath: vi.fn().mockReturnValue("/tmp/.claude/agent.yaml"),
+    getCommandsPath: vi.fn().mockReturnValue("/tmp/.claude/commands"),
+    getVibenCommandPath: vi.fn().mockReturnValue("commands/viben"),
+    getCliName: vi.fn().mockReturnValue("claude"),
+    buildRunCommand: vi.fn().mockReturnValue(["claude", "run"]),
+    buildResumeCommand: vi.fn().mockReturnValue(["claude", "resume"]),
+    getResumeCommandStr: vi.fn().mockReturnValue("claude resume session-id"),
+    getNonInteractiveEnv: vi.fn().mockReturnValue({}),
+    extractSessionIdFromLog: vi.fn().mockReturnValue(null),
+    spawn: vi.fn().mockResolvedValue({ success: true }),
+    chat: vi.fn().mockResolvedValue({ success: true }),
+    chatStreaming: chatStreamingMock,
+    resume: vi.fn().mockResolvedValue({ success: true }),
+    supportsSessionIdOnCreate: vi.fn().mockReturnValue(false),
+    supportsCLIAgents: vi.fn().mockReturnValue(true),
+  } as unknown as Executor;
+}
+
+/**
+ * Create a failing executor whose chatStreaming throws after yielding some messages.
+ */
+function createFailingStreamingExecutor(
+  messagesBeforeFailure: SSEMessage[] = [],
+  error: Error = new Error("Stream crashed")
+): Executor {
+  const chatStreamingMock = vi.fn(async function* (_options: ChatOptions): AsyncGenerator<SSEMessage> {
+    for (const msg of messagesBeforeFailure) {
+      yield msg;
+    }
+    throw error;
+  });
+
+  return {
+    type: "CLAUDE_CODE",
+    getAvailabilityInfo: vi.fn().mockReturnValue({ status: "INSTALLATION_FOUND" }),
+    capabilities: vi.fn().mockReturnValue(["CHAT_STREAMING"] as ExecutorCapability[]),
+    supports: vi.fn().mockReturnValue(true),
+    defaultMcpConfigPath: vi.fn().mockReturnValue(null),
+    getConfigDirName: vi.fn().mockReturnValue(".claude"),
+    getConfigDir: vi.fn().mockReturnValue("/tmp/.claude"),
+    getAgentConfigPath: vi.fn().mockReturnValue("/tmp/.claude/agent.yaml"),
+    getCommandsPath: vi.fn().mockReturnValue("/tmp/.claude/commands"),
+    getVibenCommandPath: vi.fn().mockReturnValue("commands/viben"),
+    getCliName: vi.fn().mockReturnValue("claude"),
+    buildRunCommand: vi.fn().mockReturnValue(["claude", "run"]),
+    buildResumeCommand: vi.fn().mockReturnValue(["claude", "resume"]),
+    getResumeCommandStr: vi.fn().mockReturnValue("claude resume session-id"),
+    getNonInteractiveEnv: vi.fn().mockReturnValue({}),
+    extractSessionIdFromLog: vi.fn().mockReturnValue(null),
+    spawn: vi.fn().mockResolvedValue({ success: true }),
+    chat: vi.fn().mockResolvedValue({ success: true }),
+    chatStreaming: chatStreamingMock,
+    resume: vi.fn().mockResolvedValue({ success: true }),
+    supportsSessionIdOnCreate: vi.fn().mockReturnValue(false),
+    supportsCLIAgents: vi.fn().mockReturnValue(true),
+  } as unknown as Executor;
 }
 
 // =============================================================================
-// Integration Tests - Real Process Spawning
+// Integration Tests - SSE Message Streaming with Real Session Store
 // =============================================================================
 
-describe("ContainerService integration: real process spawning", () => {
+describe("ContainerService integration: SSE streaming with session store", () => {
   let service: ContainerService;
   let eventService: EventService;
   let tempDir: TempDirContext;
@@ -51,67 +125,27 @@ describe("ContainerService integration: real process spawning", () => {
     await tempDir.cleanup();
   });
 
-  /**
-   * Create a real executor that spawns actual processes
-   */
-  function createRealExecutor(command: string, args: string[]): StandardCodingAgentExecutor {
-    return {
-      type: "CLAUDE_CODE" as ExecutorType, // Use a valid ExecutorType for testing
-      spawn: async (_workdir: string, _prompt: string, _env: ExecutionEnv): Promise<SpawnedChild> => {
-        const child = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
-
-        const exitPromise = new Promise<ExecutorExitResult>((resolve, reject) => {
-          child.on("exit", (code) => {
-            if (code === 0) {
-              resolve("success");
-            } else {
-              reject(new Error(`Process exited with code ${code}`));
-            }
-          });
-          child.on("error", (err) => reject(err));
-        });
-
-        return {
-          child,
-          exitPromise,
-          cancel: () => {
-            child.kill("SIGTERM");
-          },
-        };
-      },
-      spawnFollowUp: async () => {
-        throw new Error("Not implemented");
-      },
-      defaultMcpConfigPath: () => null,
-      getAvailabilityInfo: () => ({ status: "INSTALLATION_FOUND" }),
-      capabilities: () => [],
-    };
-  }
-
-  it("should spawn and capture output from echo command", async () => {
-    const sessionId = "integration-test-echo";
-    const executor = createRealExecutor("echo", ["hello world"]);
-    const env = createMockEnv();
+  it("should stream text messages and emit session_message events", async () => {
+    const sessionId = "integration-test-text";
+    const executor = createStreamingExecutor([
+      { type: "text", content: "Hello from agent" } as SSEMessage,
+      { type: "text", content: "More content" } as SSEMessage,
+    ]);
 
     const listener = vi.fn();
     eventService.subscribe(listener);
 
-    const { child, exitPromise } = await service.spawnAgent(
+    await service.spawnAgent(
       sessionId,
       executor,
       "test-agent",
       "test_executor",
       tempDir.root,
       "test prompt",
-      env
+      {}
     );
 
-    // Verify process was spawned
-    expect(child.pid).toBeDefined();
-    expect(service.getProcess(sessionId)?.status).toBe("running");
-
-    // Wait for process to complete
-    await exitPromise;
+    await waitForStreamProcessing();
 
     // Verify agent_spawned event was emitted
     expect(listener).toHaveBeenCalledWith(
@@ -121,14 +155,25 @@ describe("ContainerService integration: real process spawning", () => {
       })
     );
 
-    // Verify execution_log was emitted (echo outputs plain text, not JSON)
+    // Verify session_message events for text content
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: "execution_log",
+        type: "session_message",
         data: expect.objectContaining({
           session_id: sessionId,
-          log_type: "output",
-          content: "hello world",
+          content: "Hello from agent",
+          role: "assistant",
+        }),
+      })
+    );
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "session_message",
+        data: expect.objectContaining({
+          session_id: sessionId,
+          content: "More content",
+          role: "assistant",
         }),
       })
     );
@@ -143,64 +188,111 @@ describe("ContainerService integration: real process spawning", () => {
         }),
       })
     );
+
+    // Verify final process status
+    expect(service.getProcess(sessionId)?.status).toBe("completed");
   });
 
-  it("should capture JSON output from process", async () => {
-    const sessionId = "integration-test-json";
-    // Use echo to output a JSON line
-    const jsonOutput = JSON.stringify({ type: "text", content: "Hello from JSON" });
-    const executor = createRealExecutor("echo", [jsonOutput]);
-    const env = createMockEnv();
+  it("should stream tool_use and tool_result messages", async () => {
+    const sessionId = "integration-test-tools";
+    const executor = createStreamingExecutor([
+      { type: "text", content: "Let me check that file" } as SSEMessage,
+      {
+        type: "tool_use",
+        id: "tool-1",
+        name: "read_file",
+        input: { path: "/test.txt" },
+      } as SSEMessage,
+      {
+        type: "tool_result",
+        tool_use_id: "tool-1",
+        output: "File contents here",
+        is_error: false,
+      } as SSEMessage,
+      { type: "text", content: "The file contains the expected data" } as SSEMessage,
+    ]);
 
     const listener = vi.fn();
     eventService.subscribe(listener);
 
-    const { exitPromise } = await service.spawnAgent(
+    await service.spawnAgent(
       sessionId,
       executor,
       "test-agent",
       "test_executor",
       tempDir.root,
-      "test prompt",
-      env
+      "Read the test file",
+      {}
     );
 
-    await exitPromise;
+    await waitForStreamProcessing();
 
-    // Verify session_message was emitted for JSON text output
+    // Verify text message
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "session_message",
         data: expect.objectContaining({
-          session_id: sessionId,
-          content: "Hello from JSON",
-          role: "assistant",
+          content: "Let me check that file",
         }),
       })
     );
+
+    // Verify tool_use execution log
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "execution_log",
+        data: expect.objectContaining({
+          session_id: sessionId,
+          log_type: "tool_use",
+        }),
+      })
+    );
+
+    // Verify tool_result execution log
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "execution_log",
+        data: expect.objectContaining({
+          session_id: sessionId,
+          log_type: "tool_result",
+        }),
+      })
+    );
+
+    // Verify second text message
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "session_message",
+        data: expect.objectContaining({
+          content: "The file contains the expected data",
+        }),
+      })
+    );
+
+    expect(service.getProcess(sessionId)?.status).toBe("completed");
   });
 
-  it("should handle process that exits with non-zero code", async () => {
+  it("should handle stream failure and mark process as failed", async () => {
     const sessionId = "integration-test-fail";
-    // Use false command which always exits with code 1
-    const executor = createRealExecutor("false", []);
-    const env = createMockEnv();
+    const executor = createFailingStreamingExecutor(
+      [{ type: "text", content: "Starting..." } as SSEMessage],
+      new Error("Connection lost")
+    );
 
     const listener = vi.fn();
     eventService.subscribe(listener);
 
-    const { exitPromise } = await service.spawnAgent(
+    await service.spawnAgent(
       sessionId,
       executor,
       "test-agent",
       "test_executor",
       tempDir.root,
       "test prompt",
-      env
+      {}
     );
 
-    // Wait for process to complete (will reject)
-    await exitPromise?.catch(() => {});
+    await waitForStreamProcessing();
 
     // Verify process status is failed
     expect(service.getProcess(sessionId)?.status).toBe("failed");
@@ -217,71 +309,256 @@ describe("ContainerService integration: real process spawning", () => {
     );
   });
 
-  it("should handle multi-line output", async () => {
-    const sessionId = "integration-test-multiline";
-    // Use printf to output multiple lines
-    const executor = createRealExecutor("printf", ["line1\\nline2\\nline3"]);
-    const env = createMockEnv();
+  it("should handle multi-message streaming with delay", async () => {
+    const sessionId = "integration-test-delayed";
+    const messages: SSEMessage[] = [
+      { type: "text", content: "Message 1" } as SSEMessage,
+      { type: "text", content: "Message 2" } as SSEMessage,
+      { type: "text", content: "Message 3" } as SSEMessage,
+    ];
+    const executor = createStreamingExecutor(messages, 10); // 10ms delay between messages
 
     const listener = vi.fn();
     eventService.subscribe(listener);
 
-    const { exitPromise } = await service.spawnAgent(
+    await service.spawnAgent(
       sessionId,
       executor,
       "test-agent",
       "test_executor",
       tempDir.root,
       "test prompt",
-      env
+      {}
     );
 
-    await exitPromise;
+    // Wait longer for delayed messages
+    await waitForStreamProcessing(200);
 
-    // Verify all lines were captured as execution logs
-    const executionLogs = listener.mock.calls
-      .filter((call) => call[0].type === "execution_log")
+    // Verify all messages were captured
+    const sessionMessages = listener.mock.calls
+      .filter((call) => call[0].type === "session_message")
       .map((call) => call[0].data.content);
 
-    expect(executionLogs).toContain("line1");
-    expect(executionLogs).toContain("line2");
-    expect(executionLogs).toContain("line3");
+    expect(sessionMessages).toContain("Message 1");
+    expect(sessionMessages).toContain("Message 2");
+    expect(sessionMessages).toContain("Message 3");
+
+    expect(service.getProcess(sessionId)?.status).toBe("completed");
   });
 
   it("should track multiple concurrent processes", async () => {
-    const executor1 = createRealExecutor("sleep", ["0.1"]);
-    const executor2 = createRealExecutor("sleep", ["0.1"]);
-    const env = createMockEnv();
+    // Use blocking executors that wait for signals
+    let resolve1: () => void;
+    let resolve2: () => void;
+    const blocker1 = new Promise<void>((r) => { resolve1 = r; });
+    const blocker2 = new Promise<void>((r) => { resolve2 = r; });
 
-    const { exitPromise: exit1 } = await service.spawnAgent(
+    const executor1 = createStreamingExecutor([]);
+    (executor1.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+      async function* () {
+        yield { type: "text", content: "Agent 1 working" } as SSEMessage;
+        await blocker1;
+        yield { type: "text", content: "Agent 1 done" } as SSEMessage;
+      }
+    );
+
+    const executor2 = createStreamingExecutor([]);
+    (executor2.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+      async function* () {
+        yield { type: "text", content: "Agent 2 working" } as SSEMessage;
+        await blocker2;
+        yield { type: "text", content: "Agent 2 done" } as SSEMessage;
+      }
+    );
+
+    await service.spawnAgent(
       "session-1",
       executor1,
       "agent-1",
       "test_executor",
       tempDir.root,
       "prompt 1",
-      env
+      {}
     );
 
-    const { exitPromise: exit2 } = await service.spawnAgent(
+    await service.spawnAgent(
       "session-2",
       executor2,
       "agent-2",
       "test_executor",
       tempDir.root,
       "prompt 2",
-      env
+      {}
     );
 
-    // Both processes should be running
+    // Allow initial yields to process
+    await waitForStreamProcessing(50);
+
+    // Both processes should be running (blocked on promises)
     expect(service.runningProcesses()).toHaveLength(2);
 
-    // Wait for both to complete
-    await Promise.all([exit1, exit2]);
+    // Unblock both
+    resolve1!();
+    resolve2!();
+
+    await waitForStreamProcessing(100);
 
     // Both should be completed now
     expect(service.runningProcesses()).toHaveLength(0);
     expect(service.getProcess("session-1")?.status).toBe("completed");
     expect(service.getProcess("session-2")?.status).toBe("completed");
+  });
+
+  it("should handle assistant message with mixed content types", async () => {
+    const sessionId = "integration-test-assistant";
+    const assistantMsg: SSEMessage = {
+      type: "assistant",
+      message: {
+        role: "assistant",
+        content: [
+          { type: "text", text: "I will run a command" },
+          { type: "tool_use", id: "tool-1", name: "bash", input: { command: "echo hello" } },
+        ],
+      },
+    };
+
+    const executor = createStreamingExecutor([assistantMsg]);
+
+    const listener = vi.fn();
+    eventService.subscribe(listener);
+
+    await service.spawnAgent(
+      sessionId,
+      executor,
+      "test-agent",
+      "test_executor",
+      tempDir.root,
+      "run a command",
+      {}
+    );
+
+    await waitForStreamProcessing();
+
+    // Verify text part of assistant message
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "session_message",
+        data: expect.objectContaining({
+          session_id: sessionId,
+          content: "I will run a command",
+        }),
+      })
+    );
+
+    // Verify tool_use part of assistant message
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "execution_log",
+        data: expect.objectContaining({
+          session_id: sessionId,
+          log_type: "tool_use",
+        }),
+      })
+    );
+
+    expect(service.getProcess(sessionId)?.status).toBe("completed");
+  });
+
+  it("should handle result message type", async () => {
+    const sessionId = "integration-test-result";
+    const executor = createStreamingExecutor([
+      { type: "text", content: "Working on it..." } as SSEMessage,
+      { type: "result", result: "Task completed successfully" } as SSEMessage,
+    ]);
+
+    const listener = vi.fn();
+    eventService.subscribe(listener);
+
+    await service.spawnAgent(
+      sessionId,
+      executor,
+      "test-agent",
+      "test_executor",
+      tempDir.root,
+      "complete the task",
+      {}
+    );
+
+    await waitForStreamProcessing();
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "session_message",
+        data: expect.objectContaining({
+          content: "Task completed successfully",
+        }),
+      })
+    );
+
+    expect(service.getProcess(sessionId)?.status).toBe("completed");
+  });
+
+  it("should handle error message type", async () => {
+    const sessionId = "integration-test-error";
+    const executor = createStreamingExecutor([
+      { type: "error", message: "Something went wrong" } as SSEMessage,
+    ]);
+
+    const listener = vi.fn();
+    eventService.subscribe(listener);
+
+    await service.spawnAgent(
+      sessionId,
+      executor,
+      "test-agent",
+      "test_executor",
+      tempDir.root,
+      "test prompt",
+      {}
+    );
+
+    await waitForStreamProcessing();
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "error",
+        data: expect.objectContaining({
+          message: "Something went wrong",
+        }),
+      })
+    );
+  });
+
+  it("should handle empty stream (no messages)", async () => {
+    const sessionId = "integration-test-empty";
+    const executor = createStreamingExecutor([]);
+
+    const listener = vi.fn();
+    eventService.subscribe(listener);
+
+    await service.spawnAgent(
+      sessionId,
+      executor,
+      "test-agent",
+      "test_executor",
+      tempDir.root,
+      "test prompt",
+      {}
+    );
+
+    await waitForStreamProcessing();
+
+    // Should still complete successfully
+    expect(service.getProcess(sessionId)?.status).toBe("completed");
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "agent_completed",
+        data: expect.objectContaining({
+          session_id: sessionId,
+          success: true,
+        }),
+      })
+    );
   });
 });

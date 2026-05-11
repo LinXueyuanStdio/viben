@@ -93,6 +93,18 @@ class GeminiExecutor extends BaseExecutor {
     return {}; // Gemini doesn't need special env var
   }
 
+  buildResumeCommand(_sessionId: string): string[] {
+    return ["gemini"]; // Gemini doesn't support session resume
+  }
+
+  async resume(_sessionId: string, _options?: Partial<SpawnOptions>): Promise<ExecutionResult> {
+    return {
+      success: false,
+      error: "Gemini does not support session resume",
+      errorType: "INVALID_CONFIG",
+    };
+  }
+
   // === Feature Detection ===
 
   supportsSessionIdOnCreate(): boolean {

@@ -6,13 +6,14 @@
  * launching external processes.
  *
  * Tests cover:
- * - Command argument building for ClaudeCode, Gemini, Codex
+ * - Command argument building for ClaudeExecutor, GeminiExecutor, CodexExecutor
  * - Environment variable merging (config + runtime)
- * - Error cases (executable not found via mocked `which`)
+ * - Error cases (executable not found via mocked `whichSync`)
  * - Session resume functionality
  * - Model and format options
+ * - Chat capability detection via supports("CHAT")
  *
- * NOTE: These are UNIT tests that mock spawn and which. They verify that
+ * NOTE: These are UNIT tests that mock spawn and whichSync. They verify that
  * the correct commands would be executed, but do NOT test actual process
  * spawning. For integration tests that verify spawn works correctly with
  * real executables, see the E2E test suite.
@@ -24,18 +25,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { ChildProcess } from "node:child_process";
 
 import {
-  ClaudeCode,
-  Gemini,
-  Codex,
-  Amp,
-  Opencode,
-  CursorAgent,
-  QwenCode,
-  Copilot,
-  Droid,
-  CHAT_SUPPORTED_EXECUTORS,
-  executorSupportsChat,
-  createExecutor,
+  ClaudeExecutor,
+  GeminiExecutor,
+  CodexExecutor,
+  AmpExecutor,
+  OpencodeExecutor,
+  CursorAgentExecutor,
+  QwenCodeExecutor,
+  CopilotExecutor,
+  DroidExecutor,
+  getExecutor,
+  getRegisteredTypes,
 } from "./index";
 
 import { ExecutorError } from "../error";
@@ -43,17 +43,21 @@ import { ExecutorError } from "../error";
 // Mock child_process module
 vi.mock("node:child_process", () => ({
   spawn: vi.fn(),
+  execSync: vi.fn(),
 }));
 
-// Mock utils module for which function
-vi.mock("./utils", () => ({
+// Mock ops/utils module for whichSync and fileExists
+vi.mock("./ops/utils", () => ({
   which: vi.fn(),
   whichSync: vi.fn(),
-  getConfigDir: vi.fn(() => "/mock/config"),
+  getHomeDir: vi.fn(() => "/mock/home"),
+  getDataDir: vi.fn(() => "/mock/home/.viben"),
+  fileExists: vi.fn(() => false),
+  joinPath: vi.fn((...parts: string[]) => parts.join("/")),
 }));
 
 import { spawn } from "node:child_process";
-import { which, whichSync } from "./utils";
+import { whichSync } from "./ops/utils";
 
 /**
  * Create a mock ChildProcess for testing
@@ -102,16 +106,16 @@ function createMockChildProcess(): ChildProcess {
 }
 
 // ============================================================================
-// ClaudeCode.spawnChat Tests
+// ClaudeExecutor.chat Tests
 // ============================================================================
 
-describe("ClaudeCode.spawnChat", () => {
+describe("ClaudeExecutor.chat", () => {
   const mockSpawn = vi.mocked(spawn);
-  const mockWhich = vi.mocked(which);
+  const mockWhichSync = vi.mocked(whichSync);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWhich.mockResolvedValue("/usr/local/bin/claude");
+    mockWhichSync.mockReturnValue("/usr/local/bin/claude");
     mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
@@ -120,8 +124,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should spawn claude with basic prompt", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "test prompt" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test prompt" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -133,8 +137,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include model option when specified in config", async () => {
-    const executor = new ClaudeCode({ model: "claude-3-opus" });
-    await executor.spawnChat({ prompt: "test" });
+    const executor = new ClaudeExecutor({ model: "claude-3-opus" });
+    await executor.chat({ prompt: "test" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -144,8 +148,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should override config model with options model", async () => {
-    const executor = new ClaudeCode({ model: "claude-3-opus" });
-    await executor.spawnChat({ prompt: "test", model: "claude-3-sonnet" });
+    const executor = new ClaudeExecutor({ model: "claude-3-opus" });
+    await executor.chat({ prompt: "test", model: "claude-3-sonnet" });
 
     const [, args] = mockSpawn.mock.calls[0];
     expect(args).toContain("--model");
@@ -154,8 +158,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include verbose flag when specified", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "test", verbose: true });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test", verbose: true });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -165,8 +169,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include session-id when specified", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "test", sessionId: "session-123" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test", sessionId: "session-123" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -176,8 +180,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include resume flag when specified", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "continue", resume: "prev-session" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "continue", resume: "prev-session" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -187,8 +191,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include dangerously-skip-permissions from config", async () => {
-    const executor = new ClaudeCode({ dangerouslySkipPermissions: true });
-    await executor.spawnChat({ prompt: "test" });
+    const executor = new ClaudeExecutor({ dangerouslySkipPermissions: true });
+    await executor.chat({ prompt: "test" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -198,8 +202,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include dangerously-skip-permissions from options", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "test", dangerouslySkipPermissions: true });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test", dangerouslySkipPermissions: true });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -209,8 +213,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include output-format when stream-json specified", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "test", outputFormat: "stream-json" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test", outputFormat: "stream-json" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -220,8 +224,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should include input-format when stream-json specified", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ inputFormat: "stream-json" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test", inputFormat: "stream-json" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -231,8 +235,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should not include prompt as argument when inputFormat is stream-json", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "ignored", inputFormat: "stream-json" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "ignored", inputFormat: "stream-json" });
 
     const [, args] = mockSpawn.mock.calls[0];
     // Should have -p but not followed by the prompt text
@@ -241,8 +245,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should use specified cwd", async () => {
-    const executor = new ClaudeCode();
-    await executor.spawnChat({ prompt: "test", cwd: "/custom/path" });
+    const executor = new ClaudeExecutor();
+    await executor.chat({ prompt: "test", cwd: "/custom/path" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/claude",
@@ -254,8 +258,8 @@ describe("ClaudeCode.spawnChat", () => {
   });
 
   it("should merge environment variables from config and options", async () => {
-    const executor = new ClaudeCode({ env: { CONFIG_VAR: "config_value" } });
-    await executor.spawnChat({
+    const executor = new ClaudeExecutor({ env: { CONFIG_VAR: "config_value" } });
+    await executor.chat({
       prompt: "test",
       env: { OPTION_VAR: "option_value" }
     });
@@ -267,35 +271,36 @@ describe("ClaudeCode.spawnChat", () => {
     });
   });
 
-  it("should throw ExecutorError when claude command not found", async () => {
-    mockWhich.mockResolvedValue(null);
+  it("should return NOT_FOUND error when claude command not found", async () => {
+    mockWhichSync.mockReturnValue(null);
 
-    const executor = new ClaudeCode();
-    await expect(executor.spawnChat({ prompt: "test" }))
-      .rejects
-      .toThrow(ExecutorError);
+    const executor = new ClaudeExecutor();
+    const result = await executor.chat({ prompt: "test" });
+
+    expect(result.success).toBe(false);
+    expect(result.errorType).toBe("NOT_FOUND");
   });
 
-  it("should return exitPromise that resolves with exit code", async () => {
-    const executor = new ClaudeCode();
-    const result = await executor.spawnChat({ prompt: "test" });
+  it("should return ExecutionResult with success", async () => {
+    const executor = new ClaudeExecutor();
+    const result = await executor.chat({ prompt: "test" });
 
-    expect(result.child).toBeDefined();
-    expect(result.exitPromise).toBeInstanceOf(Promise);
+    expect(result).toHaveProperty("success");
+    expect(result).toHaveProperty("exitCode");
   });
 });
 
 // ============================================================================
-// Gemini.spawnChat Tests
+// GeminiExecutor.chat Tests
 // ============================================================================
 
-describe("Gemini.spawnChat", () => {
+describe("GeminiExecutor.chat", () => {
   const mockSpawn = vi.mocked(spawn);
-  const mockWhich = vi.mocked(which);
+  const mockWhichSync = vi.mocked(whichSync);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWhich.mockResolvedValue("/usr/local/bin/gemini");
+    mockWhichSync.mockReturnValue("/usr/local/bin/gemini");
     mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
@@ -304,8 +309,8 @@ describe("Gemini.spawnChat", () => {
   });
 
   it("should spawn gemini with prompt using --prompt flag", async () => {
-    const executor = new Gemini();
-    await executor.spawnChat({ prompt: "test prompt" });
+    const executor = new GeminiExecutor();
+    await executor.chat({ prompt: "test prompt" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/gemini",
@@ -317,8 +322,8 @@ describe("Gemini.spawnChat", () => {
   });
 
   it("should include model option when specified", async () => {
-    const executor = new Gemini({ model: "gemini-1.5-pro" });
-    await executor.spawnChat({ prompt: "test" });
+    const executor = new GeminiExecutor({ model: "gemini-1.5-pro" });
+    await executor.chat({ prompt: "test" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/gemini",
@@ -328,8 +333,8 @@ describe("Gemini.spawnChat", () => {
   });
 
   it("should convert stream-json to json for output format", async () => {
-    const executor = new Gemini();
-    await executor.spawnChat({ prompt: "test", outputFormat: "stream-json" });
+    const executor = new GeminiExecutor();
+    await executor.chat({ prompt: "test", outputFormat: "stream-json" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/gemini",
@@ -338,29 +343,19 @@ describe("Gemini.spawnChat", () => {
     );
   });
 
-  it("should include verbose flag when specified", async () => {
-    const executor = new Gemini();
-    await executor.spawnChat({ prompt: "test", verbose: true });
+  it("should return NOT_FOUND error when gemini command not found", async () => {
+    mockWhichSync.mockReturnValue(null);
 
-    expect(mockSpawn).toHaveBeenCalledWith(
-      "/usr/local/bin/gemini",
-      expect.arrayContaining(["--verbose"]),
-      expect.any(Object)
-    );
-  });
+    const executor = new GeminiExecutor();
+    const result = await executor.chat({ prompt: "test" });
 
-  it("should throw ExecutorError when gemini command not found", async () => {
-    mockWhich.mockResolvedValue(null);
-
-    const executor = new Gemini();
-    await expect(executor.spawnChat({ prompt: "test" }))
-      .rejects
-      .toThrow(ExecutorError);
+    expect(result.success).toBe(false);
+    expect(result.errorType).toBe("NOT_FOUND");
   });
 
   it("should merge environment variables", async () => {
-    const executor = new Gemini({ env: { CONFIG_VAR: "value1" } });
-    await executor.spawnChat({
+    const executor = new GeminiExecutor({ env: { CONFIG_VAR: "value1" } });
+    await executor.chat({
       prompt: "test",
       env: { OPTION_VAR: "value2" }
     });
@@ -374,16 +369,16 @@ describe("Gemini.spawnChat", () => {
 });
 
 // ============================================================================
-// Codex.spawnChat Tests
+// CodexExecutor.chat Tests
 // ============================================================================
 
-describe("Codex.spawnChat", () => {
+describe("CodexExecutor.chat", () => {
   const mockSpawn = vi.mocked(spawn);
-  const mockWhich = vi.mocked(which);
+  const mockWhichSync = vi.mocked(whichSync);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWhich.mockResolvedValue("/usr/local/bin/npx");
+    mockWhichSync.mockReturnValue("/usr/local/bin/npx");
     mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
@@ -392,8 +387,8 @@ describe("Codex.spawnChat", () => {
   });
 
   it("should spawn codex via npx with correct base args", async () => {
-    const executor = new Codex();
-    await executor.spawnChat({ prompt: "test prompt" });
+    const executor = new CodexExecutor();
+    await executor.chat({ prompt: "test prompt" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
@@ -405,8 +400,8 @@ describe("Codex.spawnChat", () => {
   });
 
   it("should include model option when specified", async () => {
-    const executor = new Codex({ model: "gpt-4-turbo" });
-    await executor.spawnChat({ prompt: "test" });
+    const executor = new CodexExecutor({ model: "gpt-4-turbo" });
+    await executor.chat({ prompt: "test" });
 
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
@@ -416,8 +411,8 @@ describe("Codex.spawnChat", () => {
   });
 
   it("should include session option when specified (resume mode)", async () => {
-    const executor = new Codex();
-    await executor.spawnChat({ prompt: "test", sessionId: "codex-session-123" });
+    const executor = new CodexExecutor();
+    await executor.chat({ prompt: "test", sessionId: "codex-session-123" });
 
     // When sessionId is provided, it uses resume mode with sessionId as positional arg
     expect(mockSpawn).toHaveBeenCalledWith(
@@ -428,10 +423,10 @@ describe("Codex.spawnChat", () => {
   });
 
   it("should use exec mode for new session", async () => {
-    const executor = new Codex();
-    await executor.spawnChat({ prompt: "test" });
+    const executor = new CodexExecutor();
+    await executor.chat({ prompt: "test" });
 
-    // Codex uses exec mode for new sessions (no verbose flag)
+    // Codex uses exec mode for new sessions
     expect(mockSpawn).toHaveBeenCalledWith(
       "/usr/local/bin/npx",
       expect.arrayContaining(["exec", "test"]),
@@ -440,173 +435,144 @@ describe("Codex.spawnChat", () => {
   });
 
   it("should set NPM_CONFIG_LOGLEVEL to error", async () => {
-    const executor = new Codex();
-    await executor.spawnChat({ prompt: "test" });
+    const executor = new CodexExecutor();
+    await executor.chat({ prompt: "test" });
 
     const [, , options] = mockSpawn.mock.calls[0];
     expect(options.env?.NPM_CONFIG_LOGLEVEL).toBe("error");
   });
 
-  it("should throw ExecutorError when npx command not found", async () => {
-    mockWhich.mockResolvedValue(null);
+  it("should return NOT_FOUND error when npx command not found", async () => {
+    mockWhichSync.mockReturnValue(null);
 
-    const executor = new Codex();
-    await expect(executor.spawnChat({ prompt: "test" }))
-      .rejects
-      .toThrow(ExecutorError);
+    const executor = new CodexExecutor();
+    const result = await executor.chat({ prompt: "test" });
+
+    expect(result.success).toBe(false);
+    expect(result.errorType).toBe("NOT_FOUND");
   });
 });
 
 // ============================================================================
-// CHAT_SUPPORTED_EXECUTORS Tests
+// Chat Capability Detection Tests (replaces CHAT_SUPPORTED_EXECUTORS)
 // ============================================================================
 
-describe("CHAT_SUPPORTED_EXECUTORS", () => {
-  it("should include CLAUDE_CODE, GEMINI, and CODEX", () => {
-    expect(CHAT_SUPPORTED_EXECUTORS).toContain("CLAUDE_CODE");
-    expect(CHAT_SUPPORTED_EXECUTORS).toContain("GEMINI");
-    expect(CHAT_SUPPORTED_EXECUTORS).toContain("CODEX");
+describe("Chat capability detection via supports('CHAT')", () => {
+  const mockWhichSync = vi.mocked(whichSync);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhichSync.mockReturnValue(null);
   });
 
-  it("should not include unsupported executors", () => {
-    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("AMP");
-    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("OPENCODE");
-    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("CURSOR_AGENT");
-    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("QWEN_CODE");
-    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("COPILOT");
-    expect(CHAT_SUPPORTED_EXECUTORS).not.toContain("DROID");
+  it("ClaudeExecutor should support CHAT", () => {
+    const executor = new ClaudeExecutor();
+    expect(executor.supports("CHAT")).toBe(true);
   });
 
-  it("should have exactly 3 supported executors", () => {
-    expect(CHAT_SUPPORTED_EXECUTORS).toHaveLength(3);
+  it("GeminiExecutor should support CHAT", () => {
+    const executor = new GeminiExecutor();
+    expect(executor.supports("CHAT")).toBe(true);
+  });
+
+  it("CodexExecutor should support CHAT", () => {
+    const executor = new CodexExecutor();
+    expect(executor.supports("CHAT")).toBe(true);
+  });
+
+  it("AmpExecutor should not support CHAT", () => {
+    const executor = new AmpExecutor();
+    expect(executor.supports("CHAT")).toBe(false);
+  });
+
+  it("OpencodeExecutor should not support CHAT", () => {
+    const executor = new OpencodeExecutor();
+    expect(executor.supports("CHAT")).toBe(false);
+  });
+
+  it("CursorAgentExecutor should not support CHAT", () => {
+    const executor = new CursorAgentExecutor();
+    expect(executor.supports("CHAT")).toBe(false);
+  });
+
+  it("QwenCodeExecutor should not support CHAT", () => {
+    const executor = new QwenCodeExecutor();
+    expect(executor.supports("CHAT")).toBe(false);
+  });
+
+  it("CopilotExecutor should not support CHAT", () => {
+    const executor = new CopilotExecutor();
+    expect(executor.supports("CHAT")).toBe(false);
+  });
+
+  it("DroidExecutor should not support CHAT", () => {
+    const executor = new DroidExecutor();
+    expect(executor.supports("CHAT")).toBe(false);
   });
 });
 
 // ============================================================================
-// executorSupportsChat Tests
+// Executor getCliName Tests (replaces getChatCommand)
 // ============================================================================
 
-describe("executorSupportsChat", () => {
-  it("should return true for supported executors", () => {
-    expect(executorSupportsChat("CLAUDE_CODE")).toBe(true);
-    expect(executorSupportsChat("GEMINI")).toBe(true);
-    expect(executorSupportsChat("CODEX")).toBe(true);
+describe("Executor getCliName", () => {
+  const mockWhichSync = vi.mocked(whichSync);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhichSync.mockReturnValue(null);
   });
 
-  it("should return false for unsupported executors", () => {
-    expect(executorSupportsChat("AMP")).toBe(false);
-    expect(executorSupportsChat("OPENCODE")).toBe(false);
-    expect(executorSupportsChat("CURSOR_AGENT")).toBe(false);
-    expect(executorSupportsChat("QWEN_CODE")).toBe(false);
-    expect(executorSupportsChat("COPILOT")).toBe(false);
-    expect(executorSupportsChat("DROID")).toBe(false);
+  it("ClaudeExecutor CLI name should be 'claude'", () => {
+    expect(new ClaudeExecutor().getCliName()).toBe("claude");
+  });
+
+  it("GeminiExecutor CLI name should be 'gemini'", () => {
+    expect(new GeminiExecutor().getCliName()).toBe("gemini");
+  });
+
+  it("CodexExecutor CLI name should be 'codex'", () => {
+    expect(new CodexExecutor().getCliName()).toBe("codex");
+  });
+
+  it("AmpExecutor CLI name should be 'amp'", () => {
+    expect(new AmpExecutor().getCliName()).toBe("amp");
   });
 });
 
 // ============================================================================
-// Executor supportsChat and getChatCommand Tests
+// getExecutor with Chat Support Tests
 // ============================================================================
 
-describe("Executor supportsChat and getChatCommand", () => {
-  describe("ClaudeCode", () => {
-    it("supportsChat should return true", () => {
-      expect(new ClaudeCode().supportsChat()).toBe(true);
-    });
+describe("getExecutor with chat support", () => {
+  const mockWhichSync = vi.mocked(whichSync);
 
-    it("getChatCommand should return 'claude'", () => {
-      expect(new ClaudeCode().getChatCommand()).toBe("claude");
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockWhichSync.mockReturnValue(null);
   });
 
-  describe("Gemini", () => {
-    it("supportsChat should return true", () => {
-      expect(new Gemini().supportsChat()).toBe(true);
-    });
-
-    it("getChatCommand should return 'gemini'", () => {
-      expect(new Gemini().getChatCommand()).toBe("gemini");
-    });
+  it("CLAUDE_CODE executor should support CHAT", () => {
+    const executor = getExecutor("CLAUDE_CODE");
+    expect(executor.supports("CHAT")).toBe(true);
+    expect(executor.getCliName()).toBe("claude");
   });
 
-  describe("Codex", () => {
-    it("supportsChat should return true", () => {
-      expect(new Codex().supportsChat()).toBe(true);
-    });
-
-    it("getChatCommand should return 'codex'", () => {
-      expect(new Codex().getChatCommand()).toBe("codex");
-    });
+  it("GEMINI executor should support CHAT", () => {
+    const executor = getExecutor("GEMINI");
+    expect(executor.supports("CHAT")).toBe(true);
+    expect(executor.getCliName()).toBe("gemini");
   });
 
-  describe("Executors without chat support", () => {
-    it("Amp should return false and null", () => {
-      const executor = new Amp();
-      expect(executor.supportsChat()).toBe(false);
-      expect(executor.getChatCommand()).toBeNull();
-    });
-
-    it("Opencode should return false and null", () => {
-      const executor = new Opencode();
-      expect(executor.supportsChat()).toBe(false);
-      expect(executor.getChatCommand()).toBeNull();
-    });
-
-    it("CursorAgent should return false and null", () => {
-      const executor = new CursorAgent();
-      expect(executor.supportsChat()).toBe(false);
-      expect(executor.getChatCommand()).toBeNull();
-    });
-
-    it("QwenCode should return false and null", () => {
-      const executor = new QwenCode();
-      expect(executor.supportsChat()).toBe(false);
-      expect(executor.getChatCommand()).toBeNull();
-    });
-
-    it("Copilot should return false and null", () => {
-      const executor = new Copilot();
-      expect(executor.supportsChat()).toBe(false);
-      expect(executor.getChatCommand()).toBeNull();
-    });
-
-    it("Droid should return false and null", () => {
-      const executor = new Droid();
-      expect(executor.supportsChat()).toBe(false);
-      expect(executor.getChatCommand()).toBeNull();
-    });
-  });
-});
-
-// ============================================================================
-// createExecutor with Chat Support Tests
-// ============================================================================
-
-describe("createExecutor with chat support", () => {
-  it("CLAUDE_CODE executor should support chat", () => {
-    const executor = createExecutor("CLAUDE_CODE");
-    expect(executor.supportsChat?.()).toBe(true);
-    expect(executor.getChatCommand?.()).toBe("claude");
-    expect(executor.spawnChat).toBeDefined();
+  it("CODEX executor should support CHAT", () => {
+    const executor = getExecutor("CODEX");
+    expect(executor.supports("CHAT")).toBe(true);
+    expect(executor.getCliName()).toBe("codex");
   });
 
-  it("GEMINI executor should support chat", () => {
-    const executor = createExecutor("GEMINI");
-    expect(executor.supportsChat?.()).toBe(true);
-    expect(executor.getChatCommand?.()).toBe("gemini");
-    expect(executor.spawnChat).toBeDefined();
-  });
-
-  it("CODEX executor should support chat", () => {
-    const executor = createExecutor("CODEX");
-    expect(executor.supportsChat?.()).toBe(true);
-    expect(executor.getChatCommand?.()).toBe("codex");
-    expect(executor.spawnChat).toBeDefined();
-  });
-
-  it("AMP executor should not support chat", () => {
-    const executor = createExecutor("AMP");
-    expect(executor.supportsChat?.()).toBe(false);
-    expect(executor.getChatCommand?.()).toBeNull();
+  it("AMP executor should not support CHAT", () => {
+    const executor = getExecutor("AMP");
+    expect(executor.supports("CHAT")).toBe(false);
   });
 });
 
@@ -643,11 +609,11 @@ describe("ExecutorError chat errors", () => {
 
 describe("Integration: Full option combinations", () => {
   const mockSpawn = vi.mocked(spawn);
-  const mockWhich = vi.mocked(which);
+  const mockWhichSync = vi.mocked(whichSync);
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWhich.mockResolvedValue("/usr/local/bin/claude");
+    mockWhichSync.mockReturnValue("/usr/local/bin/claude");
     mockSpawn.mockReturnValue(createMockChildProcess());
   });
 
@@ -655,14 +621,14 @@ describe("Integration: Full option combinations", () => {
     vi.resetAllMocks();
   });
 
-  it("ClaudeCode should handle all options correctly", async () => {
-    const executor = new ClaudeCode({
+  it("ClaudeExecutor should handle all options correctly", async () => {
+    const executor = new ClaudeExecutor({
       model: "claude-3-opus",
       dangerouslySkipPermissions: true,
       env: { CONFIG_ENV: "config" }
     });
 
-    await executor.spawnChat({
+    await executor.chat({
       prompt: "full test",
       cwd: "/test/dir",
       verbose: true,
@@ -692,9 +658,9 @@ describe("Integration: Full option combinations", () => {
   });
 
   it("session resume should work with prompt", async () => {
-    const executor = new ClaudeCode();
+    const executor = new ClaudeExecutor();
 
-    await executor.spawnChat({
+    await executor.chat({
       prompt: "continue working",
       resume: "previous-session-id"
     });
