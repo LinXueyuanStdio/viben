@@ -290,4 +290,5 @@ logs/security/
 docs/index/
 core.*
 /pages/
-/docs/references
+/docs/references.claude/worktrees/
+infra/claude-code/
