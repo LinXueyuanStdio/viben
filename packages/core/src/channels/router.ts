@@ -16,8 +16,8 @@ import type { EventService, GatewayEvent, EventListener } from "../services/even
 import type { ContainerService } from "../services/container";
 import type { ChannelManager } from "./manager";
 import type { Channel, AgentBinding, NotificationMode, ChannelConfig } from "./types";
-import type { StandardCodingAgentExecutor } from "../executors/types";
-import { createExecutor, isExecutorType, createExecutionEnv } from "../executors";
+import type { Executor } from "../executors/ops/types";
+import { getExecutor, isExecutorType } from "../executors";
 import { SdkChatProxy, type SSEMessage } from "../executors/chat/sdk-proxy";
 import { sendChannelMessage } from "./index";
 import { homedir } from "node:os";
@@ -543,7 +543,7 @@ export class ChannelRouter {
     }
 
     // Create execution environment
-    const env = createExecutionEnv(workdir);
+    const env: Record<string, string> = {};
 
     // Resolve executor
     const executor = this.resolveExecutor(binding.id);
@@ -586,9 +586,9 @@ export class ChannelRouter {
   /**
    * Resolve executor from binding ID
    */
-  private resolveExecutor(executorId: string): StandardCodingAgentExecutor {
+  private resolveExecutor(executorId: string): Executor {
     const type = this.getExecutorType(executorId);
-    return createExecutor(type);
+    return getExecutor(type);
   }
 
   /**

@@ -3,10 +3,9 @@
  *
  * Manages executor processes (spawning, tracking, termination).
  */
-import type { ChildProcess } from "node:child_process";
 import { EventService } from "./events";
 import { SessionStoreService, createUserMessage, UIMessageHelpers } from "./session-store";
-import type { ExecutionEnv, SpawnedChild, StandardCodingAgentExecutor } from "../executors/types";
+import type { Executor, SSEMessage } from "../executors/ops/types";
 import { randomUUID } from "node:crypto";
 import { logger as globalLogger } from "../telemetry";
 
@@ -46,37 +45,30 @@ export class ContainerService {
    * Spawn a new agent process and stream its output
    *
    * @param sessionId - Unique session identifier
-   * @param executor - The coding agent executor to spawn
+   * @param executor - The unified executor instance
    * @param agentId - The agent ID for session storage (e.g., user's agent name)
    * @param agentType - The executor type name (e.g., "claude_code", "gemini")
    * @param workdir - Working directory for the agent
    * @param prompt - Initial prompt to send
-   * @param env - Execution environment
+   * @param env - Environment variables
    */
   async spawnAgent(
     sessionId: string,
-    executor: StandardCodingAgentExecutor,
+    executor: Executor,
     agentId: string,
     agentType: string,
     workdir: string,
     prompt: string,
-    env: ExecutionEnv
-  ): Promise<SpawnedChild> {
-    // Spawn the process
-    const child = await executor.spawn(workdir, prompt, env);
-
-    // Track the process
-    const state: ProcessState = {
+    env: Record<string, string>
+  ): Promise<void> {
+    this.processes.set(sessionId, {
+      status: "running",
+      pid: undefined,
       sessionId,
       agentType,
       workdir,
-      pid: child.child.pid,
-      status: "running",
-    };
+    });
 
-    this.processes.set(sessionId, state);
-
-    // Broadcast event
     this.eventService.agentSpawned(agentType, sessionId);
 
     // Save user message to session store
@@ -91,109 +83,79 @@ export class ContainerService {
       log.warn({ err: e }, "Failed to save user message");
     }
 
-    // Set up stdout streaming
-    this.setupStdoutStreaming(child.child, sessionId, agentId, agentType);
+    const stream = executor.chatStreaming({
+      prompt,
+      cwd: workdir,
+      env,
+      sessionId,
+      dangerouslySkipPermissions: true,
+      outputFormat: "stream-json",
+      inputFormat: "stream-json",
+    });
 
-    return child;
+    // Consume stream in background
+    (async () => {
+      try {
+        for await (const message of stream) {
+          this.processSSEMessage(message, sessionId, agentId, agentType);
+        }
+        const state = this.processes.get(sessionId);
+        if (state) {
+          state.status = "completed";
+          this.processes.set(sessionId, state);
+        }
+        this.eventService.agentCompleted(agentType, sessionId, true);
+      } catch (err) {
+        const state = this.processes.get(sessionId);
+        if (state) {
+          state.status = "failed";
+          this.processes.set(sessionId, state);
+        }
+        this.eventService.agentCompleted(agentType, sessionId, false);
+      }
+    })();
   }
 
   /**
-   * Set up stdout streaming for JSON output
+   * Process an SSE message from the executor stream
    */
-  private setupStdoutStreaming(
-    childProcess: ChildProcess,
+  private processSSEMessage(
+    message: SSEMessage,
     sessionId: string,
     agentId: string,
     agentType: string
   ): void {
-    const stdout = childProcess.stdout;
-    if (!stdout) {
-      log.warn({ sessionId }, "No stdout available for session");
-      this.eventService.agentCompleted(agentType, sessionId, true);
-      return;
-    }
+    // Save raw agent message
+    this.sessionStore.appendAgentMessage(agentId, sessionId, {
+      timestamp: new Date().toISOString(),
+      raw: message as unknown as Record<string, unknown>,
+      source: agentType,
+    }).catch((e) => log.warn({ err: e }, "Failed to save agent message"));
 
-    let buffer = "";
-
-    stdout.on("data", (data: Buffer) => {
-      buffer += data.toString();
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        this.processStreamLine(line, sessionId, agentId, agentType);
-      }
-    });
-
-    stdout.on("end", () => {
-      // Process remaining buffer
-      if (buffer.trim()) {
-        this.processStreamLine(buffer, sessionId, agentId, agentType);
-      }
-      this.eventService.agentCompleted(agentType, sessionId, true);
-    });
-
-    childProcess.on("exit", (code) => {
-      const success = code === 0;
-      const state = this.processes.get(sessionId);
-      if (state) {
-        state.status = success ? "completed" : "failed";
-        this.processes.set(sessionId, state);
-      }
-      this.eventService.agentCompleted(agentType, sessionId, success);
-    });
-  }
-
-  /**
-   * Process a stream line (JSON from executor)
-   */
-  private processStreamLine(
-    line: string,
-    sessionId: string,
-    agentId: string,
-    agentType: string
-  ): void {
-    try {
-      const json = JSON.parse(line);
-      const msgType = json.type;
-
-      // Save raw agent message
-      this.sessionStore.appendAgentMessage(agentId, sessionId, {
-        timestamp: new Date().toISOString(),
-        raw: json,
-        source: agentType,
-      }).catch((e) => log.warn({ err: e }, "Failed to save agent message"));
-
-      // Process based on message type
-      switch (msgType) {
-        case "assistant":
-          this.handleAssistantMessage(json, sessionId, agentId);
-          break;
-        case "text":
-          this.handleTextMessage(json, sessionId, agentId);
-          break;
-        case "stream_event":
-          this.eventService.executionLog(sessionId, "stream_event", line);
-          break;
-        case "tool_use":
-          this.handleToolUse(json, sessionId, agentId);
-          break;
-        case "tool_result":
-          this.handleToolResult(json, sessionId, agentId);
-          break;
-        case "result":
-          this.handleResult(json, sessionId, agentId);
-          break;
-        case "error":
-          this.handleError(json, sessionId, agentId);
-          break;
-        default:
-          this.eventService.executionLog(sessionId, msgType || "output", line);
-      }
-    } catch {
-      // Non-JSON line
-      this.eventService.executionLog(sessionId, "output", line);
+    // Process based on message type
+    switch (message.type) {
+      case "assistant":
+        this.handleAssistantMessage(message as unknown as Record<string, unknown>, sessionId, agentId);
+        break;
+      case "text":
+        this.handleTextMessage(message as unknown as Record<string, unknown>, sessionId, agentId);
+        break;
+      case "tool_use":
+        this.handleToolUse(message as unknown as Record<string, unknown>, sessionId, agentId);
+        break;
+      case "tool_result":
+        this.handleToolResult(message as unknown as Record<string, unknown>, sessionId, agentId);
+        break;
+      case "result":
+        this.handleResult(message as unknown as Record<string, unknown>, sessionId, agentId);
+        break;
+      case "error":
+        this.handleError(message as unknown as Record<string, unknown>, sessionId, agentId);
+        break;
+      default:
+        // stream_event, thinking, context_usage, etc. → log
+        this.eventService.executionLog(sessionId, (message as { type: string }).type || "unknown", JSON.stringify(message));
+        break;
     }
   }
 
@@ -259,7 +221,7 @@ export class ContainerService {
   private handleToolResult(json: Record<string, unknown>, sessionId: string, agentId: string): void {
     this.eventService.executionLog(sessionId, "tool_result", JSON.stringify(json));
     const toolUseId = json.tool_use_id as string || "unknown";
-    const output = json.content as string || "";
+    const output = (json.output as string) || (json.content as string) || "";
     const isError = json.is_error as boolean || false;
     const uiMsg = UIMessageHelpers.toolResult(randomUUID(), toolUseId, output, isError);
     this.sessionStore.appendUIMessage(agentId, sessionId, uiMsg).catch(() => {});
@@ -290,36 +252,59 @@ export class ContainerService {
   }
 
   /**
-   * Spawn a follow-up session
+   * Spawn a follow-up session (resume existing conversation)
    */
   async spawnFollowUp(
     sessionId: string,
-    executor: StandardCodingAgentExecutor,
+    executor: Executor,
     agentId: string,
     agentType: string,
     workdir: string,
     prompt: string,
     existingSessionId: string,
-    env: ExecutionEnv
-  ): Promise<SpawnedChild> {
-    // Spawn follow-up
-    const child = await executor.spawnFollowUp(workdir, prompt, existingSessionId, undefined, env);
-
-    // Track the process
-    const state: ProcessState = {
+    env: Record<string, string>
+  ): Promise<void> {
+    this.processes.set(sessionId, {
+      status: "running",
+      pid: undefined,
       sessionId,
       agentType,
       workdir,
-      pid: child.child.pid,
-      status: "running",
-    };
+    });
 
-    this.processes.set(sessionId, state);
-
-    // Broadcast event
     this.eventService.agentSpawned(agentType, sessionId);
 
-    return child;
+    const stream = executor.chatStreaming({
+      prompt,
+      cwd: workdir,
+      env,
+      resume: existingSessionId,
+      dangerouslySkipPermissions: true,
+      outputFormat: "stream-json",
+      inputFormat: "stream-json",
+    });
+
+    // Consume stream in background
+    (async () => {
+      try {
+        for await (const message of stream) {
+          this.processSSEMessage(message, sessionId, agentId, agentType);
+        }
+        const state = this.processes.get(sessionId);
+        if (state) {
+          state.status = "completed";
+          this.processes.set(sessionId, state);
+        }
+        this.eventService.agentCompleted(agentType, sessionId, true);
+      } catch (err) {
+        const state = this.processes.get(sessionId);
+        if (state) {
+          state.status = "failed";
+          this.processes.set(sessionId, state);
+        }
+        this.eventService.agentCompleted(agentType, sessionId, false);
+      }
+    })();
   }
 
   /**
