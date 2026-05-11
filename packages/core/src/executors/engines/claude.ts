@@ -183,6 +183,11 @@ export class ClaudeExecutor extends BaseExecutor {
       args.push("--dangerously-skip-permissions");
     }
 
+    if (this.config.planMode || this.config.approvals) {
+      args.push("--permission-prompt-tool", "stdio");
+      args.push("--permission-mode", "bypass");
+    }
+
     if (jsonOutput) {
       args.push(
         "--output-format", "stream-json",
@@ -204,6 +209,7 @@ export class ClaudeExecutor extends BaseExecutor {
     // Merge environment
     const spawnEnv = {
       ...process.env,
+      NPM_CONFIG_LOGLEVEL: "error",
       ...this.config.env,
       ...extraEnv,
       ...this.getNonInteractiveEnv(),
@@ -388,6 +394,8 @@ export class ClaudeExecutor extends BaseExecutor {
       "--output-format", "stream-json",
       "--input-format", "stream-json",
       "--verbose",
+      "--include-partial-messages",
+      "--replay-user-messages",
     ];
 
     if (sessionId) {
@@ -405,6 +413,7 @@ export class ClaudeExecutor extends BaseExecutor {
 
     const spawnEnv = {
       ...process.env,
+      NPM_CONFIG_LOGLEVEL: "error",
       ...this.config.env,
       ...extraEnv,
     };
