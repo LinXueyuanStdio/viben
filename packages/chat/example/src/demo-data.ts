@@ -6,80 +6,831 @@ import type {
   ToolConfig,
   SkillConfig,
   ContextTokenBreakdown,
+  CommandQueueItem,
+  PendingExecApproval,
 } from "@viben/chat"
 import type { AgentOption, ModelOption, ExecutorOption } from "@viben/chat"
 
 // ============================================================================
-// Demo Messages - simulates a full agent conversation
+// Demo Messages - simulates a full agent conversation with ALL features
+// Includes: thinking, tool_use, tool_result, plan, ask_question, exec_approval,
+//           command_queue, error, text, user messages, collapsed tool groups,
+//           sub-agent tasks, web search, error recovery, result
 // ============================================================================
 
+const NOW = Date.now()
+
 export const demoMessages: AgentMessage[] = [
+  // ==========================================================================
+  // Phase 1: User request & initial exploration
+  // ==========================================================================
   {
     id: "msg-1",
     type: "user",
-    content: "Help me create a React component that displays a list of users with search functionality.",
+    content: "Help me build a full-stack user management dashboard with authentication, CRUD operations, and real-time updates.",
+    timestamp: NOW - 600_000,
   },
   {
     id: "msg-2",
     type: "thinking",
-    content: "The user wants a React component with user list and search. I should first check the existing codebase structure, then implement the component with proper TypeScript types.",
+    content: "This is a complex request. I need to first understand the project structure, then propose a plan before implementing. Let me explore the codebase and identify existing patterns, then ask the user about their preferences for state management and features.",
   },
   {
     id: "msg-3",
     type: "text",
-    content: "I'll create a `UserList` component with search functionality. Let me first check the project structure to understand the conventions being used.",
+    content: "I'll help you build a user management dashboard. Let me first explore the project to understand the existing patterns.",
   },
   {
     id: "msg-4",
     type: "tool_use",
     name: "Glob",
     toolUseId: "tool-1",
-    input: { pattern: "src/components/**/*.tsx" },
+    input: { pattern: "src/**/*.{tsx,ts}" },
   },
   {
     id: "msg-4r",
     type: "tool_result",
     toolUseId: "tool-1",
-    output: "src/components/Button.tsx\nsrc/components/Card.tsx\nsrc/components/Layout.tsx",
+    output: "src/App.tsx\nsrc/main.tsx\nsrc/components/Button.tsx\nsrc/components/Card.tsx\nsrc/components/Layout.tsx\nsrc/lib/api.ts\nsrc/lib/auth.ts\nsrc/hooks/useQuery.ts",
   },
   {
     id: "msg-5",
     type: "tool_use",
     name: "Read",
     toolUseId: "tool-2",
-    input: { file_path: "src/components/Card.tsx" },
+    input: { file_path: "src/lib/api.ts" },
   },
   {
     id: "msg-5r",
     type: "tool_result",
     toolUseId: "tool-2",
-    output: 'import React from "react";\n\nexport function Card({ children, className }: { children: React.ReactNode; className?: string }) {\n  return <div className={`rounded-xl border p-4 ${className}`}>{children}</div>;\n}',
+    output: 'import { createClient } from "@supabase/supabase-js";\n\nconst supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_KEY);\n\nexport { supabase };',
   },
   {
     id: "msg-6",
-    type: "text",
-    content: "I can see the project uses functional components with TypeScript. Now I'll create the `UserList` component following the same patterns.",
-  },
-  {
-    id: "msg-7",
     type: "tool_use",
-    name: "Write",
+    name: "Read",
     toolUseId: "tool-3",
-    input: {
-      file_path: "src/components/UserList.tsx",
-      content: 'import { useState, useMemo } from "react";\nimport { Card } from "./Card";\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  avatar?: string;\n}\n\ninterface UserListProps {\n  users: User[];\n  onSelect?: (user: User) => void;\n}\n\nexport function UserList({ users, onSelect }: UserListProps) {\n  const [search, setSearch] = useState("");\n\n  const filtered = useMemo(\n    () => users.filter(u =>\n      u.name.toLowerCase().includes(search.toLowerCase()) ||\n      u.email.toLowerCase().includes(search.toLowerCase())\n    ),\n    [users, search]\n  );\n\n  return (\n    <div className="space-y-3">\n      <input\n        type="text"\n        placeholder="Search users..."\n        value={search}\n        onChange={(e) => setSearch(e.target.value)}\n        className="w-full rounded-lg border px-3 py-2"\n      />\n      <div className="space-y-2">\n        {filtered.map(user => (\n          <Card key={user.id} className="cursor-pointer hover:bg-accent"\n            onClick={() => onSelect?.(user)}>\n            <div className="flex items-center gap-3">\n              <div className="h-8 w-8 rounded-full bg-primary/20" />\n              <div>\n                <p className="font-medium">{user.name}</p>\n                <p className="text-sm text-muted-foreground">{user.email}</p>\n              </div>\n            </div>\n          </Card>\n        ))}\n      </div>\n    </div>\n  );\n}',
-    },
+    input: { file_path: "package.json" },
   },
   {
-    id: "msg-7r",
+    id: "msg-6r",
     type: "tool_result",
     toolUseId: "tool-3",
-    output: "File written successfully.",
+    output: '{\n  "dependencies": {\n    "react": "^19.0.0",\n    "@supabase/supabase-js": "^2.45.0",\n    "tailwindcss": "^4.0.0",\n    "zod": "^3.23.0"\n  }\n}',
+  },
+
+  // ==========================================================================
+  // Phase 2: Ask user questions (triggers interactive QuestionInput)
+  // ==========================================================================
+  {
+    id: "msg-7",
+    type: "text",
+    content: "I can see you're using Supabase, React 19, and Tailwind v4. Before I plan the implementation, I have a few questions about your preferences:",
   },
   {
     id: "msg-8",
+    type: "ask_question",
+    content: "Asking user for preferences",
+    questions: [
+      {
+        header: "State Management",
+        question: "Which state management approach would you prefer for this project?",
+        options: [
+          { label: "React Context + useReducer", description: "Built-in, no extra dependencies" },
+          { label: "Zustand", description: "Lightweight, simple API" },
+          { label: "Redux Toolkit", description: "Full-featured, great DevTools" },
+          { label: "Jotai", description: "Atomic state management" },
+        ],
+        multiSelect: false,
+      },
+      {
+        header: "Features",
+        question: "Which additional features should be included?",
+        options: [
+          { label: "Dark mode", description: "Theme switching support" },
+          { label: "Pagination", description: "Page-based navigation" },
+          { label: "Export to CSV", description: "Data export capability" },
+          { label: "Real-time updates", description: "WebSocket/Supabase realtime" },
+        ],
+        multiSelect: true,
+      },
+    ],
+  },
+
+  // ==========================================================================
+  // Phase 3: User answers, agent proposes plan (triggers PlanApproval)
+  // ==========================================================================
+  {
+    id: "msg-9",
+    type: "user",
+    content: "I'll go with Zustand for state management. Include dark mode, pagination, and real-time updates.",
+    timestamp: NOW - 540_000,
+  },
+  {
+    id: "msg-10",
+    type: "thinking",
+    content: "Great, user chose Zustand + dark mode + pagination + real-time updates. Let me create a comprehensive plan using EnterPlanMode to get approval before coding.",
+  },
+  {
+    id: "msg-11",
+    type: "plan_mode",
+    planModeAction: "enter",
+    content: "Entering plan mode to design the implementation approach.",
+  },
+  {
+    id: "msg-12",
+    type: "plan",
+    content: "Here's my proposed implementation plan:",
+    plan: {
+      goal: "Build a full-stack user management dashboard with authentication, CRUD, and real-time updates",
+      steps: [
+        { id: "s1", description: "Set up Zustand store with user state and actions", status: "pending" },
+        { id: "s2", description: "Create authentication flow (login/signup/logout)", status: "pending" },
+        { id: "s3", description: "Implement UserList component with search and pagination", status: "pending" },
+        { id: "s4", description: "Add CreateUser and EditUser form components with Zod validation", status: "pending" },
+        { id: "s5", description: "Wire up Supabase real-time subscriptions for live updates", status: "pending" },
+        { id: "s6", description: "Add dark mode support with theme toggle", status: "pending" },
+        { id: "s7", description: "Write unit tests for critical paths", status: "pending" },
+      ],
+      notes: "Using Zustand for state, Supabase for backend/realtime, Zod for validation, Tailwind v4 for styling",
+    },
+  },
+
+  // ==========================================================================
+  // Phase 4: Plan approved, start implementation
+  // ==========================================================================
+  {
+    id: "msg-13",
+    type: "user",
+    content: "Looks good! Let's start with step 1.",
+    timestamp: NOW - 480_000,
+  },
+  {
+    id: "msg-14",
+    type: "plan_mode",
+    planModeAction: "exit",
+    content: "Plan approved. Starting implementation.",
+  },
+  {
+    id: "msg-15",
     type: "text",
-    content: "I've created the `UserList` component at `src/components/UserList.tsx`. Here's what it includes:\n\n- **TypeScript interfaces** for `User` and `UserListProps`\n- **Search functionality** that filters by both name and email (case-insensitive)\n- **Memoized filtering** with `useMemo` for performance\n- **Click handling** via `onSelect` callback\n- **Consistent styling** using the existing `Card` component pattern\n\nWould you like me to add any additional features like pagination, sorting, or loading states?",
+    content: "Plan approved! Starting with step 1: Setting up the Zustand store.",
+  },
+
+  // ==========================================================================
+  // Phase 5: Implementation with tool calls
+  // ==========================================================================
+  {
+    id: "msg-16",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-4",
+    input: { command: "pnpm add zustand" },
+  },
+  {
+    id: "msg-16a",
+    type: "tool_result",
+    toolUseId: "tool-4",
+    output: "Added zustand@5.0.0",
+  },
+  {
+    id: "msg-17",
+    type: "tool_use",
+    name: "Write",
+    toolUseId: "tool-5",
+    input: {
+      file_path: "src/store/user-store.ts",
+      content: 'import { create } from "zustand";\nimport { supabase } from "../lib/api";\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  role: "admin" | "user";\n  avatar_url?: string;\n  created_at: string;\n}\n\ninterface UserStore {\n  users: User[];\n  loading: boolean;\n  error: string | null;\n  fetchUsers: () => Promise<void>;\n  addUser: (user: Omit<User, "id" | "created_at">) => Promise<void>;\n  updateUser: (id: string, data: Partial<User>) => Promise<void>;\n  deleteUser: (id: string) => Promise<void>;\n}\n\nexport const useUserStore = create<UserStore>((set) => ({\n  users: [],\n  loading: false,\n  error: null,\n  fetchUsers: async () => {\n    set({ loading: true, error: null });\n    const { data, error } = await supabase.from("users").select("*");\n    set({ users: data || [], loading: false, error: error?.message || null });\n  },\n  addUser: async (user) => {\n    const { error } = await supabase.from("users").insert(user);\n    if (error) set({ error: error.message });\n  },\n  updateUser: async (id, data) => {\n    const { error } = await supabase.from("users").update(data).eq("id", id);\n    if (error) set({ error: error.message });\n  },\n  deleteUser: async (id) => {\n    const { error } = await supabase.from("users").delete().eq("id", id);\n    if (error) set({ error: error.message });\n  },\n}));',
+    },
+  },
+  {
+    id: "msg-17r",
+    type: "tool_result",
+    toolUseId: "tool-5",
+    output: "File written successfully.",
+  },
+  {
+    id: "msg-18",
+    type: "text",
+    content: "Zustand store is set up. Now let me create the UserList component with search and pagination. I need to install a few more packages first.",
+  },
+
+  // ==========================================================================
+  // Phase 6: Dangerous command triggers exec approval
+  // ==========================================================================
+  {
+    id: "msg-19",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-6",
+    input: { command: "rm -rf dist/ && pnpm build" },
+  },
+  {
+    id: "msg-19a",
+    type: "tool_result",
+    toolUseId: "tool-6",
+    output: "Build completed successfully.",
+  },
+
+  // --- Phase 7: Continue after approval, more tool calls ---
+  {
+    id: "msg-20",
+    type: "tool_use",
+    name: "Write",
+    toolUseId: "tool-7",
+    input: {
+      file_path: "src/components/UserList.tsx",
+      content: 'import { useState, useMemo, useEffect } from "react";\nimport { useUserStore } from "../store/user-store";\n\nexport function UserList() {\n  const { users, loading, fetchUsers } = useUserStore();\n  const [search, setSearch] = useState("");\n  const [page, setPage] = useState(1);\n  const perPage = 10;\n\n  useEffect(() => { fetchUsers(); }, [fetchUsers]);\n\n  const filtered = useMemo(\n    () => users.filter(u => u.name.toLowerCase().includes(search.toLowerCase())),\n    [users, search]\n  );\n  const paged = filtered.slice((page - 1) * perPage, page * perPage);\n  const totalPages = Math.ceil(filtered.length / perPage);\n\n  if (loading) return <div className="animate-pulse">Loading...</div>;\n\n  return (\n    <div className="space-y-4">\n      <input placeholder="Search users..." value={search}\n        onChange={e => setSearch(e.target.value)}\n        className="w-full rounded-lg border px-3 py-2" />\n      {paged.map(user => (\n        <div key={user.id} className="flex items-center gap-3 rounded-lg border p-3">\n          <div className="h-10 w-10 rounded-full bg-primary/20" />\n          <div className="flex-1">\n            <p className="font-medium">{user.name}</p>\n            <p className="text-sm text-muted-foreground">{user.email}</p>\n          </div>\n          <span className="text-xs bg-muted px-2 py-1 rounded">{user.role}</span>\n        </div>\n      ))}\n      <div className="flex justify-center gap-2">\n        <button disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Prev</button>\n        <span>{page}/{totalPages}</span>\n        <button disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}>Next</button>\n      </div>\n    </div>\n  );\n}',
+    },
+  },
+  {
+    id: "msg-20r",
+    type: "tool_result",
+    toolUseId: "tool-7",
+    output: "File written successfully.",
+  },
+
+  // ==========================================================================
+  // Phase 8: Error scenario
+  // ==========================================================================
+  {
+    id: "msg-21",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-8",
+    input: { command: "pnpm typecheck" },
+  },
+  {
+    id: "msg-21r",
+    type: "tool_result",
+    toolUseId: "tool-8",
+    output: "src/store/user-store.ts:15:3 - error TS2345: Argument of type '{ users: never[]; }' is not assignable.\nsrc/components/UserList.tsx:8:22 - error TS7006: Parameter 'u' implicitly has 'any' type.",
+    isError: true,
+  },
+  {
+    id: "msg-22",
+    type: "thinking",
+    content: "There are TypeScript errors. The users array needs proper typing and the filter callback needs explicit types. Let me fix these issues.",
+  },
+  {
+    id: "msg-23",
+    type: "text",
+    content: "I see some TypeScript errors. Let me fix the type issues in both files.",
+  },
+  {
+    id: "msg-24",
+    type: "tool_use",
+    name: "Edit",
+    toolUseId: "tool-9",
+    input: {
+      file_path: "src/store/user-store.ts",
+      old_string: "users: [],",
+      new_string: "users: [] as User[],",
+    },
+  },
+  {
+    id: "msg-24r",
+    type: "tool_result",
+    toolUseId: "tool-9",
+    output: "File edited successfully.",
+  },
+
+  // ==========================================================================
+  // Phase 9: Running tests
+  // ==========================================================================
+  {
+    id: "msg-25",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-10",
+    input: { command: "pnpm typecheck" },
+  },
+  {
+    id: "msg-25r",
+    type: "tool_result",
+    toolUseId: "tool-10",
+    output: "No errors found.",
+  },
+  {
+    id: "msg-26",
+    type: "text",
+    content: "TypeScript errors are fixed. Here's a summary of what's been implemented so far:\n\n**Completed:**\n- Zustand store with full CRUD actions (`src/store/user-store.ts`)\n- UserList component with search + pagination (`src/components/UserList.tsx`)\n\n**Remaining:**\n- Create/Edit user forms with Zod validation\n- Supabase real-time subscriptions\n- Dark mode theme toggle\n- Unit tests\n\nShall I continue with the next step?",
+  },
+
+  // ==========================================================================
+  // Phase 10: User sends more messages (simulating queue behavior)
+  // ==========================================================================
+  {
+    id: "msg-27",
+    type: "user",
+    content: "Yes, continue with the forms. Also add the dark mode toggle while you're at it.",
+    timestamp: NOW - 420_000,
+  },
+  {
+    id: "msg-28",
+    type: "thinking",
+    content: "The user wants forms + dark mode. I'll implement both in parallel. Let me first add the dark mode since it's simpler, then the forms with Zod validation.",
+  },
+  {
+    id: "msg-29",
+    type: "tool_use",
+    name: "Write",
+    toolUseId: "tool-11",
+    input: {
+      file_path: "src/components/ThemeToggle.tsx",
+      content: 'import { Sun, Moon } from "lucide-react";\nimport { useThemeStore } from "../store/theme-store";\n\nexport function ThemeToggle() {\n  const { dark, toggle } = useThemeStore();\n  return (\n    <button onClick={toggle} className="p-2 rounded-lg hover:bg-accent">\n      {dark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}\n    </button>\n  );\n}',
+    },
+  },
+  {
+    id: "msg-29r",
+    type: "tool_result",
+    toolUseId: "tool-11",
+    output: "File written successfully.",
+  },
+  {
+    id: "msg-30",
+    type: "tool_use",
+    name: "Write",
+    toolUseId: "tool-12",
+    input: {
+      file_path: "src/components/UserForm.tsx",
+      content: 'import { useForm } from "react-hook-form";\nimport { zodResolver } from "@hookform/resolvers/zod";\nimport { z } from "zod";\n\nconst userSchema = z.object({\n  name: z.string().min(2, "Name must be at least 2 characters"),\n  email: z.string().email("Invalid email address"),\n  role: z.enum(["admin", "user"]),\n});\n\ntype UserFormData = z.infer<typeof userSchema>;\n\nexport function UserForm({ onSubmit, defaultValues }: {\n  onSubmit: (data: UserFormData) => void;\n  defaultValues?: Partial<UserFormData>;\n}) {\n  const { register, handleSubmit, formState: { errors } } = useForm<UserFormData>({\n    resolver: zodResolver(userSchema),\n    defaultValues,\n  });\n\n  return (\n    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">\n      <div>\n        <input {...register("name")} placeholder="Name" className="input" />\n        {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}\n      </div>\n      <div>\n        <input {...register("email")} placeholder="Email" className="input" />\n        {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}\n      </div>\n      <select {...register("role")} className="input">\n        <option value="user">User</option>\n        <option value="admin">Admin</option>\n      </select>\n      <button type="submit" className="btn-primary">Save</button>\n    </form>\n  );\n}',
+    },
+  },
+  {
+    id: "msg-30r",
+    type: "tool_result",
+    toolUseId: "tool-12",
+    output: "File written successfully.",
+  },
+  {
+    id: "msg-31",
+    type: "text",
+    content: "All major components are now implemented:\n\n1. **ThemeToggle** -- Dark/light mode switch using a Zustand theme store\n2. **UserForm** -- Create/edit form with Zod validation for name, email, and role\n3. **UserList** -- Search + pagination powered by Zustand user store\n4. **User Store** -- Full CRUD with Supabase integration\n\nNow let me wire up real-time subscriptions and review the full project.",
+  },
+
+  // ==========================================================================
+  // Phase A: Collapsed Tool Groups (5+ consecutive Read/Glob/Grep calls)
+  // These consecutive same-type tool calls trigger the auto-collapse feature
+  // ==========================================================================
+  {
+    id: "msg-cg-0",
+    type: "text",
+    content: "Let me review all the existing components to make sure the real-time subscriptions integrate correctly.",
+  },
+  {
+    id: "msg-cg-1",
+    type: "tool_use",
+    name: "Read",
+    toolUseId: "tool-cg-1",
+    input: { file_path: "src/components/UserList.tsx" },
+  },
+  {
+    id: "msg-cg-1r",
+    type: "tool_result",
+    toolUseId: "tool-cg-1",
+    output: '// UserList component\nimport { useState, useMemo, useEffect } from "react";\nimport { useUserStore } from "../store/user-store";\n\nexport function UserList() {\n  const { users, loading, fetchUsers } = useUserStore();\n  const [search, setSearch] = useState("");\n  // ... 45 lines ...',
+  },
+  {
+    id: "msg-cg-2",
+    type: "tool_use",
+    name: "Read",
+    toolUseId: "tool-cg-2",
+    input: { file_path: "src/components/UserForm.tsx" },
+  },
+  {
+    id: "msg-cg-2r",
+    type: "tool_result",
+    toolUseId: "tool-cg-2",
+    output: '// UserForm component\nimport { useForm } from "react-hook-form";\nimport { zodResolver } from "@hookform/resolvers/zod";\nimport { z } from "zod";\n\nconst userSchema = z.object({\n  name: z.string().min(2),\n  // ... 38 lines ...',
+  },
+  {
+    id: "msg-cg-3",
+    type: "tool_use",
+    name: "Read",
+    toolUseId: "tool-cg-3",
+    input: { file_path: "src/store/user-store.ts" },
+  },
+  {
+    id: "msg-cg-3r",
+    type: "tool_result",
+    toolUseId: "tool-cg-3",
+    output: 'import { create } from "zustand";\nimport { supabase } from "../lib/api";\n\ninterface User {\n  id: string;\n  name: string;\n  email: string;\n  role: "admin" | "user";\n  // ... 32 lines ...',
+  },
+  {
+    id: "msg-cg-4",
+    type: "tool_use",
+    name: "Read",
+    toolUseId: "tool-cg-4",
+    input: { file_path: "src/components/ThemeToggle.tsx" },
+  },
+  {
+    id: "msg-cg-4r",
+    type: "tool_result",
+    toolUseId: "tool-cg-4",
+    output: 'import { Sun, Moon } from "lucide-react";\nimport { useThemeStore } from "../store/theme-store";\n\nexport function ThemeToggle() {\n  const { dark, toggle } = useThemeStore();\n  // ... 8 lines ...',
+  },
+  {
+    id: "msg-cg-5",
+    type: "tool_use",
+    name: "Read",
+    toolUseId: "tool-cg-5",
+    input: { file_path: "src/lib/auth.ts" },
+  },
+  {
+    id: "msg-cg-5r",
+    type: "tool_result",
+    toolUseId: "tool-cg-5",
+    output: 'import { supabase } from "./api";\n\nexport async function signIn(email: string, password: string) {\n  const { data, error } = await supabase.auth.signInWithPassword({ email, password });\n  if (error) throw error;\n  return data;\n}\n\nexport async function signUp(email: string, password: string) {\n  const { data, error } = await supabase.auth.signUp({ email, password });\n  if (error) throw error;\n  return data;\n}',
+  },
+  // Now a run of consecutive Grep calls (triggers a second collapsed group)
+  {
+    id: "msg-cg-6",
+    type: "tool_use",
+    name: "Grep",
+    toolUseId: "tool-cg-6",
+    input: { pattern: "useEffect", path: "src/" },
+  },
+  {
+    id: "msg-cg-6r",
+    type: "tool_result",
+    toolUseId: "tool-cg-6",
+    output: "src/components/UserList.tsx:1:import { useState, useMemo, useEffect } from \"react\";\nsrc/components/UserList.tsx:9:  useEffect(() => { fetchUsers(); }, [fetchUsers]);\nsrc/App.tsx:3:import { useEffect } from \"react\";",
+  },
+  {
+    id: "msg-cg-7",
+    type: "tool_use",
+    name: "Grep",
+    toolUseId: "tool-cg-7",
+    input: { pattern: "supabase\\.from", path: "src/" },
+  },
+  {
+    id: "msg-cg-7r",
+    type: "tool_result",
+    toolUseId: "tool-cg-7",
+    output: "src/store/user-store.ts:22:    const { data, error } = await supabase.from(\"users\").select(\"*\");\nsrc/store/user-store.ts:26:    const { error } = await supabase.from(\"users\").insert(user);\nsrc/store/user-store.ts:30:    const { error } = await supabase.from(\"users\").update(data).eq(\"id\", id);\nsrc/store/user-store.ts:34:    const { error } = await supabase.from(\"users\").delete().eq(\"id\", id);",
+  },
+  {
+    id: "msg-cg-8",
+    type: "tool_use",
+    name: "Grep",
+    toolUseId: "tool-cg-8",
+    input: { pattern: "realtime|subscribe|channel", path: "src/" },
+  },
+  {
+    id: "msg-cg-8r",
+    type: "tool_result",
+    toolUseId: "tool-cg-8",
+    output: "(no matches found)",
+  },
+
+  // ==========================================================================
+  // Phase B: Multiple ExecApproval scenarios (dangerous commands)
+  // ==========================================================================
+  {
+    id: "msg-ea-0",
+    type: "text",
+    content: "Good, no real-time subscriptions exist yet. Before I add them, let me clean up the build artifacts and prepare the project.",
+  },
+  // Approval scenario 1: file deletion
+  {
+    id: "msg-ea-1",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-ea-1",
+    input: { command: "rm -rf dist/ && rm -rf .cache/" },
+  },
+  {
+    id: "msg-ea-1r",
+    type: "tool_result",
+    toolUseId: "tool-ea-1",
+    output: "Directories removed.",
+  },
+  // Approval scenario 2: database migration (destructive)
+  {
+    id: "msg-ea-2",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-ea-2",
+    input: { command: "# Drop and recreate database tables\npnpm db:push --force" },
+  },
+  {
+    id: "msg-ea-2r",
+    type: "tool_result",
+    toolUseId: "tool-ea-2",
+    output: "Database schema pushed successfully.\n  + users (created)\n  + sessions (created)\n  + audit_log (created)",
+  },
+  // Approval scenario 3: git force push
+  {
+    id: "msg-ea-3",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-ea-3",
+    input: { command: "git push --force origin main" },
+  },
+  {
+    id: "msg-ea-3r",
+    type: "tool_result",
+    toolUseId: "tool-ea-3",
+    output: "To github.com:user/project.git\n + abc1234...def5678 main -> main (forced update)",
+  },
+
+  // ==========================================================================
+  // Phase C: Edit/Write operations (file creation & modification)
+  // ==========================================================================
+  {
+    id: "msg-w-0",
+    type: "thinking",
+    content: "Now I need to create the real-time subscription hook and the user store update. Let me also create an auth store for managing login state.",
+  },
+  // Write new file: user store
+  {
+    id: "msg-w-1",
+    type: "tool_use",
+    name: "Write",
+    toolUseId: "tool-w-1",
+    input: {
+      file_path: "src/stores/user-store.ts",
+      content: "import { create } from 'zustand';\n\ninterface UserStore {\n  users: User[];\n  loading: boolean;\n  fetchUsers: () => Promise<void>;\n}\n\nexport const useUserStore = create<UserStore>((set) => ({\n  users: [],\n  loading: false,\n  fetchUsers: async () => {\n    set({ loading: true });\n    const response = await fetch('/api/users');\n    const users = await response.json();\n    set({ users, loading: false });\n  },\n}));",
+    },
+  },
+  {
+    id: "msg-w-1r",
+    type: "tool_result",
+    toolUseId: "tool-w-1",
+    output: "File created successfully",
+  },
+  // Write new file: realtime hook
+  {
+    id: "msg-w-2",
+    type: "tool_use",
+    name: "Write",
+    toolUseId: "tool-w-2",
+    input: {
+      file_path: "src/hooks/useRealtimeUsers.ts",
+      content: 'import { useEffect } from "react";\nimport { supabase } from "../lib/api";\nimport { useUserStore } from "../store/user-store";\n\nexport function useRealtimeUsers() {\n  const fetchUsers = useUserStore((s) => s.fetchUsers);\n\n  useEffect(() => {\n    const channel = supabase\n      .channel("users-changes")\n      .on("postgres_changes", { event: "*", schema: "public", table: "users" }, () => {\n        fetchUsers();\n      })\n      .subscribe();\n\n    return () => {\n      supabase.removeChannel(channel);\n    };\n  }, [fetchUsers]);\n}',
+    },
+  },
+  {
+    id: "msg-w-2r",
+    type: "tool_result",
+    toolUseId: "tool-w-2",
+    output: "File created successfully",
+  },
+  // Edit existing file: add realtime hook to App.tsx
+  {
+    id: "msg-e-1",
+    type: "tool_use",
+    name: "Edit",
+    toolUseId: "tool-e-1",
+    input: {
+      file_path: "src/App.tsx",
+      old_string: "import { BrowserRouter }",
+      new_string: "import { BrowserRouter, Routes, Route }",
+    },
+  },
+  {
+    id: "msg-e-1r",
+    type: "tool_result",
+    toolUseId: "tool-e-1",
+    output: "File modified successfully",
+  },
+  // Edit existing file: wire up realtime in UserList
+  {
+    id: "msg-e-2",
+    type: "tool_use",
+    name: "Edit",
+    toolUseId: "tool-e-2",
+    input: {
+      file_path: "src/components/UserList.tsx",
+      old_string: 'import { useUserStore } from "../store/user-store";',
+      new_string: 'import { useUserStore } from "../store/user-store";\nimport { useRealtimeUsers } from "../hooks/useRealtimeUsers";',
+    },
+  },
+  {
+    id: "msg-e-2r",
+    type: "tool_result",
+    toolUseId: "tool-e-2",
+    output: "File modified successfully",
+  },
+  {
+    id: "msg-e-3",
+    type: "tool_use",
+    name: "Edit",
+    toolUseId: "tool-e-3",
+    input: {
+      file_path: "src/components/UserList.tsx",
+      old_string: "useEffect(() => { fetchUsers(); }, [fetchUsers]);",
+      new_string: "useRealtimeUsers();\n  useEffect(() => { fetchUsers(); }, [fetchUsers]);",
+    },
+  },
+  {
+    id: "msg-e-3r",
+    type: "tool_result",
+    toolUseId: "tool-e-3",
+    output: "File modified successfully",
+  },
+
+  // ==========================================================================
+  // Phase D: Error recovery flow
+  // ==========================================================================
+  {
+    id: "msg-err-0",
+    type: "text",
+    content: "Real-time subscriptions are wired up. Let me verify everything compiles correctly.",
+  },
+  // Bash that fails
+  {
+    id: "msg-err-1",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-err-1",
+    input: { command: "pnpm typecheck" },
+  },
+  {
+    id: "msg-err-1r",
+    type: "tool_result",
+    toolUseId: "tool-err-1",
+    output: "src/stores/user-store.ts(15,3): error TS2345: Argument of type '{ users: never[]; }' is not assignable to parameter of type 'UserStore'.\nsrc/components/UserList.tsx(8,5): error TS7006: Parameter 'user' implicitly has an 'any' type.\n\nFound 2 errors.",
+    isError: true,
+  },
+  // Agent thinks and fixes
+  {
+    id: "msg-err-2",
+    type: "thinking",
+    content: "The typecheck failed with 2 errors. I need to add proper types to the store and component. The User type is missing from the new user-store file, and the UserList filter callback needs explicit typing.",
+  },
+  {
+    id: "msg-err-3",
+    type: "tool_use",
+    name: "Edit",
+    toolUseId: "tool-err-2",
+    input: {
+      file_path: "src/stores/user-store.ts",
+      old_string: "users: [],",
+      new_string: "users: [] as User[],",
+    },
+  },
+  {
+    id: "msg-err-3r",
+    type: "tool_result",
+    toolUseId: "tool-err-2",
+    output: "File modified successfully",
+  },
+  {
+    id: "msg-err-4",
+    type: "tool_use",
+    name: "Edit",
+    toolUseId: "tool-err-3",
+    input: {
+      file_path: "src/components/UserList.tsx",
+      old_string: "() => users.filter(u =>",
+      new_string: "() => users.filter((u: User) =>",
+    },
+  },
+  {
+    id: "msg-err-4r",
+    type: "tool_result",
+    toolUseId: "tool-err-3",
+    output: "File modified successfully",
+  },
+  // Re-run typecheck: passes
+  {
+    id: "msg-err-5",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-err-4",
+    input: { command: "pnpm typecheck" },
+  },
+  {
+    id: "msg-err-5r",
+    type: "tool_result",
+    toolUseId: "tool-err-4",
+    output: "TypeScript: 0 errors found.",
+  },
+  {
+    id: "msg-err-6",
+    type: "text",
+    content: "All type errors are fixed. The project compiles cleanly now.",
+  },
+
+  // ==========================================================================
+  // Phase E: Sub-agent / Task tool
+  // ==========================================================================
+  {
+    id: "msg-task-0",
+    type: "user",
+    content: "Great, now please write unit tests for the user store and components.",
+    timestamp: NOW - 300_000,
+  },
+  {
+    id: "msg-task-1",
+    type: "thinking",
+    content: "The user wants unit tests. I'll delegate this to a test-runner sub-agent since it's a self-contained task that can run in parallel.",
+  },
+  {
+    id: "msg-task-2",
+    type: "tool_use",
+    name: "Task",
+    toolUseId: "tool-task-1",
+    input: {
+      description: "Write unit tests for user-store and UserList component",
+      prompt: "Write comprehensive unit tests for:\n1. src/stores/user-store.ts - test all CRUD operations, loading states, error handling\n2. src/components/UserList.tsx - test rendering, search filtering, pagination\n\nUse vitest + @testing-library/react. Ensure full coverage of edge cases.",
+    },
+    subagentId: "sub-test-1",
+  },
+  {
+    id: "msg-task-2r",
+    type: "tool_result",
+    toolUseId: "tool-task-1",
+    output: "Sub-agent completed successfully.\n\nFiles created:\n  - src/__tests__/user-store.test.ts (8 tests)\n  - src/__tests__/UserList.test.tsx (4 tests)\n\nResults: 12 passing, 0 failing.\n\nCoverage:\n  user-store.ts: 94% statements, 88% branches\n  UserList.tsx: 91% statements, 85% branches",
+  },
+  {
+    id: "msg-task-3",
+    type: "text",
+    content: "The test sub-agent has created comprehensive tests:\n\n- **user-store.test.ts** -- 8 tests covering CRUD, loading states, and error handling\n- **UserList.test.tsx** -- 4 tests covering rendering, search, and pagination\n\nAll 12 tests pass with good coverage.",
+  },
+
+  // ==========================================================================
+  // Phase F: Web search/fetch
+  // ==========================================================================
+  {
+    id: "msg-web-0",
+    type: "thinking",
+    content: "Let me check if there are any known issues with Zustand v5 and Supabase realtime that I should be aware of before finalizing.",
+  },
+  {
+    id: "msg-web-1",
+    type: "tool_use",
+    name: "WebSearch",
+    toolUseId: "tool-web-1",
+    input: { query: "zustand v5 supabase realtime subscription best practices 2026" },
+  },
+  {
+    id: "msg-web-1r",
+    type: "tool_result",
+    toolUseId: "tool-web-1",
+    output: "1. Zustand v5 Migration Guide - docs.pmnd.rs/zustand/migrations/v5\n   \"Key change: create() no longer accepts generic. Use createStore() for type-safe stores.\"\n\n2. Supabase Realtime + React Best Practices - supabase.com/docs/guides/realtime\n   \"Always clean up channel subscriptions in useEffect cleanup.\"\n\n3. Zustand 5: Breaking Changes - github.com/pmndrs/zustand/releases/tag/v5.0.0\n   \"Removed: devtools middleware default import. Use { devtools } named import.\"\n\n4. Full-Stack React Dashboard Tutorial 2026 - dev.to/dashboard-guide\n   \"Combining Zustand + Supabase Realtime for live dashboards.\"",
+  },
+  {
+    id: "msg-web-2",
+    type: "tool_use",
+    name: "WebFetch",
+    toolUseId: "tool-web-2",
+    input: { url: "https://docs.pmnd.rs/zustand/migrations/v5" },
+  },
+  {
+    id: "msg-web-2r",
+    type: "tool_result",
+    toolUseId: "tool-web-2",
+    output: "# Zustand v5 Migration Guide\n\n## Breaking Changes\n\n1. `create()` generic syntax changed:\n   ```ts\n   // Before (v4)\n   const useStore = create<State>()(/* ... */)\n   // After (v5)\n   const useStore = create<State>(/* ... */)\n   ```\n\n2. `devtools` middleware:\n   ```ts\n   // Before\n   import create from 'zustand/devtools'\n   // After\n   import { devtools } from 'zustand/middleware'\n   ```\n\n3. Subscription selectors are now shallow by default.\n\n## Supabase Integration Tips\n- Use `immer` middleware for complex state mutations\n- Clean up realtime channels in useEffect return",
+  },
+  {
+    id: "msg-web-3",
+    type: "text",
+    content: "I've reviewed the latest Zustand v5 migration guide. Our implementation already follows the correct patterns. The realtime hook properly cleans up subscriptions in the useEffect cleanup function.",
+  },
+
+  // ==========================================================================
+  // Phase G: Final success run
+  // ==========================================================================
+  {
+    id: "msg-final-0",
+    type: "text",
+    content: "Let me do a final verification to make sure everything builds and tests pass.",
+  },
+  {
+    id: "msg-final-1",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-final-1",
+    input: { command: "pnpm typecheck && pnpm test" },
+  },
+  {
+    id: "msg-final-1r",
+    type: "tool_result",
+    toolUseId: "tool-final-1",
+    output: "TypeScript: 0 errors\n\n PASS  src/__tests__/user-store.test.ts (8 tests)\n PASS  src/__tests__/UserList.test.tsx (4 tests)\n\nTest Suites: 2 passed, 2 total\nTests:       12 passed, 12 total\nSnapshots:   0 total\nTime:        3.412s",
+  },
+  {
+    id: "msg-final-2",
+    type: "tool_use",
+    name: "Bash",
+    toolUseId: "tool-final-2",
+    input: { command: "pnpm build" },
+  },
+  {
+    id: "msg-final-2r",
+    type: "tool_result",
+    toolUseId: "tool-final-2",
+    output: "vite v6.0.0 building for production...\n\n  dist/index.html                  0.45 kB | gzip: 0.29 kB\n  dist/assets/index-abc123.css    12.34 kB | gzip:  3.21 kB\n  dist/assets/index-def456.js     89.67 kB | gzip: 28.45 kB\n\nBuild completed in 2.1s.",
+  },
+  {
+    id: "msg-final-3",
+    type: "result",
+    content: "I've implemented the full-stack user management dashboard with:\n\n1. **Authentication** -- Login/signup with Supabase Auth (`src/lib/auth.ts`)\n2. **User Store** -- Zustand state management with typed CRUD operations (`src/store/user-store.ts`)\n3. **CRUD Operations** -- Full user table with create, edit, and delete via forms (`src/components/UserForm.tsx`, `src/components/UserList.tsx`)\n4. **Real-time Updates** -- Supabase realtime subscriptions with automatic refresh (`src/hooks/useRealtimeUsers.ts`)\n5. **Dark Mode** -- Theme toggle with Zustand theme store (`src/components/ThemeToggle.tsx`)\n6. **Tests** -- 12 unit tests covering store logic and component rendering\n\nAll TypeScript checks pass, all tests are green, and the production build succeeds.",
+    timestamp: NOW - 120_000,
   },
 ]
 
@@ -185,6 +936,112 @@ export const demoContextBreakdown: ContextTokenBreakdown = {
   conversationMessages: 15600,
   totalContext: 200000,
 }
+
+// ============================================================================
+// Demo Command Queue Items
+// ============================================================================
+
+export const demoCommandQueueItems: CommandQueueItem[] = [
+  { id: "cmd-1", content: "Run the test suite for the auth module", createdAt: Date.now() - 5000 },
+  { id: "cmd-2", content: "Fix the failing TypeScript compilation errors", attachments: [{ id: "att-1", type: "file", name: "src/auth/login.ts" }, { id: "att-2", type: "file", name: "src/auth/types.ts" }], createdAt: Date.now() - 3000 },
+  { id: "cmd-3", content: "Update the README with the new API endpoints", createdAt: Date.now() - 1000 },
+]
+
+// ============================================================================
+// Demo Exec Approval (singular - original)
+// ============================================================================
+
+export const demoExecApproval: PendingExecApproval = {
+  id: "approval-1",
+  tool_call: {
+    title: "Execute shell command",
+    kind: "execute",
+    command: "rm -rf node_modules && pnpm install",
+    cwd: "/Users/dev/project",
+  },
+  options: [
+    { id: "allow_once", label: "Allow" },
+    { id: "allow_always", label: "Always" },
+    { id: "reject", label: "Reject" },
+  ],
+}
+
+// ============================================================================
+// Demo Exec Approvals (plural - multiple variants for sidebar demo)
+// ============================================================================
+
+export const demoExecApprovals: PendingExecApproval[] = [
+  {
+    id: "approval-read",
+    tool_call: {
+      title: "Read sensitive file",
+      kind: "read",
+      command: "cat ~/.ssh/id_rsa",
+      cwd: "/Users/dev",
+    },
+    options: [
+      { id: "allow_once", label: "Allow" },
+      { id: "allow_always", label: "Always" },
+      { id: "reject", label: "Reject" },
+    ],
+  },
+  {
+    id: "approval-edit",
+    tool_call: {
+      title: "Edit configuration",
+      kind: "edit",
+      command: "Modify .env.production -- set DATABASE_URL=postgres://prod:secret@db.example.com/main",
+      cwd: "/Users/dev/project",
+    },
+    options: [
+      { id: "allow_once", label: "Allow" },
+      { id: "allow_always", label: "Always" },
+      { id: "reject", label: "Reject" },
+    ],
+  },
+  {
+    id: "approval-execute",
+    tool_call: {
+      title: "Run deployment",
+      kind: "execute",
+      command: "docker compose -f docker-compose.prod.yml up -d --build",
+      cwd: "/Users/dev/project",
+    },
+    options: [
+      { id: "allow_once", label: "Allow" },
+      { id: "allow_always", label: "Always" },
+      { id: "reject", label: "Reject" },
+    ],
+  },
+  {
+    id: "approval-force-push",
+    tool_call: {
+      title: "Force push to remote",
+      kind: "execute",
+      command: "git push --force origin main",
+      cwd: "/Users/dev/project",
+    },
+    options: [
+      { id: "allow_once", label: "Allow" },
+      { id: "allow_always", label: "Always" },
+      { id: "reject", label: "Reject" },
+    ],
+  },
+  {
+    id: "approval-db-drop",
+    tool_call: {
+      title: "Reset database",
+      kind: "execute",
+      command: "pnpm db:push --force --accept-data-loss",
+      cwd: "/Users/dev/project",
+    },
+    options: [
+      { id: "allow_once", label: "Allow" },
+      { id: "allow_always", label: "Always" },
+      { id: "reject", label: "Reject" },
+    ],
+  },
+]
 
 // ============================================================================
 // JSONL Session Parser (same as pages/session-player)

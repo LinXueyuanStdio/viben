@@ -1,7 +1,11 @@
 @import "tailwindcss";
+@import "streamdown/styles.css";
 
 @source "../../src/**/*.tsx";
 @source "../node_modules/@viben/ui/src/**/*.tsx";
+
+/* dark: variant uses .dark class selector (not media query) */
+@variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-background: var(--background);
@@ -25,11 +29,11 @@
   --color-ring: var(--ring);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
-  --radius-2xl: var(--radius-2xl);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
 }
 
 :root {
@@ -49,18 +53,12 @@
   --brand-amber-600: oklch(0.62 0.18 75);
   --brand-amber-700: oklch(0.52 0.16 75);
 
-  --font-serif: 'Crimson Pro', 'Georgia', serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
-
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-2xl: 2rem;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Crimson Pro', 'Source Serif Pro', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
-/* ===== Light Theme ===== */
+/* Light theme */
 :root {
   --background: var(--neutral-50);
   --foreground: var(--neutral-900);
@@ -85,7 +83,7 @@
   --surface-elevated: var(--neutral-100);
 }
 
-/* ===== Dark Theme ===== */
+/* Dark theme */
 .dark {
   --background: oklch(0.13 0.003 75);
   --foreground: var(--neutral-50);
@@ -110,177 +108,33 @@
   --surface-elevated: oklch(0.22 0.004 75);
 }
 
-/* ===== Base ===== */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body, #root { width: 100%; height: 100%; overflow: hidden; }
-body {
-  font-family: var(--font-sans);
-  background: var(--background);
-  color: var(--foreground);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* Base styles — inside @layer base so they don't override utilities */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
 
-/* ===== Sidebar ===== */
-.sidebar {
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
 
-.sidebar-header {
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  background: var(--card);
-  z-index: 10;
-}
+  body {
+    font-family: var(--font-sans);
+    background: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-.sidebar-icon-btn {
-  color: var(--muted-foreground);
-}
-.sidebar-icon-btn:hover {
-  background: var(--accent);
-  color: var(--foreground);
-}
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
 
-.sidebar-divider {
-  height: 1px;
-  background: var(--border);
-  opacity: 0.6;
-}
-
-/* ===== Upload Button ===== */
-.upload-btn {
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-  border: 1px dashed var(--border);
-}
-.upload-btn:hover {
-  background: var(--accent);
-  border-color: var(--muted-foreground);
-}
-
-/* ===== Player Controls ===== */
-.ctrl-btn {
-  background: var(--secondary);
-  color: var(--muted-foreground);
-  border: none;
-}
-.ctrl-btn:hover {
-  background: var(--accent);
-  color: var(--foreground);
-  transform: scale(1.08);
-}
-.ctrl-btn:active {
-  transform: scale(0.95);
-}
-
-.play-btn {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: 0 2px 8px color-mix(in oklch, var(--primary) 40%, transparent);
-}
-.play-btn:hover {
-  transform: scale(1.06);
-  box-shadow: 0 4px 12px color-mix(in oklch, var(--primary) 50%, transparent);
-}
-.play-btn:active {
-  transform: scale(0.96);
-}
-
-.speed-badge {
-  background: var(--secondary);
-  color: var(--muted-foreground);
-}
-
-/* ===== Progress Bar ===== */
-.progress-track {
-  background: var(--secondary);
-}
-.progress-track:hover {
-  height: 6px;
-}
-.progress-fill {
-  background: var(--primary);
-}
-
-/* ===== Navigation Items ===== */
-.nav-item {
-  color: var(--muted-foreground);
-  font-weight: 450;
-}
-.nav-item:hover {
-  background: var(--accent);
-  color: var(--foreground);
-}
-.nav-item.active {
-  background: color-mix(in oklch, var(--primary) 12%, transparent);
-  color: var(--primary);
-}
-.nav-item.active .nav-icon {
-  background: color-mix(in oklch, var(--primary) 18%, transparent);
-}
-
-.nav-icon {
-  color: inherit;
-}
-
-/* ===== Model Chips ===== */
-.model-chip {
-  background: var(--secondary);
-  color: var(--muted-foreground);
-}
-.model-chip:hover {
-  background: var(--accent);
-}
-
-/* ===== Main Content ===== */
-.main-content {
-  background: var(--background);
-  position: relative;
-}
-
-/* ===== Input Area ===== */
-.input-area {
-  position: relative;
-}
-.input-area::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 5%;
-  right: 5%;
-  height: 1px;
-  background: var(--border);
-  opacity: 0.5;
-}
-
-/* ===== Scrollbar ===== */
-.sidebar::-webkit-scrollbar {
-  width: 5px;
-}
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.sidebar::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-.sidebar::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
-}
-
-/* ===== Smooth transitions ===== */
-.sidebar,
-.main-content {
-  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
-}
-
-/* ===== Focus ring ===== */
-button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: inherit;
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+  }
 }
