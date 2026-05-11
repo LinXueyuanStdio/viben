@@ -112,7 +112,31 @@ export function compileRegistry(entries: RouteEntry[]): CompiledRoute[] {
     return (a.restParam ? 1 : 0) - (b.restParam ? 1 : 0);
   });
 
+  // Dev-time conflict detection: verify no two patterns match the same sample URL
+  if (process.env.NODE_ENV !== "production") {
+    for (let i = 0; i < compiled.length; i++) {
+      for (let j = i + 1; j < compiled.length; j++) {
+        const a = compiled[i];
+        const b = compiled[j];
+        const sampleA = a.build(generateSampleParams(a));
+        if (b.regex.test(sampleA)) {
+          console.warn(
+            `[route-registry] Potential conflict: "${a.pattern}" sample URL "${sampleA}" also matches "${b.pattern}"`
+          );
+        }
+      }
+    }
+  }
+
   return compiled;
+}
+
+function generateSampleParams(route: CompiledRoute): Record<string, string> {
+  const params: Record<string, string> = {};
+  for (const name of route.paramNames) {
+    params[name] = `sample-${name}`;
+  }
+  return params;
 }
 
 // ─── matchUrl ────────────────────────────────────────────────────────────────

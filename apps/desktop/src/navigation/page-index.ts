@@ -14,6 +14,7 @@ import {
   getSettingsSectionLabel,
 } from "./navigation-meta";
 import { createBreadcrumbItem } from "./breadcrumb-stack";
+import { registry } from "./route-registry";
 import type { PageConfig } from "@/hooks/use-pages";
 export { getWorkspaceSectionDescriptor } from "./navigation-meta";
 
@@ -610,6 +611,15 @@ export function resolvePageIndexBranch({
   labelGlobalWorkspace,
 }: ResolvePageIndexBranchInput): BreadcrumbDropdownItem[] {
   const descriptorId = resolveSegmentDescriptorId(segment);
+
+  // Resolve dropdownCategory from route registry when possible.
+  // This enables registry-driven dropdown dispatch alongside legacy descriptorId matching.
+  // Future: use dropdownCategory to replace descriptorId-based rule matching entirely.
+  const routeMatch = segment.href && segment.href !== "#"
+    ? registry.match(segment.href)
+    : null;
+  void routeMatch?.entry.dropdownCategory;
+
   const input: ResolvePageIndexBranchInput = {
     segment,
     workspaceId,

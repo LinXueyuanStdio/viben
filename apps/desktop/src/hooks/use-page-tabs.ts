@@ -13,6 +13,7 @@ import {
   normalizeSettingsSection,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
+import { registry } from "@/navigation/route-registry";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { TabViewModel } from "@/stores/tab-store";
 
@@ -152,13 +153,9 @@ export function useTabActions(): TabActions {
         icon: input?.icon,
       });
 
-<<<<<<< Updated upstream
       // Cast: breadcrumb-builder's BreadcrumbStackItem is structurally compatible
       // with navigation-meta's version at runtime
       return { breadcrumbStack: stack as unknown as BreadcrumbStackItem[] };
-=======
-      return { breadcrumbStack: stack };
->>>>>>> Stashed changes
     },
     []
   );
@@ -379,14 +376,12 @@ export function useTabActions(): TabActions {
 
   const openWebUrl = useCallback(
     (url: string, title?: string, workspaceId?: string) => {
-      const activeState = activeTabId ? getCurrentNavigationState(activeTabId) : null;
-      const activeLeaf = activeState?.breadcrumbStack[activeState.breadcrumbStack.length - 1];
+      // Derive workspaceId from current tab URL via registry match
+      const currentTabUrl = activeTabId ? getCurrentUrl(activeTabId) : null;
+      const routeMatch = currentTabUrl ? registry.match(currentTabUrl) : null;
       const wsId =
         workspaceId ??
-        (activeState?.location && "workspaceId" in activeState.location
-          ? activeState.location.workspaceId
-          : undefined) ??
-        activeLeaf?.meta?.workspaceId ??
+        routeMatch?.params.workspaceId ??
         "global";
       return openLocation({
         kind: "workspace-web",
@@ -395,7 +390,7 @@ export function useTabActions(): TabActions {
         url,
       });
     },
-    [activeTabId, getCurrentNavigationState, openLocation]
+    [activeTabId, getCurrentUrl, openLocation]
   );
 
   const openChatTab = useCallback(
