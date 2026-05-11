@@ -59,6 +59,11 @@ interface PlayerState {
    */
   pendingUserMessages: AgentMessage[]
   /**
+   * Whether pendingUserMessages should go to the queue (true) or directly to messages (false).
+   * Set to true when agent has produced output (meaning user messages arrived "mid-stream").
+   */
+  shouldQueuePending: boolean
+  /**
    * True when the player is waiting for the command queue to drain.
    * This makes isStreaming=false (so queue can auto-dequeue) and blocks advancement.
    * Cleared by COMPLETE_DRAIN action when App detects queue is empty.
@@ -93,6 +98,7 @@ function createInitialState(): PlayerState {
     pendingPlan: null,
     speed: 1,
     pendingUserMessages: [],
+    shouldQueuePending: false,
     waitingForDrain: false,
   }
 }
@@ -137,7 +143,7 @@ function createReducer(steps: DemoStep[]) {
 
         if (shouldQueueUsers) {
           // Check if the NEXT step is also user-message-only.
-          // If so, don't waitForDrain yet — let consecutive user steps accumulate.
+          // If so, don't waitForDrain yet — let consecutive user steps accumulate in queue.
           const nextStep = newIndex < steps.length ? steps[newIndex] : null
           const nextIsUserOnly = nextStep
             ? nextStep.messages.length > 0 && nextStep.messages.every(m => m.type === "user")
@@ -149,6 +155,7 @@ function createReducer(steps: DemoStep[]) {
             stepIndex: newIndex,
             messages: [...state.messages, ...agentMsgs],
             pendingUserMessages: userMsgs,
+            shouldQueuePending: true, // Always queue when agent has output
             // Only block for drain after the LAST consecutive user-message step
             waitingForDrain: !nextIsUserOnly,
             pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
@@ -164,6 +171,7 @@ function createReducer(steps: DemoStep[]) {
           stepIndex: newIndex,
           messages: [...state.messages, ...step.messages],
           pendingUserMessages: [],
+          shouldQueuePending: false,
           waitingForDrain: false,
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
           pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
@@ -245,7 +253,7 @@ function createReducer(steps: DemoStep[]) {
         return { ...state, messages: [...state.messages, action.message] }
 
       case "CONSUME_PENDING_USERS":
-        return { ...state, pendingUserMessages: [] }
+        return { ...state, pendingUserMessages: [], shouldQueuePending: false }
 
       case "COMPLETE_DRAIN":
         return { ...state, waitingForDrain: false }
