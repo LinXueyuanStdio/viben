@@ -51,7 +51,7 @@ export function DesktopBreadcrumbBar({
   const { workspaces, selectWorkspace } = useLocalWorkspaces();
   const {
     openPath,
-    openWorkspaceApps,
+    openWorkspacePages,
     openWorkspaceHome,
     openWorkspaceSection,
     popToBreadcrumb,
@@ -129,7 +129,7 @@ export function DesktopBreadcrumbBar({
       }
 
       if (currentArea === "pages") {
-        openWorkspaceApps(workspaceId);
+        openWorkspacePages(workspaceId);
         return;
       }
 
@@ -138,7 +138,7 @@ export function DesktopBreadcrumbBar({
     [
       currentArea,
       currentSection,
-      openWorkspaceApps,
+      openWorkspacePages,
       openWorkspaceHome,
       openWorkspaceSection,
       selectWorkspace,
@@ -247,7 +247,7 @@ export function DesktopBreadcrumbBar({
       }
       if (item.href) {
         if (item.meta?.workspaceId && item.href === `/workspace/${encodeURIComponent(item.meta.workspaceId)}/pages`) {
-          openWorkspaceApps(item.meta.workspaceId);
+          openWorkspacePages(item.meta.workspaceId);
           return;
         }
         navigateWithTab({

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { readFile } from '@tauri-apps/plugin-fs';
@@ -35,6 +36,7 @@ interface Annotation {
 }
 
 export function ScreenshotOverlayPage() {
+  const { t } = useTranslation();
   const searchParams = new URLSearchParams(window.location.search);
   const imageId = searchParams.get('id') || '';
   const scaleFactor = parseFloat(searchParams.get('scale') || '1');
@@ -538,7 +540,7 @@ export function ScreenshotOverlayPage() {
 
       {!imageLoaded && (
         <div className="screenshot-overlay-status">
-          {loadError ? '截图加载失败，按 Esc 退出后重试' : '正在加载截图...'}
+          {loadError ? t('screenshot.loadFailed') : t('screenshot.loading')}
         </div>
       )}
 
@@ -603,7 +605,7 @@ export function ScreenshotOverlayPage() {
                 e.stopPropagation();
               }}
               onBlur={handleTextSubmit}
-              placeholder="输入文字..."
+              placeholder={t('screenshot.textPlaceholder')}
             />
           )}
         </div>
@@ -637,13 +639,13 @@ export function ScreenshotOverlayPage() {
           </div>
           <div className="separator" />
           <div className="action-group">
-            <button className="tool-btn" onClick={handleUndo} disabled={annotations.length === 0} title="撤销 (Ctrl+Z)">
+            <button className="tool-btn" onClick={handleUndo} disabled={annotations.length === 0} title={t('screenshot.undoTooltip')}>
               ↩
             </button>
-            <button className="tool-btn confirm-btn" onClick={handleConfirm} title="确认 (Enter)">
+            <button className="tool-btn confirm-btn" onClick={handleConfirm} title={t('screenshot.confirmTooltip')}>
               ✓
             </button>
-            <button className="tool-btn cancel-btn" onClick={() => handleClose()} title="取消 (Esc)">
+            <button className="tool-btn cancel-btn" onClick={() => handleClose()} title={t('screenshot.cancelTooltip')}>
               ✕
             </button>
           </div>

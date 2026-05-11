@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
 import { Shield, Terminal, FileEdit, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export function ExecApproval({
   onDecision,
   className,
 }: ExecApprovalProps) {
+  const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const kind = approval.tool_call.kind ?? "execute";
   const Icon = kindIcons[kind] ?? Terminal;
@@ -95,7 +97,7 @@ export function ExecApproval({
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
               <span className="text-sm font-medium text-foreground">
-                Tool Approval Required
+                {t("execApproval.title")}
               </span>
             </div>
           </div>
@@ -106,7 +108,7 @@ export function ExecApproval({
               <Icon className={cn("h-5 w-5 mt-0.5 shrink-0", iconColor)} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground font-mono break-all">
-                  {approval.tool_call.command || approval.tool_call.title || "Unknown command"}
+                  {approval.tool_call.command || approval.tool_call.title || t("execApproval.unknownCommand")}
                 </p>
                 {approval.tool_call.cwd && (
                   <p className="text-xs text-muted-foreground mt-1 font-mono">
@@ -125,7 +127,7 @@ export function ExecApproval({
               onClick={handleAllow}
               className="flex-1"
             >
-              Allow
+              {t("execApproval.allow")}
               <kbd className="ml-1.5 text-[10px] opacity-60 border rounded px-1">Y</kbd>
             </Button>
             <Button
@@ -134,7 +136,7 @@ export function ExecApproval({
               onClick={handleAlwaysAllow}
               className="flex-1"
             >
-              Always
+              {t("execApproval.always")}
               <kbd className="ml-1.5 text-[10px] opacity-60 border rounded px-1">A</kbd>
             </Button>
             <Button
@@ -143,7 +145,7 @@ export function ExecApproval({
               onClick={handleReject}
               className="flex-1"
             >
-              Reject
+              {t("execApproval.reject")}
               <kbd className="ml-1.5 text-[10px] opacity-60 border rounded px-1">N</kbd>
             </Button>
           </div>

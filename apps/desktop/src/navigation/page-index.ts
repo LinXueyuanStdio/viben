@@ -505,7 +505,7 @@ export function buildWorkspacePagesDropdownItems({
   );
 
   return pageItems.length > 0
-    ? [...sectionItems, { id: `workspace:${workspaceId}:apps-pages-separator`, label: "", separator: true }, ...pageItems]
+    ? [...sectionItems, { id: `workspace:${workspaceId}:pages-separator`, label: "", separator: true }, ...pageItems]
     : sectionItems;
 }
 

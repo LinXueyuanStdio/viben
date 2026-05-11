@@ -1,5 +1,5 @@
 /**
- * PageAppGrid Component
+ * PageIconGrid Component
  *
  * iPad home screen-style grid for workspace pages.
  * Displays pages as app icons with folder overlay support.
@@ -25,7 +25,7 @@ import { usePages, useDeletePage } from "@/hooks/use-pages";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { CreatePageDialog } from "./create-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
-import { PageAppIcon } from "./page-app-icon";
+import { PageIcon } from "./page-app-icon";
 import {
   buildPageTree,
 } from "../utils";
@@ -36,7 +36,7 @@ import type { PageConfig } from "@/hooks/use-pages";
 // Types
 // =============================================================================
 
-export interface PageAppGridProps {
+export interface PageIconGridProps {
   workspaceId: string;
   workspacePath: string;
 }
@@ -45,7 +45,7 @@ export interface PageAppGridProps {
 // Component
 // =============================================================================
 
-export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
+export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) {
   const { t } = useTranslation();
   const { openWorkspacePage } = useDesktopRouting();
   const { data: pages, isLoading, error } = usePages(workspacePath);
@@ -212,7 +212,7 @@ export function PageAppGrid({ workspaceId, workspacePath }: PageAppGridProps) {
                 key={node.page.slug}
                 onClick={(e) => handleNodeClick(node, e)}
               >
-                <PageAppIcon
+                <PageIcon
                   node={node}
                   workspacePath={workspacePath}
                   onClick={() => {/* handled by parent wrapper for position tracking */}}
@@ -438,7 +438,7 @@ function FolderOverlay({
         {/* Child pages grid */}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-y-5 gap-x-2 justify-items-center">
           {folder.children.map((child) => (
-            <PageAppIcon
+            <PageIcon
               key={child.page.slug}
               node={child}
               workspacePath={workspacePath}

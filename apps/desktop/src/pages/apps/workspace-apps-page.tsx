@@ -8,9 +8,9 @@ import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { resolveHeaderSegments } from "@/navigation/page-index";
 import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import { PageAppGrid } from "./components/page-app-grid";
+import { PageIconGrid } from "./components/page-app-grid";
 
-export function WorkspaceAppsPage() {
+export function WorkspacePage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading } = useLocalWorkspaces();
@@ -61,7 +61,7 @@ export function WorkspaceAppsPage() {
           <h1 className="text-lg font-semibold">{t("page.pages", "Pages")}</h1>
         </div>
         <div className="min-h-0 h-[calc(100%-65px)]">
-          <PageAppGrid
+          <PageIconGrid
             workspaceId={workspace.id}
             workspacePath={workspace.path}
           />
@@ -71,4 +71,4 @@ export function WorkspaceAppsPage() {
   );
 }
 
-export default WorkspaceAppsPage;
+export default WorkspacePage;

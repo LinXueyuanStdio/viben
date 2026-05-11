@@ -43,7 +43,7 @@ export interface DesktopRoutingApi {
   currentWorkspace: Workspace | undefined;
 
   openWorkspaceHome: (workspaceId: string, options?: DesktopNavigationOptions) => void;
-  openWorkspaceApps: (workspaceId: string, options?: DesktopNavigationOptions) => void;
+  openWorkspacePages: (workspaceId: string, options?: DesktopNavigationOptions) => void;
   openWorkspaceSection: (
     workspaceId: string,
     section: WorkspaceSection,
@@ -314,7 +314,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
     [navigateReset, openInNewTab]
   );
 
-  const openWorkspaceApps = useCallback(
+  const openWorkspacePages = useCallback(
     (workspaceId: string, options?: DesktopNavigationOptions) => {
       const url = registry.build("/workspace/:workspaceId/pages", { workspaceId });
       if (options?.openMode === "new-tab") {
@@ -1052,7 +1052,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       currentWorkspace,
 
       openWorkspaceHome,
-      openWorkspaceApps,
+      openWorkspacePages,
       openWorkspaceSection,
       openWorkspaceAgentList,
       openWorkspaceAgentDetail,
@@ -1128,7 +1128,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       openWorkspaceExecutorDetail,
       pushWorkspaceExecutorDetail,
       openWorkspaceHome,
-      openWorkspaceApps,
+      openWorkspacePages,
       openWorkspacePage,
       pushWorkspaceAgentDetail,
       openWorkspaceSection,

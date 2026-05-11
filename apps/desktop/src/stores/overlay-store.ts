@@ -353,6 +353,7 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
         command: cmd,
         description: describeCommand(cmd),
         status: "pending" as const,
+        startMs: 0,
       }));
       set((s) => ({
         presentationSteps: [...s.presentationSteps, ...newSteps],

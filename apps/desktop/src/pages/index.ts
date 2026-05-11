@@ -28,7 +28,7 @@ export { AnalyticsPage } from "./analytics";
 export { DocumentsPage } from "./documents";
 export { ChatMonitorPage } from "./conversation";
 export { PageDebugPage } from "./apps/page-debug";
-export { WorkspaceAppsPage } from "./apps/workspace-apps-page";
+export { WorkspacePage as WorkspaceAppsPage } from "./apps/workspace-apps-page";
 export { WorkspacePage } from "./apps/workspace-page";
 export { WorkspaceWebPage } from "./workspace-web";
 export { OsPage } from "./os";
