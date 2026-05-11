@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { FileSearch } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const reviewCommand: SlashCommandDefinition = {
   id: "review",
   name: "review",
-  description: "Request code review for files or commits",
+  get description() { return i18n.t("chat.slashCommands.reviewDesc"); },
   icon: createElement(FileSearch, { className: "h-4 w-4" }),
   category: "workspace",
   source: "builtin",
@@ -13,7 +14,7 @@ export const reviewCommand: SlashCommandDefinition = {
     {
       name: "target",
       required: false,
-      description: "File path or commit hash to review",
+      get description() { return i18n.t("chat.slashCommands.reviewArgDesc"); },
     },
   ],
   execute: async (context, args) => {

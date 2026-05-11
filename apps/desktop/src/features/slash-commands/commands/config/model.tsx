@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Cpu } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const modelCommand: SlashCommandDefinition = {
   id: "model",
   name: "model",
-  description: "View or switch the current model",
+  get description() { return i18n.t("chat.slashCommands.modelDesc"); },
   icon: createElement(Cpu, { className: "h-4 w-4" }),
   category: "config",
   source: "builtin",
@@ -13,7 +14,7 @@ export const modelCommand: SlashCommandDefinition = {
     {
       name: "model_name",
       required: false,
-      description: "Model name to switch to (e.g., sonnet, opus, haiku)",
+      get description() { return i18n.t("chat.slashCommands.modelArgDesc"); },
     },
   ],
   execute: async (context, args) => {

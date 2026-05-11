@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { FolderPlus } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const initCommand: SlashCommandDefinition = {
   id: "init",
   name: "init",
-  description: "Initialize project configuration (CLAUDE.md)",
+  get description() { return i18n.t("chat.slashCommands.initDesc"); },
   icon: createElement(FolderPlus, { className: "h-4 w-4" }),
   category: "workspace",
   source: "builtin",

@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { MessageSquare } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const prCommentsCommand: SlashCommandDefinition = {
   id: "pr-comments",
   name: "pr-comments",
-  description: "View GitHub PR comments",
+  get description() { return i18n.t("chat.slashCommands.prCommentsDesc"); },
   icon: createElement(MessageSquare, { className: "h-4 w-4" }),
   category: "workspace",
   source: "builtin",
@@ -13,7 +14,7 @@ export const prCommentsCommand: SlashCommandDefinition = {
     {
       name: "pr_number",
       required: false,
-      description: "PR number to view comments for",
+      get description() { return i18n.t("chat.slashCommands.prCommentsArgDesc"); },
     },
   ],
   execute: async (context, args) => {
