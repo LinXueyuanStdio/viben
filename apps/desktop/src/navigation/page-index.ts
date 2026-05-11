@@ -463,7 +463,7 @@ export function buildWorkspaceIdeasDropdownItems(
   return buildWorkspaceSectionMenuDropdownItems(input);
 }
 
-export function buildWorkspaceAppsDropdownItems({
+export function buildWorkspacePagesDropdownItems({
   workspaceId,
   activeSection,
   buildLabel,
@@ -562,7 +562,7 @@ export const WORKSPACE_SECTION_DROPDOWN_BUILDERS: Record<
   cron: buildWorkspaceCronDropdownItems,
   ideas: buildWorkspaceIdeasDropdownItems,
   agent: buildWorkspaceAgentsDropdownItems,
-  pages: buildWorkspaceAppsDropdownItems,
+  pages: buildWorkspacePagesDropdownItems,
   files: buildWorkspaceFilesDropdownItems,
   github: buildWorkspaceGithubDropdownItems,
   "chat-monitor": buildWorkspaceChatMonitorDropdownItems,
@@ -676,7 +676,7 @@ export function resolvePageIndexBranch({
         input.segment.href ===
           `/workspace/${encodeURIComponent(input.segment.meta?.workspaceId ?? "")}/pages`,
       build: (input) =>
-        buildWorkspaceAppsDropdownItems({
+        buildWorkspacePagesDropdownItems({
           workspaceId: input.segment.meta?.workspaceId ?? "",
           activeSection: "pages",
           buildLabel: input.buildLabel,
