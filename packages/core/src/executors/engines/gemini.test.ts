@@ -19,7 +19,11 @@ describe("executor/engines/gemini", () => {
       const caps = executor.capabilities();
       expect(caps).toContain("SPAWN");
       expect(caps).toContain("CHAT");
-      expect(caps).toContain("SESSION_RESUME");
+    });
+
+    it("should NOT include SESSION_RESUME (not supported)", () => {
+      const caps = executor.capabilities();
+      expect(caps).not.toContain("SESSION_RESUME");
     });
 
     it("should NOT include streaming (not supported)", () => {
@@ -27,8 +31,8 @@ describe("executor/engines/gemini", () => {
       expect(caps).not.toContain("CHAT_STREAMING");
     });
 
-    it("should return 3 capabilities", () => {
-      expect(executor.capabilities()).toHaveLength(3);
+    it("should return 2 capabilities", () => {
+      expect(executor.capabilities()).toHaveLength(2);
     });
   });
 
@@ -52,20 +56,23 @@ describe("executor/engines/gemini", () => {
   });
 
   describe("buildRunCommand", () => {
-    it("should build simple command", () => {
+    it("should build command with --prompt flag", () => {
       const cmd = executor.buildRunCommand({
         agent: "work",
         prompt: "test prompt",
       });
 
-      expect(cmd).toEqual(["gemini", "test prompt"]);
+      expect(cmd).toEqual(["gemini", "--prompt", "test prompt"]);
     });
-  });
 
-  describe("buildResumeCommand", () => {
-    it("should build correct resume command", () => {
-      const cmd = executor.buildResumeCommand("ses_abc");
-      expect(cmd).toEqual(["gemini", "--resume", "ses_abc"]);
+    it("should include --model when configured", () => {
+      const executorWithModel = new GeminiExecutor({ model: "gemini-2.5-pro" });
+      const cmd = executorWithModel.buildRunCommand({
+        agent: "work",
+        prompt: "test prompt",
+      });
+
+      expect(cmd).toEqual(["gemini", "--prompt", "test prompt", "--model", "gemini-2.5-pro"]);
     });
   });
 
@@ -89,10 +96,10 @@ describe("executor/engines/gemini", () => {
   });
 
   describe("defaultMcpConfigPath", () => {
-    it("should return path to settings.json", () => {
+    it("should return path to config.json", () => {
       const path = executor.defaultMcpConfigPath();
       expect(path).toContain(".gemini");
-      expect(path).toContain("settings.json");
+      expect(path).toContain("config.json");
     });
   });
 });

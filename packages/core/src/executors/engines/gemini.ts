@@ -22,6 +22,8 @@ import { BaseExecutor } from "./base";
  * Gemini CLI specific configuration
  */
 export interface GeminiExecutorConfig extends ExecutorConfig {
+  /** Model to use (e.g., "gemini-2.5-pro") */
+  model?: string;
   /** Sandbox mode (e.g., docker, none) */
   sandbox?: string;
   /** Yolo mode - skip all confirmations */
@@ -55,17 +57,13 @@ class GeminiExecutor extends BaseExecutor {
   }
 
   capabilities(): ExecutorCapability[] {
-    return [
-      "SPAWN",
-      "CHAT",
-      "SESSION_RESUME",
-    ];
+    return ["SPAWN", "CHAT"];
   }
 
   // === Configuration ===
 
   defaultMcpConfigPath(): string | null {
-    return this.getHomePath(".gemini", "settings.json");
+    return this.getHomePath(".gemini", "config.json");
   }
 
   getConfigDirName(): string {
@@ -84,12 +82,11 @@ class GeminiExecutor extends BaseExecutor {
 
   buildRunCommand(options: RunCommandOptions): string[] {
     const { prompt } = options;
-    // Gemini CLI has simpler interface
-    return ["gemini", prompt];
-  }
-
-  buildResumeCommand(sessionId: string): string[] {
-    return ["gemini", "--resume", sessionId];
+    const args = ["gemini", "--prompt", prompt];
+    if (this.config.model) {
+      args.push("--model", this.config.model);
+    }
+    return args;
   }
 
   getNonInteractiveEnv(): Record<string, string> {
@@ -125,7 +122,10 @@ class GeminiExecutor extends BaseExecutor {
       };
     }
 
-    const args = [prompt];
+    const args = ["--prompt", prompt];
+    if (this.config.model) {
+      args.push("--model", this.config.model);
+    }
 
     const spawnEnv = {
       ...process.env,
@@ -190,7 +190,6 @@ class GeminiExecutor extends BaseExecutor {
     const {
       prompt,
       cwd = process.cwd(),
-      resume,
       env: extraEnv = {},
     } = options;
 
@@ -203,11 +202,13 @@ class GeminiExecutor extends BaseExecutor {
       };
     }
 
-    const args: string[] = [];
-    if (resume) {
-      args.push("--resume", resume);
+    const args: string[] = ["--prompt", prompt];
+    if (this.config.model || options.model) {
+      args.push("--model", options.model || this.config.model!);
     }
-    args.push(prompt);
+    if (options.outputFormat === "stream-json") {
+      args.push("--output-format", "json");
+    }
 
     const spawnEnv = {
       ...process.env,
@@ -227,10 +228,7 @@ class GeminiExecutor extends BaseExecutor {
         child.on("error", reject);
       });
 
-      return {
-        success: exitCode === 0,
-        exitCode,
-      };
+      return { success: exitCode === 0, exitCode };
     } catch (error) {
       return {
         success: false,
@@ -248,54 +246,6 @@ class GeminiExecutor extends BaseExecutor {
     };
   }
 
-  async resume(
-    sessionId: string,
-    options?: Partial<SpawnOptions>
-  ): Promise<ExecutionResult> {
-    const { cwd = process.cwd(), env: extraEnv = {} } = options || {};
-
-    const execPath = this.getExecutablePath();
-    if (!execPath) {
-      return {
-        success: false,
-        error: "Gemini executable not found",
-        errorType: "NOT_FOUND",
-      };
-    }
-
-    const args = ["--resume", sessionId];
-
-    const spawnEnv = {
-      ...process.env,
-      ...this.config.env,
-      ...extraEnv,
-    };
-
-    try {
-      const child = spawn(execPath, args, {
-        cwd,
-        env: spawnEnv,
-        stdio: "inherit",
-      });
-
-      const exitCode = await new Promise<number>((resolve, reject) => {
-        child.on("exit", (code) => resolve(code ?? 1));
-        child.on("error", reject);
-      });
-
-      return {
-        success: exitCode === 0,
-        exitCode,
-        sessionId,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        errorType: "SPAWN_FAILED",
-      };
-    }
-  }
 }
 
 // Register executor
