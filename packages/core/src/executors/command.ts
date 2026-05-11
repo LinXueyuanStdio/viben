@@ -2,7 +2,8 @@
  * Command builder for executor processes
  */
 
-import type { CommandParts } from "./types";
+import type { CommandParts } from "./ops/types";
+export type { CommandParts } from "./ops/types";
 
 /**
  * Error building a command

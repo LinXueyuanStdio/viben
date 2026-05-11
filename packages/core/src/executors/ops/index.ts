@@ -33,10 +33,14 @@ export type {
   SSEErrorMessage,
   SSEQuestionMessage,
   SSESdkSessionMessage,
+  SSEAssistantMessage,
+  SSEStreamEventMessage,
   SSEMessage,
   // Result types
   ExecutionResult,
   ExecutorErrorType,
+  // Command types
+  CommandParts,
   // Config types
   RunCommandOptions,
   ExecutorConfig,

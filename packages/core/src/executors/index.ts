@@ -52,6 +52,7 @@ export type {
   Executor,
   ExecutorCapability,
   ExecutorConfig,
+  CommandParts,
   SpawnOptions,
   SpawnResult,
   ChatFormat,
@@ -68,6 +69,8 @@ export type {
   SSEErrorMessage,
   SSEQuestionMessage,
   SSESdkSessionMessage,
+  SSEAssistantMessage,
+  SSEStreamEventMessage,
 } from "./ops";
 
 // Re-export types from main types

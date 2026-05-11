@@ -287,20 +287,6 @@ export {
   QwenCodeExecutor,
   BaseExecutor,
 } from "./executors";
-// Legacy type re-exports for backward compatibility (from executors/types.ts, will be removed in Task 10)
-export type {
-  RepoContext,
-  ExecutionEnv,
-  CommandParts,
-  ExecutorExitResult,
-  SpawnedChild,
-  ProcessRunStatus,
-  ProcessState,
-  ExecutorApprovalService,
-  StandardCodingAgentExecutor,
-  ChatSpawnResult,
-} from "./executors/types";
-export { createExecutionEnv, applyEnvToSpawnOptions } from "./executors/types";
 
 // Database (file-based)
 export {
@@ -679,6 +665,9 @@ export type {
   SSEErrorMessage,
   SSEQuestionMessage,
   SSESdkSessionMessage,
+  SSEAssistantMessage,
+  SSEStreamEventMessage,
+  CommandParts,
   AmpExecutorConfig,
   ClaudeExecutorConfig,
   CodexExecutorConfig,
