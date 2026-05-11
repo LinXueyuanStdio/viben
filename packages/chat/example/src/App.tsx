@@ -125,26 +125,24 @@ export function App() {
   }, [dark])
 
   // ===== Implicit user message routing =====
-  // When a step emits user messages, they go to pendingUserMessages.
-  // The ADVANCE reducer already decided whether to use queue routing
-  // (waitingForDrain=true) or direct injection (waitingForDrain=false).
+  // When a step emits user messages, the reducer sets shouldQueuePending to indicate
+  // whether they should go to the command queue (agent was outputting) or directly to list.
   useEffect(() => {
     if (player.pendingUserMessages.length === 0) return
-    if (player.waitingForDrain) {
+    if (player.shouldQueuePending) {
       // Route to command queue — items show in CommandQueuePanel.
-      // Player is blocked (waitingForDrain) and isStreaming=false,
-      // so queue will auto-dequeue when we call consumePendingUsers.
+      // If waitingForDrain is also true, isStreaming=false and queue will auto-dequeue.
       for (const msg of player.pendingUserMessages) {
         commandQueue.send(msg.content || "", msg.attachments)
       }
     } else {
-      // No drain needed — inject directly into message list
+      // No queue routing needed — inject directly into message list
       for (const msg of player.pendingUserMessages) {
         player.injectMessage(msg)
       }
     }
     player.consumePendingUsers()
-  }, [player.pendingUserMessages, player.waitingForDrain, commandQueue, player.injectMessage, player.consumePendingUsers])
+  }, [player.pendingUserMessages, player.shouldQueuePending, commandQueue, player.injectMessage, player.consumePendingUsers])
 
   // ===== Queue drain completion =====
   // When queue empties while player is waiting for drain, unblock the player.
