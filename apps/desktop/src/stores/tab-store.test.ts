@@ -7,6 +7,9 @@ import {
   getTabUrl,
   getTabViewModel,
   mergePersistedTabState,
+  selectActiveTab,
+  selectPinnedTabs,
+  selectUnpinnedTabs,
   useTabStore,
   type ClosedTabSnapshot,
   type PageTab,
@@ -749,5 +752,207 @@ describe("tab-store URL-based navigation state", () => {
     });
 
     expect(getTabViewModel(tab).label).toBe("/documents");
+  });
+
+  describe("moveTab", () => {
+    it("moves a tab from index 0 to index 2", () => {
+      const tabA = makeTab({ id: "tab-a" });
+      const tabB = makeTab({ id: "tab-b" });
+      const tabC = makeTab({ id: "tab-c" });
+
+      useTabStore.setState({
+        tabs: [tabA, tabB, tabC],
+        activeTabId: tabA.id,
+        recentlyClosedTabs: [],
+      });
+
+      useTabStore.getState().moveTab(0, 2);
+
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-b",
+        "tab-c",
+        "tab-a",
+      ]);
+    });
+
+    it("does nothing when fromIndex equals toIndex", () => {
+      const tabA = makeTab({ id: "tab-a" });
+      const tabB = makeTab({ id: "tab-b" });
+
+      useTabStore.setState({
+        tabs: [tabA, tabB],
+        activeTabId: tabA.id,
+        recentlyClosedTabs: [],
+      });
+
+      useTabStore.getState().moveTab(1, 1);
+
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+    });
+
+    it("does nothing when index is out of bounds", () => {
+      const tabA = makeTab({ id: "tab-a" });
+      const tabB = makeTab({ id: "tab-b" });
+
+      useTabStore.setState({
+        tabs: [tabA, tabB],
+        activeTabId: tabA.id,
+        recentlyClosedTabs: [],
+      });
+
+      useTabStore.getState().moveTab(-1, 0);
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+
+      useTabStore.getState().moveTab(0, -1);
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+
+      useTabStore.getState().moveTab(5, 0);
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+
+      useTabStore.getState().moveTab(0, 5);
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+    });
+  });
+
+  it("setActiveTab sets activeTabId to a valid tab id", () => {
+    const tabA = makeTab({ id: "tab-a" });
+    const tabB = makeTab({ id: "tab-b" });
+
+    useTabStore.setState({
+      tabs: [tabA, tabB],
+      activeTabId: tabA.id,
+      recentlyClosedTabs: [],
+    });
+
+    useTabStore.getState().setActiveTab(tabB.id);
+
+    expect(useTabStore.getState().activeTabId).toBe("tab-b");
+  });
+
+  describe("closeTab branch coverage", () => {
+    it("closing the only remaining tab sets activeTabId to null", () => {
+      const tabA = makeTab({ id: "tab-a" });
+
+      useTabStore.setState({
+        tabs: [tabA],
+        activeTabId: tabA.id,
+        recentlyClosedTabs: [],
+      });
+
+      useTabStore.getState().closeTab(tabA.id);
+
+      expect(useTabStore.getState().tabs).toEqual([]);
+      expect(useTabStore.getState().activeTabId).toBeNull();
+    });
+
+    it("closing the last-position active tab activates the previous tab", () => {
+      const tabA = makeTab({ id: "tab-a" });
+      const tabB = makeTab({ id: "tab-b" });
+      const tabC = makeTab({ id: "tab-c" });
+
+      useTabStore.setState({
+        tabs: [tabA, tabB, tabC],
+        activeTabId: tabC.id,
+        recentlyClosedTabs: [],
+      });
+
+      useTabStore.getState().closeTab(tabC.id);
+
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+      expect(useTabStore.getState().activeTabId).toBe("tab-b");
+    });
+
+    it("closing a non-active tab does not change activeTabId", () => {
+      const tabA = makeTab({ id: "tab-a" });
+      const tabB = makeTab({ id: "tab-b" });
+      const tabC = makeTab({ id: "tab-c" });
+
+      useTabStore.setState({
+        tabs: [tabA, tabB, tabC],
+        activeTabId: tabA.id,
+        recentlyClosedTabs: [],
+      });
+
+      useTabStore.getState().closeTab(tabC.id);
+
+      expect(useTabStore.getState().tabs.map((tab) => tab.id)).toEqual([
+        "tab-a",
+        "tab-b",
+      ]);
+      expect(useTabStore.getState().activeTabId).toBe("tab-a");
+    });
+  });
+
+  describe("selectors", () => {
+    it("selectActiveTab returns the active tab object", () => {
+      const tabA = makeTab({ id: "tab-a" });
+      const tabB = makeTab({ id: "tab-b" });
+
+      const result = selectActiveTab({
+        tabs: [tabA, tabB],
+        activeTabId: "tab-b",
+        recentlyClosedTabs: [],
+      });
+
+      expect(result).toEqual(tabB);
+    });
+
+    it("selectActiveTab returns null when activeTabId does not match", () => {
+      const tabA = makeTab({ id: "tab-a" });
+
+      const result = selectActiveTab({
+        tabs: [tabA],
+        activeTabId: "missing",
+        recentlyClosedTabs: [],
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it("selectPinnedTabs returns only pinned tabs", () => {
+      const tabA = makeTab({ id: "tab-a", pinned: true });
+      const tabB = makeTab({ id: "tab-b", pinned: false });
+      const tabC = makeTab({ id: "tab-c", pinned: true });
+
+      const result = selectPinnedTabs({
+        tabs: [tabA, tabB, tabC],
+        activeTabId: tabA.id,
+        recentlyClosedTabs: [],
+      });
+
+      expect(result.map((tab) => tab.id)).toEqual(["tab-a", "tab-c"]);
+    });
+
+    it("selectUnpinnedTabs returns only unpinned tabs", () => {
+      const tabA = makeTab({ id: "tab-a", pinned: true });
+      const tabB = makeTab({ id: "tab-b", pinned: false });
+      const tabC = makeTab({ id: "tab-c", pinned: false });
+
+      const result = selectUnpinnedTabs({
+        tabs: [tabA, tabB, tabC],
+        activeTabId: tabB.id,
+        recentlyClosedTabs: [],
+      });
+
+      expect(result.map((tab) => tab.id)).toEqual(["tab-b", "tab-c"]);
+    });
   });
 });

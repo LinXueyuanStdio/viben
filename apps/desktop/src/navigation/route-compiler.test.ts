@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   compilePattern,
+  compileRegistry,
   matchUrl,
   buildUrl,
   type RouteEntry,
@@ -77,6 +78,11 @@ const TEST_ENTRIES: RouteEntry[] = [
     queryParams: ["url", "title"],
   },
   {
+    pattern: "/workspace/:workspaceId/agent/:agentId",
+    icon: { type: "lucide", value: "bot" },
+    title: (p) => p.agentId,
+  },
+  {
     pattern: "/settings",
     icon: { type: "lucide", value: "settings" },
     title: "Settings",
@@ -103,6 +109,19 @@ describe("matchUrl", () => {
     const match = matchUrl("/workspace/my-proj", TEST_ENTRIES);
     expect(match!.pattern).toBe("/workspace/:workspaceId");
     expect(match!.params).toEqual({ workspaceId: "my-proj" });
+    expect(match!.icon).toEqual({ type: "lucide", value: "home" });
+    expect(match!.title).toBe("my-proj");
+  });
+
+  it("matches parameterized pattern with agent route", () => {
+    const match = matchUrl("/workspace/my-proj/agent/summarizer", TEST_ENTRIES);
+    expect(match).not.toBeNull();
+    expect(match!.pattern).toBe("/workspace/:workspaceId/agent/:agentId");
+    expect(match!.params).toEqual({ workspaceId: "my-proj", agentId: "summarizer" });
+    expect(typeof match!.title).toBe("string");
+    expect(match!.title).toBe("summarizer");
+    expect(match!.icon).toBeDefined();
+    expect(match!.icon).toEqual({ type: "lucide", value: "bot" });
   });
 
   it("matches rest param path", () => {
@@ -176,6 +195,10 @@ describe("buildUrl", () => {
     ).toThrow();
   });
 
+  it("throws for unknown pattern", () => {
+    expect(() => buildUrl("/no/such/pattern", {}, TEST_ENTRIES)).toThrow("Unknown pattern");
+  });
+
   it("round-trips with matchUrl", () => {
     const url1 = buildUrl(
       "/workspace/:workspaceId/pages/:pageSlug+",
@@ -185,5 +208,54 @@ describe("buildUrl", () => {
     const match = matchUrl(url1, TEST_ENTRIES)!;
     const url2 = buildUrl(match.pattern, match.params, TEST_ENTRIES);
     expect(url1).toBe(url2);
+  });
+});
+
+// ─── compileRegistry ──────────────────────────────────────────────────────────
+
+describe("compileRegistry", () => {
+  it("sorts routes with more constant segments before fewer", () => {
+    const entries: RouteEntry[] = [
+      {
+        pattern: "/workspace/:workspaceId",
+        icon: { type: "lucide", value: "home" },
+        title: "Workspace",
+      },
+      {
+        pattern: "/workspace/:workspaceId/pages",
+        icon: { type: "lucide", value: "layout-grid" },
+        title: "Pages",
+      },
+    ];
+
+    const compiled = compileRegistry(entries);
+    // "/workspace/:workspaceId/pages" has 2 constant segments (workspace, pages)
+    // "/workspace/:workspaceId" has 1 constant segment (workspace)
+    // So the route with more constant segments should come first
+    expect(compiled[0].pattern).toBe("/workspace/:workspaceId/pages");
+    expect(compiled[1].pattern).toBe("/workspace/:workspaceId");
+  });
+
+  it("sorts non-rest routes before rest routes with equal constant counts", () => {
+    const entries: RouteEntry[] = [
+      {
+        pattern: "/workspace/:workspaceId/pages/:pageSlug+",
+        icon: { type: "lucide", value: "file-text" },
+        title: "Page",
+      },
+      {
+        pattern: "/workspace/:workspaceId/pages",
+        icon: { type: "lucide", value: "layout-grid" },
+        title: "Pages",
+      },
+    ];
+
+    const compiled = compileRegistry(entries);
+    // Both have 2 constant segments (workspace, pages)
+    // The non-rest route should come first
+    expect(compiled[0].pattern).toBe("/workspace/:workspaceId/pages");
+    expect(compiled[0].restParam).toBeNull();
+    expect(compiled[1].pattern).toBe("/workspace/:workspaceId/pages/:pageSlug+");
+    expect(compiled[1].restParam).toBe("pageSlug");
   });
 });

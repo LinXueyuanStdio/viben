@@ -52,6 +52,14 @@ describe("isStackPrefixOf", () => {
   it("returns false for empty stack", () => {
     expect(isStackPrefixOf([], { pattern: "/documents", params: {}, icon: {} as any, title: "", entry: {} as any })).toBe(false);
   });
+
+  it("returns false when stack top has pattern: undefined", () => {
+    const stack: BreadcrumbStackItem[] = [
+      { id: "1", label: "Unknown", pattern: undefined, href: "/unknown/path" },
+    ];
+    const match = { pattern: "/workspace/:workspaceId/agent/:agentId", params: {}, icon: {} as any, title: "", entry: {} as any };
+    expect(isStackPrefixOf(stack, match)).toBe(false);
+  });
 });
 
 describe("navigate", () => {
@@ -106,9 +114,13 @@ describe("navigate", () => {
     const [tabId, url, stack] = store.resetNavigation.mock.calls[0];
     expect(tabId).toBe("tab-1");
     expect(url).toBe("/workspace/my-proj/agent/gpt");
-    // Cold-start builds ancestors: at minimum /workspace and /workspace/:workspaceId ancestor entries + the leaf
-    expect(stack.length).toBeGreaterThanOrEqual(2);
-    expect(stack[stack.length - 1].href).toBe("/workspace/my-proj/agent/gpt");
+    // Cold-start builds 3 ancestors + 1 leaf = 4 items
+    expect(stack).toHaveLength(4);
+    expect(stack[0].pattern).toBe("/workspace");
+    expect(stack[1].pattern).toBe("/workspace/:workspaceId");
+    expect(stack[2].pattern).toBe("/workspace/:workspaceId/agent");
+    expect(stack[3].pattern).toBe("/workspace/:workspaceId/agent/:agentId");
+    expect(stack[3].href).toBe("/workspace/my-proj/agent/gpt");
   });
 
   it("applies headers overrides in all methods", () => {
