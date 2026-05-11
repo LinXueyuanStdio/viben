@@ -129,7 +129,7 @@ function isPersistedSnapshot(value: unknown): value is ClosedTabSnapshot {
 
 function normalizeTab(tab: PageTab): PageTab {
   const navigationHistory = tab.navigationHistory.filter(isNavigationState);
-  const safeHistory = navigationHistory.length > 0 ? navigationHistory : [buildStateFromUrl("/documents")];
+  const safeHistory = navigationHistory.length > 0 ? navigationHistory : [buildStateFromUrl("/workspace")];
   const historyIndex = Math.min(
     Math.max(tab.historyIndex ?? safeHistory.length - 1, 0),
     safeHistory.length - 1

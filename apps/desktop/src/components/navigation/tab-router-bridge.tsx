@@ -63,6 +63,9 @@ export function TabRouterBridge() {
       return;
     }
 
+    // Set sync lock to prevent Store->Router from re-triggering
+    syncLockRef.current = true;
+
     // Get current breadcrumb stack from active tab
     const currentState = activeTab?.navigationHistory[activeTab.historyIndex];
     const currentStack = currentState?.breadcrumbStack ?? [];
@@ -76,7 +79,12 @@ export function TabRouterBridge() {
       const stack = buildColdStartBreadcrumb(normalizedUrl);
       resetNavigation(activeTabId, normalizedUrl, stack);
     }
-  }, [location.pathname, location.search]);
+
+    // Release lock after store update propagates
+    requestAnimationFrame(() => {
+      syncLockRef.current = false;
+    });
+  }, [location.pathname, location.search, activeTabId, storeUrl, activeTab, pushNavigation, resetNavigation]);
 
   return null;
 }

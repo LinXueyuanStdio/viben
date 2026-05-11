@@ -1,6 +1,6 @@
 // apps/desktop/src/navigation/navigate.ts
 import { registry } from "./route-registry";
-import { buildColdStartBreadcrumb, deriveAncestorsFromPrefix, buildBreadcrumbItem, type NavigateHeaders, type BreadcrumbStackItem } from "./breadcrumb-builder";
+import { buildColdStartBreadcrumb, deriveAncestorsFromPrefix, type NavigateHeaders, type BreadcrumbStackItem } from "./breadcrumb-builder";
 import type { RouteMatch } from "./route-compiler";
 
 export type NavigateMethod = "push" | "replace" | "reset";
