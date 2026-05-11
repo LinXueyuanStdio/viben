@@ -1,12 +1,31 @@
-// ─── Core Types & Meta ───────────────────────────────────────────────────────
+// ─── Route Registry (single source of truth) ─────────────────────────────────
+export { registry, ROUTE_ENTRIES, humanize } from "./route-registry";
+export type { RouteEntry, RouteMatch } from "./route-compiler";
+
+// ─── Navigate API ─────────────────────────────────────────────────────────────
+export { navigate, buildNavigateLeaf, buildColdStartBreadcrumb, popToBreadcrumb, isStackPrefixOf } from "./navigate";
+export type { NavigateMethod } from "./navigate";
+export type { NavigateHeaders, BreadcrumbMeta } from "./breadcrumb-builder";
+export { deriveAncestorsFromPrefix, pickMatchingParams, buildBreadcrumbItem } from "./breadcrumb-builder";
+export type { BreadcrumbStackItem as NewBreadcrumbStackItem } from "./breadcrumb-builder";
+
+// ─── Tab Navigation ──────────────────────────────────────────────────────────
+export { createTabNavigationState } from "./tab-navigation";
+export type { TabNavigationState } from "@/stores/tab-store";
+
+// ─── Legacy (migration only, do not use in new code) ─────────────────────────
+export { locationToUrl as legacyLocationToUrl } from "./navigation-meta";
+
+// ─── Core Types & Meta (still widely used) ───────────────────────────────────
 export type {
   WorkspaceSection,
+  SettingsSection,
+  DesktopLocation,
   ViewTarget,
   BreadcrumbStackItem,
   VirtualPageIndexNode,
-  TabNavigationState,
+  TabNavigationState as LegacyTabNavigationState,
   PushPageOptions,
-  SettingsSection,
   WorkspaceSectionDescriptor,
   SettingsSectionDescriptor,
 } from "./navigation-meta";
@@ -26,11 +45,9 @@ export {
   getSettingsSectionLabel,
   getSettingsSectionIcon,
   getWorkspaceSectionLabel,
+  locationToUrl,
+  urlToLocation,
 } from "./navigation-meta";
-
-// ─── Location ────────────────────────────────────────────────────────────────
-export type { DesktopLocation } from "./navigation-meta";
-export { locationToUrl, urlToLocation } from "./navigation-meta";
 
 // ─── Breadcrumb Stack (atomic operations) ────────────────────────────────────
 export {
@@ -41,21 +58,6 @@ export {
   createBreadcrumbItem,
   createLocationBreadcrumbItem,
 } from "./breadcrumb-stack";
-
-// ─── Location Navigation (Location → BreadcrumbStack) ────────────────────────
-export {
-  createStackForLocation,
-  resolveLocationNavigation,
-} from "./location-navigation";
-
-// ─── Tab Navigation (state machine operations) ───────────────────────────────
-export {
-  createTabNavigationState,
-  replaceLocation,
-  pushPage,
-  popTo as popTabTo,
-  resetStack,
-} from "./tab-navigation";
 
 // ─── Navigation State ────────────────────────────────────────────────────────
 export type {

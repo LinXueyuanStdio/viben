@@ -12,7 +12,7 @@ import {
   getModelIcon,
 } from "@viben/chat"
 import type { AgentMessage, MessageListHandle, TaskPlan, PendingQuestion } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown } from "lucide-react"
 import {
   demoMessages,
   demoPlan,
@@ -48,7 +48,7 @@ export function App() {
   const [playing, setPlaying] = useState(false)
   const [speedIdx, setSpeedIdx] = useState(1)
   const [isStreaming, setIsStreaming] = useState(false)
-  const [sessionInfo, setSessionInfo] = useState("Demo session · 8 messages")
+  const [sessionInfo, setSessionInfo] = useState(`Demo · ${demoMessages.length} messages`)
 
   // Interactive state
   const [pendingPlan, setPendingPlan] = useState<TaskPlan | null>(null)
@@ -59,6 +59,16 @@ export function App() {
   const [tools, setTools] = useState(demoTools)
   const [skills, setSkills] = useState(demoSkills)
 
+  // Standalone component demos
+  const [showPlan, setShowPlan] = useState(false)
+  const [showQuestions, setShowQuestions] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+
+  // Sidebar collapsible sections
+  const [showToolsPanel, setShowToolsPanel] = useState(false)
+  const [showSkillsPanel, setShowSkillsPanel] = useState(false)
+  const [showContextPanel, setShowContextPanel] = useState(false)
+
   // Refs
   const messageListRef = useRef<MessageListHandle>(null)
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -66,11 +76,6 @@ export function App() {
   const speedRef = useRef(SPEEDS[speedIdx])
   const playIndexRef = useRef(playIndex)
   const allMessagesRef = useRef(allMessages)
-
-  // Standalone component demos
-  const [showPlan, setShowPlan] = useState(false)
-  const [showQuestions, setShowQuestions] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   // Sync refs
   useEffect(() => { playingRef.current = playing }, [playing])
@@ -101,7 +106,6 @@ export function App() {
     setPlayIndex(newIdx)
     playIndexRef.current = newIdx
 
-    // Calculate delay based on message type
     let delay = 400
     if (msg.type === "user") delay = 800
     else if (msg.type === "text") delay = 1200
@@ -110,7 +114,6 @@ export function App() {
     else if (msg.type === "tool_result") delay = 300
 
     if (newIdx >= all.length) {
-      // Last message
       setTimeout(() => setIsStreaming(false), delay / speedRef.current)
     }
 
@@ -192,7 +195,7 @@ export function App() {
       playIndexRef.current = 0
       setPlaying(false)
       setIsStreaming(false)
-      setSessionInfo(`${file.name} · ${parsed.length} messages`)
+      setSessionInfo(`${file.name} · ${parsed.length} msgs`)
       setPendingPlan(null)
       setPendingQuestions(null)
     })
@@ -216,174 +219,193 @@ export function App() {
     setSkills(prev => prev.map(s => s.id === skillId ? { ...s, enabled: !s.enabled } : s))
   }, [])
 
-  // Progress bar
   const progress = allMessages.length > 0 ? playIndex / allMessages.length : 0
 
   return (
     <div className="flex h-full w-full">
-      {/* ===== Left Panel: Player Controls ===== */}
-      <div className="flex w-[300px] shrink-0 flex-col border-r border-border bg-card p-4 overflow-y-auto">
-        <h2 className="mb-4 text-lg font-semibold">@viben/chat Player</h2>
-
-        {/* Theme toggle */}
-        <button
-          onClick={() => setDark(!dark)}
-          className="mb-4 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm hover:bg-accent"
-        >
-          {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          {dark ? "Light Mode" : "Dark Mode"}
-        </button>
-
-        {/* File upload */}
-        <label className="mb-3 flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-secondary px-3 py-2.5 text-sm hover:bg-accent">
-          <Upload className="size-4" />
-          Load .jsonl Session
-          <input type="file" accept=".jsonl" hidden onChange={handleFileLoad} />
-        </label>
-
-        <p className="mb-4 text-center text-xs text-muted-foreground">{sessionInfo}</p>
-
-        {/* Player controls */}
-        <div className="mb-3 flex items-center justify-center gap-2">
-          <button onClick={handleReplay} className="rounded-full bg-secondary p-2 hover:bg-accent" title="Replay">
-            <RotateCcw className="size-4" />
-          </button>
-          <button onClick={handlePrev} className="rounded-full bg-secondary p-2 hover:bg-accent">
-            <SkipBack className="size-4" />
-          </button>
+      {/* ===== Left Panel ===== */}
+      <div className="flex w-[320px] min-w-[320px] shrink-0 flex-col overflow-hidden border-r border-border bg-card">
+        {/* Fixed header */}
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold">@viben/chat Player</h2>
           <button
-            onClick={playing ? handlePause : handlePlay}
-            className="rounded-full bg-primary p-2.5 text-primary-foreground hover:opacity-90"
+            onClick={() => setDark(!dark)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            {playing ? <Pause className="size-5" /> : <Play className="size-5" />}
+            {dark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
           </button>
-          <button onClick={handleNext} className="rounded-full bg-secondary p-2 hover:bg-accent">
-            <SkipForward className="size-4" />
-          </button>
-          <button
-            onClick={() => setSpeedIdx(i => (i + 1) % SPEEDS.length)}
-            className="rounded-full bg-secondary p-2 hover:bg-accent"
-            title="Speed"
-          >
-            <Zap className="size-4" />
-          </button>
-          <span className="min-w-[32px] text-center text-xs text-muted-foreground">
-            {SPEEDS[speedIdx]}x
-          </span>
         </div>
 
-        {/* Progress bar */}
-        <div className="mb-4 flex items-center gap-2">
-          <div
-            className="h-1.5 flex-1 cursor-pointer rounded-full bg-secondary"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              handleSeek((e.clientX - rect.left) / rect.width)
-            }}
-          >
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {playIndex}/{allMessages.length}
-          </span>
-        </div>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Player section */}
+          <div className="space-y-3">
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-secondary/50 px-3 py-2 text-xs font-medium hover:bg-accent">
+              <Upload className="size-3.5" />
+              Load .jsonl Session
+              <input type="file" accept=".jsonl" hidden onChange={handleFileLoad} />
+            </label>
 
-        {/* Separator */}
-        <div className="my-3 border-t border-border" />
+            <p className="text-center text-[11px] text-muted-foreground">{sessionInfo}</p>
 
-        {/* Standalone component demos */}
-        <h3 className="mb-2 text-sm font-medium text-muted-foreground">Component Demos</h3>
-
-        <button
-          onClick={() => { setShowPlan(!showPlan); setShowQuestions(false); setShowEmojiPicker(false) }}
-          className={`mb-2 rounded-lg px-3 py-2 text-left text-sm ${showPlan ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-accent"}`}
-        >
-          PlanApproval
-        </button>
-        <button
-          onClick={() => { setShowQuestions(!showQuestions); setShowPlan(false); setShowEmojiPicker(false) }}
-          className={`mb-2 rounded-lg px-3 py-2 text-left text-sm ${showQuestions ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-accent"}`}
-        >
-          QuestionInput
-        </button>
-        <button
-          onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowPlan(false); setShowQuestions(false) }}
-          className={`mb-2 rounded-lg px-3 py-2 text-left text-sm ${showEmojiPicker ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-accent"}`}
-        >
-          EmojiPicker
-        </button>
-
-        {/* Separator */}
-        <div className="my-3 border-t border-border" />
-
-        {/* Model icons demo */}
-        <h3 className="mb-2 text-sm font-medium text-muted-foreground">Model Icons</h3>
-        <div className="flex flex-wrap gap-2">
-          {demoModels.map(m => (
-            <div key={m.id} className="flex items-center gap-1.5 rounded-lg bg-secondary px-2 py-1 text-xs">
-              {getModelIcon(m.id, { size: 14 })}
-              <span>{m.name.split(" ").pop()}</span>
+            {/* Controls */}
+            <div className="flex items-center justify-center gap-1.5">
+              <button onClick={handleReplay} className="flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground" title="Replay">
+                <RotateCcw className="size-3.5" />
+              </button>
+              <button onClick={handlePrev} className="flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground">
+                <SkipBack className="size-3.5" />
+              </button>
+              <button
+                onClick={playing ? handlePause : handlePlay}
+                className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:opacity-90"
+              >
+                {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
+              </button>
+              <button onClick={handleNext} className="flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground">
+                <SkipForward className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setSpeedIdx(i => (i + 1) % SPEEDS.length)}
+                className="flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground"
+                title="Speed"
+              >
+                <Zap className="size-3.5" />
+              </button>
+              <span className="min-w-[28px] rounded bg-secondary/80 px-1.5 py-0.5 text-center text-[10px] font-medium text-muted-foreground">
+                {SPEEDS[speedIdx]}x
+              </span>
             </div>
-          ))}
-        </div>
 
-        {/* Separator */}
-        <div className="my-3 border-t border-border" />
+            {/* Progress */}
+            <div className="flex items-center gap-2">
+              <div
+                className="h-1.5 flex-1 cursor-pointer rounded-full bg-secondary"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  handleSeek((e.clientX - rect.left) / rect.width)
+                }}
+              >
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-150"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {playIndex}/{allMessages.length}
+              </span>
+            </div>
+          </div>
 
-        {/* ToolExecutionItem standalone demo */}
-        <h3 className="mb-2 text-sm font-medium text-muted-foreground">ToolExecutionItem</h3>
-        <div className="space-y-1">
-          <ToolExecutionItem
-            name="Read"
-            displayName="Read"
-            input={{ file_path: "/src/App.tsx" }}
-            output="File content here..."
-            compact
-          />
-          <ToolExecutionItem
-            name="Bash"
-            displayName="Bash"
-            input={{ command: "pnpm test" }}
-            isExecuting
-            compact
-          />
-          <ToolExecutionItem
-            name="Write"
-            displayName="Write"
-            input={{ file_path: "/src/utils.ts" }}
-            output="File written."
-            isError={false}
-            compact
-          />
-        </div>
+          <hr className="border-border" />
 
-        {/* Separator */}
-        <div className="my-3 border-t border-border" />
+          {/* Component Demos */}
+          <div className="space-y-1.5">
+            <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Component Demos</h3>
+            <button
+              onClick={() => { setShowPlan(!showPlan); setShowQuestions(false); setShowEmojiPicker(false) }}
+              className={`w-full rounded-md px-3 py-1.5 text-left text-xs font-medium transition-colors ${showPlan ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent"}`}
+            >
+              PlanApproval
+            </button>
+            <button
+              onClick={() => { setShowQuestions(!showQuestions); setShowPlan(false); setShowEmojiPicker(false) }}
+              className={`w-full rounded-md px-3 py-1.5 text-left text-xs font-medium transition-colors ${showQuestions ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent"}`}
+            >
+              QuestionInput
+            </button>
+            <button
+              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowPlan(false); setShowQuestions(false) }}
+              className={`w-full rounded-md px-3 py-1.5 text-left text-xs font-medium transition-colors ${showEmojiPicker ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent"}`}
+            >
+              EmojiPicker
+            </button>
+          </div>
 
-        {/* Config popovers demo */}
-        <h3 className="mb-2 text-sm font-medium text-muted-foreground">Config Popovers</h3>
-        <div className="space-y-2">
-          <ToolsConfigPopover
-            tools={tools}
-            onToggleTool={(toolId, _enabled) => handleToggleTool(toolId)}
-          />
-          <SkillsConfigPopover
-            skills={skills}
-            onToggleSkill={(skillId, _enabled) => handleToggleSkill(skillId)}
-          />
-          <ContextDetailsPopover
-            breakdown={demoContextBreakdown}
-          />
+          <hr className="border-border" />
+
+          {/* Model Icons */}
+          <div>
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Model Icons</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {demoModels.map(m => (
+                <div key={m.id} className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] text-muted-foreground">
+                  {getModelIcon(m.id, { size: 12 })}
+                  <span>{m.name.split(" ").pop()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* ToolExecutionItem */}
+          <div>
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">ToolExecutionItem</h3>
+            <div className="space-y-1">
+              <ToolExecutionItem name="Read" displayName="Read" input={{ file_path: "/src/App.tsx" }} output="File content here..." compact />
+              <ToolExecutionItem name="Bash" displayName="Bash" input={{ command: "pnpm test" }} isExecuting compact />
+              <ToolExecutionItem name="Write" displayName="Write" input={{ file_path: "/src/utils.ts" }} output="File written." isError={false} compact />
+            </div>
+          </div>
+
+          <hr className="border-border" />
+
+          {/* Config Panels - collapsible */}
+          <div className="space-y-2">
+            <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Config Panels</h3>
+
+            {/* Tools */}
+            <CollapsibleSection
+              title={`Tools (${tools.filter(t => t.enabled).length}/${tools.length})`}
+              open={showToolsPanel}
+              onToggle={() => setShowToolsPanel(!showToolsPanel)}
+            >
+              <div className="max-w-full overflow-hidden">
+                <ToolsConfigPopover
+                  tools={tools}
+                  onToggleTool={(toolId, _enabled) => handleToggleTool(toolId)}
+                  className="!w-full"
+                />
+              </div>
+            </CollapsibleSection>
+
+            {/* Skills */}
+            <CollapsibleSection
+              title={`Skills (${skills.filter(s => s.enabled).length}/${skills.length})`}
+              open={showSkillsPanel}
+              onToggle={() => setShowSkillsPanel(!showSkillsPanel)}
+            >
+              <div className="max-w-full overflow-hidden">
+                <SkillsConfigPopover
+                  skills={skills}
+                  onToggleSkill={(skillId, _enabled) => handleToggleSkill(skillId)}
+                  className="!w-full"
+                />
+              </div>
+            </CollapsibleSection>
+
+            {/* Context */}
+            <CollapsibleSection
+              title="Context Details"
+              open={showContextPanel}
+              onToggle={() => setShowContextPanel(!showContextPanel)}
+            >
+              <div className="max-w-full overflow-hidden">
+                <ContextDetailsPopover
+                  breakdown={demoContextBreakdown}
+                  className="!w-full"
+                />
+              </div>
+            </CollapsibleSection>
+          </div>
         </div>
       </div>
 
       {/* ===== Right Panel: Message List + Input ===== */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
         {/* Main content area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
           {showPlan ? (
             <div className="flex h-full items-center justify-center p-8">
               <div className="w-full max-w-lg">
@@ -427,44 +449,74 @@ export function App() {
                 setPendingQuestions(null)
               }}
               welcomeTitle="@viben/chat Session Player"
-              welcomeDescription="Press Play to replay the demo session, or load a .jsonl file from the left panel."
-              maxMessageWidth="800px"
+              welcomeDescription="Press Play to replay the demo session, or load a .jsonl file."
+              maxMessageWidth="720px"
             />
           )}
         </div>
 
         {/* Chat Input */}
-        <div className="border-t border-border p-3">
-          <ChatInput
-            onSend={handleSend}
-            isLoading={isStreaming}
-            placeholder="Type a message to add to the conversation..."
-            showTopToolbar
-            showConfigBar
-            showResizeHandle
-            enableWritingMode
-            agents={demoAgents}
-            selectedAgentId={selectedAgentId}
-            onAgentChange={setSelectedAgentId}
-            models={demoModels}
-            selectedModelId={selectedModelId}
-            onModelChange={setSelectedModelId}
-            executors={demoExecutors}
-            selectedExecutor={selectedExecutor}
-            onExecutorChange={setSelectedExecutor}
-            tools={tools}
-            onToggleTool={handleToggleTool}
-            enabledToolsCount={tools.filter(t => t.enabled).length}
-            skills={skills}
-            onToggleSkill={handleToggleSkill}
-            enabledSkillsCount={skills.filter(s => s.enabled).length}
-            contextTokens={20000}
-            contextBreakdown={demoContextBreakdown}
-            slashCommands={demoSlashCommands}
-            onSlashCommand={(cmd) => console.log("Slash command:", cmd)}
-          />
+        <div className="border-t border-border p-4">
+          <div className="mx-auto max-w-[720px]">
+            <ChatInput
+              onSend={handleSend}
+              isLoading={isStreaming}
+              placeholder="Type a message..."
+              showTopToolbar
+              showConfigBar
+              showResizeHandle
+              enableWritingMode
+              agents={demoAgents}
+              selectedAgentId={selectedAgentId}
+              onAgentChange={setSelectedAgentId}
+              models={demoModels}
+              selectedModelId={selectedModelId}
+              onModelChange={setSelectedModelId}
+              executors={demoExecutors}
+              selectedExecutor={selectedExecutor}
+              onExecutorChange={setSelectedExecutor}
+              tools={tools}
+              onToggleTool={handleToggleTool}
+              enabledToolsCount={tools.filter(t => t.enabled).length}
+              skills={skills}
+              onToggleSkill={handleToggleSkill}
+              enabledSkillsCount={skills.filter(s => s.enabled).length}
+              contextTokens={20000}
+              contextBreakdown={demoContextBreakdown}
+              slashCommands={demoSlashCommands}
+              onSlashCommand={(cmd) => console.log("Slash command:", cmd)}
+            />
+          </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Collapsible Section
+// ============================================================================
+
+function CollapsibleSection({ title, open, onToggle, children }: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2 text-xs font-medium text-foreground hover:bg-accent/50 transition-colors"
+      >
+        {title}
+        <ChevronDown className={`size-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="border-t border-border p-2">
+          {children}
+        </div>
+      )}
     </div>
   )
 }

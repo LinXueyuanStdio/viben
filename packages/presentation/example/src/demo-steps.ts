@@ -2,234 +2,361 @@ import type { PresentationStep } from "@viben/presentation"
 import { describeCommand } from "@viben/presentation"
 
 /**
- * Demo presentation steps -- AI Chip Market Analysis
+ * 15-step educational presentation script -- AI Chip Market Analysis
  *
- * 13 steps simulating a presentation-style walkthrough:
- * Focus -> Explain -> Data -> Compare -> Conclusion
+ * Designed like a "XiaoLin Says" (小Lin说) style walkthrough:
+ * Build understanding step-by-step, telling a story from the big picture
+ * down to details, comparisons, and finally a conclusion.
+ *
+ * Coordinates are absolute pixels matching the MockBackground layout (1024x768 viewport, 40px padding).
  */
-export const DEMO_STEPS: PresentationStep[] = [
+export const demoSteps: PresentationStep[] = [
+  // Step 1: Spotlight on the title area
   {
-    id: "step-01-spotlight-title",
+    id: "step-01",
     toolUseId: "tool-01",
     toolName: "presentation_spotlight",
     toolInput: {},
     command: {
       type: "spotlight",
-      region: { x: 20, y: 20, width: 700, height: 80 },
-      maskOpacity: 0.7,
+      region: { x: 60, y: 30, width: 700, height: 80 },
+      maskOpacity: 0.72,
       borderRadius: 12,
       animate: true,
     },
-    description: "Spotlight on title region",
-    status: "done",
-  },
-  {
-    id: "step-01-card-intro",
-    toolUseId: "tool-01",
-    toolName: "presentation_draw",
-    toolInput: {},
-    command: {
-      type: "card",
-      position: { x: 780, y: 60 },
-      width: 340,
-      title: "Let's talk about AI chips",
-      content: "A trillion-dollar market -- who wins?\nLet the data speak.",
-      tag: "Intro",
-      tagColor: "#818CF8",
-      enterFrom: "right",
-      animate: true,
-    },
-    description: "Intro card slides in from right",
-    status: "done",
-  },
-  {
-    id: "step-02-spotlight-nvidia",
-    toolUseId: "tool-02",
-    toolName: "presentation_spotlight",
-    toolInput: {},
-    command: {
+    description: describeCommand({
       type: "spotlight",
-      region: { x: 20, y: 108, width: 300, height: 110 },
-      maskOpacity: 0.65,
+      region: { x: 60, y: 30, width: 700, height: 80 },
+      maskOpacity: 0.72,
       borderRadius: 12,
       animate: true,
-    },
-    description: "Spotlight moves to NVIDIA data card",
-    status: "done",
+    }),
+    status: "pending",
   },
+
+  // Step 2: Text annotation near the title
   {
-    id: "step-02-text-nvidia",
+    id: "step-02",
     toolUseId: "tool-02",
     toolName: "presentation_draw",
     toolInput: {},
     command: {
       type: "text",
-      position: { x: 40, y: 225 },
-      content: "First, the biggest player: NVIDIA",
+      position: { x: 60, y: 115 },
+      content: "2024年，AI芯片是全球最火的赛道",
       fontSize: 15,
       fontWeight: 700,
       color: "#FFFFFF",
-      background: "rgba(118, 185, 0, 0.85)",
+      background: "rgba(139, 92, 246, 0.88)",
       animate: true,
     },
-    description: "Text annotation: biggest player",
-    status: "done",
+    description: describeCommand({
+      type: "text",
+      position: { x: 60, y: 115 },
+      content: "2024年，AI芯片是全球最火的赛道",
+    }),
+    status: "pending",
   },
+
+  // Step 3: Spotlight moves to NVIDIA data box
   {
-    id: "step-03-card-nvidia",
+    id: "step-03",
     toolUseId: "tool-03",
+    toolName: "presentation_spotlight",
+    toolInput: {},
+    command: {
+      type: "spotlight",
+      region: { x: 40, y: 148, width: 280, height: 120 },
+      maskOpacity: 0.68,
+      borderRadius: 12,
+      animate: true,
+    },
+    description: describeCommand({
+      type: "spotlight",
+      region: { x: 40, y: 148, width: 280, height: 120 },
+      maskOpacity: 0.68,
+      borderRadius: 12,
+      animate: true,
+    }),
+    status: "pending",
+  },
+
+  // Step 4: Card from right -- NVIDIA deep dive
+  {
+    id: "step-04",
+    toolUseId: "tool-04",
     toolName: "presentation_draw",
     toolInput: {},
     command: {
       type: "card",
-      position: { x: 780, y: 180 },
-      width: 340,
-      title: "NVIDIA Dominance",
-      content: "Market share: 80%\nDC revenue: $26B (YoY +265%)\nCore: H100 / H200 / B100\nCUDA locks in developers",
-      tag: "Leader",
+      position: { x: 680, y: 100 },
+      width: 310,
+      title: "NVIDIA: 绝对王者",
+      content:
+        "H100/H200 统治训练市场\nCUDA 生态锁定开发者\n数据中心收入 $26B (YoY +265%)\n客户包括所有头部云厂商",
+      tag: "🟢 领导者",
       tagColor: "#76B900",
       enterFrom: "right",
       animate: true,
     },
-    description: "NVIDIA details card",
-    status: "done",
+    description: describeCommand({
+      type: "card",
+      position: { x: 680, y: 100 },
+      title: "NVIDIA: 绝对王者",
+    }),
+    status: "pending",
   },
+
+  // Step 5: Arrow from card pointing to NVIDIA box
   {
-    id: "step-04-arrow-nvidia",
-    toolUseId: "tool-04",
+    id: "step-05",
+    toolUseId: "tool-05",
     toolName: "presentation_callout",
     toolInput: {},
     command: {
       type: "arrow",
-      from: { x: 780, y: 240 },
-      to: { x: 200, y: 175 },
+      from: { x: 680, y: 180 },
+      to: { x: 320, y: 200 },
       color: "#76B900",
-      label: "80% monopoly",
+      label: "80% 份额",
       strokeWidth: 2.5,
       animate: true,
     },
-    description: "Arrow from card to data",
-    status: "done",
-  },
-  {
-    id: "step-04-circle-80",
-    toolUseId: "tool-04",
-    toolName: "presentation_draw",
-    toolInput: {},
-    command: {
-      type: "circle",
-      center: { x: 155, y: 175 },
-      radius: 24,
+    description: describeCommand({
+      type: "arrow",
+      from: { x: 680, y: 180 },
+      to: { x: 320, y: 200 },
       color: "#76B900",
-      strokeWidth: 3,
-      animate: true,
-    },
-    description: "Circle around 80% number",
-    status: "done",
+      label: "80% 份额",
+    }),
+    status: "pending",
   },
+
+  // Step 6: Circle around "80%" number in NVIDIA box
   {
-    id: "step-05-spotlight-amd",
-    toolUseId: "tool-05",
-    toolName: "presentation_spotlight",
-    toolInput: {},
-    command: {
-      type: "spotlight",
-      region: { x: 330, y: 108, width: 300, height: 110 },
-      maskOpacity: 0.6,
-      borderRadius: 12,
-      animate: true,
-    },
-    description: "Spotlight moves to AMD region",
-    status: "done",
-  },
-  {
-    id: "step-06-card-amd",
+    id: "step-06",
     toolUseId: "tool-06",
     toolName: "presentation_draw",
     toolInput: {},
     command: {
+      type: "circle",
+      center: { x: 130, y: 215 },
+      radius: 28,
+      color: "#EF4444",
+      strokeWidth: 3,
+      animate: true,
+    },
+    description: describeCommand({
+      type: "circle",
+      center: { x: 130, y: 215 },
+      radius: 28,
+    }),
+    status: "pending",
+  },
+
+  // Step 7: Spotlight moves to AMD data box
+  {
+    id: "step-07",
+    toolUseId: "tool-07",
+    toolName: "presentation_spotlight",
+    toolInput: {},
+    command: {
+      type: "spotlight",
+      region: { x: 340, y: 148, width: 280, height: 120 },
+      maskOpacity: 0.65,
+      borderRadius: 12,
+      animate: true,
+    },
+    description: describeCommand({
+      type: "spotlight",
+      region: { x: 340, y: 148, width: 280, height: 120 },
+      maskOpacity: 0.65,
+      borderRadius: 12,
+      animate: true,
+    }),
+    status: "pending",
+  },
+
+  // Step 8: Card from left -- AMD analysis
+  {
+    id: "step-08",
+    toolUseId: "tool-08",
+    toolName: "presentation_draw",
+    toolInput: {},
+    command: {
       type: "card",
-      position: { x: 780, y: 380 },
-      width: 340,
-      title: "AMD's Comeback",
-      content: "MI300X excellent price-performance\nShare: 12% (YoY +8.1%)\nROCm ecosystem maturing\nStrong in inference",
-      tag: "Challenger",
+      position: { x: 30, y: 300 },
+      width: 310,
+      title: "AMD: 最强挑战者",
+      content:
+        "MI300X 性价比出色\nROCm 生态逐步成熟\n推理场景竞争力强\n获得微软/Meta 大单",
+      tag: "🔴 挑战者",
       tagColor: "#ED1C24",
       enterFrom: "left",
       animate: true,
     },
-    description: "AMD details card",
-    status: "done",
+    description: describeCommand({
+      type: "card",
+      position: { x: 30, y: 300 },
+      title: "AMD: 最强挑战者",
+    }),
+    status: "pending",
   },
+
+  // Step 9: Arrow from AMD card to AMD data
   {
-    id: "step-07-arrow-amd",
-    toolUseId: "tool-07",
+    id: "step-09",
+    toolUseId: "tool-09",
     toolName: "presentation_callout",
     toolInput: {},
     command: {
       type: "arrow",
-      from: { x: 780, y: 440 },
-      to: { x: 490, y: 175 },
+      from: { x: 340, y: 340 },
+      to: { x: 480, y: 215 },
       color: "#ED1C24",
-      label: "12% fastest growth",
+      label: "快速追赶",
       strokeWidth: 2.5,
       animate: true,
     },
-    description: "Arrow from AMD card to data",
-    status: "done",
+    description: describeCommand({
+      type: "arrow",
+      from: { x: 340, y: 340 },
+      to: { x: 480, y: 215 },
+      color: "#ED1C24",
+      label: "快速追赶",
+    }),
+    status: "pending",
   },
+
+  // Step 10: Highlight over the analysis paragraph area
   {
-    id: "step-09-highlight-others",
-    toolUseId: "tool-09",
-    toolName: "presentation_draw",
-    toolInput: {},
-    command: {
-      type: "highlight",
-      region: { x: 640, y: 108, width: 300, height: 110 },
-      color: "rgba(99, 102, 241, 0.4)",
-      opacity: 0.4,
-      borderRadius: 12,
-      animate: true,
-    },
-    description: "Highlight Others region",
-    status: "done",
-  },
-  {
-    id: "step-10-text-conclusion",
+    id: "step-10",
     toolUseId: "tool-10",
     toolName: "presentation_draw",
     toolInput: {},
     command: {
+      type: "highlight",
+      region: { x: 40, y: 320, width: 520, height: 100 },
+      color: "rgba(96, 165, 250, 0.25)",
+      opacity: 0.3,
+      borderRadius: 8,
+      animate: true,
+    },
+    description: describeCommand({
+      type: "highlight",
+      region: { x: 40, y: 320, width: 520, height: 100 },
+    }),
+    status: "pending",
+  },
+
+  // Step 11: Text annotation -- key turning point
+  {
+    id: "step-11",
+    toolUseId: "tool-11",
+    toolName: "presentation_draw",
+    toolInput: {},
+    command: {
       type: "text",
-      position: { x: 200, y: 320 },
-      content: "Conclusion: Competition rising, but NVIDIA still reigns",
-      fontSize: 22,
+      position: { x: 60, y: 430 },
+      content: "关键转折点：开源生态的崛起",
+      fontSize: 16,
+      fontWeight: 700,
+      color: "#FFFFFF",
+      background: "rgba(245, 158, 11, 0.88)",
+      animate: true,
+    },
+    description: describeCommand({
+      type: "text",
+      position: { x: 60, y: 430 },
+      content: "关键转折点：开源生态的崛起",
+    }),
+    status: "pending",
+  },
+
+  // Step 12: Spotlight expands to show ALL three data boxes
+  {
+    id: "step-12",
+    toolUseId: "tool-12",
+    toolName: "presentation_spotlight",
+    toolInput: {},
+    command: {
+      type: "spotlight",
+      region: { x: 30, y: 140, width: 930, height: 140 },
+      maskOpacity: 0.6,
+      borderRadius: 14,
+      animate: true,
+    },
+    description: describeCommand({
+      type: "spotlight",
+      region: { x: 30, y: 140, width: 930, height: 140 },
+      maskOpacity: 0.6,
+      borderRadius: 14,
+      animate: true,
+    }),
+    status: "pending",
+  },
+
+  // Step 13: Card from bottom -- comparison summary
+  {
+    id: "step-13",
+    toolUseId: "tool-13",
+    toolName: "presentation_draw",
+    toolInput: {},
+    command: {
+      type: "card",
+      position: { x: 300, y: 400 },
+      width: 420,
+      title: "三方格局",
+      content:
+        "NVIDIA 统治但溢价过高\nAMD 性价比吸引中小客户\nGoogle TPU 主攻自用场景",
+      tag: "📊 格局",
+      tagColor: "#6366F1",
+      enterFrom: "bottom",
+      animate: true,
+      borderColor: "rgba(99, 102, 241, 0.3)",
+    },
+    description: describeCommand({
+      type: "card",
+      position: { x: 300, y: 400 },
+      title: "三方格局",
+    }),
+    status: "pending",
+  },
+
+  // Step 14: Clear all annotations
+  {
+    id: "step-14",
+    toolUseId: "tool-14",
+    toolName: "presentation_draw",
+    toolInput: {},
+    command: {
+      type: "clear",
+    },
+    description: describeCommand({ type: "clear" }),
+    status: "pending",
+  },
+
+  // Step 15: Final conclusion text
+  {
+    id: "step-15",
+    toolUseId: "tool-15",
+    toolName: "presentation_draw",
+    toolInput: {},
+    command: {
+      type: "text",
+      position: { x: 150, y: 280 },
+      content: "结论：AI芯片从垄断走向竞争，这对每个开发者都是好消息",
+      fontSize: 24,
       fontWeight: 800,
       color: "#FFFFFF",
       background: "linear-gradient(135deg, #6366F1, #8B5CF6)",
       animate: true,
     },
-    description: "Large conclusion text",
-    status: "done",
-  },
-  {
-    id: "step-11-card-summary",
-    toolUseId: "tool-11",
-    toolName: "presentation_draw",
-    toolInput: {},
-    command: {
-      type: "card",
-      position: { x: 340, y: 400 },
-      width: 440,
-      title: "Key Takeaways",
-      content: "1. NVIDIA 80% share is hard to shake short-term\n2. AMD MI300X is the strongest challenger\n3. Custom chips (TPU/Ascend) reshaping the landscape",
-      tag: "Summary",
-      tagColor: "#10B981",
-      enterFrom: "bottom",
-      animate: true,
-      borderColor: "rgba(16, 185, 129, 0.3)",
-    },
-    description: "Summary card",
-    status: "done",
+    description: describeCommand({
+      type: "text",
+      position: { x: 150, y: 280 },
+      content: "结论：AI芯片从垄断走向竞争，这对每个开发者都是好消息",
+    }),
+    status: "pending",
   },
 ]

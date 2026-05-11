@@ -3,9 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { getTabViewModel, useTabStore } from "@/stores/tab-store";
 import type { IconData } from "@/components/ui/icon-picker";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
+import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import {
   type DesktopLocation,
-  type BreadcrumbStackItem,
   type PushPageOptions,
   type TabNavigationState,
   locationToUrl,
@@ -152,9 +152,13 @@ export function useTabActions(): TabActions {
         icon: input?.icon,
       });
 
+<<<<<<< Updated upstream
       // Cast: breadcrumb-builder's BreadcrumbStackItem is structurally compatible
       // with navigation-meta's version at runtime
       return { breadcrumbStack: stack as unknown as BreadcrumbStackItem[] };
+=======
+      return { breadcrumbStack: stack };
+>>>>>>> Stashed changes
     },
     []
   );

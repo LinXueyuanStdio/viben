@@ -40,6 +40,12 @@ export type PresentationCommand =
   | CircleCommand
   | HighlightCommand
   | CardCommand
+  | PulseCommand
+  | UnderlineCommand
+  | BadgeCommand
+  | ProgressCommand
+  | CounterCommand
+  | BracketCommand
   | ClearCommand
   | WaitCommand
 
@@ -116,6 +122,94 @@ export interface HighlightCommand {
   color?: string
   opacity?: number
   borderRadius?: number
+  animate?: boolean
+}
+
+/** Pulse: pulsing attention ring at a point */
+export interface PulseCommand {
+  type: "pulse"
+  center: Point
+  /** Pulse radius (default 20) */
+  radius?: number
+  color?: string
+  /** Number of pulse rings (default 3) */
+  rings?: number
+  animate?: boolean
+}
+
+/** Underline: animated underline below a region */
+export interface UnderlineCommand {
+  type: "underline"
+  /** Start point (left) */
+  from: Point
+  /** End point (right) */
+  to: Point
+  color?: string
+  strokeWidth?: number
+  /** Wavy style */
+  style?: "straight" | "wavy"
+  animate?: boolean
+}
+
+/** Badge: floating small label/chip */
+export interface BadgeCommand {
+  type: "badge"
+  position: Point
+  text: string
+  color?: string
+  /** Background color */
+  background?: string
+  /** Size variant */
+  size?: "sm" | "md" | "lg"
+  animate?: boolean
+}
+
+/** Progress: animated progress bar */
+export interface ProgressCommand {
+  type: "progress"
+  position: Point
+  /** Bar width */
+  width?: number
+  /** Progress value 0-100 */
+  value: number
+  color?: string
+  /** Background track color */
+  trackColor?: string
+  /** Show percentage label */
+  showLabel?: boolean
+  /** Optional label text (overrides percentage) */
+  label?: string
+  animate?: boolean
+}
+
+/** Counter: animated number counting up */
+export interface CounterCommand {
+  type: "counter"
+  position: Point
+  /** Target value to count to */
+  value: number
+  /** Prefix (e.g., "$", "Y") */
+  prefix?: string
+  /** Suffix (e.g., "%", "B") */
+  suffix?: string
+  color?: string
+  fontSize?: number
+  animate?: boolean
+}
+
+/** Bracket: curly brace grouping items */
+export interface BracketCommand {
+  type: "bracket"
+  /** Start point */
+  from: Point
+  /** End point */
+  to: Point
+  /** Which side the bracket curves to */
+  direction?: "left" | "right"
+  color?: string
+  strokeWidth?: number
+  /** Optional label at the bracket center */
+  label?: string
   animate?: boolean
 }
 
@@ -200,6 +294,18 @@ export function describeCommand(cmd: PresentationCommand): string {
       return `Highlight (${cmd.region.x}, ${cmd.region.y}) ${cmd.region.width}x${cmd.region.height}`
     case "card":
       return `Card "${cmd.title || cmd.content?.slice(0, 20) || ""}"`
+    case "pulse":
+      return `Pulse (${cmd.center.x},${cmd.center.y}) r=${cmd.radius ?? 20}`
+    case "underline":
+      return `Underline (${cmd.from.x},${cmd.from.y}) -> (${cmd.to.x},${cmd.to.y}) ${cmd.style ?? "straight"}`
+    case "badge":
+      return `Badge "${cmd.text}"`
+    case "progress":
+      return `Progress ${cmd.value}%${cmd.label ? ` "${cmd.label}"` : ""}`
+    case "counter":
+      return `Counter ${cmd.prefix ?? ""}${cmd.value}${cmd.suffix ?? ""}`
+    case "bracket":
+      return `Bracket (${cmd.from.x},${cmd.from.y}) -> (${cmd.to.x},${cmd.to.y})${cmd.label ? ` "${cmd.label}"` : ""}`
     case "clear":
       return "Clear canvas"
     case "wait":

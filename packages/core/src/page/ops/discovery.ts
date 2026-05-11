@@ -6,6 +6,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import matter from "gray-matter";
 import type { PageConfig, StaticPageConfig, MarkdownPageConfig, ServerPageConfig, ProxyPageConfig } from "./types";
 
 const SKILL_FILE = "SKILL.md";
@@ -23,7 +24,6 @@ export async function parseSkillMd(
   }
 
   const content = readFileSync(skillPath, "utf-8");
-  const matter = (await import("gray-matter")).default;
   const { data, content: markdownContent } = matter(content);
 
   // Validate required fields

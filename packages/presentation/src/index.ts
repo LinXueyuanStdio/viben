@@ -7,6 +7,12 @@ export type {
   CircleCommand,
   HighlightCommand,
   CardCommand,
+  PulseCommand,
+  UnderlineCommand,
+  BadgeCommand,
+  ProgressCommand,
+  CounterCommand,
+  BracketCommand,
   ClearCommand,
   WaitCommand,
   Point,
@@ -44,6 +50,12 @@ export { TextAnnotation } from "./overlays/text-annotation"
 export { CircleAnnotation } from "./overlays/circle-annotation"
 export { Highlight } from "./overlays/highlight"
 export { Card } from "./overlays/card"
+export { Pulse } from "./overlays/pulse"
+export { Underline } from "./overlays/underline"
+export { Badge } from "./overlays/badge"
+export { Progress } from "./overlays/progress"
+export { Counter } from "./overlays/counter"
+export { Bracket } from "./overlays/bracket"
 
 // Main components
 export { PresentationOverlay } from "./components/presentation-overlay"

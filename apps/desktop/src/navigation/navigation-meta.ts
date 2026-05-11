@@ -372,6 +372,8 @@ export function getWorkspaceSectionLabel(section?: WorkspaceSection): string {
 }
 
 // ─── Location URL Conversion (formerly location.ts) ──────────────────────────
+// @deprecated — These functions are kept only for persist migration and legacy compat.
+// New code should use registry.build() / registry.match() from route-registry.ts.
 
 function decodePathPart(value: string): string {
   try { return decodeURIComponent(value); } catch { return value; }
@@ -427,6 +429,7 @@ function buildDetailQuery(
   return query ? `?${query}` : "";
 }
 
+/** @deprecated Use registry.build() instead — kept only for persist migration in tab-store */
 export function locationToUrl(location: DesktopLocation): string {
   switch (location.kind) {
     case "workspace-home":
@@ -478,6 +481,7 @@ export function locationToUrl(location: DesktopLocation): string {
   }
 }
 
+/** @deprecated Use registry.match() instead — kept only for legacy compatibility */
 export function urlToLocation(url: string): DesktopLocation | null {
   const parsed = new URL(url, "http://desktop.local");
   const pathname = parsed.pathname;

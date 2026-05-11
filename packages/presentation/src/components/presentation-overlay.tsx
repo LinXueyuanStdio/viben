@@ -6,6 +6,12 @@ import { TextAnnotation } from "../overlays/text-annotation"
 import { CircleAnnotation } from "../overlays/circle-annotation"
 import { Highlight } from "../overlays/highlight"
 import { Card } from "../overlays/card"
+import { Pulse } from "../overlays/pulse"
+import { Underline } from "../overlays/underline"
+import { Badge } from "../overlays/badge"
+import { Progress } from "../overlays/progress"
+import { Counter } from "../overlays/counter"
+import { Bracket } from "../overlays/bracket"
 
 export interface PresentationOverlayProps {
   /** Whether the overlay is active */
@@ -37,6 +43,18 @@ function CommandRenderer({ command }: { command: PresentationCommand }) {
       return <Highlight command={command} />
     case "card":
       return <Card command={command} />
+    case "pulse":
+      return <Pulse command={command} />
+    case "underline":
+      return <Underline command={command} />
+    case "badge":
+      return <Badge command={command} />
+    case "progress":
+      return <Progress command={command} />
+    case "counter":
+      return <Counter command={command} />
+    case "bracket":
+      return <Bracket command={command} />
     case "clear":
     case "wait":
       return null
@@ -216,6 +234,11 @@ function PresentationKeyframes() {
           opacity: 1;
           transform: translateY(0) scale(1);
         }
+      }
+
+      @keyframes presentationPulse {
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+        100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
       }
     `}</style>
   )

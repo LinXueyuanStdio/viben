@@ -50,8 +50,8 @@
   --brand-amber-700: oklch(0.52 0.16 75);
 
   --font-serif: 'Crimson Pro', 'Georgia', serif;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Text', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
@@ -60,30 +60,7 @@
   --radius-2xl: 2rem;
 }
 
-.dark {
-  --background: var(--neutral-900);
-  --foreground: var(--neutral-50);
-  --card: var(--neutral-800);
-  --card-foreground: var(--neutral-50);
-  --popover: var(--neutral-800);
-  --popover-foreground: var(--neutral-50);
-  --primary: var(--brand-amber-500);
-  --primary-foreground: var(--neutral-900);
-  --secondary: var(--neutral-700);
-  --secondary-foreground: var(--neutral-50);
-  --muted: var(--neutral-800);
-  --muted-foreground: var(--neutral-400);
-  --accent: var(--neutral-700);
-  --accent-foreground: var(--neutral-50);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(1 0 0);
-  --border: var(--neutral-700);
-  --input: var(--neutral-700);
-  --ring: var(--brand-amber-400);
-  --surface: var(--neutral-800);
-  --surface-elevated: var(--neutral-700);
-}
-
+/* ===== Light Theme ===== */
 :root {
   --background: var(--neutral-50);
   --foreground: var(--neutral-900);
@@ -108,10 +85,202 @@
   --surface-elevated: var(--neutral-100);
 }
 
+/* ===== Dark Theme ===== */
+.dark {
+  --background: oklch(0.13 0.003 75);
+  --foreground: var(--neutral-50);
+  --card: oklch(0.17 0.003 75);
+  --card-foreground: var(--neutral-50);
+  --popover: oklch(0.19 0.003 75);
+  --popover-foreground: var(--neutral-50);
+  --primary: var(--brand-amber-500);
+  --primary-foreground: var(--neutral-900);
+  --secondary: oklch(0.21 0.004 75);
+  --secondary-foreground: var(--neutral-50);
+  --muted: oklch(0.19 0.003 75);
+  --muted-foreground: var(--neutral-400);
+  --accent: oklch(0.22 0.004 75);
+  --accent-foreground: var(--neutral-50);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.24 0.004 75);
+  --input: oklch(0.24 0.004 75);
+  --ring: var(--brand-amber-400);
+  --surface: oklch(0.17 0.003 75);
+  --surface-elevated: oklch(0.22 0.004 75);
+}
+
+/* ===== Base ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body, #root { width: 100%; height: 100%; overflow: hidden; }
 body {
   font-family: var(--font-sans);
   background: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== Sidebar ===== */
+.sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.sidebar-header {
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  z-index: 10;
+}
+
+.sidebar-icon-btn {
+  color: var(--muted-foreground);
+}
+.sidebar-icon-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: var(--border);
+  opacity: 0.6;
+}
+
+/* ===== Upload Button ===== */
+.upload-btn {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border: 1px dashed var(--border);
+}
+.upload-btn:hover {
+  background: var(--accent);
+  border-color: var(--muted-foreground);
+}
+
+/* ===== Player Controls ===== */
+.ctrl-btn {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  border: none;
+}
+.ctrl-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+  transform: scale(1.08);
+}
+.ctrl-btn:active {
+  transform: scale(0.95);
+}
+
+.play-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px color-mix(in oklch, var(--primary) 40%, transparent);
+}
+.play-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 4px 12px color-mix(in oklch, var(--primary) 50%, transparent);
+}
+.play-btn:active {
+  transform: scale(0.96);
+}
+
+.speed-badge {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+}
+
+/* ===== Progress Bar ===== */
+.progress-track {
+  background: var(--secondary);
+}
+.progress-track:hover {
+  height: 6px;
+}
+.progress-fill {
+  background: var(--primary);
+}
+
+/* ===== Navigation Items ===== */
+.nav-item {
+  color: var(--muted-foreground);
+  font-weight: 450;
+}
+.nav-item:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.nav-item.active {
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+  color: var(--primary);
+}
+.nav-item.active .nav-icon {
+  background: color-mix(in oklch, var(--primary) 18%, transparent);
+}
+
+.nav-icon {
+  color: inherit;
+}
+
+/* ===== Model Chips ===== */
+.model-chip {
+  background: var(--secondary);
+  color: var(--muted-foreground);
+}
+.model-chip:hover {
+  background: var(--accent);
+}
+
+/* ===== Main Content ===== */
+.main-content {
+  background: var(--background);
+  position: relative;
+}
+
+/* ===== Input Area ===== */
+.input-area {
+  position: relative;
+}
+.input-area::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: var(--border);
+  opacity: 0.5;
+}
+
+/* ===== Scrollbar ===== */
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* ===== Smooth transitions ===== */
+.sidebar,
+.main-content {
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+/* ===== Focus ring ===== */
+button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: inherit;
 }
