@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Compétences",
       "preferences": "Préférences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Pages"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Fichiers de configuration d'agent (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "kanban": {
     "resizeColumn": "Redimensionner la colonne {{name}}",
     "taskCopy": "{{title}} (copie)"
+  },
+  "screenshot": {
+    "loadFailed": "Échec du chargement de la capture d'écran, appuyez sur Échap pour quitter et réessayer",
+    "loading": "Chargement de la capture d'écran...",
+    "textPlaceholder": "Saisir du texte...",
+    "undoTooltip": "Annuler (Ctrl+Z)",
+    "confirmTooltip": "Confirmer (Entrée)",
+    "cancelTooltip": "Annuler (Échap)"
+  },
+  "workspaceWeb": {
+    "notFound": "Espace de travail introuvable.",
+    "invalidPage": "Page web invalide",
+    "missingUrl": "La page web de l'espace de travail demandée n'a pas de paramètre de requête `url` valide.",
+    "backToFiles": "Retour aux fichiers",
+    "openExternally": "Ouvrir en externe"
+  },
+  "execApproval": {
+    "title": "Approbation d'outil requise",
+    "unknownCommand": "Commande inconnue",
+    "allow": "Autoriser",
+    "always": "Toujours autoriser",
+    "reject": "Rejeter"
   }
 }

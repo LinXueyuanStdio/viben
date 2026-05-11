@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Einstellungen",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Seiten"
     },
     "agentConfigs": "Agenten",
     "agentConfigsDesc": "Agenten-Konfigurationsdateien (.claude/agents/*.md)",
@@ -5761,5 +5762,27 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "screenshot": {
+    "loadFailed": "Screenshot konnte nicht geladen werden. Drücken Sie Esc zum Beenden und versuchen Sie es erneut",
+    "loading": "Screenshot wird geladen...",
+    "textPlaceholder": "Text eingeben...",
+    "undoTooltip": "Rückgängig (Strg+Z)",
+    "confirmTooltip": "Bestätigen (Enter)",
+    "cancelTooltip": "Abbrechen (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Arbeitsbereich nicht gefunden.",
+    "invalidPage": "Ungültige Webseite",
+    "missingUrl": "Der angeforderten Arbeitsbereich-Webseite fehlt ein gültiger `url`-Abfrageparameter.",
+    "backToFiles": "Zurück zu Dateien",
+    "openExternally": "Extern öffnen"
+  },
+  "execApproval": {
+    "title": "Tool-Genehmigung erforderlich",
+    "unknownCommand": "Unbekannter Befehl",
+    "allow": "Erlauben",
+    "always": "Immer erlauben",
+    "reject": "Ablehnen"
   }
 }

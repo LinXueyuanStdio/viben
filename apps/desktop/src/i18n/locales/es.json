@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Habilidades",
       "preferences": "Preferencias",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Páginas"
     },
     "agentConfigs": "Agentes",
     "agentConfigsDesc": "Archivos de configuración de agente (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "screenshot": {
+    "loadFailed": "Error al cargar la captura de pantalla, presione Esc para salir y reintentar",
+    "loading": "Cargando captura de pantalla...",
+    "textPlaceholder": "Introducir texto...",
+    "undoTooltip": "Deshacer (Ctrl+Z)",
+    "confirmTooltip": "Confirmar (Enter)",
+    "cancelTooltip": "Cancelar (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Espacio de trabajo no encontrado.",
+    "invalidPage": "Página web no válida",
+    "missingUrl": "La página web del espacio de trabajo solicitada no tiene un parámetro de consulta `url` válido.",
+    "backToFiles": "Volver a archivos",
+    "openExternally": "Abrir externamente"
+  },
+  "execApproval": {
+    "title": "Aprobación de herramienta requerida",
+    "unknownCommand": "Comando desconocido",
+    "allow": "Permitir",
+    "always": "Siempre permitir",
+    "reject": "Rechazar"
   }
 }

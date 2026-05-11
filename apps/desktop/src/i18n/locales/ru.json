@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Страницы"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "screenshot": {
+    "loadFailed": "Не удалось загрузить скриншот, нажмите Esc для выхода и повторите попытку",
+    "loading": "Загрузка скриншота...",
+    "textPlaceholder": "Введите текст...",
+    "undoTooltip": "Отменить (Ctrl+Z)",
+    "confirmTooltip": "Подтвердить (Enter)",
+    "cancelTooltip": "Отмена (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Рабочее пространство не найдено.",
+    "invalidPage": "Недопустимая веб-страница",
+    "missingUrl": "Запрашиваемая веб-страница рабочего пространства не содержит допустимого параметра запроса `url`.",
+    "backToFiles": "Вернуться к файлам",
+    "openExternally": "Открыть внешне"
+  },
+  "execApproval": {
+    "title": "Требуется одобрение инструмента",
+    "unknownCommand": "Неизвестная команда",
+    "allow": "Разрешить",
+    "always": "Всегда разрешать",
+    "reject": "Отклонить"
   }
 }

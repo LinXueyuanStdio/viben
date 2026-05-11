@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Pagina's"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "kanban": {
     "resizeColumn": "Kolom {{name}} aanpassen",
     "taskCopy": "{{title}} (kopie)"
+  },
+  "screenshot": {
+    "loadFailed": "Screenshot laden mislukt, druk op Esc om af te sluiten en opnieuw te proberen",
+    "loading": "Screenshot laden...",
+    "textPlaceholder": "Tekst invoeren...",
+    "undoTooltip": "Ongedaan maken (Ctrl+Z)",
+    "confirmTooltip": "Bevestigen (Enter)",
+    "cancelTooltip": "Annuleren (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Werkruimte niet gevonden.",
+    "invalidPage": "Ongeldige webpagina",
+    "missingUrl": "De gevraagde werkruimte-webpagina mist een geldige `url`-queryparameter.",
+    "backToFiles": "Terug naar bestanden",
+    "openExternally": "Extern openen"
+  },
+  "execApproval": {
+    "title": "Toolgoedkeuring vereist",
+    "unknownCommand": "Onbekend commando",
+    "allow": "Toestaan",
+    "always": "Altijd toestaan",
+    "reject": "Weigeren"
   }
 }

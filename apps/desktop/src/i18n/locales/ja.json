@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "スキル",
       "preferences": "設定",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "ページ"
     },
     "agentConfigs": "エージェント",
     "agentConfigsDesc": "エージェント設定ファイル（.claude/agents/*.md）",
@@ -5764,5 +5765,27 @@
   "kanban": {
     "resizeColumn": "{{name}} 列のリサイズ",
     "taskCopy": "{{title}} (コピー)"
+  },
+  "screenshot": {
+    "loadFailed": "スクリーンショットの読み込みに失敗しました。Esc キーを押して終了し、再試行してください",
+    "loading": "スクリーンショットを読み込み中...",
+    "textPlaceholder": "テキストを入力...",
+    "undoTooltip": "元に戻す (Ctrl+Z)",
+    "confirmTooltip": "確認 (Enter)",
+    "cancelTooltip": "キャンセル (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "ワークスペースが見つかりません。",
+    "invalidPage": "無効なウェブページ",
+    "missingUrl": "リクエストされたワークスペースのウェブページに有効な `url` クエリパラメータがありません。",
+    "backToFiles": "ファイルに戻る",
+    "openExternally": "外部で開く"
+  },
+  "execApproval": {
+    "title": "ツール実行の承認が必要です",
+    "unknownCommand": "不明なコマンド",
+    "allow": "許可",
+    "always": "常に許可",
+    "reject": "拒否"
   }
 }

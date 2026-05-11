@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Trang"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "kanban": {
     "resizeColumn": "Thay đổi kích thước cột {{name}}",
     "taskCopy": "{{title}} (bản sao)"
+  },
+  "screenshot": {
+    "loadFailed": "Tải ảnh chụp màn hình thất bại, nhấn Esc để thoát và thử lại",
+    "loading": "Đang tải ảnh chụp màn hình...",
+    "textPlaceholder": "Nhập văn bản...",
+    "undoTooltip": "Hoàn tác (Ctrl+Z)",
+    "confirmTooltip": "Xác nhận (Enter)",
+    "cancelTooltip": "Hủy (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Không tìm thấy không gian làm việc.",
+    "invalidPage": "Trang web không hợp lệ",
+    "missingUrl": "Trang web không gian làm việc được yêu cầu thiếu tham số truy vấn `url` hợp lệ.",
+    "backToFiles": "Quay lại tệp",
+    "openExternally": "Mở bên ngoài"
+  },
+  "execApproval": {
+    "title": "Cần phê duyệt công cụ",
+    "unknownCommand": "Lệnh không xác định",
+    "allow": "Cho phép",
+    "always": "Luôn cho phép",
+    "reject": "Từ chối"
   }
 }

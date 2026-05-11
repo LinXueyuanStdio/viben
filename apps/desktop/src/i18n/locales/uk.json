@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Сторінки"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "kanban": {
     "resizeColumn": "Змінити розмір стовпця {{name}}",
     "taskCopy": "{{title}} (копія)"
+  },
+  "screenshot": {
+    "loadFailed": "Не вдалося завантажити знімок екрана, натисніть Esc для виходу та спробуйте знову",
+    "loading": "Завантаження знімка екрана...",
+    "textPlaceholder": "Введіть текст...",
+    "undoTooltip": "Скасувати (Ctrl+Z)",
+    "confirmTooltip": "Підтвердити (Enter)",
+    "cancelTooltip": "Скасувати (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Робочий простір не знайдено.",
+    "invalidPage": "Недійсна веб-сторінка",
+    "missingUrl": "Запитувана веб-сторінка робочого простору не містить дійсного параметра запиту `url`.",
+    "backToFiles": "Повернутися до файлів",
+    "openExternally": "Відкрити зовні"
+  },
+  "execApproval": {
+    "title": "Потрібне схвалення інструменту",
+    "unknownCommand": "Невідома команда",
+    "allow": "Дозволити",
+    "always": "Завжди дозволяти",
+    "reject": "Відхилити"
   }
 }

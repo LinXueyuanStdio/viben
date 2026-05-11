@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "पेज"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "kanban": {
     "resizeColumn": "{{name}} कॉलम का आकार बदलें",
     "taskCopy": "{{title}} (प्रतिलिपि)"
+  },
+  "screenshot": {
+    "loadFailed": "स्क्रीनशॉट लोड करने में विफल, बाहर निकलने के लिए Esc दबाएं और पुनः प्रयास करें",
+    "loading": "स्क्रीनशॉट लोड हो रहा है...",
+    "textPlaceholder": "टेक्स्ट दर्ज करें...",
+    "undoTooltip": "पूर्ववत करें (Ctrl+Z)",
+    "confirmTooltip": "पुष्टि करें (Enter)",
+    "cancelTooltip": "रद्द करें (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "कार्यक्षेत्र नहीं मिला।",
+    "invalidPage": "अमान्य वेब पृष्ठ",
+    "missingUrl": "अनुरोधित कार्यक्षेत्र वेब पृष्ठ में एक मान्य `url` क्वेरी पैरामीटर गायब है।",
+    "backToFiles": "फ़ाइलों पर वापस जाएं",
+    "openExternally": "बाहरी रूप से खोलें"
+  },
+  "execApproval": {
+    "title": "टूल अनुमोदन आवश्यक",
+    "unknownCommand": "अज्ञात कमांड",
+    "allow": "अनुमति दें",
+    "always": "हमेशा अनुमति दें",
+    "reject": "अस्वीकार करें"
   }
 }

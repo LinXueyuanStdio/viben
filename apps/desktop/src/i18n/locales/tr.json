@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Sayfalar"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5761,5 +5762,27 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "screenshot": {
+    "loadFailed": "Ekran görüntüsü yüklenemedi, çıkmak için Esc'ye basın ve tekrar deneyin",
+    "loading": "Ekran görüntüsü yükleniyor...",
+    "textPlaceholder": "Metin girin...",
+    "undoTooltip": "Geri al (Ctrl+Z)",
+    "confirmTooltip": "Onayla (Enter)",
+    "cancelTooltip": "İptal (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Çalışma alanı bulunamadı.",
+    "invalidPage": "Geçersiz web sayfası",
+    "missingUrl": "İstenen çalışma alanı web sayfasında geçerli bir `url` sorgu parametresi eksik.",
+    "backToFiles": "Dosyalara dön",
+    "openExternally": "Harici olarak aç"
+  },
+  "execApproval": {
+    "title": "Araç onayı gerekli",
+    "unknownCommand": "Bilinmeyen komut",
+    "allow": "İzin ver",
+    "always": "Her zaman izin ver",
+    "reject": "Reddet"
   }
 }

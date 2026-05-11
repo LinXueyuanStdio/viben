@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Sidor"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5764,5 +5765,27 @@
   "commands": {
     "helpAvailable": "{{count}} commands available. Type / to browse.",
     "helpTip": "Use ↑↓ to navigate, Enter to select"
+  },
+  "screenshot": {
+    "loadFailed": "Kunde inte ladda skärmdump, tryck Esc för att avsluta och försök igen",
+    "loading": "Laddar skärmdump...",
+    "textPlaceholder": "Ange text...",
+    "undoTooltip": "Ångra (Ctrl+Z)",
+    "confirmTooltip": "Bekräfta (Enter)",
+    "cancelTooltip": "Avbryt (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Arbetsytan hittades inte.",
+    "invalidPage": "Ogiltig webbsida",
+    "missingUrl": "Den begärda arbetsytans webbsida saknar en giltig `url`-frågeparameter.",
+    "backToFiles": "Tillbaka till filer",
+    "openExternally": "Öppna externt"
+  },
+  "execApproval": {
+    "title": "Verktyggodkännande krävs",
+    "unknownCommand": "Okänt kommando",
+    "allow": "Tillåt",
+    "always": "Tillåt alltid",
+    "reject": "Avvisa"
   }
 }
