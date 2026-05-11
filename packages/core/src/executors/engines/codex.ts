@@ -367,8 +367,9 @@ export class CodexExecutor extends BaseExecutor {
         args.push(prompt);
       }
     } else {
-      // New session: codex [OPTIONS] [PROMPT] (interactive) or codex exec [OPTIONS] [PROMPT]
-      // For chat, we use interactive mode
+      // New session: npx -y @openai/codex exec [OPTIONS] [PROMPT]
+      args.push("exec");
+
       if (model || this.config.model) {
         args.push("-m", model || this.config.model!);
       }
@@ -480,12 +481,17 @@ export class CodexExecutor extends BaseExecutor {
       }
     }
 
-    const spawnEnv = {
+    const spawnEnv: Record<string, string | undefined> = {
       ...process.env,
       ...this.config.env,
       ...extraEnv,
       ...this.getNonInteractiveEnv(),
     };
+
+    // Inject follow-up prompt as env var when resuming with a prompt
+    if ((resume || sessionId) && prompt) {
+      spawnEnv.CODEX_FOLLOWUP_PROMPT = prompt;
+    }
 
     const child = spawn(npxPath, args, {
       cwd,
