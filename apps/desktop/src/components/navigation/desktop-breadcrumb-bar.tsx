@@ -73,12 +73,12 @@ export function DesktopBreadcrumbBar({
     return sectionSegment?.meta?.section;
   }, [segments]);
 
-  const currentArea = useMemo<"home" | "apps" | "section">(() => {
-    const appsHref = workspace?.id
-      ? `/workspace/${encodeURIComponent(workspace.id)}/apps`
+  const currentArea = useMemo<"home" | "pages" | "section">(() => {
+    const pagesHref = workspace?.id
+      ? `/workspace/${encodeURIComponent(workspace.id)}/pages`
       : null;
-    if (appsHref && segments.some((segment) => segment.href === appsHref)) {
-      return "apps";
+    if (pagesHref && segments.some((segment) => segment.href === pagesHref)) {
+      return "pages";
     }
     if (currentSection) {
       return "section";
@@ -128,7 +128,7 @@ export function DesktopBreadcrumbBar({
         }
       }
 
-      if (currentArea === "apps") {
+      if (currentArea === "pages") {
         openWorkspaceApps(workspaceId);
         return;
       }
@@ -246,7 +246,7 @@ export function DesktopBreadcrumbBar({
         return;
       }
       if (item.href) {
-        if (item.meta?.workspaceId && item.href === `/workspace/${encodeURIComponent(item.meta.workspaceId)}/apps`) {
+        if (item.meta?.workspaceId && item.href === `/workspace/${encodeURIComponent(item.meta.workspaceId)}/pages`) {
           openWorkspaceApps(item.meta.workspaceId);
           return;
         }

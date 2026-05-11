@@ -1,21 +1,20 @@
 import { useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getTabViewModel, useTabStore } from "@/stores/tab-store";
+import type { TabNavigationState, TabViewModel } from "@/stores/tab-store";
 import type { IconData } from "@/components/ui/icon-picker";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import {
   type DesktopLocation,
   type PushPageOptions,
-  type TabNavigationState,
   locationToUrl,
-  urlToLocation,
   normalizeSettingsSection,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
 import { registry } from "@/navigation/route-registry";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
-import type { TabViewModel } from "@/stores/tab-store";
+import type { PageConfig } from "@/hooks/use-pages";
 
 // ─── Hook 1: useTabList ─────────────────────────────────────────────────────
 // Returns the tab view model list. Only re-renders when the tabs array changes.
@@ -125,9 +124,6 @@ export function useTabActions(): TabActions {
   const setActiveTab = useTabStore((state) => state.setActiveTab);
   const replaceLocationStore = useTabStore((state) => state.replaceLocation);
   const pushLocationStore = useTabStore((state) => state.pushLocation);
-  const pushPageStore = useTabStore((state) => state.pushPage);
-  const popToStore = useTabStore((state) => state.popTo);
-  const resetStackStore = useTabStore((state) => state.resetStack);
   const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
   const getCurrentNavigationState = useTabStore(
     (state) => state.getCurrentNavigationState
@@ -140,22 +136,20 @@ export function useTabActions(): TabActions {
         breadcrumbStack?: BreadcrumbStackItem[];
         title?: string;
         icon?: IconData;
-        workspaceId?: string;
       }
-    ) => {
+    ): { url: string; breadcrumbStack: BreadcrumbStackItem[] } => {
+      const url = locationToUrl(location);
+
       if (input?.breadcrumbStack?.length) {
-        return { breadcrumbStack: input.breadcrumbStack };
+        return { url, breadcrumbStack: input.breadcrumbStack };
       }
 
-      const url = locationToUrl(location);
       const stack = buildColdStartBreadcrumb(url, {
         label: input?.title,
         icon: input?.icon,
       });
 
-      // Cast: breadcrumb-builder's BreadcrumbStackItem is structurally compatible
-      // with navigation-meta's version at runtime
-      return { breadcrumbStack: stack as unknown as BreadcrumbStackItem[] };
+      return { url, breadcrumbStack: stack };
     },
     []
   );
@@ -168,12 +162,12 @@ export function useTabActions(): TabActions {
         openInNewTab?: boolean;
       }
     ) => {
-      const resolvedNavigation = resolveNavigation(location, {
+      const resolved = resolveNavigation(location, {
         breadcrumbStack: options?.breadcrumbStack,
       });
       const navigationState: TabNavigationState = {
-        location,
-        breadcrumbStack: resolvedNavigation.breadcrumbStack,
+        url: resolved.url,
+        breadcrumbStack: resolved.breadcrumbStack,
       };
 
       if (options?.openInNewTab || !activeTabId) {
@@ -201,12 +195,12 @@ export function useTabActions(): TabActions {
         });
       }
 
-      const resolvedNavigation = resolveNavigation(location, {
+      const resolved = resolveNavigation(location, {
         breadcrumbStack: patch?.breadcrumbStack,
       });
       replaceLocationStore(activeTabId, {
-        location,
-        breadcrumbStack: resolvedNavigation.breadcrumbStack,
+        url: resolved.url,
+        breadcrumbStack: resolved.breadcrumbStack,
         activeIndexPath: patch?.activeIndexPath,
         activeNodeId: patch?.activeNodeId,
       });
@@ -227,12 +221,12 @@ export function useTabActions(): TabActions {
         });
       }
 
-      const resolvedNavigation = resolveNavigation(location, {
+      const resolved = resolveNavigation(location, {
         breadcrumbStack: patch?.breadcrumbStack,
       });
       pushLocationStore(activeTabId, {
-        location,
-        breadcrumbStack: resolvedNavigation.breadcrumbStack,
+        url: resolved.url,
+        breadcrumbStack: resolved.breadcrumbStack,
         activeIndexPath: patch?.activeIndexPath,
         activeNodeId: patch?.activeNodeId,
       });
@@ -245,46 +239,64 @@ export function useTabActions(): TabActions {
     (
       item: BreadcrumbStackItem,
       nextLocation: DesktopLocation,
-      options?: PushPageOptions
+      _options?: PushPageOptions
     ) => {
       if (!activeTabId) {
-        const resolvedNavigation = resolveNavigation(nextLocation, {
+        const resolved = resolveNavigation(nextLocation, {
           title: item.label,
           icon: item.icon,
         });
         return openLocation(nextLocation, {
-          breadcrumbStack: [...resolvedNavigation.breadcrumbStack, item],
+          breadcrumbStack: [...resolved.breadcrumbStack, item],
           openInNewTab: true,
         });
       }
 
-      pushPageStore(activeTabId, item, nextLocation, options);
+      // Push: append item to current breadcrumb stack
+      const url = locationToUrl(nextLocation);
+      const currentState = getCurrentNavigationState(activeTabId);
+      const currentStack = currentState?.breadcrumbStack ?? [];
+      pushLocationStore(activeTabId, {
+        url,
+        breadcrumbStack: [...currentStack, item],
+      });
       return activeTabId;
     },
-    [activeTabId, openLocation, pushPageStore, resolveNavigation]
+    [activeTabId, getCurrentNavigationState, openLocation, pushLocationStore, resolveNavigation]
   );
 
   const popTo = useCallback(
     (index: number) => {
       if (!activeTabId) return;
-      popToStore(activeTabId, index);
+      const currentState = getCurrentNavigationState(activeTabId);
+      if (!currentState) return;
+
+      const targetItem = currentState.breadcrumbStack[index];
+      if (!targetItem?.href) return;
+
+      // Navigate to the breadcrumb target URL with truncated stack
+      replaceLocationStore(activeTabId, {
+        url: targetItem.href,
+        breadcrumbStack: currentState.breadcrumbStack.slice(0, index + 1),
+      });
     },
-    [activeTabId, popToStore]
+    [activeTabId, getCurrentNavigationState, replaceLocationStore]
   );
 
   const resetStack = useCallback(
     (next: TabNavigationState) => {
       if (!activeTabId) {
-        return openLocation(next.location, {
+        const location = buildLocationFromLegacyUrl(next.url);
+        return openLocation(location, {
           breadcrumbStack: next.breadcrumbStack,
           openInNewTab: true,
         });
       }
 
-      resetStackStore(activeTabId, next);
+      replaceLocationStore(activeTabId, next);
       return activeTabId;
     },
-    [activeTabId, openLocation, resetStackStore]
+    [activeTabId, openLocation, replaceLocationStore]
   );
 
   const navigateTo = useCallback(
@@ -303,35 +315,29 @@ export function useTabActions(): TabActions {
         );
       }
 
+      // Use URL-based navigation directly
+      const stack = buildColdStartBreadcrumb(url, {
+        label: input.label,
+        icon: input.icon,
+      });
+
       if (activeTabId) {
-        const location = buildLocationFromLegacyUrl(url);
-        const resolvedNavigation = resolveNavigation(location, {
-          title: input.label,
-          icon: input.icon,
-          workspaceId: input.meta?.workspaceId,
-        });
         replaceLocationStore(activeTabId, {
-          location,
-          breadcrumbStack: resolvedNavigation.breadcrumbStack,
+          url,
+          breadcrumbStack: stack,
         });
         return activeTabId;
       }
 
-      const location = buildLocationFromLegacyUrl(url);
-      const resolvedNavigation = resolveNavigation(location, {
-        title: input.label,
-        icon: input.icon,
-        workspaceId: input.meta?.workspaceId,
-      });
       return openTab({
         pinned: false,
         navigationState: {
-          location,
-          breadcrumbStack: resolvedNavigation.breadcrumbStack,
+          url,
+          breadcrumbStack: stack,
         },
       });
     },
-    [activeTabId, openLocation, openTab, replaceLocationStore, resolveNavigation]
+    [activeTabId, openLocation, openTab, replaceLocationStore]
   );
 
   const openPageTab = useCallback(
@@ -421,7 +427,7 @@ export function useTabActions(): TabActions {
   const getTabLink = useCallback(
     (tabId: string) => {
       const state = getCurrentNavigationState(tabId);
-      return state ? locationToUrl(state.location) : null;
+      return state?.url ?? null;
     },
     [getCurrentNavigationState]
   );
@@ -432,32 +438,41 @@ export function useTabActions(): TabActions {
       const state = getCurrentNavigationState(tabId);
       const tabView = tab ? getTabViewModel(tab) : null;
 
-      if (!tab || !state || !("workspaceId" in state.location)) {
+      if (!tab || !state) {
         return false;
       }
 
-      if (state.location.kind === "workspace-page") {
-        const workspace = getWorkspace(state.location.workspaceId);
+      // Use registry match to extract route info from the URL
+      const match = registry.match(state.url);
+      const workspaceId = match?.params.workspaceId;
+      if (!workspaceId) {
+        return false;
+      }
+
+      const pageSlug = match?.params.pageSlug;
+      const isPageRoute = match?.pattern === "/workspace/:workspaceId/page/:pageSlug+";
+
+      if (isPageRoute && pageSlug) {
+        const workspace = getWorkspace(workspaceId);
         if (!workspace?.path) {
           return false;
         }
 
         await invoke("open_workspace_page_preview_window", {
-          workspaceId: state.location.workspaceId,
+          workspaceId,
           workspacePath: workspace.path,
-          slug: state.location.pageSlug,
-          title: tabView?.label ?? state.location.pageSlug,
+          slug: pageSlug,
+          title: tabView?.label ?? pageSlug,
           view: tab.viewMode ?? "page",
         });
         closeTabStore(tabId);
         return true;
       }
 
-      const routePath = locationToUrl(state.location);
       await invoke("open_workspace_in_new_window", {
-        workspaceId: state.location.workspaceId,
-        routePath,
-        title: tabView?.label ?? routePath,
+        workspaceId,
+        routePath: state.url,
+        title: tabView?.label ?? state.url,
       });
       closeTabStore(tabId);
       return true;
@@ -592,12 +607,7 @@ function safeHostname(url: string): string {
 }
 
 function buildLocationFromLegacyUrl(url: string): DesktopLocation {
-  const parsed = urlToLocation(url);
-  if (parsed) {
-    return parsed;
-  }
-
-  if (url === "/documents") {
+  if (url === "/documents" || url === "/workspace") {
     return { kind: "documents" };
   }
   if (url === "/devices/pair") {
@@ -612,18 +622,6 @@ function buildLocationFromLegacyUrl(url: string): DesktopLocation {
     return { kind: "global-route", path: url };
   }
 
-  if (url.startsWith("/workspace/page")) {
-    const parsed = new URL(url, "http://desktop.local");
-    const workspaceId = parsed.searchParams.get("workspace_id");
-    const pagePath = parsed.searchParams.get("page_path");
-    return {
-      kind: "workspace-page",
-      workspaceId: workspaceId ?? "global",
-      pageSlug:
-        pagePath?.replace(/^pages\//, "").replace(/\/SKILL\.md$/, "") ?? "page",
-    };
-  }
-
   if (url.startsWith("/workspace/")) {
     const parsed = new URL(url, "http://desktop.local");
     const parts = parsed.pathname.split("/").filter(Boolean);
@@ -636,8 +634,8 @@ function buildLocationFromLegacyUrl(url: string): DesktopLocation {
       return { kind: "workspace-home", workspaceId };
     }
 
-    if (parts[2] === "apps" && !parts[3]) {
-      return { kind: "workspace-apps", workspaceId };
+    if ((parts[2] === "pages" || parts[2] === "apps") && !parts[3]) {
+      return { kind: "workspace-section", workspaceId, section: "pages" };
     }
 
     if (parts[2] === "page" && parts[3]) {

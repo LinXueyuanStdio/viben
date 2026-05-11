@@ -301,7 +301,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           historyIndex: index,
           label:
             state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
-            state.location.kind,
+            state.url,
         }))
         .reverse()
     : [];
@@ -312,7 +312,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           historyIndex: activeTab.historyIndex + offset + 1,
           label:
             state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
-            state.location.kind,
+            state.url,
         }))
     : [];
 

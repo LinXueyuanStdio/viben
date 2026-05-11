@@ -66,7 +66,7 @@ export interface ResolvePageIndexBranchInput {
   pages?: PageConfig[];
   activeWorkspaceId?: string;
   currentSection?: WorkspaceSection;
-  currentArea?: "home" | "apps" | "section";
+  currentArea?: "home" | "pages" | "section";
   currentPageSlug?: string;
   currentSettingsSection?: string;
   allowGithub?: boolean;
@@ -294,7 +294,7 @@ export function buildRootDropdownItems({
   labelGlobalWorkspace,
 }: {
   workspaces?: WorkspaceListItemLike[];
-  currentArea?: "home" | "apps" | "section";
+  currentArea?: "home" | "pages" | "section";
   activeWorkspaceId?: string;
   currentSection?: WorkspaceSection;
   activeHref?: string;
@@ -314,8 +314,8 @@ export function buildRootDropdownItems({
           "Global Workspace"
         : workspace.name;
     const href =
-      currentArea === "apps"
-        ? `/workspace/${encodeURIComponent(workspace.id)}/apps`
+      currentArea === "pages"
+        ? `/workspace/${encodeURIComponent(workspace.id)}/pages`
         : sectionRoutePath
           ? `/workspace/${encodeURIComponent(workspace.id)}/${sectionRoutePath}`
           : `/workspace/${encodeURIComponent(workspace.id)}`;
@@ -562,7 +562,7 @@ export const WORKSPACE_SECTION_DROPDOWN_BUILDERS: Record<
   cron: buildWorkspaceCronDropdownItems,
   ideas: buildWorkspaceIdeasDropdownItems,
   agent: buildWorkspaceAgentsDropdownItems,
-  apps: buildWorkspaceAppsDropdownItems,
+  pages: buildWorkspaceAppsDropdownItems,
   files: buildWorkspaceFilesDropdownItems,
   github: buildWorkspaceGithubDropdownItems,
   "chat-monitor": buildWorkspaceChatMonitorDropdownItems,
@@ -671,14 +671,14 @@ export function resolvePageIndexBranch({
     },
     {
       matches: (input, descriptorId) =>
-        (descriptorId === "virtual-folder" || descriptorId === "workspace-section:apps") &&
+        (descriptorId === "virtual-folder" || descriptorId === "workspace-section:pages") &&
         Boolean(input.segment.meta?.workspaceId) &&
         input.segment.href ===
-          `/workspace/${encodeURIComponent(input.segment.meta?.workspaceId ?? "")}/apps`,
+          `/workspace/${encodeURIComponent(input.segment.meta?.workspaceId ?? "")}/pages`,
       build: (input) =>
         buildWorkspaceAppsDropdownItems({
           workspaceId: input.segment.meta?.workspaceId ?? "",
-          activeSection: "apps",
+          activeSection: "pages",
           buildLabel: input.buildLabel,
           onSelectSection: input.onSelectSection,
           allowGithub: input.allowGithub,

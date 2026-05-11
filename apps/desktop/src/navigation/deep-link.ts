@@ -61,9 +61,9 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
     };
   }
 
-  if (sectionOrKind === "apps") {
+  if (sectionOrKind === "apps" || sectionOrKind === "pages") {
     return {
-      route: { kind: "workspace-apps", workspaceId },
+      route: { kind: "workspace-section", workspaceId, section: "pages" },
       openMode,
     };
   }

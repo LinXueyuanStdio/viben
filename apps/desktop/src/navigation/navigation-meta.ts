@@ -31,7 +31,7 @@ interface BreadcrumbItemDescriptor {
 /** Context keys that an edge injects into the child node's meta */
 
 export type WorkspaceSection =
-  | "apps"
+  | "pages"
   | "chat"
   | "kanban"
   | "cron"
@@ -71,7 +71,6 @@ type LocationUrlSuffix = {
 
 export type DesktopLocation = (
   | { kind: "workspace-home"; workspaceId: string }
-  | { kind: "workspace-apps"; workspaceId: string }
   | {
       kind: "workspace-section";
       workspaceId: string;
@@ -257,7 +256,7 @@ export const GLOBAL_ROUTE_DESCRIPTORS: BreadcrumbItemDescriptor[] = [
 // ─── DAG: Workspace Children ─────────────────────────────────────────────────
 
 export const WORKSPACE_SECTION_DESCRIPTORS: WorkspaceSectionDescriptor[] = [
-  { id: "workspace-section:apps", section: "apps", routePath: "apps", titleKey: "page.pages", fallbackLabel: "Apps", icon: { type: "lucide", value: "layers" }, isContainer: true },
+  { id: "workspace-section:pages", section: "pages", routePath: "pages", titleKey: "page.pages", fallbackLabel: "Pages", icon: { type: "lucide", value: "layout-grid" }, isContainer: true },
   { id: "workspace-section:chat", section: "chat", routePath: "chat", titleKey: "workspace.chat", fallbackLabel: "Chat", icon: { type: "lucide", value: "message-square" } },
   { id: "workspace-section:kanban", section: "kanban", routePath: "kanban", titleKey: "workspace.kanban", fallbackLabel: "Kanban", icon: { type: "lucide", value: "layout-dashboard" } },
   { id: "workspace-section:cron", section: "cron", routePath: "cron", titleKey: "workspace.scheduledTasks", fallbackLabel: "Scheduled Tasks", icon: { type: "lucide", value: "clock" } },
@@ -338,6 +337,7 @@ function isWorkspaceSection(value: string): value is WorkspaceSection {
 
 export function normalizeWorkspaceSection(value: string): WorkspaceSection {
   if (value === "agents") return "agent";
+  if (value === "apps") return "pages";
   if (isWorkspaceSection(value)) return value;
   return "chat";
 }
@@ -434,8 +434,6 @@ export function locationToUrl(location: DesktopLocation): string {
   switch (location.kind) {
     case "workspace-home":
       return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}`, location);
-    case "workspace-apps":
-      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/apps`, location);
     case "workspace-section":
       return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/${location.section}`, location);
     case "workspace-agent-detail":
@@ -532,7 +530,7 @@ export function urlToLocation(url: string): DesktopLocation | null {
   if (segments[0] === "workspace" && segments[1]) {
     const workspaceId = decodePathPart(segments[1]);
     if (segments.length === 2) return { kind: "workspace-home", workspaceId, ...suffix };
-    if (segments[2] === "apps" && !segments[3]) return { kind: "workspace-apps", workspaceId, ...suffix };
+    if ((segments[2] === "pages" || segments[2] === "apps") && !segments[3]) return { kind: "workspace-section", workspaceId, section: "pages", ...suffix };
     if (segments[2] === "agents" && !segments[3]) return { kind: "workspace-section", workspaceId, section: "agent", ...suffix };
     if (segments[2] === "agent" && segments[3]) return { kind: "workspace-agent-detail", workspaceId, agentId: decodePathPart(segments[3]), ...suffix };
     if (segments[2] === "executor" && segments[3]) return { kind: "workspace-executor-detail", workspaceId, executorType: decodePathPart(segments[3]), ...suffix };

@@ -2932,7 +2932,8 @@
       "mcp": "MCP",
       "skills": "技能",
       "preferences": "偏好设置",
-      "agents": "智能体"
+      "agents": "智能体",
+      "pages": "页面"
     },
     "agentConfigs": "智能体配置",
     "agentConfigsDesc": "智能体配置文件 (.claude/agents/*.md)",
@@ -5902,7 +5903,7 @@
     "currentDayDesc": "当前日期（01-31）"
   },
   "page": {
-    "pages": "应用",
+    "pages": "页面",
     "createPage": "创建页面",
     "createSubpage": "创建子页面",
     "openInNewTab": "在新标签页打开",
@@ -6603,5 +6604,27 @@
   },
   "actionSystem": {
     "approvalTitle": "操作审批"
+  },
+  "screenshot": {
+    "loadFailed": "截图加载失败，按 Esc 退出后重试",
+    "loading": "正在加载截图...",
+    "textPlaceholder": "输入文字...",
+    "undoTooltip": "撤销 (Ctrl+Z)",
+    "confirmTooltip": "确认 (Enter)",
+    "cancelTooltip": "取消 (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "未找到工作区。",
+    "invalidPage": "无效的网页",
+    "missingUrl": "请求的工作区网页缺少有效的 `url` 查询参数。",
+    "backToFiles": "返回文件",
+    "openExternally": "在外部打开"
+  },
+  "execApproval": {
+    "title": "需要工具执行审批",
+    "unknownCommand": "未知命令",
+    "allow": "允许",
+    "always": "始终允许",
+    "reject": "拒绝"
   }
 }

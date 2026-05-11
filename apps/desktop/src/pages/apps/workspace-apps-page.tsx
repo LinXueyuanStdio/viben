@@ -58,7 +58,7 @@ export function WorkspaceAppsPage() {
       />
       <div className="min-h-0 flex-1 bg-background">
         <div className="border-b px-6 py-4">
-          <h1 className="text-lg font-semibold">{t("page.pages", "Apps")}</h1>
+          <h1 className="text-lg font-semibold">{t("page.pages", "Pages")}</h1>
         </div>
         <div className="min-h-0 h-[calc(100%-65px)]">
           <PageAppGrid

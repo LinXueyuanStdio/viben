@@ -2931,7 +2931,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Pages"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -5902,7 +5903,7 @@
     "currentDayDesc": "Current day (01-31)"
   },
   "page": {
-    "pages": "Apps",
+    "pages": "Pages",
     "createPage": "Create Page",
     "createSubpage": "Create Subpage",
     "openInNewTab": "Open in New Tab",
@@ -6603,5 +6604,27 @@
   },
   "actionSystem": {
     "approvalTitle": "Action Approval"
+  },
+  "screenshot": {
+    "loadFailed": "Screenshot load failed, press Esc to exit and retry",
+    "loading": "Loading screenshot...",
+    "textPlaceholder": "Enter text...",
+    "undoTooltip": "Undo (Ctrl+Z)",
+    "confirmTooltip": "Confirm (Enter)",
+    "cancelTooltip": "Cancel (Esc)"
+  },
+  "workspaceWeb": {
+    "notFound": "Workspace not found.",
+    "invalidPage": "Invalid web page",
+    "missingUrl": "The requested workspace web page is missing a valid `url` query parameter.",
+    "backToFiles": "Back to files",
+    "openExternally": "Open externally"
+  },
+  "execApproval": {
+    "title": "Tool Approval Required",
+    "unknownCommand": "Unknown command",
+    "allow": "Allow",
+    "always": "Always",
+    "reject": "Reject"
   }
 }

@@ -12,7 +12,7 @@ function createWorkspacePagesIndexDescriptor(
   return {
     id: `${workspaceId}:pages`,
     descriptorId: "virtual-folder",
-    label: i18n.t("page.pages", "Apps"),
+    label: i18n.t("page.pages", "Pages"),
     icon: { type: "lucide", value: "layout-grid" },
     meta: { workspaceId },
     location: {
