@@ -73,7 +73,11 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
 
     setState({ ...state, items: rest });
 
-    onSend(first.content, first.attachments).catch(
+    onSend(first.content, first.attachments).then(
+      () => {
+        // Reset ref so next item can dequeue on next render
+        waitingForTurnRef.current = false;
+      },
       (err) => {
         // Restore item and pause on failure
         setState((prev) => ({
