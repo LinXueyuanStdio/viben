@@ -17,8 +17,8 @@ import type {
 import { agentManager } from "../agents";
 import type { Agent } from "../types";
 import {
+  getExecutor,
   createChatProxyAsync,
-  executorSupportsChat,
   type ChatProxy,
   type ChatOptions,
   type ExecutorType,
@@ -518,7 +518,7 @@ export class AgentOrchestrator extends EventEmitter {
     const executorType = agent.executorType || "CLAUDE_CODE";
 
     // Check if executor supports chat
-    if (!executorSupportsChat(executorType)) {
+    if (!getExecutor(executorType).supports("CHAT")) {
       return {
         content: `I received your message: "${truncateMessage(message, 100)}". (Note: Executor ${executorType} does not support chat mode)`,
       };
