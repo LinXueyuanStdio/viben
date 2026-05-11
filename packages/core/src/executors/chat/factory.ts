@@ -7,10 +7,10 @@
 
 import type { ChatProxy, ChatProxyFactoryInterface, ChatResult } from "./types";
 import type { ExecutorType } from "../../types";
-import type { ChatOptions } from "../types";
+import type { ChatOptions } from "../ops/types";
 import { SpawnChatProxy } from "./spawn-proxy";
 import { SdkChatProxy, isSdkAvailable } from "./sdk-proxy";
-import { executorSupportsChat } from "../index";
+import { getExecutor, hasExecutor } from "../ops";
 import { ExecutorError } from "../../error";
 
 /**
@@ -96,7 +96,7 @@ export class ChatProxyFactory implements ChatProxyFactoryInterface {
    */
   createProxy(executorType: ExecutorType, preferSdk = true): ChatProxy {
     // Validate executor supports chat
-    if (!executorSupportsChat(executorType)) {
+    if (!hasExecutor(executorType) || !getExecutor(executorType).supports("CHAT")) {
       throw ExecutorError.chatNotSupported(executorType);
     }
 
@@ -129,7 +129,7 @@ export class ChatProxyFactory implements ChatProxyFactoryInterface {
     preferSdk = true
   ): Promise<ChatProxy> {
     // Validate executor supports chat
-    if (!executorSupportsChat(executorType)) {
+    if (!hasExecutor(executorType) || !getExecutor(executorType).supports("CHAT")) {
       throw ExecutorError.chatNotSupported(executorType);
     }
 

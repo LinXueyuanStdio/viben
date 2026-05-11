@@ -22,6 +22,7 @@ export type {
   SpawnOptions,
   SpawnResult,
   // Chat types
+  ChatFormat,
   ChatOptions,
   ChatResult,
   // SSE types

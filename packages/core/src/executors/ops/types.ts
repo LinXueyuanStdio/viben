@@ -62,6 +62,11 @@ export interface SpawnOptions {
 // =============================================================================
 
 /**
+ * Input/output format for chat streaming
+ */
+export type ChatFormat = "text" | "stream-json";
+
+/**
  * Chat options (merged from ChatOptions + ChatProxyOptions)
  */
 export interface ChatOptions {
@@ -101,6 +106,11 @@ export interface ChatOptions {
   permissionMode?: string;
   /** Prefer SDK mode over spawn */
   preferSdk?: boolean;
+  /** Sandbox configuration (session-level) */
+  sandboxConfig?: {
+    enabled: boolean;
+    provider?: "native" | "codex" | "claude";
+  };
 }
 
 // =============================================================================

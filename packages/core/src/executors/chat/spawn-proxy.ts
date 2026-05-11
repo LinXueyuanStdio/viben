@@ -7,9 +7,10 @@
 
 import { spawn } from "node:child_process";
 import type { ChatProxy, ChatResult } from "./types";
-import type { ChatOptions, StandardCodingAgentExecutor } from "../types";
+import type { ChatOptions } from "../ops/types";
+import type { Executor } from "../ops/types";
 import type { ExecutorType } from "../../types";
-import { createExecutor } from "../index";
+import { getExecutor } from "../ops";
 import { ExecutorError } from "../../error";
 
 /**
@@ -17,39 +18,31 @@ import { ExecutorError } from "../../error";
  *
  * This proxy spawns a child process with stdio: "inherit" for transparent
  * pass-through of input/output. It works with any executor that implements
- * the spawnChat method or has a chat command.
+ * the chat capability.
  */
 export class SpawnChatProxy implements ChatProxy {
   readonly proxyType = "spawn" as const;
 
-  private executor: StandardCodingAgentExecutor;
+  private executor: Executor;
 
   constructor(executorType: ExecutorType) {
-    this.executor = createExecutor(executorType);
+    this.executor = getExecutor(executorType);
   }
 
   /**
-   * Execute chat by spawning a subprocess
+   * Execute chat by spawning a subprocess using the executor's CLI command
    */
   async execute(options: ChatOptions): Promise<ChatResult> {
-    // If executor has spawnChat, use it directly
-    if (this.executor.spawnChat) {
-      const { exitPromise } = await this.executor.spawnChat(options);
-      const exitCode = await exitPromise;
-      return { exitCode };
-    }
-
-    // Fallback to generic spawn using chat command
-    const chatCommand = this.executor.getChatCommand?.();
-    if (!chatCommand) {
+    const cliName = this.executor.getCliName();
+    if (!cliName) {
       throw ExecutorError.chatNotSupported(this.executor.type);
     }
 
-    return this.spawnGenericChat(chatCommand, options);
+    return this.spawnGenericChat(cliName, options);
   }
 
   /**
-   * Generic chat spawn using the executor's chat command
+   * Generic chat spawn using the executor's CLI command
    */
   private async spawnGenericChat(
     chatCommand: string,
