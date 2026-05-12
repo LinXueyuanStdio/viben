@@ -52,7 +52,6 @@ export type {
   Executor,
   ExecutorCapability,
   ExecutorConfig,
-  CommandParts,
   SpawnOptions,
   SpawnResult,
   ChatFormat,
@@ -108,6 +107,7 @@ export {
 // =============================================================================
 
 export { CommandBuilder, CommandBuildError, createCommandParts } from "./command";
+export type { CommandParts } from "./command";
 
 // =============================================================================
 // Utilities

@@ -46,6 +46,14 @@ vi.mock("node:child_process", () => ({
   execSync: vi.fn(),
 }));
 
+// Mock SDK MCP registry to avoid TDZ issues from circular side-effect imports
+vi.mock("./chat/sdk-mcp-registry", () => ({
+  registerSdkMcpServer: vi.fn(),
+  getSdkMcpServer: vi.fn(),
+  getRegisteredSdkMcpServers: vi.fn(() => []),
+  resolveMcpServersForSdk: vi.fn(() => []),
+}));
+
 // Mock ops/utils module for whichSync and fileExists
 vi.mock("./ops/utils", () => ({
   which: vi.fn(),

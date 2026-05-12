@@ -39,8 +39,6 @@ export type {
   // Result types
   ExecutionResult,
   ExecutorErrorType,
-  // Command types
-  CommandParts,
   // Config types
   RunCommandOptions,
   ExecutorConfig,
