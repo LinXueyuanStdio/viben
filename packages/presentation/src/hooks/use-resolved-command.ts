@@ -146,7 +146,7 @@ function resolveRegionFromRects(region: RegionOrTarget, rects: TargetRectsMap): 
   }
 }
 
-function resolveCommand(cmd: PresentationCommand, rects: TargetRectsMap): PresentationCommand | null {
+export function resolveCommand(cmd: PresentationCommand, rects: TargetRectsMap): PresentationCommand | null {
   switch (cmd.type) {
     case "spotlight": {
       const region = resolveRegionFromRects(cmd.region, rects)

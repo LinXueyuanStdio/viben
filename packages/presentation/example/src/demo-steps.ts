@@ -32,6 +32,7 @@ function t(
   command: PresentationStep["command"],
   description: string,
   endMs?: number,
+  meta?: PresentationStep["meta"],
 ): PresentationStep {
   const id = `step-${++_id}`
   return {
@@ -44,6 +45,7 @@ function t(
     status: "done",
     startMs,
     endMs,
+    meta,
   }
 }
 
@@ -56,7 +58,7 @@ export const demoSteps: PresentationStep[] = [
   t(0, {
     type: "spotlight",
     region: { targetId: "title", padding: 24 },
-    maskOpacity: 0.85,
+    maskOpacity: 0.5,
     borderRadius: 14,
     animate: true,
   }, "Opening spotlight on title", 18000),
@@ -71,7 +73,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#FFFFFF",
     background: "rgba(0,0,0,0.88)",
     animate: true,
-  }, "Opening hook text", 18000),
+  }, "Opening hook text", 18000, { expect: { x: 288, y: 92 } }),
 
   // 3s: Typewriter follow-up question
   t(3000, {
@@ -84,63 +86,63 @@ export const demoSteps: PresentationStep[] = [
     background: "rgba(0,0,0,0.75)",
     speed: "normal",
     animate: true,
-  }, "Typewriter: rhetorical question", 18000),
+  }, "Typewriter: rhetorical question", 9500, { expect: { x: 288, y: 140 } }),
 
   // 6s: Counter counting up — NVIDIA's YoY growth percentage
   t(6000, {
     type: "counter",
-    position: { targetId: "title", placement: "below-end", offsetY: 10 },
+    position: { targetId: "title", placement: "below-start", offsetY: 10, offsetX: 700 },
     value: 265,
     suffix: "%",
     color: "#76B900",
     fontSize: 48,
     animate: true,
-  }, "Counter: 265% YoY growth", 14000),
+  }, "Counter: 265% YoY growth", 11500, { expect: { x: 988, y: 92 } }),
 
-  // 7.5s: Badge labeling the counter
+  // 7.5s: Badge labeling the counter (ends when first counter ends)
   t(7500, {
     type: "badge",
-    position: { targetId: "title", placement: "below-end", offsetY: 56 },
+    position: { targetId: "title", placement: "below-start", offsetY: 70, offsetX: 700 },
     text: "数据中心收入同比增长",
     color: "#FFFFFF",
     background: "rgba(118, 185, 0, 0.85)",
     size: "md",
     animate: true,
-  }, "Badge: growth label", 18000),
+  }, "Badge: growth label", 11500, { expect: { x: 988, y: 124 } }),
 
-  // 10s: Text with total revenue figure
+  // 10s: Text with total revenue figure — positioned near right-side counter stack for flow
   t(10000, {
     type: "text",
-    position: { targetId: "subtitle", placement: "below-start", offsetY: 28 },
+    position: { targetId: "title", placement: "below-start", offsetY: 70, offsetX: 700 },
     content: "季度收入首次突破 $26B",
     fontSize: 15,
     fontWeight: 700,
     color: "#FFFFFF",
     background: "rgba(99, 102, 241, 0.8)",
     animate: true,
-  }, "Revenue milestone text", 18000),
+  }, "Revenue milestone text", 18000, { expect: { x: 988, y: 152 } }),
 
   // 12s: Counter — daily earnings
   t(12000, {
     type: "counter",
-    position: { targetId: "title", placement: "below-end", offsetY: 10 },
+    position: { targetId: "title", placement: "below-start", offsetY: 10, offsetX: 700 },
     value: 2.9,
     prefix: "$",
     suffix: "亿/天",
     color: "#F59E0B",
     fontSize: 42,
     animate: true,
-  }, "Counter: daily revenue", 18000),
+  }, "Counter: daily revenue", 18000, { expect: { x: 988, y: 92 } }),
 
-  // 14s: Pulse on subtitle area to draw attention to data
+  // 14s: Pulse on title center — centered transition before clear
   t(14000, {
     type: "pulse",
-    center: { targetId: "title", anchor: "bottom-right" },
-    radius: 24,
+    center: { targetId: "title", anchor: "center" },
+    radius: 20,
     color: "#76B900",
     rings: 3,
     animate: true,
-  }, "Pulse on subtitle", 18000),
+  }, "Pulse on title center", 18000, { expect: { x: 688, y: 37 } }),
 
   // 18s: Clear for overview
   t(18000, { type: "clear" }, "Clear for overview"),
@@ -161,25 +163,25 @@ export const demoSteps: PresentationStep[] = [
   // 20.5s: Framing text
   t(20500, {
     type: "text",
-    position: { targetId: "title", placement: "below-start", offsetY: 6 },
+    position: { targetId: "title", placement: "below-start", offsetY: 28 },
     content: "摩根士丹利深度报告：AI芯片三国杀",
     fontSize: 16,
     fontWeight: 700,
     color: "#FFFFFF",
     background: "rgba(99, 102, 241, 0.85)",
     animate: true,
-  }, "Framing text", 26000),
+  }, "Framing text", 26000, { expect: { x: 288, y: 110 } }),
 
   // 21s: Badge — OVERWEIGHT rating
   t(21000, {
     type: "badge",
-    position: { targetId: "title", placement: "below-end", offsetY: 6 },
+    position: { targetId: "title", placement: "below-start", offsetY: 6, offsetX: 700 },
     text: "OVERWEIGHT",
     color: "#FFFFFF",
     background: "rgba(99, 102, 241, 0.9)",
     size: "md",
     animate: true,
-  }, "Badge: OVERWEIGHT rating", 26000),
+  }, "Badge: OVERWEIGHT rating", 26000, { expect: { x: 988, y: 60 } }),
 
   // 23s: Underline subtitle (straight style)
   t(23000, {
@@ -203,7 +205,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#76B900",
     rings: 3,
     animate: true,
-  }, "Pulse NVIDIA card", 33000),
+  }, "Pulse NVIDIA card", 33000, { expect: { x: 390, y: 161 } }),
 
   t(27500, {
     type: "pulse",
@@ -212,7 +214,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#ED1C24",
     rings: 3,
     animate: true,
-  }, "Pulse AMD card", 33000),
+  }, "Pulse AMD card", 33000, { expect: { x: 676, y: 161 } }),
 
   t(28000, {
     type: "pulse",
@@ -221,7 +223,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#6366F1",
     rings: 3,
     animate: true,
-  }, "Pulse Others card", 33000),
+  }, "Pulse Others card", 33000, { expect: { x: 960, y: 161 } }),
 
   // 29s: Text above cards
   t(29000, {
@@ -233,7 +235,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#F59E0B",
     background: "rgba(0,0,0,0.75)",
     animate: true,
-  }, "Three fates text", 38000),
+  }, "Three fates text", 35500, { expect: { x: 573, y: 107 } }),
 
   // 31s: Highlight each card value in sequence
   t(31000, {
@@ -243,7 +245,7 @@ export const demoSteps: PresentationStep[] = [
     opacity: 0.25,
     borderRadius: 8,
     animate: true,
-  }, "Highlight 80%", 38000),
+  }, "Highlight 80%", 38000, { expect: { x: 303, y: 172 } }),
 
   t(32000, {
     type: "highlight",
@@ -252,7 +254,7 @@ export const demoSteps: PresentationStep[] = [
     opacity: 0.25,
     borderRadius: 8,
     animate: true,
-  }, "Highlight 12%", 38000),
+  }, "Highlight 12%", 38000, { expect: { x: 588, y: 172 } }),
 
   t(33000, {
     type: "highlight",
@@ -261,7 +263,7 @@ export const demoSteps: PresentationStep[] = [
     opacity: 0.25,
     borderRadius: 8,
     animate: true,
-  }, "Highlight 8%", 38000),
+  }, "Highlight 8%", 38000, { expect: { x: 873, y: 172 } }),
 
   // 34s: Badges on cards
   t(34000, {
@@ -272,7 +274,7 @@ export const demoSteps: PresentationStep[] = [
     background: "#76B900",
     size: "sm",
     animate: true,
-  }, "Badge: ruler", 38000),
+  }, "Badge: ruler", 38000, { expect: { x: 557, y: 91 } }),
 
   t(34500, {
     type: "badge",
@@ -282,7 +284,7 @@ export const demoSteps: PresentationStep[] = [
     background: "#ED1C24",
     size: "sm",
     animate: true,
-  }, "Badge: challenger", 38000),
+  }, "Badge: challenger", 38000, { expect: { x: 842, y: 91 } }),
 
   t(35000, {
     type: "badge",
@@ -292,13 +294,13 @@ export const demoSteps: PresentationStep[] = [
     background: "#6366F1",
     size: "sm",
     animate: true,
-  }, "Badge: newcomers", 38000),
+  }, "Badge: newcomers", 38000, { expect: { x: 1127, y: 91 } }),
 
-  // 36s: Arrow from NVIDIA to AMD showing dominance gap
+  // 36s: Arrow from NVIDIA value to AMD value showing dominance gap
   t(36000, {
     type: "arrow",
-    from: { targetId: "card-nvidia", anchor: "right" },
-    to: { targetId: "card-amd", anchor: "left" },
+    from: { targetId: "nvidia-value", anchor: "right" },
+    to: { targetId: "amd-value", anchor: "left" },
     color: "#F59E0B",
     label: "6.7x 差距",
     strokeWidth: 2,
@@ -316,7 +318,7 @@ export const demoSteps: PresentationStep[] = [
   t(40000, {
     type: "spotlight",
     region: { targetId: "card-nvidia", padding: 10 },
-    maskOpacity: 0.75,
+    maskOpacity: 0.4,
     borderRadius: 12,
     animate: true,
   }, "Spotlight NVIDIA card", 63000),
@@ -329,7 +331,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#76B900",
     strokeWidth: 3,
     animate: true,
-  }, "Circle 80% value", 63000),
+  }, "Circle 80% value", 63000, { expect: { x: 388, y: 158 } }),
 
   // 43s: Card with NVIDIA details — below title (safe zone, title.bottom=74)
   t(43000, {
@@ -343,19 +345,19 @@ export const demoSteps: PresentationStep[] = [
     enterFrom: "bottom",
     animate: true,
     borderColor: "rgba(118, 185, 0, 0.3)",
-  }, "Card: NVIDIA dominance", 54000),
+  }, "Card: NVIDIA dominance", 54000, { expect: { x: 288, y: 281 } }),
 
-  // 46s: Counter showing market cap
+  // 46s: Counter showing market cap — below-end to stay in same row as card
   t(46000, {
     type: "counter",
-    position: { targetId: "card-nvidia", placement: "above-end", offsetY: -6 },
+    position: { targetId: "card-nvidia", placement: "below-end", offsetY: 8 },
     value: 2.2,
     prefix: "$",
     suffix: "T 市值",
     color: "#76B900",
     fontSize: 32,
     animate: true,
-  }, "Counter: $2.2T market cap", 63000),
+  }, "Counter: $2.2T market cap", 63000, { expect: { x: 557, y: 281 } }),
 
   // 48s: Arrow from card-nvidia down to analysis section
   t(48000, {
@@ -368,8 +370,8 @@ export const demoSteps: PresentationStep[] = [
     animate: true,
   }, "Arrow: to analysis", 63000),
 
-  // 50s: Underline NVIDIA bar (wavy)
-  t(50000, {
+  // 49s: Underline NVIDIA bar (wavy) — moved earlier to follow arrow to analysis
+  t(49000, {
     type: "underline",
     from: { targetId: "bar-nvidia", anchor: "bottom-left" },
     to: { targetId: "bar-nvidia", anchor: "bottom-right" },
@@ -379,22 +381,22 @@ export const demoSteps: PresentationStep[] = [
     animate: true,
   }, "Underline NVIDIA bar", 63000),
 
-  // 52s: Text insight
+  // 52s: Text insight — in analysis area, following gaze downward
   t(52000, {
     type: "text",
-    position: { targetId: "card-nvidia", placement: "below-end", offsetY: 6 },
+    position: { targetId: "analysis", placement: "above-start", offsetY: -6 },
     content: "每训练5个大模型，4个用NVIDIA",
     fontSize: 14,
     fontWeight: 700,
     color: "#FFFFFF",
     background: "rgba(118, 185, 0, 0.8)",
     animate: true,
-  }, "Text: 4/5 models use NVIDIA", 63000),
+  }, "Text: 4/5 models use NVIDIA", 63000, { expect: { x: 288, y: 370 } }),
 
-  // 55s: Comparison — NVIDIA vs Rest
+  // 55s: Comparison — NVIDIA vs Rest — in analysis area continuing downward flow
   t(55000, {
     type: "comparison",
-    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
+    position: { targetId: "analysis", placement: "above-start", offsetY: 20 },
     width: 350,
     leftLabel: "NVIDIA",
     rightLabel: "所有对手之和",
@@ -404,18 +406,18 @@ export const demoSteps: PresentationStep[] = [
     rightColor: "#6366F1",
     unit: "%",
     animate: true,
-  }, "Comparison: NVIDIA vs all others", 63000),
+  }, "Comparison: NVIDIA vs all others", 63000, { expect: { x: 288, y: 396 } }),
 
-  // 58s: Badge with key insight
+  // 58s: Badge with key insight — transition zone below card-nvidia, bridges to next ACT
   t(58000, {
     type: "badge",
-    position: { targetId: "card-nvidia", placement: "above-start", offsetY: -6 },
+    position: { targetId: "card-nvidia", placement: "below-end", offsetY: -40 },
     text: "绝对垄断",
     color: "#000",
     background: "#76B900",
     size: "md",
     animate: true,
-  }, "Badge: absolute monopoly", 63000),
+  }, "Badge: absolute monopoly", 63000, { expect: { x: 557, y: 205 } }),
 
   // 63s: Clear for CUDA analysis
   t(63000, { type: "clear" }, "Clear for CUDA moat"),
@@ -428,7 +430,7 @@ export const demoSteps: PresentationStep[] = [
   t(65000, {
     type: "spotlight",
     region: { targetId: "revenue-chart", padding: 12 },
-    maskOpacity: 0.72,
+    maskOpacity: 0.35,
     borderRadius: 12,
     animate: true,
   }, "Spotlight revenue chart", 88000),
@@ -443,7 +445,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#76B900",
     background: "rgba(0,0,0,0.85)",
     animate: true,
-  }, "Text: CUDA is the answer", 78000),
+  }, "Text: CUDA is the answer", 75500, { expect: { x: 816, y: 370 } }),
 
   // 68s: Bracket grouping all bars (showing NVIDIA leads all)
   t(68000, {
@@ -457,19 +459,19 @@ export const demoSteps: PresentationStep[] = [
     animate: true,
   }, "Bracket: CUDA lock-in", 82000),
 
-  // 70s: Card explaining CUDA ecosystem — left of revenue chart
+  // 70s: Card explaining CUDA ecosystem — near revenue-chart (right side, matching spotlight focus)
   t(70000, {
     type: "card",
-    position: { targetId: "revenue-chart", placement: "left-of-start", offsetX: -16 },
+    position: { targetId: "analysis", placement: "above-start", offsetY: -6 },
     width: 280,
     title: "CUDA 生态系统壁垒",
     content: "400万开发者的肌肉记忆\n所有主流框架原生支持\n15年积累的软件生态\n换芯片 = 重写所有代码",
     tag: "护城河",
     tagColor: "#76B900",
-    enterFrom: "left",
+    enterFrom: "right",
     animate: true,
     borderColor: "rgba(118, 185, 0, 0.3)",
-  }, "Card: CUDA moat", 88000),
+  }, "Card: CUDA moat", 88000, { expect: { x: 288, y: 370 } }),
 
   // 73s: Trendline — NVIDIA revenue trajectory (using absolute points above chart)
   t(73000, {
@@ -490,10 +492,10 @@ export const demoSteps: PresentationStep[] = [
     animate: true,
   }, "Trendline: NVIDIA revenue growth", 88000),
 
-  // 76s: Line chart — quarterly revenue (in analysis area, left side)
+  // 76s: Line chart — quarterly revenue (above revenue-chart, within spotlight)
   t(76000, {
     type: "chart",
-    position: { targetId: "analysis", placement: "right-of-start", offsetX: 16 },
+    position: { targetId: "revenue-chart", placement: "above-start", offsetY: -170 },
     width: 300,
     height: 160,
     chartType: "line",
@@ -510,12 +512,12 @@ export const demoSteps: PresentationStep[] = [
     showGrid: true,
     showAxis: true,
     animate: true,
-  }, "Chart: NVIDIA revenue line", 88000),
+  }, "Chart: NVIDIA revenue line", 88000, { expect: { x: 816, y: 206 } }),
 
-  // 80s: Typewriter — developer ecosystem insight (above revenue chart)
+  // 80s: Typewriter — developer ecosystem insight (below chart)
   t(80000, {
     type: "typewriter",
-    position: { targetId: "revenue-chart", placement: "above-start", offsetY: -8 },
+    position: { targetId: "revenue-chart", placement: "above-start", offsetY: 34 },
     content: "400万开发者 × 15年生态 = 不可逾越的护城河",
     fontSize: 15,
     fontWeight: 700,
@@ -523,19 +525,19 @@ export const demoSteps: PresentationStep[] = [
     background: "rgba(118, 185, 0, 0.8)",
     speed: "normal",
     animate: true,
-  }, "Typewriter: developer moat", 88000),
+  }, "Typewriter: developer moat", 88000, { expect: { x: 816, y: 410 } }),
 
-  // 84s: Progress bar — CUDA adoption rate (below analysis text)
+  // 84s: Progress bar — CUDA adoption rate (below typewriter, within spotlight)
   t(84000, {
     type: "progress",
-    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
+    position: { targetId: "revenue-chart", placement: "above-start", offsetY: 86 },
     width: 380,
     value: 92,
     color: "#76B900",
     showLabel: true,
     label: "CUDA 框架覆盖率: 92%",
     animate: true,
-  }, "Progress: CUDA coverage", 88000),
+  }, "Progress: CUDA coverage", 88000, { expect: { x: 816, y: 462 } }),
 
   // 88s: Clear
   t(88000, { type: "clear" }, "Clear for AMD challenge"),
@@ -548,7 +550,7 @@ export const demoSteps: PresentationStep[] = [
   t(90000, {
     type: "spotlight",
     region: { targetId: "card-amd", padding: 10 },
-    maskOpacity: 0.72,
+    maskOpacity: 0.35,
     borderRadius: 12,
     animate: true,
   }, "Spotlight AMD card", 113000),
@@ -561,7 +563,7 @@ export const demoSteps: PresentationStep[] = [
     opacity: 0.3,
     borderRadius: 8,
     animate: true,
-  }, "Highlight AMD 12%", 100000),
+  }, "Highlight AMD 12%", 100000, { expect: { x: 588, y: 172 } }),
 
   // 93s: Card for AMD — below title (safe zone)
   t(93000, {
@@ -575,7 +577,7 @@ export const demoSteps: PresentationStep[] = [
     enterFrom: "bottom",
     animate: true,
     borderColor: "rgba(237, 28, 36, 0.3)",
-  }, "Card: AMD overview", 97000),
+  }, "Card: AMD overview", 97000, { expect: { x: 573, y: 281 } }),
 
   // 96s: Circle AMD value
   t(96000, {
@@ -585,7 +587,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#ED1C24",
     strokeWidth: 3,
     animate: true,
-  }, "Circle AMD 12%", 104000),
+  }, "Circle AMD 12%", 104000, { expect: { x: 674, y: 160 } }),
 
   // 98s: Comparison — NVIDIA vs AMD performance/$
   t(98000, {
@@ -600,12 +602,12 @@ export const demoSteps: PresentationStep[] = [
     rightColor: "#ED1C24",
     unit: "相对值",
     animate: true,
-  }, "Comparison: H100 vs MI300X", 113000),
+  }, "Comparison: H100 vs MI300X", 113000, { expect: { x: 573, y: 281 } }),
 
   // 101s: Another comparison — price/performance
   t(101000, {
     type: "comparison",
-    position: { targetId: "card-amd", placement: "below-start", offsetY: 68 },
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 96 },
     width: 380,
     leftLabel: "H100 性价比",
     rightLabel: "MI300X 性价比",
@@ -615,14 +617,14 @@ export const demoSteps: PresentationStep[] = [
     rightColor: "#ED1C24",
     unit: "相对值",
     animate: true,
-  }, "Comparison: price/performance", 113000),
+  }, "Comparison: price/performance", 113000, { expect: { x: 573, y: 369 } }),
 
-  // 104s: Bar chart — AMD revenue growth (right of analysis area)
+  // 104s: Bar chart — AMD revenue growth (below comparisons, within spotlight area)
   t(104000, {
     type: "chart",
-    position: { targetId: "analysis", placement: "right-of-start", offsetX: 16 },
-    width: 280,
-    height: 150,
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 148 },
+    width: 260,
+    height: 56,
     chartType: "bar",
     title: "AMD AI收入增速 ($B)",
     data: [
@@ -636,7 +638,7 @@ export const demoSteps: PresentationStep[] = [
     showGrid: true,
     showAxis: true,
     animate: true,
-  }, "Chart: AMD revenue bar", 113000),
+  }, "Chart: AMD revenue bar", 110500, { expect: { x: 573, y: 421 } }),
 
   // 107s: Underline AMD bar (straight)
   t(107000, {
@@ -658,12 +660,12 @@ export const demoSteps: PresentationStep[] = [
     background: "#ED1C24",
     size: "sm",
     animate: true,
-  }, "Badge: AMD growth", 113000),
+  }, "Badge: AMD growth", 113000, { expect: { x: 842, y: 85 } }),
 
-  // 111s: Typewriter insight (below the AMD card area)
+  // 111s: Typewriter insight (below chart, avoiding overlap)
   t(111000, {
     type: "typewriter",
-    position: { targetId: "card-amd", placement: "below-start", offsetY: 8 },
+    position: { targetId: "card-amd", placement: "below-start", offsetY: 168 },
     content: "ROCm 是 AMD 的胜负手 — 但差距仍有3-5年",
     fontSize: 14,
     fontWeight: 700,
@@ -671,7 +673,7 @@ export const demoSteps: PresentationStep[] = [
     background: "rgba(237, 28, 36, 0.8)",
     speed: "normal",
     animate: true,
-  }, "Typewriter: ROCm gap", 113000),
+  }, "Typewriter: ROCm gap", 113000, { expect: { x: 573, y: 441 } }),
 
   // 113s: Clear
   t(113000, { type: "clear" }, "Clear for others"),
@@ -686,7 +688,7 @@ export const demoSteps: PresentationStep[] = [
   t(115000, {
     type: "spotlight",
     region: { targetId: "card-others", padding: 10 },
-    maskOpacity: 0.72,
+    maskOpacity: 0.4,
     borderRadius: 12,
     animate: true,
   }, "Spotlight Others card", 138000),
@@ -702,7 +704,7 @@ export const demoSteps: PresentationStep[] = [
     tagColor: "#6366F1",
     enterFrom: "left",
     animate: true,
-  }, "Card: custom silicon", 127000),
+  }, "Card: custom silicon", 118500, { expect: { x: 858, y: 281 } }),
 
   // 119s: Three badges appear staggered BELOW card-others (not on bar elements)
   t(119000, {
@@ -713,7 +715,7 @@ export const demoSteps: PresentationStep[] = [
     background: "#4285F4",
     size: "sm",
     animate: true,
-  }, "Badge: TPU v5e", 127000),
+  }, "Badge: TPU v5e", 127000, { expect: { x: 858, y: 259 } }),
 
   t(119500, {
     type: "badge",
@@ -723,7 +725,7 @@ export const demoSteps: PresentationStep[] = [
     background: "#CF0A2C",
     size: "sm",
     animate: true,
-  }, "Badge: Ascend 910B", 127000),
+  }, "Badge: Ascend 910B", 127000, { expect: { x: 858, y: 283 } }),
 
   t(120000, {
     type: "badge",
@@ -733,7 +735,7 @@ export const demoSteps: PresentationStep[] = [
     background: "#0071C5",
     size: "sm",
     animate: true,
-  }, "Badge: Intel Gaudi", 127000),
+  }, "Badge: Intel Gaudi", 127000, { expect: { x: 858, y: 307 } }),
 
   // 121s: Bracket grouping all "others" badges visually
   t(121000, {
@@ -750,21 +752,21 @@ export const demoSteps: PresentationStep[] = [
   // 127s: Clear card+badges, transition to charts phase
   t(127000, { type: "clear" }, "Clear for charts phase"),
 
-  // 127.5s: Re-apply spotlight (after clear)
+  // 127.5s: Re-apply spotlight on analysis area (charts appear below cards)
   t(127500, {
     type: "spotlight",
-    region: { targetId: "revenue-chart", padding: 10 },
-    maskOpacity: 0.65,
+    region: { targetId: "analysis", padding: 30 },
+    maskOpacity: 0.45,
     borderRadius: 12,
     animate: true,
-  }, "Spotlight revenue chart for pie", 135000),
+  }, "Spotlight analysis for charts", 135000),
 
-  // 128s: Pie chart — market share, placed in the analysis area (left, has space)
+  // 128s: Pie chart — market share, above-start of analysis (left-aligned)
   t(128000, {
     type: "chart",
-    position: { targetId: "card-nvidia", placement: "below-start", offsetY: 8 },
-    width: 250,
-    height: 200,
+    position: { targetId: "analysis", placement: "above-start", offsetY: -20 },
+    width: 240,
+    height: 130,
     chartType: "pie",
     title: "AI 芯片市场份额 2024",
     data: [
@@ -776,14 +778,14 @@ export const demoSteps: PresentationStep[] = [
     ],
     innerRadius: 40,
     animate: true,
-  }, "Chart: market share pie (donut)", 135000),
+  }, "Chart: market share pie (donut)", 135000, { expect: { x: 288, y: 356 } }),
 
-  // 131s: Area chart — custom silicon growth, below title (left side, separate from pie)
+  // 131s: Area chart — custom silicon growth, right side of analysis
   t(131000, {
     type: "chart",
-    position: { targetId: "card-amd", placement: "below-start", offsetY: 8 },
+    position: { targetId: "analysis", placement: "above-start", offsetX: 280, offsetY: -20 },
     width: 260,
-    height: 140,
+    height: 100,
     chartType: "area",
     title: "自研芯片份额预测 (%)",
     data: [
@@ -798,18 +800,17 @@ export const demoSteps: PresentationStep[] = [
     showGrid: true,
     showAxis: true,
     animate: true,
-  }, "Chart: custom silicon area projection", 135000),
+  }, "Chart: custom silicon area projection", 135000, { expect: { x: 568, y: 356 } }),
 
-  // 133s: Arrow connecting pie chart area to revenue chart
+  // 133s: Pulse connecting pie chart area to revenue chart (arrow too short at 44px)
   t(133000, {
-    type: "arrow",
-    from: { targetId: "card-others", anchor: "bottom" },
-    to: { targetId: "revenue-chart", anchor: "top" },
+    type: "pulse",
+    center: { targetId: "revenue-chart", anchor: "top" },
+    radius: 24,
     color: "#6366F1",
-    label: "增长趋势",
-    strokeWidth: 2,
+    rings: 2,
     animate: true,
-  }, "Arrow: growth trend", 135000),
+  }, "Pulse: growth trend focus", 135000, { expect: { x: 948, y: 360 } }),
 
   // 135s: Clear charts, show final summary text
   t(135000, { type: "clear" }, "Clear charts"),
@@ -822,19 +823,19 @@ export const demoSteps: PresentationStep[] = [
     color: "#6366F1",
     rings: 2,
     animate: true,
-  }, "Pulse on Others", 138000),
+  }, "Pulse on Others", 138000, { expect: { x: 968, y: 169 } }),
 
   // 136s: Text summary
   t(136000, {
     type: "text",
-    position: { targetId: "card-others", placement: "below-start", offsetY: 8 },
-    content: "自研芯片 2027年或占 25% — 但主要蚕食推理市场",
+    position: { targetId: "card-others", placement: "below-start", offsetY: 8, offsetX: -30 },
+    content: "自研芯片 2027年或占25% — 主要蚕食推理市场",
     fontSize: 14,
     fontWeight: 700,
     color: "#FFFFFF",
     background: "rgba(99, 102, 241, 0.8)",
     animate: true,
-  }, "Text: self-developed forecast", 138000),
+  }, "Text: self-developed forecast", 138000, { expect: { x: 828, y: 281 } }),
 
   // 138s: Clear
   t(138000, { type: "clear" }, "Clear for conclusion"),
@@ -843,14 +844,14 @@ export const demoSteps: PresentationStep[] = [
   // ACT 7: CONCLUSION (140s - 165s) — progress bars, counter, summary card
   // ============================================================================
 
-  // 140s: Spotlight title for conclusion
+  // 140s: Spotlight subtitle area (covers title + subtitle + space for content below)
   t(140000, {
     type: "spotlight",
-    region: { targetId: "title", padding: 20 },
-    maskOpacity: 0.65,
-    borderRadius: 16,
+    region: { targetId: "subtitle", padding: 200 },
+    maskOpacity: 0.4,
+    borderRadius: 20,
     animate: true,
-  }, "Final spotlight on title", 163000),
+  }, "Wide spotlight for conclusion content", 163000),
 
   // 141s: Summary card below title
   t(141000, {
@@ -864,7 +865,7 @@ export const demoSteps: PresentationStep[] = [
     enterFrom: "bottom",
     animate: true,
     borderColor: "rgba(245, 158, 11, 0.3)",
-  }, "Summary card: conclusion", 163000),
+  }, "Summary card: conclusion", 163000, { expect: { x: 288, y: 98 } }),
 
   // 145s: Progress bars — market share forecasts
   t(145000, {
@@ -876,7 +877,7 @@ export const demoSteps: PresentationStep[] = [
     showLabel: true,
     label: "NVIDIA 2024: 80%",
     animate: true,
-  }, "Progress: NVIDIA 2024", 163000),
+  }, "Progress: NVIDIA 2024", 153000, { expect: { x: 288, y: 262 } }),
 
   t(146000, {
     type: "progress",
@@ -887,7 +888,7 @@ export const demoSteps: PresentationStep[] = [
     showLabel: true,
     label: "NVIDIA 2027E: 65%",
     animate: true,
-  }, "Progress: NVIDIA 2027", 163000),
+  }, "Progress: NVIDIA 2027", 153000, { expect: { x: 288, y: 294 } }),
 
   t(147000, {
     type: "progress",
@@ -898,7 +899,7 @@ export const demoSteps: PresentationStep[] = [
     showLabel: true,
     label: "AMD 2027E: 20%",
     animate: true,
-  }, "Progress: AMD 2027", 163000),
+  }, "Progress: AMD 2027", 153000, { expect: { x: 288, y: 326 } }),
 
   t(148000, {
     type: "progress",
@@ -909,40 +910,40 @@ export const demoSteps: PresentationStep[] = [
     showLabel: true,
     label: "自研 2027E: 15%",
     animate: true,
-  }, "Progress: Custom 2027", 163000),
+  }, "Progress: Custom 2027", 153000, { expect: { x: 288, y: 358 } }),
 
-  // 150s: Counter — total market size
+  // 150s: Counter — total market size (below progress bars, right-aligned)
   t(150000, {
     type: "counter",
-    position: { targetId: "title", placement: "below-end", offsetY: 6 },
+    position: { targetId: "title", placement: "below-start", offsetY: 310, offsetX: 660 },
     value: 400,
     prefix: "$",
     suffix: "B",
     color: "#F59E0B",
     fontSize: 48,
     animate: true,
-  }, "Counter: $400B market by 2027", 163000),
+  }, "Counter: $400B market by 2027", 163000, { expect: { x: 948, y: 392 } }),
 
-  // 151s: Badge labeling counter
-  t(151000, {
+  // 153.5s: Badge labeling counter (after progress bars end at 153s)
+  t(153500, {
     type: "badge",
-    position: { targetId: "subtitle", placement: "below-start", offsetY: 6 },
+    position: { targetId: "title", placement: "below-start", offsetY: 196 },
     text: "2027年AI芯片市场规模预测",
     color: "#FFFFFF",
     background: "rgba(245, 158, 11, 0.85)",
     size: "lg",
     animate: true,
-  }, "Badge: market size label", 163000),
+  }, "Badge: market size label", 156000, { expect: { x: 288, y: 244 } }),
 
-  // 154s: Trendline showing market growth
+  // 154s: Trendline showing market growth (stays below subtitle Y>110)
   t(154000, {
     type: "trendline",
     points: [
-      { x: 580, y: 140 },
-      { x: 640, y: 128 },
-      { x: 700, y: 108 },
-      { x: 760, y: 82 },
-      { x: 820, y: 55 },
+      { x: 580, y: 200 },
+      { x: 640, y: 185 },
+      { x: 700, y: 165 },
+      { x: 760, y: 140 },
+      { x: 820, y: 110 },
     ],
     color: "#F59E0B",
     strokeWidth: 3,
@@ -951,17 +952,17 @@ export const demoSteps: PresentationStep[] = [
     fillBelow: "rgba(245, 158, 11, 0.1)",
     endArrow: true,
     animate: true,
-  }, "Trendline: market growth", 163000),
+  }, "Trendline: market growth", 158000),
 
-  // 157s: Highlight analysis section for final call
+  // 157s: Highlight analysis section for final call (high opacity to pierce spotlight mask)
   t(157000, {
     type: "highlight",
     region: { targetId: "analysis", padding: 8 },
     color: "#F59E0B",
-    opacity: 0.1,
+    opacity: 0.35,
     borderRadius: 12,
     animate: true,
-  }, "Highlight analysis area", 163000),
+  }, "Highlight analysis area", 163000, { expect: { x: 280, y: 376 } }),
 
   // 159s: Circle card-nvidia to emphasize winner
   t(159000, {
@@ -971,7 +972,7 @@ export const demoSteps: PresentationStep[] = [
     color: "#76B900",
     strokeWidth: 3,
     animate: true,
-  }, "Circle NVIDIA card — winner", 163000),
+  }, "Circle NVIDIA card — winner", 163000, { expect: { x: 362, y: 133 } }),
 
   // 163s: Clear for finale
   t(163000, { type: "clear" }, "Clear for finale"),
@@ -980,8 +981,17 @@ export const demoSteps: PresentationStep[] = [
   // ACT 8: END (165s - 180s) — final typewriter + text + farewell
   // ============================================================================
 
-  // 165s: Final typewriter — investment thesis
+  // 165s: Spotlight on title for finale weight
   t(165000, {
+    type: "spotlight",
+    region: { targetId: "subtitle", padding: 120 },
+    maskOpacity: 0.45,
+    borderRadius: 16,
+    animate: true,
+  }, "Final spotlight for closing", 177000),
+
+  // 165.5s: Final typewriter — investment thesis
+  t(165500, {
     type: "typewriter",
     position: { targetId: "title", placement: "below-start", offsetY: 20 },
     content: "CUDA生态 = 15年的护城河，一时半会填不平。",
@@ -991,7 +1001,7 @@ export const demoSteps: PresentationStep[] = [
     background: "rgba(99, 102, 241, 0.85)",
     speed: "slow",
     animate: true,
-  }, "Typewriter: final thesis", 177000),
+  }, "Typewriter: final thesis", 177000, { expect: { x: 288, y: 102 } }),
 
   // 168s: Second typewriter line
   t(168000, {
@@ -1004,29 +1014,28 @@ export const demoSteps: PresentationStep[] = [
     background: "rgba(0, 0, 0, 0.8)",
     speed: "normal",
     animate: true,
-  }, "Typewriter: three timeframes", 177000),
+  }, "Typewriter: three timeframes", 177000, { expect: { x: 288, y: 144 } }),
 
-  // 171s: Badge — final recommendation
+  // 171s: Badge — final recommendation (below both typewriters)
   t(171000, {
     type: "badge",
-    position: { targetId: "subtitle", placement: "below-start", offsetY: 6 },
+    position: { targetId: "title", placement: "below-start", offsetY: 136 },
     text: "维持 OVERWEIGHT 评级",
     color: "#FFFFFF",
     background: "rgba(99, 102, 241, 0.9)",
     size: "lg",
     animate: true,
-  }, "Badge: maintain overweight", 177000),
+  }, "Badge: maintain overweight", 177000, { expect: { x: 288, y: 184 } }),
 
-  // 173s: Arrow from title to subtitle area — final flourish
+  // 173s: Pulse on subtitle — final flourish
   t(173000, {
-    type: "arrow",
-    from: { targetId: "title", anchor: "bottom-left" },
-    to: { targetId: "subtitle", anchor: "left" },
+    type: "pulse",
+    center: { targetId: "subtitle", anchor: "center" },
+    radius: 30,
     color: "#F59E0B",
-    label: "关注",
-    strokeWidth: 2,
+    rings: 2,
     animate: true,
-  }, "Arrow: final focus", 177000),
+  }, "Pulse: final focus", 177000, { expect: { x: 678, y: 62 } }),
 
   // 177s: Clear for end card
   t(177000, { type: "clear" }, "Final clear"),
@@ -1042,7 +1051,7 @@ export const demoSteps: PresentationStep[] = [
     background: "linear-gradient(135deg, #6366F1, #EC4899)",
     textAlign: "center",
     animate: true,
-  }, "End screen: thank you"),
+  }, "End screen: thank you", undefined, { expect: { x: 656, y: 182 } }),
 
   // 178s: Badge below end text
   t(178000, {
@@ -1053,7 +1062,7 @@ export const demoSteps: PresentationStep[] = [
     background: "rgba(99, 102, 241, 0.7)",
     size: "md",
     animate: true,
-  }, "Badge: credits"),
+  }, "Badge: credits", undefined, { expect: { x: 708, y: 214 } }),
 ]
 
 // Auto-compute total duration from steps

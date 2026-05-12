@@ -384,6 +384,12 @@ export interface PresentationStep {
    * @deprecated Use startMs/endMs instead. Kept for backward compat with sequential player.
    */
   durationMs?: number
+  /** Optional metadata for debugging/validation */
+  meta?: {
+    /** Expected rendered position {x, y} for validation in dev logs */
+    expect?: { x: number; y: number }
+    [key: string]: unknown
+  }
 }
 
 /** Presentation sequence config */

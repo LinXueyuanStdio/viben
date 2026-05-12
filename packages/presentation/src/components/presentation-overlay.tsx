@@ -1,7 +1,8 @@
 import { useMemo, useRef, useEffect } from "react"
 import type { PresentationStep, PresentationCommand } from "../types"
-import { useResolvedCommand } from "../hooks/use-resolved-command"
-import { logCollisionReport } from "../utils/collision-detect"
+import { useResolvedCommand, resolveCommand } from "../hooks/use-resolved-command"
+import { useTargetRects } from "../hooks/use-target-rects"
+import { estimateBBox } from "../utils/collision-detect"
 import { Spotlight } from "../overlays/spotlight"
 import { Arrow } from "../overlays/arrow"
 import { TextAnnotation } from "../overlays/text-annotation"
@@ -139,7 +140,7 @@ export function PresentationOverlay({
     }
 
     // Legacy sequential mode: cumulative up to currentStep
-    const commands: Array<{ id: string; command: PresentationCommand }> = []
+    const commands: Array<{ id: string; command: PresentationCommand; meta?: PresentationStep["meta"] }> = []
     const maxIndex = Math.min(currentStep ?? 0, steps.length - 1)
 
     for (let i = 0; i <= maxIndex; i++) {
@@ -147,19 +148,109 @@ export function PresentationOverlay({
       if (step.command.type === "clear") {
         commands.length = 0
       } else if (step.command.type !== "wait") {
-        commands.push({ id: step.id, command: step.command })
+        commands.push({ id: step.id, command: step.command, meta: step.meta })
       }
     }
 
     return commands
   }, [active, steps, currentStep, elapsedMs])
 
-  // Collision detection — log overlaps and boundary violations
+  // Log each visible element's position, size & per-element collisions (once per second)
+  const rects = useTargetRects()
   useEffect(() => {
-    if (visibleCommands.length > 0 && elapsedMs != null) {
-      logCollisionReport(visibleCommands, elapsedMs)
+    if (visibleCommands.length === 0 || elapsedMs == null) return
+    const logKey = Math.floor(elapsedMs / 1000)
+    if ((globalThis as any).__lastOverlayLogKey === logKey) return
+    ;(globalThis as any).__lastOverlayLogKey = logKey
+
+    // Collect all unique targetIds referenced by visible commands
+    const targetIds = new Set<string>()
+    for (const { command } of visibleCommands) {
+      const cmd = command as any
+      // Extract targetId from various field shapes
+      for (const field of ["position", "center", "region", "from", "to"]) {
+        if (cmd[field]?.targetId) targetIds.add(cmd[field].targetId)
+      }
+      if (cmd.points) {
+        for (const p of cmd.points) { if (p?.targetId) targetIds.add(p.targetId) }
+      }
     }
-  }, [visibleCommands, elapsedMs])
+
+    // Resolve all bboxes
+    const bboxes: Array<{ id: string; type: string; bbox: ReturnType<typeof estimateBBox>; expect?: { x: number; y: number } }> = []
+    for (const { id, command, meta } of visibleCommands) {
+      const resolved = resolveCommand(command, rects)
+      if (!resolved) {
+        bboxes.push({ id, type: command.type, bbox: null, expect: meta?.expect })
+        continue
+      }
+      bboxes.push({ id, type: command.type, bbox: estimateBBox(id, resolved), expect: meta?.expect })
+    }
+
+    const ts = `t=${(elapsedMs / 1000).toFixed(0)}s`
+    const lines: string[] = [`[${ts}] ${bboxes.length} elements:`]
+
+    // Print target element rects first
+    if (targetIds.size > 0) {
+      lines.push(`  --- targets ---`)
+      for (const tid of targetIds) {
+        const rect = rects.get(tid)
+        if (rect) {
+          lines.push(`  [${tid}] ${rect.width.toFixed(0)}x${rect.height.toFixed(0)} @${rect.left.toFixed(0)},${rect.top.toFixed(0)}`)
+        } else {
+          lines.push(`  [${tid}] NOT FOUND`)
+        }
+      }
+      lines.push(`  --- overlays ---`)
+    }
+
+    for (let i = 0; i < bboxes.length; i++) {
+      const { id, type, bbox, expect } = bboxes[i]
+      if (!bbox) {
+        lines.push(`  ${id} (${type}) — no bbox`)
+        continue
+      }
+      // Find collisions with other bboxes
+      const hits: string[] = []
+      for (let j = 0; j < bboxes.length; j++) {
+        if (i === j) continue
+        const other = bboxes[j].bbox
+        if (!other) continue
+        const xOverlap = Math.max(0, Math.min(bbox.x + bbox.width, other.x + other.width) - Math.max(bbox.x, other.x))
+        const yOverlap = Math.max(0, Math.min(bbox.y + bbox.height, other.y + other.height) - Math.max(bbox.y, other.y))
+        const area = xOverlap * yOverlap
+        if (area > 0) {
+          const smaller = Math.min(bbox.width * bbox.height, other.width * other.height)
+          const pct = Math.round((area / smaller) * 100)
+          hits.push(`${bboxes[j].id}(${pct}%)`)
+        }
+      }
+      const collisionStr = hits.length > 0 ? ` ⚠️ ${hits.join(", ")}` : ""
+      // Validate expect vs actual position
+      let expectStr = ""
+      if (expect) {
+        const dx = Math.abs(bbox.x - expect.x)
+        const dy = Math.abs(bbox.y - expect.y)
+        const maxDim = Math.max(bbox.width, bbox.height, 1)
+        const xPct = (dx / maxDim) * 100
+        const yPct = (dy / maxDim) * 100
+        if (xPct > 5 || yPct > 5) {
+          expectStr = ` ❌ DRIFT expect@${expect.x},${expect.y} Δx=${dx.toFixed(0)}(${xPct.toFixed(0)}%) Δy=${dy.toFixed(0)}(${yPct.toFixed(0)}%)`
+        } else {
+          expectStr = ` ✅ expect@${expect.x},${expect.y}`
+        }
+      }
+      lines.push(`  ${id} (${type}) ${bbox.width.toFixed(0)}x${bbox.height.toFixed(0)} @${bbox.x.toFixed(0)},${bbox.y.toFixed(0)}${collisionStr}${expectStr}`)
+    }
+
+    if (typeof fetch !== "undefined") {
+      fetch("/__collision-log", {
+        method: "POST",
+        body: lines.join("\n"),
+        headers: { "Content-Type": "text/plain" },
+      }).catch(() => {})
+    }
+  }, [visibleCommands, elapsedMs, rects])
 
   if (!active) return null
 
@@ -223,11 +314,11 @@ export function PresentationOverlay({
 function computeTimelineVisible(
   steps: PresentationStep[],
   elapsedMs: number,
-): Array<{ id: string; command: PresentationCommand }> {
+): Array<{ id: string; command: PresentationCommand; meta?: PresentationStep["meta"] }> {
   // Sort by startMs (stable — preserve order for same startMs)
   const sorted = [...steps].sort((a, b) => a.startMs - b.startMs)
 
-  const commands: Array<{ id: string; command: PresentationCommand }> = []
+  const commands: Array<{ id: string; command: PresentationCommand; meta?: PresentationStep["meta"] }> = []
   const skippedFuture: string[] = []
   const expired: string[] = []
 
@@ -249,7 +340,7 @@ function computeTimelineVisible(
       continue
     }
 
-    commands.push({ id: step.id, command: step.command })
+    commands.push({ id: step.id, command: step.command, meta: step.meta })
   }
 
   // Log every 500ms to avoid spam (use rounded time)
