@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useRef, useEffect, useMemo } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import {
   ChatInput,
   MessageList,
@@ -31,6 +32,28 @@ import {
 import { demoSteps } from "./demo-steps"
 import { useStepPlayer } from "./use-step-player"
 import type { DemoStep } from "./use-step-player"
+
+// ============================================================================
+// Agent Busy Detection
+// ============================================================================
+
+/**
+ * Derive agent busy state from message content.
+ * Agent is busy when there are unresolved tool_use calls (no matching tool_result).
+ * This drives command queue behavior: busy → enqueue, idle → auto-dequeue.
+ */
+function isAgentBusy(messages: AgentMessage[]): boolean {
+  const pendingToolUseIds = new Set<string>()
+  for (const msg of messages) {
+    if (msg.type === "tool_use" && msg.toolUseId) {
+      pendingToolUseIds.add(msg.toolUseId)
+    }
+    if (msg.type === "tool_result" && msg.toolUseId) {
+      pendingToolUseIds.delete(msg.toolUseId)
+    }
+  }
+  return pendingToolUseIds.size > 0
+}
 
 // ============================================================================
 // Player Speeds
@@ -66,11 +89,14 @@ export function App() {
   // Speed index (maps to SPEEDS array)
   const [speedIdx, setSpeedIdx] = useState(1)
 
-  // Command Queue (event-driven, auto-dequeue when idle)
+  // Derive agent busy state from messages (unresolved tool calls)
+  const agentBusy = useMemo(() => isAgentBusy(player.messages), [player.messages])
+
+  // Command Queue (event-driven, auto-dequeue when agent becomes idle)
   const commandQueue = useCommandQueue({
     id: "demo-session",
     enabled: true,
-    isBusy: player.isStreaming || player.isAwaiting,
+    isBusy: agentBusy,
     supportsSteer: false,
     onSend: async (content, attachments) => {
       // Dequeued message → inject as user message into the conversation
@@ -125,32 +151,23 @@ export function App() {
   }, [dark])
 
   // ===== Implicit user message routing =====
-  // When a step emits user messages, the reducer sets shouldQueuePending to indicate
-  // whether they should go to the command queue (agent was outputting) or directly to list.
+  // When a step emits user messages, route based on agent busy state:
+  // - Agent busy (unresolved tool calls) → queue (shows in CommandQueuePanel)
+  // - Agent idle → inject directly into message list
+  // Queue auto-dequeues when tool_result arrives (agentBusy becomes false).
   useEffect(() => {
     if (player.pendingUserMessages.length === 0) return
-    if (player.shouldQueuePending) {
-      // Route to command queue — items show in CommandQueuePanel.
-      // If waitingForDrain is also true, isStreaming=false and queue will auto-dequeue.
+    if (agentBusy) {
       for (const msg of player.pendingUserMessages) {
         commandQueue.send(msg.content || "", msg.attachments)
       }
     } else {
-      // No queue routing needed — inject directly into message list
       for (const msg of player.pendingUserMessages) {
         player.injectMessage(msg)
       }
     }
     player.consumePendingUsers()
-  }, [player.pendingUserMessages, player.shouldQueuePending, commandQueue, player.injectMessage, player.consumePendingUsers])
-
-  // ===== Queue drain completion =====
-  // When queue empties while player is waiting for drain, unblock the player.
-  useEffect(() => {
-    if (player.waitingForDrain && commandQueue.items.length === 0) {
-      player.completeDrain()
-    }
-  }, [player.waitingForDrain, commandQueue.items.length, player.completeDrain])
+  }, [player.pendingUserMessages, agentBusy, commandQueue, player.injectMessage, player.consumePendingUsers])
 
   // ===== File Load =====
   const handleFileLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,18 +509,6 @@ export function App() {
                   messages={player.messages}
                   isStreaming={player.isStreaming}
                   pendingPlan={player.pendingPlan}
-                  pendingQuestions={player.pendingQuestion}
-                  pendingApproval={player.pendingApproval}
-                  onApprovePlan={() => player.resolvePlan(true)}
-                  onRejectPlan={() => player.resolvePlan(false)}
-                  onAnswerQuestions={(answers: Record<string, string[]>) => {
-                    console.log("Answers:", answers)
-                    player.resolveQuestion(answers)
-                  }}
-                  onApprovalDecision={(decision, feedback) => {
-                    console.log("Exec decision:", decision, "Feedback:", feedback)
-                    player.resolveApproval(decision, feedback)
-                  }}
                   welcomeTitle="@viben/chat Session Player"
                   welcomeDescription="Press Play to replay the demo session, or load a .jsonl file."
                   maxMessageWidth="760px"
@@ -529,39 +534,77 @@ export function App() {
             )}
           </div>
 
-          {/* Chat Input */}
+          {/* Bottom Input Area — animated transition between ChatInput / ExecApproval / QuestionInput */}
           <div className="border-t border-border px-4 py-2">
             <div className="mx-auto max-w-[760px]">
-              <ChatInput
-                onSend={handleSend}
-                onCancel={player.pause}
-                isLoading={player.isStreaming}
-                allowSendWhileLoading
-                disabled={isAwaiting}
-                blockedReason={
-                  player.pendingApproval ? "Waiting for permission approval..." :
-                  player.pendingQuestion ? "Waiting for question response..." :
-                  player.pendingPlan ? "Waiting for plan approval..." :
-                  undefined
-                }
-                placeholder={player.isStreaming ? "Type to queue a message..." : "Type a message..."}
-                showConfigBar
-                hideExecutorSelector
-                agents={demoAgents.map(a => ({ ...a, model: undefined }))}
-                selectedAgentId={selectedAgentId}
-                onAgentChange={setSelectedAgentId}
-                models={demoModels}
-                selectedModelId={selectedModelId}
-                onModelChange={setSelectedModelId}
-                tools={tools}
-                onToggleTool={handleToggleTool}
-                enabledToolsCount={tools.filter(t => t.enabled).length}
-                skills={skills}
-                onToggleSkill={handleToggleSkill}
-                enabledSkillsCount={skills.filter(s => s.enabled).length}
-                contextTokens={20000}
-                contextBreakdown={demoContextBreakdown}
-              />
+              <AnimatePresence mode="wait">
+                {player.pendingPlan ? (
+                  <PlanApproval
+                    key="plan"
+                    plan={player.pendingPlan}
+                    isPending
+                    onApprove={() => {
+                      console.log("Plan approved")
+                      player.resolvePlan(true)
+                    }}
+                    onReject={() => {
+                      console.log("Plan rejected")
+                      player.resolvePlan(false)
+                    }}
+                  />
+                ) : player.pendingApproval ? (
+                  <ExecApproval
+                    key="approval"
+                    approval={player.pendingApproval}
+                    onDecision={(decision, feedback) => {
+                      console.log("Exec decision:", decision, "Feedback:", feedback)
+                      player.resolveApproval(decision, feedback)
+                    }}
+                    enableKeyboard
+                  />
+                ) : player.pendingQuestion ? (
+                  <QuestionInput
+                    key="question"
+                    questions={player.pendingQuestion}
+                    onSubmit={(answers) => {
+                      console.log("Answers:", answers)
+                      player.resolveQuestion(answers)
+                    }}
+                  />
+                ) : (
+                  <motion.div
+                    key="input"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ChatInput
+                      onSend={handleSend}
+                      onCancel={player.pause}
+                      isLoading={player.isStreaming}
+                      allowSendWhileLoading
+                      placeholder={player.isStreaming ? "Type to queue a message..." : "Type a message..."}
+                      showConfigBar
+                      hideExecutorSelector
+                      agents={demoAgents.map(a => ({ ...a, model: undefined }))}
+                      selectedAgentId={selectedAgentId}
+                      onAgentChange={setSelectedAgentId}
+                      models={demoModels}
+                      selectedModelId={selectedModelId}
+                      onModelChange={setSelectedModelId}
+                      tools={tools}
+                      onToggleTool={handleToggleTool}
+                      enabledToolsCount={tools.filter(t => t.enabled).length}
+                      skills={skills}
+                      onToggleSkill={handleToggleSkill}
+                      enabledSkillsCount={skills.filter(s => s.enabled).length}
+                      contextTokens={20000}
+                      contextBreakdown={demoContextBreakdown}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

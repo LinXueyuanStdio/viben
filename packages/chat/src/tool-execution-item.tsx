@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -199,6 +199,7 @@ function getToolParam(
     case "WebSearch":
       return (input.query as string) || "";
     case "Task":
+    case "Agent":
       return (input.description as string) || "";
     case "TodoWrite":
     case "TaskCreate":
@@ -435,6 +436,7 @@ function useResultSummary(
       return { summary: t("chat.toolResult.taskUpdated", "Task updated"), isWarning: false };
 
     case "Task":
+    case "Agent":
       return { summary: t("chat.toolResult.subtaskCompleted", "Subtask completed"), isWarning: false };
 
     default:
@@ -716,13 +718,18 @@ export function ToolExecutionItem({
   const isCompleted = resolvedStatus === "success";
 
   // Check if this is a Task tool (sub-agent)
-  const isTaskTool = name === "Task";
+  const isTaskTool = name === "Task" || name === "Agent";
   const taskInput = isTaskTool && input ? input as {
     subagent_type?: string;
     description?: string;
     prompt?: string;
     model?: string;
   } : null;
+
+  // Auto-expand Task/Agent tool when running
+  useEffect(() => {
+    if (isRunning && isTaskTool) setIsExpanded(true);
+  }, [isRunning, isTaskTool]);
 
   const hasDetails = input || output || hasSubagentMessages;
 
@@ -876,20 +883,33 @@ export function ToolExecutionItem({
                   )}
                 </span>
               )}
-              <div className="flex flex-1 items-center gap-2 min-w-0">
-                <StatusIcon
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    status === "executing" ? "text-violet-500" : statusColor,
-                    status === "executing" && "animate-spin"
+              <div className="flex flex-1 flex-col gap-0.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <StatusIcon
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      status === "executing" ? "text-violet-500" : statusColor,
+                      status === "executing" && "animate-spin"
+                    )}
+                  />
+                  <span className="truncate font-medium text-sm text-foreground">
+                    {taskInput.description || taskInput.subagent_type || "Sub-Agent"}
+                  </span>
+                  {/* Tool use stats */}
+                  {hasSubagentMessages && (
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      · {subagentMessages!.filter(m => m.type === "tool_use").length} tool uses
+                    </span>
                   )}
-                />
-                <span className="truncate font-medium text-sm text-violet-600 dark:text-violet-400">
-                  {t("chat.subAgent", "Sub-Agent")}: {taskInput.subagent_type || "unknown"}
-                </span>
-                {taskInput.description && (
-                  <span className="text-xs text-muted-foreground truncate">
-                    — {taskInput.description}
+                </div>
+                {/* Activity status line */}
+                {status === "executing" ? (
+                  <span className="text-xs text-muted-foreground ml-6 truncate">
+                    ⎿ {t("chat.subAgentRunning", "Running…")}
+                  </span>
+                ) : status === "completed" && (
+                  <span className="text-xs text-muted-foreground ml-6 truncate">
+                    ⎿ {t("chat.done", "Done")}
                   </span>
                 )}
               </div>
@@ -906,6 +926,18 @@ export function ToolExecutionItem({
                   className="overflow-hidden"
                 >
                   <div className="border-t border-violet-500/10 px-4 py-3 space-y-3 min-w-0 overflow-hidden">
+                    {/* Subagent type tag */}
+                    {taskInput.subagent_type && (
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-violet-500/10 px-1.5 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
+                          {taskInput.subagent_type}
+                        </span>
+                        {subagentId && (
+                          <span className="text-xs text-muted-foreground font-mono">{subagentId}</span>
+                        )}
+                      </div>
+                    )}
+
                     {/* Task prompt */}
                     {taskInput.prompt && (
                       <div className="min-w-0 overflow-hidden">
@@ -925,8 +957,8 @@ export function ToolExecutionItem({
                       </div>
                     )}
 
-                    {/* Subagent ID */}
-                    {subagentId && (
+                    {/* Subagent ID (when no subagent_type shown) */}
+                    {subagentId && !taskInput.subagent_type && (
                       <div className="text-xs text-muted-foreground">
                         {t("chat.subAgentId", "Agent ID")}: <span className="font-mono">{subagentId}</span>
                       </div>

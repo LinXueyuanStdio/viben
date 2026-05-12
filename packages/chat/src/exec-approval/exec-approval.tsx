@@ -178,7 +178,8 @@ export function ExecApproval({
     <motion.div
       initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={{ duration: 0.15 }}
       className={cn("rounded-lg border bg-card p-4 shadow-sm", className)}
     >
       {/* Header */}

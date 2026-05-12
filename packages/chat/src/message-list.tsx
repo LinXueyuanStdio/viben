@@ -7,8 +7,6 @@ import { cn, ScrollArea } from "@viben/ui";
 import { MessageItem } from "./message-item";
 import { ToolExecutionItem, type ArtifactInfo } from "./tool-execution-item";
 import { CollapsedToolGroup } from "./collapsed-tool-group";
-import { QuestionInput } from "./question-input";
-import { ExecApproval } from "./exec-approval";
 import type { PendingExecApproval } from "./exec-approval";
 import { getDisplayPath } from "./utils";
 import type { AgentMessage, PendingQuestion, TaskPlan } from "./types";
@@ -576,16 +574,32 @@ function groupMessages(
       pendingTextMessage = message;
       state.currentGroup = null;
     } else if (message.type === "tool_use" && message.name) {
-      // Text followed by tool_use - emit the text as a standalone message,
-      // then start a fresh tool group. This ensures long text messages are
-      // rendered in full rather than being truncated into a task group header.
-      if (pendingTextMessage) {
-        groups.push({ type: "other", message: pendingTextMessage });
-        pendingTextMessage = null;
+      // Agent/Task tools are rendered standalone (full mode with subagent props)
+      if (message.name === "Agent" || message.name === "Task") {
+        if (pendingTextMessage) {
+          groups.push({ type: "other", message: pendingTextMessage });
+          pendingTextMessage = null;
+        }
+        pushCurrentGroup(true);
+        // Merge tool_result into the tool_use message for standalone rendering
+        const result = message.toolUseId ? getToolResult(message.toolUseId) : undefined;
+        if (result && !message.output) {
+          message.output = result.output;
+          message.isError = result.isError;
+        }
+        groups.push({ type: "other", message });
+      } else {
+        // Text followed by tool_use - emit the text as a standalone message,
+        // then start a fresh tool group. This ensures long text messages are
+        // rendered in full rather than being truncated into a task group header.
+        if (pendingTextMessage) {
+          groups.push({ type: "other", message: pendingTextMessage });
+          pendingTextMessage = null;
+        }
+        const group = ensureCurrentGroup();
+        const result = message.toolUseId ? getToolResult(message.toolUseId) : undefined;
+        group.tools.push({ message, globalIndex: toolGlobalIndex++, result });
       }
-      const group = ensureCurrentGroup();
-      const result = message.toolUseId ? getToolResult(message.toolUseId) : undefined;
-      group.tools.push({ message, globalIndex: toolGlobalIndex++, result });
     } else if (message.type === "tool_result") {
       // Skip tool_result messages as they're associated with tool_use
     } else if (message.type === "user") {
@@ -774,6 +788,7 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
       case "WebFetch":
         return t("chat.activity.fetchingPage", "Fetching page...");
       case "Task":
+      case "Agent":
         return t("chat.activity.runningSubtask", "Running subtask...");
       default:
         return t("chat.activity.runningTool", {
@@ -888,6 +903,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  // Track whether the user is actively interacting (wheel/touch/pointer)
+  // This distinguishes user scrolls from programmatic scrollIntoView / overflowAnchor adjustments
+  const userInteractingRef = useRef(false);
+
   // Check scroll position to show/hide scroll button and detect manual scroll
   const checkScrollPosition = useCallback(() => {
     const container = viewportRef.current;
@@ -896,9 +915,9 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     const { scrollTop, scrollHeight, clientHeight } = container;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // Detect if user scrolled up (scroll position decreased)
+    // Only detect scroll-up when user is actively interacting
     if (
-      isStreaming &&
+      userInteractingRef.current &&
       scrollTop < lastScrollTopRef.current &&
       distanceFromBottom > 100
     ) {
@@ -914,7 +933,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
     // Show button if more than 200px from bottom
     setShowScrollButton(distanceFromBottom > 200);
-  }, [isStreaming]);
+  }, []);
 
   // Scroll to bottom on initial load
   const hasInitialScrolledRef = useRef(false);
@@ -932,33 +951,44 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Use autoScroll prop if provided, otherwise default to auto-scroll when streaming
   const shouldAutoScroll = autoScroll !== undefined ? autoScroll : isStreaming;
   useEffect(() => {
-    if (shouldAutoScroll && !userScrolledUpRef.current) {
-      // Use instant scroll during active streaming to prevent jitter
-      // Use smooth scroll when streaming just started (new message) or stopped
-      bottomRef.current?.scrollIntoView({
-        behavior: isStreaming ? "instant" : "smooth",
-      });
-    }
-  }, [messages, shouldAutoScroll, isStreaming, pendingQuestions, pendingApproval]);
+    if (!shouldAutoScroll) return;
+    if (userScrolledUpRef.current) return;
 
-  // Reset userScrolledUp when streaming stops
-  useEffect(() => {
-    if (!isStreaming) {
-      userScrolledUpRef.current = false;
-    }
-  }, [isStreaming]);
+    bottomRef.current?.scrollIntoView({
+      behavior: isStreaming ? "instant" : "smooth",
+    });
+  }, [messages, shouldAutoScroll, isStreaming]);
 
-  // Add scroll listener to viewport
+  // Add scroll listener and user interaction detection to viewport
   useEffect(() => {
     const container = viewportRef.current;
     if (!container) return;
 
     container.addEventListener("scroll", checkScrollPosition);
+
+    // Track user interaction to distinguish manual scrolls from programmatic ones
+    const markInteracting = () => { userInteractingRef.current = true; };
+    const clearInteracting = () => {
+      setTimeout(() => { userInteractingRef.current = false; }, 150);
+    };
+    container.addEventListener("wheel", markInteracting);
+    container.addEventListener("touchstart", markInteracting);
+    container.addEventListener("pointerdown", markInteracting);
+    container.addEventListener("wheel", clearInteracting);
+    container.addEventListener("pointerup", clearInteracting);
+    container.addEventListener("touchend", clearInteracting);
+
     // Initial check
     checkScrollPosition();
 
     return () => {
       container.removeEventListener("scroll", checkScrollPosition);
+      container.removeEventListener("wheel", markInteracting);
+      container.removeEventListener("touchstart", markInteracting);
+      container.removeEventListener("pointerdown", markInteracting);
+      container.removeEventListener("wheel", clearInteracting);
+      container.removeEventListener("pointerup", clearInteracting);
+      container.removeEventListener("touchend", clearInteracting);
     };
   }, [checkScrollPosition]);
 
@@ -1168,33 +1198,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
             );
           })}
 
-          {/* Pending exec approval - blocks further execution */}
-          {pendingApproval && onApprovalDecision && (
-            <ExecApproval
-              approval={pendingApproval}
-              onDecision={onApprovalDecision}
-              className="mx-auto max-w-lg"
-            />
-          )}
-
-          {/* Running indicator - only show when NOT blocked by approval */}
-          {isStreaming && !pendingApproval && <RunningIndicator messages={messages} />}
-
-          {/* Waiting for permission indicator - show when streaming is paused by approval */}
-          {isStreaming && pendingApproval && (
-            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-              <div className="size-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>{t("chat.waitingForPermission", "Waiting for permission...")}</span>
-            </div>
-          )}
-
-          {/* Pending questions */}
-          {pendingQuestions && onAnswerQuestions && (
-            <QuestionInput
-              questions={pendingQuestions}
-              onSubmit={onAnswerQuestions}
-            />
-          )}
+          {/* Running indicator */}
+          {isStreaming && <RunningIndicator messages={messages} />}
 
           {/* Scroll anchor */}
           <div ref={bottomRef} />

@@ -9,6 +9,7 @@ export interface QuestionInputProps {
   questions: PendingQuestion;
   onSubmit: (answers: Record<string, string[]>) => void;
   isSubmitting?: boolean;
+  readOnly?: boolean;
   className?: string;
 }
 
@@ -264,7 +265,8 @@ export function QuestionInput({
     <motion.div
       initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">

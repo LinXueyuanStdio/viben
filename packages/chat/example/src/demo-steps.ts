@@ -506,9 +506,16 @@ export const demoSteps: DemoStep[] = [
     messages: [m({ type: "thinking", content: "The user wants unit tests. I'll delegate this to a test-runner sub-agent since it's a self-contained task that can run in parallel." })],
     delayMs: 400,
   },
+  // Sub-agent starts (shows as running with spinner)
   {
     messages: [
-      m({ type: "tool_use", name: "Task", toolUseId: "tool-task-1", input: { description: "Write unit tests for user-store and UserList component", prompt: "Write comprehensive unit tests for:\n1. src/stores/user-store.ts - test all CRUD operations, loading states, error handling\n2. src/components/UserList.tsx - test rendering, search filtering, pagination\n\nUse vitest + @testing-library/react. Ensure full coverage of edge cases." }, subagentId: "sub-test-1" }),
+      m({ type: "tool_use", name: "Agent", toolUseId: "tool-task-1", input: { description: "Write unit tests for user-store and UserList component", subagent_type: "test-runner", prompt: "Write comprehensive unit tests for:\n1. src/stores/user-store.ts - test all CRUD operations, loading states, error handling\n2. src/components/UserList.tsx - test rendering, search filtering, pagination\n\nUse vitest + @testing-library/react. Ensure full coverage of edge cases." }, subagentId: "sub-test-1" }),
+    ],
+    delayMs: 2500,
+  },
+  // Sub-agent completes (result arrives)
+  {
+    messages: [
       m({ type: "tool_result", toolUseId: "tool-task-1", output: "Sub-agent completed successfully.\n\nFiles created:\n  - src/__tests__/user-store.test.ts (8 tests)\n  - src/__tests__/UserList.test.tsx (4 tests)\n\nResults: 12 passing, 0 failing.\n\nCoverage:\n  user-store.ts: 94% statements, 88% branches\n  UserList.tsx: 91% statements, 85% branches" }),
     ],
     delayMs: 800,
@@ -762,9 +769,10 @@ export const demoSteps: DemoStep[] = [
     messages: [m({ type: "text", content: "I'll delegate the export dialog implementation to a UI specialist sub-agent." })],
     delayMs: 600,
   },
+  // Sub-agent starts with subagent messages (auto-expands, shows running)
   {
     messages: [
-      m({ type: "tool_use", name: "Task", toolUseId: "tool-sub-1", input: { description: "Implement ExportDialog component", prompt: "Create a modal dialog component for CSV export with: file name input, column selection checkboxes, date range filter, and download button." }, subagentId: "sub-ui-1", subagentMessages: [
+      m({ type: "tool_use", name: "Agent", toolUseId: "tool-sub-1", input: { description: "Implement ExportDialog component", subagent_type: "ui-engineer", prompt: "Create a modal dialog component for CSV export with: file name input, column selection checkboxes, date range filter, and download button." }, subagentId: "sub-ui-1", subagentMessages: [
         { id: "sub-1", type: "text", content: "I'll create the ExportDialog component with the requested features." },
         { id: "sub-2", type: "tool_use", name: "Write", toolUseId: "sub-tool-1", input: { file_path: "src/components/ExportDialog.tsx" } },
         { id: "sub-3", type: "tool_result", toolUseId: "sub-tool-1", output: "File created successfully" },
@@ -772,6 +780,12 @@ export const demoSteps: DemoStep[] = [
         { id: "sub-5", type: "tool_result", toolUseId: "sub-tool-2", output: "No errors found." },
         { id: "sub-6", type: "text", content: "ExportDialog component created with modal overlay, column checkboxes, date picker, and download trigger." },
       ] }),
+    ],
+    delayMs: 3000,
+  },
+  // Sub-agent completes
+  {
+    messages: [
       m({ type: "tool_result", toolUseId: "tool-sub-1", output: "Sub-agent completed.\n\nCreated: src/components/ExportDialog.tsx\n- Modal with backdrop blur\n- Column selection (all/none toggle)\n- Date range filter with calendar popover\n- CSV download with proper encoding\n\nTypecheck: passing" }),
     ],
     delayMs: 800,

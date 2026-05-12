@@ -97,7 +97,8 @@ export function PlanApproval({
     <motion.div
       initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -216,8 +217,8 @@ export function PlanApproval({
             )}
           </div>
 
-          {/* Action buttons - only show when pending and not executing */}
-          {isPending && !isExecuting && !isAllCompleted && !isCancelled && (
+          {/* Action buttons - only show when pending, has callbacks, and not executing */}
+          {isPending && (onApprove || onReject) && !isExecuting && !isAllCompleted && !isCancelled && (
             <div className="px-4 py-3 bg-muted/50 border-t border-inherit">
               <p className="text-sm text-muted-foreground mb-3">
                 {t("chat.planApprovalPrompt", "Do you approve this execution plan?")}

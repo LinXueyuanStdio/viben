@@ -8,11 +8,12 @@
  * - When user resolves the interaction, the condition clears → next rAF tick advances
  * - Uses requestAnimationFrame loop with elapsed time tracking for pacing
  *
- * Queue drain model:
- * - When user messages arrive during agent output, they route to the command queue
- * - The player enters `waitingForDrain` state: isStreaming becomes false, advancement blocks
- * - This makes isBusy=false → queue auto-dequeues → messages inject into list
- * - When queue empties, App calls completeDrain() → player resumes
+ * Queue routing model:
+ * - User messages from demo steps go to `pendingUserMessages`
+ * - App determines routing based on agent busy state (unresolved tool calls)
+ * - When agent is busy → messages go to CommandQueue
+ * - When agent is idle → messages inject directly into list
+ * - Queue auto-dequeues when tool_result arrives (agent becomes idle)
  */
 
 import { useReducer, useEffect, useRef, useCallback } from "react"
@@ -53,22 +54,11 @@ interface PlayerState {
   pendingPlan: TaskPlan | null
   speed: number
   /**
-   * User messages from steps that need routing through the command queue.
-   * When a step fires and contains user messages while agent has output,
-   * they go here instead of directly to `messages`. App consumes and routes them.
+   * User messages from steps that need routing by the App.
+   * App checks isAgentBusy(messages) to decide: queue or inject directly.
+   * Blocks ADVANCE until consumed to prevent overwrite.
    */
   pendingUserMessages: AgentMessage[]
-  /**
-   * Whether pendingUserMessages should go to the queue (true) or directly to messages (false).
-   * Set to true when agent has produced output (meaning user messages arrived "mid-stream").
-   */
-  shouldQueuePending: boolean
-  /**
-   * True when the player is waiting for the command queue to drain.
-   * This makes isStreaming=false (so queue can auto-dequeue) and blocks advancement.
-   * Cleared by COMPLETE_DRAIN action when App detects queue is empty.
-   */
-  waitingForDrain: boolean
 }
 
 type PlayerAction =
@@ -86,7 +76,6 @@ type PlayerAction =
   | { type: "LOAD_STEPS" }
   | { type: "INJECT_MESSAGE"; message: AgentMessage }
   | { type: "CONSUME_PENDING_USERS" }
-  | { type: "COMPLETE_DRAIN" }
 
 function createInitialState(): PlayerState {
   return {
@@ -98,8 +87,6 @@ function createInitialState(): PlayerState {
     pendingPlan: null,
     speed: 1,
     pendingUserMessages: [],
-    shouldQueuePending: false,
-    waitingForDrain: false,
   }
 }
 
@@ -125,8 +112,7 @@ function createReducer(steps: DemoStep[]) {
         // Called by rAF loop. Only advances if no blocking condition.
         if (state.status !== "playing") return state
         if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
-        if (state.pendingUserMessages.length > 0) return state
-        if (state.waitingForDrain) return state
+        if (state.pendingUserMessages.length > 0) return state // wait for routing
         if (state.stepIndex >= steps.length) return { ...state, status: "idle" }
 
         const step = steps[state.stepIndex]
@@ -136,43 +122,32 @@ function createReducer(steps: DemoStep[]) {
         const userMsgs = step.messages.filter(msg => msg.type === "user")
         const agentMsgs = step.messages.filter(msg => msg.type !== "user")
 
-        // Only route user messages through queue if agent has already produced output.
-        // This fixes: first user message (empty list) going to queue incorrectly.
+        // Only separate user messages when agent has produced output.
+        // If no agent output yet (start of conversation), user messages go straight to list.
         const hasAgentOutput = state.messages.some(m => m.type !== "user")
-        const shouldQueueUsers = hasAgentOutput && userMsgs.length > 0
 
-        if (shouldQueueUsers) {
-          // Check if the NEXT step is also user-message-only.
-          // If so, don't waitForDrain yet — let consecutive user steps accumulate in queue.
-          const nextStep = newIndex < steps.length ? steps[newIndex] : null
-          const nextIsUserOnly = nextStep
-            ? nextStep.messages.length > 0 && nextStep.messages.every(m => m.type === "user")
-            : false
-
+        if (hasAgentOutput && userMsgs.length > 0) {
+          // User messages go to pendingUserMessages for routing by App.
+          // App will check isAgentBusy(messages) to decide queue vs direct inject.
           return {
             ...state,
             status: done ? "idle" : "playing",
             stepIndex: newIndex,
             messages: [...state.messages, ...agentMsgs],
             pendingUserMessages: userMsgs,
-            shouldQueuePending: true, // Always queue when agent has output
-            // Only block for drain after the LAST consecutive user-message step
-            waitingForDrain: !nextIsUserOnly,
             pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
             pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
             pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
           }
         }
 
-        // No queue routing — all messages go directly to list
+        // All messages go directly to list (no queue routing)
         return {
           ...state,
           status: done ? "idle" : "playing",
           stepIndex: newIndex,
           messages: [...state.messages, ...step.messages],
           pendingUserMessages: [],
-          shouldQueuePending: false,
-          waitingForDrain: false,
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
           pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
           pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
@@ -180,8 +155,6 @@ function createReducer(steps: DemoStep[]) {
       }
 
       case "NEXT_MANUAL": {
-        // Manual step (Next button). Ignores status, forces one step forward.
-        // But still respects pending interactions.
         if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
         if (state.stepIndex >= steps.length) return state
 
@@ -194,7 +167,6 @@ function createReducer(steps: DemoStep[]) {
           stepIndex: newIndex,
           messages: newMessages,
           pendingUserMessages: [],
-          waitingForDrain: false,
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
           pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
           pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
@@ -212,7 +184,6 @@ function createReducer(steps: DemoStep[]) {
           pendingQuestion: null,
           pendingPlan: null,
           pendingUserMessages: [],
-          waitingForDrain: false,
         }
       }
 
@@ -227,7 +198,6 @@ function createReducer(steps: DemoStep[]) {
           pendingQuestion: null,
           pendingPlan: null,
           pendingUserMessages: [],
-          waitingForDrain: false,
         }
       }
 
@@ -253,10 +223,7 @@ function createReducer(steps: DemoStep[]) {
         return { ...state, messages: [...state.messages, action.message] }
 
       case "CONSUME_PENDING_USERS":
-        return { ...state, pendingUserMessages: [], shouldQueuePending: false }
-
-      case "COMPLETE_DRAIN":
-        return { ...state, waitingForDrain: false }
+        return { ...state, pendingUserMessages: [] }
 
       default:
         return state
@@ -274,12 +241,10 @@ export interface StepPlayerReturn {
   totalSteps: number
   status: "idle" | "playing" | "paused"
   speed: number
-  /** True when player is actively producing messages (playing + not blocked) */
+  /** True when player is actively producing messages (playing + not awaiting) */
   isStreaming: boolean
   /** True when waiting for user interaction */
   isAwaiting: boolean
-  /** True when waiting for command queue to drain */
-  waitingForDrain: boolean
   pendingApproval: PendingExecApproval | null
   pendingQuestion: PendingQuestion | null
   pendingPlan: TaskPlan | null
@@ -299,12 +264,8 @@ export interface StepPlayerReturn {
   injectMessage: (message: AgentMessage) => void
   /** User messages waiting to be routed (consumed by App via consumePendingUsers) */
   pendingUserMessages: AgentMessage[]
-  /** Whether pendingUserMessages should go to queue (true) or directly to list (false) */
-  shouldQueuePending: boolean
   /** Clear pendingUserMessages after App has consumed them */
   consumePendingUsers: () => void
-  /** Signal that queue drain is complete — unblocks advancement */
-  completeDrain: () => void
 }
 
 export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
@@ -338,7 +299,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
       // Keep loop alive but don't advance when blocked
       if (
         state.pendingApproval || state.pendingQuestion || state.pendingPlan ||
-        state.pendingUserMessages.length > 0 || state.waitingForDrain
+        state.pendingUserMessages.length > 0
       ) {
         rafRef.current = requestAnimationFrame(tick)
         return
@@ -373,12 +334,11 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
   }, [
     state.status, state.stepIndex, state.speed,
     state.pendingApproval, state.pendingQuestion, state.pendingPlan,
-    state.pendingUserMessages.length, state.waitingForDrain,
+    state.pendingUserMessages.length,
   ])
 
   const isAwaiting = !!(state.pendingApproval || state.pendingQuestion || state.pendingPlan)
-  // isStreaming is false when waiting for drain — this makes isBusy=false so queue auto-dequeues
-  const isStreaming = state.status === "playing" && !isAwaiting && !state.waitingForDrain
+  const isStreaming = state.status === "playing" && !isAwaiting
 
   // Actions
   const play = useCallback(() => dispatch({ type: "PLAY" }), [])
@@ -419,10 +379,6 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     dispatch({ type: "CONSUME_PENDING_USERS" })
   }, [])
 
-  const completeDrain = useCallback(() => {
-    dispatch({ type: "COMPLETE_DRAIN" })
-  }, [])
-
   return {
     messages: state.messages,
     stepIndex: state.stepIndex,
@@ -431,7 +387,6 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     speed: state.speed,
     isStreaming,
     isAwaiting,
-    waitingForDrain: state.waitingForDrain,
     pendingApproval: state.pendingApproval,
     pendingQuestion: state.pendingQuestion,
     pendingPlan: state.pendingPlan,
@@ -448,8 +403,6 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     loadSteps,
     injectMessage,
     pendingUserMessages: state.pendingUserMessages,
-    shouldQueuePending: state.shouldQueuePending,
     consumePendingUsers,
-    completeDrain,
   }
 }
