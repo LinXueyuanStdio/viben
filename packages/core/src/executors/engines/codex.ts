@@ -26,10 +26,9 @@ import { BaseExecutor } from "./base";
 import { whichSync, fileExists, joinPath, getHomeDir } from "../ops/utils";
 
 /**
- * Base command for Codex CLI - using the official @openai/codex package
+ * Codex CLI executable name
  */
-const BASE_COMMAND = "npx";
-const CODEX_PACKAGE = "@openai/codex";
+const CODEX_CLI = "codex";
 
 /**
  * Codex executor configuration
@@ -59,16 +58,14 @@ export class CodexExecutor extends BaseExecutor {
   // === Capability Detection ===
 
   getAvailabilityInfo(): AvailabilityInfo {
-    // Codex can be run via npx without local installation
-    const npxPath = whichSync("npx");
-    const codexPath = whichSync("codex");
+    const codexPath = whichSync(CODEX_CLI);
     const configPath = this.defaultMcpConfigPath();
 
     // Check if config exists (indicates setup)
     if (configPath && fileExists(configPath)) {
       return {
         status: "INSTALLATION_FOUND",
-        path: codexPath ?? npxPath ?? configPath,
+        path: codexPath ?? configPath,
       };
     }
 
@@ -77,14 +74,6 @@ export class CodexExecutor extends BaseExecutor {
       return {
         status: "INSTALLATION_FOUND",
         path: codexPath,
-      };
-    }
-
-    // npx is available, so codex can be run
-    if (npxPath) {
-      return {
-        status: "INSTALLATION_FOUND",
-        path: npxPath,
       };
     }
 
@@ -225,17 +214,17 @@ export class CodexExecutor extends BaseExecutor {
       detach = false,
     } = options;
 
-    const npxPath = whichSync("npx");
-    if (!npxPath) {
+    const execPath = this.getExecutablePath();
+    if (!execPath) {
       return {
         success: false,
-        error: "npx executable not found",
+        error: "codex executable not found",
         errorType: "NOT_FOUND",
       };
     }
 
-    // Build arguments: npx -y @openai/codex exec [OPTIONS] [PROMPT]
-    const args: string[] = ["-y", CODEX_PACKAGE, "exec"];
+    // Build arguments: codex exec [OPTIONS] [PROMPT]
+    const args: string[] = ["exec"];
 
     // Add model option
     if (model || this.config.model) {
@@ -283,7 +272,7 @@ export class CodexExecutor extends BaseExecutor {
     };
 
     try {
-      const child = spawn(npxPath, args, {
+      const child = spawn(execPath, args, {
         cwd,
         env: spawnEnv,
         stdio: detach ? "ignore" : ["pipe", "pipe", "pipe"],
@@ -332,16 +321,16 @@ export class CodexExecutor extends BaseExecutor {
       env: extraEnv = {},
     } = options;
 
-    const npxPath = whichSync("npx");
-    if (!npxPath) {
+    const execPath = this.getExecutablePath();
+    if (!execPath) {
       return {
         success: false,
-        error: "npx executable not found",
+        error: "codex executable not found",
         errorType: "NOT_FOUND",
       };
     }
 
-    const args: string[] = ["-y", CODEX_PACKAGE];
+    const args: string[] = [];
 
     if (resume || sessionId) {
       // Resume existing session: codex resume [OPTIONS] [SESSION_ID] [PROMPT]
@@ -367,7 +356,7 @@ export class CodexExecutor extends BaseExecutor {
         args.push(prompt);
       }
     } else {
-      // New session: npx -y @openai/codex exec [OPTIONS] [PROMPT]
+      // New session: codex exec [OPTIONS] [PROMPT]
       args.push("exec");
 
       if (model || this.config.model) {
@@ -394,7 +383,7 @@ export class CodexExecutor extends BaseExecutor {
     };
 
     try {
-      const child = spawn(npxPath, args, {
+      const child = spawn(execPath, args, {
         cwd,
         env: spawnEnv,
         stdio: "inherit",
@@ -430,16 +419,16 @@ export class CodexExecutor extends BaseExecutor {
       env: extraEnv = {},
     } = options;
 
-    const npxPath = whichSync("npx");
-    if (!npxPath) {
+    const execPath = this.getExecutablePath();
+    if (!execPath) {
       yield {
         type: "error",
-        message: "npx executable not found",
+        message: "codex executable not found",
       };
       return;
     }
 
-    const args: string[] = ["-y", CODEX_PACKAGE];
+    const args: string[] = [];
 
     if (resume || sessionId) {
       // Resume with exec for non-interactive streaming: codex exec resume [OPTIONS] [SESSION_ID]
@@ -493,7 +482,7 @@ export class CodexExecutor extends BaseExecutor {
       spawnEnv.CODEX_FOLLOWUP_PROMPT = prompt;
     }
 
-    const child = spawn(npxPath, args, {
+    const child = spawn(execPath, args, {
       cwd,
       env: spawnEnv,
       stdio: ["pipe", "pipe", "pipe"],
@@ -594,17 +583,17 @@ export class CodexExecutor extends BaseExecutor {
       env: extraEnv = {},
     } = options || {};
 
-    const npxPath = whichSync("npx");
-    if (!npxPath) {
+    const execPath = this.getExecutablePath();
+    if (!execPath) {
       return {
         success: false,
-        error: "npx executable not found",
+        error: "codex executable not found",
         errorType: "NOT_FOUND",
       };
     }
 
-    // Build resume command: npx -y @openai/codex resume [OPTIONS] [SESSION_ID]
-    const args: string[] = ["-y", CODEX_PACKAGE, "resume"];
+    // Build resume command: codex resume [OPTIONS] [SESSION_ID]
+    const args: string[] = ["resume"];
 
     if (this.config.model) {
       args.push("-m", this.config.model);
@@ -626,7 +615,7 @@ export class CodexExecutor extends BaseExecutor {
     };
 
     try {
-      const child = spawn(npxPath, args, {
+      const child = spawn(execPath, args, {
         cwd,
         env: spawnEnv,
         stdio: "inherit",

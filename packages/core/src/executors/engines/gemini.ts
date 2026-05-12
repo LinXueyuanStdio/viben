@@ -82,10 +82,11 @@ class GeminiExecutor extends BaseExecutor {
 
   buildRunCommand(options: RunCommandOptions): string[] {
     const { prompt } = options;
-    const args = ["gemini", "--prompt", prompt];
+    const args = ["gemini"];
     if (this.config.model) {
       args.push("--model", this.config.model);
     }
+    args.push(prompt);
     return args;
   }
 
@@ -134,10 +135,11 @@ class GeminiExecutor extends BaseExecutor {
       };
     }
 
-    const args = ["--prompt", prompt];
+    const args: string[] = [];
     if (this.config.model) {
       args.push("--model", this.config.model);
     }
+    args.push(prompt);
 
     const spawnEnv = {
       ...process.env,
@@ -214,13 +216,14 @@ class GeminiExecutor extends BaseExecutor {
       };
     }
 
-    const args: string[] = ["--prompt", prompt];
+    const args: string[] = [];
     if (this.config.model || options.model) {
       args.push("--model", options.model || this.config.model!);
     }
     if (options.outputFormat === "stream-json") {
       args.push("--output-format", "json");
     }
+    args.push(prompt);
 
     const spawnEnv = {
       ...process.env,
