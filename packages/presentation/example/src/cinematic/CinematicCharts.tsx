@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, formatCompactNumber, loopSine, softSpring, particleTrail } from "./motion"
+import { clampInterpolate, formatCompactNumber, loopSine, softSpring, particleTrail, stagger } from "./motion"
 
 export interface DataPoint {
   label: string
@@ -445,6 +445,232 @@ export function CandlestickChart({
                 {i % 2 === 0 && (
                   <text x={cx} y={height - 28} fill="rgba(234,236,239,0.4)" fontSize={10} textAnchor="middle" fontFamily={cinematicTheme.font.mono}>
                     {d.label}
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </svg>
+      </PanelShell>
+    </div>
+  )
+}
+
+const MAP_PATHS: Record<string, { d: string; cx: number; cy: number }> = {
+  na: { d: "M 50 120 L 130 80 L 280 90 L 320 140 L 280 220 L 180 250 L 80 230 L 40 180 Z", cx: 170, cy: 155 },
+  sa: { d: "M 200 270 L 250 260 L 290 300 L 280 380 L 240 440 L 210 430 L 190 370 L 180 300 Z", cx: 235, cy: 350 },
+  eu: { d: "M 480 80 L 560 70 L 620 90 L 640 130 L 600 160 L 520 155 L 470 130 Z", cx: 555, cy: 115 },
+  africa: { d: "M 470 180 L 540 170 L 600 200 L 620 280 L 580 370 L 520 390 L 470 350 L 450 260 Z", cx: 535, cy: 280 },
+  mideast: { d: "M 620 140 L 700 130 L 740 170 L 720 210 L 660 220 L 630 190 Z", cx: 675, cy: 175 },
+  "south-asia": { d: "M 740 180 L 800 160 L 840 200 L 830 260 L 780 270 L 740 240 Z", cx: 790, cy: 215 },
+  "east-asia": { d: "M 840 90 L 950 80 L 1020 120 L 1000 190 L 940 220 L 860 200 L 830 150 Z", cx: 920, cy: 150 },
+  oceania: { d: "M 900 320 L 980 300 L 1050 330 L 1040 380 L 970 400 L 910 370 Z", cx: 975, cy: 350 },
+}
+
+export interface MapRegion {
+  id: "na" | "sa" | "eu" | "africa" | "mideast" | "south-asia" | "east-asia" | "oceania"
+  value: number
+  label: string
+}
+
+export function WorldMapHeatmap({
+  regions,
+  title,
+  subtitle,
+  x = 0,
+  y = 0,
+  z = 0,
+  delay = 0,
+  tone = "gold",
+}: {
+  regions: MapRegion[]
+  title: string
+  subtitle?: string
+  x?: number
+  y?: number
+  z?: number
+  delay?: number
+  tone?: CinematicTone
+}) {
+  const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
+  const enter = softSpring(frame, fps, delay)
+  const accent = toneColor(tone)
+  const width = 800
+  const height = 460
+  const drift = loopSine(frame, 200) * 4
+
+  const regionMap = new Map(regions.map((r) => [r.id, r]))
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        width,
+        height,
+        marginLeft: -width / 2,
+        marginTop: -height / 2,
+        opacity: enter,
+        transformStyle: "preserve-3d",
+        transform: `translate3d(${x}px, ${y + drift}px, ${z - (1 - enter) * 300}px) rotateX(${48 - enter * 12}deg) rotateY(${-6 + enter * 4}deg)`,
+        filter: `blur(${(1 - enter) * 10}px)`,
+      }}
+    >
+      <PanelShell accent={accent}>
+        <ChartHeader title={title} subtitle={subtitle} accent={accent} value={`${regions.length} REGIONS`} />
+        <svg width={1100} height={480} viewBox="0 0 1100 480" style={{ position: "absolute", left: "50%", top: "50%", marginLeft: -550, marginTop: -240, overflow: "visible" }}>
+          <defs>
+            <filter id="map-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="6" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          {Object.entries(MAP_PATHS).map(([id, pathData], index) => {
+            const region = regionMap.get(id as MapRegion["id"])
+            const value = region?.value ?? 0
+            const regionEnter = softSpring(frame, fps, delay + 8 + index * 5)
+            const intensity = (value / 100) * 0.8
+            const regionAccent = region ? toneColor(tone) : "rgba(234,236,239,0.1)"
+
+            return (
+              <g key={id} opacity={regionEnter}>
+                <path
+                  d={pathData.d}
+                  fill={value > 0 ? `${regionAccent}` : "rgba(234,236,239,0.06)"}
+                  fillOpacity={intensity + 0.08}
+                  stroke={regionAccent}
+                  strokeWidth={1.2}
+                  strokeOpacity={0.5 + intensity * 0.4}
+                  filter={value > 50 ? "url(#map-glow)" : undefined}
+                />
+                {region && (
+                  <text
+                    x={pathData.cx}
+                    y={pathData.cy - 14}
+                    textAnchor="middle"
+                    fill="#fff"
+                    fontSize={13}
+                    fontWeight={800}
+                    opacity={regionEnter}
+                  >
+                    {region.label}
+                  </text>
+                )}
+                {region && (
+                  <text
+                    x={pathData.cx}
+                    y={pathData.cy + 6}
+                    textAnchor="middle"
+                    fill={regionAccent}
+                    fontSize={11}
+                    fontFamily={cinematicTheme.font.mono}
+                    opacity={regionEnter * 0.8}
+                  >
+                    {region.value}%
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </svg>
+      </PanelShell>
+    </div>
+  )
+}
+
+export interface TimelineEvent {
+  date: string
+  label: string
+  value?: number
+  tone?: CinematicTone
+}
+
+export function TimelineChart({
+  events,
+  title,
+  x = 0,
+  y = 0,
+  z = 0,
+  width = 900,
+  height = 280,
+  delay = 0,
+  tone = "gold",
+}: {
+  events: TimelineEvent[]
+  title: string
+  x?: number
+  y?: number
+  z?: number
+  width?: number
+  height?: number
+  delay?: number
+  tone?: CinematicTone
+}) {
+  const frame = useCurrentFrame()
+  const { fps } = useVideoConfig()
+  const enter = softSpring(frame, fps, delay)
+  const accent = toneColor(tone)
+  const drift = loopSine(frame, 210) * 3
+  const pad = 60
+  const lineY = height / 2
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        width,
+        height,
+        marginLeft: -width / 2,
+        marginTop: -height / 2,
+        opacity: enter,
+        transformStyle: "preserve-3d",
+        transform: `translate3d(${x}px, ${y + drift}px, ${z - (1 - enter) * 280}px) rotateX(${34 - enter * 10}deg)`,
+        filter: `blur(${(1 - enter) * 8}px)`,
+      }}
+    >
+      <PanelShell accent={accent}>
+        <ChartHeader title={title} accent={accent} value={`${events.length} EVENTS`} />
+        <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ position: "absolute", inset: 0 }}>
+          {/* Timeline axis */}
+          <line
+            x1={pad} x2={width - pad}
+            y1={lineY} y2={lineY}
+            stroke={accent}
+            strokeWidth={2}
+            strokeOpacity={0.4}
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={1 - clampInterpolate(frame, [delay + 4, delay + 40], [0, 1])}
+          />
+          {/* Events */}
+          {events.map((event, i) => {
+            const eventEnter = softSpring(frame, fps, delay + 12 + i * 6)
+            const ex = pad + (i / Math.max(1, events.length - 1)) * (width - pad * 2)
+            const above = i % 2 === 0
+            const ey = above ? lineY - 50 : lineY + 50
+            const eventAccent = toneColor(event.tone ?? tone)
+
+            return (
+              <g key={i} opacity={eventEnter}>
+                {/* Connector line */}
+                <line x1={ex} x2={ex} y1={lineY} y2={ey + (above ? 20 : -20)} stroke={eventAccent} strokeWidth={1} strokeOpacity={0.5} />
+                {/* Node dot */}
+                <circle cx={ex} cy={lineY} r={5} fill={eventAccent} opacity={0.9} />
+                <circle cx={ex} cy={lineY} r={10} fill={eventAccent} opacity={0.15} />
+                {/* Label */}
+                <text x={ex} y={ey} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={700} opacity={eventEnter}>
+                  {event.label}
+                </text>
+                <text x={ex} y={ey + (above ? -14 : 16)} textAnchor="middle" fill="rgba(234,236,239,0.5)" fontSize={10} fontFamily={cinematicTheme.font.mono}>
+                  {event.date}
+                </text>
+                {event.value !== undefined && (
+                  <text x={ex} y={ey + (above ? 16 : -14)} textAnchor="middle" fill={eventAccent} fontSize={13} fontWeight={800}>
+                    {event.value}%
                   </text>
                 )}
               </g>
