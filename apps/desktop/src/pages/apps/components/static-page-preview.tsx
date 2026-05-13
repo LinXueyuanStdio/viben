@@ -6,7 +6,7 @@
  * audio, video, fonts, markdown, and HTML (iframe fallback).
  */
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { readTextFile } from "@tauri-apps/plugin-fs";
 
@@ -27,6 +27,7 @@ import {
   detectFilePreviewType,
   type FilePreviewType,
 } from "../utils/file-type-detector";
+import { useTheme } from "@/hooks/use-theme";
 
 interface StaticPagePreviewProps {
   page: StaticPageConfig;
@@ -75,20 +76,23 @@ export function StaticPagePreview({
     [page.file]
   );
 
+  const { resolvedTheme } = useTheme();
+
   // Construct absolute file path for artifact-based viewers
   const filePath = useMemo(() => {
     return `${workspacePath}/pages/${page.slug}/${page.file}`;
   }, [workspacePath, page.slug, page.file]);
 
-  // Construct gateway serve URL for iframe-based preview
+  // Construct gateway serve URL for iframe-based preview (with theme)
   const gatewayServeUrl = useMemo(() => {
     const baseUrl = getGatewayUrl();
     const params = new URLSearchParams({
       workspace_path: workspacePath,
       slug: page.slug,
+      theme: resolvedTheme,
     });
     return `${baseUrl}/api/page/serve?${params.toString()}`;
-  }, [workspacePath, page.slug]);
+  }, [workspacePath, page.slug, resolvedTheme]);
 
   // Create an Artifact object from the page config
   const artifact = useMemo<Artifact>(
@@ -101,15 +105,59 @@ export function StaticPagePreview({
     [page.slug, page.name, page.file, filePreviewType, filePath]
   );
 
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const gatewayOrigin = useMemo(() => {
+    try {
+      return new URL(getGatewayUrl()).origin;
+    } catch {
+      return "";
+    }
+  }, []);
+
+  // Listen for viben-page-ready and send init
+  const handleMessage = useCallback(
+    (e: MessageEvent) => {
+      if (e.origin !== gatewayOrigin) return;
+      if (e.data?.type === "viben-page-ready") {
+        iframeRef.current?.contentWindow?.postMessage(
+          {
+            type: "viben-page-init",
+            theme: resolvedTheme,
+            workspace_path: workspacePath,
+          },
+          gatewayOrigin
+        );
+      }
+    },
+    [resolvedTheme, workspacePath, gatewayOrigin]
+  );
+
+  useEffect(() => {
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [handleMessage]);
+
+  // Send theme updates when resolvedTheme changes
+  useEffect(() => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "viben-page-theme", theme: resolvedTheme },
+      gatewayOrigin
+    );
+  }, [resolvedTheme, gatewayOrigin]);
+
   // For HTML and fallback: use iframe with gateway serve
   if (filePreviewType === "html" || filePreviewType === "iframe-fallback") {
     return (
       <div className={cn("h-full w-full bg-white", className)}>
         <iframe
           key={iframeKey}
+          ref={iframeRef}
           src={gatewayServeUrl}
           className="h-full w-full border-0"
           title={page.name}
+          onLoad={(e) => {
+            iframeRef.current = e.currentTarget;
+          }}
         />
       </div>
     );

@@ -34,7 +34,7 @@ packages/core/
 ├── assets/
 │   ├── viben-page-sdk.js       # SDK 源文件（Gateway serve）
 │   └── viben-page-tokens.css   # Design tokens CSS
-└── src/gateway/routes/page.ts  # 新增 /_sdk/* 路由
+└── src/gateway/routes/page.ts  # 新增 /api/page/_sdk/* 路由
 
 apps/desktop/
 └── src/pages/apps/components/static-page-preview.tsx  # postMessage 通信
@@ -50,6 +50,7 @@ apps/desktop/
 - **oklch 格式**：与 Tailwind v4 + Desktop App 保持一致
 - **SDK 可覆盖**：父 App 可通过 postMessage 传递自定义值
 - **自包含 fallback**：无 SDK 时用 `@media (prefers-color-scheme)` 降级
+- **oklch-only 语义色**：`--success`、`--warning`、`--error`、`--info` 在页面端统一使用 oklch 格式，不支持 `hsl(var(...))` 模式（Desktop App 中这些变量有 HSL 版本，但页面端不使用）
 
 ### CSS Tokens
 
@@ -58,6 +59,7 @@ apps/desktop/
   color-scheme: light dark;
 
   /* Brand */
+  --brand-amber-400: oklch(0.78 0.16 75);
   --brand-amber-500: oklch(0.70 0.18 75);
   --brand-amber-600: oklch(0.62 0.18 75);
   --brand-amber-700: oklch(0.52 0.16 75);
@@ -85,15 +87,24 @@ apps/desktop/
   --primary: var(--brand-amber-600);
   --primary-hover: var(--brand-amber-700);
   --primary-foreground: oklch(1 0 0);
+  --secondary: var(--neutral-100);
+  --secondary-foreground: var(--neutral-900);
+  --accent: var(--neutral-100);
+  --accent-foreground: var(--neutral-900);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--neutral-900);
   --border: var(--neutral-200);
   --border-strong: var(--neutral-300);
+  --input: var(--neutral-200);
   --ring: var(--brand-amber-500);
   --card: oklch(1 0 0);
   --card-foreground: var(--neutral-900);
   --muted: var(--neutral-100);
   --muted-foreground: var(--neutral-600);
 
-  /* Semantic */
+  /* Semantic Status (oklch only, no hsl(var(...)) usage) */
   --success: oklch(0.65 0.18 145);
   --warning: oklch(0.70 0.18 75);
   --error: oklch(0.58 0.22 25);
@@ -127,6 +138,7 @@ apps/desktop/
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
 
   /* Shadows */
   --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.1), 0 1px 2px -1px oklch(0 0 0 / 0.1);
@@ -149,12 +161,21 @@ apps/desktop/
   --surface-elevated: var(--neutral-700);
   --foreground-secondary: var(--neutral-400);
   --foreground-tertiary: var(--neutral-500);
-  --primary: var(--brand-amber-500);
-  --primary-hover: oklch(0.78 0.16 75);
+  --primary: var(--brand-amber-400);
+  --primary-hover: var(--brand-amber-500);
   --primary-foreground: var(--neutral-900);
+  --secondary: var(--neutral-800);
+  --secondary-foreground: var(--neutral-50);
+  --accent: var(--neutral-800);
+  --accent-foreground: var(--neutral-50);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --popover: var(--neutral-800);
+  --popover-foreground: var(--neutral-50);
   --border: var(--neutral-700);
   --border-strong: var(--neutral-600);
-  --ring: oklch(0.78 0.16 75);
+  --input: var(--neutral-700);
+  --ring: var(--brand-amber-400);
   --card: var(--neutral-800);
   --card-foreground: var(--neutral-50);
   --muted: var(--neutral-800);
@@ -165,9 +186,43 @@ apps/desktop/
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not(.light) { /* same as .dark */ }
+  :root:not(.light) {
+    --background: var(--neutral-900);
+    --foreground: var(--neutral-50);
+    --surface: var(--neutral-800);
+    --surface-elevated: var(--neutral-700);
+    --foreground-secondary: var(--neutral-400);
+    --foreground-tertiary: var(--neutral-500);
+    --primary: var(--brand-amber-400);
+    --primary-hover: var(--brand-amber-500);
+    --primary-foreground: var(--neutral-900);
+    --secondary: var(--neutral-800);
+    --secondary-foreground: var(--neutral-50);
+    --accent: var(--neutral-800);
+    --accent-foreground: var(--neutral-50);
+    --destructive: oklch(0.65 0.22 25);
+    --destructive-foreground: oklch(1 0 0);
+    --popover: var(--neutral-800);
+    --popover-foreground: var(--neutral-50);
+    --border: var(--neutral-700);
+    --border-strong: var(--neutral-600);
+    --input: var(--neutral-700);
+    --ring: var(--brand-amber-400);
+    --card: var(--neutral-800);
+    --card-foreground: var(--neutral-50);
+    --muted: var(--neutral-800);
+    --muted-foreground: var(--neutral-400);
+    --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.5);
+  }
 }
 ```
+
+### 排除说明
+
+以下 Desktop App 变量**不包含**在页面 tokens 中（页面无需 sidebar 概念）：
+- `--sidebar-*` 系列（sidebar-background, sidebar-foreground 等）
 
 ### Google Fonts CDN
 
@@ -184,7 +239,7 @@ apps/desktop/
 3. **DO**: neutral-50（非纯白）作为亮色背景保持温暖感
 4. **DON'T**: 使用冷灰色 — 所有灰色带暖色调（hue=75）
 5. **DON'T**: 过度使用色彩 — amber 为主角，大面积用 neutral
-6. **DON'T**: `hsl()` 包裹 oklch 变量
+6. **DON'T**: `hsl()` 包裹 oklch 变量 — 这是无效 CSS
 
 ---
 
@@ -216,18 +271,18 @@ Desktop App                         iframe Page
     |                                    |  (立即应用主题, 防 FOUC)
     |                                    |
     |       { type: "viben-page-ready" } |
-    |←------------------------------------|
+    |←------------------------------------| (targetOrigin: location.origin)
     |                                    |
     |  { type: "viben-page-init",        |
     |    theme: "dark",                  |
     |    workspace_path: "/path/..." }   |
-    |------------------------------------→|
+    |------------------------------------→| (targetOrigin: iframe.src origin)
     |                                    |
     |  ... 用户切换主题 ...               |
     |                                    |
     |  { type: "viben-page-theme",       |
     |    theme: "light" }                |
-    |------------------------------------→|
+    |------------------------------------→| (targetOrigin: iframe.src origin)
     |                                    |  (平滑过渡 .dark → :root)
 ```
 
@@ -247,9 +302,18 @@ Desktop App                         iframe Page
 
 ### 安全约束
 
-- 父 App 仅向同源 iframe 发送消息
-- Page SDK 校验 `event.origin`
+- 父 App 使用 `iframeRef.contentWindow.postMessage(msg, targetOrigin)` 发送消息，`targetOrigin` 为 Gateway 的 origin（如 `http://127.0.0.1:18790`），**禁止使用 `"*"`**
+- Page SDK 在 message listener 顶部校验 `event.origin`：`if (e.origin !== location.origin) return;`
 - 不传递 token/credential，只传 theme + workspace 元信息
+
+### SDK 无父窗口时的错误状态
+
+当页面独立打开（无 iframe 嵌入）时：
+- SDK 检测 `window.parent === window`，不发送 `viben-page-ready`
+- 主题回退到 URL param → `prefers-color-scheme`
+- `VibenPage.workspacePath` 保持 `null`
+- `VibenPage.fetch()` 仍然可用（相对路径请求）
+- 不显示错误提示，页面正常工作
 
 ---
 
@@ -259,6 +323,7 @@ Desktop App                         iframe Page
 
 ```javascript
 window.VibenPage = {
+  version: "1",
   theme: "dark" | "light",
   onThemeChange(callback): unsubscribe,
   workspacePath: string | null,
@@ -272,7 +337,7 @@ window.VibenPage = {
 (function () {
   "use strict";
 
-  var VP = {};
+  var VP = { version: "1" };
   var listeners = [];
   var doc = document.documentElement;
 
@@ -303,8 +368,11 @@ window.VibenPage = {
     }
   }
 
-  // 3. 监听父 App 消息
+  // 3. 监听父 App 消息（带 origin 校验）
   window.addEventListener("message", function (e) {
+    // 安全：校验消息来源
+    if (e.origin !== location.origin) return;
+
     var data = e.data;
     if (!data || typeof data.type !== "string") return;
     if (data.type === "viben-page-init") {
@@ -323,9 +391,9 @@ window.VibenPage = {
     }
   });
 
-  // 5. 通知父 App 已就绪
+  // 5. 通知父 App 已就绪（仅在 iframe 中）
   if (window.parent !== window) {
-    window.parent.postMessage({ type: "viben-page-ready" }, "*");
+    window.parent.postMessage({ type: "viben-page-ready" }, location.origin);
   }
 
   // 6. 公开 API
@@ -352,10 +420,12 @@ html.vp-transitioning * {
 }
 ```
 
-### 分发
+### 分发（带版本路径）
 
-- `GET /_sdk/viben-page-sdk.js` — Gateway 路由
-- `GET /_sdk/viben-page-tokens.css` — Gateway 路由
+- `GET /api/page/_sdk/v1/viben-page-sdk.js` — Gateway 路由
+- `GET /api/page/_sdk/v1/viben-page-tokens.css` — Gateway 路由
+
+未来 SDK 变更可引入 `/v2/` 路径而不破坏现有页面。
 
 ---
 
@@ -402,6 +472,17 @@ html.vp-transitioning * {
 - 添加 `useRef` + `useTheme` + `useEffect` 监听
 - 监听 `viben-page-ready` → 回复 `viben-page-init`
 - 监听 `resolvedTheme` 变化 → 发送 `viben-page-theme`
+- **iframeKey 与 ref 兼容**：当 `iframeKey` 变化导致 iframe 重新挂载时，在 iframe 的 `onLoad` 回调中重新绑定 ref（`iframeRef.current = e.target`），确保 ref 始终指向当前 DOM 节点
+- **targetOrigin**：使用 Gateway 的 origin（从 iframe src 解析），不使用 `"*"`
+
+```typescript
+// 示例：postMessage 带 targetOrigin
+const gatewayOrigin = new URL(iframeSrc).origin;
+iframeRef.current?.contentWindow?.postMessage(
+  { type: "viben-page-theme", theme: resolvedTheme },
+  gatewayOrigin
+);
+```
 
 ### Gateway SDK 路由
 
@@ -409,16 +490,18 @@ html.vp-transitioning * {
 
 追加：
 ```typescript
-GET /_sdk/viben-page-sdk.js  → serve packages/core/assets/viben-page-sdk.js
-GET /_sdk/viben-page-tokens.css → serve packages/core/assets/viben-page-tokens.css
+GET /api/page/_sdk/v1/viben-page-sdk.js  → serve packages/core/assets/viben-page-sdk.js
+GET /api/page/_sdk/v1/viben-page-tokens.css → serve packages/core/assets/viben-page-tokens.css
 ```
+
+路由前缀遵循现有 `/api/page/*` 约定，`v1` 为版本标记。
 
 ### 新建文件
 
 | 路径 | 内容 |
 |------|------|
-| `packages/core/assets/viben-page-sdk.js` | SDK（~60 行） |
-| `packages/core/assets/viben-page-tokens.css` | Design tokens（~120 行） |
+| `packages/core/assets/viben-page-sdk.js` | SDK（~70 行） |
+| `packages/core/assets/viben-page-tokens.css` | Design tokens（~150 行） |
 
 ---
 
@@ -426,24 +509,44 @@ GET /_sdk/viben-page-tokens.css → serve packages/core/assets/viben-page-tokens
 
 | 文件 | 类型 | 行数 |
 |------|------|------|
-| `apps/desktop/.../static-page-preview.tsx` | 修改 | +30 |
+| `apps/desktop/.../static-page-preview.tsx` | 修改 | +35 |
 | `packages/core/src/gateway/routes/page.ts` | 追加 | +20 |
-| `packages/core/assets/viben-page-sdk.js` | 新建 | ~60 |
-| `packages/core/assets/viben-page-tokens.css` | 新建 | ~120 |
+| `packages/core/assets/viben-page-sdk.js` | 新建 | ~70 |
+| `packages/core/assets/viben-page-tokens.css` | 新建 | ~150 |
 | `.claude/skills/create-page/SKILL.md` | 重写 | ~180 |
 | `.claude/skills/create-page/references/design-system.md` | 新建 | ~150 |
 | `.claude/skills/create-page/references/patterns.md` | 新建 | ~250 |
 | `.claude/skills/create-page/references/interactions.md` | 新建 | ~150 |
 | `.claude/skills/create-page/references/libraries.md` | 新建 | ~100 |
 
-**总计**：~1060 行新增/修改
+**总计**：~1105 行新增/修改
 
 ---
 
 ## 7. 实现顺序
 
 1. **Phase 1**：创建 `packages/core/assets/` 下的 SDK + CSS tokens
-2. **Phase 2**：Gateway 新增 `/_sdk/*` 路由
+2. **Phase 2**：Gateway 新增 `/api/page/_sdk/v1/*` 路由
 3. **Phase 3**：修改 `StaticPagePreview` 组件（postMessage 通信）
 4. **Phase 4**：重写 `.claude/skills/create-page/` 全部文件
 5. **Phase 5**：验证 — 创建测试页面确认主题同步生效
+
+---
+
+## 附录：Review 修复清单
+
+以下为 sub-agent review 后已修复的问题：
+
+| # | 级别 | 问题 | 修复 |
+|---|------|------|------|
+| 1 | Critical | SDK 未校验 event.origin | 添加 `if (e.origin !== location.origin) return;` |
+| 2 | Important | 缺少 --popover/--secondary/--accent/--destructive/--input | 已补全所有语义 token |
+| 3 | Important | `/_sdk/*` 路由前缀不符合约定 | 改为 `/api/page/_sdk/v1/*` |
+| 4 | Important | --success/--warning 等仅有 oklch 未说明 | 添加 oklch-only 说明 |
+| 5 | Important | `@media (prefers-color-scheme: dark)` 为占位符 | 已展开完整 dark 变量 |
+| 6 | Important | iframeKey 重挂载与 useRef 冲突 | 文档 onLoad 重绑定策略 |
+| 7 | Important | 父 App postMessage 使用 `"*"` | 指定 gatewayOrigin |
+| 8 | Suggestion | SDK 无版本路径 | 路由加 `/v1/` 前缀 |
+| 9 | Suggestion | 独立打开无错误处理说明 | 添加 standalone 行为文档 |
+| 10 | Suggestion | 缺少 --radius-2xl | 添加 `--radius-2xl: 2rem` |
+| 11 | Suggestion | dark 主题 primary 用裸 oklch 值 | 改用 `var(--brand-amber-400)` |
