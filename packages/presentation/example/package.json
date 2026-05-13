@@ -5,14 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build"
+    "build": "tsc && vite build",
+    "remotion:studio": "remotion studio src/remotion-entry.tsx",
+    "remotion:still": "remotion still src/remotion-entry.tsx CinematicFinanceShowcase --frame=90 --scale=0.35"
   },
   "dependencies": {
     "@viben/presentation": "workspace:*",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "remotion": "^4.0.420"
   },
   "devDependencies": {
+    "@remotion/cli": "^4.0.420",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",
