@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { MessageAttachment } from "../types";
 import type {
   CommandQueueItem,
@@ -50,43 +50,34 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
   } = options;
 
   const [state, setState] = useState<CommandQueueState>(() => loadState(id));
-  const waitingForTurnRef = useRef(false);
 
   // Persist state changes
   useEffect(() => {
     saveState(id, state);
   }, [id, state]);
 
-  // Auto-execute: when agent goes idle and queue has items
+  // Auto-execute: when agent goes idle and queue has items.
+  // Dequeues one item per effect run. The setState(items: rest) changes
+  // items.length which re-triggers this effect for the next item — cascading
+  // until the queue is empty. No ref-based guard needed.
   useEffect(() => {
     if (!enabled) return;
-    if (isBusy) {
-      waitingForTurnRef.current = false;
-      return;
-    }
+    if (isBusy) return;
     if (state.isPaused || state.items.length === 0) return;
-    if (waitingForTurnRef.current) return;
 
     // Dequeue first item
     const [first, ...rest] = state.items;
-    waitingForTurnRef.current = true;
 
-    setState({ ...state, items: rest });
+    setState((prev) => ({ ...prev, items: rest }));
 
-    onSend(first.content, first.attachments).then(
-      () => {
-        // Reset ref so next item can dequeue on next render
-        waitingForTurnRef.current = false;
-      },
-      (err) => {
-        // Restore item and pause on failure
-        setState((prev) => ({
-          items: [first, ...prev.items],
-          isPaused: true,
-        }));
-        onError?.(err instanceof Error ? err : new Error(String(err)), first);
-      }
-    );
+    onSend(first.content, first.attachments).catch((err) => {
+      // Restore item and pause on failure
+      setState((prev) => ({
+        items: [first, ...prev.items],
+        isPaused: true,
+      }));
+      onError?.(err instanceof Error ? err : new Error(String(err)), first);
+    });
   }, [enabled, isBusy, state.isPaused, state.items.length, onSend, onError]);
 
   const send = useCallback(
@@ -96,9 +87,8 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
 
       // Idle + no queue → send immediately
       if (!isBusy && state.items.length === 0) {
-        waitingForTurnRef.current = true;
         onSend(trimmed, attachments).catch(() => {
-          waitingForTurnRef.current = false;
+          // Silently fail direct send
         });
         return;
       }
@@ -168,7 +158,6 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
 
   const resume = useCallback(() => {
     setState((prev) => ({ ...prev, isPaused: false }));
-    waitingForTurnRef.current = false;
   }, []);
 
   return {

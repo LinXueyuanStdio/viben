@@ -82,6 +82,10 @@ export type {
   UseMessageQueueReturn,
 } from "./message-queue";
 
+// Subagent Sheet (side panel)
+export { SubagentSheet } from "./subagent-sheet";
+export type { SubagentSheetProps } from "./subagent-sheet";
+
 // Exec Approval
 export { ExecApproval } from "./exec-approval";
 export type { ExecApprovalProps, PendingExecApproval } from "./exec-approval";

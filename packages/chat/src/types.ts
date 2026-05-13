@@ -68,6 +68,23 @@ export interface PendingQuestion {
   questions: AgentQuestion[];
 }
 
+/** Content block in tool output (text or image) */
+export interface TextContentBlock {
+  type: "text";
+  text: string;
+}
+
+export interface ImageContentBlock {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: string;
+    data: string;
+  };
+}
+
+export type ContentBlock = TextContentBlock | ImageContentBlock;
+
 /** Agent message */
 export interface AgentMessage {
   id?: string;
@@ -75,7 +92,7 @@ export interface AgentMessage {
   content?: string;
   name?: string; // Tool name for tool_use
   input?: Record<string, unknown>; // Tool input for tool_use
-  output?: string; // Tool output for tool_result
+  output?: string | ContentBlock[]; // Tool output for tool_result (string or content blocks with images)
   toolUseId?: string; // For matching tool_result to tool_use
   isError?: boolean;
   message?: string; // Error message

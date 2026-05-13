@@ -6,13 +6,14 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@viben/ui";
 import { getDisplayPath } from "./utils";
 import { useMinDisplayTime } from "./use-min-display-time";
+import type { ContentBlock } from "./types";
 
 export interface CollapsedToolGroupProps {
   /** The tool use messages in this group */
   tools: Array<{
     name: string;
     input?: Record<string, unknown>;
-    output?: string;
+    output?: string | ContentBlock[];
     isError?: boolean;
   }>;
   /** Whether any tools in the group are still executing */

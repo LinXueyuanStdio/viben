@@ -3,11 +3,12 @@ import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
 import { Streamdown } from "streamdown";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight, HelpCircle, FileEdit } from "lucide-react";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
-import type { AgentMessage, MessageAttachment, AgentQuestion } from "./types";
+import type { AgentMessage, MessageAttachment } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanApproval } from "./plan-approval";
+import { QuestionInput } from "./question-input";
 
 export interface MessageItemProps {
   message: AgentMessage;
@@ -23,6 +24,8 @@ export interface MessageItemProps {
   maxWidth?: string;
   /** When true, show full tool input/output inline without requiring a click-to-open modal */
   toolExpandedInline?: boolean;
+  /** Callback to expand subagent messages in a side panel */
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
 }
 
 /**
@@ -375,63 +378,6 @@ function AssistantMessage({
   );
 }
 
-/**
- * AskUserQuestion message display - shows interactive questions from agent
- */
-function AskQuestionMessage({ questions }: { questions: AgentQuestion[] }) {
-  const { t } = useTranslation();
-  const prefersReducedMotion = useReducedMotion();
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-      className="flex gap-3 w-full min-w-0"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
-        <HelpCircle className="h-4 w-4 text-blue-500" />
-      </div>
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="rounded-2xl rounded-tl-md border border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-3">
-          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-            {t("chat.questionFromAgent", "Question from Agent")}
-          </p>
-          {questions.map((q, idx) => (
-            <div key={idx} className="space-y-2">
-              {q.header && (
-                <span className="inline-block text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                  {q.header}
-                </span>
-              )}
-              <p className="text-sm text-foreground">{q.question}</p>
-              {q.options.length > 0 && (
-                <div className="space-y-1.5 mt-2">
-                  {q.options.map((opt, optIdx) => (
-                    <div
-                      key={optIdx}
-                      className="flex items-start gap-2 p-2 rounded-lg bg-muted/50 text-sm"
-                    >
-                      <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-blue-500/10 text-blue-500 text-xs font-medium">
-                        {optIdx + 1}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-medium">{opt.label}</p>
-                        {opt.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5">{opt.description}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
 /**
  * Plan mode indicator - shows when agent enters/exits plan mode
@@ -491,6 +437,7 @@ export function MessageItem({
   className,
   maxWidth,
   toolExpandedInline,
+  onExpandSubagent,
 }: MessageItemProps) {
   const { t } = useTranslation();
 
@@ -550,6 +497,7 @@ export function MessageItem({
         subagentMessages={message.subagentMessages}
         renderMessage={renderSubagentMessage}
         expandedInline={toolExpandedInline}
+        onExpandSubagent={onExpandSubagent}
       />
     );
   }
@@ -575,9 +523,15 @@ export function MessageItem({
       />
     );
   }
-  // AskUserQuestion message - interactive questions
+  // AskUserQuestion message - displayed as read-only QuestionInput
   else if (message.type === "ask_question" && message.questions) {
-    content = <AskQuestionMessage questions={message.questions} />;
+    content = (
+      <QuestionInput
+        questions={{ id: message.id || "", questions: message.questions }}
+        onSubmit={() => {}}
+        readOnly
+      />
+    );
   }
   // Plan mode indicator
   else if (message.type === "plan_mode" && message.planModeAction) {

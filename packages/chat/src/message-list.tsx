@@ -89,6 +89,10 @@ export interface MessageListProps {
    * Called when the user makes an approval decision (allow_once, allow_always, reject).
    */
   onApprovalDecision?: (decision: string, feedback?: string) => void;
+  /**
+   * Callback to expand subagent messages in a side panel.
+   */
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
 }
 
 // Types for message grouping
@@ -857,6 +861,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   toolExpandedInline,
   pendingApproval,
   onApprovalDecision,
+  onExpandSubagent,
 }, ref) {
   const { t } = useTranslation();
 
@@ -925,7 +930,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     }
 
     // If user scrolled to near bottom, re-enable auto-scroll
-    if (distanceFromBottom < 50) {
+    // Only allow re-enable during user interaction to prevent overflowAnchor false triggers
+    if (userInteractingRef.current && distanceFromBottom < 150) {
       userScrolledUpRef.current = false;
     }
 
@@ -951,8 +957,8 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // Use autoScroll prop if provided, otherwise default to auto-scroll when streaming
   const shouldAutoScroll = autoScroll !== undefined ? autoScroll : isStreaming;
   useEffect(() => {
-    if (!shouldAutoScroll) return;
     if (userScrolledUpRef.current) return;
+    if (!shouldAutoScroll && messages.length === lastSeenMessageCountRef.current) return;
 
     bottomRef.current?.scrollIntoView({
       behavior: isStreaming ? "instant" : "smooth",
@@ -967,16 +973,24 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     container.addEventListener("scroll", checkScrollPosition);
 
     // Track user interaction to distinguish manual scrolls from programmatic ones
-    const markInteracting = () => { userInteractingRef.current = true; };
-    const clearInteracting = () => {
-      setTimeout(() => { userInteractingRef.current = false; }, 150);
+    let interactTimeout: ReturnType<typeof setTimeout> | null = null;
+    const markInteracting = () => {
+      userInteractingRef.current = true;
+      // Clear any pending timeout — user is still interacting
+      if (interactTimeout) { clearTimeout(interactTimeout); interactTimeout = null; }
     };
+    const clearInteractingDelayed = () => {
+      // Delay clearing to cover momentum/inertial scrolling after gesture ends
+      if (interactTimeout) clearTimeout(interactTimeout);
+      interactTimeout = setTimeout(() => { userInteractingRef.current = false; }, 300);
+    };
+    // wheel fires continuously during trackpad scroll — mark interacting on each tick
     container.addEventListener("wheel", markInteracting);
     container.addEventListener("touchstart", markInteracting);
     container.addEventListener("pointerdown", markInteracting);
-    container.addEventListener("wheel", clearInteracting);
-    container.addEventListener("pointerup", clearInteracting);
-    container.addEventListener("touchend", clearInteracting);
+    // Clear only on gesture end (not on wheel — momentum continues after last wheel)
+    container.addEventListener("pointerup", clearInteractingDelayed);
+    container.addEventListener("touchend", clearInteractingDelayed);
 
     // Initial check
     checkScrollPosition();
@@ -986,9 +1000,9 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       container.removeEventListener("wheel", markInteracting);
       container.removeEventListener("touchstart", markInteracting);
       container.removeEventListener("pointerdown", markInteracting);
-      container.removeEventListener("wheel", clearInteracting);
-      container.removeEventListener("pointerup", clearInteracting);
-      container.removeEventListener("touchend", clearInteracting);
+      container.removeEventListener("pointerup", clearInteractingDelayed);
+      container.removeEventListener("touchend", clearInteractingDelayed);
+      if (interactTimeout) clearTimeout(interactTimeout);
     };
   }, [checkScrollPosition]);
 
@@ -1192,6 +1206,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
                     onLinkClick={onLinkClick}
                     maxWidth={maxMessageWidth}
                     toolExpandedInline={toolExpandedInline}
+                    onExpandSubagent={onExpandSubagent}
                   />
                 </div>
               </React.Fragment>
