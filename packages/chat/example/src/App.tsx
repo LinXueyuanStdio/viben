@@ -12,11 +12,14 @@ import {
   ToolExecutionItem,
   CommandQueuePanel,
   ExecApproval,
+  SubagentSheet,
   useCommandQueue,
   getModelIcon,
 } from "@viben/chat"
 import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus } from "lucide-react"
+import { JsonView, darkStyles } from "react-json-view-lite"
+import "react-json-view-lite/dist/index.css"
 import {
   demoPlan,
   demoQuestions,
@@ -28,6 +31,7 @@ import {
   demoCommandQueueItems,
   demoExecApprovals,
   parseSessionJsonl,
+  parseSessionFolder,
 } from "./demo-data"
 import { demoSteps } from "./demo-steps"
 import { useStepPlayer } from "./use-step-player"
@@ -137,6 +141,13 @@ export function App() {
   const [showSkillsPanel, setShowSkillsPanel] = useState(false)
   const [showContextPanel, setShowContextPanel] = useState(false)
 
+  // Subagent sheet state
+  const [sheetData, setSheetData] = useState<{
+    title: string
+    subagentType?: string
+    messages: AgentMessage[]
+  } | null>(null)
+
   // Refs
   const messageListRef = useRef<MessageListHandle>(null)
 
@@ -181,6 +192,18 @@ export function App() {
     })
   }, [player.loadSteps])
 
+  // ===== Folder Load (with sub-agent support) =====
+  const handleFolderLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    parseSessionFolder(Array.from(files)).then(({ messages, sessionName, subagentCount }) => {
+      const steps = messagesToSteps(messages)
+      player.loadSteps(steps)
+      const subInfo = subagentCount > 0 ? ` · ${subagentCount} sub-agents` : ""
+      setSessionInfo(`${sessionName} · ${steps.length} steps${subInfo}`)
+    })
+  }, [player.loadSteps])
+
   // ===== ChatInput handlers =====
   const handleSend = useCallback((content: string, attachments?: MessageAttachment[]) => {
     // Route through command queue: if busy, it queues; if idle, it sends immediately
@@ -201,6 +224,15 @@ export function App() {
 
   return (
     <div className="flex h-screen flex-col">
+      {/* Subagent Sheet (side panel) */}
+      <SubagentSheet
+        open={!!sheetData}
+        onClose={() => setSheetData(null)}
+        title={sheetData?.title || ""}
+        subagentType={sheetData?.subagentType}
+        messages={sheetData?.messages || []}
+      />
+
       {/* ===== Main row ===== */}
       <div className="flex flex-1 overflow-hidden">
         {/* ===== Sidebar ===== */}
@@ -220,11 +252,19 @@ export function App() {
           <div className="flex-1 overflow-y-auto">
             {/* Player section */}
             <div className="px-4 py-4 space-y-3">
-              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                <Upload className="size-3.5" />
-                Load .jsonl Session
-                <input type="file" accept=".jsonl" hidden onChange={handleFileLoad} />
-              </label>
+              <div className="flex gap-2">
+                <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <Upload className="size-3.5" />
+                  .jsonl
+                  <input type="file" accept=".jsonl" hidden onChange={handleFileLoad} />
+                </label>
+                <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <Upload className="size-3.5" />
+                  Session Folder
+                  {/* @ts-expect-error webkitdirectory is non-standard but widely supported */}
+                  <input type="file" hidden webkitdirectory="true" onChange={handleFolderLoad} />
+                </label>
+              </div>
 
               <p className="text-center text-[11px] text-muted-foreground">{sessionInfo}</p>
 
@@ -283,6 +323,19 @@ export function App() {
                 </span>
               </div>
             </div>
+
+            {/* Now Playing - current message raw JSON with syntax highlighting */}
+            {player.messages.length > 0 && (
+              <>
+                <Divider />
+                <div className="px-3 py-3 space-y-2">
+                  <SectionLabel>Now Playing</SectionLabel>
+                  <div className="rounded-lg border bg-muted/30 p-2 overflow-x-auto overflow-y-auto max-h-[240px] text-[10px] [&_*]:!text-[10px] [&_*]:!leading-relaxed">
+                    <JsonView data={player.messages[player.messages.length - 1]} style={darkStyles} />
+                  </div>
+                </div>
+              </>
+            )}
 
             <Divider />
 
@@ -512,6 +565,9 @@ export function App() {
                   welcomeTitle="@viben/chat Session Player"
                   welcomeDescription="Press Play to replay the demo session, or load a .jsonl file."
                   maxMessageWidth="760px"
+                  onExpandSubagent={(title, subagentType, messages) =>
+                    setSheetData({ title, subagentType, messages })
+                  }
                 />
                 {/* Inline Command Queue (shows when items are queued) */}
                 {commandQueue.items.length > 0 && (

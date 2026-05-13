@@ -8,6 +8,7 @@ import type {
   ContextTokenBreakdown,
   CommandQueueItem,
   PendingExecApproval,
+  ContentBlock,
 } from "@viben/chat"
 import type { AgentOption, ModelOption, ExecutorOption } from "@viben/chat"
 
@@ -1064,11 +1065,27 @@ export function parseSessionJsonl(text: string): AgentMessage[] {
           for (const c of content) {
             if (c.type === "tool_result" && c.content) {
               const toolUseId = c.tool_use_id
+              let output: string | ContentBlock[]
+              if (typeof c.content === "string") {
+                output = c.content
+              } else if (Array.isArray(c.content)) {
+                // If content blocks contain images, pass as ContentBlock[] directly
+                const hasImage = c.content.some((block: { type: string }) => block.type === "image")
+                if (hasImage) {
+                  output = c.content as ContentBlock[]
+                } else {
+                  output = c.content
+                    .map((block: { type: string; text?: string }) => block.type === "text" ? block.text || "" : "")
+                    .join("")
+                }
+              } else {
+                output = String(c.content)
+              }
               messages.push({
                 id: `msg-${msgCounter++}`,
                 type: "tool_result",
                 toolUseId,
-                output: typeof c.content === "string" ? c.content.slice(0, 500) : JSON.stringify(c.content).slice(0, 500),
+                output,
                 isError: c.is_error,
               })
             }
@@ -1093,7 +1110,7 @@ export function parseSessionJsonl(text: string): AgentMessage[] {
         if (!Array.isArray(content)) continue
         for (const c of content) {
           if (c.type === "thinking" && c.thinking) {
-            messages.push({ id: `msg-${msgCounter++}`, type: "thinking", content: c.thinking.slice(0, 500) })
+            messages.push({ id: `msg-${msgCounter++}`, type: "thinking", content: c.thinking })
           } else if (c.type === "text" && c.text) {
             messages.push({ id: `msg-${msgCounter++}`, type: "text", content: c.text })
           } else if (c.type === "tool_use") {
@@ -1115,4 +1132,145 @@ export function parseSessionJsonl(text: string): AgentMessage[] {
     }
   }
   return messages
+}
+
+// ============================================================================
+// Session Folder Parser (with sub-agent support)
+// ============================================================================
+
+interface SubagentMeta {
+  agentType?: string
+  description?: string
+}
+
+/**
+ * Extract the toolUseId → agentId mapping from progress entries in the main session.
+ * Progress entries have: { type: "progress", data: { agentId: "..." }, parentToolUseID: "..." }
+ */
+function extractAgentMapping(text: string): Map<string, string> {
+  const mapping = new Map<string, string>() // parentToolUseID → agentId
+  const lines = text.trim().split("\n")
+  for (const line of lines) {
+    try {
+      const obj = JSON.parse(line)
+      if (obj.type === "progress" && obj.parentToolUseID && obj.data?.agentId) {
+        // First occurrence wins (all progress entries for the same agent have the same mapping)
+        if (!mapping.has(obj.parentToolUseID)) {
+          mapping.set(obj.parentToolUseID, obj.data.agentId)
+        }
+      }
+    } catch {
+      // skip
+    }
+  }
+  return mapping
+}
+
+/**
+ * Parse a session folder (loaded via folder picker or multi-file input).
+ * Handles the Claude Code session structure:
+ *   SESSION_ID.jsonl (main session)
+ *   SESSION_ID/subagents/agent-AGENT_ID.jsonl (sub-agent sessions)
+ *   SESSION_ID/subagents/agent-AGENT_ID.meta.json (sub-agent metadata)
+ */
+export async function parseSessionFolder(files: File[]): Promise<{
+  messages: AgentMessage[]
+  sessionName: string
+  subagentCount: number
+}> {
+  // Classify files by role
+  let mainSessionFile: File | null = null
+  const subagentJsonls = new Map<string, File>() // agentId → file
+  const subagentMetas = new Map<string, File>()  // agentId → file
+
+  for (const file of files) {
+    const path = file.webkitRelativePath || file.name
+    const parts = path.split("/")
+
+    // Main session: either root-level .jsonl or the only .jsonl not in subagents/
+    if (path.endsWith(".jsonl") && !parts.includes("subagents")) {
+      // Prefer the largest .jsonl at root level as main session
+      if (!mainSessionFile || file.size > mainSessionFile.size) {
+        mainSessionFile = file
+      }
+    }
+
+    // Sub-agent files: .../subagents/agent-AGENTID.jsonl or .meta.json
+    if (parts.includes("subagents")) {
+      const fileName = parts[parts.length - 1]
+      const match = fileName.match(/^agent-([a-f0-9]+)\.(jsonl|meta\.json)$/)
+      if (match) {
+        const agentId = match[1]
+        const ext = match[2]
+        if (ext === "jsonl") {
+          subagentJsonls.set(agentId, file)
+        } else {
+          subagentMetas.set(agentId, file)
+        }
+      }
+    }
+  }
+
+  if (!mainSessionFile) {
+    // Fallback: treat the first .jsonl as main
+    const firstJsonl = files.find(f => f.name.endsWith(".jsonl"))
+    if (firstJsonl) mainSessionFile = firstJsonl
+  }
+
+  if (!mainSessionFile) {
+    return { messages: [], sessionName: "Empty", subagentCount: 0 }
+  }
+
+  // Parse main session
+  const mainText = await mainSessionFile.text()
+  const messages = parseSessionJsonl(mainText)
+
+  // Extract agent mapping from progress entries
+  const agentMapping = extractAgentMapping(mainText) // toolUseId → agentId
+
+  // Load and parse sub-agent sessions
+  const subagentMessages = new Map<string, AgentMessage[]>() // agentId → messages
+  const subagentMetaMap = new Map<string, SubagentMeta>()    // agentId → meta
+
+  for (const [agentId, file] of subagentJsonls) {
+    const text = await file.text()
+    subagentMessages.set(agentId, parseSessionJsonl(text))
+  }
+
+  for (const [agentId, file] of subagentMetas) {
+    try {
+      const text = await file.text()
+      subagentMetaMap.set(agentId, JSON.parse(text))
+    } catch {
+      // skip invalid meta
+    }
+  }
+
+  // Attach sub-agent messages to parent tool_use entries
+  for (const msg of messages) {
+    if (msg.type === "tool_use" && (msg.name === "Agent" || msg.name === "Task") && msg.toolUseId) {
+      const agentId = agentMapping.get(msg.toolUseId)
+      if (agentId) {
+        msg.subagentId = agentId
+        const subMsgs = subagentMessages.get(agentId)
+        if (subMsgs && subMsgs.length > 0) {
+          msg.subagentMessages = subMsgs
+        }
+        const meta = subagentMetaMap.get(agentId)
+        if (meta?.agentType && msg.input) {
+          // Enrich input with subagent_type from meta if not already present
+          if (!msg.input.subagent_type) {
+            msg.input.subagent_type = meta.agentType
+          }
+        }
+      }
+    }
+  }
+
+  const sessionName = mainSessionFile.name.replace(".jsonl", "")
+  return {
+    messages,
+    sessionName,
+    subagentCount: subagentJsonls.size,
+  }
 }
