@@ -1,19 +1,23 @@
-// packages/core/src/account/ops/exchanges/index.ts
-
 import type { ExchangeId } from "../types";
 import type { Exchange } from "./types";
 import { okxExchange } from "./okx";
+import { binanceExchange } from "./binance";
+import { bitgetExchange } from "./bitget";
+import { bybitExchange } from "./bybit";
+import { gateExchange } from "./gate";
+import { kucoinExchange } from "./kucoin";
+import { lighterExchange } from "./lighter";
 
 export type { Exchange, Credentials, SignParams, SignedRequest } from "./types";
 
 const EXCHANGES: Record<ExchangeId, Exchange> = {
   okx: okxExchange,
-  binance: undefined as unknown as Exchange, // placeholder, filled in Task 3
-  bitget: undefined as unknown as Exchange,
-  bybit: undefined as unknown as Exchange,
-  gate: undefined as unknown as Exchange,
-  kucoin: undefined as unknown as Exchange,
-  lighter: undefined as unknown as Exchange,
+  binance: binanceExchange,
+  bitget: bitgetExchange,
+  bybit: bybitExchange,
+  gate: gateExchange,
+  kucoin: kucoinExchange,
+  lighter: lighterExchange,
 };
 
 export function getExchange(id: ExchangeId): Exchange {
@@ -23,5 +27,5 @@ export function getExchange(id: ExchangeId): Exchange {
 }
 
 export function listExchanges(): Exchange[] {
-  return Object.values(EXCHANGES).filter(Boolean);
+  return Object.values(EXCHANGES);
 }
