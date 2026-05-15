@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo, memo, createContext, useContext } from "react"
+import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, memo } from "react"
+import { createPortal } from "react-dom"
 import {
   PresentationPlayer,
   TargetRectsProvider,
@@ -22,7 +23,6 @@ import { MockBackground } from "./MockBackground"
 import { StepGallery } from "./StepGallery"
 
 const FPS = 30
-type ActivePanelMode = "list" | "json"
 type JsonMode = "tree" | "text" | "table"
 type JSONPath = string[]
 
@@ -427,12 +427,14 @@ function JsonInspector({
   initialMode = "tree",
   focusPath,
   compact = false,
+  fillHeight = false,
 }: {
   value: unknown
   height?: number
   initialMode?: JsonMode
   focusPath?: JSONPath
   compact?: boolean
+  fillHeight?: boolean
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<JsonEditor | null>(null)
@@ -509,8 +511,9 @@ function JsonInspector({
     <div
       className={`jse-theme-dark ${valueChanged ? "pbc-diff-flash" : ""}`}
       style={{
-        height,
-        minHeight: height,
+        height: fillHeight ? "100%" : height,
+        minHeight: fillHeight ? 0 : height,
+        flex: fillHeight ? 1 : undefined,
         borderRadius: 9,
         overflow: "hidden",
         border: "1px solid rgba(255,255,255,0.08)",
@@ -608,6 +611,22 @@ function IconChevronUp({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
       <polyline points="6 15 12 9 18 15" />
+    </svg>
+  )
+}
+
+function IconChevronLeft({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  )
+}
+
+function IconChevronRight({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 6 15 12 9 18" />
     </svg>
   )
 }
@@ -782,6 +801,9 @@ function injectConsoleStyles() {
     }
     .pbc-range:focus-visible::-webkit-slider-thumb {
       box-shadow: 0 0 0 3px rgba(118,185,0,0.4), 0 0 12px rgba(118,185,0,0.6);
+    }
+    .pbc-scrub-wrapper:hover .pbc-scrub-thumb {
+      transform: translate(-50%, -50%) scale(1.3);
     }
     .pbc-kbd {
       display: inline-flex;
@@ -1083,9 +1105,16 @@ function injectConsoleStyles() {
       from { opacity: 0; transform: translateY(-6px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .pbc-cmd-card-enter {
-      animation: pbc-card-enter 200ms ease-out;
-    }
+    .pbc-cmd-card-enter { animation: pbc-card-slide-in 250ms cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes pbc-card-slide-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes pbc-card-pulse-glow { 0%,100% { box-shadow: inset 0 0 0 rgba(118,185,0,0); } 50% { box-shadow: inset 0 0 8px rgba(118,185,0,0.15); } }
+    .pbc-cmd-card-pulse { animation: pbc-card-slide-in 250ms cubic-bezier(0.16,1,0.3,1) both, pbc-card-pulse-glow 600ms ease-out 250ms; }
+    @keyframes pbc-loop-pulse-anim { 0%,100% { box-shadow: 0 0 0 0 rgba(118,185,0,0); } 50% { box-shadow: 0 0 8px 2px rgba(118,185,0,0.3); } }
+    .pbc-loop-pulse { animation: pbc-loop-pulse-anim 2s ease-in-out infinite; }
+    @keyframes pbc-badge-dot-pulse { 0%,100% { opacity:0.7; transform:scale(1); } 50% { opacity:1; transform:scale(1.3); } }
+    .pbc-badge-dot { animation: pbc-badge-dot-pulse 1.5s ease-in-out infinite; }
+    @keyframes pbc-play-press-ring { 0% { box-shadow: 0 0 0 0 rgba(118,185,0,0.6); } 100% { box-shadow: 0 0 0 8px rgba(118,185,0,0); } }
+    .pbc-play-btn:active { animation: pbc-play-press-ring 400ms ease-out !important; }
     .pbc-cmd-card:hover {
       background: rgba(255,255,255,0.06) !important;
     }
@@ -1207,7 +1236,8 @@ function PresentationPlaybackConsole({
   onFrameStep: (direction: 1 | -1) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const [activePanelMode, setActivePanelMode] = useState<ActivePanelMode>("list")
+  const [leftCollapsed, setLeftCollapsed] = useState(false)
+  const [rightCollapsed, setRightCollapsed] = useState(false)
   const lanes = useMemo(
     () => buildTimelineLanes(script.steps, script.totalDurationMs),
     [script],
@@ -1215,17 +1245,33 @@ function PresentationPlaybackConsole({
 
   useEffect(() => { injectConsoleStyles() }, [])
 
-  // Ctrl+Shift+E keyboard shortcut for collapse/expand
+  // Ctrl+Shift+E keyboard shortcut for collapse/expand (whole console)
+  // Ctrl+Shift+L keyboard shortcut for left panel toggle
+  // Ctrl+Shift+R keyboard shortcut for right panel toggle
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && (e.key === "E" || e.key === "e")) {
         e.preventDefault()
         setCollapsed((prev) => !prev)
       }
+      if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) {
+        e.preventDefault()
+        setLeftCollapsed((prev) => !prev)
+      }
+      if (e.ctrlKey && e.shiftKey && (e.key === "R" || e.key === "r")) {
+        e.preventDefault()
+        setRightCollapsed((prev) => !prev)
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [])
+
+  const gridTemplateColumns = useMemo(() => {
+    const left = leftCollapsed ? "36px" : "260px"
+    const right = rightCollapsed ? "36px" : "320px"
+    return `${left} minmax(360px, 1fr) ${right}`
+  }, [leftCollapsed, rightCollapsed])
 
   return (
     <div
@@ -1246,52 +1292,27 @@ function PresentationPlaybackConsole({
         pointerEvents: "auto",
       }}
     >
-      {/* Top progress bar — always visible, acts as a thin scrub strip */}
-      <ProgressStrip
-        currentMs={currentMs}
-        totalDurationMs={script.totalDurationMs}
-        onSeek={onSeek}
-      />
-
-      {/* Panel header strip — always visible, contains Collapse/Expand toggle */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "4px 14px 0" }}>
-        <button
-          className="pbc-btn pbc-btn-ghost"
-          type="button"
-          title={collapsed ? "Expand (Ctrl+Shift+E)" : "Collapse (Ctrl+Shift+E)"}
-          aria-label={collapsed ? "Expand console" : "Collapse console"}
-          onClick={() => setCollapsed((prev) => !prev)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            height: 22,
-            padding: "0 8px",
-            borderRadius: 11,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.05)",
-            color: "rgba(255,255,255,0.55)",
-            cursor: "pointer",
-            fontSize: 9,
-            fontWeight: 600,
-            letterSpacing: 0.3,
-          }}
-        >
-          {collapsed ? <IconChevronUp size={9} /> : <IconChevronDown size={9} />}
-          <span>{collapsed ? "Expand" : "Collapse"}</span>
-        </button>
-      </div>
+      {/* Top progress bar — visible only when expanded; collapsed state uses its own inline scrub slider */}
+      {!collapsed && (
+        <ProgressStrip
+          currentMs={currentMs}
+          totalDurationMs={script.totalDurationMs}
+          onSeek={onSeek}
+        />
+      )}
 
       <div
         className="pbc-collapse-anim"
         style={{
           display: collapsed ? "flex" : "grid",
-          gridTemplateColumns: collapsed ? undefined : "260px minmax(360px, 1fr) 320px",
+          gridTemplateColumns: collapsed ? undefined : gridTemplateColumns,
+          transition: "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1), padding 250ms cubic-bezier(0.4, 0, 0.2, 1), opacity 200ms ease, gap 250ms ease",
           alignItems: collapsed ? "center" : undefined,
           gap: collapsed ? 12 : 14,
-          padding: collapsed ? "4px 14px 8px" : "8px 14px 14px",
-          maxHeight: collapsed ? 50 : 400,
+          padding: collapsed ? "8px 14px" : "8px 14px 14px",
+          maxHeight: collapsed ? 50 : 360,
           overflow: collapsed ? "hidden" : "visible",
+          gridTemplateRows: collapsed ? undefined : "minmax(0, 1fr)",
           opacity: 1,
         }}
       >
@@ -1303,36 +1324,56 @@ function PresentationPlaybackConsole({
             currentStepIndex={currentStepIndex}
             totalSteps={script.steps.length}
             activeCount={activeSteps.length}
+            activeSteps={activeSteps}
+            allSteps={script.steps}
             isPlaying={isPlaying}
             onPlay={onPlay}
             onPause={onPause}
             onSeek={onSeek}
             onNext={onNext}
             onPrevious={onPrevious}
+            onToggleCollapse={() => setCollapsed(false)}
           />
         ) : (
           <>
-            <PlaybackControls
-              title={script.title}
-              currentMs={currentMs}
-              totalDurationMs={script.totalDurationMs}
-              currentStepIndex={currentStepIndex}
-              totalSteps={script.steps.length}
-              activeSteps={activeSteps}
-              isPlaying={isPlaying}
-              isLooping={isLooping}
-              playbackRate={playbackRate}
-              onSeek={onSeek}
-              onPlay={onPlay}
-              onPause={onPause}
-              onNext={onNext}
-              onPrevious={onPrevious}
-              onGoToStart={onGoToStart}
-              onGoToEnd={onGoToEnd}
-              onToggleLoop={onToggleLoop}
-              onSetPlaybackRate={onSetPlaybackRate}
-              onFrameStep={onFrameStep}
-            />
+            {/* LEFT PANEL: PlaybackControls or collapsed strip */}
+            {leftCollapsed ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%", minHeight: 120 }}>
+                <button className="pbc-btn pbc-btn-primary" type="button" title={isPlaying ? "Pause" : "Play"} aria-label={isPlaying ? "Pause" : "Play"} onClick={isPlaying ? onPause : onPlay} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(118,185,0,0.5)", background: "rgba(118,185,0,0.2)", color: "#76B900", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  {isPlaying ? <IconPause size={13} /> : <IconPlay size={13} />}
+                </button>
+                <button className="pbc-btn pbc-btn-ghost" type="button" title="Expand left panel (Ctrl+Shift+L)" aria-label="Expand left panel" onClick={() => setLeftCollapsed(false)} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <IconChevronRight size={11} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ position: "relative" }}>
+                <PlaybackControls
+                  title={script.title}
+                  currentMs={currentMs}
+                  totalDurationMs={script.totalDurationMs}
+                  currentStepIndex={currentStepIndex}
+                  totalSteps={script.steps.length}
+                  activeSteps={activeSteps}
+                  isPlaying={isPlaying}
+                  isLooping={isLooping}
+                  playbackRate={playbackRate}
+                  onSeek={onSeek}
+                  onPlay={onPlay}
+                  onPause={onPause}
+                  onNext={onNext}
+                  onPrevious={onPrevious}
+                  onGoToStart={onGoToStart}
+                  onGoToEnd={onGoToEnd}
+                  onToggleLoop={onToggleLoop}
+                  onSetPlaybackRate={onSetPlaybackRate}
+                  onFrameStep={onFrameStep}
+                />
+                <button className="pbc-btn pbc-btn-ghost" type="button" title="Collapse left panel (Ctrl+Shift+L)" aria-label="Collapse left panel" onClick={() => setLeftCollapsed(true)} style={{ position: "absolute", top: 4, right: -6, width: 18, height: 18, borderRadius: 4, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 2 }}>
+                  <IconChevronLeft size={9} />
+                </button>
+              </div>
+            )}
 
             <TimelineTracks
               lanes={lanes}
@@ -1341,15 +1382,30 @@ function PresentationPlaybackConsole({
               onSeek={onSeek}
             />
 
-            <ActiveCommandList
-              steps={activeSteps}
-              currentMs={currentMs}
-              totalDurationMs={script.totalDurationMs}
-              mode={activePanelMode}
-              onModeChange={setActivePanelMode}
-              onSeek={onSeek}
-              isPlaying={isPlaying}
-            />
+            {/* RIGHT PANEL: ActiveCommandList or collapsed strip */}
+            {rightCollapsed ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%", minHeight: 120 }}>
+                <div style={{ width: 24, height: 24, borderRadius: "50%", background: activeSteps.length > 0 ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.08)", border: activeSteps.length > 0 ? "1px solid rgba(118,185,0,0.5)" : "1px solid rgba(255,255,255,0.15)", color: activeSteps.length > 0 ? "#76B900" : "rgba(255,255,255,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                  {activeSteps.length}
+                </div>
+                <button className="pbc-btn pbc-btn-ghost" type="button" title="Expand right panel (Ctrl+Shift+R)" aria-label="Expand right panel" onClick={() => setRightCollapsed(false)} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <IconChevronLeft size={11} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ position: "relative", height: "100%", minHeight: 0 }}>
+                <ActiveCommandList
+                  steps={activeSteps}
+                  currentMs={currentMs}
+                  totalDurationMs={script.totalDurationMs}
+                  onSeek={onSeek}
+                  isPlaying={isPlaying}
+                  allSteps={script.steps}
+                  onCollapse={() => setCollapsed(true)}
+                  onCollapseRight={() => setRightCollapsed(true)}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
@@ -1454,12 +1510,15 @@ function CollapsedPlaybackConsole({
   currentStepIndex,
   totalSteps,
   activeCount,
+  activeSteps,
+  allSteps,
   isPlaying,
   onPlay,
   onPause,
   onSeek,
   onNext,
   onPrevious,
+  onToggleCollapse,
 }: {
   title: string
   currentMs: number
@@ -1467,17 +1526,68 @@ function CollapsedPlaybackConsole({
   currentStepIndex: number
   totalSteps: number
   activeCount: number
+  activeSteps: PresentationStep[]
+  allSteps: PresentationStep[]
   isPlaying: boolean
   onPlay: () => void
   onPause: () => void
   onSeek: (ms: number) => void
   onNext: () => void
   onPrevious: () => void
+  onToggleCollapse: () => void
 }) {
+  const [hoverInfo, setHoverInfo] = useState<{ pct: number; ms: number; rectLeft: number; rectTop: number; rectWidth: number } | null>(null)
+  const scrubRef = useRef<HTMLDivElement>(null)
+
+  // Native DOM listener on the wrapper — mousemove bubbles from the input child
+  useEffect(() => {
+    const el = scrubRef.current
+    if (!el) return
+
+    const onMove = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect()
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      setHoverInfo({ pct: pct * 100, ms: pct * totalDurationMs, rectLeft: rect.left, rectTop: rect.top, rectWidth: rect.width })
+    }
+
+    const onLeave = () => {
+      setHoverInfo(null)
+    }
+
+    el.addEventListener("mousemove", onMove)
+    el.addEventListener("mouseleave", onLeave)
+    return () => {
+      el.removeEventListener("mousemove", onMove)
+      el.removeEventListener("mouseleave", onLeave)
+    }
+  }, [totalDurationMs])
+
+  // Compute steps active at the hovered time using allSteps
+  const hoverPreviewSteps = useMemo(() => {
+    if (!hoverInfo) return []
+    const ms = hoverInfo.ms
+    return allSteps.filter((s) =>
+      s.startMs <= ms &&
+      (s.endMs == null || s.endMs > ms) &&
+      s.command.type !== "clear" &&
+      s.command.type !== "wait"
+    )
+  }, [hoverInfo, allSteps])
+
   return (
     <>
-      {/* Transport cluster */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+      {/* Noise texture overlay for depth */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        borderRadius: "inherit",
+        opacity: 0.03,
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        pointerEvents: "none",
+      }} />
+
+      {/* Transport cluster — tight spacing */}
+      <div style={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
         <button
           className="pbc-btn pbc-btn-ghost"
           type="button"
@@ -1485,20 +1595,20 @@ function CollapsedPlaybackConsole({
           aria-label="Previous step"
           onClick={onPrevious}
           style={{
-            width: 28,
-            height: 28,
+            width: 24,
+            height: 24,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 6,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.05)",
-            color: "rgba(255,255,255,0.7)",
+            borderRadius: 5,
+            border: "none",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.6)",
             cursor: "pointer",
             padding: 0,
           }}
         >
-          <IconStepBack size={12} />
+          <IconStepBack size={10} />
         </button>
         <button
           className="pbc-btn pbc-btn-primary"
@@ -1507,20 +1617,23 @@ function CollapsedPlaybackConsole({
           aria-label={isPlaying ? "Pause" : "Play"}
           onClick={isPlaying ? onPause : onPlay}
           style={{
-            width: 34,
-            height: 34,
+            width: 28,
+            height: 28,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 8,
-            border: "1px solid rgba(118,185,0,0.7)",
-            background: "rgba(118,185,0,0.25)",
+            borderRadius: 7,
+            border: isPlaying ? "1px solid rgba(118,185,0,0.5)" : "1px solid rgba(118,185,0,0.7)",
+            background: isPlaying
+              ? "radial-gradient(circle at center, rgba(118,185,0,0.3), rgba(118,185,0,0.15))"
+              : "rgba(118,185,0,0.3)",
             color: "#fff",
             cursor: "pointer",
             padding: 0,
+            boxShadow: isPlaying ? "0 0 8px rgba(118,185,0,0.3)" : "none",
           }}
         >
-          {isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
+          {isPlaying ? <IconPause size={11} /> : <IconPlay size={11} />}
         </button>
         <button
           className="pbc-btn pbc-btn-ghost"
@@ -1529,25 +1642,25 @@ function CollapsedPlaybackConsole({
           aria-label="Next step"
           onClick={onNext}
           style={{
-            width: 28,
-            height: 28,
+            width: 24,
+            height: 24,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 6,
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.05)",
-            color: "rgba(255,255,255,0.7)",
+            borderRadius: 5,
+            border: "none",
+            background: "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.6)",
             cursor: "pointer",
             padding: 0,
           }}
         >
-          <IconStepForward size={12} />
+          <IconStepForward size={10} />
         </button>
       </div>
 
-      {/* Title + metadata */}
-      <div style={{ minWidth: 140, flex: "0 1 240px" }}>
+      {/* Title + metadata — prominent title, subdued meta */}
+      <div style={{ minWidth: 120, flex: "0 1 200px", overflow: "hidden" }}>
         <div
           style={{
             fontSize: 12,
@@ -1556,38 +1669,141 @@ function CollapsedPlaybackConsole({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
+            lineHeight: 1.2,
+            letterSpacing: 0.1,
           }}
         >
           {title}
         </div>
         <div
           style={{
-            marginTop: 2,
+            marginTop: 1,
             display: "flex",
-            gap: 10,
-            fontSize: 10,
-            color: "rgba(255,255,255,0.42)",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 9,
+            color: "rgba(255,255,255,0.35)",
             fontVariantNumeric: "tabular-nums",
+            lineHeight: 1,
           }}
         >
-          <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>
+          <span style={{
+            color: "rgba(255,255,255,0.75)",
+            fontWeight: 600,
+            fontFamily: "SFMono-Regular, Consolas, 'Liberation Mono', monospace",
+            fontSize: 10,
+            letterSpacing: -0.3,
+          }}>
             {formatTime(currentMs)}
           </span>
-          <span>/</span>
+          <span style={{ opacity: 0.5 }}>/</span>
           <span>{formatTime(totalDurationMs)}</span>
-          <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
-          <span>Step {Math.min(currentStepIndex + 1, totalSteps)}/{totalSteps}</span>
-          {activeCount > 0 && (
-            <>
-              <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
-              <span style={{ color: "#76B900" }}>{activeCount} active</span>
-            </>
-          )}
+          <span style={{ opacity: 0.3 }}>·</span>
+          <span>{Math.min(currentStepIndex + 1, totalSteps)}/{totalSteps}</span>
         </div>
       </div>
 
-      {/* Scrub slider */}
-      <div style={{ flex: 1, minWidth: 120, display: "flex", alignItems: "center" }}>
+      {/* Scrub slider — rich progress bar */}
+      <div
+        ref={scrubRef}
+        className="pbc-scrub-wrapper"
+        style={{ flex: 1, minWidth: 100, display: "flex", alignItems: "center", position: "relative", height: 24 }}
+      >
+        {/* Background track with subtle inner shadow */}
+        <div style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: "50%",
+          transform: "translateY(-50%)",
+          height: 5,
+          borderRadius: 3,
+          background: "rgba(255,255,255,0.06)",
+          boxShadow: "inset 0 1px 2px rgba(0,0,0,0.4), inset 0 0 0 0.5px rgba(255,255,255,0.05)",
+        }} />
+        {/* Tick marks — 10 evenly spaced */}
+        {Array.from({ length: 9 }, (_, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: `${(i + 1) * 10}%`,
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 1,
+              height: 8,
+              borderRadius: 0.5,
+              background: "rgba(255,255,255,0.06)",
+              pointerEvents: "none",
+            }}
+          />
+        ))}
+        {/* Progress fill with multi-stop gradient */}
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: "50%",
+          transform: "translateY(-50%)",
+          width: `${totalDurationMs > 0 ? (currentMs / totalDurationMs) * 100 : 0}%`,
+          height: 5,
+          borderRadius: 3,
+          background: isPlaying
+            ? "linear-gradient(90deg, rgba(118,185,0,0.5) 0%, rgba(118,185,0,0.8) 60%, rgba(144,220,20,0.9) 100%)"
+            : "linear-gradient(90deg, rgba(118,185,0,0.4) 0%, rgba(118,185,0,0.6) 100%)",
+          boxShadow: isPlaying
+            ? "0 0 8px rgba(118,185,0,0.3), 0 1px 2px rgba(0,0,0,0.2)"
+            : "0 0 4px rgba(118,185,0,0.15)",
+          transition: "width 80ms linear",
+        }} />
+        {/* Glow trail effect at the leading edge */}
+        {isPlaying && totalDurationMs > 0 && (
+          <div style={{
+            position: "absolute",
+            left: `calc(${(currentMs / totalDurationMs) * 100}% - 12px)`,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 12,
+            height: 5,
+            borderRadius: 3,
+            background: "linear-gradient(90deg, transparent, rgba(118,185,0,0.6))",
+            filter: "blur(2px)",
+            pointerEvents: "none",
+            transition: "left 80ms linear",
+          }} />
+        )}
+        {/* Hover position indicator */}
+        {hoverInfo && (
+          <div style={{
+            position: "absolute",
+            left: `${hoverInfo.pct}%`,
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 1,
+            height: 14,
+            background: "rgba(255,255,255,0.3)",
+            borderRadius: 0.5,
+            pointerEvents: "none",
+          }} />
+        )}
+        {/* Thumb indicator */}
+        <div
+          className="pbc-scrub-thumb"
+          style={{
+            position: "absolute",
+            left: `${totalDurationMs > 0 ? (currentMs / totalDurationMs) * 100 : 0}%`,
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at 30% 30%, #9AE62B, #76B900)",
+            border: "2px solid rgba(255,255,255,0.95)",
+            boxShadow: "0 0 6px rgba(118,185,0,0.5), 0 1px 3px rgba(0,0,0,0.3)",
+            transition: "left 80ms linear, transform 0.15s ease",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Invisible range input on top for interaction */}
         <input
           className="pbc-range"
           aria-label="Presentation progress"
@@ -1596,35 +1812,152 @@ function CollapsedPlaybackConsole({
           max={totalDurationMs}
           value={Math.min(currentMs, totalDurationMs)}
           onChange={(event) => onSeek(Number(event.currentTarget.value))}
+          style={{
+            position: "relative",
+            width: "100%",
+            height: 24,
+            opacity: 0,
+            cursor: "pointer",
+            zIndex: 1,
+          }}
+        />
+        {/* Preview popover — portal to body to escape overflow:hidden + backdrop-filter containing block */}
+        {hoverInfo && createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: hoverInfo.rectTop - 10,
+              left: hoverInfo.rectLeft + hoverInfo.rectWidth * Math.min(0.85, Math.max(0.15, hoverInfo.pct / 100)),
+              transform: "translate(-50%, -100%)",
+              minWidth: 160,
+              maxWidth: 260,
+              padding: "8px 10px",
+              borderRadius: 8,
+              background: "rgba(12, 14, 28, 0.96)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)",
+              backdropFilter: "blur(12px)",
+              pointerEvents: "none",
+              zIndex: 99999,
+            }}
+          >
+            {/* Time indicator */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.7)", marginBottom: 4, fontFamily: "SFMono-Regular, Consolas, monospace", fontVariantNumeric: "tabular-nums" }}>
+              {formatTime(hoverInfo.ms)}
+            </div>
+            {hoverPreviewSteps.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {hoverPreviewSteps.slice(0, 5).map((step) => (
+                  <div key={step.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 5, height: 5, borderRadius: 2, background: commandColor(step.command.type), flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: commandColor(step.command.type), textTransform: "uppercase" }}>
+                      {step.command.type}
+                    </span>
+                    <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                      {step.description || describeCommand(step.command)}
+                    </span>
+                  </div>
+                ))}
+                {hoverPreviewSteps.length > 5 && (
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", textAlign: "center" }}>
+                    +{hoverPreviewSteps.length - 5} more
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>No active steps</div>
+            )}
+            {/* Arrow pointing down */}
+            <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(12, 14, 28, 0.96)" }} />
+          </div>,
+          document.body,
+        )}
+      </div>
+
+      {/* Active count badge + status dot */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        {activeCount > 0 && (
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              background: "rgba(118,185,0,0.15)",
+              border: "1px solid rgba(118,185,0,0.3)",
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#76B900",
+              padding: "0 4px",
+              lineHeight: 1,
+              boxShadow: `0 0 0 ${activeCount > 0 ? "3px" : "0"} rgba(118,185,0,0.15)`,
+              transition: "box-shadow 0.3s ease",
+            }}
+            title={`${activeCount} active overlay${activeCount > 1 ? "s" : ""}`}
+          >
+            {activeCount}
+          </div>
+        )}
+        {/* Playing state — minimal dot indicator */}
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: isPlaying ? "#76B900" : "rgba(255,255,255,0.2)",
+            boxShadow: isPlaying ? "0 0 6px rgba(118,185,0,0.6), 0 0 2px rgba(118,185,0,0.8)" : "none",
+            transition: "all 0.2s ease",
+          }}
+          title={isPlaying ? "Playing" : "Paused"}
         />
       </div>
 
-      {/* Status indicator */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      {/* Expand button */}
+      <button
+        className="pbc-btn pbc-btn-ghost"
+        type="button"
+        title="Expand (Ctrl+Shift+E)"
+        aria-label="Expand console"
+        onClick={onToggleCollapse}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          height: 26,
+          padding: "0 10px",
+          borderRadius: 6,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          color: "rgba(255,255,255,0.6)",
+          cursor: "pointer",
+          fontSize: 10,
+          fontWeight: 600,
+          marginLeft: 2,
+          flexShrink: 0,
+        }}
+      >
+        <IconChevronUp size={10} />
+        <span>Expand</span>
+      </button>
+
+      {/* Playing state border glow overlay */}
+      {isPlaying && (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "3px 8px",
-            borderRadius: 5,
-            background: isPlaying ? "rgba(118,185,0,0.12)" : "rgba(255,255,255,0.05)",
-            fontSize: 10,
-            fontWeight: 700,
-            color: isPlaying ? "#76B900" : "rgba(255,255,255,0.4)",
-            letterSpacing: 0.3,
+            position: "absolute",
+            inset: 0,
+            borderRadius: "inherit",
+            border: "1px solid rgba(118,185,0,0.15)",
+            boxShadow: "inset 0 0 12px rgba(118,185,0,0.04), 0 0 8px rgba(118,185,0,0.06)",
+            pointerEvents: "none",
           }}
-        >
-          <span style={{
-            width: 5,
-            height: 5,
-            borderRadius: "50%",
-            background: isPlaying ? "#76B900" : "rgba(255,255,255,0.3)",
-            boxShadow: isPlaying ? "0 0 6px rgba(118,185,0,0.6)" : "none",
-          }} />
-          {isPlaying ? "PLAYING" : "PAUSED"}
-        </div>
-      </div>
+        />
+      )}
+
     </>
   )
 }
@@ -2287,9 +2620,12 @@ function TimelineTracks({
   const viewStartMs = Math.max(0, Math.min(totalDurationMs - visibleDurationMs, viewCenterMs - visibleDurationMs / 2))
   const viewEndMs = Math.min(totalDurationMs, viewStartMs + visibleDurationMs)
 
+  const FRAME_MS = 1000 / FPS
+
   // --- drag / hover state ---
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
   const [hoveredItem, setHoveredItem] = useState<TimelineItem | null>(null)
+  const [pinnedItem, setPinnedItem] = useState<TimelineItem | null>(null)
   const [hoverTimeMs, setHoverTimeMs] = useState<number | null>(null)
   const [hoverX, setHoverX] = useState<number | null>(null)
   const hoverTimerRef = useRef<number | null>(null)
@@ -2297,6 +2633,30 @@ function TimelineTracks({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const minimapDragRef = useRef<{ dragging: boolean; startX: number; startCenterMs: number }>({ dragging: false, startX: 0, startCenterMs: 0 })
   const lastManualPanRef = useRef<number>(0)
+
+  // --- scrub preview state ---
+  const [scrubPreviewMs, setScrubPreviewMs] = useState<number | null>(null)
+  const [scrubSnapped, setScrubSnapped] = useState(false)
+  const [scrubTooltipX, setScrubTooltipX] = useState<number | null>(null)
+
+  // --- momentum state ---
+  const momentumRef = useRef<{ velocity: number; lastTime: number; rafId: number | null }>({ velocity: 0, lastTime: 0, rafId: null })
+  const scrubHistoryRef = useRef<Array<{ ms: number; time: number }>>([])
+
+  // --- keyboard focus / selection ---
+  const [focusedBlockIndex, setFocusedBlockIndex] = useState<number>(-1)
+  const [selectedBlockItem, setSelectedBlockItem] = useState<TimelineItem | null>(null)
+
+  // --- range selection ---
+  const [rangeStartItem, setRangeStartItem] = useState<TimelineItem | null>(null)
+  const [rangeEndItem, setRangeEndItem] = useState<TimelineItem | null>(null)
+
+  // --- context menu ---
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: Array<{ label: string; action: () => void }> } | null>(null)
+
+  // --- panning state (middle-mouse, trackpad) ---
+  const panRef = useRef<{ isPanning: boolean; startX: number; startCenterMs: number }>({ isPanning: false, startX: 0, startCenterMs: 0 })
+  const panMomentumRef = useRef<{ velocity: number; rafId: number | null }>({ velocity: 0, rafId: null })
 
   // --- auto-pan: keep playhead visible when playing ---
   useEffect(() => {
@@ -2394,6 +2754,37 @@ function TimelineTracks({
     return visibleDurationMs > 0 ? ((ms - viewStartMs) / visibleDurationMs) * 100 : 0
   }, [viewStartMs, visibleDurationMs])
 
+  const msToTrackX = useCallback((ms: number): number | null => {
+    const el = trackAreaRef.current
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    const trackLeft = LABEL_WIDTH
+    const trackWidth = rect.width - trackLeft - 10
+    if (trackWidth <= 0) return null
+    const ratio = (ms - viewStartMs) / visibleDurationMs
+    return trackLeft + ratio * trackWidth
+  }, [viewStartMs, visibleDurationMs])
+
+  // --- all blocks flattened for keyboard navigation ---
+  const allBlocks = useMemo(() => {
+    const result: TimelineItem[] = []
+    for (const lane of lanes) {
+      for (const item of lane.items) {
+        result.push(item)
+      }
+    }
+    result.sort((a, b) => a.startMs - b.startMs)
+    return result
+  }, [lanes])
+
+  // --- range computation ---
+  const rangeMs = useMemo<{ start: number; end: number } | null>(() => {
+    if (!rangeStartItem || !rangeEndItem) return null
+    const startMs = Math.min(rangeStartItem.startMs, rangeEndItem.startMs)
+    const endMs = Math.max(rangeStartItem.endMs, rangeEndItem.endMs)
+    return { start: startMs, end: endMs }
+  }, [rangeStartItem, rangeEndItem])
+
   // --- hover popover ---
   const showStepPopover = useCallback((item: TimelineItem) => {
     if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current)
@@ -2440,57 +2831,179 @@ function TimelineTracks({
   // --- snap threshold: fraction of visible duration that equals ~100ms in time ---
   const snapThresholdMs = Math.min(200, visibleDurationMs * 0.015)
 
-  const snapToNearestStep = useCallback((ms: number): number => {
+  const snapToNearestStep = useCallback((ms: number): { snapped: number; didSnap: boolean } => {
     let closest = ms
     let closestDist = snapThresholdMs
+    let didSnap = false
     for (const lane of lanes) {
       for (const item of lane.items) {
         const distToStart = Math.abs(item.startMs - ms)
         const distToEnd = Math.abs(item.endMs - ms)
-        if (distToStart < closestDist) { closest = item.startMs; closestDist = distToStart }
-        if (distToEnd < closestDist) { closest = item.endMs; closestDist = distToEnd }
+        if (distToStart < closestDist) { closest = item.startMs; closestDist = distToStart; didSnap = true }
+        if (distToEnd < closestDist) { closest = item.endMs; closestDist = distToEnd; didSnap = true }
       }
     }
-    return closest
+    return { snapped: closest, didSnap }
   }, [lanes, snapThresholdMs])
 
   const handleTrackClick = useCallback((e: React.MouseEvent) => {
     if (isDraggingPlayhead) return
+    if (contextMenu) { setContextMenu(null); return }
     const ms = clientXToMs(e.clientX)
     if (ms != null) {
-      const snapped = snapToNearestStep(ms)
+      const { snapped } = snapToNearestStep(ms)
       onSeek(Math.round(Math.max(0, Math.min(totalDurationMs, snapped))))
     }
-  }, [clientXToMs, onSeek, totalDurationMs, isDraggingPlayhead, snapToNearestStep])
+  }, [clientXToMs, onSeek, totalDurationMs, isDraggingPlayhead, snapToNearestStep, contextMenu])
 
-  // --- playhead drag ---
+  // --- momentum helper ---
+  const applyMomentum = useCallback((velocity: number) => {
+    if (momentumRef.current.rafId != null) cancelAnimationFrame(momentumRef.current.rafId)
+    const FRICTION = 0.92
+    const MIN_VELOCITY = 0.5
+    let currentVel = velocity
+    const tick = () => {
+      if (Math.abs(currentVel) < MIN_VELOCITY) { momentumRef.current.rafId = null; return }
+      const delta = currentVel * FRAME_MS
+      onSeek(Math.round(Math.max(0, Math.min(totalDurationMs, currentMs + delta))))
+      currentVel *= FRICTION
+      momentumRef.current.rafId = requestAnimationFrame(tick)
+    }
+    momentumRef.current.rafId = requestAnimationFrame(tick)
+  }, [totalDurationMs, onSeek, FRAME_MS, currentMs])
+
+  // --- playhead drag (with preview, snap feedback, momentum) ---
   const handlePlayheadMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
     setIsDraggingPlayhead(true)
+    setScrubPreviewMs(currentMs)
+    scrubHistoryRef.current = [{ ms: currentMs, time: Date.now() }]
+    if (momentumRef.current.rafId != null) { cancelAnimationFrame(momentumRef.current.rafId); momentumRef.current.rafId = null }
+
     const onMove = (ev: MouseEvent) => {
       const ms = clientXToMs(ev.clientX)
-      if (ms != null) onSeek(Math.round(Math.max(0, Math.min(totalDurationMs, ms))))
+      if (ms != null) {
+        const clamped = Math.max(0, Math.min(totalDurationMs, ms))
+        const { snapped, didSnap } = snapToNearestStep(clamped)
+        setScrubSnapped(didSnap)
+        setScrubPreviewMs(snapped)
+        const trackX = msToTrackX(snapped)
+        setScrubTooltipX(trackX)
+        onSeek(Math.round(snapped))
+        const now = Date.now()
+        scrubHistoryRef.current.push({ ms: snapped, time: now })
+        if (scrubHistoryRef.current.length > 5) scrubHistoryRef.current.shift()
+      }
     }
     const onUp = () => {
       setIsDraggingPlayhead(false)
+      setScrubPreviewMs(null)
+      setScrubSnapped(false)
+      setScrubTooltipX(null)
+      const history = scrubHistoryRef.current
+      if (history.length >= 2) {
+        const last = history[history.length - 1]
+        const prev = history[history.length - 2]
+        const dt = last.time - prev.time
+        if (dt > 0 && dt < 100) {
+          const velocity = (last.ms - prev.ms) / dt
+          if (Math.abs(velocity) > 0.3) {
+            applyMomentum(velocity)
+          }
+        }
+      }
       window.removeEventListener("mousemove", onMove)
       window.removeEventListener("mouseup", onUp)
     }
     window.addEventListener("mousemove", onMove)
     window.addEventListener("mouseup", onUp)
-  }, [clientXToMs, onSeek, totalDurationMs])
+  }, [clientXToMs, onSeek, totalDurationMs, snapToNearestStep, msToTrackX, currentMs, applyMomentum])
 
-  // --- Ctrl+wheel zoom ---
+  // --- Ctrl+wheel zoom + trackpad horizontal pan ---
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!e.ctrlKey && !e.metaKey) return
+    // Ctrl/Meta + wheel = zoom
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.3 : 0.3
+      setZoom((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta)))
+      lastManualPanRef.current = Date.now()
+      const ms = clientXToMs(e.clientX)
+      if (ms != null) setViewCenterMs((prev) => prev + (ms - prev) * 0.15)
+      return
+    }
+    // Horizontal scroll (trackpad two-finger) = pan when zoomed
+    if (zoom > 1 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault()
+      const panAmount = (e.deltaX / 400) * visibleDurationMs
+      setViewCenterMs((prev) => {
+        const next = prev + panAmount
+        return Math.max(visibleDurationMs / 2, Math.min(totalDurationMs - visibleDurationMs / 2, next))
+      })
+      lastManualPanRef.current = Date.now()
+    }
+  }, [clientXToMs, zoom, visibleDurationMs, totalDurationMs])
+
+  // --- middle-mouse drag for panning ---
+  const handleTrackMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 1) return
     e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.3 : 0.3
-    setZoom((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta)))
-    lastManualPanRef.current = Date.now()
-    const ms = clientXToMs(e.clientX)
-    if (ms != null) setViewCenterMs((prev) => prev + (ms - prev) * 0.15)
-  }, [clientXToMs])
+    panRef.current = { isPanning: true, startX: e.clientX, startCenterMs: viewCenterMs }
+    let lastX = e.clientX
+    let lastTime = Date.now()
+    let panVelocity = 0
+
+    const onMove = (ev: MouseEvent) => {
+      if (!panRef.current.isPanning) return
+      const el = trackAreaRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const trackWidth = rect.width - LABEL_WIDTH - 10
+      if (trackWidth <= 0) return
+      const dx = ev.clientX - panRef.current.startX
+      const msPerPx = visibleDurationMs / trackWidth
+      const newCenter = panRef.current.startCenterMs - dx * msPerPx
+      setViewCenterMs(Math.max(visibleDurationMs / 2, Math.min(totalDurationMs - visibleDurationMs / 2, newCenter)))
+      lastManualPanRef.current = Date.now()
+      const now = Date.now()
+      const dt = now - lastTime
+      if (dt > 0) { panVelocity = (ev.clientX - lastX) / dt }
+      lastX = ev.clientX
+      lastTime = now
+    }
+    const onUp = () => {
+      panRef.current.isPanning = false
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+      // Momentum panning deceleration
+      if (Math.abs(panVelocity) > 0.2) {
+        const el = trackAreaRef.current
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        const trackWidth = rect.width - LABEL_WIDTH - 10
+        if (trackWidth <= 0) return
+        const msPerPx = visibleDurationMs / trackWidth
+        if (panMomentumRef.current.rafId != null) cancelAnimationFrame(panMomentumRef.current.rafId)
+        panMomentumRef.current.velocity = panVelocity
+        const FRICTION = 0.94
+        const MIN_V = 0.01
+        const tick = () => {
+          const v = panMomentumRef.current.velocity
+          if (Math.abs(v) < MIN_V) { panMomentumRef.current.rafId = null; return }
+          setViewCenterMs((prev) => {
+            const next = prev - v * 16 * msPerPx
+            return Math.max(visibleDurationMs / 2, Math.min(totalDurationMs - visibleDurationMs / 2, next))
+          })
+          panMomentumRef.current.velocity *= FRICTION
+          lastManualPanRef.current = Date.now()
+          panMomentumRef.current.rafId = requestAnimationFrame(tick)
+        }
+        panMomentumRef.current.rafId = requestAnimationFrame(tick)
+      }
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }, [viewCenterMs, visibleDurationMs, totalDurationMs])
 
   // --- minimap drag ---
   const handleMinimapMouseDown = useCallback((e: React.MouseEvent) => {
@@ -2517,7 +3030,7 @@ function TimelineTracks({
     window.addEventListener("mouseup", onUp)
   }, [viewCenterMs, totalDurationMs, visibleDurationMs])
 
-  // --- keyboard zoom (+/-) ---
+  // --- keyboard navigation (zoom, arrow scrub, tab, enter, escape) ---
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -2529,11 +3042,86 @@ function TimelineTracks({
         e.preventDefault()
         setZoom((prev) => Math.max(MIN_ZOOM, prev - 0.5))
         lastManualPanRef.current = Date.now()
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        const step = e.shiftKey ? FRAME_MS * 10 : FRAME_MS
+        onSeek(Math.round(Math.max(0, currentMs - step)))
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault()
+        const step = e.shiftKey ? FRAME_MS * 10 : FRAME_MS
+        onSeek(Math.round(Math.min(totalDurationMs, currentMs + step)))
+      } else if (e.key === "Tab") {
+        e.preventDefault()
+        if (allBlocks.length === 0) return
+        const dir = e.shiftKey ? -1 : 1
+        const next = focusedBlockIndex < 0 ? 0 : (focusedBlockIndex + dir + allBlocks.length) % allBlocks.length
+        setFocusedBlockIndex(next)
+        setSelectedBlockItem(allBlocks[next])
+      } else if (e.key === "Enter") {
+        if (focusedBlockIndex >= 0 && focusedBlockIndex < allBlocks.length) {
+          e.preventDefault()
+          onSeek(allBlocks[focusedBlockIndex].startMs)
+        }
+      } else if (e.key === "Escape") {
+        setFocusedBlockIndex(-1)
+        setSelectedBlockItem(null)
+        setRangeStartItem(null)
+        setRangeEndItem(null)
+        setPinnedItem(null)
+        setContextMenu(null)
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
+  }, [allBlocks, focusedBlockIndex, currentMs, totalDurationMs, onSeek, FRAME_MS])
+
+  // --- close context menu on outside click ---
+  useEffect(() => {
+    if (!contextMenu) return
+    const onClick = () => setContextMenu(null)
+    window.addEventListener("click", onClick)
+    return () => window.removeEventListener("click", onClick)
+  }, [contextMenu])
+
+  // --- block interaction callbacks ---
+  const handleBlockClick = useCallback((item: TimelineItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (e.shiftKey) {
+      if (!rangeStartItem) {
+        setRangeStartItem(item)
+      } else {
+        setRangeEndItem(item)
+      }
+      return
+    }
+    onSeek(item.startMs)
+    setSelectedBlockItem(item)
+    const idx = allBlocks.findIndex((b) => b.step.id === item.step.id)
+    setFocusedBlockIndex(idx)
+  }, [onSeek, rangeStartItem, allBlocks])
+
+  const handleBlockDoubleClick = useCallback((item: TimelineItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setPinnedItem((prev) => prev?.step.id === item.step.id ? null : item)
   }, [])
+
+  const handleBlockContextMenu = useCallback((item: TimelineItem, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const menuItems = [
+      { label: "Go to start", action: () => { onSeek(item.startMs); setContextMenu(null) } },
+      { label: "Go to end", action: () => { onSeek(item.endMs); setContextMenu(null) } },
+      { label: "Copy JSON", action: () => { navigator.clipboard.writeText(JSON.stringify(item.step.command, null, 2)).catch(() => {}); setContextMenu(null) } },
+      { label: "Select range from here", action: () => { setRangeStartItem(item); setRangeEndItem(null); setContextMenu(null) } },
+    ]
+    setContextMenu({ x: e.clientX, y: e.clientY, items: menuItems })
+  }, [onSeek])
+
+  // --- minimap double-click: fit to all ---
+  const handleMinimapDoubleClick = useCallback(() => {
+    setZoom(1)
+    setViewCenterMs(totalDurationMs / 2)
+  }, [totalDurationMs])
 
   // --- ticks adapted to zoom window ---
   const tickCount = 6
@@ -2663,6 +3251,7 @@ function TimelineTracks({
               setViewCenterMs(Math.max(visibleDurationMs / 2, Math.min(totalDurationMs - visibleDurationMs / 2, newCenter)))
               lastManualPanRef.current = Date.now()
             }}
+            onDoubleClick={handleMinimapDoubleClick}
           >
             {/* Density gradient background in minimap */}
             <div style={{ position: "absolute", inset: 0, display: "flex", opacity: 0.4 }}>
@@ -2728,10 +3317,12 @@ function TimelineTracks({
       <div
         ref={trackAreaRef}
         onClick={handleTrackClick}
+        onMouseDown={handleTrackMouseDown}
         onMouseMove={handleTrackMouseMove}
         onMouseLeave={() => { setHoverTimeMs(null); setHoverX(null) }}
         onWheel={handleWheel}
-        style={{ position: "relative", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", cursor: isDraggingPlayhead ? "ew-resize" : "crosshair" }}
+        onContextMenu={(e) => { e.preventDefault() }}
+        style={{ position: "relative", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", cursor: isDraggingPlayhead ? "ew-resize" : panRef.current.isPanning ? "grabbing" : "crosshair" }}
       >
         {/* Vertical grid lines from ticks */}
         {ticks.map((_, i) => {
@@ -2740,6 +3331,19 @@ function TimelineTracks({
             <div key={`grid-${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${leftPercent / 100})`, width: 1, background: "rgba(255,255,255,0.03)", borderLeft: "1px dotted rgba(255,255,255,0.04)", zIndex: 0, pointerEvents: "none" }} />
           )
         })}
+
+        {/* Range selection highlight */}
+        {rangeMs && visibleDurationMs > 0 && (() => {
+          const rangeStartPct = Math.max(0, msToPercent(rangeMs.start))
+          const rangeEndPct = Math.min(100, msToPercent(rangeMs.end))
+          if (rangeEndPct <= 0 || rangeStartPct >= 100) return null
+          return (
+            <div style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${rangeStartPct / 100})`, width: `calc((100% - ${LABEL_WIDTH}px - 10px) * ${(rangeEndPct - rangeStartPct) / 100})`, background: "rgba(118,185,0,0.06)", borderLeft: "2px solid rgba(118,185,0,0.4)", borderRight: "2px solid rgba(118,185,0,0.4)", zIndex: 1, pointerEvents: "none" }}>
+              <div style={{ position: "absolute", top: 0, left: -1, width: 2, height: 8, background: "#76B900", borderRadius: "0 0 2px 2px" }} />
+              <div style={{ position: "absolute", top: 0, right: -1, width: 2, height: 8, background: "#76B900", borderRadius: "0 0 2px 2px" }} />
+            </div>
+          )
+        })()}
 
         <div ref={scrollContainerRef} className="pbc-track-scroll" style={{ maxHeight: 220, overflowY: "auto", overflowX: "hidden", padding: "4px 0 2px", position: "relative" }}>
           <div style={{ position: "absolute", top: 0, bottom: 0, left: LABEL_WIDTH, width: 1, background: "rgba(255,255,255,0.06)", zIndex: 1 }} />
@@ -2774,7 +3378,7 @@ function TimelineTracks({
                   </div>
                 )}
                 {!isCollapsed && groupLanes.map((lane, laneIndex) => (
-                  <TimelineLaneRow key={lane.id} lane={lane} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} even={laneIndex % 2 === 0} currentMs={currentMs} onSeek={onSeek} onStepHoverStart={showStepPopover} onStepHoverEnd={hideStepPopover} />
+                  <TimelineLaneRow key={lane.id} lane={lane} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} even={laneIndex % 2 === 0} currentMs={currentMs} onSeek={onSeek} onStepHoverStart={showStepPopover} onStepHoverEnd={hideStepPopover} selectedBlockId={selectedBlockItem?.step.id ?? null} focusedBlockId={focusedBlockIndex >= 0 && focusedBlockIndex < allBlocks.length ? allBlocks[focusedBlockIndex].step.id : null} rangeMs={rangeMs} onBlockClick={handleBlockClick} onBlockDoubleClick={handleBlockDoubleClick} onBlockContextMenu={handleBlockContextMenu} />
                 ))}
               </div>
               )
@@ -3008,25 +3612,25 @@ function ActiveCommandList({
   steps,
   currentMs,
   totalDurationMs,
-  mode,
-  onModeChange,
   onSeek,
   isPlaying,
+  allSteps,
+  onCollapse,
+  onCollapseRight,
 }: {
   steps: PresentationStep[]
   currentMs: number
   totalDurationMs: number
-  mode: ActivePanelMode
-  onModeChange: (mode: ActivePanelMode) => void
   onSeek: (ms: number) => void
   isPlaying: boolean
+  allSteps?: PresentationStep[]
+  onCollapse?: () => void
+  onCollapseRight?: () => void
 }) {
   const listRef = useRef<HTMLDivElement>(null)
   const prevStepIdsRef = useRef<Set<string>>(new Set())
   const [enteringIds, setEnteringIds] = useState<Set<string>>(new Set())
-  const [prevJsonStr, setPrevJsonStr] = useState<string>("")
-  const [jsonChanged, setJsonChanged] = useState(false)
-  const [jsonMaximized, setJsonMaximized] = useState(false)
+  const [mode, setMode] = useState<"list" | "json">("list")
 
   // Track entering steps for transition indicators
   const currentStepIds = useMemo(() => new Set(steps.map((s) => s.id)), [steps])
@@ -3057,31 +3661,16 @@ function ActiveCommandList({
     }
   }, [steps.length, isPlaying])
 
-  // Detect JSON changes for diff flash
-  useEffect(() => {
-    if (mode !== "json") return
-    const newStr = JSON.stringify(steps.map((s) => s.id))
-    if (prevJsonStr && newStr !== prevJsonStr) {
-      setJsonChanged(true)
-      const timer = window.setTimeout(() => setJsonChanged(false), 800)
-      setPrevJsonStr(newStr)
-      return () => window.clearTimeout(timer)
-    }
-    setPrevJsonStr(newStr)
-  }, [steps, mode, prevJsonStr])
+  // Next upcoming step (for empty state)
+  const nextStep = useMemo(() => {
+    if (!allSteps || steps.length > 0) return null
+    const upcoming = allSteps
+      .filter((s) => s.startMs > currentMs && s.command.type !== "wait" && s.command.type !== "clear")
+      .sort((a, b) => a.startMs - b.startMs)
+    return upcoming[0] ?? null
+  }, [allSteps, steps, currentMs])
 
-  // Command count badges by type
-  const typeCounts = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const step of steps) {
-      const t = step.command.type
-      counts.set(t, (counts.get(t) ?? 0) + 1)
-    }
-    return counts
-  }, [steps])
-
-  const hasBadges = steps.length > 0 && typeCounts.size > 0
-  const contentHeight = hasBadges ? 180 : 205
+  const contentHeight = 220
 
   return (
     <section
@@ -3091,10 +3680,11 @@ function ActiveCommandList({
         flexDirection: "column",
         gap: 6,
         minWidth: 0,
+        height: "100%",
         position: "relative",
       }}
     >
-      {/* Header — always visible with List/JSON toggle */}
+      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -3103,10 +3693,35 @@ function ActiveCommandList({
           gap: 6,
         }}
       >
-        {/* Left: label + count */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+        {/* Left: collapse-right button + label + count */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+          {onCollapseRight && (
+            <button
+              className="pbc-btn pbc-btn-ghost"
+              type="button"
+              title="Collapse right panel (Ctrl+Shift+R)"
+              aria-label="Collapse right panel"
+              onClick={onCollapseRight}
+              style={{
+                width: 22,
+                height: 22,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 5,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.6)",
+                cursor: "pointer",
+                padding: 0,
+                flexShrink: 0,
+              }}
+            >
+              <IconChevronRight size={10} />
+            </button>
+          )}
           <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
-            {mode === "list" ? "Active" : "JSON"}
+            Active
           </span>
           <span
             style={{
@@ -3127,137 +3742,99 @@ function ActiveCommandList({
           </span>
         </div>
 
-        {/* Right: controls cluster — List/JSON toggle + maximize (in JSON mode) */}
+        {/* Right: List/JSON toggle + Collapse button */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div
-            role="tablist"
-            aria-label="Command view mode"
-            style={{
-              display: "flex",
-              padding: 2,
-              borderRadius: 7,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              boxShadow: "inset 0 1px 2px rgba(0,0,0,0.3)",
-            }}
-          >
-            <SegmentButton
-              label="List"
-              active={mode === "list"}
-              onClick={() => { setJsonMaximized(false); onModeChange("list") }}
-            />
-            <SegmentButton
-              label="JSON"
-              active={mode === "json"}
-              onClick={() => onModeChange("json")}
-            />
-          </div>
-          {mode === "json" && (
+          {/* List/JSON toggle */}
+          <div style={{ display: "flex", padding: 2, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <button
               type="button"
-              title={jsonMaximized ? "Exit fullscreen" : "Maximize"}
-              aria-label={jsonMaximized ? "Exit fullscreen" : "Maximize JSON editor"}
-              onClick={() => setJsonMaximized((prev) => !prev)}
-              className="pbc-btn pbc-btn-ghost"
+              onClick={() => setMode("list")}
               style={{
-                width: 22,
-                height: 22,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 5,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: jsonMaximized ? "rgba(118,185,0,0.12)" : "rgba(255,255,255,0.05)",
-                color: jsonMaximized ? "#76B900" : "rgba(255,255,255,0.6)",
+                padding: "3px 8px",
+                borderRadius: 4,
+                border: "none",
+                background: mode === "list" ? "rgba(255,255,255,0.14)" : "transparent",
+                color: mode === "list" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)",
+                fontSize: 10,
+                fontWeight: 600,
                 cursor: "pointer",
-                padding: 0,
-                fontSize: 11,
+                transition: "all 100ms ease",
               }}
             >
-              {jsonMaximized ? (
-                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-                  <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
-                </svg>
-              ) : (
-                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
-                  <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-                </svg>
-              )}
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("json")}
+              style={{
+                padding: "3px 8px",
+                borderRadius: 4,
+                border: "none",
+                background: mode === "json" ? "rgba(255,255,255,0.14)" : "transparent",
+                color: mode === "json" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)",
+                fontSize: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 100ms ease",
+              }}
+            >
+              JSON
+            </button>
+          </div>
+          {onCollapse && (
+            <button
+              className="pbc-btn pbc-btn-ghost"
+              type="button"
+              title="Collapse (Ctrl+Shift+E)"
+              aria-label="Collapse console"
+              onClick={onCollapse}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                height: 26,
+                padding: "0 10px",
+                borderRadius: 6,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.6)",
+                cursor: "pointer",
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              <IconChevronDown size={10} />
+              <span>Collapse</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Type count badges — only in list mode */}
-      {mode === "list" && hasBadges && (
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          {Array.from(typeCounts.entries()).map(([type, count]) => {
-            const color = commandColor(type)
-            return (
-              <span
-                key={type}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "2px 6px",
-                  borderRadius: 4,
-                  background: `${color}14`,
-                  border: `1px solid ${color}30`,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.3,
-                }}
-              >
-                <span style={{ width: 4, height: 4, borderRadius: 1, background: color }} />
-                {type}
-                {count > 1 && (
-                  <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>{count}</span>
-                )}
-              </span>
-            )
-          })}
-        </div>
-      )}
-
+      {/* Content area — fills remaining height */}
       {mode === "json" ? (
         <div
-          key="json-panel"
-          className={`pbc-panel-fade ${jsonChanged ? "pbc-diff-flash" : ""}`}
+          className="pbc-panel-fade"
           style={{
-            borderRadius: 8,
-            position: jsonMaximized ? "absolute" : "relative",
-            top: jsonMaximized ? 28 : undefined,
-            left: jsonMaximized ? 0 : undefined,
-            right: jsonMaximized ? 0 : undefined,
-            bottom: jsonMaximized ? 0 : undefined,
-            zIndex: jsonMaximized ? 20 : undefined,
-            background: jsonMaximized ? "rgba(8, 10, 22, 0.98)" : undefined,
-            padding: jsonMaximized ? 4 : undefined,
-            display: "flex",
-            flexDirection: "column",
             flex: 1,
+            minHeight: 0,
+            borderRadius: 8,
+            overflow: "hidden",
           }}
         >
           <JsonInspector
             value={steps}
-            height={jsonMaximized ? 380 : contentHeight}
             initialMode="tree"
             focusPath={steps.length > 0 ? ["0", "command"] : undefined}
+            fillHeight
           />
         </div>
       ) : (
         <div
-          key="list-panel"
           ref={listRef}
           className="pbc-panel-fade"
           style={{
-            minHeight: contentHeight,
-            maxHeight: contentHeight,
+            flex: 1,
+            minHeight: 0,
             overflow: "auto",
             borderRadius: 8,
             background: "rgba(255,255,255,0.025)",
@@ -3265,10 +3842,10 @@ function ActiveCommandList({
           }}
         >
           {steps.length === 0 ? (
-            <ActiveEmptyState currentMs={currentMs} totalDurationMs={totalDurationMs} />
+            <ActiveEmptyState currentMs={currentMs} totalDurationMs={totalDurationMs} nextStep={nextStep} />
           ) : (
             <div style={{ padding: 6, display: "flex", flexDirection: "column", gap: 2 }}>
-              {steps.map((step) => (
+              {steps.map((step, idx) => (
                 <ActiveCommandCard
                   key={step.id}
                   step={step}
@@ -3276,6 +3853,7 @@ function ActiveCommandList({
                   totalDurationMs={totalDurationMs}
                   isEntering={enteringIds.has(step.id)}
                   onClick={() => onSeek(step.startMs)}
+                  staggerIndex={idx}
                 />
               ))}
             </div>
@@ -3286,8 +3864,12 @@ function ActiveCommandList({
   )
 }
 
-/** Enhanced empty state with animated clock and countdown to next step */
-function ActiveEmptyState({ currentMs, totalDurationMs }: { currentMs: number; totalDurationMs: number }) {
+/** Enhanced empty state with animated clock, countdown to next step, and preview */
+function ActiveEmptyState({ currentMs, totalDurationMs, nextStep }: { currentMs: number; totalDurationMs: number; nextStep?: PresentationStep | null }) {
+  const timeToNext = nextStep ? Math.max(0, nextStep.startMs - currentMs) : null
+  const timeToNextSec = timeToNext !== null ? (timeToNext / 1000).toFixed(1) : null
+  const progressPct = totalDurationMs > 0 ? (currentMs / totalDurationMs) * 100 : 0
+
   return (
     <div
       style={{
@@ -3296,10 +3878,11 @@ function ActiveEmptyState({ currentMs, totalDurationMs }: { currentMs: number; t
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 10,
+        gap: 8,
         color: "rgba(255,255,255,0.25)",
         fontSize: 12,
         textAlign: "center",
+        padding: "8px 12px",
       }}
     >
       {/* Animated clock with spinning hand */}
@@ -3312,9 +3895,39 @@ function ActiveEmptyState({ currentMs, totalDurationMs }: { currentMs: number; t
           <polyline className="pbc-clock-hand-anim" points="12 7 12 12 15 14" />
         </svg>
       </div>
-      <span className="pbc-waiting-pulse" style={{ fontWeight: 600, color: "rgba(255,255,255,0.35)" }}>
-        Waiting for next step...
-      </span>
+
+      {/* Countdown to next step */}
+      {timeToNextSec !== null ? (
+        <span className="pbc-waiting-pulse" style={{ fontWeight: 600, color: "rgba(255,255,255,0.45)", fontSize: 13 }}>
+          Next step in {timeToNextSec}s
+        </span>
+      ) : (
+        <span className="pbc-waiting-pulse" style={{ fontWeight: 600, color: "rgba(255,255,255,0.35)" }}>
+          Waiting for next step...
+        </span>
+      )}
+
+      {/* Next step preview */}
+      {nextStep && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <span style={{ width: 6, height: 6, borderRadius: 2, background: commandColor(nextStep.command.type), boxShadow: `0 0 4px ${commandColor(nextStep.command.type)}66` }} />
+          <span style={{ fontSize: 9, fontWeight: 700, color: commandColor(nextStep.command.type), textTransform: "uppercase" }}>
+            {nextStep.command.type}
+          </span>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {nextStep.description || describeCommand(nextStep.command)}
+          </span>
+        </div>
+      )}
+
+      {/* Mini timeline progress bar */}
+      <div style={{ width: "80%", height: 3, borderRadius: 2, background: "rgba(255,255,255,0.06)", position: "relative", overflow: "hidden", marginTop: 4 }}>
+        <div style={{ width: `${progressPct}%`, height: "100%", background: "linear-gradient(90deg, rgba(118,185,0,0.4), rgba(118,185,0,0.7))", borderRadius: 2, transition: "width 100ms linear" }} />
+        {nextStep && totalDurationMs > 0 && (
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: `${(nextStep.startMs / totalDurationMs) * 100}%`, width: 2, background: commandColor(nextStep.command.type), borderRadius: 1, opacity: 0.6 }} />
+        )}
+      </div>
+
       <div style={{ display: "flex", gap: 12, fontSize: 10, color: "rgba(255,255,255,0.2)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
         <span>{formatTime(currentMs)}</span>
         <span style={{ color: "rgba(255,255,255,0.1)" }}>/</span>
@@ -3324,54 +3937,20 @@ function ActiveEmptyState({ currentMs, totalDurationMs }: { currentMs: number; t
   )
 }
 
-function SegmentButton({
-  label,
-  active,
-  onClick,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      className={`pbc-seg ${active ? "pbc-seg-active" : ""}`}
-      type="button"
-      role="tab"
-      aria-selected={active}
-      aria-label={`View ${label} mode`}
-      onClick={onClick}
-      style={{
-        height: 22,
-        minWidth: 42,
-        padding: "0 8px",
-        border: "none",
-        borderRadius: 5,
-        background: active ? "rgba(255,255,255,0.18)" : "transparent",
-        color: active ? "#fff" : "rgba(255,255,255,0.5)",
-        fontSize: 10,
-        fontWeight: 700,
-        cursor: "pointer",
-        transition: "background 100ms ease, color 100ms ease",
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
 function ActiveCommandCard({
   step,
   currentMs,
   totalDurationMs,
   isEntering,
   onClick,
+  staggerIndex = 0,
 }: {
   step: PresentationStep
   currentMs: number
   totalDurationMs: number
   isEntering: boolean
   onClick: () => void
+  staggerIndex?: number
 }) {
   const color = commandColor(step.command.type)
   const elapsed = Math.max(0, currentMs - step.startMs)
@@ -3383,18 +3962,20 @@ function ActiveCommandCard({
 
   return (
     <div
-      className={`pbc-cmd-card ${isEntering ? "pbc-cmd-card-enter" : ""}`}
+      className={`pbc-cmd-card ${isEntering ? "pbc-cmd-card-enter pbc-cmd-card-pulse" : ""}`}
       onClick={onClick}
       title={`Click to seek to ${formatTime(step.startMs)}`}
       style={{
         display: "flex",
         flexDirection: "column",
         gap: 4,
-        padding: "7px 8px",
+        padding: "7px 8px 7px 12px",
         borderRadius: 6,
         position: "relative",
         overflow: "hidden",
         cursor: "pointer",
+        borderLeft: `3px solid ${color}`,
+        animationDelay: isEntering ? `${staggerIndex * 50}ms` : undefined,
       }}
     >
       {/* Progress background fill */}

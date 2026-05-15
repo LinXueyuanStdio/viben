@@ -1065,324 +1065,679 @@ export const demoSteps: PresentationStep[] = [
   }, "Badge: credits", undefined, { expect: { x: 708, y: 214 } }),
 
   // ============================================================================
-  // ACT 9: NEW VISUALIZATION TYPES (182s - 240s) — Showcasing new overlay types
+  // ACT 9: ENHANCED VISUALIZATIONS (182s - 240s) — Showcasing cinematic overlays
   // ============================================================================
 
   // 182s: Clear for new section
-  t(182000, { type: "clear" }, "Clear for new visualization types"),
+  t(182000, { type: "clear" }, "Clear for enhanced visualization types"),
 
-  // 183s: Ribbon — Award banner
+  // 183s: Countdown — dramatic 3-2-1-GO! transition
   t(183000, {
-    type: "ribbon",
-    position: { x: 380, y: 40 },
-    text: "NEW VISUALIZATION TYPES",
-    width: 280,
-    color: "#6366F1",
-    textColor: "#FFFFFF",
-    fontSize: 14,
-    variant: "award",
-  }, "Ribbon: section header", 192000),
-
-  // 184s: Tooltip — Explaining something
-  t(184000, {
-    type: "tooltip",
-    position: { x: 520, y: 100 },
-    content: "Seven powerful new overlay types for data storytelling",
-    direction: "bottom",
+    type: "countdown",
+    position: { x: 512, y: 384 },
+    from: 3,
     color: "#FFFFFF",
-    maxWidth: 220,
-    fontSize: 12,
-  }, "Tooltip: description", 192000),
+    fontSize: 120,
+  }, "Countdown: dramatic transition", 188000),
 
-  // 185s: Badge Group — Technology stack
-  t(185000, {
-    type: "badge-group",
-    position: { x: 60, y: 140 },
-    badges: [
-      { text: "Ribbon", background: "#6366F1", color: "#FFFFFF" },
-      { text: "Polar Area", background: "#EC4899", color: "#FFFFFF" },
-      { text: "Stacked Bar", background: "#F59E0B", color: "#000000" },
-      { text: "Tooltip", background: "#10B981", color: "#FFFFFF" },
-      { text: "Badge Group", background: "#3B82F6", color: "#FFFFFF" },
-      { text: "Scatter", background: "#EF4444", color: "#FFFFFF" },
-      { text: "Meter", background: "#8B5CF6", color: "#FFFFFF" },
-    ],
-    layout: "flow",
-    gap: 8,
-  }, "BadgeGroup: new types list", 192000),
+  // 188s: Confetti burst to celebrate
+  t(188000, {
+    type: "confetti",
+    position: { x: 512, y: 300 },
+    count: 60,
+    spread: 280,
+    colors: ["#76B900", "#6366F1", "#F59E0B", "#EC4899", "#4ECDC4", "#FF6B6B"],
+  }, "Confetti: celebration burst", 192000),
 
-  // 192s: Clear for charts section
-  t(192000, { type: "clear" }, "Clear for polar area + scatter"),
+  // 188.5s: Callout — section intro
+  t(188500, {
+    type: "callout",
+    position: { x: 380, y: 200 },
+    content: "12 enhanced data overlays with cinematic spring animations",
+    arrowDirection: "bottom",
+    maxWidth: 280,
+  }, "Callout: section intro", 192000),
 
-  // 193s: Polar Area Chart — Market segments
+  // 192s: Clear for data viz section
+  t(192000, { type: "clear" }, "Clear for data viz section"),
+
+  // 193s: KPI card — Revenue metric with sparkline
   t(193000, {
-    type: "polar-area",
+    type: "kpi",
     position: { x: 60, y: 80 },
-    segments: [
-      { label: "GPU", value: 80, color: "#76B900" },
-      { label: "TPU", value: 45, color: "#4285F4" },
-      { label: "FPGA", value: 30, color: "#F59E0B" },
-      { label: "ASIC", value: 55, color: "#EC4899" },
-      { label: "NPU", value: 35, color: "#6366F1" },
-    ],
-    size: 220,
-  }, "PolarArea: chip types market", 204000),
+    value: 26000,
+    label: "QUARTERLY REVENUE",
+    trend: "up",
+    trendValue: "+265%",
+    sparkData: [7200, 10500, 13500, 16200, 18100, 22100, 26000],
+    color: "#76B900",
+  }, "KPI: NVIDIA quarterly revenue", 202000),
 
-  // 194s: Scatter Plot — Performance vs Cost
-  t(194000, {
-    type: "scatter",
-    position: { x: 360, y: 80 },
-    points: [
-      { x: 95, y: 92, label: "H100", color: "#76B900", size: 7 },
-      { x: 80, y: 78, label: "A100", color: "#76B900", size: 5 },
-      { x: 70, y: 85, label: "MI300X", color: "#ED1C24", size: 6 },
-      { x: 55, y: 60, label: "MI250", color: "#ED1C24", size: 4 },
-      { x: 45, y: 50, label: "Gaudi3", color: "#0071C5", size: 5 },
-      { x: 85, y: 70, label: "TPUv5", color: "#4285F4", size: 6 },
-      { x: 30, y: 40, label: "910B", color: "#CF0A2C", size: 4 },
-      { x: 60, y: 55, label: "Trainium2", color: "#FF9900", size: 5 },
-    ],
-    width: 300,
-    height: 240,
+  // 193.5s: Gauge — GPU utilization
+  t(193500, {
+    type: "gauge",
+    position: { x: 340, y: 80 },
+    value: 92,
+    radius: 65,
+    label: "GPU Utilization",
     color: "#6366F1",
-    dotRadius: 5,
-    xLabel: "Performance Score",
-    yLabel: "Cost Efficiency",
-    showGrid: true,
-  }, "Scatter: performance vs cost", 204000),
+  }, "Gauge: GPU cluster utilization", 202000),
 
-  // 196s: Meter — GPU utilization
-  t(196000, {
-    type: "meter",
-    position: { x: 360, y: 360 },
-    value: 87,
-    min: 0,
-    max: 100,
-    width: 300,
-    label: "GPU Cluster Utilization",
-    color: "#76B900",
-    ticks: 5,
-    unit: "%",
-    showNeedle: true,
-  }, "Meter: GPU utilization", 204000),
-
-  // 198s: Ribbon — Performance award
-  t(198000, {
-    type: "ribbon",
-    position: { x: 60, y: 370 },
-    text: "PERFORMANCE LEADER",
-    width: 200,
-    color: "#76B900",
-    textColor: "#FFFFFF",
-    fontSize: 12,
-    variant: "award",
-  }, "Ribbon: performance leader award", 204000),
-
-  // 204s: Clear for stacked bar section
-  t(204000, { type: "clear" }, "Clear for stacked bar section"),
-
-  // 205s: Stacked Bar — Revenue breakdown
-  t(205000, {
-    type: "stacked-bar",
-    position: { x: 60, y: 80 },
-    bars: [
-      {
-        label: "NVIDIA",
-        segments: [
-          { value: 18, color: "#76B900", label: "DC" },
-          { value: 4, color: "#9ACD32", label: "Gaming" },
-          { value: 2, color: "#B8D86F", label: "Auto" },
-          { value: 2, color: "#D4E89A", label: "Other" },
-        ],
-      },
-      {
-        label: "AMD",
-        segments: [
-          { value: 3.5, color: "#ED1C24", label: "DC" },
-          { value: 2, color: "#FF4444", label: "Gaming" },
-          { value: 1.5, color: "#FF7777", label: "Embedded" },
-          { value: 1, color: "#FF9999", label: "Other" },
-        ],
-      },
-      {
-        label: "Intel",
-        segments: [
-          { value: 1, color: "#0071C5", label: "DC AI" },
-          { value: 6, color: "#3399DD", label: "Client" },
-          { value: 4, color: "#66BBEE", label: "DC Gen" },
-          { value: 2, color: "#99DDFF", label: "Other" },
-        ],
-      },
-    ],
-    width: 380,
-    barHeight: 36,
-    gap: 16,
-  }, "StackedBar: revenue breakdown by segment", 216000),
-
-  // 207s: Tooltip on stacked bar
-  t(207000, {
-    type: "tooltip",
-    position: { x: 320, y: 80 },
-    content: "NVIDIA Data Center revenue dominates at $18B/quarter, more than 2x all competitors combined.",
-    direction: "right",
-    maxWidth: 240,
-    fontSize: 11,
-  }, "Tooltip: NVIDIA DC revenue note", 216000),
-
-  // 209s: Meter — Training throughput
-  t(209000, {
-    type: "meter",
-    position: { x: 60, y: 300 },
-    value: 3200,
-    min: 0,
-    max: 4000,
-    width: 320,
-    label: "Training Throughput (TFLOPS)",
+  // 194s: StatCard — Before vs After optimization
+  t(194000, {
+    type: "stat-card",
+    position: { x: 560, y: 80 },
+    label: "Training Throughput",
+    before: 1200,
+    after: 3400,
+    unit: " TFLOPS",
     color: "#EC4899",
-    ticks: 4,
-    unit: "",
-    showNeedle: true,
-  }, "Meter: training throughput", 216000),
+  }, "StatCard: training throughput improvement", 202000),
 
-  // 211s: Meter — Inference latency
-  t(211000, {
-    type: "meter",
-    position: { x: 60, y: 430 },
-    value: 2.4,
-    min: 0,
-    max: 10,
-    width: 320,
-    label: "Inference Latency",
-    color: "#10B981",
-    ticks: 5,
-    unit: "ms",
-    showNeedle: true,
-  }, "Meter: inference latency", 216000),
+  // 196s: Sparkline — Stock price trend
+  t(196000, {
+    type: "sparkline",
+    position: { x: 60, y: 340 },
+    data: [450, 480, 520, 490, 580, 620, 710, 680, 750, 820, 790, 880, 920],
+    width: 200,
+    height: 60,
+    color: "#76B900",
+    fill: true,
+    showEndDot: true,
+  }, "Sparkline: NVIDIA stock trend", 202000),
 
-  // 213s: Badge group with key stats
-  t(213000, {
-    type: "badge-group",
-    position: { x: 540, y: 300 },
-    badges: [
-      { text: "$26B Revenue", background: "#76B900", color: "#FFFFFF" },
-      { text: "+265% YoY", background: "#F59E0B", color: "#000000" },
-      { text: "80% Share", background: "#6366F1", color: "#FFFFFF" },
-      { text: "#1 AI Chip", background: "#EC4899", color: "#FFFFFF" },
+  // 197s: Radar — Competitive analysis
+  t(197000, {
+    type: "radar",
+    position: { x: 320, y: 300 },
+    axes: [
+      { label: "Performance", value: 95 },
+      { label: "Ecosystem", value: 92 },
+      { label: "Power Eff.", value: 78 },
+      { label: "Price/Perf", value: 70 },
+      { label: "Availability", value: 65 },
+      { label: "Software", value: 98 },
     ],
-    layout: "grid",
-    columns: 2,
-    gap: 8,
-  }, "BadgeGroup: key stats", 216000),
+    color: "#76B900",
+    size: 200,
+  }, "Radar: NVIDIA competitive analysis", 202000),
 
-  // 216s: Clear for grand finale
-  t(216000, { type: "clear" }, "Clear for visualization finale"),
+  // 202s: Clear for waterfall + funnel section
+  t(202000, { type: "clear" }, "Clear for waterfall + funnel"),
 
-  // 217s: Polar Area — Investment allocation
-  t(217000, {
-    type: "polar-area",
+  // 203s: Waterfall — Revenue bridge
+  t(203000, {
+    type: "waterfall",
+    position: { x: 60, y: 80 },
+    data: [
+      { label: "Base", value: 7200, type: "total" },
+      { label: "DC", value: 14800, type: "increase" },
+      { label: "Gaming", value: 2800, type: "increase" },
+      { label: "Auto", value: 1600, type: "increase" },
+      { label: "Costs", value: -4200, type: "decrease" },
+      { label: "Net", value: 22200, type: "total" },
+    ],
+    width: 400,
+    height: 240,
+  }, "Waterfall: revenue bridge Q1 to Q4", 212000),
+
+  // 204s: Funnel — Sales pipeline
+  t(204000, {
+    type: "funnel",
+    position: { x: 520, y: 80 },
+    stages: [
+      { label: "Leads", value: 50000, color: "#6366F1" },
+      { label: "Qualified", value: 28000, color: "#8B5CF6" },
+      { label: "Proposals", value: 12000, color: "#A855F7" },
+      { label: "Negotiation", value: 6500, color: "#D946EF" },
+      { label: "Closed Won", value: 3200, color: "#EC4899" },
+    ],
+    width: 260,
+    height: 280,
+  }, "Funnel: enterprise sales pipeline", 212000),
+
+  // 207s: Timeline — Product roadmap
+  t(207000, {
+    type: "timeline",
+    position: { x: 60, y: 380 },
+    events: [
+      { label: "H100", description: "Launch", active: false, color: "#76B900" },
+      { label: "H200", description: "Upgrade", active: true, color: "#76B900" },
+      { label: "B100", description: "2025", color: "#F59E0B" },
+      { label: "B200", description: "2026E", color: "#6366F1" },
+    ],
+    direction: "horizontal",
+    width: 480,
+    color: "#76B900",
+  }, "Timeline: NVIDIA GPU roadmap", 212000),
+
+  // 212s: Clear for heatmap section
+  t(212000, { type: "clear" }, "Clear for heatmap section"),
+
+  // 213s: Heatmap — Performance across workloads
+  t(213000, {
+    type: "heatmap",
     position: { x: 60, y: 100 },
+    data: [
+      [0.95, 0.88, 0.92, 0.78, 0.85],
+      [0.70, 0.82, 0.65, 0.90, 0.75],
+      [0.45, 0.55, 0.50, 0.60, 0.48],
+      [0.30, 0.40, 0.35, 0.45, 0.38],
+    ],
+    cellSize: 36,
+    rowLabels: ["H100", "MI300X", "Gaudi3", "910B"],
+    colLabels: ["LLM", "Vision", "RL", "Diffusion", "MoE"],
+    colors: ["#1a1a3e", "#76B900"],
+  }, "Heatmap: chip performance across AI workloads", 222000),
+
+  // 215s: Callout on heatmap insight
+  t(215000, {
+    type: "callout",
+    position: { x: 360, y: 120 },
+    content: "H100 dominates across all workloads, with >90% efficiency on LLM and RL tasks",
+    arrowDirection: "left",
+    maxWidth: 260,
+  }, "Callout: heatmap insight", 222000),
+
+  // 217s: KPI — Data center market
+  t(217000, {
+    type: "kpi",
+    position: { x: 360, y: 280 },
+    value: 400,
+    label: "TAM 2027E ($B)",
+    trend: "up",
+    trendValue: "+35% CAGR",
+    sparkData: [120, 150, 195, 250, 310, 400],
+    color: "#F59E0B",
+  }, "KPI: total addressable market", 222000),
+
+  // 219s: Gauge — Market confidence
+  t(219000, {
+    type: "gauge",
+    position: { x: 360, y: 420 },
+    value: 85,
+    radius: 55,
+    label: "Analyst Confidence",
+    color: "#10B981",
+  }, "Gauge: analyst confidence score", 222000),
+
+  // 222s: Clear
+  t(222000, { type: "clear" }, "Clear for finale visualizations"),
+
+  // 223s: Confetti — final celebration
+  t(223000, {
+    type: "confetti",
+    position: { x: 512, y: 384 },
+    count: 80,
+    spread: 350,
+    colors: ["#76B900", "#6366F1", "#EC4899", "#F59E0B", "#4ECDC4"],
+  }, "Confetti: final celebration", 228000),
+
+  // 224s: StatCard — Investment return
+  t(224000, {
+    type: "stat-card",
+    position: { x: 300, y: 200 },
+    label: "12-Month Return",
+    before: 100,
+    after: 365,
+    unit: "%",
+    color: "#76B900",
+  }, "StatCard: NVIDIA 12-month return", 230000),
+
+  // ============================================================================
+  // ACT 10: FULL TYPE SHOWCASE (230s - 330s) — All remaining overlay types
+  // ============================================================================
+
+  // 230s: Clear
+  t(230000, { type: "clear" }, "Clear for full type showcase"),
+
+  // --- SECTION A: Structural & Narrative (230s - 260s) ---
+
+  // 231s: Table — chip specs comparison
+  t(231000, {
+    type: "table",
+    position: { x: 60, y: 80 },
+    headers: ["芯片", "算力 (TFLOPS)", "显存", "功耗"],
+    rows: [
+      ["H100", "1979", "80GB HBM3", "700W"],
+      ["MI300X", "1307", "192GB HBM3", "750W"],
+      ["Gaudi3", "1835", "128GB HBM2e", "600W"],
+      ["TPU v5e", "~400", "16GB HBM", "200W"],
+    ],
+    highlights: [[0, 1], [1, 2]],
+    headerColor: "#6366F1",
+    rowStagger: 6,
+  }, "Table: chip specs comparison", 241000),
+
+  // 233s: List — NVIDIA competitive advantages
+  t(233000, {
+    type: "list",
+    position: { x: 560, y: 80 },
+    items: [
+      { text: "CUDA 400万开发者生态", icon: "🟢", color: "#76B900" },
+      { text: "NVLink 900GB/s 互联带宽", icon: "⚡", color: "#F59E0B" },
+      { text: "全栈AI推理优化 (TensorRT)", icon: "🔧", color: "#6366F1" },
+      { text: "cuDNN + NCCL 深度优化", icon: "📦", color: "#EC4899" },
+      { text: "Blackwell 架构2025量产", icon: "🚀", color: "#10B981" },
+    ],
+    listStyle: "arrow",
+    fontSize: 14,
+    stagger: 8,
+  }, "List: NVIDIA advantages", 241000),
+
+  // 236s: Flowchart — AI chip supply chain
+  t(236000, {
+    type: "flowchart",
+    position: { x: 60, y: 380 },
+    nodes: [
+      { id: "design", label: "芯片设计", color: "#6366F1" },
+      { id: "fab", label: "台积电代工", color: "#F59E0B" },
+      { id: "pkg", label: "封装测试", color: "#EC4899" },
+      { id: "dc", label: "数据中心", color: "#76B900" },
+    ],
+    edges: [
+      { from: "design", to: "fab", label: "3nm" },
+      { from: "fab", to: "pkg", label: "CoWoS" },
+      { from: "pkg", to: "dc", label: "部署" },
+    ],
+    direction: "horizontal",
+    width: 520,
+    height: 100,
+  }, "Flowchart: AI chip supply chain", 245000),
+
+  // 241s: Clear
+  t(241000, { type: "clear" }, "Clear for donut + treemap"),
+
+  // 242s: Donut — revenue breakdown
+  t(242000, {
+    type: "donut",
+    position: { x: 100, y: 140 },
     segments: [
-      { label: "R&D", value: 90, color: "#6366F1" },
-      { label: "CapEx", value: 70, color: "#EC4899" },
-      { label: "Talent", value: 60, color: "#F59E0B" },
-      { label: "M&A", value: 40, color: "#10B981" },
-      { label: "Marketing", value: 25, color: "#3B82F6" },
-      { label: "Legal", value: 15, color: "#8B5CF6" },
+      { label: "数据中心", value: 18.4, color: "#76B900" },
+      { label: "游戏", value: 2.9, color: "#6366F1" },
+      { label: "专业可视化", value: 1.5, color: "#F59E0B" },
+      { label: "汽车", value: 0.3, color: "#EC4899" },
+      { label: "OEM/其他", value: 2.9, color: "#10B981" },
     ],
     size: 200,
-  }, "PolarArea: investment allocation", 228000),
+    innerRatio: 0.55,
+  }, "Donut: NVIDIA revenue breakdown ($B)", 252000),
 
-  // 218s: Scatter — AI chip generations
-  t(218000, {
-    type: "scatter",
-    position: { x: 340, y: 100 },
-    points: [
-      { x: 2020, y: 20, label: "A100", color: "#76B900", size: 5 },
-      { x: 2021, y: 35, label: "H100", color: "#76B900", size: 6 },
-      { x: 2022, y: 50, label: "H200", color: "#76B900", size: 7 },
-      { x: 2023, y: 75, label: "B100", color: "#76B900", size: 8 },
-      { x: 2024, y: 95, label: "B200", color: "#76B900", size: 9 },
-      { x: 2020, y: 15, label: "MI100", color: "#ED1C24", size: 4 },
-      { x: 2022, y: 40, label: "MI300X", color: "#ED1C24", size: 6 },
-      { x: 2024, y: 60, label: "MI400", color: "#ED1C24", size: 7 },
+  // 243s: Treemap — GPU market segments
+  t(243000, {
+    type: "treemap",
+    position: { x: 420, y: 80 },
+    data: [
+      { label: "训练", value: 60, color: "#76B900" },
+      { label: "推理", value: 25, color: "#6366F1" },
+      { label: "边缘AI", value: 8, color: "#F59E0B" },
+      { label: "自动驾驶", value: 4, color: "#EC4899" },
+      { label: "机器人", value: 3, color: "#10B981" },
     ],
-    width: 320,
+    width: 360,
     height: 220,
-    xLabel: "Year",
-    yLabel: "Performance Index",
-    showGrid: true,
-  }, "Scatter: chip generation evolution", 228000),
+  }, "Treemap: AI compute market segments", 252000),
 
-  // 220s: Ribbon — Final verdict
-  t(220000, {
+  // 246s: Ribbon — award badge
+  t(246000, {
     type: "ribbon",
-    position: { x: 340, y: 370 },
-    text: "NVIDIA REMAINS KING",
+    position: { x: 160, y: 400 },
+    text: "2024 年度最佳AI芯片",
     width: 260,
     color: "#76B900",
     textColor: "#FFFFFF",
     fontSize: 15,
     variant: "award",
-  }, "Ribbon: final verdict", 228000),
+  }, "Ribbon: best AI chip award", 252000),
 
-  // 222s: Stacked bar — Future market projection
-  t(222000, {
-    type: "stacked-bar",
-    position: { x: 60, y: 380 },
-    bars: [
-      {
-        label: "2024",
-        segments: [
-          { value: 80, color: "#76B900" },
-          { value: 12, color: "#ED1C24" },
-          { value: 8, color: "#6366F1" },
-        ],
-      },
-      {
-        label: "2027E",
-        segments: [
-          { value: 60, color: "#76B900" },
-          { value: 20, color: "#ED1C24" },
-          { value: 20, color: "#6366F1" },
-        ],
-      },
+  // 248s: Tooltip on donut
+  t(248000, {
+    type: "tooltip",
+    position: { x: 100, y: 90 },
+    content: "数据中心业务占比 71%，同比增长 409%",
+    direction: "bottom",
+    background: "rgba(118, 185, 0, 0.9)",
+    color: "#FFFFFF",
+    maxWidth: 220,
+    fontSize: 13,
+  }, "Tooltip: data center dominance", 252000),
+
+  // 252s: Clear
+  t(252000, { type: "clear" }, "Clear for scatter + matrix"),
+
+  // --- SECTION B: Advanced Data (252s - 280s) ---
+
+  // 253s: Scatter — performance vs price
+  t(253000, {
+    type: "scatter",
+    position: { x: 60, y: 80 },
+    points: [
+      { x: 95, y: 90, label: "H100", color: "#76B900", size: 10 },
+      { x: 85, y: 70, label: "MI300X", color: "#ED1C24", size: 8 },
+      { x: 60, y: 45, label: "Gaudi3", color: "#0071C5", size: 7 },
+      { x: 40, y: 30, label: "TPU v5e", color: "#4285F4", size: 6 },
+      { x: 50, y: 35, label: "昇腾910B", color: "#CF0A2C", size: 6 },
+      { x: 75, y: 55, label: "B100", color: "#76B900", size: 9 },
     ],
-    width: 220,
-    barHeight: 28,
-    gap: 12,
-  }, "StackedBar: market share projection", 228000),
+    width: 340,
+    height: 260,
+    color: "#6366F1",
+    dotRadius: 6,
+    xLabel: "性能 (相对值)",
+    yLabel: "性价比",
+    showGrid: true,
+  }, "Scatter: chip performance vs price", 263000),
 
-  // 228s: Clear
-  t(228000, { type: "clear" }, "Final clear for new types"),
+  // 254s: Matrix — feature comparison
+  t(254000, {
+    type: "matrix",
+    position: { x: 460, y: 80 },
+    columns: ["FP8", "稀疏", "NVLink", "HBM3e", "液冷"],
+    rows: [
+      { label: "H100", values: ["yes", "yes", "yes", "no", "partial"] },
+      { label: "H200", values: ["yes", "yes", "yes", "yes", "yes"] },
+      { label: "MI300X", values: ["yes", "yes", "no", "no", "yes"] },
+      { label: "Gaudi3", values: ["yes", "partial", "no", "no", "yes"] },
+    ],
+    width: 420,
+  }, "Matrix: chip feature comparison", 263000),
 
-  // 229s: Badge group - final summary
-  t(229000, {
+  // 258s: Meter — power efficiency
+  t(258000, {
+    type: "meter",
+    position: { x: 60, y: 420 },
+    value: 78,
+    min: 0,
+    max: 100,
+    width: 300,
+    label: "能效比 (TFLOPS/W)",
+    color: "#10B981",
+    ticks: 5,
+    unit: "%",
+    showNeedle: true,
+  }, "Meter: power efficiency rating", 263000),
+
+  // 259s: BadgeGroup — ecosystem tags
+  t(259000, {
     type: "badge-group",
-    position: { x: 300, y: 280 },
+    position: { x: 460, y: 380 },
     badges: [
-      { text: "Ribbon", background: "#6366F1" },
-      { text: "Polar Area", background: "#EC4899" },
-      { text: "Stacked Bar", background: "#F59E0B", color: "#000" },
-      { text: "Tooltip", background: "#10B981" },
-      { text: "Badge Group", background: "#3B82F6" },
-      { text: "Scatter", background: "#EF4444" },
-      { text: "Meter", background: "#8B5CF6" },
+      { text: "CUDA", background: "#76B900", color: "#fff" },
+      { text: "PyTorch", background: "#EE4C2C", color: "#fff" },
+      { text: "TensorFlow", background: "#FF6F00", color: "#fff" },
+      { text: "JAX", background: "#4285F4", color: "#fff" },
+      { text: "Triton", background: "#6366F1", color: "#fff" },
+      { text: "ONNX", background: "#005CED", color: "#fff" },
+    ],
+    layout: "grid",
+    gap: 10,
+    columns: 3,
+  }, "BadgeGroup: AI framework ecosystem", 263000),
+
+  // 263s: Clear
+  t(263000, { type: "clear" }, "Clear for polar + stacked"),
+
+  // 264s: PolarArea — regional market share
+  t(264000, {
+    type: "polar-area",
+    position: { x: 100, y: 180 },
+    segments: [
+      { label: "北美", value: 45, color: "#76B900" },
+      { label: "中国", value: 25, color: "#ED1C24" },
+      { label: "欧洲", value: 15, color: "#6366F1" },
+      { label: "日韩", value: 10, color: "#F59E0B" },
+      { label: "其他", value: 5, color: "#10B981" },
+    ],
+    size: 220,
+  }, "PolarArea: regional AI chip market", 274000),
+
+  // 265s: StackedBar — vendor revenue by segment
+  t(265000, {
+    type: "stacked-bar",
+    position: { x: 400, y: 100 },
+    bars: [
+      { label: "NVIDIA", segments: [{ value: 60, color: "#76B900", label: "训练" }, { value: 20, color: "#6366F1", label: "推理" }] },
+      { label: "AMD", segments: [{ value: 5, color: "#76B900", label: "训练" }, { value: 7, color: "#6366F1", label: "推理" }] },
+      { label: "Intel", segments: [{ value: 1, color: "#76B900", label: "训练" }, { value: 3, color: "#6366F1", label: "推理" }] },
+      { label: "Google", segments: [{ value: 8, color: "#76B900", label: "训练" }, { value: 5, color: "#6366F1", label: "推理" }] },
+    ],
+    width: 380,
+    barHeight: 36,
+    gap: 14,
+  }, "StackedBar: revenue by training vs inference ($B)", 274000),
+
+  // 269s: AnnotationGroup — key insights
+  t(269000, {
+    type: "annotation-group",
+    position: { x: 400, y: 380 },
+    items: [
+      { label: "训练市场: NVIDIA 81%", color: "#76B900" },
+      { label: "推理市场: 竞争加剧", color: "#6366F1" },
+      { label: "边缘市场: 碎片化", color: "#F59E0B" },
+    ],
+    direction: "vertical",
+    connector: "bracket",
+  }, "AnnotationGroup: market insights", 274000),
+
+  // 274s: Clear
+  t(274000, { type: "clear" }, "Clear for code + effects"),
+
+  // --- SECTION C: Code & Effects (274s - 305s) ---
+
+  // 275s: CodeBlock — CUDA kernel example
+  t(275000, {
+    type: "code-block",
+    position: { x: 60, y: 80 },
+    code: `__global__ void matmul(float* A, float* B, float* C, int N) {
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  float sum = 0.0f;
+  for (int k = 0; k < N; k++)
+    sum += A[row*N + k] * B[k*N + col];
+  C[row*N + col] = sum;
+}`,
+    language: "cuda",
+    highlightLines: [3, 4, 5, 6],
+  }, "CodeBlock: CUDA matrix multiply kernel", 285000),
+
+  // 277s: Morph — market cap growth
+  t(277000, {
+    type: "morph",
+    position: { x: 560, y: 120 },
+    from: "$1.2T",
+    to: "$3.4T",
+    color: "#76B900",
+    fontSize: 64,
+  }, "Morph: NVIDIA market cap growth", 283000),
+
+  // 278s: Callout explaining morph
+  t(278000, {
+    type: "callout",
+    position: { x: 560, y: 240 },
+    content: "NVIDIA 市值在12个月内从 $1.2T 增长到 $3.4T，涨幅 183%",
+    arrowDirection: "top",
+    maxWidth: 260,
+    background: "rgba(118, 185, 0, 0.9)",
+    color: "#FFFFFF",
+  }, "Callout: market cap context", 285000),
+
+  // 281s: Reveal — unveil hidden insight
+  t(281000, {
+    type: "reveal",
+    region: { x: 560, y: 320, width: 300, height: 120 },
+    direction: "left",
+    color: "#6366F1",
+  }, "Reveal: hidden insight area", 285000),
+
+  // 282s: Zoom — magnify a detail
+  t(282000, {
+    type: "zoom",
+    region: { targetId: "nvidia-value", padding: 20 },
+    scale: 2.5,
+    borderColor: "#76B900",
+  }, "Zoom: magnify NVIDIA value", 285000),
+
+  // 285s: Clear
+  t(285000, { type: "clear" }, "Clear for sankey"),
+
+  // --- SECTION D: Sankey & Complex (285s - 310s) ---
+
+  // 286s: Sankey — capital flow
+  t(286000, {
+    type: "sankey",
+    position: { x: 80, y: 100 },
+    nodes: [
+      { id: "capex", label: "云厂商 CapEx" },
+      { id: "nvidia", label: "NVIDIA" },
+      { id: "amd", label: "AMD" },
+      { id: "custom", label: "自研芯片" },
+      { id: "training", label: "训练集群" },
+      { id: "inference", label: "推理服务" },
+    ],
+    links: [
+      { source: "capex", target: "nvidia", value: 65 },
+      { source: "capex", target: "amd", value: 15 },
+      { source: "capex", target: "custom", value: 20 },
+      { source: "nvidia", target: "training", value: 50 },
+      { source: "nvidia", target: "inference", value: 15 },
+      { source: "amd", target: "inference", value: 12 },
+      { source: "amd", target: "training", value: 3 },
+      { source: "custom", target: "inference", value: 18 },
+      { source: "custom", target: "training", value: 2 },
+    ],
+    width: 500,
+    height: 320,
+  }, "Sankey: AI chip capital flow", 298000),
+
+  // 288s: KPI trio — right side
+  t(288000, {
+    type: "kpi",
+    position: { x: 640, y: 100 },
+    value: 65,
+    label: "NVIDIA 2027 份额",
+    trend: "down",
+    trendValue: "-15pp",
+    sparkData: [92, 88, 84, 80, 75, 70, 65],
+    color: "#76B900",
+  }, "KPI: NVIDIA 2027 forecast share", 298000),
+
+  t(290000, {
+    type: "kpi",
+    position: { x: 640, y: 240 },
+    value: 20,
+    label: "AMD 2027 份额",
+    trend: "up",
+    trendValue: "+8pp",
+    sparkData: [4, 7, 10, 12, 15, 18, 20],
+    color: "#ED1C24",
+  }, "KPI: AMD 2027 forecast share", 298000),
+
+  t(292000, {
+    type: "kpi",
+    position: { x: 640, y: 380 },
+    value: 15,
+    label: "自研 2027 份额",
+    trend: "up",
+    trendValue: "+10pp",
+    sparkData: [2, 4, 5, 8, 10, 12, 15],
+    color: "#6366F1",
+  }, "KPI: Custom silicon 2027 forecast", 298000),
+
+  // 298s: Clear
+  t(298000, { type: "clear" }, "Clear for finale showcase"),
+
+  // --- SECTION E: Grand Finale (298s - 320s) ---
+
+  // 299s: Countdown for finale
+  t(299000, {
+    type: "countdown",
+    position: { x: 512, y: 384 },
+    from: 3,
+    color: "#F59E0B",
+    fontSize: 140,
+  }, "Countdown: grand finale", 304000),
+
+  // 304s: Confetti — grand finale celebration
+  t(304000, {
+    type: "confetti",
+    position: { x: 512, y: 300 },
+    count: 100,
+    spread: 400,
+    colors: ["#76B900", "#6366F1", "#F59E0B", "#EC4899", "#10B981", "#4ECDC4"],
+  }, "Confetti: grand finale celebration", 310000),
+
+  // 305s: Morph — final statement
+  t(305000, {
+    type: "morph",
+    position: { x: 512, y: 200 },
+    from: "47",
+    to: "47 Types",
+    color: "#FFFFFF",
+    fontSize: 72,
+  }, "Morph: all 47 overlay types", 312000),
+
+  // 306s: Text — subtitle
+  t(306000, {
+    type: "text",
+    position: { x: 512, y: 320 },
+    content: "@viben/presentation — 完整覆盖所有动画类型",
+    fontSize: 20,
+    fontWeight: 700,
+    color: "#FFFFFF",
+    background: "linear-gradient(135deg, #6366F1, #76B900)",
+    textAlign: "center",
+    animate: true,
+  }, "Text: all types covered", 315000),
+
+  // 308s: BadgeGroup — type categories
+  t(308000, {
+    type: "badge-group",
+    position: { x: 312, y: 400 },
+    badges: [
+      { text: "基础注释 ×16", background: "#76B900", color: "#fff" },
+      { text: "数据可视化 ×12", background: "#6366F1", color: "#fff" },
+      { text: "叙事结构 ×10", background: "#F59E0B", color: "#fff" },
+      { text: "交互效果 ×9", background: "#EC4899", color: "#fff" },
     ],
     layout: "flow",
-    gap: 10,
-  }, "BadgeGroup: final summary of all types"),
+    gap: 12,
+  }, "BadgeGroup: type categories summary", 315000),
 
-  // 230s: Ribbon — End credits
-  t(230000, {
-    type: "ribbon",
-    position: { x: 350, y: 200 },
-    text: "7 NEW OVERLAY TYPES",
-    width: 260,
-    color: "#EC4899",
-    textColor: "#FFFFFF",
-    fontSize: 16,
-    variant: "flat",
-  }, "Ribbon: end credits"),
+  // 312s: Pulse — final focus
+  t(312000, {
+    type: "pulse",
+    center: { x: 512, y: 200 },
+    radius: 40,
+    color: "#F59E0B",
+    rings: 3,
+    animate: true,
+  }, "Pulse: final emphasis", 315000),
+
+  // 315s: Clear
+  t(315000, { type: "clear" }, "Final clear - showcase complete"),
+
+  // 316s: End card
+  t(316000, {
+    type: "text",
+    position: { x: 512, y: 350 },
+    content: "DEMO COMPLETE",
+    fontSize: 36,
+    fontWeight: 900,
+    color: "#FFFFFF",
+    background: "linear-gradient(135deg, #76B900, #6366F1, #EC4899)",
+    textAlign: "center",
+    animate: true,
+  }, "End card: demo complete"),
+
+  t(317000, {
+    type: "badge",
+    position: { x: 512, y: 420 },
+    text: "47 overlay types • Remotion-powered • 60fps",
+    color: "#FFFFFF",
+    background: "rgba(99, 102, 241, 0.8)",
+    size: "lg",
+    animate: true,
+  }, "Badge: final tagline"),
 ]
 
 // Auto-compute total duration from steps

@@ -1,5 +1,5 @@
 import { Composition } from "remotion"
-import { CinematicFinanceShowcase } from "./cinematic"
+import { CinematicFinanceShowcase } from "@viben/presentation"
 
 export function RemotionRoot() {
   return (
