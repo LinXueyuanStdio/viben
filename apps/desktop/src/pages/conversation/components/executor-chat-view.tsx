@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Terminal,
@@ -6,6 +7,8 @@ import {
   Search,
   RefreshCcw,
 } from "lucide-react";
+import { SubagentSheet } from "@viben/chat";
+import type { AgentMessage as ChatAgentMessage } from "@viben/chat";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AgentMessage } from "@/types";
@@ -189,6 +192,9 @@ export function ExecutorChatView({
   headerless = false,
 }: ExecutorChatViewProps) {
   const { t } = useTranslation();
+  const [sheetData, setSheetData] = useState<{
+    title: string; subagentType?: string; messages: ChatAgentMessage[]
+  } | null>(null);
 
   return (
     <>
@@ -260,6 +266,9 @@ export function ExecutorChatView({
               simpleMode
               maxMessageWidth="100%"
               autoScroll
+              onExpandSubagent={(title, subagentType, messages) =>
+                setSheetData({ title, subagentType, messages })
+              }
             />
           )}
         </>
@@ -296,6 +305,14 @@ export function ExecutorChatView({
           contextTokens={executorSessionStats.estimatedTokens}
         />
       </div>
+
+      <SubagentSheet
+        open={!!sheetData}
+        onClose={() => setSheetData(null)}
+        title={sheetData?.title || ""}
+        subagentType={sheetData?.subagentType}
+        messages={sheetData?.messages || []}
+      />
     </>
   );
 }

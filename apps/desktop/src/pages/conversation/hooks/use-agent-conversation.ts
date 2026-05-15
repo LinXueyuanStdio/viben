@@ -42,7 +42,8 @@ import {
 } from "@viben/presentation";
 import { toast } from "sonner";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
-import { useCommandQueue } from "./use-command-queue";
+import { useCommandQueue } from "@viben/chat";
+import type { MessageAttachment as ChatMessageAttachment } from "@viben/chat";
 import { isGUIExecuteTool, handleGUIExecute } from "@/lib/action-system";
 
 /**
@@ -1157,7 +1158,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
    * Approve/reject exec via WebSocket
    */
   const approveExecWebSocket = useCallback(
-    (decision: string) => {
+    (decision: string, feedback?: string) => {
       if (!pendingExecApproval) return;
 
       const approvalId = pendingExecApproval.id;
@@ -1169,6 +1170,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         type: "exec_approve",
         approval_id: approvalId,
         decision,
+        message: feedback || undefined,
       });
     },
     [pendingExecApproval, sendWebSocketMessage]
@@ -1818,9 +1820,9 @@ The workspace ID for this session is: \`${workspaceId}\`
    * Approve/reject exec (only used in WebSocket mode for OpenClaw interactive approvals)
    */
   const approveExec = useCallback(
-    (decision: string) => {
+    (decision: string, feedback?: string) => {
       if (!pendingExecApproval) return;
-      approveExecWebSocket(decision);
+      approveExecWebSocket(decision, feedback);
     },
     [pendingExecApproval, approveExecWebSocket]
   );
@@ -1922,19 +1924,22 @@ The workspace ID for this session is: \`${workspaceId}\`
   const queueConversationId = persistSessionId || workspaceId;
 
   const commandQueue = useCommandQueue({
-    conversationId: queueConversationId,
+    id: queueConversationId,
     enabled: useWebSocket,
     isBusy: isStreaming,
     supportsSteer,
-    onSend: async (input: string, files?: string[]) => {
-      // Convert files to attachments if present
-      const attachments: MessageAttachment[] | undefined = files?.length
-        ? files.map((f) => ({ id: crypto.randomUUID(), type: "file" as const, name: f, path: f }))
+    onSend: async (content: string, attachments?: ChatMessageAttachment[]) => {
+      // Convert @viben/chat attachments to desktop MessageAttachment if present
+      const desktopAttachments: MessageAttachment[] | undefined = attachments?.length
+        ? attachments.map((a) => ({ id: a.id || crypto.randomUUID(), type: (a.type || "file") as MessageAttachment["type"], name: a.name || "", path: a.path }))
         : undefined;
-      await sendMessage(input, attachments);
+      await sendMessage(content, desktopAttachments);
     },
-    onSteer: async (input: string) => {
-      await steerMessage(input);
+    onSteer: async (content: string) => {
+      await steerMessage(content);
+    },
+    onQueued: () => {
+      toast.info("Message queued");
     },
   });
 

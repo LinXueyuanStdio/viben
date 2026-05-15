@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Users,
@@ -6,7 +7,6 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +15,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import type { AgentMessage } from "@viben/chat";
 import type { GroupChatUIMessage, GroupChatMember } from "@/lib/gateway";
-import { SessionSelector, GroupChatMessageList } from "./index";
+import { SessionSelector, DesktopMessageList, DesktopChatInput } from "./index";
 
 interface GroupChatViewProps {
   currentGroupChat: {
@@ -232,6 +233,133 @@ export function GroupChatHeaderActions({
   );
 }
 
+// ============================================================================
+// Adapter: GroupChatUIMessage[] -> AgentMessage[]
+// ============================================================================
+
+/**
+ * Convert group chat messages to AgentMessage format for DesktopMessageList.
+ *
+ * Mapping:
+ * - "user"           -> AgentMessage type "user" (renders as right-aligned bubble)
+ * - "agent_response" -> AgentMessage type "text" with sender attribution prefix
+ * - "agent_thinking" -> AgentMessage type "text" with italic thinking indicator
+ * - "system"         -> AgentMessage type "text" with system styling
+ */
+function adaptGroupChatMessages(
+  messages: GroupChatUIMessage[],
+  members: GroupChatMember[],
+): AgentMessage[] {
+  const memberNameMap = new Map<string, string>();
+  for (const m of members) {
+    memberNameMap.set(m.id, m.display_name);
+    memberNameMap.set(m.member_id, m.display_name);
+  }
+
+  return messages.map((msg): AgentMessage => {
+    const senderName =
+      msg.sender_name ||
+      msg.agent_name ||
+      (msg.sender_id ? memberNameMap.get(msg.sender_id) : undefined) ||
+      (msg.agent_id ? memberNameMap.get(msg.agent_id) : undefined);
+
+    switch (msg.type) {
+      case "user":
+        return {
+          id: msg.id,
+          type: "user",
+          content: msg.content || "",
+          timestamp: new Date(msg.timestamp).getTime(),
+        };
+
+      case "agent_response": {
+        // Prefix with sender name in bold so attribution is preserved
+        const prefix = senderName ? `**${senderName}:**\n\n` : "";
+        return {
+          id: msg.id,
+          type: "text",
+          content: `${prefix}${msg.content || ""}`,
+          timestamp: new Date(msg.timestamp).getTime(),
+        };
+      }
+
+      case "agent_thinking": {
+        const label = senderName || "Agent";
+        return {
+          id: msg.id,
+          type: "text",
+          content: `*${label} is thinking...*`,
+          timestamp: new Date(msg.timestamp).getTime(),
+        };
+      }
+
+      case "system":
+        return {
+          id: msg.id,
+          type: "text",
+          content: msg.content || "",
+          timestamp: new Date(msg.timestamp).getTime(),
+        };
+
+      default:
+        return {
+          id: msg.id,
+          type: "text",
+          content: msg.content || "",
+          timestamp: new Date(msg.timestamp).getTime(),
+        };
+    }
+  });
+}
+
+// ============================================================================
+// Typing Indicator (inline below message list)
+// ============================================================================
+
+function TypingIndicator({
+  typingMembers,
+  members,
+}: {
+  typingMembers: string[];
+  members: GroupChatMember[];
+}) {
+  const { t } = useTranslation();
+
+  if (typingMembers.length === 0) return null;
+
+  const typingNames = typingMembers.map((id) => {
+    const member = members.find((m) => m.member_id === id);
+    return member?.display_name || id;
+  });
+
+  let text: string;
+  if (typingNames.length === 1) {
+    text = t("groupChat.oneTyping", "{{name}} is typing...", { name: typingNames[0] });
+  } else if (typingNames.length === 2) {
+    text = t("groupChat.twoTyping", "{{name1}} and {{name2}} are typing...", {
+      name1: typingNames[0],
+      name2: typingNames[1],
+    });
+  } else {
+    text = t("groupChat.manyTyping", "Several people are typing...");
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
+      <div className="flex gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
+        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+      </div>
+      <span>{text}</span>
+    </div>
+  );
+}
+
+// ============================================================================
+// GroupChatView (migrated)
+// ============================================================================
+
 export function GroupChatView({
   currentGroupChat,
   groupChatMembers,
@@ -246,18 +374,41 @@ export function GroupChatView({
   groupChatConnected,
   isLoadingGroupChat,
   groupChatError,
-  groupChatInput,
+  groupChatInput: _groupChatInput,
   selectedGroupSessionId,
   onSelectSession,
   onCreateSession,
   onSwitchView,
   onSendMessage,
-  onInputChange,
-  onSendTyping,
+  onInputChange: _onInputChange,
+  onSendTyping: _onSendTyping,
   onOpenMembersDialog,
   headerless = false,
 }: GroupChatViewProps) {
+  // groupChatInput and onInputChange are no longer needed because DesktopChatInput
+  // manages its own internal state. We mark them as unused for API compatibility.
+  // onSendTyping is also unused since ChatInput does not expose focus/blur callbacks.
+  void _groupChatInput;
+  void _onInputChange;
+  void _onSendTyping;
+
   const { t } = useTranslation();
+
+  // Adapt group chat messages to AgentMessage[] for DesktopMessageList
+  const agentMessages = useMemo(
+    () => adaptGroupChatMessages(groupChatMessages, groupChatMembers),
+    [groupChatMessages, groupChatMembers],
+  );
+
+  // Wrap onSendMessage for DesktopChatInput (it passes content + optional attachments)
+  const handleSend = useCallback(
+    (content: string) => {
+      if (content.trim()) {
+        onSendMessage(content);
+      }
+    },
+    [onSendMessage],
+  );
 
   return (
     <>
@@ -298,14 +449,20 @@ export function GroupChatView({
         </div>
       )}
 
-      {/* Group Chat Messages */}
-      <GroupChatMessageList
-        messages={groupChatMessages}
-        members={groupChatMembers}
-        currentUserId="user-1"
-        typingMembers={typingMembers}
-        className="flex-1"
+      {/* Group Chat Messages - using DesktopMessageList with simpleMode */}
+      <DesktopMessageList
+        messages={agentMessages}
+        simpleMode
+        className="flex-1 min-w-0 overflow-hidden"
+        maxMessageWidth="100%"
+        welcomeTitle={t("groupChat.emptyTitle", "No messages yet")}
+        welcomeDescription={t("groupChat.emptyDescription", "Start the conversation by sending a message.")}
       />
+
+      {/* Typing indicator */}
+      {typingMembers.length > 0 && (
+        <TypingIndicator typingMembers={typingMembers} members={groupChatMembers} />
+      )}
 
       {/* Error */}
       {groupChatError && (
@@ -316,39 +473,18 @@ export function GroupChatView({
 
       {/* Input */}
       {groupChatViewMode === "ui" ? (
-        <div className="border-t border-border p-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder={t("groupChat.inputPlaceholder", "Type a message...")}
-              value={groupChatInput}
-              onChange={(e) => onInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  onSendMessage(groupChatInput);
-                  onInputChange("");
-                }
-              }}
-              onFocus={() => onSendTyping(true)}
-              onBlur={() => onSendTyping(false)}
-              className="flex-1"
-              disabled={!selectedGroupSessionId}
-            />
-            <Button
-              onClick={() => {
-                onSendMessage(groupChatInput);
-                onInputChange("");
-              }}
-              disabled={!groupChatInput.trim() || isLoadingGroupChat || !selectedGroupSessionId}
-            >
-              {t("common.send", "Send")}
-            </Button>
-          </div>
-          {!selectedGroupSessionId && (
-            <p className="text-xs text-muted-foreground mt-2">
-              {t("groupChat.selectSession", "Select or create a session to start chatting")}
-            </p>
-          )}
+        <div className="border-t border-border">
+          <DesktopChatInput
+            onSend={handleSend}
+            isLoading={isLoadingGroupChat}
+            disabled={!selectedGroupSessionId}
+            placeholder={
+              !selectedGroupSessionId
+                ? t("groupChat.selectSession", "Select or create a session to start chatting")
+                : t("groupChat.inputPlaceholder", "Type a message...")
+            }
+            autoFocus
+          />
         </div>
       ) : (
         <div className="border-t border-border p-4 bg-muted/20">

@@ -4510,6 +4510,18 @@
       "queued": "消息已排队",
       "pending": "条消息排队中"
     },
+    "execApproval": {
+      "title": "需要授权",
+      "allow": "允许",
+      "always": "始终允许",
+      "reject": "拒绝",
+      "tabForFeedback": "添加反馈",
+      "feedbackPlaceholder": "添加上下文或指示...",
+      "submitFeedback": "提交",
+      "closeFeedback": "关闭",
+      "newLine": "换行",
+      "unknownCommand": "未知命令"
+    },
     "refreshSessions": "刷新会话",
     "scrollToBottom": "滚动到底部",
     "selectExecutor": "执行器",

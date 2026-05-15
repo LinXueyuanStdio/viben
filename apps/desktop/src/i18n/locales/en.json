@@ -4510,6 +4510,18 @@
       "queued": "Message queued",
       "pending": "messages in queue"
     },
+    "execApproval": {
+      "title": "Permission Required",
+      "allow": "Allow",
+      "always": "Always",
+      "reject": "Reject",
+      "tabForFeedback": "for feedback",
+      "feedbackPlaceholder": "Add context or instructions...",
+      "submitFeedback": "submit",
+      "closeFeedback": "close",
+      "newLine": "new line",
+      "unknownCommand": "Unknown command"
+    },
     "refreshSessions": "Refresh sessions",
     "scrollToBottom": "Scroll to bottom",
     "selectExecutor": "Executor",

@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/sheet";
 import { DesktopChatInput } from "./desktop-chat-input";
 import { DesktopMessageList } from "./desktop-message-list";
-import type { SlashCommand } from "@viben/chat";
+import { SubagentSheet } from "@viben/chat";
+import type { SlashCommand, AgentMessage as ChatAgentMessage } from "@viben/chat";
 import { cn } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import type { ExecutorConfig } from "@/types";
@@ -137,6 +138,11 @@ export function DebugChatPanel({
   const [showSettings, setShowSettings] = useState(false);
   const [gatewayUrlInput, setGatewayUrlInput] = useState(getGatewayUrl());
   const [workdirInput, setWorkdirInput] = useState(DEBUG_WORKDIR);
+
+  // Subagent sheet state
+  const [sheetData, setSheetData] = useState<{
+    title: string; subagentType?: string; messages: ChatAgentMessage[]
+  } | null>(null);
 
   // WebSocket ref
   const wsRef = useRef<WebSocket | null>(null);
@@ -681,6 +687,9 @@ export function DebugChatPanel({
               setPendingQuestions(null);
               setPhase("running");
             }}
+            onExpandSubagent={(title, subagentType, msgs) =>
+              setSheetData({ title, subagentType, messages: msgs })
+            }
             className="flex-1"
           />
 
@@ -712,6 +721,14 @@ export function DebugChatPanel({
             />
           </div>
         </div>
+
+        <SubagentSheet
+          open={!!sheetData}
+          onClose={() => setSheetData(null)}
+          title={sheetData?.title || ""}
+          subagentType={sheetData?.subagentType}
+          messages={sheetData?.messages || []}
+        />
       </SheetContent>
     </Sheet>
   );

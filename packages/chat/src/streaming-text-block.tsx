@@ -4,7 +4,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Streamdown } from "streamdown";
 import { Bot } from "lucide-react";
 import { cn } from "@viben/ui";
-import { CachedStreamdown } from "./cached-markdown";
 
 export interface StreamingTextBlockProps {
   /** The accumulated streaming text. When null, nothing renders. */

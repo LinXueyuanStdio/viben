@@ -1038,10 +1038,10 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   isStreaming,
   streamingText,
   pendingPlan,
-  pendingQuestions,
+  pendingQuestions: _pendingQuestions,
   onApprovePlan,
   onRejectPlan,
-  onAnswerQuestions,
+  onAnswerQuestions: _onAnswerQuestions,
   className,
   onLinkClick,
   welcomeTitle,
@@ -1055,8 +1055,8 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   artifacts,
   onArtifactClick,
   toolExpandedInline,
-  pendingApproval,
-  onApprovalDecision,
+  pendingApproval: _pendingApproval,
+  onApprovalDecision: _onApprovalDecision,
   onExpandSubagent,
 }, ref) {
   const { t } = useTranslation();
@@ -1142,7 +1142,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
     bottomSpacer,
     measureRef: vMeasureRef,
     scrollToIndex,
-    isAtBottom,
+    isAtBottom: _isAtBottom,
   } = useVirtualScroll(viewportRef, renderGroups.length, getItemKey, {
     stickyTailCount: isStreaming ? 5 : 0,
   });
