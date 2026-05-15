@@ -103,3 +103,10 @@ export function getSharedSkillsDir(): string {
 export function getTokenPath(): string {
   return join(getStateDir(), "token");
 }
+
+/**
+ * Get the path to the trading accounts config file
+ */
+export function getAccountsPath(): string {
+  return join(getStateDir(), "accounts.yaml");
+}
