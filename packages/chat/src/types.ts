@@ -106,6 +106,22 @@ export interface AgentMessage {
 }
 
 // ============================================================================
+// Streaming Text Types
+// ============================================================================
+
+/**
+ * Streaming text state for the MessageList component.
+ * When non-null, the streaming block is shown as a separate sibling
+ * after the message list — avoiding full list reconciliation.
+ *
+ * Parent contract (atomic transition):
+ * 1. During streaming: set `streamingText` to current accumulated text
+ * 2. On stream end: in ONE setState batch, set `streamingText = null`
+ *    AND append the final assistant message to the messages array
+ */
+export type StreamingTextState = string | null;
+
+// ============================================================================
 // Slash Command Types
 // ============================================================================
 

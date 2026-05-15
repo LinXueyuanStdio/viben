@@ -89,3 +89,27 @@ export type { SubagentSheetProps } from "./subagent-sheet";
 // Exec Approval
 export { ExecApproval } from "./exec-approval";
 export type { ExecApprovalProps, PendingExecApproval } from "./exec-approval";
+
+// Streaming Text
+export { StreamingTextBlock } from "./streaming-text-block";
+export type { StreamingTextBlockProps } from "./streaming-text-block";
+
+// Message Lookups (performance utilities)
+export { buildMessageLookups, updateMessageLookupsIncremental, EMPTY_LOOKUPS } from "./message-lookups";
+export type { MessageLookups } from "./message-lookups";
+export { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
+
+// Message Preprocessing Pipeline
+export { preprocessMessages, normalizeMessages, collapseConsecutiveTools, buildPipelineLookups } from "./preprocessing";
+export type {
+  ProcessedMessages,
+  ProcessedItem,
+  CollapsedGroup,
+  CollapsedCounts,
+  ToolPair,
+  PipelineLookups,
+} from "./preprocessing";
+
+// Virtual Scroll
+export { useVirtualScroll } from "./hooks/use-virtual-scroll";
+export type { UseVirtualScrollOptions, UseVirtualScrollResult } from "./hooks/use-virtual-scroll";

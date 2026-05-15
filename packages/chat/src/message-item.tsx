@@ -1,18 +1,20 @@
 import * as React from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { motion, useReducedMotion } from "framer-motion";
-import { Streamdown } from "streamdown";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight, FileEdit } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronRight, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { AgentMessage, MessageAttachment } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanApproval } from "./plan-approval";
 import { QuestionInput } from "./question-input";
+import { CachedStreamdown } from "./cached-markdown";
 
 export interface MessageItemProps {
   message: AgentMessage;
   isStreaming?: boolean;
+  /** Whether this message is "static" (content won't change). Static messages skip re-render. */
+  isStatic?: boolean;
   onApprovePlan?: () => void;
   onRejectPlan?: () => void;
   isPlanPending?: boolean;
@@ -26,6 +28,8 @@ export interface MessageItemProps {
   toolExpandedInline?: boolean;
   /** Callback to expand subagent messages in a side panel */
   onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  /** Whether this is the latest thinking message (starts expanded) */
+  isLatestThinking?: boolean;
 }
 
 /**
@@ -195,22 +199,24 @@ function AttachmentPreview({ attachment }: { attachment: MessageAttachment }) {
 function UserMessage({
   content,
   attachments,
+  skipAnimation,
 }: {
   content: string;
   attachments?: MessageAttachment[];
+  skipAnimation?: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   return (
     <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+      initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex justify-end w-full min-w-0"
     >
       <div className="flex max-w-[85%] gap-3 min-w-0">
-        <div className="flex flex-col items-end min-w-0 overflow-hidden">
-          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground overflow-hidden">
-            <p className="whitespace-pre-wrap text-sm break-words">{content}</p>
+        <div className="min-w-0">
+          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
+            <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere]">{content}</p>
             {attachments?.map((attachment) => (
               <AttachmentPreview key={attachment.id} attachment={attachment} />
             ))}
@@ -227,13 +233,13 @@ function UserMessage({
 /**
  * Error message display
  */
-function ErrorMessage({ errorMessage }: { errorMessage: string }) {
+function ErrorMessage({ errorMessage, skipAnimation }: { errorMessage: string; skipAnimation?: boolean }) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+      initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
@@ -259,70 +265,82 @@ function ErrorMessage({ errorMessage }: { errorMessage: string }) {
 function ThinkingMessage({
   content,
   onLinkClick,
+  isLatest,
+  skipAnimation,
 }: {
   content: string;
   onLinkClick?: (href: string) => void;
+  /** When true, this is the most recent thinking block — starts expanded */
+  isLatest?: boolean;
+  skipAnimation?: boolean;
 }) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(!!isLatest);
   const markdownComponents = useMemo(
     () => createMarkdownComponents(onLinkClick),
     [onLinkClick]
   );
 
-  // Truncate content for collapsed view
-  const truncatedContent = content.length > 200 ? content.slice(0, 200) + "..." : content;
+  // First line as preview when collapsed
+  const firstLine = useMemo(() => {
+    const line = content.split("\n")[0] || "";
+    return line.length > 120 ? line.slice(0, 120) + "…" : line;
+  }, [content]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-      className="flex gap-3 w-full min-w-0"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/10">
-        <Brain className="h-4 w-4 text-purple-500" />
-      </div>
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="rounded-2xl rounded-tl-md border border-purple-500/20 bg-purple-500/5 overflow-hidden">
-          {/* Header - clickable to expand/collapse */}
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-purple-500/10 transition-colors cursor-pointer min-w-0"
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 shrink-0 text-purple-500" />
-            ) : (
-              <ChevronRight className="h-4 w-4 shrink-0 text-purple-500" />
-            )}
-            <span className="text-sm font-medium text-purple-600 dark:text-purple-400 shrink-0">
-              {t("chat.thinking", "Thinking")}
-            </span>
-            {!isExpanded && (
-              <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
-                {truncatedContent}
-              </span>
-            )}
-          </button>
+    <div className="w-full min-w-0">
+      {/* Compact collapsible row */}
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={cn(
+          "group flex w-full items-center gap-2 rounded-md px-2 py-1.5",
+          "text-left text-[13px] font-mono transition-colors",
+          "hover:bg-accent/50 cursor-pointer"
+        )}
+      >
+        <motion.span
+          className="shrink-0 text-muted-foreground/60"
+          animate={{ rotate: isExpanded ? 90 : 0 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+        >
+          <ChevronRight className="size-3.5" />
+        </motion.span>
+        <Brain className="size-3.5 shrink-0 text-muted-foreground/60" />
+        <span className="shrink-0 text-muted-foreground/80">
+          {t("chat.thinking", "Thinking")}
+        </span>
+        {!isExpanded && (
+          <span className="text-muted-foreground/50 truncate flex-1 min-w-0 text-[12px]">
+            {firstLine}
+          </span>
+        )}
+      </button>
 
-          {/* Expandable content */}
-          {isExpanded && (
-            <div className="px-4 pb-3 border-t border-purple-500/10 overflow-hidden">
-              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/80 overflow-hidden break-words mt-2">
-                <Streamdown
+      {/* Expandable content with left border accent */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="ml-[22px] border-l-2 border-muted-foreground/15 pl-3 pb-1 pt-0.5">
+              <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground/70 overflow-hidden break-words text-[13px] leading-relaxed">
+                <CachedStreamdown
+                  content={content || ""}
                   mode="static"
                   components={markdownComponents}
-                >
-                  {content || ""}
-                </Streamdown>
+                />
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -334,11 +352,13 @@ function AssistantMessage({
   isResult,
   isStreaming,
   onLinkClick,
+  skipAnimation,
 }: {
   content: string;
   isResult?: boolean;
   isStreaming?: boolean;
   onLinkClick?: (href: string) => void;
+  skipAnimation?: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const markdownComponents = useMemo(
@@ -348,7 +368,7 @@ function AssistantMessage({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+      initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
@@ -364,13 +384,12 @@ function AssistantMessage({
           )}
         >
           <div className="prose prose-sm dark:prose-invert max-w-none text-foreground overflow-hidden break-words">
-            <Streamdown
+            <CachedStreamdown
+              content={content || ""}
               mode={isStreaming ? "streaming" : "static"}
               components={markdownComponents}
               caret={isStreaming ? "block" : undefined}
-            >
-              {content || ""}
-            </Streamdown>
+            />
           </div>
         </div>
       </div>
@@ -382,7 +401,7 @@ function AssistantMessage({
 /**
  * Plan mode indicator - shows when agent enters/exits plan mode
  */
-function PlanModeMessage({ action }: { action: "enter" | "exit" }) {
+function PlanModeMessage({ action, skipAnimation }: { action: "enter" | "exit"; skipAnimation?: boolean }) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
@@ -390,7 +409,7 @@ function PlanModeMessage({ action }: { action: "enter" | "exit" }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+      initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
@@ -427,9 +446,10 @@ function PlanModeMessage({ action }: { action: "enter" | "exit" }) {
   );
 }
 
-export function MessageItem({
+function MessageItemImpl({
   message,
   isStreaming,
+  isStatic,
   onApprovePlan,
   onRejectPlan,
   isPlanPending,
@@ -438,6 +458,7 @@ export function MessageItem({
   maxWidth,
   toolExpandedInline,
   onExpandSubagent,
+  isLatestThinking,
 }: MessageItemProps) {
   const { t } = useTranslation();
 
@@ -455,12 +476,13 @@ export function MessageItem({
       <UserMessage
         content={message.content || ""}
         attachments={message.attachments}
+        skipAnimation={isStatic}
       />
     );
   }
   // Error message
   else if (message.type === "error") {
-    content = <ErrorMessage errorMessage={message.message || ""} />;
+    content = <ErrorMessage errorMessage={message.message || ""} skipAnimation={isStatic} />;
   }
   // Thinking message - Claude's reasoning process
   else if (message.type === "thinking") {
@@ -468,6 +490,8 @@ export function MessageItem({
       <ThinkingMessage
         content={message.content || ""}
         onLinkClick={onLinkClick}
+        isLatest={isLatestThinking}
+        skipAnimation={isStatic}
       />
     );
   }
@@ -535,7 +559,7 @@ export function MessageItem({
   }
   // Plan mode indicator
   else if (message.type === "plan_mode" && message.planModeAction) {
-    content = <PlanModeMessage action={message.planModeAction} />;
+    content = <PlanModeMessage action={message.planModeAction} skipAnimation={isStatic} />;
   }
   // Text/Result message from agent
   else {
@@ -545,6 +569,7 @@ export function MessageItem({
         isResult={message.type === "result"}
         isStreaming={isStreaming}
         onLinkClick={onLinkClick}
+        skipAnimation={isStatic}
       />
     );
   }
@@ -555,3 +580,39 @@ export function MessageItem({
     </div>
   );
 }
+
+/**
+ * Custom memo comparator for MessageItem.
+ *
+ * Reference: Claude Code's `areMessageRowPropsEqual` (MessageRow.tsx lines 290-332)
+ * and `areMessagePropsEqual` (Message.tsx lines 484-508).
+ *
+ * Strategy:
+ * - If the message reference changed, always re-render (content may differ)
+ * - If both prev and next are static, skip re-render (content is frozen)
+ * - For non-static messages, always re-render (streaming/in-progress)
+ */
+export function areMessageItemPropsEqual(
+  prev: MessageItemProps,
+  next: MessageItemProps,
+): boolean {
+  // Different message reference = content may have changed
+  if (prev.message !== next.message) return false;
+
+  // Layout/style prop changes require re-render
+  if (prev.className !== next.className) return false;
+  if (prev.maxWidth !== next.maxWidth) return false;
+  if (prev.isLatestThinking !== next.isLatestThinking) return false;
+  if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
+
+  // If both are static, safe to skip re-render — content is frozen
+  if (prev.isStatic && next.isStatic) return true;
+
+  // Non-static messages: check remaining props that affect rendering
+  if (prev.isStreaming !== next.isStreaming) return false;
+  if (prev.isPlanPending !== next.isPlanPending) return false;
+
+  return true;
+}
+
+export const MessageItem = React.memo(MessageItemImpl, areMessageItemPropsEqual);

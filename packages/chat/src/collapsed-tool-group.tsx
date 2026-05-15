@@ -219,15 +219,15 @@ export function CollapsedToolGroup({
         type="button"
         onClick={onToggle}
         className={cn(
-          "group flex w-full items-center gap-2 rounded-md px-2 py-1.5",
-          "text-left text-sm transition-colors",
+          "group flex w-full items-center gap-2 rounded-md px-2 py-1",
+          "text-left transition-colors",
           "hover:bg-accent/50 cursor-pointer",
           "font-mono text-[13px]"
         )}
       >
         {/* Chevron indicator */}
         <motion.span
-          className="shrink-0 text-muted-foreground"
+          className="shrink-0 text-muted-foreground/60"
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{
             duration: prefersReducedMotion ? 0 : 0.15,
@@ -236,10 +236,19 @@ export function CollapsedToolGroup({
           <ChevronRight className="size-3.5" />
         </motion.span>
 
+        {/* Status dot: pulsing amber when executing, static green when done, red on error */}
+        {isExecuting ? (
+          <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-amber-500" />
+        ) : hasErrors ? (
+          <span className="size-1.5 shrink-0 rounded-full bg-red-500" />
+        ) : (
+          <span className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+        )}
+
         {/* Summary text */}
         <span
           className={cn(
-            "flex-1 truncate",
+            "truncate",
             hasErrors
               ? "text-red-500"
               : "text-muted-foreground"
@@ -250,18 +259,9 @@ export function CollapsedToolGroup({
 
         {/* Hint showing last processed item (stabilized with min display time) */}
         {isExecuting && displayedHint && (
-          <span className="text-muted-foreground/60 truncate text-[11px] ml-auto max-w-[200px]">
-            ⎿ {displayedHint}
+          <span className="text-muted-foreground/40 truncate text-[11px] ml-auto max-w-[200px]">
+            {displayedHint}
           </span>
-        )}
-
-        {/* Status dot: pulsing amber when executing, static green when done, red on error */}
-        {isExecuting ? (
-          <span className="size-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
-        ) : hasErrors ? (
-          <span className="size-2 shrink-0 rounded-full bg-red-500" />
-        ) : (
-          <span className="size-2 shrink-0 rounded-full bg-emerald-500" />
         )}
       </button>
 
@@ -278,7 +278,7 @@ export function CollapsedToolGroup({
             }}
             className="overflow-hidden"
           >
-            <div className="pl-2 pt-1">{children}</div>
+            <div className="ml-[22px] border-l border-muted-foreground/10 pl-2 pt-0.5 pb-0.5">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

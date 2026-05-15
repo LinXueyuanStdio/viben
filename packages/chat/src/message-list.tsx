@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useRef, useEffect, useMemo, useCallback, useImperativeHandle } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, useImperativeHandle, useDeferredValue } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Bot, ChevronDown, CheckCircle2, ArrowDown } from "lucide-react";
@@ -9,6 +9,10 @@ import { ToolExecutionItem, type ArtifactInfo } from "./tool-execution-item";
 import { CollapsedToolGroup } from "./collapsed-tool-group";
 import type { PendingExecApproval } from "./exec-approval";
 import { getDisplayPath } from "./utils";
+import { isMessageStatic } from "./utils/is-message-static";
+import { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
+import { StreamingTextBlock } from "./streaming-text-block";
+import { useVirtualScroll } from "./hooks/use-virtual-scroll";
 import type { AgentMessage, PendingQuestion, TaskPlan } from "./types";
 
 /** Artifact definition for linking with tool_use messages */
@@ -31,6 +35,17 @@ export interface MessageListHandle {
 export interface MessageListProps {
   messages: AgentMessage[];
   isStreaming?: boolean;
+  /**
+   * Streaming text content rendered as a separate sibling AFTER the message list.
+   * When non-null, this text is displayed in a dedicated StreamingTextBlock
+   * that does not trigger full message list reconciliation.
+   *
+   * Parent contract (atomic transition):
+   * 1. During streaming: set streamingText to accumulated text
+   * 2. On stream end: in one setState batch, set streamingText = null
+   *    AND append the final assistant message to messages array
+   */
+  streamingText?: string | null;
   pendingPlan?: TaskPlan | null;
   pendingQuestions?: PendingQuestion | null;
   onApprovePlan?: () => void;
@@ -366,9 +381,24 @@ function useTaskGroupSummary(
 }
 
 /**
+ * Memoized tool list to avoid re-running renderToolsWithCollapsing on every parent render.
+ */
+const MemoizedToolList = React.memo(function MemoizedToolList({
+  tools,
+  artifacts,
+  onArtifactClick,
+}: {
+  tools: ToolWithResult[];
+  artifacts?: Artifact[];
+  onArtifactClick?: (artifactId: string) => void;
+}) {
+  return <>{renderToolsWithCollapsing(tools, artifacts, onArtifactClick)}</>;
+});
+
+/**
  * Task Group Component - shows text description and collapsible tool list
  */
-function TaskGroupComponent({
+const TaskGroupComponent = React.memo(function TaskGroupComponent({
   title,
   description,
   tools,
@@ -443,17 +473,21 @@ function TaskGroupComponent({
           {/* Tool list */}
           {isExpanded && (
             <div className="px-2 pb-2 space-y-1">
-              {renderToolsWithCollapsing(tools, artifacts, onArtifactClick)}
+              <MemoizedToolList tools={tools} artifacts={artifacts} onArtifactClick={onArtifactClick} />
             </div>
           )}
         </div>
       )}
     </div>
   );
-}
+});
 
 /**
- * Group messages into task groups for better display
+ * Group messages into task groups for better display.
+ *
+ * IMPORTANT: This function is pure — it does NOT mutate any message objects.
+ * Tool result resolution for task groups uses a local Map (toolResultMap).
+ * Agent/Task tool_use messages are resolved at render time via MessageLookupsContext.
  */
 function groupMessages(
   messages: AgentMessage[],
@@ -585,12 +619,7 @@ function groupMessages(
           pendingTextMessage = null;
         }
         pushCurrentGroup(true);
-        // Merge tool_result into the tool_use message for standalone rendering
-        const result = message.toolUseId ? getToolResult(message.toolUseId) : undefined;
-        if (result && !message.output) {
-          message.output = result.output;
-          message.isError = result.isError;
-        }
+        // Tool result resolution is done at render time via MessageLookupsContext
         groups.push({ type: "other", message });
       } else {
         // Text followed by tool_use - emit the text as a standalone message,
@@ -679,22 +708,17 @@ function truncate(str: string, maxLen: number): string {
 /**
  * Running indicator component - shows current activity with elapsed time
  */
-function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
+const RunningIndicator = React.memo(function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
   const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
+  const lookups = useMessageLookups();
 
-  // Find the last tool_use message that has no matching tool_result
+  // Find the last tool_use message that has no matching tool_result (O(1) lookup)
   const lastToolUse = useMemo(() => {
-    const toolResultIds = new Set<string>();
-    for (const m of messages) {
-      if (m.type === "tool_result" && m.toolUseId) {
-        toolResultIds.add(m.toolUseId);
-      }
-    }
-    // Find last unresolved tool_use
+    // Find last in-progress tool_use by scanning backwards
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m.type === "tool_use" && m.toolUseId && !toolResultIds.has(m.toolUseId)) {
+      if (m.type === "tool_use" && m.toolUseId && lookups.inProgressIds.has(m.toolUseId)) {
         return m;
       }
     }
@@ -703,7 +727,7 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
       if (messages[i].type === "tool_use") return messages[i];
     }
     return undefined;
-  }, [messages]);
+  }, [messages, lookups.inProgressIds]);
 
   // Stable key for the current tool invocation
   const toolKey = lastToolUse?.id ?? lastToolUse?.toolUseId;
@@ -836,11 +860,183 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
       </div>
     </div>
   );
+}, (prev, next) => prev.messages.length === next.messages.length);
+
+/**
+ * Resolves Agent/Task tool_use messages by enriching them with output from
+ * the MessageLookups context. This replaces the old mutation-based approach
+ * where groupMessages would set message.output directly.
+ */
+function ResolvedMessageItem({
+  message,
+  ...props
+}: Omit<React.ComponentProps<typeof MessageItem>, "message"> & { message: AgentMessage }) {
+  const lookups = useMessageLookups();
+
+  const resolvedMessage = useMemo(() => {
+    // Only resolve tool_use messages that don't already have output
+    if (
+      message.type === "tool_use" &&
+      message.toolUseId &&
+      message.output === undefined
+    ) {
+      const result = lookups.toolResultByUseId.get(message.toolUseId);
+      if (result) {
+        return { ...message, output: result.output, isError: result.isError };
+      }
+    }
+    return message;
+  }, [message, lookups]);
+
+  return <MessageItem message={resolvedMessage} {...props} />;
 }
 
-export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(function MessageList({
+/**
+ * MessageRow — memo boundary for individual message rendering.
+ * Prevents re-render when the message is static (content won't change) and props are stable.
+ * Also applies `content-visibility: auto` for off-screen static messages, enabling
+ * the browser to skip layout/paint for messages scrolled out of the viewport.
+ *
+ * Reference: infra/claude-code OffscreenFreeze.tsx + MessageRow.tsx
+ */
+interface MessageRowProps {
+  group: OtherMessageGroup;
+  index: number;
+  groupsLength: number;
+  isStreaming: boolean;
+  streamingText?: string | null;
+  lastThinkingIdx: number;
+  activeHighlight: string | null;
+  // Stable callbacks and values
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  pendingPlan?: TaskPlan | null;
+  onLinkClick?: (href: string) => void;
+  maxMessageWidth?: string;
+  toolExpandedInline?: boolean;
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  // Ref callback for scroll-to-message
+  registerRef?: (id: string, el: HTMLDivElement | null) => void;
+}
+
+const MessageRow = React.memo(function MessageRow({
+  group,
+  index,
+  groupsLength,
+  isStreaming,
+  streamingText,
+  lastThinkingIdx,
+  activeHighlight,
+  onApprovePlan,
+  onRejectPlan,
+  pendingPlan,
+  onLinkClick,
+  maxMessageWidth,
+  toolExpandedInline,
+  onExpandSubagent,
+  registerRef,
+}: MessageRowProps) {
+  const message = group.message;
+  const isPlanMessage = message.type === "plan" && message.plan;
+  const messageId = message.id;
+  const isHighlighted = activeHighlight === messageId;
+  const isUserMessage = message.type === "user";
+  const showTurnSeparator = isUserMessage && index > 0;
+  const isStreamingMessage =
+    index === groupsLength - 1 &&
+    isStreaming &&
+    message.type === "text" &&
+    streamingText === undefined;
+  const isStatic = isMessageStatic(message, isStreamingMessage);
+
+  return (
+    <React.Fragment>
+      {showTurnSeparator && <TurnSeparator timestamp={message.timestamp} />}
+      <div
+        ref={(el) => {
+          if (messageId) registerRef?.(messageId, el);
+        }}
+        className={cn(
+          "transition-all duration-300",
+          isHighlighted && "ring-2 ring-primary/50 bg-primary/5 rounded-2xl"
+        )}
+      >
+        <ResolvedMessageItem
+          message={message}
+          isStreaming={isStreamingMessage}
+          isStatic={isStatic}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          isPlanPending={isPlanMessage && pendingPlan !== null}
+          onLinkClick={onLinkClick}
+          maxWidth={maxMessageWidth}
+          toolExpandedInline={toolExpandedInline}
+          onExpandSubagent={onExpandSubagent}
+          isLatestThinking={index === lastThinkingIdx}
+        />
+      </div>
+    </React.Fragment>
+  );
+}, (prev, next) => {
+  // Fast path: if both renders see a static message and key props haven't changed, skip re-render
+  const prevMsg = prev.group.message;
+  const nextMsg = next.group.message;
+  const prevIsStatic = isMessageStatic(
+    prevMsg,
+    prev.index === prev.groupsLength - 1 && prev.isStreaming && prevMsg.type === "text" && prev.streamingText === undefined
+  );
+  const nextIsStatic = isMessageStatic(
+    nextMsg,
+    next.index === next.groupsLength - 1 && next.isStreaming && nextMsg.type === "text" && next.streamingText === undefined
+  );
+
+  if (prevIsStatic && nextIsStatic) {
+    // Static messages only need to re-render if highlight or their own position changed.
+    // groupsLength changes (from streaming new messages) should NOT trigger re-render
+    // of static messages since isStatic computation doesn't depend on groupsLength
+    // when the message is not the last one (which static messages never are).
+    return (
+      prev.group === next.group &&
+      prev.activeHighlight === next.activeHighlight &&
+      prev.index === next.index &&
+      prev.lastThinkingIdx === next.lastThinkingIdx
+    );
+  }
+  // Non-static: always re-render
+  return false;
+});
+
+/**
+ * Custom comparator for MessageList — skips callback props (treated as stable via latest-ref pattern).
+ * Only compares data/value props that actually affect rendered output.
+ */
+function areMessageListPropsEqual(prev: MessageListProps, next: MessageListProps): boolean {
+  // Data props that affect output
+  if (prev.messages !== next.messages) return false;
+  if (prev.isStreaming !== next.isStreaming) return false;
+  if (prev.streamingText !== next.streamingText) return false;
+  if (prev.pendingPlan !== next.pendingPlan) return false;
+  if (prev.pendingQuestions !== next.pendingQuestions) return false;
+  if (prev.pendingApproval !== next.pendingApproval) return false;
+  if (prev.className !== next.className) return false;
+  if (prev.simpleMode !== next.simpleMode) return false;
+  if (prev.maxMessageWidth !== next.maxMessageWidth) return false;
+  if (prev.highlightedMessageId !== next.highlightedMessageId) return false;
+  if (prev.artifacts !== next.artifacts) return false;
+  if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
+  if (prev.autoScroll !== next.autoScroll) return false;
+  if (prev.welcomeTitle !== next.welcomeTitle) return false;
+  if (prev.welcomeDescription !== next.welcomeDescription) return false;
+  if (prev.welcomeContent !== next.welcomeContent) return false;
+  // Callback props (onApprovePlan, onRejectPlan, onLinkClick, etc.) are
+  // consumed via latest-ref pattern internally, so identity changes are safe to skip.
+  return true;
+}
+
+export const MessageList = React.memo(React.forwardRef<MessageListHandle, MessageListProps>(function MessageList({
   messages,
   isStreaming,
+  streamingText,
   pendingPlan,
   pendingQuestions,
   onApprovePlan,
@@ -880,11 +1076,81 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   // Group messages for display - must be called before any conditional returns
   // In simpleMode, skip grouping and just create "other" groups for each message
+
+  // 1. Compute a message structure key — only changes when message count or type sequence changes.
+  //    Streaming only mutates the last message's text content; this key stays stable.
+  const messageStructureKey = useMemo(() => {
+    let key = `${messages.length}:${simpleMode ? 1 : 0}`;
+    const tail = Math.max(0, messages.length - 5);
+    for (let i = tail; i < messages.length; i++) {
+      const m = messages[i];
+      key += `:${m.type}:${m.id ?? i}`;
+    }
+    return key;
+  }, [messages, simpleMode]);
+
+  // 2. Expensive groupMessages — only re-runs when structure actually changes
   const groups = useMemo(
     () => simpleMode
       ? messages.map((msg): OtherMessageGroup => ({ type: "other", message: msg }))
       : groupMessages(messages, isStreaming || false, t),
-    [messages, isStreaming, simpleMode, t]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [messageStructureKey, isStreaming, t]
+  );
+
+  // Defer the grouped list during streaming so React can prioritize input responsiveness.
+  // Bypass deferral when not streaming (stable list should show immediately).
+  // Reference: infra/claude-code REPL.tsx:1596-1607 useDeferredValue pattern
+  const deferredGroups = useDeferredValue(groups);
+  const renderGroups = isStreaming ? deferredGroups : groups;
+
+  // Incremental key array — survives renderGroups reference changes (O(1) append)
+  const keysRef = useRef<string[]>([]);
+  const prevGroupsRef = useRef<typeof renderGroups>(renderGroups);
+
+  // Detect structural reset (compaction, clear, navigation) vs. append
+  if (
+    renderGroups.length < keysRef.current.length ||
+    (renderGroups.length > 0 && renderGroups[0] !== prevGroupsRef.current[0])
+  ) {
+    // Full rebuild
+    keysRef.current = renderGroups.map((g, i) => {
+      if (g.type === "task") return `task-${i}`;
+      return g.message.id || `idx-${i}`;
+    });
+  } else {
+    // Append only
+    for (let i = keysRef.current.length; i < renderGroups.length; i++) {
+      const g = renderGroups[i];
+      if (!g) { keysRef.current.push(`idx-${i}`); continue; }
+      if (g.type === "task") { keysRef.current.push(`task-${i}`); continue; }
+      keysRef.current.push(g.message.id || `idx-${i}`);
+    }
+  }
+  prevGroupsRef.current = renderGroups;
+
+  // Stable getItemKey — empty deps, reference never changes
+  const getItemKey = useCallback((index: number) => {
+    return keysRef.current[index] ?? `idx-${index}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Virtual scrolling — only mounts items in viewport + overscan
+  const {
+    range: [vStart, vEnd],
+    topSpacer,
+    bottomSpacer,
+    measureRef: vMeasureRef,
+    scrollToIndex,
+    isAtBottom,
+  } = useVirtualScroll(viewportRef, renderGroups.length, getItemKey, {
+    stickyTailCount: isStreaming ? 5 : 0,
+  });
+
+  // Cheap O(1) slice — avoids creating a new array reference every frame when range is stable
+  const renderSlice = useMemo(
+    () => renderGroups.slice(vStart, vEnd),
+    [renderGroups, vStart, vEnd]
   );
 
   // Track unread messages when user is scrolled up
@@ -912,7 +1178,11 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // This distinguishes user scrolls from programmatic scrollIntoView / overflowAnchor adjustments
   const userInteractingRef = useRef(false);
 
-  // Check scroll position to show/hide scroll button and detect manual scroll
+  // Quantized scroll check — only triggers React state update when crossing the
+  // 200px threshold, avoiding per-pixel re-renders during smooth scrolling.
+  // Reference: infra/claude-code useVirtualScroll.ts SCROLL_QUANTUM pattern
+  const lastShowButtonRef = useRef(false);
+
   const checkScrollPosition = useCallback(() => {
     const container = viewportRef.current;
     if (!container) return;
@@ -937,8 +1207,12 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
     lastScrollTopRef.current = scrollTop;
 
-    // Show button if more than 200px from bottom
-    setShowScrollButton(distanceFromBottom > 200);
+    // Quantized: only call setState when the boolean actually changes
+    const shouldShow = distanceFromBottom > 200;
+    if (shouldShow !== lastShowButtonRef.current) {
+      lastShowButtonRef.current = shouldShow;
+      setShowScrollButton(shouldShow);
+    }
   }, []);
 
   // Scroll to bottom on initial load
@@ -1015,28 +1289,9 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     }
   }, [messages.length, checkScrollPosition]);
 
-  // Track container width for content constraint
-  // NOTE: These hooks must be declared before any early returns to follow React's rules of hooks
+  // Container and content refs for layout
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [_containerWidth, setContainerWidth] = useState<number | null>(null);
-
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.getBoundingClientRect().width;
-        setContainerWidth(width);
-      }
-    };
-
-    // Update on mount and resize
-    updateWidth();
-    const resizeObserver = new ResizeObserver(updateWidth);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    return () => resizeObserver.disconnect();
-  }, []);
 
   // Message refs for scroll-to-message functionality
   const messageRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -1046,19 +1301,26 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
 
   // Scroll to message function
   const scrollToMessage = useCallback((messageId: string) => {
+    // First try direct DOM access (item is already mounted)
     const element = messageRefsMap.current.get(messageId);
     if (element) {
-      // Temporarily disable auto-scroll during manual scroll
       userScrolledUpRef.current = true;
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Set active highlight
       setActiveHighlight(messageId);
-      // Call callback after scroll completes (approximate timing)
-      setTimeout(() => {
-        onScrollToMessage?.(messageId);
-      }, 500);
+      setTimeout(() => onScrollToMessage?.(messageId), 500);
+      return;
     }
-  }, [onScrollToMessage]);
+    // Fallback: find index and use virtual scroll (handles unmounted items)
+    const idx = renderGroups.findIndex(
+      (g) => g.type === "other" && g.message.id === messageId
+    );
+    if (idx >= 0) {
+      userScrolledUpRef.current = true;
+      scrollToIndex(idx, "smooth");
+      setActiveHighlight(messageId);
+      setTimeout(() => onScrollToMessage?.(messageId), 500);
+    }
+  }, [onScrollToMessage, renderGroups, scrollToIndex]);
 
   // Expose scrollToMessage via ref
   useImperativeHandle(ref, () => ({
@@ -1081,6 +1343,62 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       return () => clearTimeout(timer);
     }
   }, [activeHighlight]);
+
+  // Find the index of the last thinking message (for auto-expand)
+  const lastThinkingIdx = useMemo(() => {
+    for (let i = renderGroups.length - 1; i >= 0; i--) {
+      const g = renderGroups[i];
+      if (g.type === "other" && g.message.type === "thinking") return i;
+    }
+    return -1;
+  }, [renderGroups]);
+
+  // Latest-ref pattern: callbacks stored in ref, stable wrappers created once.
+  // Prevents MessageRow re-renders when parent re-renders with new callback references.
+  const handlersRef = useRef({
+    onApprovePlan,
+    onRejectPlan,
+    onLinkClick,
+    onExpandSubagent,
+    onArtifactClick,
+  });
+  handlersRef.current = {
+    onApprovePlan,
+    onRejectPlan,
+    onLinkClick,
+    onExpandSubagent,
+    onArtifactClick,
+  };
+
+  // Stable wrappers — empty deps, references never change
+  const stableOnApprovePlan = useCallback(() => {
+    handlersRef.current.onApprovePlan?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const stableOnRejectPlan = useCallback(() => {
+    handlersRef.current.onRejectPlan?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const stableOnLinkClick = useCallback((href: string) => {
+    handlersRef.current.onLinkClick?.(href);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const stableOnExpandSubagent = useCallback(
+    (title: string, subagentType: string | undefined, messages: AgentMessage[]) => {
+      handlersRef.current.onExpandSubagent?.(title, subagentType, messages);
+    },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  // Stable ref registration callback for MessageRow (avoids creating new closures per row)
+  const registerRef = useCallback((id: string, el: HTMLDivElement | null) => {
+    if (el) {
+      messageRefsMap.current.set(id, el);
+    } else {
+      messageRefsMap.current.delete(id);
+    }
+  }, []);
 
   // Empty state
   if (messages.length === 0) {
@@ -1144,6 +1462,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     : undefined;
 
   return (
+    <MessageLookupsProvider messages={messages}>
     <div ref={containerRef} className={cn("relative flex-1 w-full min-h-0 min-w-0 overflow-hidden", className)}>
       <ScrollArea
         className="h-full w-full"
@@ -1151,70 +1470,70 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       >
         <div
           ref={contentRef}
-          className="space-y-4 p-4 pb-8 min-w-0 overflow-hidden box-border w-full"
+          className="p-4 pb-8 min-w-0 overflow-hidden box-border w-full"
           style={contentStyle}
         >
-          {groups.map((group, index) => {
+          {/* Top spacer for unmounted items above viewport */}
+          {topSpacer > 0 && <div style={{ height: `${topSpacer}px` }} aria-hidden />}
+
+          {/* Only render items in virtual range [vStart, vEnd) */}
+          {renderSlice.map((group, sliceIdx) => {
+            const index = vStart + sliceIdx;
+            const key = getItemKey(index);
+
             if (group.type === "task") {
               return (
-                <TaskGroupComponent
-                  key={index}
-                  title={group.title}
-                  description={group.description}
-                  tools={group.tools}
-                  isCompleted={group.isCompleted}
-                  isRunning={isStreaming || false}
-                  artifacts={artifacts}
-                  onArtifactClick={onArtifactClick}
-                />
+                <div key={key} ref={vMeasureRef(index)} data-vkey={key} className="mb-4">
+                  <TaskGroupComponent
+                    title={group.title}
+                    description={group.description}
+                    tools={group.tools}
+                    isCompleted={group.isCompleted}
+                    isRunning={isStreaming || false}
+                    artifacts={artifacts}
+                    onArtifactClick={onArtifactClick}
+                  />
+                </div>
               );
             }
 
-            const message = group.message;
-            const isPlanMessage = message.type === "plan" && message.plan;
-            const messageId = message.id;
-            const isHighlighted = activeHighlight === messageId;
-            const isUserMessage = message.type === "user";
-            const showTurnSeparator = isUserMessage && index > 0;
-
             return (
-              <React.Fragment key={messageId || index}>
-                {showTurnSeparator && <TurnSeparator timestamp={message.timestamp} />}
-                <div
-                  ref={(el) => {
-                    if (messageId && el) {
-                      messageRefsMap.current.set(messageId, el);
-                    } else if (messageId && !el) {
-                      messageRefsMap.current.delete(messageId);
-                    }
-                  }}
-                  className={cn(
-                    "transition-all duration-300",
-                    isHighlighted && "ring-2 ring-primary/50 bg-primary/5 rounded-2xl"
-                  )}
-                >
-                  <MessageItem
-                    message={message}
-                    isStreaming={
-                      index === groups.length - 1 &&
-                      isStreaming &&
-                      message.type === "text"
-                    }
-                    onApprovePlan={onApprovePlan}
-                    onRejectPlan={onRejectPlan}
-                    isPlanPending={isPlanMessage && pendingPlan !== null}
-                    onLinkClick={onLinkClick}
-                    maxWidth={maxMessageWidth}
-                    toolExpandedInline={toolExpandedInline}
-                    onExpandSubagent={onExpandSubagent}
-                  />
-                </div>
-              </React.Fragment>
+              <div key={key} ref={vMeasureRef(index)} data-vkey={key} className="mb-4">
+                <MessageRow
+                  group={group}
+                  index={index}
+                  groupsLength={renderGroups.length}
+                  isStreaming={isStreaming || false}
+                  streamingText={streamingText}
+                  lastThinkingIdx={lastThinkingIdx}
+                  activeHighlight={activeHighlight}
+                  onApprovePlan={stableOnApprovePlan}
+                  onRejectPlan={stableOnRejectPlan}
+                  pendingPlan={pendingPlan}
+                  onLinkClick={stableOnLinkClick}
+                  maxMessageWidth={maxMessageWidth}
+                  toolExpandedInline={toolExpandedInline}
+                  onExpandSubagent={stableOnExpandSubagent}
+                  registerRef={registerRef}
+                />
+              </div>
             );
           })}
 
-          {/* Running indicator */}
-          {isStreaming && <RunningIndicator messages={messages} />}
+          {/* Bottom spacer for unmounted items below viewport (zero during streaming) */}
+          {bottomSpacer > 0 && !isStreaming && <div style={{ height: `${bottomSpacer}px` }} aria-hidden />}
+
+          {/* Running indicator (hidden when streaming text is visible — the caret already signals activity) */}
+          {isStreaming && !streamingText && <RunningIndicator messages={messages} />}
+
+          {/* Streaming text - rendered as separate sibling to avoid full list reconciliation */}
+          {streamingText && (
+            <StreamingTextBlock
+              text={streamingText}
+              onLinkClick={onLinkClick}
+              maxWidth={maxMessageWidth}
+            />
+          )}
 
           {/* Scroll anchor */}
           <div ref={bottomRef} />
@@ -1248,5 +1567,6 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
         )}
       </AnimatePresence>
     </div>
+    </MessageLookupsProvider>
   );
-});
+}), areMessageListPropsEqual);
