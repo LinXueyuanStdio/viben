@@ -13,6 +13,7 @@ import type {
   CliToolInfo,
   CliToolsInfo,
   CliToolsConfig,
+  PublicIpResponse,
 } from "../types";
 
 // ============================================================================
@@ -32,6 +33,26 @@ export async function getSystemInfo(baseUrl: string): Promise<SystemInfo> {
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to get system info: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Get the server's public IP address
+ */
+export async function getPublicIp(baseUrl: string): Promise<PublicIpResponse> {
+  const response = await fetch(`${baseUrl}/api/system/public-ip`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to get public IP: ${errorMessage}`,
       response.status
     );
   }

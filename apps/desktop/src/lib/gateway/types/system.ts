@@ -103,3 +103,12 @@ export interface CliToolsConfig {
   cursor?: string;
   viben?: string;
 }
+
+// ============================================================================
+// Public IP Types
+// ============================================================================
+
+/** Public IP response */
+export interface PublicIpResponse {
+  ip: string;
+}

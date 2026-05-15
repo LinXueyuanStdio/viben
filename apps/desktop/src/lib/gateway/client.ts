@@ -215,6 +215,7 @@ import {
 
   // System module
   getSystemInfo,
+  getPublicIp,
   detectPython,
   checkPythonPath,
   checkPythonPackage,
@@ -410,6 +411,7 @@ import type {
   McpServersConfig,
   // System types
   SystemInfo,
+  PublicIpResponse,
   PythonInfo,
   PythonPackageInfo,
   CliToolName,
@@ -2204,6 +2206,13 @@ export class GatewayClient {
    */
   async getSystemInfo(): Promise<SystemInfo> {
     return getSystemInfo(this.baseUrl);
+  }
+
+  /**
+   * Get the server's public IP address
+   */
+  async getPublicIp(): Promise<PublicIpResponse> {
+    return getPublicIp(this.baseUrl);
   }
 
   /**

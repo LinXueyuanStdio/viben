@@ -1077,4 +1077,31 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       viben_dir: join(homedir(), ".viben"),
     };
   });
+
+  /**
+   * GET /api/system/public-ip
+   * Get the server's public IP address via ipify
+   */
+  fastify.get("/api/system/public-ip", async (_request, reply) => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch("https://api.ipify.org?format=json", {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        reply.code(502);
+        return { error: "Failed to fetch public IP" };
+      }
+
+      const data = (await response.json()) as { ip: string };
+      return { ip: data.ip };
+    } catch {
+      reply.code(502);
+      return { error: "Failed to fetch public IP" };
+    }
+  });
 }
