@@ -34,7 +34,8 @@ export type SettingsSection =
   | "voice"
   | "storage"
   | "developer"
-  | "about";
+  | "about"
+  | "tradingAccounts";
 
 // ─── Section Info Types ──────────────────────────────────────────────────────
 
@@ -127,6 +128,7 @@ export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { section: "storage", icon: { type: "lucide", value: "hard-drive" }, titleKey: "settings.sections.storage", fallbackLabel: "Storage" },
   { section: "developer", icon: { type: "lucide", value: "bug" }, titleKey: "settings.sections.developer", fallbackLabel: "Developer" },
   { section: "about", icon: { type: "lucide", value: "info" }, titleKey: "settings.sections.about", fallbackLabel: "About" },
+  { section: "tradingAccounts", icon: { type: "lucide", value: "arrow-left-right" }, titleKey: "settings.sections.tradingAccounts", fallbackLabel: "Trading Accounts" },
 ];
 
 const SETTINGS_SECTION_MAP = new Map<string, SettingsSectionInfo>(

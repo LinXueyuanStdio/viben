@@ -38,7 +38,6 @@ export {
   getSettingsSectionLabel,
   getSettingsSectionIcon,
   getWorkspaceSectionLabel,
-  locationToUrl,
 } from "./navigation-meta";
 
 // ─── Breadcrumb Stack (atomic operations) ────────────────────────────────────
