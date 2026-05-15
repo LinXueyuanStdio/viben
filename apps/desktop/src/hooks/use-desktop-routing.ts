@@ -482,8 +482,13 @@ export function useDesktopRouting(): DesktopRoutingApi {
         pageSlug,
       });
 
+      const headers: NavigateHeaders | undefined =
+        options?.title || options?.icon
+          ? { label: options.title, icon: options.icon }
+          : undefined;
+
       if (options?.openMode === "new-tab") {
-        openInNewTab(url, undefined, options?.breadcrumbStack);
+        openInNewTab(url, headers, options?.breadcrumbStack);
         return;
       }
 
@@ -494,7 +499,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         return;
       }
 
-      navigateReset(url);
+      navigateReset(url, headers);
     },
     [navigateReset, openInNewTab, tabState.activeTabId]
   );

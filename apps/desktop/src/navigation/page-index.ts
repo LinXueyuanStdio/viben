@@ -272,6 +272,14 @@ export function resolveSegmentDescriptorId(
     return "workspace-executor";
   }
 
+  if (segment.href === "/settings") {
+    return "settings";
+  }
+
+  if (/^\/settings\/[^/]+/.test(segment.href)) {
+    return `settings:${segment.href.split("/settings/")[1]}`;
+  }
+
   return undefined;
 }
 

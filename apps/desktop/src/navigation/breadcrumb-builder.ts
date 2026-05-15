@@ -79,7 +79,15 @@ export function buildColdStartBreadcrumb(url: string, headers?: NavigateHeaders)
   }
 
   // 3. Current node (headers can override label/icon)
-  chain.push(buildBreadcrumbItem(match.entry, match.params, headers));
+  const currentItem = buildBreadcrumbItem(match.entry, match.params, headers);
+
+  // Annotate workspace root when it is the leaf (direct navigation to workspace home)
+  if (match.pattern === "/workspace/:workspaceId" && match.params.workspaceId) {
+    currentItem.descriptorId = currentItem.descriptorId ?? "workspace";
+    currentItem.meta = { ...currentItem.meta, workspaceId: match.params.workspaceId };
+  }
+
+  chain.push(currentItem);
 
   return chain;
 }
