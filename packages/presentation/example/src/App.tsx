@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo, memo } from "react"
+import React, { useState, useRef, useCallback, useEffect, useMemo, memo, createContext, useContext } from "react"
 import {
   PresentationPlayer,
   TargetRectsProvider,
@@ -258,6 +258,18 @@ function formatTime(ms: number): string {
   const seconds = totalSeconds % 60
   const tenths = Math.floor((safeMs % 1000) / 100)
   return `${minutes}:${seconds.toString().padStart(2, "0")}.${tenths}`
+}
+
+function formatTimeWithFlashingColon(ms: number, isPlaying: boolean): string {
+  const safeMs = Math.max(0, Math.round(ms))
+  const totalSeconds = Math.floor(safeMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  const tenths = Math.floor((safeMs % 1000) / 100)
+  // Flash colon every half-second while playing
+  const colonVisible = !isPlaying || Math.floor(safeMs / 500) % 2 === 0
+  const colon = colonVisible ? ":" : " "
+  return `${minutes}${colon}${seconds.toString().padStart(2, "0")}.${tenths}`
 }
 
 function getStepEndMs(step: PresentationStep, totalDurationMs: number): number {
@@ -674,6 +686,18 @@ function injectConsoleStyles() {
       background: rgba(255,255,255,0.18) !important;
       color: #fff !important;
     }
+    .pbc-seg:focus-visible {
+      box-shadow: 0 0 0 2px rgba(118,185,0,0.5);
+      outline: none;
+    }
+    @keyframes stepPopoverIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.96); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    }
+    @keyframes stepPopoverOut {
+      from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      to { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.97); }
+    }
     .pbc-timeline-item {
       transition: opacity 100ms ease, filter 100ms ease, box-shadow 150ms ease;
     }
@@ -706,7 +730,7 @@ function injectConsoleStyles() {
       background: rgba(255,255,255,0.04);
     }
     .pbc-collapse-anim {
-      transition: max-height 250ms cubic-bezier(0.4,0,0.2,1), padding 250ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease;
+      transition: max-height 300ms cubic-bezier(0.34, 1.56, 0.64, 1), padding 250ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease;
     }
     /* Custom range slider styling */
     .pbc-range {
@@ -847,6 +871,157 @@ function injectConsoleStyles() {
       transition: opacity 80ms ease;
     }
     .pbc-timeline-item:hover .pbc-block-label {
+      opacity: 1;
+    }
+    /* Active block glow animation - enhanced */
+    @keyframes pbc-block-glow {
+      0%, 100% { box-shadow: 0 0 8px var(--glow-color, rgba(118,185,0,0.4)), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.2); }
+      50% { box-shadow: 0 0 18px var(--glow-color, rgba(118,185,0,0.7)), 0 0 6px var(--glow-color, rgba(118,185,0,0.4)), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.2); }
+    }
+    .pbc-block-active-glow {
+      animation: pbc-block-glow 2s ease-in-out infinite;
+    }
+    /* Playhead time badge */
+    .pbc-playhead-time {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(118,185,0,0.95);
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      font-family: SFMono-Regular, Consolas, monospace;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      pointer-events: none;
+    }
+    /* Playhead motion trail */
+    @keyframes pbc-playhead-trail {
+      0% { opacity: 0.4; }
+      100% { opacity: 0; }
+    }
+    .pbc-playhead-trail {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      pointer-events: none;
+      animation: pbc-playhead-trail 400ms ease-out forwards;
+    }
+    /* Group collapse/expand */
+    .pbc-group-header {
+      cursor: pointer;
+      user-select: none;
+      transition: background 120ms ease;
+    }
+    .pbc-group-header:hover {
+      background: rgba(255,255,255,0.05) !important;
+    }
+    .pbc-group-chevron {
+      transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+    }
+    .pbc-group-chevron-collapsed {
+      transform: rotate(-90deg);
+    }
+    /* Item count badge animation */
+    @keyframes pbc-badge-pop {
+      0% { transform: scale(0.7); opacity: 0; }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .pbc-badge-pop {
+      animation: pbc-badge-pop 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    /* Zoom controls */
+    .pbc-zoom-btn {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 100ms ease, border-color 100ms ease, color 100ms ease;
+      padding: 0;
+      line-height: 1;
+    }
+    .pbc-zoom-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.9);
+    }
+    .pbc-zoom-btn:active {
+      background: rgba(255,255,255,0.15);
+      transform: scale(0.93);
+    }
+    /* Time ruler enhanced */
+    .pbc-time-ruler {
+      position: relative;
+      height: 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    }
+    .pbc-ruler-tick-major {
+      position: absolute;
+      bottom: 0;
+      width: 1px;
+      height: 10px;
+      background: rgba(255,255,255,0.2);
+    }
+    .pbc-ruler-tick-minor {
+      position: absolute;
+      bottom: 0;
+      width: 1px;
+      height: 5px;
+      background: rgba(255,255,255,0.08);
+    }
+    .pbc-ruler-label {
+      position: absolute;
+      top: 4px;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: rgba(255,255,255,0.4);
+      font-variant-numeric: tabular-nums;
+      font-family: SFMono-Regular, Consolas, monospace;
+      white-space: nowrap;
+    }
+    /* Density curve minimap */
+    .pbc-density-curve {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    /* Tooltip for block labels */
+    .pbc-block-tooltip {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 3px 7px;
+      border-radius: 4px;
+      background: rgba(10, 12, 28, 0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      font-size: 9px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 120ms ease;
+      z-index: 10;
+    }
+    .pbc-timeline-item:hover .pbc-block-tooltip {
       opacity: 1;
     }
     /* Speed dropdown */
@@ -1040,6 +1215,18 @@ function PresentationPlaybackConsole({
 
   useEffect(() => { injectConsoleStyles() }, [])
 
+  // Ctrl+Shift+E keyboard shortcut for collapse/expand
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "E" || e.key === "e")) {
+        e.preventDefault()
+        setCollapsed((prev) => !prev)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
   return (
     <div
       role="region"
@@ -1067,7 +1254,7 @@ function PresentationPlaybackConsole({
       />
 
       {/* Panel header strip — always visible, contains Collapse/Expand toggle */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "3px 14px 0" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "4px 14px 0" }}>
         <button
           className="pbc-btn pbc-btn-ghost"
           type="button"
@@ -1103,6 +1290,8 @@ function PresentationPlaybackConsole({
           alignItems: collapsed ? "center" : undefined,
           gap: collapsed ? 12 : 14,
           padding: collapsed ? "4px 14px 8px" : "8px 14px 14px",
+          maxHeight: collapsed ? 50 : 400,
+          overflow: collapsed ? "hidden" : "visible",
           opacity: 1,
         }}
       >
@@ -1440,7 +1629,7 @@ function CollapsedPlaybackConsole({
   )
 }
 
-const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const
+const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2, 4] as const
 
 function PlaybackControls({
   title,
@@ -1488,6 +1677,25 @@ function PlaybackControls({
   const currentFrame = msToFrame(currentMs, FPS)
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false)
   const [showRemaining, setShowRemaining] = useState(false)
+  // Time display mode: time | frame | percentage
+  type TimeDisplayMode = "time" | "frame" | "percent"
+  const [timeDisplayMode, setTimeDisplayMode] = useState<TimeDisplayMode>("time")
+  // Loop count (increments each time we loop)
+  const [loopCount, setLoopCount] = useState(0)
+  const prevMsRef = useRef(currentMs)
+
+  // Detect loop (time jumps backward significantly while looping)
+  useEffect(() => {
+    if (isLooping && prevMsRef.current > currentMs + 500) {
+      setLoopCount((c) => c + 1)
+    }
+    prevMsRef.current = currentMs
+  }, [currentMs, isLooping])
+
+  // Reset loop count when loop disabled
+  useEffect(() => {
+    if (!isLooping) setLoopCount(0)
+  }, [isLooping])
 
   // Circular progress ring params
   const ringRadius = 20
@@ -1499,6 +1707,18 @@ function PlaybackControls({
     const idx = PLAYBACK_SPEEDS.indexOf(playbackRate as typeof PLAYBACK_SPEEDS[number])
     return idx >= 0 ? (idx / (PLAYBACK_SPEEDS.length - 1)) * 270 - 135 : 0
   }, [playbackRate])
+
+  // Cycle speed on badge click
+  const cycleSpeed = useCallback(() => {
+    const idx = PLAYBACK_SPEEDS.indexOf(playbackRate as typeof PLAYBACK_SPEEDS[number])
+    const nextIdx = (idx + 1) % PLAYBACK_SPEEDS.length
+    onSetPlaybackRate(PLAYBACK_SPEEDS[nextIdx])
+  }, [playbackRate, onSetPlaybackRate])
+
+  // Cycle time display mode
+  const cycleTimeDisplay = useCallback(() => {
+    setTimeDisplayMode((m) => m === "time" ? "frame" : m === "frame" ? "percent" : "time")
+  }, [])
 
   return (
     <section
@@ -1528,10 +1748,10 @@ function PlaybackControls({
         </div>
       </div>
 
-      {/* Time display — prominent monospace with glow, click to toggle elapsed/remaining */}
+      {/* Time display — prominent monospace with glow, click to cycle time/frame/percent */}
       <div
-        onClick={() => setShowRemaining((prev) => !prev)}
-        title="Click to toggle elapsed/remaining time"
+        onClick={cycleTimeDisplay}
+        title="Click to cycle: time / frame / percentage"
         style={{
           display: "flex",
           alignItems: "baseline",
@@ -1552,18 +1772,34 @@ function PlaybackControls({
             lineHeight: 1,
           }}
         >
-          {showRemaining ? `-${formatTime(Math.max(0, totalDurationMs - currentMs))}` : formatTime(currentMs)}
+          {timeDisplayMode === "time" ? (
+            <>
+              {formatTimeWithFlashingColon(currentMs, isPlaying)}
+            </>
+          ) : timeDisplayMode === "frame" ? (
+            <>F{currentFrame}</>
+          ) : (
+            <>{(progressFraction * 100).toFixed(1)}%</>
+          )}
         </span>
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>
-          / {formatTime(totalDurationMs)}
+          / {timeDisplayMode === "time" ? formatTime(totalDurationMs) : timeDisplayMode === "frame" ? `F${msToFrame(totalDurationMs, FPS)}` : "100%"}
         </span>
-        <span style={{
-          fontSize: 10,
-          color: "rgba(255,255,255,0.22)",
-          fontFamily: "SFMono-Regular, Consolas, monospace",
-          marginLeft: 2,
-        }}>
-          F{currentFrame}
+        <span
+          onClick={(e) => { e.stopPropagation(); setShowRemaining((p) => !p) }}
+          title="Click to toggle remaining time"
+          style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.3)",
+            fontFamily: "SFMono-Regular, Consolas, monospace",
+            marginLeft: 2,
+            cursor: "pointer",
+            padding: "1px 4px",
+            borderRadius: 3,
+            background: showRemaining ? "rgba(118,185,0,0.1)" : "transparent",
+          }}
+        >
+          ({showRemaining ? `-${formatTime(Math.max(0, totalDurationMs - currentMs))}` : formatTime(Math.max(0, totalDurationMs - currentMs))})
         </span>
       </div>
 
@@ -1595,7 +1831,7 @@ function PlaybackControls({
         <ConsoleButton title="Previous step  [Left]" icon={<IconStepBack size={12} />} onClick={onPrevious} aria-label="Previous step" style={{ color: "#76B900" }} />
         <ConsoleButton title="Frame back  [,]" icon={<IconFrameBack size={11} />} onClick={() => onFrameStep(-1)} aria-label="Frame back" style={{ color: "rgba(255,255,255,0.6)" }} />
 
-        {/* Play/Pause with circular progress ring */}
+        {/* Play/Pause with circular progress ring + rate badge */}
         <div style={{ position: "relative", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg
             width={44}
@@ -1625,7 +1861,7 @@ function PlaybackControls({
             />
           </svg>
           <button
-            className="pbc-btn pbc-btn-primary"
+            className="pbc-btn pbc-btn-primary pbc-play-btn"
             type="button"
             title={isPlaying ? "Pause  [Space]" : "Play  [Space]"}
             aria-label={isPlaying ? "Pause" : "Play"}
@@ -1647,6 +1883,30 @@ function PlaybackControls({
           >
             {isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
           </button>
+          {/* Playback rate badge — click to cycle speeds */}
+          {playbackRate !== 1 && (
+            <span
+              onClick={(e) => { e.stopPropagation(); cycleSpeed() }}
+              title="Click to cycle playback speed"
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -6,
+                fontSize: 8,
+                fontWeight: 800,
+                fontFamily: "SFMono-Regular, Consolas, monospace",
+                padding: "1px 4px",
+                borderRadius: 4,
+                background: "rgba(118,185,0,0.9)",
+                color: "#000",
+                cursor: "pointer",
+                zIndex: 2,
+                lineHeight: 1.3,
+              }}
+            >
+              {playbackRate}x
+            </span>
+          )}
         </div>
 
         <ConsoleButton title="Frame forward  [.]" icon={<IconFrameForward size={11} />} onClick={() => onFrameStep(1)} aria-label="Frame forward" style={{ color: "rgba(255,255,255,0.6)" }} />
@@ -1734,11 +1994,11 @@ function PlaybackControls({
           )}
         </div>
 
-        {/* Loop toggle */}
+        {/* Loop toggle with pulse and loop count */}
         <button
-          className="pbc-btn pbc-btn-ghost"
+          className={`pbc-btn pbc-btn-ghost ${isLooping ? "pbc-loop-pulse" : ""}`}
           type="button"
-          title={`Loop: ${isLooping ? "ON" : "OFF"}  [L]`}
+          title={`Loop: ${isLooping ? "ON" : "OFF"}  [L]${isLooping && loopCount > 0 ? ` (${loopCount} loops)` : ""}`}
           aria-label={`Loop ${isLooping ? "enabled" : "disabled"}`}
           onClick={onToggleLoop}
           style={{
@@ -1762,12 +2022,21 @@ function PlaybackControls({
               position: "absolute",
               top: -2,
               right: -2,
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
+              minWidth: 12,
+              height: 12,
+              borderRadius: 6,
               background: "#76B900",
               boxShadow: "0 0 6px rgba(118,185,0,0.6)",
-            }} />
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 7,
+              fontWeight: 800,
+              color: "#000",
+              padding: "0 2px",
+            }}>
+              {loopCount > 0 ? loopCount : ""}
+            </span>
           )}
         </button>
 
@@ -2051,9 +2320,62 @@ function TimelineTracks({
     return groups
   }, [lanes])
 
+  // --- collapsed groups state ---
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const toggleGroupCollapse = useCallback((group: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }, [])
+
   // --- density ---
   const densityBuckets = useMemo(() => computeDensityBuckets(lanes, totalDurationMs, DENSITY_BUCKETS), [lanes, totalDurationMs])
   const maxDensity = useMemo(() => Math.max(1, ...densityBuckets), [densityBuckets])
+
+  // --- density color buckets (predominant lane color at each bucket position) ---
+  const densityColors = useMemo(() => {
+    if (totalDurationMs <= 0) return new Array(DENSITY_BUCKETS).fill("#76B900")
+    const bucketMs = totalDurationMs / DENSITY_BUCKETS
+    return Array.from({ length: DENSITY_BUCKETS }, (_, i) => {
+      const bucketStart = i * bucketMs
+      const bucketEnd = (i + 1) * bucketMs
+      const counts = new Map<string, number>()
+      for (const lane of lanes) {
+        for (const item of lane.items) {
+          if (item.endMs > bucketStart && item.startMs < bucketEnd) {
+            counts.set(lane.label, (counts.get(lane.label) ?? 0) + 1)
+          }
+        }
+      }
+      let maxLabel = ""
+      let maxCount = 0
+      for (const [label, count] of counts) {
+        if (count > maxCount) { maxLabel = label; maxCount = count }
+      }
+      return maxLabel ? commandColor(maxLabel) : "#76B900"
+    })
+  }, [lanes, totalDurationMs])
+
+  // --- playhead trail positions (for motion blur effect) ---
+  const prevPlayheadRef = useRef<number>(currentMs)
+  const [playheadTrails, setPlayheadTrails] = useState<Array<{ id: number; percent: number }>>([])
+  const trailIdRef = useRef(0)
+  useEffect(() => {
+    const prevMs = prevPlayheadRef.current
+    const diff = Math.abs(currentMs - prevMs)
+    if (diff > 50 && diff < visibleDurationMs * 0.3) {
+      const trailPercent = visibleDurationMs > 0 ? ((prevMs - viewStartMs) / visibleDurationMs) * 100 : 0
+      if (trailPercent >= 0 && trailPercent <= 100) {
+        const id = ++trailIdRef.current
+        setPlayheadTrails((prev) => [...prev.slice(-3), { id, percent: trailPercent }])
+        setTimeout(() => setPlayheadTrails((prev) => prev.filter((t) => t.id !== id)), 400)
+      }
+    }
+    prevPlayheadRef.current = currentMs
+  }, [currentMs, viewStartMs, visibleDurationMs])
 
   // --- helpers ---
   const clientXToMs = useCallback((clientX: number): number | null => {
@@ -2075,12 +2397,25 @@ function TimelineTracks({
   // --- hover popover ---
   const showStepPopover = useCallback((item: TimelineItem) => {
     if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current)
-    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(item), 150)
-  }, [])
+    // "Warm hover" — if popover already showing, switch instantly
+    const delay = hoveredItem ? 0 : 150
+    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(item), delay)
+  }, [hoveredItem])
 
   const hideStepPopover = useCallback(() => {
     if (hoverTimerRef.current != null) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
-    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(null), 200)
+    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(null), 300)
+  }, [])
+
+  // Called when mouse enters the popover — cancel pending hide
+  const handlePopoverEnter = useCallback(() => {
+    if (hoverTimerRef.current != null) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
+  }, [])
+
+  // Called when mouse leaves the popover — schedule hide
+  const handlePopoverLeave = useCallback(() => {
+    if (hoverTimerRef.current != null) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
+    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(null), 300)
   }, [])
 
   useEffect(() => () => { if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current) }, [])
@@ -2230,32 +2565,88 @@ function TimelineTracks({
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
             {formatTime(currentMs)}
           </div>
-          {zoom > 1 && (
-            <span style={{ padding: "1px 5px", borderRadius: 3, background: "rgba(118,185,0,0.15)", fontSize: 9, fontWeight: 700, color: "#76B900", fontVariantNumeric: "tabular-nums" }}>
+          {/* Zoom level indicator */}
+          <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 5, background: zoom > 1 ? "rgba(118,185,0,0.1)" : "rgba(255,255,255,0.03)", border: zoom > 1 ? "1px solid rgba(118,185,0,0.25)" : "1px solid rgba(255,255,255,0.06)" }}>
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.6 }}>
+              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: 9, fontWeight: 700, color: zoom > 1 ? "#76B900" : "rgba(255,255,255,0.45)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
               {zoom.toFixed(1)}x
             </span>
-          )}
-          <button type="button" aria-label="Zoom in" onClick={() => { setZoom((z) => Math.min(MAX_ZOOM, z + 0.5)); lastManualPanRef.current = Date.now() }} style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 700, cursor: "pointer", lineHeight: 1 }}>+</button>
-          <button type="button" aria-label="Zoom out" onClick={() => { setZoom((z) => Math.max(MIN_ZOOM, z - 0.5)); lastManualPanRef.current = Date.now() }} style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 700, cursor: "pointer", lineHeight: 1 }}>-</button>
-          {zoom > 1 && (
-            <button type="button" aria-label="Reset zoom" onClick={() => { setZoom(1); setViewCenterMs(totalDurationMs / 2) }} style={{ height: 20, padding: "0 5px", display: "flex", alignItems: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 9, cursor: "pointer" }}>FIT</button>
-          )}
+          </div>
+          {/* Zoom buttons */}
+          <button className="pbc-zoom-btn" type="button" aria-label="Zoom out" onClick={() => { setZoom((z) => Math.max(MIN_ZOOM, z - 0.5)); lastManualPanRef.current = Date.now() }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
+          <button className="pbc-zoom-btn" type="button" aria-label="Zoom in" onClick={() => { setZoom((z) => Math.min(MAX_ZOOM, z + 0.5)); lastManualPanRef.current = Date.now() }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><line x1="8" y1="4" x2="8" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          </button>
+          <button className="pbc-zoom-btn" type="button" aria-label="Fit all" title="Fit timeline to view" onClick={() => { setZoom(1); setViewCenterMs(totalDurationMs / 2) }} style={{ width: 32, fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>
+            FIT
+          </button>
         </div>
       </div>
 
-      {/* Density heatmap strip */}
+      {/* Density minimap - SVG smooth curve with color coding */}
       <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, paddingRight: 10 }}>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", paddingLeft: 8 }}>density</div>
-        <div style={{ position: "relative", height: 8, borderRadius: 4, overflow: "hidden", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
-          <div style={{ position: "absolute", inset: 0, display: "flex" }}>
-            {densityBuckets.map((count, i) => {
-              const alpha = count / maxDensity
-              const nextAlpha = i < densityBuckets.length - 1 ? densityBuckets[i + 1] / maxDensity : alpha
-              return <div key={i} style={{ flex: 1, background: alpha > 0 ? `linear-gradient(90deg, rgba(118,185,0,${0.08 + alpha * 0.55}), rgba(118,185,0,${0.08 + nextAlpha * 0.55}))` : "transparent" }} />
-            })}
-          </div>
-          {/* Subtle shine overlay */}
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
+        <div style={{ position: "relative", height: 24, borderRadius: 5, overflow: "hidden", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+          <svg width="100%" height="100%" viewBox={`0 0 ${DENSITY_BUCKETS} 24`} preserveAspectRatio="none" style={{ position: "absolute", inset: 0 }}>
+            <defs>
+              <linearGradient id="density-grad-stroke" x1="0" y1="0" x2="1" y2="0">
+                {densityColors.filter((_, i) => i % 4 === 0).map((col, i, arr) => (
+                  <stop key={i} offset={`${(i / Math.max(1, arr.length - 1)) * 100}%`} stopColor={col} stopOpacity="0.8" />
+                ))}
+              </linearGradient>
+              <linearGradient id="density-grad-fill" x1="0" y1="0" x2="1" y2="0">
+                {densityColors.filter((_, i) => i % 4 === 0).map((col, i, arr) => (
+                  <stop key={i} offset={`${(i / Math.max(1, arr.length - 1)) * 100}%`} stopColor={col} stopOpacity="0.3" />
+                ))}
+              </linearGradient>
+            </defs>
+            {/* Filled area under curve */}
+            <path
+              d={(() => {
+                const pts = densityBuckets.map((count, i) => ({ x: i, y: 24 - (count / maxDensity) * 20 }))
+                if (pts.length < 2) return ""
+                let d = `M 0 24 L 0 ${pts[0].y}`
+                for (let i = 0; i < pts.length - 1; i++) {
+                  const cp1x = pts[i].x + 0.4
+                  const cp2x = pts[i + 1].x - 0.4
+                  d += ` C ${cp1x} ${pts[i].y} ${cp2x} ${pts[i + 1].y} ${pts[i + 1].x} ${pts[i + 1].y}`
+                }
+                d += ` L ${DENSITY_BUCKETS - 1} 24 Z`
+                return d
+              })()}
+              fill="url(#density-grad-fill)"
+            />
+            {/* Stroke line on top */}
+            <path
+              className="pbc-density-curve"
+              d={(() => {
+                const pts = densityBuckets.map((count, i) => ({ x: i, y: 24 - (count / maxDensity) * 20 }))
+                if (pts.length < 2) return ""
+                let d = `M ${pts[0].x} ${pts[0].y}`
+                for (let i = 0; i < pts.length - 1; i++) {
+                  const cp1x = pts[i].x + 0.4
+                  const cp2x = pts[i + 1].x - 0.4
+                  d += ` C ${cp1x} ${pts[i].y} ${cp2x} ${pts[i + 1].y} ${pts[i + 1].x} ${pts[i + 1].y}`
+                }
+                return d
+              })()}
+              stroke="url(#density-grad-stroke)"
+              strokeWidth="1.2"
+            />
+          </svg>
+          {/* Shine overlay */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 50%)", pointerEvents: "none" }} />
+          {/* Current viewport window indicator */}
+          {zoom > 1 && (
+            <div style={{ position: "absolute", top: 0, bottom: 0, left: `${(viewStartMs / totalDurationMs) * 100}%`, width: `${(visibleDurationMs / totalDurationMs) * 100}%`, background: "rgba(255,255,255,0.04)", borderLeft: "1px solid rgba(255,255,255,0.15)", borderRight: "1px solid rgba(255,255,255,0.15)", pointerEvents: "none", borderRadius: 2 }} />
+          )}
+          {/* Playhead position on density */}
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: `${totalDurationMs > 0 ? (currentMs / totalDurationMs) * 100 : 0}%`, width: 1.5, background: "#76B900", boxShadow: "0 0 4px rgba(118,185,0,0.6)", pointerEvents: "none" }} />
         </div>
       </div>
 
@@ -2291,27 +2682,45 @@ function TimelineTracks({
         </div>
       )}
 
-      {/* Time ruler */}
+      {/* Enhanced Time Ruler */}
       <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, paddingRight: 10 }}>
-        <div />
-        <div style={{ position: "relative", height: 20 }}>
-          {ticks.map((t, i) => (
-            <React.Fragment key={i}>
-              <span style={{ position: "absolute", left: `${(i / tickCount) * 100}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "rgba(255,255,255,0.32)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace", whiteSpace: "nowrap" }}>
-                {formatTime(t)}
-              </span>
-              {/* Tick mark */}
-              <span style={{ position: "absolute", left: `${(i / tickCount) * 100}%`, top: 0, width: 1, height: 3, background: "rgba(255,255,255,0.15)" }} />
-            </React.Fragment>
-          ))}
-          {/* Sub-ticks when zoomed in */}
-          {zoom > 1.5 && ticks.slice(0, -1).map((_, i) => {
-            const subTickCount = zoom > 4 ? 4 : 2
+        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.15)", display: "flex", alignItems: "flex-end", paddingLeft: 8, paddingBottom: 2 }}>
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.4 }}>
+            <rect x="1" y="3" width="14" height="10" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            <line x1="4" y1="1" x2="4" y2="5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            <line x1="12" y1="1" x2="12" y2="5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+        </div>
+        <div className="pbc-time-ruler">
+          {/* Highlighted viewport range background */}
+          {zoom > 1 && (
+            <div style={{ position: "absolute", inset: 0, background: "rgba(118,185,0,0.02)", borderRadius: 3 }} />
+          )}
+          {ticks.map((t, i) => {
+            const leftPct = (i / tickCount) * 100
+            return (
+              <React.Fragment key={i}>
+                {/* Major tick mark */}
+                <span className="pbc-ruler-tick-major" style={{ left: `${leftPct}%` }} />
+                {/* Time label */}
+                <span className="pbc-ruler-label" style={{ left: `${leftPct}%` }}>
+                  {formatTime(t)}
+                </span>
+              </React.Fragment>
+            )
+          })}
+          {/* Minor ticks between major ticks */}
+          {ticks.slice(0, -1).map((_, i) => {
+            const subTickCount = zoom > 4 ? 5 : zoom > 2 ? 3 : 1
             return Array.from({ length: subTickCount }, (__, j) => {
               const subPos = ((i + (j + 1) / (subTickCount + 1)) / tickCount) * 100
-              return <span key={`sub-${i}-${j}`} style={{ position: "absolute", left: `${subPos}%`, top: 1, width: 1, height: 2, background: "rgba(255,255,255,0.07)" }} />
+              return <span key={`sub-${i}-${j}`} className="pbc-ruler-tick-minor" style={{ left: `${subPos}%` }} />
             })
           })}
+          {/* Playhead marker on ruler */}
+          {playheadVisible && (
+            <div style={{ position: "absolute", bottom: 0, left: `${playheadPercent}%`, width: 2, height: 12, background: "#76B900", borderRadius: "1px 1px 0 0", boxShadow: "0 0 6px rgba(118,185,0,0.5)", transform: "translateX(-1px)" }} />
+          )}
         </div>
       </div>
 
@@ -2337,25 +2746,56 @@ function TimelineTracks({
           {lanes.length === 0 ? (
             <div style={{ height: 186, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.25)", fontSize: 12 }}>No tracks</div>
           ) : (
-            Object.entries(groupedLanes).map(([group, groupLanes], groupIdx) => (
+            Object.entries(groupedLanes).map(([group, groupLanes], groupIdx) => {
+              const isCollapsed = collapsedGroups.has(group)
+              const groupItemCount = groupLanes.reduce((sum, lane) => sum + lane.items.length, 0)
+              return (
               <div key={group}>
                 {Object.keys(groupedLanes).length > 1 && (
-                  <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, minHeight: 20, alignItems: "center", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)", borderTop: groupIdx > 0 ? "1px solid rgba(255,255,255,0.06)" : undefined, marginTop: groupIdx > 0 ? 2 : 0 }}>
-                    <div style={{ padding: "0 8px", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 0.6 }}>{group}</div>
-                    <div />
+                  <div
+                    className="pbc-group-header"
+                    onClick={() => toggleGroupCollapse(group)}
+                    style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, minHeight: 22, alignItems: "center", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)", borderTop: groupIdx > 0 ? "1px solid rgba(255,255,255,0.06)" : undefined, marginTop: groupIdx > 0 ? 2 : 0 }}
+                  >
+                    <div style={{ padding: "0 8px", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: 0.6, display: "flex", alignItems: "center", gap: 5 }}>
+                      {/* Collapse/expand chevron */}
+                      <span className={`pbc-group-chevron${isCollapsed ? " pbc-group-chevron-collapsed" : ""}`}>
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                          <path d="M2.5 3.5L5 6L7.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </span>
+                      <span>{group}</span>
+                      {/* Item count badge */}
+                      <span className="pbc-badge-pop" style={{ padding: "0 4px", borderRadius: 3, background: "rgba(255,255,255,0.06)", fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.3)", lineHeight: "14px" }}>
+                        {groupItemCount}
+                      </span>
+                    </div>
+                    <div style={{ height: 1, background: isCollapsed ? "transparent" : "rgba(255,255,255,0.03)" }} />
                   </div>
                 )}
-                {groupLanes.map((lane, laneIndex) => (
+                {!isCollapsed && groupLanes.map((lane, laneIndex) => (
                   <TimelineLaneRow key={lane.id} lane={lane} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} even={laneIndex % 2 === 0} currentMs={currentMs} onSeek={onSeek} onStepHoverStart={showStepPopover} onStepHoverEnd={hideStepPopover} />
                 ))}
               </div>
-            ))
+              )
+            })
           )}
         </div>
 
-        {/* Playhead with glow effect and triangle handle */}
+        {/* Motion blur trails */}
+        {playheadTrails.map((trail) => (
+          <div
+            key={trail.id}
+            className="pbc-playhead-trail"
+            style={{ left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${trail.percent / 100})`, background: "rgba(118,185,0,0.3)", zIndex: 4 }}
+          />
+        ))}
+
+        {/* Playhead with gradient fade, time display, and glow */}
         {playheadVisible && (
-          <div className="pbc-playhead-line" style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${playheadPercent / 100})`, width: 2, background: "linear-gradient(180deg, #9FE030, #76B900, #9FE030)", boxShadow: "0 0 12px rgba(118,185,0,0.7), 0 0 4px rgba(118,185,0,0.9), 0 0 24px rgba(118,185,0,0.3)", zIndex: 5, pointerEvents: "none", borderRadius: 1 }}>
+          <div className="pbc-playhead-line" style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${playheadPercent / 100})`, width: 2, background: "linear-gradient(180deg, transparent 0%, #9FE030 8%, #76B900 50%, #9FE030 92%, transparent 100%)", boxShadow: "0 0 12px rgba(118,185,0,0.7), 0 0 4px rgba(118,185,0,0.9), 0 0 24px rgba(118,185,0,0.3)", zIndex: 5, pointerEvents: "none", borderRadius: 1 }}>
+            {/* Time display following playhead */}
+            <div className="pbc-playhead-time">{formatTime(currentMs)}</div>
             {/* Top triangle handle */}
             <div className="pbc-playhead-handle" onMouseDown={handlePlayheadMouseDown} style={{ position: "absolute", top: -3, left: -7, width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "9px solid #9FE030", filter: "drop-shadow(0 0 4px rgba(118,185,0,0.8))", pointerEvents: "auto", cursor: "ew-resize" }} />
             {/* Bottom triangle handle */}
@@ -2372,7 +2812,7 @@ function TimelineTracks({
         )}
 
         {hoveredItem && (
-          <StepJsonPopover item={hoveredItem} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} />
+          <StepJsonPopover item={hoveredItem} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} onMouseEnter={handlePopoverEnter} onMouseLeave={handlePopoverLeave} />
         )}
       </div>
 
@@ -2416,14 +2856,29 @@ function TimelineLaneRow({
     [lane.items, viewStartMs, viewEndMs]
   )
 
+  // Compute waveform-like border-radius variation based on duration
+  const getBlockRadius = (durationMs: number): string => {
+    // Short clips: pill-shaped; medium: slightly rounded; long: more rectangular
+    if (durationMs < 500) return "9px"
+    if (durationMs < 1500) return "6px"
+    if (durationMs < 3000) return "5px 7px 7px 5px"
+    return "4px 6px 6px 4px"
+  }
+
   return (
-    <div className="pbc-lane-row" style={{ display: "grid", gridTemplateColumns: `${labelWidth}px 1fr`, minHeight: 30, alignItems: "center", position: "relative", background: even ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.008) 30%, rgba(255,255,255,0.012) 70%, transparent)" : "linear-gradient(90deg, transparent, rgba(255,255,255,0.018) 30%, rgba(255,255,255,0.022) 70%, transparent)", borderBottom: "1px solid rgba(255,255,255,0.02)" }}>
-      <div style={{ padding: "0 8px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ flexShrink: 0, width: 7, height: 7, borderRadius: 2, background: `linear-gradient(135deg, ${color}, ${color}cc)`, boxShadow: `0 0 5px ${color}55` }} />
-        <span>{lane.label}</span>
-        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontWeight: 400 }}>{lane.items.length}</span>
+    <div className="pbc-lane-row" style={{ display: "grid", gridTemplateColumns: `${labelWidth}px 1fr`, minHeight: 32, alignItems: "center", position: "relative", background: even ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.008) 30%, rgba(255,255,255,0.012) 70%, transparent)" : "linear-gradient(90deg, transparent, rgba(255,255,255,0.018) 30%, rgba(255,255,255,0.022) 70%, transparent)", borderBottom: "1px solid rgba(255,255,255,0.02)" }}>
+      {/* Track label with color indicator and item count */}
+      <div style={{ padding: "0 8px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 5 }}>
+        {/* Color-coded lane indicator with gradient */}
+        <span style={{ flexShrink: 0, width: 3, height: 18, borderRadius: 2, background: `linear-gradient(180deg, ${color}ee, ${color}88)`, boxShadow: `0 0 5px ${color}44, inset 0 0 2px rgba(255,255,255,0.2)` }} />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }} title={lane.label}>{lane.label}</span>
+        {/* Item count badge */}
+        <span className="pbc-badge-pop" style={{ flexShrink: 0, minWidth: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px", borderRadius: 4, background: `${color}18`, border: `1px solid ${color}33`, fontSize: 8, fontWeight: 700, color: `${color}cc`, lineHeight: 1 }}>
+          {lane.items.length}
+        </span>
       </div>
-      <div style={{ position: "relative", height: 24, marginRight: 10, borderRadius: 5, background: "rgba(255,255,255,0.015)" }}>
+      {/* Track content area */}
+      <div style={{ position: "relative", height: 26, marginRight: 10, borderRadius: 5, background: "rgba(255,255,255,0.015)" }}>
         {visibleItems.map((item) => {
           const left = visibleDurationMs > 0 ? ((item.startMs - viewStartMs) / visibleDurationMs) * 100 : 0
           const width = visibleDurationMs > 0 ? Math.max(0.4, ((item.endMs - item.startMs) / visibleDurationMs) * 100) : 0
@@ -2432,10 +2887,11 @@ function TimelineLaneRow({
           const isActive = currentMs >= item.startMs && currentMs < item.endMs
           const approxPxWidth = (clampedWidth / 100) * 600
           const durationMs = item.endMs - item.startMs
+          const blockRadius = getBlockRadius(durationMs)
 
           return (
             <button
-              className={`pbc-timeline-item${isActive ? " pbc-timeline-item-active" : ""}`}
+              className={`pbc-timeline-item${isActive ? " pbc-block-active-glow" : ""}`}
               key={item.step.id}
               type="button"
               title={`${item.step.command.type}  |  ${formatTime(item.startMs)} - ${formatTime(item.endMs)}  (${(durationMs / 1000).toFixed(1)}s)`}
@@ -2446,33 +2902,44 @@ function TimelineLaneRow({
               onFocus={() => onStepHoverStart(item)}
               onBlur={onStepHoverEnd}
               style={{
+                ["--glow-color" as string]: `${color}88`,
                 ["--pulse-color" as string]: `${color}66`,
                 position: "absolute",
                 top: 3,
                 left: `${clampedLeft}%`,
                 width: `${clampedWidth}%`,
                 minWidth: 4,
-                height: 18,
-                border: isActive ? `1px solid ${color}cc` : "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 5,
+                height: 20,
+                border: isActive ? `1px solid ${color}cc` : `1px solid ${color}33`,
+                borderRadius: blockRadius,
+                // 3D bevel effect: lighter top, darker bottom, with subtle mid-shine
                 background: isActive
-                  ? `linear-gradient(180deg, ${color}ee 0%, ${color}aa 50%, ${color}88 100%)`
-                  : `linear-gradient(180deg, ${color}aa 0%, ${color}77 50%, ${color}55 100%)`,
+                  ? `linear-gradient(180deg, ${color}ff 0%, ${color}cc 30%, ${color}aa 70%, ${color}77 100%)`
+                  : `linear-gradient(180deg, ${color}99 0%, ${color}77 35%, ${color}55 65%, ${color}44 100%)`,
                 boxShadow: isActive
-                  ? `0 0 10px ${color}55, 0 0 4px ${color}33, inset 0 1px 0 rgba(255,255,255,0.2)`
-                  : `inset 0 1px 0 rgba(255,255,255,0.12)`,
-                opacity: isActive ? 1 : 0.78,
+                  ? `0 0 14px ${color}66, 0 2px 6px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.2)`
+                  : `0 1px 3px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.15)`,
+                opacity: isActive ? 1 : 0.82,
                 cursor: "pointer",
                 padding: 0,
                 zIndex: isActive ? 2 : 1,
-                overflow: "hidden",
+                overflow: "visible",
               }}
             >
-              {/* Glass highlight line at top */}
-              <span style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)", pointerEvents: "none" }} />
-              {approxPxWidth > 60 && (
-                <span className="pbc-block-label" style={{ display: "block", padding: "0 5px", fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.92)", lineHeight: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
+              {/* Top bevel highlight */}
+              <span style={{ position: "absolute", top: 0, left: "8%", right: "8%", height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)", pointerEvents: "none", borderRadius: "1px" }} />
+              {/* Inner waveform-like texture for longer blocks */}
+              {approxPxWidth > 40 && durationMs > 800 && (
+                <span style={{ position: "absolute", top: "40%", left: 4, right: 4, height: 2, background: `linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0.12) 40%, rgba(255,255,255,0.06) 60%, rgba(255,255,255,0.1) 80%, transparent 100%)`, pointerEvents: "none", borderRadius: 1 }} />
+              )}
+              {/* Block label with tooltip for truncated text */}
+              {approxPxWidth > 50 && (
+                <span className="pbc-block-label" style={{ position: "relative", display: "block", padding: "0 6px", fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.95)", lineHeight: "20px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 2px rgba(0,0,0,0.6)", letterSpacing: 0.2 }}>
                   {item.step.command.type}
+                  {/* Tooltip shown on hover for potentially-truncated labels */}
+                  {approxPxWidth < 120 && (
+                    <span className="pbc-block-tooltip">{item.step.command.type}</span>
+                  )}
                 </span>
               )}
             </button>
@@ -2491,11 +2958,15 @@ function StepJsonPopover({
   viewStartMs,
   visibleDurationMs,
   labelWidth,
+  onMouseEnter,
+  onMouseLeave,
 }: {
   item: TimelineItem
   viewStartMs: number
   visibleDurationMs: number
   labelWidth: number
+  onMouseEnter: () => void
+  onMouseLeave: () => void
 }) {
   const color = commandColor(item.step.command.type)
   const itemMidpoint = item.startMs + (item.endMs - item.startMs) / 2
@@ -2503,10 +2974,14 @@ function StepJsonPopover({
   const durationMs = item.endMs - item.startMs
 
   return (
-    <div style={{ position: "absolute", left: `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${left / 100})`, bottom: "calc(100% + 8px)", width: 280, transform: "translateX(-50%)", zIndex: 50, padding: 10, borderRadius: 10, background: "rgba(10, 12, 28, 0.88)", border: `1px solid ${color}44`, boxShadow: `0 -8px 28px rgba(0,0,0,0.45), 0 0 0 1px ${color}22`, backdropFilter: "blur(16px)" }}>
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={{ position: "absolute", left: `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${left / 100})`, bottom: "calc(100% + 10px)", width: 320, transform: "translateX(-50%)", zIndex: 50, padding: 10, borderRadius: 10, background: "rgba(16, 18, 36, 0.94)", border: `1px solid ${color}44`, boxShadow: `0 -6px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", animation: "stepPopoverIn 180ms cubic-bezier(0.16, 1, 0.3, 1) both" }}
+    >
       {/* Connector arrow pointing down */}
-      <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: `6px solid ${color}44` }} />
-      <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(10, 12, 28, 0.88)" }} />
+      <div style={{ position: "absolute", bottom: -7, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "7px solid transparent", borderRight: "7px solid transparent", borderTop: `7px solid ${color}55` }} />
+      <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid rgba(16, 18, 36, 0.96)" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
         <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: 4, background: `${color}33`, border: `1px solid ${color}66` }}>
           <span style={{ width: 6, height: 6, borderRadius: 2, background: color }} />
@@ -2520,7 +2995,7 @@ function StepJsonPopover({
       </div>
       <JsonInspector
         value={item.step.command}
-        height={120}
+        height={200}
         initialMode="tree"
         focusPath={["type"]}
         compact
@@ -2652,15 +3127,18 @@ function ActiveCommandList({
           </span>
         </div>
 
-        {/* Right: controls cluster — List/JSON toggle + maximize (in JSON mode) + Collapse */}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+        {/* Right: controls cluster — List/JSON toggle + maximize (in JSON mode) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div
+            role="tablist"
+            aria-label="Command view mode"
             style={{
               display: "flex",
               padding: 2,
-              borderRadius: 6,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 7,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "inset 0 1px 2px rgba(0,0,0,0.3)",
             }}
           >
             <SegmentButton
@@ -2696,7 +3174,17 @@ function ActiveCommandList({
                 fontSize: 11,
               }}
             >
-              {jsonMaximized ? "⊟" : "⊞"}
+              {jsonMaximized ? (
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+                  <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              ) : (
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+                  <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+                </svg>
+              )}
             </button>
           )}
         </div>
@@ -2849,6 +3337,9 @@ function SegmentButton({
     <button
       className={`pbc-seg ${active ? "pbc-seg-active" : ""}`}
       type="button"
+      role="tab"
+      aria-selected={active}
+      aria-label={`View ${label} mode`}
       onClick={onClick}
       style={{
         height: 22,
@@ -2856,8 +3347,8 @@ function SegmentButton({
         padding: "0 8px",
         border: "none",
         borderRadius: 5,
-        background: active ? "rgba(255,255,255,0.16)" : "transparent",
-        color: active ? "#fff" : "rgba(255,255,255,0.45)",
+        background: active ? "rgba(255,255,255,0.18)" : "transparent",
+        color: active ? "#fff" : "rgba(255,255,255,0.5)",
         fontSize: 10,
         fontWeight: 700,
         cursor: "pointer",
@@ -3267,6 +3758,127 @@ function IsolatedPlaybackConsole({
   )
 }
 
+// ---------------------------------------------------------------------------
+// FPS Monitor — real-time framerate graph overlay
+// ---------------------------------------------------------------------------
+
+function FpsMonitor() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const samplesRef = useRef<number[]>([])
+  const lastFrameRef = useRef(performance.now())
+  const rafRef = useRef<number>(0)
+  const [currentFps, setCurrentFps] = useState(0)
+
+  useEffect(() => {
+    const maxSamples = 120 // ~2 seconds of history at 60fps
+
+    const tick = (now: number) => {
+      const delta = now - lastFrameRef.current
+      lastFrameRef.current = now
+      if (delta > 0) {
+        const fps = Math.min(120, 1000 / delta)
+        const samples = samplesRef.current
+        samples.push(fps)
+        if (samples.length > maxSamples) samples.shift()
+
+        // Update displayed FPS at ~4Hz to avoid jitter
+        if (samples.length % 15 === 0) {
+          const recent = samples.slice(-15)
+          const avg = recent.reduce((a, b) => a + b, 0) / recent.length
+          setCurrentFps(Math.round(avg))
+        }
+
+        // Draw chart
+        const canvas = canvasRef.current
+        if (canvas) {
+          const ctx = canvas.getContext("2d")
+          if (ctx) {
+            const w = canvas.width
+            const h = canvas.height
+            ctx.clearRect(0, 0, w, h)
+
+            // Background
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)"
+            ctx.fillRect(0, 0, w, h)
+
+            // Grid lines at 30 and 60 fps
+            ctx.strokeStyle = "rgba(255,255,255,0.1)"
+            ctx.lineWidth = 0.5
+            ctx.setLineDash([2, 2])
+            const y60 = h - (60 / 120) * h
+            const y30 = h - (30 / 120) * h
+            ctx.beginPath()
+            ctx.moveTo(0, y60)
+            ctx.lineTo(w, y60)
+            ctx.moveTo(0, y30)
+            ctx.lineTo(w, y30)
+            ctx.stroke()
+            ctx.setLineDash([])
+
+            // FPS curve
+            if (samples.length > 1) {
+              ctx.beginPath()
+              const stepX = w / (maxSamples - 1)
+              for (let i = 0; i < samples.length; i++) {
+                const x = i * stepX
+                const y = h - (samples[i] / 120) * h
+                if (i === 0) ctx.moveTo(x, y)
+                else ctx.lineTo(x, y)
+              }
+              ctx.strokeStyle = currentFps >= 55 ? "#76B900" : currentFps >= 30 ? "#F59E0B" : "#EF4444"
+              ctx.lineWidth = 1.5
+              ctx.stroke()
+
+              // Fill under curve
+              ctx.lineTo((samples.length - 1) * stepX, h)
+              ctx.lineTo(0, h)
+              ctx.closePath()
+              ctx.fillStyle = currentFps >= 55 ? "rgba(118,185,0,0.1)" : currentFps >= 30 ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)"
+              ctx.fill()
+            }
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [currentFps])
+
+  const fpsColor = currentFps >= 55 ? "#76B900" : currentFps >= 30 ? "#F59E0B" : "#EF4444"
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 16,
+        left: 16,
+        zIndex: 9999,
+        borderRadius: 8,
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.1)",
+        background: "rgba(8, 10, 22, 0.85)",
+        backdropFilter: "blur(8px)",
+        pointerEvents: "none",
+      }}
+    >
+      <div style={{ padding: "4px 8px 2px", display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: fpsColor, fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+          {currentFps}
+        </span>
+        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>FPS</span>
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={160}
+        height={40}
+        style={{ display: "block", width: 160, height: 40 }}
+      />
+    </div>
+  )
+}
+
 /** Memoized background — never re-renders during playback */
 const MemoizedMockBackground = memo(MockBackground)
 const MemoizedGradientBackground = memo(GradientBackground)
@@ -3281,6 +3893,11 @@ export function App() {
   const perfMonitorEnabled = useMemo(() => {
     if (typeof window === "undefined") return false
     return new URLSearchParams(window.location.search).has("perf")
+  }, [])
+  // Enable FPS monitor via URL param: ?fps=1
+  const fpsMonitorEnabled = useMemo(() => {
+    if (typeof window === "undefined") return false
+    return new URLSearchParams(window.location.search).has("fps")
   }, [])
 
   const handlePerfReport = useCallback((_metrics: PerfMetrics, formatted: string) => {
@@ -3342,6 +3959,9 @@ export function App() {
 
           {/* Console layer — isolated rendering, manages own time state */}
           <IsolatedPlaybackConsole script={activeScript} playerRef={playerRef} />
+
+          {/* FPS monitor overlay */}
+          {fpsMonitorEnabled && <FpsMonitor />}
 
           {/* Back button */}
           <button

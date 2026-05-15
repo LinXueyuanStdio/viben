@@ -18,6 +18,8 @@ interface CountdownProps {
  *   2. Ring progress: SVG circle stroke-dashoffset counting down
  *   3. Each number: radial shockwave (expanding circle opacity ring)
  *   4. Final "0" or "GO": extra dramatic scale + glow burst
+ *   5. Tick marks: subtle rotating marks on the ring
+ *   6. Secondary pulse ring: breathing animation between transitions
  *
  * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
@@ -57,12 +59,12 @@ export function Countdown({ command }: CountdownProps) {
     config: springConfig,
   })
 
-  // Phase 1: entrance (0-22 frames) — scale in with overshoot
+  // Phase 1: entrance (0-22 frames) -- scale in with overshoot
   const entranceScale = isGo
     ? interpolate(numSpring, [0, 0.4, 0.7, 1], [0.3, 1.25, 0.95, 1.0], CLAMP)
     : interpolate(numSpring, [0, 0.5, 0.8, 1], [0.8, 1.08, 0.98, 1.0], CLAMP)
 
-  // Phase 2: exit (last 8 frames) — scale UP to 1.3 and fade out
+  // Phase 2: exit (last 8 frames) -- scale UP to 1.3 and fade out
   const exitStart = framesPerNumber - 8
   const isExiting = segmentFrame > exitStart
   const exitProgress = isExiting
@@ -94,9 +96,20 @@ export function Countdown({ command }: CountdownProps) {
   const shockwaveOpacity = interpolate(segmentFrame, [0, 5, 20], [0, 0.4, 0], CLAMP)
   const shockwaveWidth = interpolate(segmentFrame, [0, 20], [4, 1], CLAMP)
 
+  // ── Secondary shockwave (slightly delayed) ──
+  const shock2Radius = interpolate(segmentFrame, [3, 24], [0, fontSize * 1.0], CLAMP)
+  const shock2Opacity = interpolate(segmentFrame, [3, 8, 24], [0, 0.2, 0], CLAMP)
+
   // ── GO! glow burst ──
   const goGlowRadius = isGo ? interpolate(segmentFrame, [0, 15], [0, fontSize * 2], CLAMP) : 0
   const goGlowOpacity = isGo ? interpolate(segmentFrame, [0, 5, 15], [0, 0.5, 0], CLAMP) : 0
+
+  // ── Breathing pulse between transitions ──
+  const breatheScale = 1 + 0.015 * Math.sin(segmentFrame * 0.3)
+
+  // ── Tick marks on ring ──
+  const tickCount = 12
+  const tickRotation = frame * 0.5 // slow rotation
 
   // Glass plate size
   const plateSize = fontSize * 1.8
@@ -133,6 +146,7 @@ export function Countdown({ command }: CountdownProps) {
             0 0 60px ${glowColor}
           `,
           opacity: exitOpacity,
+          transform: `scale(${breatheScale})`,
         }}
       />
 
@@ -158,6 +172,18 @@ export function Countdown({ command }: CountdownProps) {
             strokeWidth={shockwaveWidth}
             opacity={shockwaveOpacity}
           />
+          {/* Secondary shockwave */}
+          {shock2Opacity > 0.01 && (
+            <circle
+              cx={plateSize * 0.75}
+              cy={plateSize * 0.75}
+              r={shock2Radius}
+              fill="none"
+              stroke={displayColor}
+              strokeWidth={1.5}
+              opacity={shock2Opacity}
+            />
+          )}
         </svg>
       )}
 
@@ -177,6 +203,36 @@ export function Countdown({ command }: CountdownProps) {
           }}
         />
       )}
+
+      {/* Tick marks ring */}
+      <svg
+        width={plateSize}
+        height={plateSize}
+        style={{
+          position: "absolute",
+          transform: `rotate(${tickRotation}deg)`,
+          opacity: exitOpacity * 0.4,
+        }}
+      >
+        {Array.from({ length: tickCount }, (_, i) => {
+          const angle = (i / tickCount) * 360 - 90
+          const rad = (angle * Math.PI) / 180
+          const innerR = ringRadius - 4
+          const outerR = ringRadius + 1
+          return (
+            <line
+              key={i}
+              x1={plateSize / 2 + innerR * Math.cos(rad)}
+              y1={plateSize / 2 + innerR * Math.sin(rad)}
+              x2={plateSize / 2 + outerR * Math.cos(rad)}
+              y2={plateSize / 2 + outerR * Math.sin(rad)}
+              stroke="rgba(255,255,255,0.3)"
+              strokeWidth={1}
+              strokeLinecap="round"
+            />
+          )
+        })}
+      </svg>
 
       {/* Circular progress ring */}
       <svg
@@ -214,7 +270,7 @@ export function Countdown({ command }: CountdownProps) {
         />
       </svg>
 
-      {/* Countdown number — scale + blur transitions */}
+      {/* Countdown number -- scale + blur transitions */}
       <div
         style={{
           position: "relative",
@@ -222,6 +278,7 @@ export function Countdown({ command }: CountdownProps) {
           fontSize: isGo ? fontSize * 0.7 : fontSize,
           fontWeight: 900,
           fontFamily: "system-ui, -apple-system, sans-serif",
+          fontVariantNumeric: "tabular-nums",
           textShadow: `
             0 2px 4px rgba(0,0,0,0.6),
             0 0 40px ${isGo ? "rgba(74,222,128,0.5)" : "rgba(255,255,255,0.3)"},
@@ -232,6 +289,7 @@ export function Countdown({ command }: CountdownProps) {
           transform: `scale(${scale})`,
           opacity: exitOpacity,
           filter: totalBlur > 0.01 ? `blur(${totalBlur}px)` : undefined,
+          letterSpacing: isGo ? 2 : -2,
         }}
       >
         {displayText}

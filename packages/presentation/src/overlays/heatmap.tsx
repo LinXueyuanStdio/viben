@@ -1,17 +1,24 @@
 import { useMemo } from "react"
-import { useCurrentFrame, useVideoConfig, spring } from "remotion"
+import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { HeatmapCommand, Point } from "../types"
-import { useEntrance, staggerDelay } from "../utils/motion"
+import { staggerDelay } from "../utils/motion"
 
-const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
+const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
+const SPRING_CELL = { damping: 18, stiffness: 120, mass: 0.8 } as const
+const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 
 interface HeatmapProps {
   command: HeatmapCommand
 }
 
 /**
- * Heatmap overlay -- Grid of colored cells with staggered reveal.
- * Parent computes all cell spring values in one pass to avoid N*M child subscriptions.
+ * Heatmap overlay -- Grid of colored cells with cinematic staggered reveal.
+ *
+ * Motion layers:
+ *   1. Container: glass morphism entrance with blur clear
+ *   2. Cells: diagonal wave stagger (top-left to bottom-right)
+ *   3. Cell glow: pulsing intensity after settle
+ *   4. Labels: fade in with subtle translateY
  *
  * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
@@ -26,7 +33,6 @@ export function Heatmap({ command }: HeatmapProps) {
   } = command
   const position = _position as Point
 
-  const entrance = useEntrance(0, 12)
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
@@ -34,6 +40,16 @@ export function Heatmap({ command }: HeatmapProps) {
 
   const rows = data.length
   const cols = data[0].length
+
+  // ── Container entrance ──
+  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
+  const containerSettled = containerProgress >= 0.999
+  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
+  const containerScale = containerSettled
+    ? 1
+    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
+  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
+  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   const labelWidth = rowLabels ? 48 : 0
   const gap = 3
@@ -52,18 +68,31 @@ export function Heatmap({ command }: HeatmapProps) {
     }))
   }, [data, colors])
 
-  // Pre-compute ALL cell spring values in parent (single useCurrentFrame subscription)
-  // Note: no useMemo -- frame changes every render so memo never caches
+  // Pre-compute ALL cell spring values in parent (diagonal wave pattern)
   const cellSprings: number[][] = []
   for (let rowIdx = 0; rowIdx < rows; rowIdx++) {
     const rowValues: number[] = []
     for (let colIdx = 0; colIdx < cols; colIdx++) {
-      const delay = staggerDelay(rowIdx * 3 + colIdx, 2) + 8
-      const val = spring({ frame: frame - delay, fps, config: SPRING_CONFIG })
-      rowValues.push(val >= 0.999 ? 1 : val)
+      // Diagonal wave: delay = (row + col) * gap
+      const delay = staggerDelay(rowIdx + colIdx, 3) + 8
+      const val = spring({ frame: frame - delay, fps, config: SPRING_CELL })
+      rowValues.push(val >= 0.999 ? 1 : Math.max(0, val))
     }
     cellSprings.push(rowValues)
   }
+
+  // Subtle glow pulse on high-value cells after all settled
+  const allSettled = frame > 8 + (rows + cols) * 3 + 20
+  const glowPhase = allSettled ? (frame - 30) * 0.08 : 0
+
+  // Label entrance
+  const labelDelay = 4
+  const labelFrame = Math.max(0, frame - labelDelay)
+  const labelSpring = frame < labelDelay ? 0 : spring({ frame: labelFrame, fps, config: SPRING_CONTAINER })
+  const labelSettled = labelSpring >= 0.999
+  const labelOpacity = labelSettled ? 1 : interpolate(labelSpring, [0, 0.4], [0, 1], CLAMP)
+
+  const uid = `heatmap-${position.x}-${position.y}`
 
   return (
     <div
@@ -71,8 +100,9 @@ export function Heatmap({ command }: HeatmapProps) {
         position: "absolute",
         left: position.x,
         top: position.y,
-        transform: `translateY(${entrance.translateY}px) scale(${entrance.scale})`,
-        opacity: entrance.opacity,
+        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
+        opacity: containerOpacity,
+        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -82,6 +112,32 @@ export function Heatmap({ command }: HeatmapProps) {
         backdropFilter: "blur(20px) saturate(180%)",
       }}
     >
+      {/* Noise texture overlay for depth */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 16,
+          opacity: 0.03,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Gradient border glow */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 16,
+          right: 16,
+          height: 1,
+          background: `linear-gradient(90deg, transparent, ${colors[1]}40, transparent)`,
+          borderRadius: 1,
+          pointerEvents: "none",
+        }}
+      />
+
       {/* Column labels */}
       {colLabels && (
         <div
@@ -90,6 +146,7 @@ export function Heatmap({ command }: HeatmapProps) {
             marginLeft: labelWidth,
             marginBottom: 6,
             gap,
+            opacity: labelOpacity,
           }}
         >
           {colLabels.slice(0, cols).map((label, i) => (
@@ -99,12 +156,14 @@ export function Heatmap({ command }: HeatmapProps) {
                 width: cellSize,
                 textAlign: "center",
                 fontSize: 9,
+                fontWeight: 600,
                 color: "rgba(255,255,255,0.6)",
                 fontFamily: "system-ui, sans-serif",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
-                letterSpacing: 0.2,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
               }}
             >
               {label}
@@ -123,6 +182,7 @@ export function Heatmap({ command }: HeatmapProps) {
                 style={{
                   width: labelWidth - 4,
                   fontSize: 9,
+                  fontWeight: 600,
                   color: "rgba(255,255,255,0.6)",
                   fontFamily: "system-ui, sans-serif",
                   textAlign: "right",
@@ -130,7 +190,9 @@ export function Heatmap({ command }: HeatmapProps) {
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
-                  letterSpacing: 0.2,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  opacity: labelOpacity,
                 }}
               >
                 {rowLabels[rowIdx] ?? ""}
@@ -138,9 +200,13 @@ export function Heatmap({ command }: HeatmapProps) {
             )}
 
             {/* Cells */}
-            {row.map((_, colIdx) => {
+            {row.map((cellVal, colIdx) => {
               const springVal = cellSprings[rowIdx]?.[colIdx] ?? 1
               const cellColor = cellColors[rowIdx]?.[colIdx] ?? colors[0]
+              // Glow intensity proportional to value for high-value cells
+              const glowIntensity = allSettled && cellVal > 0.6
+                ? 0.3 + 0.3 * Math.sin(glowPhase + rowIdx * 0.5 + colIdx * 0.7)
+                : 0
               return (
                 <div
                   key={colIdx}
@@ -150,8 +216,12 @@ export function Heatmap({ command }: HeatmapProps) {
                     borderRadius: 4,
                     background: cellColor,
                     opacity: springVal,
-                    transform: `scale(${0.6 + springVal * 0.4})`,
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0 0 ${springVal > 0.8 ? 6 : 0}px ${cellColor}44`,
+                    transform: `scale(${0.5 + springVal * 0.5})`,
+                    boxShadow: [
+                      "inset 0 1px 0 rgba(255,255,255,0.15)",
+                      springVal > 0.8 ? `0 0 ${6 + glowIntensity * 4}px ${cellColor}${Math.round((0.3 + glowIntensity) * 255).toString(16).padStart(2, "0")}` : "",
+                    ].filter(Boolean).join(", "),
+                    transition: "none",
                   }}
                 />
               )

@@ -134,6 +134,14 @@ export type PresentationCommand =
   | DonutCommand
   | StatCardCommand
   | CodeBlockCommand
+  // New Visualization Types
+  | RibbonCommand
+  | PolarAreaCommand
+  | StackedBarCommand
+  | TooltipCommand
+  | BadgeGroupCommand
+  | ScatterCommand
+  | MeterCommand
 
 /** Info card */
 export interface CardCommand {
@@ -696,6 +704,135 @@ export interface CodeBlockCommand {
   highlightLines?: number[]
 }
 
+// ─── New Visualization Types ─────────────────────────────────────
+
+/** Ribbon: flowing ribbon/banner with text (like an award ribbon) */
+export interface RibbonCommand {
+  type: "ribbon"
+  position: PositionOrTarget
+  /** Text displayed on the ribbon */
+  text: string
+  /** Ribbon width (default 240) */
+  width?: number
+  /** Ribbon color */
+  color?: string
+  /** Text color (default "#FFFFFF") */
+  textColor?: string
+  /** Font size (default 14) */
+  fontSize?: number
+  /** Ribbon variant (default "flat") */
+  variant?: "flat" | "award"
+}
+
+/** PolarArea: Polar area chart (rose chart) with animated segments */
+export interface PolarAreaCommand {
+  type: "polar-area"
+  position: PositionOrTarget
+  /** Segments with label, value, and optional color */
+  segments: Array<{ label: string; value: number; color?: string }>
+  /** Chart size in pixels (default 200) */
+  size?: number
+  /** Color palette (cycles if fewer colors than segments) */
+  colors?: string[]
+}
+
+/** StackedBar: Horizontal stacked bar chart with labels */
+export interface StackedBarCommand {
+  type: "stacked-bar"
+  position: PositionOrTarget
+  /** Bars with label and segments */
+  bars: Array<{
+    label: string
+    segments: Array<{ value: number; color: string; label?: string }>
+  }>
+  /** Total bar width (default 320) */
+  width?: number
+  /** Bar height per row (default 32) */
+  barHeight?: number
+  /** Gap between bars (default 12) */
+  gap?: number
+}
+
+/** Tooltip: contextual tooltip pointing at a target */
+export interface TooltipCommand {
+  type: "tooltip"
+  position: PositionOrTarget
+  /** Tooltip text content */
+  content: string
+  /** Arrow direction (which side the arrow points FROM) (default "top") */
+  direction?: "top" | "bottom" | "left" | "right"
+  /** Background color */
+  background?: string
+  /** Text color */
+  color?: string
+  /** Max width (default 200) */
+  maxWidth?: number
+  /** Font size (default 12) */
+  fontSize?: number
+}
+
+/** BadgeGroup: multiple animated badges in a grid/flow layout */
+export interface BadgeGroupCommand {
+  type: "badge-group"
+  position: PositionOrTarget
+  /** Array of badge items */
+  badges: Array<{ text: string; color?: string; background?: string; icon?: string }>
+  /** Layout mode (default "flow") */
+  layout?: "flow" | "grid"
+  /** Gap between badges (default 8) */
+  gap?: number
+  /** Columns for grid layout (default 3) */
+  columns?: number
+}
+
+/** Scatter: scatter plot with physics-based dot animation */
+export interface ScatterCommand {
+  type: "scatter"
+  position: PositionOrTarget
+  /** Data points with x, y coordinates */
+  points: Array<{ x: number; y: number; label?: string; color?: string; size?: number }>
+  /** Chart width (default 280) */
+  width?: number
+  /** Chart height (default 200) */
+  height?: number
+  /** Default dot color */
+  color?: string
+  /** Default dot radius (default 5) */
+  dotRadius?: number
+  /** X-axis label */
+  xLabel?: string
+  /** Y-axis label */
+  yLabel?: string
+  /** Show grid lines (default true) */
+  showGrid?: boolean
+}
+
+/** Meter: linear meter with gradient fill, tick marks, and animated needle */
+export interface MeterCommand {
+  type: "meter"
+  position: PositionOrTarget
+  /** Current value */
+  value: number
+  /** Minimum value (default 0) */
+  min?: number
+  /** Maximum value (default 100) */
+  max?: number
+  /** Meter width (default 280) */
+  width?: number
+  /** Label text */
+  label?: string
+  /** Fill color */
+  color?: string
+  /** Track background color */
+  trackColor?: string
+  /** Number of tick marks (default 5) */
+  ticks?: number
+  /** Unit suffix */
+  unit?: string
+  /** Show needle indicator (default true) */
+  showNeedle?: boolean
+}
+
 /** Player state */
 export type PlayerState = "idle" | "playing" | "paused"
 
@@ -871,6 +1008,20 @@ export function describeCommand(cmd: PresentationCommand): string {
       return `StatCard "${cmd.label}" ${cmd.before} → ${cmd.after}`
     case "code-block":
       return `CodeBlock ${cmd.code.split("\n").length} lines${cmd.language ? ` (${cmd.language})` : ""}`
+    case "ribbon":
+      return `Ribbon "${cmd.text}"`
+    case "polar-area":
+      return `PolarArea ${cmd.segments.length} segments`
+    case "stacked-bar":
+      return `StackedBar ${cmd.bars.length} bars`
+    case "tooltip":
+      return `Tooltip "${cmd.content.slice(0, 30)}"`
+    case "badge-group":
+      return `BadgeGroup ${cmd.badges.length} badges`
+    case "scatter":
+      return `Scatter ${cmd.points.length} points`
+    case "meter":
+      return `Meter ${cmd.value}${cmd.unit ?? ""}${cmd.label ? ` "${cmd.label}"` : ""}`
     case "clear":
       return "Clear canvas"
     case "wait":

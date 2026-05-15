@@ -1063,6 +1063,326 @@ export const demoSteps: PresentationStep[] = [
     size: "md",
     animate: true,
   }, "Badge: credits", undefined, { expect: { x: 708, y: 214 } }),
+
+  // ============================================================================
+  // ACT 9: NEW VISUALIZATION TYPES (182s - 240s) — Showcasing new overlay types
+  // ============================================================================
+
+  // 182s: Clear for new section
+  t(182000, { type: "clear" }, "Clear for new visualization types"),
+
+  // 183s: Ribbon — Award banner
+  t(183000, {
+    type: "ribbon",
+    position: { x: 380, y: 40 },
+    text: "NEW VISUALIZATION TYPES",
+    width: 280,
+    color: "#6366F1",
+    textColor: "#FFFFFF",
+    fontSize: 14,
+    variant: "award",
+  }, "Ribbon: section header", 192000),
+
+  // 184s: Tooltip — Explaining something
+  t(184000, {
+    type: "tooltip",
+    position: { x: 520, y: 100 },
+    content: "Seven powerful new overlay types for data storytelling",
+    direction: "bottom",
+    color: "#FFFFFF",
+    maxWidth: 220,
+    fontSize: 12,
+  }, "Tooltip: description", 192000),
+
+  // 185s: Badge Group — Technology stack
+  t(185000, {
+    type: "badge-group",
+    position: { x: 60, y: 140 },
+    badges: [
+      { text: "Ribbon", background: "#6366F1", color: "#FFFFFF" },
+      { text: "Polar Area", background: "#EC4899", color: "#FFFFFF" },
+      { text: "Stacked Bar", background: "#F59E0B", color: "#000000" },
+      { text: "Tooltip", background: "#10B981", color: "#FFFFFF" },
+      { text: "Badge Group", background: "#3B82F6", color: "#FFFFFF" },
+      { text: "Scatter", background: "#EF4444", color: "#FFFFFF" },
+      { text: "Meter", background: "#8B5CF6", color: "#FFFFFF" },
+    ],
+    layout: "flow",
+    gap: 8,
+  }, "BadgeGroup: new types list", 192000),
+
+  // 192s: Clear for charts section
+  t(192000, { type: "clear" }, "Clear for polar area + scatter"),
+
+  // 193s: Polar Area Chart — Market segments
+  t(193000, {
+    type: "polar-area",
+    position: { x: 60, y: 80 },
+    segments: [
+      { label: "GPU", value: 80, color: "#76B900" },
+      { label: "TPU", value: 45, color: "#4285F4" },
+      { label: "FPGA", value: 30, color: "#F59E0B" },
+      { label: "ASIC", value: 55, color: "#EC4899" },
+      { label: "NPU", value: 35, color: "#6366F1" },
+    ],
+    size: 220,
+  }, "PolarArea: chip types market", 204000),
+
+  // 194s: Scatter Plot — Performance vs Cost
+  t(194000, {
+    type: "scatter",
+    position: { x: 360, y: 80 },
+    points: [
+      { x: 95, y: 92, label: "H100", color: "#76B900", size: 7 },
+      { x: 80, y: 78, label: "A100", color: "#76B900", size: 5 },
+      { x: 70, y: 85, label: "MI300X", color: "#ED1C24", size: 6 },
+      { x: 55, y: 60, label: "MI250", color: "#ED1C24", size: 4 },
+      { x: 45, y: 50, label: "Gaudi3", color: "#0071C5", size: 5 },
+      { x: 85, y: 70, label: "TPUv5", color: "#4285F4", size: 6 },
+      { x: 30, y: 40, label: "910B", color: "#CF0A2C", size: 4 },
+      { x: 60, y: 55, label: "Trainium2", color: "#FF9900", size: 5 },
+    ],
+    width: 300,
+    height: 240,
+    color: "#6366F1",
+    dotRadius: 5,
+    xLabel: "Performance Score",
+    yLabel: "Cost Efficiency",
+    showGrid: true,
+  }, "Scatter: performance vs cost", 204000),
+
+  // 196s: Meter — GPU utilization
+  t(196000, {
+    type: "meter",
+    position: { x: 360, y: 360 },
+    value: 87,
+    min: 0,
+    max: 100,
+    width: 300,
+    label: "GPU Cluster Utilization",
+    color: "#76B900",
+    ticks: 5,
+    unit: "%",
+    showNeedle: true,
+  }, "Meter: GPU utilization", 204000),
+
+  // 198s: Ribbon — Performance award
+  t(198000, {
+    type: "ribbon",
+    position: { x: 60, y: 370 },
+    text: "PERFORMANCE LEADER",
+    width: 200,
+    color: "#76B900",
+    textColor: "#FFFFFF",
+    fontSize: 12,
+    variant: "award",
+  }, "Ribbon: performance leader award", 204000),
+
+  // 204s: Clear for stacked bar section
+  t(204000, { type: "clear" }, "Clear for stacked bar section"),
+
+  // 205s: Stacked Bar — Revenue breakdown
+  t(205000, {
+    type: "stacked-bar",
+    position: { x: 60, y: 80 },
+    bars: [
+      {
+        label: "NVIDIA",
+        segments: [
+          { value: 18, color: "#76B900", label: "DC" },
+          { value: 4, color: "#9ACD32", label: "Gaming" },
+          { value: 2, color: "#B8D86F", label: "Auto" },
+          { value: 2, color: "#D4E89A", label: "Other" },
+        ],
+      },
+      {
+        label: "AMD",
+        segments: [
+          { value: 3.5, color: "#ED1C24", label: "DC" },
+          { value: 2, color: "#FF4444", label: "Gaming" },
+          { value: 1.5, color: "#FF7777", label: "Embedded" },
+          { value: 1, color: "#FF9999", label: "Other" },
+        ],
+      },
+      {
+        label: "Intel",
+        segments: [
+          { value: 1, color: "#0071C5", label: "DC AI" },
+          { value: 6, color: "#3399DD", label: "Client" },
+          { value: 4, color: "#66BBEE", label: "DC Gen" },
+          { value: 2, color: "#99DDFF", label: "Other" },
+        ],
+      },
+    ],
+    width: 380,
+    barHeight: 36,
+    gap: 16,
+  }, "StackedBar: revenue breakdown by segment", 216000),
+
+  // 207s: Tooltip on stacked bar
+  t(207000, {
+    type: "tooltip",
+    position: { x: 320, y: 80 },
+    content: "NVIDIA Data Center revenue dominates at $18B/quarter, more than 2x all competitors combined.",
+    direction: "right",
+    maxWidth: 240,
+    fontSize: 11,
+  }, "Tooltip: NVIDIA DC revenue note", 216000),
+
+  // 209s: Meter — Training throughput
+  t(209000, {
+    type: "meter",
+    position: { x: 60, y: 300 },
+    value: 3200,
+    min: 0,
+    max: 4000,
+    width: 320,
+    label: "Training Throughput (TFLOPS)",
+    color: "#EC4899",
+    ticks: 4,
+    unit: "",
+    showNeedle: true,
+  }, "Meter: training throughput", 216000),
+
+  // 211s: Meter — Inference latency
+  t(211000, {
+    type: "meter",
+    position: { x: 60, y: 430 },
+    value: 2.4,
+    min: 0,
+    max: 10,
+    width: 320,
+    label: "Inference Latency",
+    color: "#10B981",
+    ticks: 5,
+    unit: "ms",
+    showNeedle: true,
+  }, "Meter: inference latency", 216000),
+
+  // 213s: Badge group with key stats
+  t(213000, {
+    type: "badge-group",
+    position: { x: 540, y: 300 },
+    badges: [
+      { text: "$26B Revenue", background: "#76B900", color: "#FFFFFF" },
+      { text: "+265% YoY", background: "#F59E0B", color: "#000000" },
+      { text: "80% Share", background: "#6366F1", color: "#FFFFFF" },
+      { text: "#1 AI Chip", background: "#EC4899", color: "#FFFFFF" },
+    ],
+    layout: "grid",
+    columns: 2,
+    gap: 8,
+  }, "BadgeGroup: key stats", 216000),
+
+  // 216s: Clear for grand finale
+  t(216000, { type: "clear" }, "Clear for visualization finale"),
+
+  // 217s: Polar Area — Investment allocation
+  t(217000, {
+    type: "polar-area",
+    position: { x: 60, y: 100 },
+    segments: [
+      { label: "R&D", value: 90, color: "#6366F1" },
+      { label: "CapEx", value: 70, color: "#EC4899" },
+      { label: "Talent", value: 60, color: "#F59E0B" },
+      { label: "M&A", value: 40, color: "#10B981" },
+      { label: "Marketing", value: 25, color: "#3B82F6" },
+      { label: "Legal", value: 15, color: "#8B5CF6" },
+    ],
+    size: 200,
+  }, "PolarArea: investment allocation", 228000),
+
+  // 218s: Scatter — AI chip generations
+  t(218000, {
+    type: "scatter",
+    position: { x: 340, y: 100 },
+    points: [
+      { x: 2020, y: 20, label: "A100", color: "#76B900", size: 5 },
+      { x: 2021, y: 35, label: "H100", color: "#76B900", size: 6 },
+      { x: 2022, y: 50, label: "H200", color: "#76B900", size: 7 },
+      { x: 2023, y: 75, label: "B100", color: "#76B900", size: 8 },
+      { x: 2024, y: 95, label: "B200", color: "#76B900", size: 9 },
+      { x: 2020, y: 15, label: "MI100", color: "#ED1C24", size: 4 },
+      { x: 2022, y: 40, label: "MI300X", color: "#ED1C24", size: 6 },
+      { x: 2024, y: 60, label: "MI400", color: "#ED1C24", size: 7 },
+    ],
+    width: 320,
+    height: 220,
+    xLabel: "Year",
+    yLabel: "Performance Index",
+    showGrid: true,
+  }, "Scatter: chip generation evolution", 228000),
+
+  // 220s: Ribbon — Final verdict
+  t(220000, {
+    type: "ribbon",
+    position: { x: 340, y: 370 },
+    text: "NVIDIA REMAINS KING",
+    width: 260,
+    color: "#76B900",
+    textColor: "#FFFFFF",
+    fontSize: 15,
+    variant: "award",
+  }, "Ribbon: final verdict", 228000),
+
+  // 222s: Stacked bar — Future market projection
+  t(222000, {
+    type: "stacked-bar",
+    position: { x: 60, y: 380 },
+    bars: [
+      {
+        label: "2024",
+        segments: [
+          { value: 80, color: "#76B900" },
+          { value: 12, color: "#ED1C24" },
+          { value: 8, color: "#6366F1" },
+        ],
+      },
+      {
+        label: "2027E",
+        segments: [
+          { value: 60, color: "#76B900" },
+          { value: 20, color: "#ED1C24" },
+          { value: 20, color: "#6366F1" },
+        ],
+      },
+    ],
+    width: 220,
+    barHeight: 28,
+    gap: 12,
+  }, "StackedBar: market share projection", 228000),
+
+  // 228s: Clear
+  t(228000, { type: "clear" }, "Final clear for new types"),
+
+  // 229s: Badge group - final summary
+  t(229000, {
+    type: "badge-group",
+    position: { x: 300, y: 280 },
+    badges: [
+      { text: "Ribbon", background: "#6366F1" },
+      { text: "Polar Area", background: "#EC4899" },
+      { text: "Stacked Bar", background: "#F59E0B", color: "#000" },
+      { text: "Tooltip", background: "#10B981" },
+      { text: "Badge Group", background: "#3B82F6" },
+      { text: "Scatter", background: "#EF4444" },
+      { text: "Meter", background: "#8B5CF6" },
+    ],
+    layout: "flow",
+    gap: 10,
+  }, "BadgeGroup: final summary of all types"),
+
+  // 230s: Ribbon — End credits
+  t(230000, {
+    type: "ribbon",
+    position: { x: 350, y: 200 },
+    text: "7 NEW OVERLAY TYPES",
+    width: 260,
+    color: "#EC4899",
+    textColor: "#FFFFFF",
+    fontSize: 16,
+    variant: "flat",
+  }, "Ribbon: end credits"),
 ]
 
 // Auto-compute total duration from steps

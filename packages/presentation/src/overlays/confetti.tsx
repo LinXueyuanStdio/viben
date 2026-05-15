@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect } from "react"
-import { useCurrentFrame, useVideoConfig, interpolate } from "remotion"
+import { useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion"
 import type { ConfettiCommand, Point } from "../types"
 
 interface ConfettiProps {
@@ -38,14 +38,25 @@ interface Particle {
   color: string
   colorEnd: string
   size: number
-  shape: "rect" | "circle"
+  shape: "rect" | "circle" | "triangle" | "star"
   depth: number // 0 = close, 1 = far (controls blur + size scaling)
+  wobbleSpeed: number // unique wobble frequency
+  wobbleAmplitude: number
 }
 
 /**
- * Confetti overlay -- Canvas-based particle burst with physics simulation.
+ * Confetti overlay -- Canvas-based particle burst with enhanced physics simulation.
+ *
+ * Premium features:
+ *   1. Four particle shapes: rect, circle, triangle, star
+ *   2. Per-particle wobble oscillation (wind effect)
+ *   3. Depth-based blur layers (near/far parallax)
+ *   4. Motion trails with decreasing opacity
+ *   5. Radial vignette glow at burst origin
+ *   6. Spring-based initial burst (acceleration curve)
+ *   7. Air resistance (exponential velocity decay)
+ *
  * Renders all particles on a single <canvas> element driven by useCurrentFrame().
- * Premium visual: gradient fills, depth-based blur, motion trails, radial vignette at burst origin.
  */
 export function Confetti({ command }: ConfettiProps) {
   const {
@@ -62,9 +73,14 @@ export function Confetti({ command }: ConfettiProps) {
 
   const lifetimeFrames = fps * 3
 
+  // Initial burst spring (gives acceleration feel at start)
+  const burstSpring = spring({ frame, fps, config: { damping: 8, stiffness: 200, mass: 0.5 } })
+  const burstMultiplier = Math.min(burstSpring * 1.2, 1)
+
   // Pre-compute particles once (stable across frames)
   const particles = useMemo((): Particle[] => {
     const rng = createRng(42)
+    const shapes: Particle["shape"][] = ["rect", "circle", "triangle", "star"]
     return Array.from({ length: count }, (_, i) => {
       const angle = rng() * Math.PI * 2
       const speed = rng() * spread * 0.06 + spread * 0.02
@@ -79,9 +95,11 @@ export function Confetti({ command }: ConfettiProps) {
         rotationSpeed: (rng() - 0.5) * 15,
         color,
         colorEnd: GRADIENT_PAIRS[color] || color,
-        size: (rng() * 8 + 4) * (1 - depth * 0.4), // far particles are smaller
-        shape: rng() > 0.5 ? "rect" : "circle",
+        size: (rng() * 8 + 4) * (1 - depth * 0.4),
+        shape: shapes[Math.floor(rng() * shapes.length)],
         depth,
+        wobbleSpeed: 0.05 + rng() * 0.08,
+        wobbleAmplitude: 2 + rng() * 4,
       }
     })
   }, [position.x, position.y, count, spread, colors])
@@ -100,14 +118,15 @@ export function Confetti({ command }: ConfettiProps) {
     if (frame > lifetimeFrames) return
 
     const gravity = 0.15
+    const airResistance = 0.98 // exponential decay per frame
     const fadeStart = lifetimeFrames * 0.6
     const globalOpacity = frame > fadeStart
       ? interpolate(frame, [fadeStart, lifetimeFrames], [1, 0], { extrapolateRight: "clamp" })
       : 1
 
-    // -- Radial vignette glow at burst origin --
-    if (frame < lifetimeFrames * 0.5) {
-      const vignetteOpacity = globalOpacity * interpolate(frame, [0, lifetimeFrames * 0.5], [0.35, 0], { extrapolateRight: "clamp" })
+    // Radial vignette glow at burst origin
+    if (frame < lifetimeFrames * 0.4) {
+      const vignetteOpacity = globalOpacity * interpolate(frame, [0, lifetimeFrames * 0.4], [0.4, 0], { extrapolateRight: "clamp" })
       const vignetteGrad = ctx.createRadialGradient(position.x, position.y, 0, position.x, position.y, spread * 1.2)
       vignetteGrad.addColorStop(0, `rgba(255, 255, 255, ${vignetteOpacity * 0.15})`)
       vignetteGrad.addColorStop(0.3, `rgba(255, 200, 150, ${vignetteOpacity * 0.08})`)
@@ -116,46 +135,75 @@ export function Confetti({ command }: ConfettiProps) {
       ctx.fillRect(0, 0, w, h)
     }
 
-    for (const p of particles) {
-      const px = p.x + p.vx * frame
-      const py = p.y + p.vy * frame + 0.5 * gravity * frame * frame
-      const rot = ((p.rotation + p.rotationSpeed * frame) * Math.PI) / 180
+    // Apply burst multiplier to effective frame for position calculation
+    const effectiveFrame = frame * burstMultiplier
 
-      // -- Motion trail: draw previous positions at lower opacity --
+    for (const p of particles) {
+      // Air resistance: velocity decays exponentially
+      const decayFactor = Math.pow(airResistance, effectiveFrame)
+      const px = p.x + p.vx * effectiveFrame * decayFactor + p.wobbleAmplitude * Math.sin(frame * p.wobbleSpeed)
+      const py = p.y + p.vy * effectiveFrame * decayFactor + 0.5 * gravity * effectiveFrame * effectiveFrame
+      const rot = ((p.rotation + p.rotationSpeed * effectiveFrame) * Math.PI) / 180
+
+      // Motion trail
       const trailSteps = 3
       for (let t = trailSteps; t >= 0; t--) {
-        const trailFrame = Math.max(0, frame - t * 2)
-        const tpx = p.x + p.vx * trailFrame
-        const tpy = p.y + p.vy * trailFrame + 0.5 * gravity * trailFrame * trailFrame
+        const trailFrame = Math.max(0, effectiveFrame - t * 2)
+        const trailDecay = Math.pow(airResistance, trailFrame)
+        const tpx = p.x + p.vx * trailFrame * trailDecay + p.wobbleAmplitude * Math.sin((frame - t * 2) * p.wobbleSpeed)
+        const tpy = p.y + p.vy * trailFrame * trailDecay + 0.5 * gravity * trailFrame * trailFrame
         const trot = ((p.rotation + p.rotationSpeed * trailFrame) * Math.PI) / 180
 
         const isMain = t === 0
-        const trailOpacity = isMain ? globalOpacity : globalOpacity * (0.12 - t * 0.03)
+        const trailOpacity = isMain ? globalOpacity : globalOpacity * (0.15 - t * 0.04)
 
         ctx.save()
         ctx.globalAlpha = trailOpacity
         ctx.translate(tpx, tpy)
         ctx.rotate(trot)
 
-        // -- Depth-based blur: far particles get subtle blur --
+        // Depth-based blur
         if (!isMain && p.depth > 0.5) {
           ctx.filter = `blur(${Math.round(p.depth * 1.5)}px)`
         } else if (isMain && p.depth > 0.6) {
           ctx.filter = `blur(${Math.round((p.depth - 0.6) * 2)}px)`
         }
 
-        // -- Gradient fill per particle --
+        // Draw shape
+        const halfSize = p.size / 2
         if (p.shape === "circle") {
-          const r = p.size / 2
-          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r)
-          grad.addColorStop(0, p.colorEnd)
-          grad.addColorStop(1, p.color)
-          ctx.fillStyle = isMain ? grad : p.color
+          const grad = isMain ? ctx.createRadialGradient(0, 0, 0, 0, 0, halfSize) : null
+          if (grad) {
+            grad.addColorStop(0, p.colorEnd)
+            grad.addColorStop(1, p.color)
+            ctx.fillStyle = grad
+          } else {
+            ctx.fillStyle = p.color
+          }
           ctx.beginPath()
-          ctx.arc(0, 0, r, 0, Math.PI * 2)
+          ctx.arc(0, 0, halfSize, 0, Math.PI * 2)
+          ctx.fill()
+        } else if (p.shape === "triangle") {
+          ctx.fillStyle = isMain ? p.colorEnd : p.color
+          ctx.beginPath()
+          ctx.moveTo(0, -halfSize)
+          ctx.lineTo(-halfSize, halfSize)
+          ctx.lineTo(halfSize, halfSize)
+          ctx.closePath()
+          ctx.fill()
+        } else if (p.shape === "star") {
+          ctx.fillStyle = isMain ? p.color : p.color
+          ctx.beginPath()
+          for (let s = 0; s < 5; s++) {
+            const angle = (s * 4 * Math.PI) / 5 - Math.PI / 2
+            const r = s % 2 === 0 ? halfSize : halfSize * 0.4
+            ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r)
+          }
+          ctx.closePath()
           ctx.fill()
         } else {
-          const hw = p.size / 2
+          // rect
+          const hw = halfSize
           const hh = (p.size * 0.6) / 2
           if (isMain) {
             const grad = ctx.createLinearGradient(-hw, -hh, hw, hh)
@@ -172,7 +220,7 @@ export function Confetti({ command }: ConfettiProps) {
         ctx.restore()
       }
     }
-  }, [frame, particles, lifetimeFrames, position.x, position.y, spread])
+  }, [frame, particles, lifetimeFrames, position.x, position.y, spread, burstMultiplier])
 
   if (frame > lifetimeFrames) return null
 

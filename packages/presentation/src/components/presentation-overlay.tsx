@@ -43,6 +43,13 @@ import { Treemap } from "../overlays/treemap"
 import { Donut } from "../overlays/donut"
 import { StatCard } from "../overlays/stat-card"
 import { CodeBlock } from "../overlays/code-block"
+import { Ribbon } from "../overlays/ribbon"
+import { PolarArea } from "../overlays/polar-area"
+import { StackedBar } from "../overlays/stacked-bar"
+import { Tooltip } from "../overlays/tooltip"
+import { BadgeGroup } from "../overlays/badge-group"
+import { Scatter } from "../overlays/scatter"
+import { Meter } from "../overlays/meter"
 
 /** Buffer frames for sequence virtualization pre-mount */
 const BUFFER_FRAMES = 5
@@ -145,6 +152,20 @@ const CommandRenderer = memo(function CommandRenderer({ command }: { command: Pr
       return <StatCard command={command} />
     case "code-block":
       return <CodeBlock command={command} />
+    case "ribbon":
+      return <Ribbon command={command} />
+    case "polar-area":
+      return <PolarArea command={command} />
+    case "stacked-bar":
+      return <StackedBar command={command} />
+    case "tooltip":
+      return <Tooltip command={command} />
+    case "badge-group":
+      return <BadgeGroup command={command} />
+    case "scatter":
+      return <Scatter command={command} />
+    case "meter":
+      return <Meter command={command} />
     case "clear":
     case "wait":
       return null

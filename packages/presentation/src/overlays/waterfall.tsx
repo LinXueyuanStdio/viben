@@ -1,18 +1,26 @@
 import { useMemo } from "react"
-import { useCurrentFrame, useVideoConfig, spring } from "remotion"
+import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { WaterfallCommand, Point } from "../types"
-import { useEntrance, staggerDelay } from "../utils/motion"
+import { staggerDelay } from "../utils/motion"
 
-const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
+const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
+const SPRING_BAR = { damping: 14, stiffness: 110, mass: 0.8 } as const
+const SPRING_LABEL = { damping: 12, stiffness: 130, mass: 0.6 } as const
+const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 
 interface WaterfallProps {
   command: WaterfallCommand
 }
 
 /**
- * Waterfall overlay -- Incremental +/- bar chart.
- * Bars stack: increases go up, decreases go down. "total" bars span from 0.
- * Parent computes all spring values in one pass to avoid N child subscriptions.
+ * Waterfall overlay -- Incremental +/- bar chart with cinematic layered entrance.
+ *
+ * Motion layers:
+ *   1. Container: glass morphism entrance with blur clear
+ *   2. Bars: staggered spring growth from zero line
+ *   3. Connection lines: draw after adjacent bars settle
+ *   4. Value labels: counter animation + fade-in
+ *   5. Glow: colored drop-shadow per bar
  *
  * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
@@ -26,11 +34,20 @@ export function Waterfall({ command }: WaterfallProps) {
   } = command
   const position = _position as Point
 
-  const entrance = useEntrance(0, 12)
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
   if (data.length === 0) return null
+
+  // ── Container entrance ──
+  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
+  const containerSettled = containerProgress >= 0.999
+  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
+  const containerScale = containerSettled
+    ? 1
+    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.9, 0.93, 1.02, 1], CLAMP)
+  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
+  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   const increaseColor = colors?.increase ?? "#22C55E"
   const decreaseColor = colors?.decrease ?? "#EF4444"
@@ -83,11 +100,29 @@ export function Waterfall({ command }: WaterfallProps) {
     return { bars, barWidth, barGap, zeroY, valToY, padding }
   }, [data, width, height, increaseColor, decreaseColor, totalColor])
 
-  // Pre-compute all spring values in parent (no useMemo -- frame changes every render)
-  const springValues = bars.map((_, i) => {
+  // Pre-compute bar spring values with stagger
+  const barSprings = bars.map((_, i) => {
     const delay = staggerDelay(i, 4) + 8
-    const val = spring({ frame: frame - delay, fps, config: SPRING_CONFIG })
-    return val >= 0.999 ? 1 : val
+    const val = spring({ frame: frame - delay, fps, config: SPRING_BAR })
+    return val >= 0.999 ? 1 : Math.max(0, val)
+  })
+
+  // Label spring values (delayed further)
+  const labelSprings = bars.map((_, i) => {
+    const delay = staggerDelay(i, 4) + 14
+    const val = spring({ frame: frame - delay, fps, config: SPRING_LABEL })
+    return val >= 0.999 ? 1 : Math.max(0, val)
+  })
+
+  // Counter animation for value labels
+  const counterDuration = 18
+  const counterValues = bars.map((bar, i) => {
+    const delay = staggerDelay(i, 4) + 14
+    const elapsed = Math.max(0, frame - delay)
+    const progress = elapsed >= counterDuration ? 1 : interpolate(elapsed, [0, counterDuration], [0, 1], CLAMP)
+    const inv = 1 - progress
+    const eased = 1 - inv * inv * inv
+    return Math.round(bar.value * eased)
   })
 
   const uid = `wf-${position.x}-${position.y}`
@@ -98,8 +133,9 @@ export function Waterfall({ command }: WaterfallProps) {
         position: "absolute",
         left: position.x,
         top: position.y,
-        transform: `translateY(${entrance.translateY}px) scale(${entrance.scale})`,
-        opacity: entrance.opacity,
+        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
+        opacity: containerOpacity,
+        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -109,15 +145,36 @@ export function Waterfall({ command }: WaterfallProps) {
         backdropFilter: "blur(20px) saturate(180%)",
       }}
     >
+      {/* Noise texture */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 16,
+          opacity: 0.03,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+          pointerEvents: "none",
+        }}
+      />
+
       <svg width={width} height={height} style={{ display: "block", overflow: "visible" }}>
         <defs>
           {/* Per-bar gradient fills */}
           {bars.map((bar, i) => (
             <linearGradient key={i} id={`${uid}-bar-${i}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={bar.color} stopOpacity={0.95} />
-              <stop offset="100%" stopColor={bar.color} stopOpacity={0.7} />
+              <stop offset="50%" stopColor={bar.color} stopOpacity={0.85} />
+              <stop offset="100%" stopColor={bar.color} stopOpacity={0.65} />
             </linearGradient>
           ))}
+          {/* Glow filter */}
+          <filter id={`${uid}-glow`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
 
         {/* Zero line -- dashed, subtle */}
@@ -126,7 +183,7 @@ export function Waterfall({ command }: WaterfallProps) {
           y1={zeroY}
           x2={width - padding.right}
           y2={zeroY}
-          stroke="rgba(255, 255, 255, 0.04)"
+          stroke="rgba(255, 255, 255, 0.06)"
           strokeWidth={1}
           strokeDasharray="4 4"
         />
@@ -138,15 +195,15 @@ export function Waterfall({ command }: WaterfallProps) {
           const prevX = padding.left + barGap + (i - 1) * (barWidth + barGap) + barWidth
           const currX = padding.left + barGap + i * (barWidth + barGap)
           const lineY = valToY(prevBar.end)
-          const springVal = springValues[i]
+          const springVal = barSprings[i]
           return (
             <line
               key={`conn-${i}`}
               x1={prevX}
               y1={lineY}
-              x2={currX}
+              x2={prevX + (currX - prevX) * springVal}
               y2={lineY}
-              stroke="rgba(255, 255, 255, 0.12)"
+              stroke="rgba(255, 255, 255, 0.15)"
               strokeWidth={1}
               strokeDasharray="3 3"
               opacity={springVal}
@@ -160,15 +217,18 @@ export function Waterfall({ command }: WaterfallProps) {
           const startY = valToY(bar.start)
           const endY = valToY(bar.end)
           const barHeight = Math.abs(endY - startY)
-          const springVal = springValues[i]
+          const springVal = barSprings[i]
+          const labelSpring = labelSprings[i]
           const animatedHeight = barHeight * springVal
           const isGrowingUp = endY < startY
           const rectY = isGrowingUp ? startY - animatedHeight : startY
           const rectHeight = Math.max(1, animatedHeight)
           const barTop = Math.min(startY, endY)
+          const counterVal = counterValues[i]
 
           return (
             <g key={i}>
+              {/* Bar with gradient fill and colored glow */}
               <rect
                 x={x}
                 y={rectY}
@@ -176,30 +236,41 @@ export function Waterfall({ command }: WaterfallProps) {
                 height={rectHeight}
                 rx={3}
                 fill={`url(#${uid}-bar-${i})`}
-                style={{ filter: `drop-shadow(0 0 4px ${bar.color}33)` }}
+                style={{ filter: `drop-shadow(0 0 6px ${bar.color}44)` }}
               />
               {/* Inner shine highlight */}
               <rect
-                x={x}
+                x={x + 1}
                 y={rectY}
-                width={barWidth}
-                height={Math.min(rectHeight, 2)}
-                rx={3}
-                fill="rgba(255,255,255,0.15)"
+                width={barWidth - 2}
+                height={Math.min(rectHeight, 3)}
+                rx={2}
+                fill="rgba(255,255,255,0.2)"
                 opacity={springVal}
               />
-              {/* Value label */}
+              {/* Side highlight for depth */}
+              <rect
+                x={x}
+                y={rectY}
+                width={1.5}
+                height={rectHeight}
+                rx={1}
+                fill="rgba(255,255,255,0.08)"
+                opacity={springVal}
+              />
+              {/* Value label with counter */}
               <text
                 x={x + barWidth / 2}
-                y={isGrowingUp ? barTop - 6 : barTop + barHeight + 14}
+                y={isGrowingUp ? barTop - 8 : barTop + barHeight + 14}
                 textAnchor="middle"
                 fill="#fff"
                 fontSize={9}
+                fontWeight={700}
                 fontFamily="system-ui, monospace"
-                opacity={springVal}
-                style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" } as React.CSSProperties}
+                opacity={labelSpring}
+                style={{ fontVariantNumeric: "tabular-nums", textShadow: "0 1px 3px rgba(0,0,0,0.5)" } as React.CSSProperties}
               >
-                {bar.value > 0 ? `+${bar.value}` : bar.value}
+                {counterVal > 0 ? `+${counterVal}` : counterVal}
               </text>
               {/* Category label */}
               <text
@@ -208,9 +279,10 @@ export function Waterfall({ command }: WaterfallProps) {
                 textAnchor="middle"
                 fill="rgba(255,255,255,0.6)"
                 fontSize={9}
+                fontWeight={600}
                 fontFamily="system-ui, sans-serif"
-                opacity={springVal}
-                letterSpacing={0.2}
+                opacity={labelSpring}
+                letterSpacing={0.3}
               >
                 {bar.label}
               </text>

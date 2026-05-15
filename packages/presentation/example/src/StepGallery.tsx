@@ -6,7 +6,7 @@ import { describeCommand } from "@viben/presentation"
 // Types & Data
 // ============================================================================
 
-type Category = "core" | "dataviz" | "narrative" | "effects"
+type Category = "core" | "dataviz" | "narrative" | "effects" | "advanced"
 
 interface StepTypeEntry {
   type: string
@@ -23,9 +23,10 @@ const CATEGORY_META: Record<Category, { label: string; color: string }> = {
   dataviz: { label: "Data Viz", color: "#6366F1" },
   narrative: { label: "Narrative", color: "#F59E0B" },
   effects: { label: "Effects", color: "#EC4899" },
+  advanced: { label: "Advanced", color: "#38BDF8" },
 }
 
-const ALL_CATEGORIES: Category[] = ["core", "dataviz", "narrative", "effects"]
+const ALL_CATEGORIES: Category[] = ["core", "dataviz", "narrative", "effects", "advanced"]
 
 // ============================================================================
 // Step type catalog -- every supported overlay type
@@ -520,6 +521,173 @@ const STEP_CATALOG: StepTypeEntry[] = [
       fontSize: 64,
     }),
   },
+
+  // ---- Advanced Data & Annotations ----
+  {
+    type: "radar",
+    category: "advanced",
+    description: "Spider/radar chart with multiple axes",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "radar",
+      position: { x: 360, y: 180 },
+      axes: [
+        { label: "Speed", value: 85 },
+        { label: "Power", value: 72 },
+        { label: "Range", value: 60 },
+        { label: "Defense", value: 90 },
+        { label: "Accuracy", value: 78 },
+        { label: "Stealth", value: 65 },
+      ],
+      color: "#6366F1",
+      fillOpacity: 0.3,
+      size: 220,
+    }),
+  },
+  {
+    type: "sankey",
+    category: "advanced",
+    description: "Flow diagram showing connections and quantities",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "sankey",
+      position: { x: 200, y: 180 },
+      nodes: [
+        { id: "organic", label: "Organic" },
+        { id: "paid", label: "Paid Ads" },
+        { id: "social", label: "Social" },
+        { id: "signup", label: "Sign Up" },
+        { id: "convert", label: "Conversion" },
+      ],
+      links: [
+        { source: "organic", target: "signup", value: 40 },
+        { source: "paid", target: "signup", value: 30 },
+        { source: "social", target: "signup", value: 20 },
+        { source: "signup", target: "convert", value: 55 },
+      ],
+      width: 520,
+      height: 280,
+    }),
+  },
+  {
+    type: "kpi",
+    category: "advanced",
+    description: "KPI metric card with trend indicator and sparkline",
+    durationMs: 4000,
+    makeCommand: () => ({
+      type: "kpi",
+      position: { x: 360, y: 240 },
+      value: 2847000,
+      label: "Monthly Revenue",
+      trend: "up" as const,
+      trendValue: "+12.5%",
+      sparkData: [20, 35, 28, 45, 42, 58, 55, 68, 72, 85],
+      color: "#10B981",
+    }),
+  },
+  {
+    type: "matrix",
+    category: "advanced",
+    description: "Comparison matrix with yes/no/partial indicators",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "matrix",
+      position: { x: 280, y: 180 },
+      columns: ["Free", "Pro", "Enterprise"],
+      rows: [
+        { label: "Unlimited projects", values: ["no" as const, "yes" as const, "yes" as const] },
+        { label: "Custom domains", values: ["no" as const, "yes" as const, "yes" as const] },
+        { label: "Analytics", values: ["partial" as const, "yes" as const, "yes" as const] },
+        { label: "API Access", values: ["no" as const, "partial" as const, "yes" as const] },
+        { label: "Priority Support", values: ["no" as const, "no" as const, "yes" as const] },
+      ],
+      width: 400,
+    }),
+  },
+  {
+    type: "annotation-group",
+    category: "advanced",
+    description: "Grouped annotations with connector lines",
+    durationMs: 4000,
+    makeCommand: () => ({
+      type: "annotation-group",
+      position: { x: 320, y: 220 },
+      items: [
+        { label: "Data Collection", color: "#6366F1" },
+        { label: "Preprocessing", color: "#8B5CF6" },
+        { label: "Model Training", color: "#A855F7" },
+        { label: "Evaluation", color: "#EC4899" },
+        { label: "Deployment", color: "#10B981" },
+      ],
+      direction: "vertical" as const,
+      connector: "bracket" as const,
+    }),
+  },
+  {
+    type: "treemap",
+    category: "dataviz",
+    description: "Rectangular treemap showing hierarchical proportions",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "treemap",
+      position: { x: 300, y: 180 },
+      data: [
+        { label: "React", value: 42, color: "#61DAFB" },
+        { label: "Vue", value: 28, color: "#42B883" },
+        { label: "Angular", value: 18, color: "#DD0031" },
+        { label: "Svelte", value: 12, color: "#FF3E00" },
+        { label: "Solid", value: 8, color: "#2C4F7C" },
+      ],
+      width: 360,
+      height: 220,
+    }),
+  },
+  {
+    type: "donut",
+    category: "dataviz",
+    description: "Ring chart with animated arc drawing",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "donut",
+      position: { x: 380, y: 200 },
+      segments: [
+        { label: "Desktop", value: 54, color: "#6366F1" },
+        { label: "Mobile", value: 32, color: "#10B981" },
+        { label: "Tablet", value: 9, color: "#F59E0B" },
+        { label: "Other", value: 5, color: "#EC4899" },
+      ],
+      size: 180,
+      innerRatio: 0.6,
+    }),
+  },
+  {
+    type: "stat-card",
+    category: "advanced",
+    description: "Before vs after comparison card with delta",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "stat-card",
+      position: { x: 360, y: 240 },
+      label: "Page Load Time",
+      before: 3200,
+      after: 890,
+      unit: "ms",
+      color: "#10B981",
+    }),
+  },
+  {
+    type: "code-block",
+    category: "advanced",
+    description: "Code snippet with syntax highlighting and line glow",
+    durationMs: 5000,
+    makeCommand: () => ({
+      type: "code-block",
+      position: { x: 280, y: 180 },
+      code: `import { spring } from "remotion";\n\nconst anim = spring({\n  frame,\n  fps: 30,\n  config: { damping: 12 },\n});`,
+      language: "typescript",
+      highlightLines: [3, 4, 5, 6],
+    }),
+  },
 ]
 
 // ============================================================================
@@ -677,6 +845,102 @@ function TypeIcon({ type, size = 28, color }: { type: string; size?: number; col
           <text x="6" y="21" fill={color} fontSize="14" fontWeight="800" opacity="0.6">A</text>
           <path d="M15 16 L20 12 M20 12 L20 16 M15 16 L20 20 M20 20 L20 16" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
           <text x="22" y="21" fill={color} fontSize="14" fontWeight="800">B</text>
+        </svg>
+      )
+    case "radar":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <polygon points="16,4 26,10 26,22 16,28 6,22 6,10" stroke={halfOpacity} strokeWidth="1" fill="none" />
+          <polygon points="16,8 22,12 22,20 16,24 10,20 10,12" stroke={halfOpacity} strokeWidth="0.8" fill="none" />
+          <polygon points="16,9 24,13 22,21 14,23 9,17 11,11" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.2" />
+          <circle cx="16" cy="9" r="1.5" fill={color} />
+          <circle cx="24" cy="13" r="1.5" fill={color} />
+          <circle cx="22" cy="21" r="1.5" fill={color} />
+        </svg>
+      )
+    case "sankey":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="4" width="4" height="10" rx="1" fill={color} opacity="0.8" />
+          <rect x="2" y="18" width="4" height="10" rx="1" fill={color} opacity="0.5" />
+          <rect x="26" y="8" width="4" height="16" rx="1" fill={color} opacity="0.7" />
+          <path d="M6 9 C14 9 18 14 26 14" stroke={color} strokeWidth="3" fill="none" opacity="0.4" />
+          <path d="M6 23 C14 23 18 18 26 18" stroke={color} strokeWidth="2.5" fill="none" opacity="0.3" />
+        </svg>
+      )
+    case "kpi":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <text x="4" y="16" fill={color} fontSize="14" fontWeight="800">$</text>
+          <text x="12" y="16" fill={color} fontSize="11" fontWeight="700">2.8M</text>
+          <path d="M4 22 L8 20 L12 21 L16 19 L20 18 L24 16 L28 14" stroke={color} strokeWidth="1.5" fill="none" opacity="0.5" strokeLinecap="round" />
+          <polyline points="24,10 28,8 28,12" stroke="#10B981" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <text x="19" y="28" fill="#10B981" fontSize="7" fontWeight="700">+12%</text>
+        </svg>
+      )
+    case "matrix":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <rect x="3" y="4" width="26" height="24" rx="2" stroke={halfOpacity} strokeWidth="1" fill="none" />
+          <line x1="3" y1="10" x2="29" y2="10" stroke={halfOpacity} strokeWidth="1" />
+          <line x1="12" y1="4" x2="12" y2="28" stroke={halfOpacity} strokeWidth="0.8" />
+          <line x1="20" y1="4" x2="20" y2="28" stroke={halfOpacity} strokeWidth="0.8" />
+          <circle cx="16" cy="16" r="2" fill="#10B981" />
+          <circle cx="24" cy="16" r="2" fill="#10B981" />
+          <circle cx="16" cy="22" r="2" fill={color} opacity="0.5" />
+          <circle cx="24" cy="22" r="2" fill="#10B981" />
+          <line x1="14" y1="16" x2="18" y2="16" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" transform="rotate(45 16 16)" />
+          <line x1="14" y1="16" x2="18" y2="16" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" transform="rotate(-45 16 16)" />
+        </svg>
+      )
+    case "annotation-group":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <rect x="4" y="5" width="10" height="6" rx="2" fill={color} opacity="0.3" stroke={color} strokeWidth="1" />
+          <rect x="4" y="13" width="10" height="6" rx="2" fill={color} opacity="0.5" stroke={color} strokeWidth="1" />
+          <rect x="4" y="21" width="10" height="6" rx="2" fill={color} opacity="0.7" stroke={color} strokeWidth="1" />
+          <path d="M14 8 L18 8 L18 24 L14 24" stroke={color} strokeWidth="1.2" fill="none" strokeLinecap="round" />
+          <line x1="18" y1="16" x2="28" y2="16" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
+        </svg>
+      )
+    case "treemap":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <rect x="3" y="3" width="14" height="16" rx="1.5" fill={color} opacity="0.7" />
+          <rect x="19" y="3" width="10" height="9" rx="1.5" fill={color} opacity="0.5" />
+          <rect x="19" y="14" width="10" height="5" rx="1.5" fill={color} opacity="0.35" />
+          <rect x="3" y="21" width="8" height="8" rx="1.5" fill={color} opacity="0.45" />
+          <rect x="13" y="21" width="16" height="8" rx="1.5" fill={color} opacity="0.25" />
+        </svg>
+      )
+    case "donut":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <path d="M16 4 A12 12 0 0 1 28 16" stroke="#6366F1" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M28 16 A12 12 0 0 1 16 28" stroke="#10B981" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M16 28 A12 12 0 0 1 4 16" stroke="#F59E0B" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M4 16 A12 12 0 0 1 16 4" stroke="#EC4899" strokeWidth="5" fill="none" strokeLinecap="round" />
+        </svg>
+      )
+    case "stat-card":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <rect x="3" y="6" width="26" height="20" rx="3" fill={color} opacity="0.08" stroke={color} strokeWidth="1.2" />
+          <text x="7" y="15" fill={color} fontSize="7" fontWeight="600" opacity="0.6">3200</text>
+          <path d="M7 18 L25 18" stroke={halfOpacity} strokeWidth="0.8" strokeDasharray="2 1" />
+          <text x="7" y="24" fill={color} fontSize="8" fontWeight="800">890</text>
+          <polyline points="21,22 23,19 25,21" stroke="#10B981" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case "code-block":
+      return (
+        <svg width={s} height={s} viewBox="0 0 32 32" fill="none">
+          <rect x="3" y="4" width="26" height="24" rx="3" fill={color} opacity="0.08" stroke={color} strokeWidth="1" />
+          <line x1="7" y1="11" x2="18" y2="11" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
+          <line x1="10" y1="15" x2="22" y2="15" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+          <line x1="10" y1="19" x2="20" y2="19" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+          <line x1="7" y1="23" x2="14" y2="23" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
+          <rect x="9" y="14" width="14" height="6" rx="1" fill="#F59E0B" opacity="0.12" />
         </svg>
       )
     case "spotlight":
@@ -913,11 +1177,45 @@ export function StepGallery({ onPlayDemo, onBack }: StepGalleryProps) {
   const [activeCategory, setActiveCategory] = useState<Category | "all">("all")
   const [search, setSearch] = useState("")
   const [sortMode, setSortMode] = useState<SortMode>("category")
+  const [focusedIndex, setFocusedIndex] = useState(-1)
   const gridRef = useRef<HTMLDivElement>(null)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
     injectGalleryStyles()
   }, [])
+
+  // Keyboard navigation
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      const cards = cardRefs.current.filter(Boolean)
+      const cols = Math.max(1, Math.floor((gridRef.current?.clientWidth ?? 800) / 274))
+
+      if (e.key === "ArrowRight") {
+        e.preventDefault()
+        setFocusedIndex((i) => Math.min(i + 1, cards.length - 1))
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        setFocusedIndex((i) => Math.max(i - 1, 0))
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault()
+        setFocusedIndex((i) => Math.min(i + cols, cards.length - 1))
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        setFocusedIndex((i) => Math.max(i - cols, 0))
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  // Focus the card when focusedIndex changes
+  useEffect(() => {
+    if (focusedIndex >= 0) {
+      cardRefs.current[focusedIndex]?.focus()
+    }
+  }, [focusedIndex])
 
   const filtered = useMemo(() => {
     let result = STEP_CATALOG
@@ -952,6 +1250,21 @@ export function StepGallery({ onPlayDemo, onBack }: StepGalleryProps) {
     },
     [onPlayDemo],
   )
+
+  const handlePlayAll = useCallback(() => {
+    const steps: PresentationStep[] = []
+    let offset = 0
+    for (const entry of filtered) {
+      const command = entry.makeCommand()
+      steps.push(makeDemoStep(command, offset, offset + entry.durationMs))
+      offset += entry.durationMs
+      steps.push(makeDemoStep({ type: "clear" }, offset))
+      offset += 500 // gap between demos
+    }
+    if (steps.length > 0) {
+      onPlayDemo(steps, offset + 500)
+    }
+  }, [filtered, onPlayDemo])
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: STEP_CATALOG.length }
@@ -1162,6 +1475,31 @@ export function StepGallery({ onPlayDemo, onBack }: StepGalleryProps) {
                 {filtered.length} result{filtered.length !== 1 ? "s" : ""}
               </span>
             )}
+
+            {/* Play All button */}
+            <button
+              type="button"
+              onClick={handlePlayAll}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                borderRadius: 8,
+                background: "rgba(99,102,241,0.15)",
+                border: "1px solid rgba(99,102,241,0.3)",
+                color: "#818CF8",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="6 3 20 12 6 21 6 3" />
+              </svg>
+              Play All ({filtered.length})
+            </button>
           </div>
         </div>
 
@@ -1257,6 +1595,7 @@ export function StepGallery({ onPlayDemo, onBack }: StepGalleryProps) {
                 entry={entry}
                 index={idx}
                 onClick={() => handlePlayDemo(entry)}
+                cardRef={(el) => { cardRefs.current[idx] = el }}
               />
             ))}
           </div>
@@ -1331,10 +1670,12 @@ const StepCard = React.memo(function StepCard({
   entry,
   index,
   onClick,
+  cardRef,
 }: {
   entry: StepTypeEntry
   index: number
   onClick: () => void
+  cardRef?: (el: HTMLDivElement | null) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const catMeta = CATEGORY_META[entry.category]
@@ -1342,6 +1683,7 @@ const StepCard = React.memo(function StepCard({
 
   return (
     <div
+      ref={cardRef}
       className="sg-card sg-fade-in"
       role="button"
       tabIndex={0}

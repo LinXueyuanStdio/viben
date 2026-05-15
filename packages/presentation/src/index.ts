@@ -48,6 +48,14 @@ export type {
   DonutCommand,
   StatCardCommand,
   CodeBlockCommand,
+  // New: Visualization Types
+  RibbonCommand,
+  PolarAreaCommand,
+  StackedBarCommand,
+  TooltipCommand,
+  BadgeGroupCommand,
+  ScatterCommand,
+  MeterCommand,
   // Core types
   Point,
   Rect,
@@ -179,6 +187,14 @@ export { Treemap } from "./overlays/treemap"
 export { Donut } from "./overlays/donut"
 export { StatCard } from "./overlays/stat-card"
 export { CodeBlock } from "./overlays/code-block"
+// New: Visualization Types
+export { Ribbon } from "./overlays/ribbon"
+export { PolarArea } from "./overlays/polar-area"
+export { StackedBar } from "./overlays/stacked-bar"
+export { Tooltip } from "./overlays/tooltip"
+export { BadgeGroup } from "./overlays/badge-group"
+export { Scatter } from "./overlays/scatter"
+export { Meter } from "./overlays/meter"
 
 // Performance monitoring
 export { createPerfMonitor, formatPerfReport } from "./utils/perf-monitor"

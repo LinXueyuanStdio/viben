@@ -1,18 +1,27 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { RadarCommand, Point } from "../types"
-import { useEntrance, staggerDelay } from "../utils/motion"
+import { staggerDelay } from "../utils/motion"
 
-const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
+const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
+const SPRING_POLYGON = { damping: 14, stiffness: 80, mass: 1.0 } as const
+const SPRING_LABEL = { damping: 18, stiffness: 120, mass: 0.8 } as const
+const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 
 interface RadarProps {
   command: RadarCommand
 }
 
 /**
- * Radar overlay -- Spider/radar chart with animated polygon fill and staggered axis labels.
- * Uses spring physics for polygon expansion from center outward.
- * Premium visual: glass container, gradient polygon fill, glowing axis labels, refined grid.
+ * Radar overlay -- Spider/radar chart with cinematic layered entrance.
+ *
+ * Motion layers:
+ *   1. Container: glass morphism entrance with blur clear
+ *   2. Grid rings: sequential fade-in from center outward
+ *   3. Polygon: spring expansion from center with overshoot
+ *   4. Value dots: staggered elastic pop-in after polygon settles
+ *   5. Labels: staggered fade with blur clear
+ *   6. Glow pulse: value dots breathe after settle
  *
  * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
@@ -28,7 +37,16 @@ export function Radar({ command }: RadarProps) {
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-  const containerEntrance = useEntrance(0, 12)
+
+  // ── Container entrance ──
+  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
+  const containerSettled = containerProgress >= 0.999
+  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
+  const containerScale = containerSettled
+    ? 1
+    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
+  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
+  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   const axisCount = axes.length
 
@@ -81,36 +99,62 @@ export function Radar({ command }: RadarProps) {
 
   const { cx, cy, radius, rings, axisEndpoints, valuePoints, labelPositions } = geometry
 
-  // Polygon fill expansion (spring-based)
-  const fillProgress = spring({
-    frame: frame - 8,
-    fps,
-    config: { damping: 14, stiffness: 80, mass: 1.0 },
-  })
-  const clampedFill = Math.min(1, Math.max(0, fillProgress))
-
-  // Per-label opacity with stagger
-  const labelOpacities = axes.map((_, i) => {
-    const delay = staggerDelay(i, 3) + 5
-    const progress = spring({ frame: frame - delay, fps, config: SPRING_CONFIG })
+  // ── Grid ring entrances (staggered from center) ──
+  const ringOpacities = rings.map((_, i) => {
+    const delay = 4 + i * 3
+    const progress = spring({ frame: frame - delay, fps, config: SPRING_CONTAINER })
     return progress >= 0.999 ? 1 : Math.max(0, progress)
   })
+
+  // ── Polygon fill expansion (spring-based with overshoot) ──
+  const fillDelay = 8
+  const fillFrame = Math.max(0, frame - fillDelay)
+  const fillProgress = frame < fillDelay ? 0 : spring({ frame: fillFrame, fps, config: SPRING_POLYGON })
+  const fillSettled = fillProgress >= 0.999
+  const clampedFill = fillSettled ? 1 : interpolate(fillProgress, [0, 0.7, 0.9, 1], [0, 0.75, 1.03, 1], CLAMP)
+
+  // ── Value dot entrances (staggered elastic) ──
+  const dotEntrances = axes.map((_, i) => {
+    const delay = staggerDelay(i, 3) + 16
+    const progress = spring({ frame: frame - delay, fps, config: { damping: 10, stiffness: 160, mass: 0.5 } })
+    const settled = progress >= 0.999
+    return {
+      scale: settled ? 1 : interpolate(progress, [0, 0.4, 0.7, 1], [0, 1.3, 0.9, 1], CLAMP),
+      opacity: settled ? 1 : interpolate(progress, [0, 0.2], [0, 1], CLAMP),
+    }
+  })
+
+  // ── Label entrances with stagger ──
+  const labelEntrances = axes.map((_, i) => {
+    const delay = staggerDelay(i, 3) + 12
+    const progress = spring({ frame: frame - delay, fps, config: SPRING_LABEL })
+    const settled = progress >= 0.999
+    return {
+      opacity: settled ? 1 : interpolate(progress, [0, 0.4], [0, 1], CLAMP),
+      blur: settled ? 0 : (1 - Math.max(0, progress)) * 3,
+    }
+  })
+
+  // ── Dot glow pulse after settle ──
+  const glowPhase = frame * 0.08
 
   // Build the value polygon path with animation
   const polygonPath = useMemo(() => {
     if (clampedFill <= 0) return ""
+    const actualFill = Math.min(clampedFill, 1)
     return valuePoints
       .map((pt, i) => {
-        const x = cx + (pt.x - cx) * clampedFill
-        const y = cy + (pt.y - cy) * clampedFill
+        const x = cx + (pt.x - cx) * actualFill
+        const y = cy + (pt.y - cy) * actualFill
         return `${i === 0 ? "M" : "L"} ${x} ${y}`
       })
       .join(" ") + " Z"
   }, [valuePoints, cx, cy, clampedFill])
 
-  // Unique gradient ID
-  const gradId = `radar-fill-${size}`
-  const glowId = `radar-glow-${size}`
+  // Unique gradient IDs
+  const gradId = `radar-fill-${position.x}-${position.y}`
+  const glowId = `radar-glow-${position.x}-${position.y}`
+  const strokeGradId = `radar-stroke-${position.x}-${position.y}`
 
   return (
     <div
@@ -118,25 +162,44 @@ export function Radar({ command }: RadarProps) {
         position: "absolute",
         left: position.x,
         top: position.y,
+        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
+        opacity: containerOpacity,
+        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
+        willChange: "transform, opacity",
         background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.92) 70%)",
         borderRadius: 14,
         border: "1px solid rgba(255, 255, 255, 0.1)",
-        boxShadow: "0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
+        boxShadow: `0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 60px ${color}10`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         padding: 16,
-        opacity: containerEntrance.opacity,
-        transform: `translateY(${containerEntrance.translateY}px) scale(${containerEntrance.scale})`,
-        willChange: "transform, opacity",
       }}
     >
+      {/* Noise texture */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 14,
+          opacity: 0.03,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+          pointerEvents: "none",
+        }}
+      />
+
       <svg width={size} height={size} style={{ overflow: "visible" }}>
         <defs>
           {/* Radial gradient for polygon fill */}
           <radialGradient id={gradId} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={color} stopOpacity={fillOpacity * 1.5} />
-            <stop offset="100%" stopColor={color} stopOpacity={fillOpacity * 0.5} />
+            <stop offset="0%" stopColor={color} stopOpacity={fillOpacity * 1.8} />
+            <stop offset="70%" stopColor={color} stopOpacity={fillOpacity} />
+            <stop offset="100%" stopColor={color} stopOpacity={fillOpacity * 0.4} />
           </radialGradient>
+          {/* Stroke gradient */}
+          <linearGradient id={strokeGradId} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={1} />
+            <stop offset="100%" stopColor={adjustColor(color, 40)} stopOpacity={0.8} />
+          </linearGradient>
           {/* Glow filter for value dots */}
           <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -147,7 +210,7 @@ export function Radar({ command }: RadarProps) {
           </filter>
         </defs>
 
-        {/* Grid rings with refined styling */}
+        {/* Grid rings with staggered entrance */}
         {rings.map((ringScale, i) => (
           <polygon
             key={i}
@@ -158,6 +221,7 @@ export function Radar({ command }: RadarProps) {
             stroke="rgba(255, 255, 255, 0.06)"
             strokeWidth={i === rings.length - 1 ? 1.5 : 0.5}
             strokeDasharray={i === rings.length - 1 ? "none" : "3 3"}
+            opacity={ringOpacities[i]}
           />
         ))}
 
@@ -169,8 +233,9 @@ export function Radar({ command }: RadarProps) {
             y1={cy}
             x2={ep.x}
             y2={ep.y}
-            stroke="rgba(255, 255, 255, 0.1)"
+            stroke="rgba(255, 255, 255, 0.08)"
             strokeWidth={0.8}
+            opacity={ringOpacities[0]}
           />
         ))}
 
@@ -179,27 +244,45 @@ export function Radar({ command }: RadarProps) {
           <path
             d={polygonPath}
             fill={`url(#${gradId})`}
-            fillOpacity={clampedFill}
-            stroke={color}
+            fillOpacity={Math.min(clampedFill, 1)}
+            stroke={`url(#${strokeGradId})`}
             strokeWidth={2}
-            strokeOpacity={clampedFill}
+            strokeOpacity={Math.min(clampedFill, 1)}
+            strokeLinejoin="round"
             style={{ filter: `drop-shadow(0 0 8px ${color}40)` }}
           />
         )}
 
-        {/* Value dots with glow */}
+        {/* Value dots with elastic pop-in and glow pulse */}
         {valuePoints.map((pt, i) => {
-          const x = cx + (pt.x - cx) * clampedFill
-          const y = cy + (pt.y - cy) * clampedFill
+          const actualFill = Math.min(clampedFill, 1)
+          const x = cx + (pt.x - cx) * actualFill
+          const y = cy + (pt.y - cy) * actualFill
+          const dotEntrance = dotEntrances[i]
+          const glowIntensity = dotEntrance.scale >= 0.99
+            ? 0.15 + 0.1 * Math.sin(glowPhase + i * 0.8)
+            : 0
           return (
-            <g key={i}>
-              {/* Glow halo */}
+            <g key={i} opacity={dotEntrance.opacity}>
+              {/* Glow halo (pulsing) */}
               <circle
                 cx={x}
                 cy={y}
-                r={8}
+                r={8 + glowIntensity * 4}
                 fill={color}
-                opacity={clampedFill * 0.15}
+                opacity={glowIntensity}
+              />
+              {/* Outer ring */}
+              <circle
+                cx={x}
+                cy={y}
+                r={5}
+                fill="none"
+                stroke={color}
+                strokeWidth={1}
+                opacity={dotEntrance.opacity * 0.4}
+                transform={`scale(${dotEntrance.scale})`}
+                style={{ transformOrigin: `${x}px ${y}px` }}
               />
               {/* Dot */}
               <circle
@@ -207,8 +290,9 @@ export function Radar({ command }: RadarProps) {
                 cy={y}
                 r={4}
                 fill={color}
-                opacity={clampedFill}
                 filter={`url(#${glowId})`}
+                transform={`scale(${dotEntrance.scale})`}
+                style={{ transformOrigin: `${x}px ${y}px` }}
               />
               {/* Bright center */}
               <circle
@@ -216,17 +300,20 @@ export function Radar({ command }: RadarProps) {
                 cy={y}
                 r={1.5}
                 fill="#fff"
-                opacity={clampedFill * 0.8}
+                opacity={dotEntrance.opacity * 0.8}
+                transform={`scale(${dotEntrance.scale})`}
+                style={{ transformOrigin: `${x}px ${y}px` }}
               />
             </g>
           )
         })}
 
-        {/* Axis labels with glow effect */}
+        {/* Axis labels with blur-clear entrance */}
         {axes.map((axis, i) => {
           const lp = labelPositions[i]
+          const labelEntrance = labelEntrances[i]
           return (
-            <g key={i} opacity={labelOpacities[i]}>
+            <g key={i} opacity={labelEntrance.opacity}>
               {/* Label glow */}
               <text
                 x={lp.x}
@@ -238,7 +325,7 @@ export function Radar({ command }: RadarProps) {
                 fontFamily="system-ui, -apple-system, sans-serif"
                 fontWeight={600}
                 opacity={0.3}
-                style={{ filter: "blur(4px)" }}
+                style={{ filter: `blur(${4 + labelEntrance.blur}px)` }}
               >
                 {axis.label}
               </text>
@@ -252,8 +339,24 @@ export function Radar({ command }: RadarProps) {
                 fontSize={11}
                 fontFamily="system-ui, -apple-system, sans-serif"
                 fontWeight={600}
+                style={{ filter: labelEntrance.blur > 0.01 ? `blur(${labelEntrance.blur}px)` : undefined }}
               >
                 {axis.label}
+              </text>
+              {/* Value text below label */}
+              <text
+                x={lp.x}
+                y={lp.y + 13}
+                textAnchor={lp.anchor}
+                dominantBaseline="central"
+                fill="rgba(255, 255, 255, 0.45)"
+                fontSize={9}
+                fontFamily="system-ui, monospace"
+                fontWeight={600}
+                letterSpacing={0.3}
+                style={{ fontVariantNumeric: "tabular-nums" } as React.CSSProperties}
+              >
+                {axis.value}
               </text>
             </g>
           )
@@ -261,4 +364,13 @@ export function Radar({ command }: RadarProps) {
       </svg>
     </div>
   )
+}
+
+/** Lighten/shift a hex color for gradient end stop */
+function adjustColor(hex: string, amount: number): string {
+  const num = parseInt(hex.replace("#", ""), 16)
+  const r = Math.min(255, ((num >> 16) & 0xff) + amount)
+  const g = Math.min(255, ((num >> 8) & 0xff) + amount)
+  const b = Math.min(255, (num & 0xff) + amount)
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`
 }
