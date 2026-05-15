@@ -60,7 +60,8 @@ export type SettingsSection =
   | "voice"
   | "storage"
   | "developer"
-  | "about";
+  | "about"
+  | "tradingAccounts";
 
 // ─── DesktopLocation (formerly location.ts) ──────────────────────────────────
 
@@ -289,6 +290,7 @@ export const SETTINGS_SECTION_DESCRIPTORS: SettingsSectionDescriptor[] = [
   { id: "settings:storage", section: "storage", routePath: "storage", titleKey: "settings.sections.storage", fallbackLabel: "Storage", icon: { type: "lucide", value: "hard-drive" } },
   { id: "settings:developer", section: "developer", routePath: "developer", titleKey: "settings.sections.developer", fallbackLabel: "Developer", icon: { type: "lucide", value: "bug" } },
   { id: "settings:about", section: "about", routePath: "about", titleKey: "settings.sections.about", fallbackLabel: "About", icon: { type: "lucide", value: "info" } },
+  { id: "settings:tradingAccounts", section: "tradingAccounts", routePath: "tradingAccounts", titleKey: "settings.sections.tradingAccounts", fallbackLabel: "Trading Accounts", icon: { type: "lucide", value: "arrow-left-right" } },
 ];
 
 export const VALID_SETTINGS_SECTIONS = SETTINGS_SECTION_DESCRIPTORS.map(

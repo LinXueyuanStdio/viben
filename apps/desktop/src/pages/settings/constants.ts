@@ -17,6 +17,7 @@ import {
   Type,
   Layers,
   Mic,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Boxes } from "lucide-react";
 import type { SettingsSection, SectionConfig } from "./types";
@@ -47,6 +48,7 @@ const SETTINGS_ICON_COMPONENTS = {
   "hard-drive": HardDrive,
   bug: Bug,
   info: Info,
+  "arrow-left-right": ArrowLeftRight,
 } as const;
 
 export const DEFAULT_SETTINGS_SECTION: SettingsSection = "general";
