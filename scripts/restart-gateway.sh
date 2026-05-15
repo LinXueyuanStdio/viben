@@ -123,17 +123,28 @@ log "INFO" "=========================================="
 log_system_info
 
 # ============================================================
-# Build core package and re-link CLI
+# Build core package dependencies and re-link CLI
 # ============================================================
 
 CORE_DIR="$PROJECT_ROOT/packages/core"
 
-log "INFO" "Building @viben/core..."
-(cd "$PROJECT_ROOT" && pnpm --filter @viben/core build) >> "$RESTART_LOG" 2>&1
-if [ $? -ne 0 ]; then
-    log "ERROR" "Failed to build @viben/core"
+log "INFO" "Building @viben/core workspace dependencies..."
+BUILD_OUTPUT=$("$SCRIPT_DIR/build-deps.sh" "$CORE_DIR" 2>&1) || {
+    log "ERROR" "Failed to build @viben/core dependencies"
+    echo "$BUILD_OUTPUT" | tee -a "$RESTART_LOG"
     exit 1
-fi
+}
+echo "$BUILD_OUTPUT" >> "$RESTART_LOG"
+echo "$BUILD_OUTPUT" | grep -E "^  (📦|✓)" || true
+
+# Always rebuild core itself (gateway needs latest code)
+log "INFO" "Rebuilding @viben/core..."
+BUILD_OUTPUT=$(cd "$CORE_DIR" && pnpm build 2>&1) || {
+    log "ERROR" "Failed to build @viben/core"
+    echo "$BUILD_OUTPUT" | tee -a "$RESTART_LOG"
+    exit 1
+}
+echo "$BUILD_OUTPUT" >> "$RESTART_LOG"
 log "INFO" "Build successful"
 
 log "INFO" "Linking viben CLI..."
@@ -143,11 +154,11 @@ log "INFO" "Linking viben CLI..."
 # Stop & Restart Gateway
 # ============================================================
 
-# Kill existing gateway processes
+# Kill existing gateway processes (scoped to this project)
 log "INFO" "Stopping existing gateway processes..."
-kill_processes "viben.*gateway" && sleep 0.5 || log "DEBUG" "No viben gateway process found"
-kill_processes "node.*gateway.*start" && sleep 0.5 || log "DEBUG" "No node gateway process found"
-sleep 1
+kill_processes "viben.*gateway.*start" && sleep 0.5 || log "DEBUG" "No viben gateway process found"
+kill_processes "packages/core.*gateway.*start" && sleep 0.5 || log "DEBUG" "No node gateway process found"
+sleep 0.5
 
 # Verify port is free
 if check_port $PORT; then

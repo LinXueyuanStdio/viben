@@ -20,16 +20,15 @@ echo "🔄 Restarting Viben Desktop..."
 echo "  Killing processes on port 1420..."
 lsof -ti:1420 | xargs kill -9 2>/dev/null || true
 
-echo "  Killing Tauri processes..."
-pkill -9 -f "tauri" 2>/dev/null || true
-
-echo "  Killing Vite processes..."
-pkill -9 -f "vite" 2>/dev/null || true
-
-echo "  Killing viben-desktop processes..."
+echo "  Killing viben-desktop Tauri processes..."
 pkill -9 -f "viben-desktop" 2>/dev/null || true
 
-sleep 2
+echo "  Killing desktop-related Vite/Tauri processes..."
+pkill -9 -f "apps/desktop.*vite" 2>/dev/null || true
+pkill -9 -f "tauri.*apps/desktop" 2>/dev/null || true
+pkill -9 -f "cargo.*viben-desktop" 2>/dev/null || true
+
+sleep 1
 
 if lsof -i:1420 > /dev/null 2>&1; then
   echo "❌ Error: Port 1420 is still in use"

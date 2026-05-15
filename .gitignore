@@ -292,3 +292,4 @@ core.*
 /pages/
 /docs/references.claude/worktrees/
 infra/claude-code/
+.superpowers/
