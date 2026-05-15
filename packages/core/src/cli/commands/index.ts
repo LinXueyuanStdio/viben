@@ -30,6 +30,7 @@ import { registerEvoCommand } from "./evo";
 import { registerIndexCommand } from "./index-cmd";
 import { registerLoginCommand } from "./login";
 import { registerPageCommand } from "./page";
+import { registerAccountCommand } from "./account";
 
 /**
  * Register all commands on the program
@@ -62,4 +63,5 @@ export function registerCommands(program: Command): void {
   registerIndexCommand(program);
   registerLoginCommand(program);
   registerPageCommand(program);
+  registerAccountCommand(program);
 }
