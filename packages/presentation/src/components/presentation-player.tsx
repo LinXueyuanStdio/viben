@@ -1,10 +1,14 @@
-import { forwardRef, useState, useEffect, useRef, useCallback, memo, useMemo } from "react"
+import { forwardRef, useState, useEffect, useRef, memo, useMemo } from "react"
 import { Player, type PlayerRef } from "@remotion/player"
 import type { PresentationStep } from "../types"
 import { msToFrame } from "../utils/motion"
+import { computeTotalMs } from "../utils/timeline"
+import { usePlaybackState } from "../hooks/use-playback-state"
 import { PresentationOverlay } from "./presentation-overlay"
 import { PerfProfiler } from "./perf-profiler"
 import { OverlayLogger } from "./overlay-logger"
+import { TransportBar } from "./transport-bar"
+import { TimelinePanel } from "./timeline-panel"
 import type { PerfMetrics } from "../utils/perf-monitor"
 
 export interface PresentationPlayerProps {
@@ -24,15 +28,24 @@ export interface PresentationPlayerProps {
   enablePerfMonitor?: boolean
   /** Callback with perf metrics when monitor reports */
   onPerfReport?: (metrics: PerfMetrics, formatted: string) => void
+  /** Show built-in transport bar (default false) */
+  showTransport?: boolean
+  /** Show timeline lanes panel (default false) */
+  showTimeline?: boolean
+  /** Transport bar position (default 'bottom') */
+  transportPosition?: "top" | "bottom"
+  /** Timeline panel position (default 'bottom') */
+  timelinePosition?: "top" | "bottom"
+  /** Timeline panel height in px (default 140) */
+  timelineHeight?: number
+  /** Callback when active step changes */
+  onStepChange?: (step: PresentationStep | null, index: number) => void
+  /** Callback on time update (~30fps polling) */
+  onTimeUpdate?: (currentMs: number) => void
   /** Additional style for the overlay container */
   style?: React.CSSProperties
   /** Class name */
   className?: string
-}
-
-function computeTotalMs(steps: PresentationStep[]): number {
-  if (steps.length === 0) return 3000
-  return Math.max(...steps.map((s) => Math.max(s.startMs, s.endMs ?? s.startMs))) + 2000
 }
 
 const IS_DEV = typeof process !== "undefined" && process.env?.NODE_ENV !== "production"
@@ -80,28 +93,41 @@ const PLAYER_STYLE_NO_CONTROLS: React.CSSProperties = { width: "100%", height: "
  * It renders only the annotation overlays with a transparent background.
  * Uses the container's actual dimensions as composition size to ensure
  * coordinates match the underlying DOM layout exactly.
+ *
+ * Optional: enable `showTransport` and/or `showTimeline` for built-in UI controls.
  */
 export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerProps>(
   function PresentationPlayer(
     {
       steps,
       fps = 30,
-      totalDurationMs,
+      totalDurationMs: totalDurationMsProp,
       controls = true,
       autoPlay = false,
       enableLogger = IS_DEV,
       enablePerfMonitor = false,
       onPerfReport,
+      showTransport = false,
+      showTimeline = false,
+      transportPosition = "bottom",
+      timelinePosition = "bottom",
+      timelineHeight = 140,
+      onStepChange,
+      onTimeUpdate,
       style,
       className,
     },
     ref,
   ) {
     const containerRef = useRef<HTMLDivElement>(null)
+    const internalPlayerRef = useRef<PlayerRef>(null)
     const [size, setSize] = useState<{ width: number; height: number }>({
       width: typeof window !== "undefined" ? window.innerWidth : 1920,
       height: typeof window !== "undefined" ? window.innerHeight : 1080,
     })
+
+    // Use the forwarded ref or the internal one
+    const playerRef = (ref as React.RefObject<PlayerRef | null>) ?? internalPlayerRef
 
     // Measure container to set composition dimensions
     useEffect(() => {
@@ -127,8 +153,40 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       return () => observer.disconnect()
     }, [])
 
-    const durationMs = totalDurationMs ?? computeTotalMs(steps)
+    const durationMs = totalDurationMsProp ?? computeTotalMs(steps)
     const durationInFrames = Math.max(1, msToFrame(durationMs, fps))
+
+    // Playback state for transport/timeline
+    const playback = usePlaybackState(playerRef, fps, durationMs)
+
+    // Fire onTimeUpdate callback
+    const prevMsRef = useRef(-1)
+    useEffect(() => {
+      if (onTimeUpdate && playback.currentMs !== prevMsRef.current) {
+        prevMsRef.current = playback.currentMs
+        onTimeUpdate(playback.currentMs)
+      }
+    }, [playback.currentMs, onTimeUpdate])
+
+    // Fire onStepChange callback
+    const prevStepIdRef = useRef<string>("")
+    useEffect(() => {
+      if (!onStepChange) return
+      // Find current active step
+      let activeIdx = -1
+      for (let i = steps.length - 1; i >= 0; i--) {
+        if (steps[i].startMs <= playback.currentMs) {
+          activeIdx = i
+          break
+        }
+      }
+      const step = activeIdx >= 0 ? steps[activeIdx] : null
+      const stepId = step?.id ?? ""
+      if (stepId !== prevStepIdRef.current) {
+        prevStepIdRef.current = stepId
+        onStepChange(step, activeIdx)
+      }
+    }, [playback.currentMs, steps, onStepChange])
 
     // Memoize inputProps to prevent Player from re-rendering composition on every parent render
     const inputProps = useMemo(
@@ -136,8 +194,10 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       [steps, enableLogger, enablePerfMonitor, onPerfReport, fps],
     )
 
-    // Stable player style
-    const playerStyle = controls ? PLAYER_STYLE_CONTROLS : PLAYER_STYLE_NO_CONTROLS
+    // Determine if Remotion native controls should show
+    // When showTransport is enabled, hide native controls to avoid double UI
+    const effectiveControls = showTransport ? false : controls
+    const playerStyle = effectiveControls ? PLAYER_STYLE_CONTROLS : PLAYER_STYLE_NO_CONTROLS
 
     return (
       <div
@@ -152,7 +212,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       >
         {size.width > 0 && size.height > 0 && (
           <Player
-            ref={ref}
+            ref={playerRef as React.Ref<PlayerRef>}
             component={OverlayComposition}
             inputProps={inputProps}
             durationInFrames={durationInFrames}
@@ -160,8 +220,33 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
             compositionWidth={size.width}
             compositionHeight={size.height}
             style={playerStyle}
-            controls={controls}
+            controls={effectiveControls}
             autoPlay={autoPlay}
+          />
+        )}
+
+        {/* Built-in Transport Bar */}
+        {showTransport && (
+          <TransportBar
+            playerRef={playerRef}
+            steps={steps}
+            playback={playback}
+            fps={fps}
+            totalDurationMs={durationMs}
+            position={transportPosition}
+          />
+        )}
+
+        {/* Built-in Timeline Panel */}
+        {showTimeline && (
+          <TimelinePanel
+            playerRef={playerRef}
+            steps={steps}
+            playback={playback}
+            fps={fps}
+            totalDurationMs={durationMs}
+            height={timelineHeight}
+            position={timelinePosition}
           />
         )}
       </div>

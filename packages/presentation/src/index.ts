@@ -196,6 +196,22 @@ export { BadgeGroup } from "./overlays/badge-group"
 export { Scatter } from "./overlays/scatter"
 export { Meter } from "./overlays/meter"
 
+// Timeline utilities
+export {
+  computeTotalMs,
+  formatTime,
+  getStepEndMs,
+  buildTimelineLanes,
+  getActiveSteps,
+  getCurrentStepIndex,
+  commandColor,
+} from "./utils/timeline"
+export type { TimelineItem, TimelineLane } from "./utils/timeline"
+
+// Playback state hook
+export { usePlaybackState } from "./hooks/use-playback-state"
+export type { PlaybackState } from "./hooks/use-playback-state"
+
 // Performance monitoring
 export { createPerfMonitor, formatPerfReport } from "./utils/perf-monitor"
 export type { PerfMetrics, PerfMonitor } from "./utils/perf-monitor"
@@ -205,6 +221,12 @@ export type { PerfProfilerProps } from "./components/perf-profiler"
 // Dev logger (isolated from render path, uses requestIdleCallback)
 export { OverlayLogger } from "./components/overlay-logger"
 export type { OverlayLoggerProps } from "./components/overlay-logger"
+
+// UI components (optional built-in controls)
+export { TransportBar } from "./components/transport-bar"
+export type { TransportBarProps } from "./components/transport-bar"
+export { TimelinePanel } from "./components/timeline-panel"
+export type { TimelinePanelProps } from "./components/timeline-panel"
 
 // Main components
 export { PresentationLayer } from "./components/presentation-layer"

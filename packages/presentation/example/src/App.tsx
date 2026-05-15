@@ -8,8 +8,14 @@ import {
   describeCommand,
   frameToMs,
   msToFrame,
+  computeTotalMs,
+  buildTimelineLanes,
+  getActiveSteps,
+  getCurrentStepIndex,
+  commandColor,
+  formatTime,
 } from "@viben/presentation"
-import type { PerfMetrics } from "@viben/presentation"
+import type { PerfMetrics, TimelineItem, TimelineLane } from "@viben/presentation"
 import type { PresentationStep, PlayerRef } from "@viben/presentation"
 import {
   createJSONEditor,
@@ -21,6 +27,8 @@ import "vanilla-jsoneditor/themes/jse-theme-dark.css"
 import { demoSteps, TOTAL_DURATION_MS } from "./demo-steps"
 import { MockBackground } from "./MockBackground"
 import { StepGallery } from "./StepGallery"
+import { stepsToBashScript } from "./steps-to-bash"
+import { createPresentationBash } from "./bash-integration"
 
 const FPS = 30
 type JsonMode = "tree" | "text" | "table"
@@ -233,32 +241,6 @@ interface Script {
   useBackground: boolean
 }
 
-interface TimelineItem {
-  step: PresentationStep
-  startMs: number
-  endMs: number
-  lane: number
-}
-
-interface TimelineLane {
-  id: string
-  label: string
-  items: TimelineItem[]
-}
-
-function computeTotalMs(steps: PresentationStep[]): number {
-  if (steps.length === 0) return 0
-  return Math.max(...steps.map((s) => Math.max(s.startMs, s.endMs ?? s.startMs))) + 2000
-}
-
-function formatTime(ms: number): string {
-  const safeMs = Math.max(0, Math.round(ms))
-  const totalSeconds = Math.floor(safeMs / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  const tenths = Math.floor((safeMs % 1000) / 100)
-  return `${minutes}:${seconds.toString().padStart(2, "0")}.${tenths}`
-}
 
 function formatTimeWithFlashingColon(ms: number, isPlaying: boolean): string {
   const safeMs = Math.max(0, Math.round(ms))
@@ -266,71 +248,9 @@ function formatTimeWithFlashingColon(ms: number, isPlaying: boolean): string {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   const tenths = Math.floor((safeMs % 1000) / 100)
-  // Flash colon every half-second while playing
   const colonVisible = !isPlaying || Math.floor(safeMs / 500) % 2 === 0
   const colon = colonVisible ? ":" : " "
   return `${minutes}${colon}${seconds.toString().padStart(2, "0")}.${tenths}`
-}
-
-function getStepEndMs(step: PresentationStep, totalDurationMs: number): number {
-  return Math.min(step.endMs ?? totalDurationMs, totalDurationMs)
-}
-
-function buildTimelineLanes(steps: PresentationStep[], totalDurationMs: number): TimelineLane[] {
-  const clearTimes = [...steps]
-    .filter((step) => step.command.type === "clear")
-    .map((step) => step.startMs)
-    .sort((a, b) => a - b)
-
-  const items = [...steps]
-    .filter((step) => step.command.type !== "wait")
-    .map((step): TimelineItem | null => {
-      const startMs = Math.max(0, Math.min(step.startMs, totalDurationMs))
-      const configuredEndMs = step.command.type === "clear"
-        ? Math.min(startMs + 400, totalDurationMs)
-        : getStepEndMs(step, totalDurationMs)
-      const clearAfterStart = clearTimes.find((time) => time > startMs && time <= configuredEndMs)
-      const endMs = Math.max(startMs + 120, clearAfterStart ?? configuredEndMs)
-      return endMs > startMs ? { step, startMs, endMs, lane: 0 } : null
-    })
-    .filter((item): item is TimelineItem => item !== null)
-    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs)
-
-  const laneLabels = Array.from(new Set(items.map((item) => item.step.command.type)))
-  return laneLabels.map((label) => {
-    const laneItems = items
-      .filter((item) => item.step.command.type === label)
-      .map((item, lane) => ({ ...item, lane }))
-    return { id: label, label, items: laneItems }
-  })
-}
-
-function getActiveSteps(steps: PresentationStep[], currentMs: number, totalDurationMs: number): PresentationStep[] {
-  const clearTimes = [...steps]
-    .filter((step) => step.command.type === "clear")
-    .map((step) => step.startMs)
-    .sort((a, b) => a - b)
-
-  return steps
-    .filter((step) => {
-      if (step.command.type === "wait") return false
-      if (step.command.type === "clear") {
-        return currentMs >= step.startMs && currentMs < step.startMs + 500
-      }
-      const configuredEndMs = getStepEndMs(step, totalDurationMs)
-      const clearAfterStart = clearTimes.find((time) => time > step.startMs && time <= configuredEndMs)
-      const effectiveEndMs = clearAfterStart ?? configuredEndMs
-      return currentMs >= step.startMs && currentMs < effectiveEndMs
-    })
-    .sort((a, b) => a.startMs - b.startMs)
-}
-
-function getCurrentStepIndex(steps: PresentationStep[], currentMs: number): number {
-  let currentIndex = 0
-  for (let i = 0; i < steps.length; i++) {
-    if (steps[i].startMs <= currentMs) currentIndex = i
-  }
-  return currentIndex
 }
 
 const SCRIPTS: Script[] = [
@@ -389,25 +309,6 @@ function GradientBackground() {
   return <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)" }} />
 }
 
-function commandColor(type: string): string {
-  const palette = [
-    "#76B900",
-    "#6366F1",
-    "#F59E0B",
-    "#10B981",
-    "#EC4899",
-    "#38BDF8",
-    "#F97316",
-    "#A855F7",
-    "#EF4444",
-    "#14B8A6",
-  ]
-  let hash = 0
-  for (let i = 0; i < type.length; i++) {
-    hash = (hash * 31 + type.charCodeAt(i)) % palette.length
-  }
-  return palette[Math.abs(hash) % palette.length]
-}
 
 function toEditorMode(mode: JsonMode): Mode {
   switch (mode) {
@@ -1216,6 +1117,7 @@ function PresentationPlaybackConsole({
   onToggleLoop,
   onSetPlaybackRate,
   onFrameStep,
+  onStepsChange,
 }: {
   script: Script
   currentMs: number
@@ -1234,6 +1136,7 @@ function PresentationPlaybackConsole({
   onToggleLoop: () => void
   onSetPlaybackRate: (rate: number) => void
   onFrameStep: (direction: 1 | -1) => void
+  onStepsChange: (steps: PresentationStep[], totalMs: number) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [leftCollapsed, setLeftCollapsed] = useState(false)
@@ -1380,6 +1283,8 @@ function PresentationPlaybackConsole({
               currentMs={currentMs}
               totalDurationMs={script.totalDurationMs}
               onSeek={onSeek}
+              steps={script.steps}
+              onStepsChange={onStepsChange}
             />
 
             {/* RIGHT PANEL: ActiveCommandList or collapsed strip */}
@@ -2603,11 +2508,15 @@ function TimelineTracks({
   currentMs,
   totalDurationMs,
   onSeek,
+  steps,
+  onStepsChange,
 }: {
   lanes: TimelineLane[]
   currentMs: number
   totalDurationMs: number
   onSeek: (ms: number) => void
+  steps: PresentationStep[]
+  onStepsChange: (steps: PresentationStep[], totalMs: number) => void
 }) {
   const LABEL_WIDTH = 100
   const DENSITY_BUCKETS = 120
@@ -2621,6 +2530,44 @@ function TimelineTracks({
   const viewEndMs = Math.min(totalDurationMs, viewStartMs + visibleDurationMs)
 
   const FRAME_MS = 1000 / FPS
+
+  // --- editor mode state ---
+  const [timelineMode, setTimelineMode] = useState<"timeline" | "editor">("timeline")
+  const [editorText, setEditorText] = useState("")
+  const [editorError, setEditorError] = useState<string | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+
+  const switchToEditor = useCallback(() => {
+    setEditorText(stepsToBashScript(steps))
+    setEditorError(null)
+    setTimelineMode("editor")
+  }, [steps])
+
+  const handleEditorRun = useCallback(async () => {
+    setIsRunning(true)
+    setEditorError(null)
+    try {
+      const newSteps: PresentationStep[] = []
+      let cursorMs = 0
+      const bash = createPresentationBash({
+        onStep: (step) => newSteps.push(step),
+        getCursorMs: () => cursorMs,
+        setCursorMs: (ms) => { cursorMs = ms },
+      })
+      const result = await bash.exec(editorText)
+      if (result.exitCode !== 0 && result.stderr) {
+        setEditorError(result.stderr)
+      } else if (newSteps.length > 0) {
+        onStepsChange(newSteps, cursorMs)
+      } else {
+        setEditorError("No steps produced. Check your script.")
+      }
+    } catch (err: unknown) {
+      setEditorError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setIsRunning(false)
+    }
+  }, [editorText, onStepsChange])
 
   // --- drag / hover state ---
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
@@ -3141,41 +3088,132 @@ function TimelineTracks({
       aria-label="Multi-track timeline"
       style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}
     >
-      {/* Header with zoom controls */}
+      {/* Header with mode toggle and zoom controls */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>Timeline</span>
-          <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
-            {lanes.length} tracks
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
-            {formatTime(currentMs)}
+          {/* Mode toggle buttons */}
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+            <button
+              type="button"
+              onClick={() => setTimelineMode("timeline")}
+              style={{
+                padding: "3px 8px",
+                fontSize: 10,
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+                background: timelineMode === "timeline" ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.03)",
+                color: timelineMode === "timeline" ? "#76B900" : "rgba(255,255,255,0.45)",
+                borderRight: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              Timeline
+            </button>
+            <button
+              type="button"
+              onClick={switchToEditor}
+              style={{
+                padding: "3px 8px",
+                fontSize: 10,
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+                background: timelineMode === "editor" ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.03)",
+                color: timelineMode === "editor" ? "#76B900" : "rgba(255,255,255,0.45)",
+              }}
+            >
+              Editor
+            </button>
           </div>
-          {/* Zoom level indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 5, background: zoom > 1 ? "rgba(118,185,0,0.1)" : "rgba(255,255,255,0.03)", border: zoom > 1 ? "1px solid rgba(118,185,0,0.25)" : "1px solid rgba(255,255,255,0.06)" }}>
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.6 }}>
-              <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-              <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <span style={{ fontSize: 9, fontWeight: 700, color: zoom > 1 ? "#76B900" : "rgba(255,255,255,0.45)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
-              {zoom.toFixed(1)}x
+          {timelineMode === "timeline" && (
+            <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
+              {lanes.length} tracks
             </span>
-          </div>
-          {/* Zoom buttons */}
-          <button className="pbc-zoom-btn" type="button" aria-label="Zoom out" onClick={() => { setZoom((z) => Math.max(MIN_ZOOM, z - 0.5)); lastManualPanRef.current = Date.now() }}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          </button>
-          <button className="pbc-zoom-btn" type="button" aria-label="Zoom in" onClick={() => { setZoom((z) => Math.min(MAX_ZOOM, z + 0.5)); lastManualPanRef.current = Date.now() }}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><line x1="8" y1="4" x2="8" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-          </button>
-          <button className="pbc-zoom-btn" type="button" aria-label="Fit all" title="Fit timeline to view" onClick={() => { setZoom(1); setViewCenterMs(totalDurationMs / 2) }} style={{ width: 32, fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>
-            FIT
-          </button>
+          )}
         </div>
+        {timelineMode === "timeline" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+              {formatTime(currentMs)}
+            </div>
+            {/* Zoom level indicator */}
+            <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 5, background: zoom > 1 ? "rgba(118,185,0,0.1)" : "rgba(255,255,255,0.03)", border: zoom > 1 ? "1px solid rgba(118,185,0,0.25)" : "1px solid rgba(255,255,255,0.06)" }}>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.6 }}>
+                <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <span style={{ fontSize: 9, fontWeight: 700, color: zoom > 1 ? "#76B900" : "rgba(255,255,255,0.45)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+                {zoom.toFixed(1)}x
+              </span>
+            </div>
+            {/* Zoom buttons */}
+            <button className="pbc-zoom-btn" type="button" aria-label="Zoom out" onClick={() => { setZoom((z) => Math.max(MIN_ZOOM, z - 0.5)); lastManualPanRef.current = Date.now() }}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            </button>
+            <button className="pbc-zoom-btn" type="button" aria-label="Zoom in" onClick={() => { setZoom((z) => Math.min(MAX_ZOOM, z + 0.5)); lastManualPanRef.current = Date.now() }}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><line x1="8" y1="4" x2="8" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+            </button>
+            <button className="pbc-zoom-btn" type="button" aria-label="Fit all" title="Fit timeline to view" onClick={() => { setZoom(1); setViewCenterMs(totalDurationMs / 2) }} style={{ width: 32, fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>
+              FIT
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* Editor mode */}
+      {timelineMode === "editor" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 }}>
+          <textarea
+            value={editorText}
+            onChange={(e) => setEditorText(e.target.value)}
+            spellCheck={false}
+            style={{
+              flex: 1,
+              minHeight: 180,
+              maxHeight: 260,
+              resize: "vertical",
+              fontFamily: "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
+              fontSize: 11,
+              lineHeight: 1.5,
+              padding: "8px 10px",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(0,0,0,0.4)",
+              color: "rgba(255,255,255,0.85)",
+              outline: "none",
+              whiteSpace: "pre",
+              overflowWrap: "normal",
+              overflowX: "auto",
+            }}
+          />
+          {editorError && (
+            <div style={{ fontSize: 10, color: "#f87171", padding: "4px 8px", borderRadius: 4, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>
+              {editorError}
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleEditorRun}
+              disabled={isRunning || !editorText.trim()}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 6,
+                border: "1px solid rgba(118,185,0,0.5)",
+                background: "rgba(118,185,0,0.15)",
+                color: "#76B900",
+                cursor: isRunning || !editorText.trim() ? "not-allowed" : "pointer",
+                opacity: isRunning || !editorText.trim() ? 0.5 : 1,
+              }}
+            >
+              {isRunning ? "Running..." : "\u25B6 Run"}
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Density minimap - SVG smooth curve with color coding */}
       <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, paddingRight: 10 }}>
         <div style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", paddingLeft: 8 }}>density</div>
@@ -3424,6 +3462,8 @@ function TimelineTracks({
       {zoom <= 1 && (
         <div style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", textAlign: "right", paddingRight: 4 }}>Ctrl+wheel or +/- to zoom</div>
       )}
+      </>
+      )}
     </section>
   )
 }
@@ -3441,6 +3481,12 @@ function TimelineLaneRow({
   onSeek,
   onStepHoverStart,
   onStepHoverEnd,
+  selectedBlockId: _selectedBlockId,
+  focusedBlockId: _focusedBlockId,
+  rangeMs: _rangeMs,
+  onBlockClick: _onBlockClick,
+  onBlockDoubleClick: _onBlockDoubleClick,
+  onBlockContextMenu: _onBlockContextMenu,
 }: {
   lane: TimelineLane
   viewStartMs: number
@@ -3451,6 +3497,12 @@ function TimelineLaneRow({
   onSeek: (ms: number) => void
   onStepHoverStart: (item: TimelineItem) => void
   onStepHoverEnd: () => void
+  selectedBlockId?: string | null
+  focusedBlockId?: string | null
+  rangeMs?: { start: number; end: number } | null
+  onBlockClick?: (item: TimelineItem, e: React.MouseEvent) => void
+  onBlockDoubleClick?: (item: TimelineItem, e: React.MouseEvent) => void
+  onBlockContextMenu?: (item: TimelineItem, e: React.MouseEvent<HTMLDivElement>) => void
 }) {
   const color = commandColor(lane.label)
   const viewEndMs = viewStartMs + visibleDurationMs
@@ -4108,9 +4160,11 @@ function ActiveCommandCard({
 function IsolatedPlaybackConsole({
   script,
   playerRef,
+  onStepsChange,
 }: {
   script: Script
   playerRef: React.RefObject<PlayerRef | null>
+  onStepsChange: (steps: PresentationStep[], totalMs: number) => void
 }) {
   const [currentMs, setCurrentMs] = useState(0)
   const [isPlaying, setIsPlaying] = useState(true)
@@ -4335,6 +4389,7 @@ function IsolatedPlaybackConsole({
       onToggleLoop={toggleLoop}
       onSetPlaybackRate={handleSetPlaybackRate}
       onFrameStep={frameStep}
+      onStepsChange={onStepsChange}
     />
   )
 }
@@ -4494,6 +4549,10 @@ export function App() {
     setActiveScript(null)
   }, [])
 
+  const handleStepsChange = useCallback((newSteps: PresentationStep[], totalMs: number) => {
+    setActiveScript(prev => prev ? { ...prev, steps: newSteps, totalDurationMs: totalMs } : null)
+  }, [])
+
   const handleGalleryDemo = useCallback((steps: PresentationStep[], totalDurationMs: number) => {
     const script: Script = {
       id: `gallery-demo-${Date.now()}`,
@@ -4539,7 +4598,7 @@ export function App() {
           />
 
           {/* Console layer — isolated rendering, manages own time state */}
-          <IsolatedPlaybackConsole script={activeScript} playerRef={playerRef} />
+          <IsolatedPlaybackConsole script={activeScript} playerRef={playerRef} onStepsChange={handleStepsChange} />
 
           {/* FPS monitor overlay */}
           {fpsMonitorEnabled && <FpsMonitor />}
