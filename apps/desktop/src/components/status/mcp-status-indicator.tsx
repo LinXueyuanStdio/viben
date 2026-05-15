@@ -142,7 +142,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
         // Navigate to MCP settings page with dashboard tab
         openPath("/settings/mcp?tab=dashboard", {
           descriptorId: "settings",
-          slug: mcpSection?.routePath ?? "mcp",
+          slug: mcpSection?.section ?? "mcp",
           title: mcpSection
             ? t(mcpSection.titleKey, mcpSection.fallbackLabel)
             : t("settings.sections.mcp", "MCP"),

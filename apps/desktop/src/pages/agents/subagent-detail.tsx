@@ -200,11 +200,7 @@ export function SubAgentDetailPage() {
             buildFallbackDesktopSegment({
               id: `workspace:${workspace.id}:executor:${executorType}`,
               label: executorType,
-              location: {
-                kind: "workspace-executor-detail",
-                workspaceId: workspace.id,
-                executorType,
-              },
+              href: `/workspace/${encodeURIComponent(workspace.id)}/executor/${encodeURIComponent(executorType)}`,
               descriptorId: "workspace-executor",
               icon: { type: "lucide", value: "terminal" },
               meta: {
@@ -215,12 +211,7 @@ export function SubAgentDetailPage() {
             buildFallbackDesktopSegment({
               id: `workspace:${workspace.id}:subagent:${config.id}`,
               label: config.name,
-              location: {
-                kind: "subagent-detail",
-                configId: config.id,
-                executorType,
-                workspacePath: effectiveWorkspacePath || undefined,
-              },
+              href: `/subagent/${encodeURIComponent(config.id)}?executor_type=${encodeURIComponent(executorType)}${effectiveWorkspacePath ? `&workspace_path=${encodeURIComponent(effectiveWorkspacePath)}` : ""}`,
               descriptorId: "workspace-page",
               icon: { type: "lucide", value: "bot" },
               meta: {

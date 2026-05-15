@@ -17,16 +17,15 @@ import {
   Type,
   Layers,
   Mic,
-  ArrowLeftRight,
 } from "lucide-react";
 import { Boxes } from "lucide-react";
 import type { SettingsSection, SectionConfig } from "./types";
 import {
-  SETTINGS_SECTION_DESCRIPTORS,
+  SETTINGS_SECTIONS,
   VALID_SETTINGS_SECTIONS,
   getSettingsSectionDescriptor,
 } from "@/navigation/navigation-meta";
-import type { SettingsSectionDescriptor } from "@/navigation/navigation-meta";
+import type { SettingsSectionInfo } from "@/navigation/navigation-meta";
 
 const SETTINGS_ICON_COMPONENTS = {
   settings: Settings,
@@ -48,7 +47,6 @@ const SETTINGS_ICON_COMPONENTS = {
   "hard-drive": HardDrive,
   bug: Bug,
   info: Info,
-  "arrow-left-right": ArrowLeftRight,
 } as const;
 
 export const DEFAULT_SETTINGS_SECTION: SettingsSection = "general";
@@ -64,7 +62,7 @@ export function getSettingsIconComponent(
 }
 
 export function toSectionConfig(
-  section: SettingsSectionDescriptor
+  section: SettingsSectionInfo
 ): SectionConfig {
   return {
     id: section.section,
@@ -74,7 +72,7 @@ export function toSectionConfig(
 }
 
 export const SECTIONS: SectionConfig[] =
-  SETTINGS_SECTION_DESCRIPTORS.map(toSectionConfig);
+  SETTINGS_SECTIONS.map(toSectionConfig);
 
 export function getSettingsSectionConfig(
   section?: SettingsSection

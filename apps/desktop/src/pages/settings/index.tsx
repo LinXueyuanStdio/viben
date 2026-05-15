@@ -40,7 +40,6 @@ import { SettingsVoice } from "./settings-voice";
 import { StorageSection } from "./storage-section";
 import { DeveloperSection } from "./developer-section";
 import { AboutSection } from "./about-section";
-import { TradingAccountsSection } from "./trading-accounts-section";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -186,8 +185,6 @@ export function SettingsPage() {
         return <DeveloperSection key="developer" />;
       case "about":
         return <AboutSection key="about" />;
-      case "tradingAccounts":
-        return <TradingAccountsSection key="tradingAccounts" />;
       default:
         return null;
     }

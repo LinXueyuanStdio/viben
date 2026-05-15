@@ -757,15 +757,15 @@ export function WorkspaceIdeasPage() {
   const ideasSection = getWorkspaceSectionDescriptor("ideas");
   const ideasHeaderSegments = ideasSection
     ? [{
-        id: `workspace:${workspace.id}:${ideasSection.routePath}`,
+        id: `workspace:${workspace.id}:${ideasSection.section}`,
         label: t(ideasSection.titleKey, ideasSection.fallbackLabel),
-        href: `/workspace/${workspace.id}/${ideasSection.routePath}`,
+        href: `/workspace/${workspace.id}/${ideasSection.section}`,
         icon: ideasSection.icon,
         kind: "workspace-section" as const,
         meta: {
           workspaceId: workspace.id,
           section: ideasSection.section,
-          routePath: ideasSection.routePath,
+          routePath: ideasSection.section,
         },
       }]
     : [];

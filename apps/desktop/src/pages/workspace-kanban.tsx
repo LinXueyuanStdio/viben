@@ -2174,15 +2174,15 @@ export function WorkspaceKanbanPage() {
   const kanbanSection = getWorkspaceSectionDescriptor("kanban");
   const kanbanHeaderSegments = kanbanSection
     ? [{
-        id: `workspace:${workspace.id}:${kanbanSection.routePath}`,
+        id: `workspace:${workspace.id}:${kanbanSection.section}`,
         label: t(kanbanSection.titleKey, kanbanSection.fallbackLabel),
-        href: `/workspace/${workspace.id}/${kanbanSection.routePath}`,
+        href: `/workspace/${workspace.id}/${kanbanSection.section}`,
         icon: kanbanSection.icon,
         kind: "workspace-section" as const,
         meta: {
           workspaceId: workspace.id,
           section: kanbanSection.section,
-          routePath: kanbanSection.routePath,
+          routePath: kanbanSection.section,
         },
       }]
     : [];
