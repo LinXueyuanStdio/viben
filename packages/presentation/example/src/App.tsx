@@ -28,7 +28,9 @@ import { demoSteps, TOTAL_DURATION_MS } from "./demo-steps"
 import { MockBackground } from "./MockBackground"
 import { StepGallery } from "./StepGallery"
 import { stepsToBashScript } from "./steps-to-bash"
-import { createPresentationBash } from "./bash-integration"
+import { createPresentationBash, joinMultilineQuotes, fixJsonQuoting } from "./bash-integration"
+import { BashEditor } from "./BashEditor"
+import { buildLineStepMapping } from "./editor-active-lines"
 
 const FPS = 30
 type JsonMode = "tree" | "text" | "table"
@@ -2537,11 +2539,39 @@ function TimelineTracks({
   const [editorError, setEditorError] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
 
+  // Memoize line↔step mapping (only recomputes when script text changes)
+  const lineMapping = useMemo(
+    () => timelineMode === "editor" ? buildLineStepMapping(editorText) : null,
+    [timelineMode, editorText],
+  )
+
+  // Compute active lines per frame (cheap: just iterates steps, no string parsing)
+  const activeLines = useMemo(() => {
+    if (!lineMapping || lineMapping.stepToLine.size !== steps.length) return []
+    const result: number[] = []
+    for (let i = 0; i < steps.length; i++) {
+      const { startMs, endMs } = steps[i]
+      if (currentMs >= startMs && (endMs === undefined || currentMs < endMs)) {
+        const line = lineMapping.stepToLine.get(i)
+        if (line !== undefined) result.push(line)
+      }
+    }
+    return result
+  }, [lineMapping, steps, currentMs])
+
   const switchToEditor = useCallback(() => {
     setEditorText(stepsToBashScript(steps))
     setEditorError(null)
     setTimelineMode("editor")
   }, [steps])
+
+  const handleLineClick = useCallback((lineNumber: number) => {
+    if (!lineMapping) return
+    const stepIdx = lineMapping.lineToStep.get(lineNumber)
+    if (stepIdx === undefined || stepIdx >= steps.length) return
+    const step = steps[stepIdx]
+    onSeek(step.startMs)
+  }, [lineMapping, steps, onSeek])
 
   const handleEditorRun = useCallback(async () => {
     setIsRunning(true)
@@ -2554,7 +2584,7 @@ function TimelineTracks({
         getCursorMs: () => cursorMs,
         setCursorMs: (ms) => { cursorMs = ms },
       })
-      const result = await bash.exec(editorText)
+      const result = await bash.exec(fixJsonQuoting(joinMultilineQuotes(editorText)))
       if (result.exitCode !== 0 && result.stderr) {
         setEditorError(result.stderr)
       } else if (newSteps.length > 0) {
@@ -3130,6 +3160,11 @@ function TimelineTracks({
               {lanes.length} tracks
             </span>
           )}
+          {timelineMode === "editor" && (
+            <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(118,185,0,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(118,185,0,0.6)" }}>
+              {steps.length} steps • {formatTime(totalDurationMs)}
+            </span>
+          )}
         </div>
         {timelineMode === "timeline" && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -3163,29 +3198,26 @@ function TimelineTracks({
       {/* Editor mode */}
       {timelineMode === "editor" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 }}>
-          <textarea
+          <BashEditor
             value={editorText}
-            onChange={(e) => setEditorText(e.target.value)}
-            spellCheck={false}
-            style={{
-              flex: 1,
-              minHeight: 180,
-              maxHeight: 260,
-              resize: "vertical",
-              fontFamily: "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace",
-              fontSize: 11,
-              lineHeight: 1.5,
-              padding: "8px 10px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(0,0,0,0.4)",
-              color: "rgba(255,255,255,0.85)",
-              outline: "none",
-              whiteSpace: "pre",
-              overflowWrap: "normal",
-              overflowX: "auto",
-            }}
+            onChange={setEditorText}
+            activeLines={activeLines}
+            onLineClick={handleLineClick}
+            style={{ flex: 1, minHeight: 180, maxHeight: 260 }}
           />
+          {activeLines.length > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "3px 8px", borderRadius: 4,
+              background: "rgba(118,185,0,0.06)",
+              border: "1px solid rgba(118,185,0,0.15)",
+              fontSize: 10, color: "rgba(118,185,0,0.8)",
+              fontFamily: "SFMono-Regular, Consolas, monospace"
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#76B900", animation: "pulse 1.5s infinite" }} />
+              Playing line {activeLines[0]}{activeLines.length > 1 ? `\u2013${activeLines[activeLines.length - 1]}` : ""} ({activeLines.length} active)
+            </div>
+          )}
           {editorError && (
             <div style={{ fontSize: 10, color: "#f87171", padding: "4px 8px", borderRadius: 4, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)" }}>
               {editorError}
@@ -4551,6 +4583,11 @@ export function App() {
 
   const handleStepsChange = useCallback((newSteps: PresentationStep[], totalMs: number) => {
     setActiveScript(prev => prev ? { ...prev, steps: newSteps, totalDurationMs: totalMs } : null)
+    // Seek player to start and play after React re-renders with new steps/duration
+    setTimeout(() => {
+      playerRef.current?.seekTo(0)
+      playerRef.current?.play()
+    }, 100)
   }, [])
 
   const handleGalleryDemo = useCallback((steps: PresentationStep[], totalDurationMs: number) => {

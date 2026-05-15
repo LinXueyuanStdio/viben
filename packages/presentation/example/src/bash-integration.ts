@@ -32,11 +32,14 @@ function parseArgs(args: string[]): Record<string, unknown> {
     const raw = token.slice(eqIdx + 1)
 
     // Strip outer quotes if present (must be at least 2 chars for open+close)
-    const unquoted = raw.length >= 2
-      && ((raw.startsWith("'") && raw.endsWith("'"))
-        || (raw.startsWith('"') && raw.endsWith('"')))
-      ? raw.slice(1, -1)
-      : raw
+    const isDoubleQuoted = raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')
+    const isSingleQuoted = raw.length >= 2 && raw.startsWith("'") && raw.endsWith("'")
+    let unquoted = (isDoubleQuoted || isSingleQuoted) ? raw.slice(1, -1) : raw
+
+    // Double-quoted values need backslash unescape (\" → ", \\ → \)
+    if (isDoubleQuoted) {
+      unquoted = unquoted.replace(/\\"/g, '"').replace(/\\\\/g, "\\")
+    }
 
     // Try JSON parse for complex values
     try {
@@ -51,11 +54,136 @@ function parseArgs(args: string[]): Record<string, unknown> {
       } else if (unquoted === "false") {
         result[key] = false
       } else {
-        result[key] = unquoted
+        // Decode \\n escape sequences back to real newlines
+        result[key] = unquoted.replace(/\\n/g, "\n")
       }
     }
   }
   return result
+}
+
+/**
+ * Pre-process script to fix single-quoted JSON values that contain literal single quotes.
+ * In bash, single-quoted strings cannot contain single quotes at all.
+ * This detects `key='<JSON>'` where the JSON contains `'` and re-wraps with double quotes.
+ *
+ * Example: `data='[{"name":"Q1'23"}]'` → `data="[{\"name\":\"Q1'23\"}]"`
+ */
+export function fixJsonQuoting(script: string): string {
+  return script.split("\n").map(fixLineJsonQuoting).join("\n")
+}
+
+function fixLineJsonQuoting(line: string): string {
+  // Match pattern: key='<something starting with [ or {>
+  // We look for all occurrences of `='{` or `='[` and try to find the real JSON end
+  return line.replace(/(\w+)='(\[.*|\{.*)/g, (match, key, rest) => {
+    // rest starts after the opening single quote
+    // Find the balanced JSON end by counting brackets/braces
+    const jsonEnd = findJsonEnd(rest)
+    if (jsonEnd === -1) return match // Can't fix, return as-is
+
+    const json = rest.slice(0, jsonEnd)
+    const afterJson = rest.slice(jsonEnd)
+
+    // Check if the character after JSON is the closing single quote
+    if (afterJson[0] !== "'") return match // Not the expected pattern
+
+    // Check if the JSON actually contains single quotes (otherwise no fix needed)
+    if (!json.includes("'")) return match
+
+    // Re-wrap with double quotes, escaping inner backslashes and double quotes
+    const escaped = json.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+    const remainder = afterJson.slice(1) // skip the closing '
+    return `${key}="${escaped}"${remainder}`
+  })
+}
+
+/** Find the end index of a balanced JSON value (array or object) in text */
+function findJsonEnd(text: string): number {
+  if (text[0] !== "[" && text[0] !== "{") return -1
+
+  let depth = 0
+  let inStr = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inStr) {
+      if (ch === "\\") { i++; continue }
+      if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') { inStr = true; continue }
+    if (ch === "[" || ch === "{") depth++
+    else if (ch === "]" || ch === "}") {
+      depth--
+      if (depth === 0) return i + 1
+    }
+  }
+  return -1
+}
+
+/**
+ * Pre-process script text to join multi-line quoted strings into single lines.
+ * just-bash doesn't support multi-line quoted strings, so we collapse them
+ * by replacing literal newlines within unclosed quotes with \\n escape sequences.
+ */
+export function joinMultilineQuotes(script: string): string {
+  const lines = script.split("\n")
+  const result: string[] = []
+  let accumulator = ""
+  let openQuote: '"' | "'" | null = null
+
+  for (const line of lines) {
+    if (openQuote) {
+      // We're inside an unclosed quote — append with \n escape
+      accumulator += "\\n" + line
+      // Check if this line closes the quote
+      if (closesQuote(line, openQuote)) {
+        openQuote = null
+        result.push(accumulator)
+        accumulator = ""
+      }
+    } else {
+      // Check if this line opens an unclosed quote
+      const unclosed = findUnclosedQuote(line)
+      if (unclosed) {
+        openQuote = unclosed
+        accumulator = line
+      } else {
+        result.push(line)
+      }
+    }
+  }
+
+  // Flush any remaining accumulator (unclosed quote at EOF)
+  if (accumulator) result.push(accumulator)
+
+  return result.join("\n")
+}
+
+/** Check if a line has an unclosed quote (odd number of unescaped quotes) */
+function findUnclosedQuote(line: string): '"' | "'" | null {
+  let inSingle = false
+  let inDouble = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === "\\" && (inSingle || inDouble)) { i++; continue }
+    if (ch === "'" && !inDouble) inSingle = !inSingle
+    else if (ch === '"' && !inSingle) inDouble = !inDouble
+  }
+  if (inDouble) return '"'
+  if (inSingle) return "'"
+  return null
+}
+
+/** Check if a continuation line closes the given quote type */
+function closesQuote(line: string, quoteType: '"' | "'"): boolean {
+  let open = true // We enter already inside a quote
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === "\\" && open) { i++; continue }
+    if (ch === quoteType) open = !open
+  }
+  return !open // Closed if we ended outside the quote
 }
 
 /**

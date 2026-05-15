@@ -201,8 +201,10 @@ export {
   computeTotalMs,
   formatTime,
   getStepEndMs,
+  extractClearTimes,
   buildTimelineLanes,
   getActiveSteps,
+  getActiveStepsWithClearTimes,
   getCurrentStepIndex,
   commandColor,
 } from "./utils/timeline"

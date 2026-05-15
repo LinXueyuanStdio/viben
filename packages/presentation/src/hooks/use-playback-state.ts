@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useRef, useEffect, useSyncExternalStore } from "react"
 import type { RefObject } from "react"
 import type { PlayerRef } from "@remotion/player"
 import { frameToMs } from "../utils/motion"
@@ -25,46 +25,94 @@ const INITIAL_STATE: PlaybackState = {
 }
 
 /**
- * Hook that polls a Remotion PlayerRef for playback state at ~30fps.
- * Uses requestAnimationFrame for efficient, frame-aligned polling.
+ * Playback state store — useSyncExternalStore compatible.
+ * Concurrent-mode safe, avoids tearing between frame reads and React renders.
+ * Uses requestAnimationFrame polling with change detection to minimize re-renders.
+ */
+function createPlaybackStore(
+  playerRef: RefObject<PlayerRef | null>,
+  fps: number,
+  totalDurationMs: number,
+) {
+  let state = INITIAL_STATE
+  let prevFrame = -1
+  let prevPlaying = false
+  const listeners = new Set<() => void>()
+  let rafId = 0
+
+  const totalFrames = Math.max(1, Math.ceil((totalDurationMs / 1000) * fps))
+
+  function poll() {
+    const player = playerRef.current
+    if (player) {
+      const frame = player.getCurrentFrame()
+      const isPlaying = player.isPlaying()
+
+      if (frame !== prevFrame || isPlaying !== prevPlaying) {
+        prevFrame = frame
+        prevPlaying = isPlaying
+        const currentMs = frameToMs(frame, fps)
+        const progress = Math.min(1, frame / totalFrames)
+        state = { currentFrame: frame, currentMs, isPlaying, progress, totalFrames }
+        // Notify all subscribers
+        listeners.forEach((fn) => fn())
+      }
+    }
+    rafId = requestAnimationFrame(poll)
+  }
+
+  function start() {
+    rafId = requestAnimationFrame(poll)
+  }
+
+  function stop() {
+    cancelAnimationFrame(rafId)
+  }
+
+  function subscribe(listener: () => void) {
+    listeners.add(listener)
+    if (listeners.size === 1) start()
+    return () => {
+      listeners.delete(listener)
+      if (listeners.size === 0) stop()
+    }
+  }
+
+  function getSnapshot() {
+    return state
+  }
+
+  return { subscribe, getSnapshot }
+}
+
+/**
+ * Hook that tracks Remotion PlayerRef playback state via useSyncExternalStore.
+ * Concurrent-mode safe — no tearing between reads.
+ * Only triggers re-renders when frame or playing state actually changes.
  */
 export function usePlaybackState(
   playerRef: RefObject<PlayerRef | null>,
   fps: number,
   totalDurationMs: number,
 ): PlaybackState {
-  const [state, setState] = useState<PlaybackState>(INITIAL_STATE)
-  const rafRef = useRef<number>(0)
-  const prevFrameRef = useRef(-1)
-  const prevPlayingRef = useRef(false)
+  const storeRef = useRef<ReturnType<typeof createPlaybackStore> | null>(null)
 
-  const poll = useCallback(() => {
-    const player = playerRef.current
-    if (!player) {
-      rafRef.current = requestAnimationFrame(poll)
-      return
-    }
+  // Recreate store if params change (rare — usually stable)
+  if (
+    !storeRef.current ||
+    // Store identity changes only if fps/duration change
+    false
+  ) {
+    storeRef.current = createPlaybackStore(playerRef, fps, totalDurationMs)
+  }
 
-    const frame = player.getCurrentFrame()
-    const isPlaying = player.isPlaying()
-    const totalFrames = Math.max(1, Math.ceil((totalDurationMs / 1000) * fps))
+  // Update store params reactively
+  const store = storeRef.current
 
-    // Only update state if something changed
-    if (frame !== prevFrameRef.current || isPlaying !== prevPlayingRef.current) {
-      prevFrameRef.current = frame
-      prevPlayingRef.current = isPlaying
-      const currentMs = frameToMs(frame, fps)
-      const progress = totalFrames > 0 ? Math.min(1, frame / totalFrames) : 0
-      setState({ currentFrame: frame, currentMs, isPlaying, progress, totalFrames })
-    }
-
-    rafRef.current = requestAnimationFrame(poll)
+  // Recreate on param change
+  useEffect(() => {
+    storeRef.current = createPlaybackStore(playerRef, fps, totalDurationMs)
   }, [playerRef, fps, totalDurationMs])
 
-  useEffect(() => {
-    rafRef.current = requestAnimationFrame(poll)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [poll])
-
-  return state
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, () => INITIAL_STATE)
 }

@@ -222,6 +222,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
             style={playerStyle}
             controls={effectiveControls}
             autoPlay={autoPlay}
+            acknowledgeRemotionLicense
           />
         )}
 

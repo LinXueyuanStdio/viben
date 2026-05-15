@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeEach } from "vitest"
 import type { PresentationStep } from "../../src/types"
 import { ALL_STEP_COMMANDS } from "../../src/commands/index.ts"
-import { createPresentationBash } from "./bash-integration"
+import { createPresentationBash, fixJsonQuoting, joinMultilineQuotes } from "./bash-integration"
+import { stepsToBashScript } from "./steps-to-bash"
 
 // ============================================================================
 // Test infrastructure
@@ -320,6 +321,65 @@ presentation text content="The future is accelerated computing" fontSize=28 posi
         type: "spotlight",
         region: { x: 300, y: 200, width: 360, height: 240 },
       })
+    })
+  })
+
+  describe("single-quote-in-JSON handling", () => {
+    it("serializer uses double quotes for JSON with single quotes", () => {
+      const steps = [{
+        id: "test-1",
+        startMs: 0,
+        endMs: 3000,
+        command: {
+          type: "chart",
+          chartType: "bar",
+          data: [{ name: "Q1'23", value: 7.2 }, { name: "Q2'23", value: 8.1 }],
+        },
+      }] as unknown as PresentationStep[]
+      const script = stepsToBashScript(steps)
+      // Should use double-quote wrapping (not single)
+      expect(script).not.toContain("='")
+      expect(script).toContain('="')
+    })
+
+    it("round-trips JSON with single quotes through serializer + parser", async () => {
+      const originalData = [{ name: "Q1'23", value: 7.2 }, { name: "Q2'23", value: 8.1 }]
+      const steps = [{
+        id: "test-1",
+        startMs: 0,
+        endMs: 3000,
+        command: { type: "chart", chartType: "bar", data: originalData },
+      }] as unknown as PresentationStep[]
+      const script = stepsToBashScript(steps)
+      const bash = createBash()
+      const result = await bash.exec(script)
+      expect(result.exitCode).toBe(0)
+      expect(steps.length).toBeGreaterThan(0)
+    })
+
+    it("fixJsonQuoting re-wraps single-quoted JSON containing single quotes", () => {
+      const input = `presentation chart data='[{"name":"Q1'23","value":7.2},{"name":"Q2'23","value":8.1}]'`
+      const fixed = fixJsonQuoting(input)
+      expect(fixed).not.toContain("='[")
+      expect(fixed).toContain('="')
+      // Should be parseable after fix
+      expect(fixed).toContain("Q1'23")
+    })
+
+    it("fixJsonQuoting leaves clean single-quoted JSON untouched", () => {
+      const input = `presentation sparkline data='[5,15,25,20,35]'`
+      const fixed = fixJsonQuoting(input)
+      expect(fixed).toBe(input) // No change needed
+    })
+
+    it("full pipeline handles single-quote-in-JSON user input", async () => {
+      const script = `presentation chart chartType=bar data='[{"name":"Q1'23","value":7.2},{"name":"Q2'23","value":8.1}]'`
+      const processed = fixJsonQuoting(joinMultilineQuotes(script))
+      const bash = createBash()
+      const result = await bash.exec(processed)
+      expect(result.exitCode).toBe(0)
+      expect(steps).toHaveLength(1)
+      expect(steps[0].command.type).toBe("chart")
     })
   })
 

@@ -1,4 +1,4 @@
-import { memo, useCallback } from "react"
+import { memo, useCallback, useRef } from "react"
 import type { RefObject } from "react"
 import type { PlayerRef } from "@remotion/player"
 import type { PresentationStep } from "../types"
@@ -18,64 +18,64 @@ export interface TransportBarProps {
 }
 
 // ---------------------------------------------------------------------------
-// SVG Icons (inline, no dependencies)
+// SVG Icons — memo'd to avoid re-render on parent updates
 // ---------------------------------------------------------------------------
 
-function IconPlay({ size = 16 }: { size?: number }) {
+const IconPlay = memo(function IconPlay({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <polygon points="6 3 20 12 6 21 6 3" />
     </svg>
   )
-}
+})
 
-function IconPause({ size = 16 }: { size?: number }) {
+const IconPause = memo(function IconPause({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
       <rect x="5" y="3" width="5" height="18" rx="1" />
       <rect x="14" y="3" width="5" height="18" rx="1" />
     </svg>
   )
-}
+})
 
-function IconSkipBack({ size = 14 }: { size?: number }) {
+const IconSkipBack = memo(function IconSkipBack({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <polygon points="19 18 11 12 19 6 19 18" fill="currentColor" opacity={0.7} />
       <line x1="5" y1="5" x2="5" y2="19" strokeWidth={2.5} />
     </svg>
   )
-}
+})
 
-function IconSkipForward({ size = 14 }: { size?: number }) {
+const IconSkipForward = memo(function IconSkipForward({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <polygon points="5 6 13 12 5 18 5 6" fill="currentColor" opacity={0.7} />
       <line x1="19" y1="5" x2="19" y2="19" strokeWidth={2.5} />
     </svg>
   )
-}
+})
 
-function IconStepBack({ size = 14 }: { size?: number }) {
+const IconStepBack = memo(function IconStepBack({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <polygon points="20 18 12 12 20 6 20 18" fill="currentColor" opacity={0.7} />
       <polygon points="12 18 4 12 12 6 12 18" fill="currentColor" opacity={0.5} />
     </svg>
   )
-}
+})
 
-function IconStepForward({ size = 14 }: { size?: number }) {
+const IconStepForward = memo(function IconStepForward({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <polygon points="4 6 12 12 4 18 4 6" fill="currentColor" opacity={0.7} />
       <polygon points="12 6 20 12 12 18 12 6" fill="currentColor" opacity={0.5} />
     </svg>
   )
-}
+})
 
 // ---------------------------------------------------------------------------
-// Styles
+// Styles (module-level constants — zero GC pressure)
 // ---------------------------------------------------------------------------
 
 const BAR_STYLE: React.CSSProperties = {
@@ -111,6 +111,13 @@ const BTN_STYLE: React.CSSProperties = {
   transition: "background 0.15s",
 }
 
+const PLAY_BTN_STYLE: React.CSSProperties = {
+  ...BTN_STYLE,
+  width: 32,
+  height: 32,
+  background: "rgba(99,102,241,0.3)",
+}
+
 const SCRUBBER_STYLE: React.CSSProperties = {
   flex: 1,
   height: 4,
@@ -121,9 +128,34 @@ const SCRUBBER_STYLE: React.CSSProperties = {
   minWidth: 80,
 }
 
+const TIME_STYLE: React.CSSProperties = {
+  whiteSpace: "nowrap",
+  opacity: 0.7,
+  fontVariantNumeric: "tabular-nums",
+  minWidth: 70,
+  textAlign: "right",
+}
+
+const LABEL_STYLE: React.CSSProperties = {
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  maxWidth: 160,
+  opacity: 0.6,
+  fontSize: 11,
+}
+
+const POS_TOP = { top: 8 } as const
+const POS_BOTTOM = { bottom: 8 } as const
+
 /**
  * TransportBar — built-in playback control bar for PresentationPlayer.
  * Renders play/pause, step navigation, scrubber, and time display.
+ *
+ * Optimizations:
+ * - Latest-ref pattern for togglePlay (stable callback identity)
+ * - Module-level style constants (zero allocation per render)
+ * - Memo'd icon components
  */
 export const TransportBar = memo(function TransportBar({
   playerRef,
@@ -135,12 +167,16 @@ export const TransportBar = memo(function TransportBar({
 }: TransportBarProps) {
   const { currentMs, isPlaying } = playback
 
+  // Latest-ref pattern: stable togglePlay identity regardless of isPlaying changes
+  const playbackRef = useRef(playback)
+  playbackRef.current = playback
+
   const togglePlay = useCallback(() => {
     const player = playerRef.current
     if (!player) return
-    if (isPlaying) player.pause()
+    if (playbackRef.current.isPlaying) player.pause()
     else player.play()
-  }, [playerRef, isPlaying])
+  }, [playerRef])
 
   const seekTo = useCallback((ms: number) => {
     const player = playerRef.current
@@ -151,17 +187,22 @@ export const TransportBar = memo(function TransportBar({
   const goToStart = useCallback(() => seekTo(0), [seekTo])
   const goToEnd = useCallback(() => seekTo(totalDurationMs - 100), [seekTo, totalDurationMs])
 
+  const stepsRef = useRef(steps)
+  stepsRef.current = steps
+
   const goToPrevStep = useCallback(() => {
-    const idx = getCurrentStepIndex(steps, currentMs)
+    const s = stepsRef.current
+    const idx = getCurrentStepIndex(s, playbackRef.current.currentMs)
     const prevIdx = Math.max(0, idx - 1)
-    seekTo(steps[prevIdx]?.startMs ?? 0)
-  }, [steps, currentMs, seekTo])
+    seekTo(s[prevIdx]?.startMs ?? 0)
+  }, [seekTo])
 
   const goToNextStep = useCallback(() => {
-    const idx = getCurrentStepIndex(steps, currentMs)
-    const nextIdx = Math.min(steps.length - 1, idx + 1)
-    seekTo(steps[nextIdx]?.startMs ?? 0)
-  }, [steps, currentMs, seekTo])
+    const s = stepsRef.current
+    const idx = getCurrentStepIndex(s, playbackRef.current.currentMs)
+    const nextIdx = Math.min(s.length - 1, idx + 1)
+    seekTo(s[nextIdx]?.startMs ?? 0)
+  }, [seekTo])
 
   const handleScrubberClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -174,31 +215,26 @@ export const TransportBar = memo(function TransportBar({
   const activeStep = steps[currentStepIdx]
   const stepLabel = activeStep ? describeCommand(activeStep.command) : ""
 
-  const posStyle = position === "top" ? { top: 8 } : { bottom: 8 }
+  const posStyle = position === "top" ? POS_TOP : POS_BOTTOM
 
   return (
     <div style={{ ...BAR_STYLE, ...posStyle }}>
-      {/* Skip to start */}
       <button style={BTN_STYLE} onClick={goToStart} title="Go to start">
         <IconSkipBack />
       </button>
 
-      {/* Prev step */}
       <button style={BTN_STYLE} onClick={goToPrevStep} title="Previous step">
         <IconStepBack />
       </button>
 
-      {/* Play/Pause */}
-      <button style={{ ...BTN_STYLE, width: 32, height: 32, background: "rgba(99,102,241,0.3)" }} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"}>
+      <button style={PLAY_BTN_STYLE} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"}>
         {isPlaying ? <IconPause /> : <IconPlay />}
       </button>
 
-      {/* Next step */}
       <button style={BTN_STYLE} onClick={goToNextStep} title="Next step">
         <IconStepForward />
       </button>
 
-      {/* Skip to end */}
       <button style={BTN_STYLE} onClick={goToEnd} title="Go to end">
         <IconSkipForward />
       </button>
@@ -217,14 +253,12 @@ export const TransportBar = memo(function TransportBar({
         }} />
       </div>
 
-      {/* Time display */}
-      <span style={{ whiteSpace: "nowrap", opacity: 0.7, fontVariantNumeric: "tabular-nums", minWidth: 70, textAlign: "right" }}>
+      <span style={TIME_STYLE}>
         {formatTime(currentMs)} / {formatTime(totalDurationMs)}
       </span>
 
-      {/* Active step label */}
       {stepLabel && (
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 160, opacity: 0.6, fontSize: 11 }}>
+        <span style={LABEL_STYLE}>
           {stepLabel}
         </span>
       )}
