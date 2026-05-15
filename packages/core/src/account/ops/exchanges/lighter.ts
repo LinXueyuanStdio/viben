@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import type { Exchange, Credentials, SignParams, SignedRequest } from "./types";
 import type { TestResult } from "../types";
+import { proxyFetch } from "../../../http/proxy";
 
 const BASE_URL = "https://api.lighter.xyz";
 
@@ -37,7 +38,7 @@ export const lighterExchange: Exchange = {
 
     const start = Date.now();
     try {
-      const res = await fetch(signed.url, { method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10_000) });
+      const res = await proxyFetch(signed.url, { method: "GET", headers: signed.headers, signal: AbortSignal.timeout(10_000) });
       const latency_ms = Date.now() - start;
       if (res.ok) return { success: true, latency_ms };
       const text = await res.text();

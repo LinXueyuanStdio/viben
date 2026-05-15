@@ -151,6 +151,10 @@ export const ROUTE_NAMES: Record<string, string> = {
   "WS /ws": "WebSocket连接",
   "WS /api/ws": "API WebSocket连接",
 
+  // 系统
+  "GET /api/system/info": "获取系统信息",
+  "GET /api/system/public-ip": "获取公网IP",
+
   // 任务队列
   "POST /api/queue/enqueue": "入队任务",
   "GET /api/queue/status": "获取队列状态",

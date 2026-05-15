@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import type { Exchange, Credentials, SignParams, SignedRequest } from "./types";
 import type { TestResult } from "../types";
+import { proxyFetch } from "../../../http/proxy";
 
 const BASE_URL = "https://api.binance.com";
 
@@ -10,7 +11,6 @@ export const binanceExchange: Exchange = {
   fields: ["api_key", "secret"],
   referral_url: "https://accounts.binance.com/register?ref=11427183",
   api_doc_url: "https://www.binance.com/en/my/settings/api-management",
-  whitelist_ip: "195.135.193.235",
 
   sign(credentials: Credentials, params: SignParams): SignedRequest {
     const { method, path } = params;
@@ -38,7 +38,7 @@ export const binanceExchange: Exchange = {
 
     const start = Date.now();
     try {
-      const res = await fetch(signed.url, {
+      const res = await proxyFetch(signed.url, {
         method: "GET",
         headers: signed.headers,
         signal: AbortSignal.timeout(10_000),

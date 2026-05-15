@@ -3,6 +3,7 @@
 import { createHmac } from "node:crypto";
 import type { Exchange, Credentials, SignParams, SignedRequest } from "./types";
 import type { TestResult } from "../types";
+import { proxyFetch } from "../../../http/proxy";
 
 const BASE_URL = "https://www.okx.com";
 
@@ -40,7 +41,7 @@ export const okxExchange: Exchange = {
 
     const start = Date.now();
     try {
-      const res = await fetch(signed.url, {
+      const res = await proxyFetch(signed.url, {
         method: "GET",
         headers: signed.headers,
         signal: AbortSignal.timeout(10_000),
