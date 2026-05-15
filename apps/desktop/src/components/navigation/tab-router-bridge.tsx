@@ -9,17 +9,23 @@ import { useTabStore, selectActiveTab } from "@/stores/tab-store";
  * Tab-Router Bridge
  *
  * Bidirectional sync between the tab store's navigation state and React Router.
- * Uses a sync lock to prevent infinite loops.
+ * Uses URL-based deduplication to prevent infinite loops (more reliable than
+ * timing-based locks like requestAnimationFrame).
  */
 export function TabRouterBridge() {
   const routerNavigate = useRouterNavigate();
   const location = useLocation();
-  const syncLockRef = useRef(false);
+
+  // Track the last URL we pushed to each direction to deduplicate
+  const lastPushedToRouterRef = useRef<string | null>(null);
+  const lastPushedToStoreRef = useRef<string | null>(null);
 
   // Get the active tab's current URL from the store
-  const activeTab = useTabStore(selectActiveTab);
   const activeTabId = useTabStore((s) => s.activeTabId);
-  const storeUrl = activeTab?.navigationHistory[activeTab.historyIndex]?.url ?? null;
+  const storeUrl = useTabStore((s) => {
+    const tab = selectActiveTab(s);
+    return tab?.navigationHistory[tab.historyIndex]?.url ?? null;
+  });
 
   // Store actions
   const pushNavigation = useTabStore((s) => s.pushNavigation);
@@ -34,24 +40,28 @@ export function TabRouterBridge() {
 
     if (normalizedStoreUrl === currentRouterPath) return;
 
-    // Set sync lock to prevent Router->Store from triggering
-    syncLockRef.current = true;
-    routerNavigate(normalizedStoreUrl, { replace: true });
+    // Skip if this store URL was set by our Router->Store sync
+    if (normalizedStoreUrl === lastPushedToStoreRef.current) {
+      lastPushedToStoreRef.current = null;
+      return;
+    }
 
-    // Release lock after React Router processes the navigation
-    requestAnimationFrame(() => {
-      syncLockRef.current = false;
-    });
+    lastPushedToRouterRef.current = normalizedStoreUrl;
+    routerNavigate(normalizedStoreUrl, { replace: true });
   }, [storeUrl, routerNavigate, location.pathname, location.search]);
 
   // Router -> Store: when React Router URL changes externally, update store
   useEffect(() => {
-    // Skip if we caused this navigation (sync lock active)
-    if (syncLockRef.current) return;
     if (!activeTabId) return;
 
     const currentRouterUrl = location.pathname + location.search;
     const normalizedUrl = registry.normalizeUrl(currentRouterUrl);
+
+    // Skip if this router URL was set by our Store->Router sync
+    if (normalizedUrl === lastPushedToRouterRef.current) {
+      lastPushedToRouterRef.current = null;
+      return;
+    }
 
     // Skip if URLs already match
     if (storeUrl && registry.normalizeUrl(storeUrl) === normalizedUrl) return;
@@ -63,10 +73,10 @@ export function TabRouterBridge() {
       return;
     }
 
-    // Set sync lock to prevent Store->Router from re-triggering
-    syncLockRef.current = true;
+    lastPushedToStoreRef.current = normalizedUrl;
 
-    // Get current breadcrumb stack from active tab
+    // Get current breadcrumb stack from active tab (read fresh from store)
+    const activeTab = selectActiveTab(useTabStore.getState());
     const currentState = activeTab?.navigationHistory[activeTab.historyIndex];
     const currentStack = currentState?.breadcrumbStack ?? [];
 
@@ -79,12 +89,7 @@ export function TabRouterBridge() {
       const stack = buildColdStartBreadcrumb(normalizedUrl);
       resetNavigation(activeTabId, normalizedUrl, stack);
     }
-
-    // Release lock after store update propagates
-    requestAnimationFrame(() => {
-      syncLockRef.current = false;
-    });
-  }, [location.pathname, location.search, activeTabId, storeUrl, activeTab, pushNavigation, resetNavigation]);
+  }, [location.pathname, location.search, activeTabId, storeUrl, pushNavigation, resetNavigation]);
 
   return null;
 }

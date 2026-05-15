@@ -18,6 +18,7 @@ export interface NavigateHeaders {
 export interface BreadcrumbMeta {
   workspaceId?: string;
   section?: WorkspaceSection;
+  routePath?: string;
   pageSlug?: string;
   agentId?: string;
   executorType?: string;
@@ -29,9 +30,10 @@ export interface BreadcrumbMeta {
 export interface BreadcrumbStackItem {
   id: string;
   label: string;
+  href: string;
   icon?: IconData;
+  descriptorId?: string;
   pattern?: string;
-  href?: string;
   sourceNodeId?: string;
   parentNodeId?: string;
   meta?: BreadcrumbMeta;
@@ -49,7 +51,15 @@ export function buildColdStartBreadcrumb(url: string, headers?: NavigateHeaders)
   for (const ancestorPattern of deriveAncestorsFromPrefix(match.pattern)) {
     const ancestorEntry = registry.getEntry(ancestorPattern)!;
     const ancestorParams = pickMatchingParams(ancestorPattern, match.params);
-    chain.push(buildBreadcrumbItem(ancestorEntry, ancestorParams));
+    const item = buildBreadcrumbItem(ancestorEntry, ancestorParams);
+
+    // Annotate workspace root for buildDerivedHeader to detect
+    if (ancestorPattern === "/workspace/:workspaceId" && ancestorParams.workspaceId) {
+      item.descriptorId = "workspace";
+      item.meta = { ...item.meta, workspaceId: ancestorParams.workspaceId };
+    }
+
+    chain.push(item);
   }
 
   // 2. Rest param intermediate levels
@@ -81,7 +91,8 @@ export function deriveAncestorsFromPrefix(pattern: string): string[] {
 
   for (let i = segments.length - 1; i > 0; i--) {
     const candidate = "/" + segments.slice(0, i).join("/");
-    if (registry.hasEntry(candidate)) {
+    const entry = registry.getEntry(candidate);
+    if (entry && !entry.isContainer) {
       ancestors.unshift(candidate);
     }
   }

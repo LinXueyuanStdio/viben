@@ -11,7 +11,7 @@ import { DesktopBreadcrumbBar } from "./desktop-breadcrumb-bar";
 import { useActiveTabState } from "@/hooks/use-page-tabs";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
-import type { BreadcrumbStackItem } from "@/navigation/navigation-meta";
+import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import type { Workspace } from "@/types";
 
 interface NavigationShellHeaderState {
@@ -74,7 +74,7 @@ function mapStackItemToSegment(
   return {
     id: item.id,
     label: item.label,
-    href: item.target?.canonicalUrl ?? "#",
+    href: item.href,
     icon: item.icon,
     descriptorId: item.descriptorId,
     meta: item.meta,
@@ -231,10 +231,6 @@ export function GlobalBreadcrumbShell() {
     };
   }, [derivedHeader, registeredHeader]);
 
-  if (!resolvedHeader) {
-    return null;
-  }
-
   const handleCenterHostRef = useCallback(
     (node: HTMLDivElement | null) => {
       slots?.setCenterHost(node);
@@ -248,6 +244,10 @@ export function GlobalBreadcrumbShell() {
     },
     [slots]
   );
+
+  if (!resolvedHeader) {
+    return null;
+  }
 
   return (
     <DesktopBreadcrumbBar

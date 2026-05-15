@@ -21,7 +21,6 @@ import {
 } from "@/navigation/navigate";
 import type { NavigateHeaders, BreadcrumbStackItem } from "@/navigation/navigate";
 import type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
-import { locationToUrl } from "@/navigation/navigation-meta";
 import { useTabStore } from "@/stores/tab-store";
 import type { Workspace } from "@/types";
 
@@ -996,8 +995,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
   const handleDeepLink = useCallback(
     (intent: DesktopDeepLinkIntent) => {
-      const url = locationToUrl(intent.route);
-      openRoute(url, { openMode: intent.openMode });
+      openRoute(intent.url, { openMode: intent.openMode });
     },
     [openRoute]
   );

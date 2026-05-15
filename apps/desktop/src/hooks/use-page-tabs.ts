@@ -6,9 +6,6 @@ import type { IconData } from "@/components/ui/icon-picker";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import {
-  type DesktopLocation,
-  type PushPageOptions,
-  locationToUrl,
   normalizeSettingsSection,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
@@ -79,22 +76,21 @@ export function useActiveTabState(): ActiveTabState {
 // will have their identity change when activeTabId changes.
 
 export interface TabActions {
-  openLocation: (
-    location: DesktopLocation,
+  openUrl: (
+    url: string,
     options?: { breadcrumbStack?: BreadcrumbStackItem[]; openInNewTab?: boolean }
   ) => string;
-  replaceLocation: (
-    location: DesktopLocation,
+  replaceUrl: (
+    url: string,
     patch?: Partial<TabNavigationState>
   ) => string | undefined;
-  pushLocation: (
-    location: DesktopLocation,
+  pushUrl: (
+    url: string,
     patch?: Partial<TabNavigationState>
   ) => string | undefined;
   pushPage: (
     item: BreadcrumbStackItem,
-    nextLocation: DesktopLocation,
-    options?: PushPageOptions
+    url: string
   ) => string | undefined;
   popTo: (index: number) => void;
   resetStack: (next: TabNavigationState) => string | undefined;
@@ -129,45 +125,22 @@ export function useTabActions(): TabActions {
     (state) => state.getCurrentNavigationState
   );
 
-  const resolveNavigation = useCallback(
+  const openUrl = useCallback(
     (
-      location: DesktopLocation,
-      input?: {
-        breadcrumbStack?: BreadcrumbStackItem[];
-        title?: string;
-        icon?: IconData;
-      }
-    ): { url: string; breadcrumbStack: BreadcrumbStackItem[] } => {
-      const url = locationToUrl(location);
-
-      if (input?.breadcrumbStack?.length) {
-        return { url, breadcrumbStack: input.breadcrumbStack };
-      }
-
-      const stack = buildColdStartBreadcrumb(url, {
-        label: input?.title,
-        icon: input?.icon,
-      });
-
-      return { url, breadcrumbStack: stack };
-    },
-    []
-  );
-
-  const openLocation = useCallback(
-    (
-      location: DesktopLocation,
+      url: string,
       options?: {
         breadcrumbStack?: BreadcrumbStackItem[];
         openInNewTab?: boolean;
       }
     ) => {
-      const resolved = resolveNavigation(location, {
-        breadcrumbStack: options?.breadcrumbStack,
-      });
+      const breadcrumbStack =
+        options?.breadcrumbStack?.length
+          ? options.breadcrumbStack
+          : buildColdStartBreadcrumb(url);
+
       const navigationState: TabNavigationState = {
-        url: resolved.url,
-        breadcrumbStack: resolved.breadcrumbStack,
+        url,
+        breadcrumbStack,
       };
 
       if (options?.openInNewTab || !activeTabId) {
@@ -180,80 +153,79 @@ export function useTabActions(): TabActions {
       replaceLocationStore(activeTabId, navigationState);
       return activeTabId;
     },
-    [activeTabId, openTab, replaceLocationStore, resolveNavigation]
+    [activeTabId, openTab, replaceLocationStore]
   );
 
-  const replaceLocation = useCallback(
+  const replaceUrl = useCallback(
     (
-      location: DesktopLocation,
+      url: string,
       patch?: Partial<TabNavigationState>
     ) => {
       if (!activeTabId) {
-        return openLocation(location, {
+        return openUrl(url, {
           breadcrumbStack: patch?.breadcrumbStack,
           openInNewTab: true,
         });
       }
 
-      const resolved = resolveNavigation(location, {
-        breadcrumbStack: patch?.breadcrumbStack,
-      });
+      const breadcrumbStack =
+        patch?.breadcrumbStack?.length
+          ? patch.breadcrumbStack
+          : buildColdStartBreadcrumb(url);
+
       replaceLocationStore(activeTabId, {
-        url: resolved.url,
-        breadcrumbStack: resolved.breadcrumbStack,
+        url,
+        breadcrumbStack,
         activeIndexPath: patch?.activeIndexPath,
         activeNodeId: patch?.activeNodeId,
       });
       return activeTabId;
     },
-    [activeTabId, openLocation, replaceLocationStore, resolveNavigation]
+    [activeTabId, openUrl, replaceLocationStore]
   );
 
-  const pushLocation = useCallback(
+  const pushUrl = useCallback(
     (
-      location: DesktopLocation,
+      url: string,
       patch?: Partial<TabNavigationState>
     ) => {
       if (!activeTabId) {
-        return openLocation(location, {
+        return openUrl(url, {
           breadcrumbStack: patch?.breadcrumbStack,
           openInNewTab: true,
         });
       }
 
-      const resolved = resolveNavigation(location, {
-        breadcrumbStack: patch?.breadcrumbStack,
-      });
+      const breadcrumbStack =
+        patch?.breadcrumbStack?.length
+          ? patch.breadcrumbStack
+          : buildColdStartBreadcrumb(url);
+
       pushLocationStore(activeTabId, {
-        url: resolved.url,
-        breadcrumbStack: resolved.breadcrumbStack,
+        url,
+        breadcrumbStack,
         activeIndexPath: patch?.activeIndexPath,
         activeNodeId: patch?.activeNodeId,
       });
       return activeTabId;
     },
-    [activeTabId, openLocation, pushLocationStore, resolveNavigation]
+    [activeTabId, openUrl, pushLocationStore]
   );
 
   const pushPage = useCallback(
     (
       item: BreadcrumbStackItem,
-      nextLocation: DesktopLocation,
-      _options?: PushPageOptions
+      url: string
     ) => {
       if (!activeTabId) {
-        const resolved = resolveNavigation(nextLocation, {
-          title: item.label,
-          icon: item.icon,
-        });
-        return openLocation(nextLocation, {
-          breadcrumbStack: [...resolved.breadcrumbStack, item],
+        const stack = buildColdStartBreadcrumb(url);
+        return openUrl(url, {
+          breadcrumbStack: [...stack, item],
           openInNewTab: true,
         });
       }
 
       // Push: append item to current breadcrumb stack
-      const url = locationToUrl(nextLocation);
       const currentState = getCurrentNavigationState(activeTabId);
       const currentStack = currentState?.breadcrumbStack ?? [];
       pushLocationStore(activeTabId, {
@@ -262,7 +234,7 @@ export function useTabActions(): TabActions {
       });
       return activeTabId;
     },
-    [activeTabId, getCurrentNavigationState, openLocation, pushLocationStore, resolveNavigation]
+    [activeTabId, getCurrentNavigationState, openUrl, pushLocationStore]
   );
 
   const popTo = useCallback(
@@ -286,8 +258,7 @@ export function useTabActions(): TabActions {
   const resetStack = useCallback(
     (next: TabNavigationState) => {
       if (!activeTabId) {
-        const location = buildLocationFromLegacyUrl(next.url);
-        return openLocation(location, {
+        return openUrl(next.url, {
           breadcrumbStack: next.breadcrumbStack,
           openInNewTab: true,
         });
@@ -296,7 +267,7 @@ export function useTabActions(): TabActions {
       replaceLocationStore(activeTabId, next);
       return activeTabId;
     },
-    [activeTabId, openLocation, replaceLocationStore]
+    [activeTabId, openUrl, replaceLocationStore]
   );
 
   const navigateTo = useCallback(
@@ -304,15 +275,9 @@ export function useTabActions(): TabActions {
       const isExternal = url.startsWith("http://") || url.startsWith("https://");
       if (isExternal) {
         const workspaceId = input.meta?.workspaceId ?? "global";
-        return openLocation(
-          {
-            kind: "workspace-web",
-            workspaceId,
-            url,
-            title: input.label,
-          },
-          { openInNewTab: false }
-        );
+        const params = new URLSearchParams({ url, title: input.label });
+        const webUrl = `/workspace/${encodeURIComponent(workspaceId)}/web?${params.toString()}`;
+        return openUrl(webUrl);
       }
 
       // Use URL-based navigation directly
@@ -337,47 +302,49 @@ export function useTabActions(): TabActions {
         },
       });
     },
-    [activeTabId, openLocation, openTab, replaceLocationStore]
+    [activeTabId, openUrl, openTab, replaceLocationStore]
   );
 
   const openPageTab = useCallback(
-    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) =>
-      openLocation(
-        { kind: "workspace-page", workspaceId, pageSlug: page.slug },
-        { breadcrumbStack }
-      ),
-    [openLocation]
+    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => {
+      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+        workspaceId,
+        pageSlug: page.slug,
+      });
+      return openUrl(url, { breadcrumbStack });
+    },
+    [openUrl]
   );
 
   const openPageInNewTab = useCallback(
-    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) =>
-      openLocation(
-        { kind: "workspace-page", workspaceId, pageSlug: page.slug },
-        { openInNewTab: true, breadcrumbStack }
-      ),
-    [openLocation]
+    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => {
+      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+        workspaceId,
+        pageSlug: page.slug,
+      });
+      return openUrl(url, { openInNewTab: true, breadcrumbStack });
+    },
+    [openUrl]
   );
 
   const openWorkspaceView = useCallback(
     (workspaceId: string, viewPath: string, _viewName: string, _icon: IconData) => {
       if (!viewPath) {
-        return openLocation({ kind: "workspace-home", workspaceId });
+        const url = registry.build("/workspace/:workspaceId", { workspaceId });
+        return openUrl(url);
       }
-      return openLocation({
-        kind: "workspace-section",
-        workspaceId,
-        section: normalizeWorkspaceSection(viewPath),
-      });
+      const section = normalizeWorkspaceSection(viewPath);
+      const url = registry.build(`/workspace/:workspaceId/${section}`, { workspaceId });
+      return openUrl(url);
     },
-    [openLocation]
+    [openUrl]
   );
 
   const openGlobalView = useCallback(
     (path: string, _name: string, _icon: IconData) => {
-      const location = buildLocationFromLegacyUrl(path);
-      return openLocation(location);
+      return openUrl(path);
     },
-    [openLocation]
+    [openUrl]
   );
 
   const openWebUrl = useCallback(
@@ -389,24 +356,22 @@ export function useTabActions(): TabActions {
         workspaceId ??
         routeMatch?.params.workspaceId ??
         "global";
-      return openLocation({
-        kind: "workspace-web",
-        workspaceId: wsId,
-        title: title ?? safeHostname(url),
+      const params = new URLSearchParams({
         url,
+        title: title ?? safeHostname(url),
       });
+      const webUrl = `/workspace/${encodeURIComponent(wsId)}/web?${params.toString()}`;
+      return openUrl(webUrl);
     },
-    [activeTabId, getCurrentUrl, openLocation]
+    [activeTabId, getCurrentUrl, openUrl]
   );
 
   const openChatTab = useCallback(
-    (_chatId: string, _chatName: string, workspaceId: string) =>
-      openLocation({
-        kind: "workspace-section",
-        workspaceId,
-        section: "chat",
-      }),
-    [openLocation]
+    (_chatId: string, _chatName: string, workspaceId: string) => {
+      const url = registry.build("/workspace/:workspaceId/chat", { workspaceId });
+      return openUrl(url);
+    },
+    [openUrl]
   );
 
   const switchToTab = useCallback(
@@ -482,9 +447,9 @@ export function useTabActions(): TabActions {
 
   return useMemo(
     () => ({
-      openLocation,
-      replaceLocation,
-      pushLocation,
+      openUrl,
+      replaceUrl,
+      pushUrl,
       pushPage,
       popTo,
       resetStack,
@@ -501,9 +466,9 @@ export function useTabActions(): TabActions {
       getTabLink,
     }),
     [
-      openLocation,
-      replaceLocation,
-      pushLocation,
+      openUrl,
+      replaceUrl,
+      pushUrl,
       pushPage,
       popTo,
       resetStack,
@@ -604,84 +569,4 @@ function safeHostname(url: string): string {
   } catch {
     return url;
   }
-}
-
-function buildLocationFromLegacyUrl(url: string): DesktopLocation {
-  if (url === "/documents" || url === "/workspace") {
-    return { kind: "documents" };
-  }
-  if (url === "/devices/pair") {
-    return { kind: "device-pair" };
-  }
-  if (url.startsWith("/settings")) {
-    const section = url.split("/")[2];
-    return { kind: "settings", section: normalizeSettingsSection(section) };
-  }
-
-  if (url === "/publish" || url === "/my-packages" || url === "/analytics") {
-    return { kind: "global-route", path: url };
-  }
-
-  if (url.startsWith("/workspace/")) {
-    const parsed = new URL(url, "http://desktop.local");
-    const parts = parsed.pathname.split("/").filter(Boolean);
-    const workspaceId = parts[1];
-    if (!workspaceId) {
-      return { kind: "documents" };
-    }
-
-    if (parts.length === 2) {
-      return { kind: "workspace-home", workspaceId };
-    }
-
-    if ((parts[2] === "pages" || parts[2] === "apps") && !parts[3]) {
-      return { kind: "workspace-section", workspaceId, section: "pages" };
-    }
-
-    if (parts[2] === "page" && parts[3]) {
-      return {
-        kind: "workspace-page",
-        workspaceId,
-        pageSlug: parts
-          .slice(3)
-          .map((part) => decodeURIComponent(part))
-          .join("/"),
-      };
-    }
-
-    if (parts[2] === "agent" && parts[3]) {
-      return {
-        kind: "workspace-agent-detail",
-        workspaceId,
-        agentId: decodeURIComponent(parts[3]),
-      };
-    }
-
-    if (parts[2] === "executor" && parts[3]) {
-      return {
-        kind: "workspace-executor-detail",
-        workspaceId,
-        executorType: decodeURIComponent(parts[3]),
-      };
-    }
-
-    if (parts[2] === "web") {
-      return {
-        kind: "workspace-web",
-        workspaceId,
-        url: parsed.searchParams.get("url") ?? "",
-        title: parsed.searchParams.get("title") ?? "Web",
-        sourcePageSlug: parsed.searchParams.get("source_page") ?? undefined,
-        webId: parsed.searchParams.get("web_id") ?? undefined,
-      };
-    }
-
-    return {
-      kind: "workspace-section",
-      workspaceId,
-      section: normalizeWorkspaceSection(parts[2] ?? "chat"),
-    };
-  }
-
-  return { kind: "global-route", path: url };
 }

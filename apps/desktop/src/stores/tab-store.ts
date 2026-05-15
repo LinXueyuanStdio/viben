@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { registry } from "@/navigation/route-registry";
 import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
-import { locationToUrl } from "@/navigation/navigation-meta";
-import type { DesktopLocation } from "@/navigation/navigation-meta";
 
 // ─── TabNavigationState (URL-based) ─────────────────────────────────────────
 
@@ -255,173 +252,6 @@ function findHistoryEntryByUrlInHistory(
   return -1;
 }
 
-// ─── Persist Migration ───────────────────────────────────────────────────────
-
-interface LegacyTabNavigationState {
-  location: DesktopLocation;
-  breadcrumbStack: Array<{
-    id: string;
-    label: string;
-    icon?: unknown;
-    descriptorId?: string;
-    sourceNodeId?: string;
-    parentNodeId?: string;
-    target?: {
-      key: string;
-      location: DesktopLocation;
-      canonicalUrl: string;
-    };
-    meta?: Record<string, unknown>;
-  }>;
-  activeNodeId?: string;
-  activeIndexPath?: string[];
-}
-
-function migrateLegacyNavigationState(legacy: LegacyTabNavigationState): TabNavigationState | null {
-  // Convert location to URL
-  let url: string;
-  try {
-    url = locationToUrl(legacy.location);
-  } catch {
-    return null;
-  }
-
-  // Validate URL is known in registry
-  if (!registry.match(url)) {
-    return null;
-  }
-
-  // Convert breadcrumb stack items (extract href from target, use new format)
-  const breadcrumbStack: BreadcrumbStackItem[] = legacy.breadcrumbStack.map((item) => {
-    const result: BreadcrumbStackItem = {
-      id: item.id,
-      label: item.label,
-      icon: item.icon as BreadcrumbStackItem["icon"],
-      href: item.target?.canonicalUrl,
-      sourceNodeId: item.sourceNodeId,
-      parentNodeId: item.parentNodeId,
-      meta: item.meta as BreadcrumbStackItem["meta"],
-    };
-    return result;
-  });
-
-  return {
-    url,
-    breadcrumbStack,
-    activeNodeId: legacy.activeNodeId,
-    activeIndexPath: legacy.activeIndexPath,
-  };
-}
-
-function isLegacyNavigationState(value: unknown): value is LegacyTabNavigationState {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    candidate.location !== undefined &&
-    typeof candidate.location === "object" &&
-    candidate.location !== null &&
-    "kind" in (candidate.location as object) &&
-    Array.isArray(candidate.breadcrumbStack)
-  );
-}
-
-function migratePersistedState(persisted: Record<string, unknown>): Record<string, unknown> {
-  const tabs = persisted.tabs;
-  if (!Array.isArray(tabs)) return persisted;
-
-  const migratedTabs = tabs.map((tab: unknown) => {
-    if (!tab || typeof tab !== "object") return tab;
-    const tabObj = tab as Record<string, unknown>;
-    const history = tabObj.navigationHistory;
-    if (!Array.isArray(history)) return tab;
-
-    const migratedHistory: TabNavigationState[] = [];
-    for (const entry of history) {
-      // Already in new format
-      if (isNavigationState(entry)) {
-        migratedHistory.push(entry as TabNavigationState);
-        continue;
-      }
-      // Legacy format
-      if (isLegacyNavigationState(entry)) {
-        const migrated = migrateLegacyNavigationState(entry);
-        if (migrated) {
-          migratedHistory.push(migrated);
-        }
-        // If migration returns null (invalid/unrecognized URL), drop the entry
-        continue;
-      }
-      // Unknown format, drop
-    }
-
-    // Ensure at least one valid entry
-    const safeHistory = migratedHistory.length > 0
-      ? migratedHistory
-      : [buildStateFromUrl("/workspace")];
-
-    // Clamp historyIndex
-    const oldIndex = typeof tabObj.historyIndex === "number" ? tabObj.historyIndex : safeHistory.length - 1;
-    const historyIndex = Math.min(Math.max(oldIndex, 0), safeHistory.length - 1);
-
-    return {
-      ...tabObj,
-      navigationHistory: safeHistory,
-      historyIndex,
-    };
-  });
-
-  // Also migrate recentlyClosedTabs
-  const recentlyClosed = persisted.recentlyClosedTabs;
-  let migratedClosed = recentlyClosed;
-  if (Array.isArray(recentlyClosed)) {
-    migratedClosed = recentlyClosed.map((snapshot: unknown) => {
-      if (!snapshot || typeof snapshot !== "object") return snapshot;
-      const snapObj = snapshot as Record<string, unknown>;
-      const tab = snapObj.tab;
-      if (!tab || typeof tab !== "object") return snapshot;
-      const tabObj = tab as Record<string, unknown>;
-      const history = tabObj.navigationHistory;
-      if (!Array.isArray(history)) return snapshot;
-
-      const migratedHistory: TabNavigationState[] = [];
-      for (const entry of history) {
-        if (isNavigationState(entry)) {
-          migratedHistory.push(entry as TabNavigationState);
-          continue;
-        }
-        if (isLegacyNavigationState(entry)) {
-          const migrated = migrateLegacyNavigationState(entry);
-          if (migrated) {
-            migratedHistory.push(migrated);
-          }
-          continue;
-        }
-      }
-
-      const safeHistory = migratedHistory.length > 0
-        ? migratedHistory
-        : [buildStateFromUrl("/workspace")];
-
-      const oldIndex = typeof tabObj.historyIndex === "number" ? tabObj.historyIndex : safeHistory.length - 1;
-      const historyIndex = Math.min(Math.max(oldIndex, 0), safeHistory.length - 1);
-
-      return {
-        ...snapObj,
-        tab: {
-          ...tabObj,
-          navigationHistory: safeHistory,
-          historyIndex,
-        },
-      };
-    });
-  }
-
-  return {
-    ...persisted,
-    tabs: migratedTabs,
-    recentlyClosedTabs: migratedClosed,
-  };
-}
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 
@@ -808,12 +638,6 @@ export const useTabStore = create<TabState & TabActions>()(
         activeTabId: state.activeTabId,
         recentlyClosedTabs: state.recentlyClosedTabs,
       }),
-      migrate: (persisted, version) => {
-        if (version < TAB_STORE_VERSION) {
-          return migratePersistedState(persisted as Record<string, unknown>);
-        }
-        return persisted;
-      },
       merge: (persisted, current) => {
         return {
           ...current,

@@ -1,10 +1,5 @@
-import {
-  type DesktopLocation,
-  locationToUrl,
-  buildViewTarget,
-  type BreadcrumbStackItem,
-  getDescriptorIcon,
-} from "./navigation-meta";
+import type { BreadcrumbStackItem } from "./breadcrumb-builder";
+import { getDescriptorIcon } from "./navigation-meta";
 
 // ─── Atomic Stack Operations ─────────────────────────────────────────────────
 
@@ -44,37 +39,13 @@ export function popTo(
   return stack.slice(0, normalizedIndex + 1);
 }
 
-// ─── Item Factories ──────────────────────────────────────────────────────────
+// ─── Item Factory ────────────────────────────────────────────────────────────
 
 export function createBreadcrumbItem(
-  item: Omit<BreadcrumbStackItem, "target"> & {
-    descriptorId?: string;
-    location?: DesktopLocation;
-  }
+  item: BreadcrumbStackItem
 ): BreadcrumbStackItem {
   return {
     ...item,
     icon: item.icon ?? getDescriptorIcon(item.descriptorId),
-    target: item.location
-      ? buildViewTarget(item.location, locationToUrl(item.location))
-      : undefined,
   };
-}
-
-export function createLocationBreadcrumbItem(
-  location: DesktopLocation,
-  item: Partial<Omit<BreadcrumbStackItem, "target">> & {
-    descriptorId?: string;
-  }
-): BreadcrumbStackItem {
-  return createBreadcrumbItem({
-    id: item?.id ?? locationToUrl(location),
-    label: item?.label ?? locationToUrl(location),
-    icon: item?.icon,
-    meta: item?.meta,
-    parentNodeId: item?.parentNodeId,
-    sourceNodeId: item?.sourceNodeId,
-    descriptorId: item?.descriptorId,
-    location,
-  });
 }

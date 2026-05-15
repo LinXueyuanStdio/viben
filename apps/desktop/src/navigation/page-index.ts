@@ -1,15 +1,14 @@
 import type { IconData } from "@/components/ui/icon-picker";
+import type { BreadcrumbStackItem } from "./breadcrumb-builder";
 import type {
-  BreadcrumbStackItem,
   VirtualPageIndexNode,
   WorkspaceSection,
-  DesktopLocation,
 } from "./navigation-meta";
 import {
-  SETTINGS_SECTION_DESCRIPTORS,
+  SETTINGS_SECTIONS,
   getWorkspaceSectionDescriptor,
   getWorkspaceSectionRoutePath,
-  WORKSPACE_SECTION_DESCRIPTORS,
+  WORKSPACE_SECTIONS,
   getSettingsSectionIcon,
   getSettingsSectionLabel,
 } from "./navigation-meta";
@@ -120,7 +119,7 @@ export function stackToDesktopSegments(
   return stack.slice(1).map((item) => ({
     id: item.id,
     label: item.label,
-    href: item.target?.canonicalUrl ?? "#",
+    href: item.href,
     icon: item.icon,
     descriptorId: item.descriptorId,
     meta: item.meta,
@@ -130,7 +129,7 @@ export function stackToDesktopSegments(
 export function buildFallbackDesktopSegment(input: {
   id: string;
   label: string;
-  location: DesktopLocation;
+  href: string;
   descriptorId: string;
   icon?: IconData;
   meta?: DesktopBreadcrumbSegment["meta"];
@@ -138,7 +137,7 @@ export function buildFallbackDesktopSegment(input: {
   const item = createBreadcrumbItem({
     id: input.id,
     label: input.label,
-    location: input.location,
+    href: input.href,
     descriptorId: input.descriptorId,
     icon: input.icon,
     meta: input.meta,
@@ -147,7 +146,7 @@ export function buildFallbackDesktopSegment(input: {
   return {
     id: item.id,
     label: item.label,
-    href: item.target?.canonicalUrl ?? "#",
+    href: item.href,
     icon: item.icon,
     descriptorId: item.descriptorId,
     meta: item.meta,
@@ -159,17 +158,17 @@ export function buildWorkspaceSectionHeaderSegment(
   section: WorkspaceSection,
   buildLabel?: (titleKey: string, fallbackLabel: string) => string
 ): DesktopBreadcrumbSegment {
-  const descriptor = getWorkspaceSectionDescriptor(section);
-  const routePath = descriptor?.routePath ?? section;
+  const info = getWorkspaceSectionDescriptor(section);
+  const routePath = section;
 
   return {
     id: `workspace:${workspaceId}:${section}`,
-    label: descriptor
-      ? buildLabel?.(descriptor.titleKey, descriptor.fallbackLabel) ??
-        descriptor.fallbackLabel
+    label: info
+      ? buildLabel?.(info.titleKey, info.fallbackLabel) ??
+        info.fallbackLabel
       : section,
     href: `/workspace/${encodeURIComponent(workspaceId)}/${routePath}`,
-    icon: descriptor?.icon,
+    icon: info?.icon,
     descriptorId: `workspace-section:${section}`,
     meta: {
       workspaceId,
@@ -229,22 +228,14 @@ export function createStaticWorkspaceIndexNodes(
   workspaceId: string
 ): VirtualPageIndexNode[] {
   const root = createWorkspaceRootNode(workspaceId);
-  const sectionNodes = WORKSPACE_SECTION_DESCRIPTORS.map((section, index) => ({
-    id: `${root.id}:${section.section}`,
-    descriptorId: section.id,
-    label: section.fallbackLabel,
-    icon: section.icon,
+  const sectionNodes = WORKSPACE_SECTIONS.map((info, index) => ({
+    id: `${root.id}:${info.section}`,
+    descriptorId: `workspace-section:${info.section}`,
+    label: info.fallbackLabel,
+    icon: info.icon,
     parentId: root.id,
     order: index + 1,
-    target: {
-      key: `workspace:${workspaceId}:${section.section}`,
-      canonicalUrl: `/workspace/${encodeURIComponent(workspaceId)}/${section.routePath}`,
-      location: {
-        kind: "workspace-section" as const,
-        workspaceId,
-        section: section.section,
-      },
-    },
+    href: `/workspace/${encodeURIComponent(workspaceId)}/${info.section}`,
   }));
 
   return [root, ...sectionNodes];
@@ -393,11 +384,12 @@ function buildWorkspaceSectionMenuDropdownItems({
   allowGithub?: boolean;
 }): BreadcrumbDropdownItem[] {
   return buildDropdownItems(
-    WORKSPACE_SECTION_DESCRIPTORS.filter((item) =>
+    WORKSPACE_SECTIONS.filter((item) =>
       allowGithub ? true : item.section !== "github"
     ),
     (item) => {
-      const href = `/workspace/${encodeURIComponent(workspaceId)}/${item.routePath}`;
+      const routePath = item.section;
+      const href = `/workspace/${encodeURIComponent(workspaceId)}/${routePath}`;
       return {
         id: `workspace:${workspaceId}:${item.section}`,
         label:
@@ -405,14 +397,14 @@ function buildWorkspaceSectionMenuDropdownItems({
         href,
         icon: item.icon,
         isActive: item.section === activeSection,
-        descriptorId: item.id,
+        descriptorId: `workspace-section:${item.section}`,
         meta: {
           workspaceId,
           section: item.section,
-          routePath: item.routePath,
+          routePath,
         },
         onSelect: onSelectSection
-          ? () => onSelectSection(item.section, item.routePath, href)
+          ? () => onSelectSection(item.section, routePath, href)
           : undefined,
       };
     }
@@ -583,14 +575,14 @@ export function buildSettingsDropdownItems({
   activeSection?: string;
   buildLabel?: (titleKey: string, fallbackLabel: string) => string;
 }): BreadcrumbDropdownItem[] {
-  return buildDropdownItems(SETTINGS_SECTION_DESCRIPTORS, (item) => ({
+  return buildDropdownItems(SETTINGS_SECTIONS, (item) => ({
     id: `settings:${item.section}`,
     label:
       buildLabel?.(item.titleKey, item.fallbackLabel) ?? item.fallbackLabel,
-    href: `/settings/${item.routePath}`,
+    href: `/settings/${item.section}`,
     icon: item.icon,
     isActive: item.section === activeSection,
-    descriptorId: item.id,
+    descriptorId: `settings:${item.section}`,
   }));
 }
 

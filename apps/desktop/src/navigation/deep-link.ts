@@ -1,7 +1,8 @@
-import { type DesktopLocation, normalizeSettingsSection, normalizeWorkspaceSection } from "./navigation-meta";
+import { normalizeSettingsSection, normalizeWorkspaceSection } from "./navigation-meta";
+import { registry } from "./route-registry";
 
 export interface DesktopDeepLinkIntent {
-  route: DesktopLocation;
+  url: string;
   openMode?: "focus" | "reuse" | "new-tab";
 }
 
@@ -35,11 +36,9 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
   }
 
   if (host === "settings") {
+    const section = normalizeSettingsSection(pathnameParts[0]);
     return {
-      route: {
-        kind: "settings",
-        section: normalizeSettingsSection(pathnameParts[0]),
-      },
+      url: registry.build("/settings/:section", { section }),
       openMode,
     };
   }
@@ -56,14 +55,14 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
   const sectionOrKind = pathnameParts[1];
   if (!sectionOrKind) {
     return {
-      route: { kind: "workspace-home", workspaceId },
+      url: registry.build("/workspace/:workspaceId", { workspaceId }),
       openMode,
     };
   }
 
   if (sectionOrKind === "apps" || sectionOrKind === "pages") {
     return {
-      route: { kind: "workspace-section", workspaceId, section: "pages" },
+      url: registry.build("/workspace/:workspaceId/pages", { workspaceId }),
       openMode,
     };
   }
@@ -71,9 +70,9 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
   if (sectionOrKind === "agent") {
     const agentId = pathnameParts[2];
     return {
-      route: agentId
-        ? { kind: "workspace-agent-detail", workspaceId, agentId }
-        : { kind: "workspace-section", workspaceId, section: "agent" },
+      url: agentId
+        ? registry.build("/workspace/:workspaceId/agent/:agentId", { workspaceId, agentId })
+        : registry.build("/workspace/:workspaceId/agent", { workspaceId }),
       openMode,
     };
   }
@@ -85,11 +84,7 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
     }
 
     return {
-      route: {
-        kind: "workspace-executor-detail",
-        workspaceId,
-        executorType,
-      },
+      url: registry.build("/workspace/:workspaceId/executor/:executorType", { workspaceId, executorType }),
       openMode,
     };
   }
@@ -101,11 +96,7 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
     }
 
     return {
-      route: {
-        kind: "workspace-page",
-        workspaceId,
-        pageSlug,
-      },
+      url: registry.build("/workspace/:workspaceId/pages/:pageSlug+", { workspaceId, pageSlug }),
       openMode,
     };
   }
@@ -116,25 +107,22 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
       return null;
     }
 
+    const title = url.searchParams.get("title") ?? targetUrl;
+    const params: Record<string, string> = { workspaceId, url: targetUrl, title };
+    const sourcePage = url.searchParams.get("source_page");
+    const webId = url.searchParams.get("web_id");
+    if (sourcePage) params.source_page = sourcePage;
+    if (webId) params.web_id = webId;
+
     return {
-      route: {
-        kind: "workspace-web",
-        workspaceId,
-        url: targetUrl,
-        title: url.searchParams.get("title") ?? targetUrl,
-        webId: url.searchParams.get("web_id") ?? undefined,
-        sourcePageSlug: url.searchParams.get("source_page") ?? undefined,
-      },
+      url: registry.build("/workspace/:workspaceId/web", params),
       openMode,
     };
   }
 
+  const section = normalizeWorkspaceSection(sectionOrKind);
   return {
-    route: {
-      kind: "workspace-section",
-      workspaceId,
-      section: normalizeWorkspaceSection(sectionOrKind),
-    },
+    url: registry.build(`/workspace/:workspaceId/${section}`, { workspaceId }),
     openMode,
   };
 }
