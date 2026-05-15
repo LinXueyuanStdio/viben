@@ -194,11 +194,17 @@ describe.skipIf(SESSION_PATHS.length === 0)(
         }
       });
 
-      it("should not have system-reminder in user messages", () => {
+      it("should not have unstripped system-reminder blocks in user messages", () => {
+        // Check for paired <system-reminder>...</system-reminder> (actual injected blocks).
+        // Lone mentions of the tag name in user text (e.g. documentation) are fine.
+        const re = /<system-reminder>[\s\S]*?<\/system-reminder>/;
         const userMsgs = messages.filter((m) => m.type === "user");
         for (const msg of userMsgs) {
           if (msg.content) {
-            expect(msg.content).not.toContain("<system-reminder>");
+            expect(
+              re.test(msg.content),
+              `Unstripped system-reminder block in ${name}`
+            ).toBe(false);
           }
         }
       });
@@ -405,6 +411,531 @@ describe("parseSessionJsonl - multimodal content handling", () => {
     const messages = parseSessionJsonl(fakeJsonl);
     expect(messages.length).toBe(1);
     expect(messages[0].output).toBe("Simple string output");
+  });
+});
+
+describe("parseSessionJsonl - edge cases and untested code paths", () => {
+  it("should skip tool_result with falsy content (null/undefined/empty string)", () => {
+    // Parser checks `if (c.type === "tool_result" && c.content)` — falsy content is silently dropped
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          { type: "tool_result", tool_use_id: "toolu_null", content: null },
+          { type: "tool_result", tool_use_id: "toolu_undef" },
+          { type: "tool_result", tool_use_id: "toolu_empty", content: "" },
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_valid",
+            content: "valid output",
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    // Only the valid one should be emitted
+    expect(messages.length).toBe(1);
+    expect(messages[0].toolUseId).toBe("toolu_valid");
+    expect(messages[0].output).toBe("valid output");
+  });
+
+  it("should handle tool_use without id (undefined seenTool key)", () => {
+    // Parser does: `if (tid && seenTool.has(tid)) continue; seenTool.add(tid);`
+    // When id is missing, tid is undefined → `if (undefined && ...)` is false → always adds
+    const input = [
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            { type: "tool_use", name: "Read", input: { file_path: "/a" } },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            { type: "tool_use", name: "Write", input: { file_path: "/b" } },
+          ],
+        },
+      }),
+    ].join("\n");
+
+    const messages = parseSessionJsonl(input);
+    const toolUses = messages.filter((m) => m.type === "tool_use");
+    // Both should be added since undefined ids bypass dedup
+    expect(toolUses.length).toBe(2);
+    expect(toolUses[0].toolUseId).toBeUndefined();
+    expect(toolUses[1].toolUseId).toBeUndefined();
+  });
+
+  it("should handle user message with text-array content (no tool_result items)", () => {
+    // When content is an array but has NO tool_result items, it falls through to text extraction
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          { type: "text", text: "First part " },
+          { type: "text", text: "second part" },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].type).toBe("user");
+    expect(messages[0].content).toBe("First part second part");
+  });
+
+  it("should handle mixed text + tool_result in user content array", () => {
+    // If array has any tool_result, it goes into the tool_result branch and skips text items
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          { type: "text", text: "Some context" },
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_mixed_1",
+            content: "result data",
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    // The text block is ignored when tool_result is present in the array
+    expect(messages.length).toBe(1);
+    expect(messages[0].type).toBe("tool_result");
+    expect(messages[0].output).toBe("result data");
+  });
+
+  it("should handle multiple tool_results in single user message", () => {
+    // Parallel tool execution produces multiple results in one user line
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_read_1",
+            content: "file A content",
+          },
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_read_2",
+            content: "file B content",
+          },
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_read_3",
+            content: "file C content",
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(3);
+    expect(messages[0].toolUseId).toBe("toolu_read_1");
+    expect(messages[1].toolUseId).toBe("toolu_read_2");
+    expect(messages[2].toolUseId).toBe("toolu_read_3");
+  });
+
+  it("should handle tool_result with non-string non-array content (Object.toString)", () => {
+    // Parser fallback: `output = String(c.content)` for unexpected types
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_obj",
+            content: { key: "value" },
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].output).toBe("[object Object]");
+  });
+
+  it("should handle tool_result with numeric content", () => {
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_num",
+            content: 42,
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].output).toBe("42");
+  });
+
+  it("should skip assistant message with non-array content", () => {
+    // Parser checks: `if (!Array.isArray(content)) continue`
+    const input = JSON.stringify({
+      type: "assistant",
+      message: { content: "just a string" },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(0);
+  });
+
+  it("should skip assistant message with null content", () => {
+    const input = JSON.stringify({
+      type: "assistant",
+      message: { content: null },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(0);
+  });
+
+  it("should skip thinking block with empty/falsy thinking field", () => {
+    // Parser checks: `if (c.type === "thinking" && c.thinking)`
+    const input = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          { type: "thinking", thinking: "" },
+          { type: "thinking", thinking: null },
+          { type: "thinking" },
+          { type: "text", text: "Answer" },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].type).toBe("text");
+    expect(messages[0].content).toBe("Answer");
+  });
+
+  it("should skip text block with empty/falsy text field", () => {
+    // Parser checks: `if (c.type === "text" && c.text)`
+    const input = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          { type: "text", text: "" },
+          { type: "text", text: null },
+          { type: "text" },
+          { type: "text", text: "Valid text" },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].content).toBe("Valid text");
+  });
+
+  it("should ignore unrecognized content block types in assistant", () => {
+    // Parser only handles "thinking", "text", "tool_use" — others are silently skipped
+    const input = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          { type: "server_tool_use", id: "st_1", name: "web_search" },
+          { type: "redacted_thinking", data: "..." },
+          { type: "text", text: "Final answer" },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].type).toBe("text");
+    expect(messages[0].content).toBe("Final answer");
+  });
+
+  it("should handle user message that is entirely system-reminder", () => {
+    // After stripping, txt becomes empty → no message emitted
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content:
+          "<system-reminder>internal context only</system-reminder>",
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(0);
+  });
+
+  it("should handle multiple system-reminder blocks in one message", () => {
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content:
+          "<system-reminder>first</system-reminder>Hello<system-reminder>second</system-reminder> world",
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].content).toBe("Hello world");
+  });
+
+  it("should handle user message with missing message field", () => {
+    const input = JSON.stringify({ type: "user" });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(0);
+  });
+
+  it("should handle assistant message with missing message field", () => {
+    const input = JSON.stringify({ type: "assistant" });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(0);
+  });
+
+  it("should handle tool_result content array with mixed text and non-text blocks (no image)", () => {
+    // When no image is present, only text blocks are joined
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_mixed_blocks",
+            content: [
+              { type: "text", text: "Line 1\n" },
+              { type: "unknown_block", data: "ignored" },
+              { type: "text", text: "Line 2\n" },
+            ],
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    // Non-text blocks without images produce empty string via ternary
+    expect(messages[0].output).toBe("Line 1\nLine 2\n");
+  });
+
+  it("should handle tool_result content array with text block missing text field", () => {
+    // `block.text || ""` handles missing text
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_no_text",
+            content: [
+              { type: "text" },
+              { type: "text", text: "present" },
+            ],
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].output).toBe("present");
+  });
+
+  it("should handle consecutive assistant messages correctly", () => {
+    // Simulates streaming continuation — each line is a separate assistant entry
+    const input = [
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            { type: "thinking", thinking: "Initial thought" },
+            { type: "text", text: "First response" },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            { type: "thinking", thinking: "More thinking" },
+            { type: "text", text: "Continued response" },
+          ],
+        },
+      }),
+    ].join("\n");
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(4);
+    expect(messages[0].type).toBe("thinking");
+    expect(messages[1].type).toBe("text");
+    expect(messages[2].type).toBe("thinking");
+    expect(messages[3].type).toBe("text");
+  });
+
+  it("should handle last-prompt type entries gracefully", () => {
+    const input = [
+      JSON.stringify({
+        type: "last-prompt",
+        message: { content: "Last prompt content" },
+      }),
+      JSON.stringify({
+        type: "assistant",
+        message: { content: [{ type: "text", text: "Real content" }] },
+      }),
+    ].join("\n");
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].content).toBe("Real content");
+  });
+
+  it("should produce unique sequential IDs across all message types", () => {
+    const input = [
+      JSON.stringify({
+        type: "user",
+        message: { content: "Hello" },
+      }),
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            { type: "thinking", thinking: "thinking..." },
+            { type: "text", text: "response" },
+            {
+              type: "tool_use",
+              id: "toolu_1",
+              name: "Bash",
+              input: { command: "ls" },
+            },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: "user",
+        message: {
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_1",
+              content: "file.txt",
+            },
+          ],
+        },
+      }),
+    ].join("\n");
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(5);
+    expect(messages.map((m) => m.id)).toEqual([
+      "msg-0",
+      "msg-1",
+      "msg-2",
+      "msg-3",
+      "msg-4",
+    ]);
+  });
+
+  it("should handle tool_use with all common tool names", () => {
+    const tools = ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent", "AskUserQuestion"];
+    const content = tools.map((name, i) => ({
+      type: "tool_use",
+      id: `toolu_${i}`,
+      name,
+      input: {},
+    }));
+
+    const input = JSON.stringify({
+      type: "assistant",
+      message: { content },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(tools.length);
+    for (let i = 0; i < tools.length; i++) {
+      expect(messages[i].type).toBe("tool_use");
+      expect(messages[i].name).toBe(tools[i]);
+      expect(messages[i].toolUseId).toBe(`toolu_${i}`);
+    }
+  });
+
+  it("should handle tool_use with complex input objects", () => {
+    const input = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "toolu_complex",
+            name: "Edit",
+            input: {
+              file_path: "/path/to/file.ts",
+              old_string: "function foo() {\n  return 1;\n}",
+              new_string: "function foo() {\n  return 2;\n}",
+            },
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect(messages[0].input).toEqual({
+      file_path: "/path/to/file.ts",
+      old_string: "function foo() {\n  return 1;\n}",
+      new_string: "function foo() {\n  return 2;\n}",
+    });
+  });
+
+  it("should handle very long tool_result content without truncation", () => {
+    const longContent = "x".repeat(100_000);
+    const input = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "toolu_long",
+            content: longContent,
+          },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(1);
+    expect((messages[0].output as string).length).toBe(100_000);
+  });
+
+  it("should handle thinking block with signature field (ignored)", () => {
+    // Real thinking blocks always have a `signature` field — parser ignores it
+    const input = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "thinking",
+            thinking: "Deep thought",
+            signature: "EpUBCkYIAxgCIkD...",
+          },
+          { type: "text", text: "Answer" },
+        ],
+      },
+    });
+
+    const messages = parseSessionJsonl(input);
+    expect(messages.length).toBe(2);
+    expect(messages[0].type).toBe("thinking");
+    expect(messages[0].content).toBe("Deep thought");
   });
 });
 

@@ -532,12 +532,12 @@ function ToolDetailModal({
           <div className="flex items-center gap-2">
             <span className="font-mono font-medium">{toolName}</span>
             {isError && (
-              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-500">
+              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-600 dark:text-red-400">
                 {t("common.error", "Error")}
               </span>
             )}
             {isWarning && !isError && (
-              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-500">
+              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
                 {t("common.info", "Info")}
               </span>
             )}
@@ -557,7 +557,7 @@ function ToolDetailModal({
             <h3 className="text-muted-foreground mb-2 text-sm font-medium">
               {t("chat.toolInput", "Input")}
             </h3>
-            <pre className="bg-muted/50 max-h-[200px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap">
+            <pre className="bg-code-block max-h-[200px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap">
               {formatInput(input)}
             </pre>
           </div>
@@ -573,9 +573,9 @@ function ToolDetailModal({
                 return (
                   <div className={cn(
                     "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs",
-                    isError ? "bg-red-500/10 text-red-400"
+                    isError ? "bg-red-500/10 text-red-600 dark:text-red-400"
                       : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      : "bg-muted/50"
+                      : "bg-code-block"
                   )}>
                     <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
                   </div>
@@ -589,7 +589,7 @@ function ToolDetailModal({
                       ? "bg-red-500/10 text-red-400"
                       : isWarning
                         ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : "bg-muted/50"
+                        : "bg-code-block"
                   )}
                 >
                   {formatOutput(output)}
@@ -812,9 +812,9 @@ export function ToolExecutionItem({
               <span
                 className={cn(
                   isActualError
-                    ? "text-red-500"
+                    ? "text-red-600 dark:text-red-400"
                     : isWarning
-                      ? "text-amber-500"
+                      ? "text-amber-600 dark:text-amber-400"
                       : "text-muted-foreground"
                 )}
               >
@@ -1107,9 +1107,9 @@ export function ToolExecutionItem({
                   <span
                     className={cn(
                       isActualError
-                        ? "text-red-500"
+                        ? "text-red-600 dark:text-red-400"
                         : isWarning
-                          ? "text-amber-500"
+                          ? "text-amber-600 dark:text-amber-400"
                           : "text-muted-foreground"
                     )}
                   >
@@ -1138,7 +1138,7 @@ export function ToolExecutionItem({
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolInput", "Input")}
                     </p>
-                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/50 p-2 text-xs max-h-[200px] break-words whitespace-pre-wrap">
+                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-code-block p-2 text-xs max-h-[200px] break-words whitespace-pre-wrap">
                       <code>{formatInlineInput(input)}</code>
                     </pre>
                   </div>
@@ -1156,7 +1156,7 @@ export function ToolExecutionItem({
                             "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[300px]",
                             isActualError ? "bg-red-500/10 text-red-400"
                               : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                              : "bg-muted/50"
+                              : "bg-code-block"
                           )}>
                             <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
                           </div>
@@ -1171,7 +1171,7 @@ export function ToolExecutionItem({
                               ? "bg-red-500/10 text-red-400"
                               : isWarning
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : "bg-muted/50"
+                                : "bg-code-block"
                           )}
                         >
                           <code>{formatInlineOutput(outputStr)}</code>
@@ -1184,6 +1184,8 @@ export function ToolExecutionItem({
             )}
           </div>
         </div>
+        {/* Right spacer — symmetric indent */}
+        <div className="w-8 shrink-0" />
       </motion.div>
 
       {/* Modal (only used when not in expandedInline mode) */}

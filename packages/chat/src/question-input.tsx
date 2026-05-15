@@ -279,7 +279,7 @@ export function QuestionInput({
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-        <HelpCircle className="h-4 w-4 text-amber-500" />
+        <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
       </div>
       <div className="flex-1">
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">

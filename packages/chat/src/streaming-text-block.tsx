@@ -23,7 +23,7 @@ export interface StreamingTextBlockProps {
 const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-muted max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
+      className="bg-code-block max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
       {...props}
     >
       {children}
@@ -38,7 +38,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     if (isInline) {
       return (
         <code
-          className="bg-muted rounded px-1.5 py-0.5 text-sm font-mono"
+          className="bg-code-block rounded px-1.5 py-0.5 text-sm font-mono"
           {...props}
         >
           {children}
@@ -190,6 +190,8 @@ export function StreamingTextBlock({
           </div>
         </div>
       </div>
+      {/* Right spacer — matches user avatar width for symmetric indent */}
+      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }

@@ -105,7 +105,7 @@ export function PlanApproval({
         {isCancelled && !isPending ? (
           <Ban className="h-4 w-4 text-muted-foreground" />
         ) : isAllCompleted && !isPending ? (
-          <Check className="h-4 w-4 text-emerald-500" />
+          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
         ) : hasFailed ? (
           <X className="h-4 w-4 text-destructive" />
         ) : (

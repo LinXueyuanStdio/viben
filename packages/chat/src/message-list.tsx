@@ -436,7 +436,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 items-start gap-2">
             {isCompleted ? (
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
               <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
                 <div className="bg-primary size-2 animate-pulse rounded-full" />

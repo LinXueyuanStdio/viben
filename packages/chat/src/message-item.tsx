@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronRight, FileEdit } from "lucide-react";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { AgentMessage, MessageAttachment } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
@@ -39,7 +39,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   // Code blocks
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-muted max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
+      className="bg-code-block max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
       {...props}
     >
       {children}
@@ -55,7 +55,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     if (isInline) {
       return (
         <code
-          className="bg-muted rounded px-1.5 py-0.5 text-sm font-mono"
+          className="bg-code-block rounded px-1.5 py-0.5 text-sm font-mono"
           {...props}
         >
           {children}
@@ -211,20 +211,20 @@ function UserMessage({
       initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-      className="flex justify-end w-full min-w-0"
+      className="flex gap-3 w-full min-w-0"
     >
-      <div className="flex max-w-[85%] gap-3 min-w-0">
-        <div className="min-w-0">
-          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
-            <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere]">{content}</p>
-            {attachments?.map((attachment) => (
-              <AttachmentPreview key={attachment.id} attachment={attachment} />
-            ))}
-          </div>
+      {/* Left spacer — matches assistant avatar width for symmetric indent */}
+      <div className="w-8 shrink-0" />
+      <div className="flex-1 min-w-0 flex justify-end">
+        <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground min-w-0">
+          <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere]">{content}</p>
+          {attachments?.map((attachment) => (
+            <AttachmentPreview key={attachment.id} attachment={attachment} />
+          ))}
         </div>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-          <User className="h-4 w-4 text-primary" />
-        </div>
+      </div>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <User className="h-4 w-4 text-primary" />
       </div>
     </motion.div>
   );
@@ -247,7 +247,7 @@ function ErrorMessage({ errorMessage, skipAnimation }: { errorMessage: string; s
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
         <AlertCircle className="h-4 w-4 text-destructive" />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="rounded-2xl rounded-tl-md border border-destructive/20 bg-destructive/5 px-4 py-3">
           <p className="text-sm font-medium text-destructive">
             {t("chat.error", "Error")}
@@ -255,12 +255,15 @@ function ErrorMessage({ errorMessage, skipAnimation }: { errorMessage: string; s
           <p className="mt-1 text-sm text-destructive/80">{errorMessage}</p>
         </div>
       </div>
+      {/* Right spacer */}
+      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }
 
 /**
- * Thinking message display - shows Claude's reasoning process
+ * Thinking message display - Claude's reasoning process.
+ * Claude UI style: left vertical border, muted text, collapsed preview with expand toggle.
  */
 function ThinkingMessage({
   content,
@@ -282,53 +285,47 @@ function ThinkingMessage({
     [onLinkClick]
   );
 
-  // First line as preview when collapsed
-  const firstLine = useMemo(() => {
-    const line = content.split("\n")[0] || "";
-    return line.length > 120 ? line.slice(0, 120) + "…" : line;
+  // Preview: first 3 non-empty lines
+  const { previewLines, isShort } = useMemo(() => {
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    const isShort = lines.length <= 3;
+    const preview = lines.slice(0, 3).map((l) =>
+      l.length > 140 ? l.slice(0, 140) + "…" : l
+    );
+    return { previewLines: preview, isShort };
   }, [content]);
 
-  return (
-    <div className="w-full min-w-0">
-      {/* Compact collapsible row */}
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(
-          "group flex w-full items-center gap-2 rounded-md px-2 py-1.5",
-          "text-left text-[13px] font-mono transition-colors",
-          "hover:bg-accent/50 cursor-pointer"
-        )}
-      >
-        <motion.span
-          className="shrink-0 text-muted-foreground/60"
-          animate={{ rotate: isExpanded ? 90 : 0 }}
-          transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
-        >
-          <ChevronRight className="size-3.5" />
-        </motion.span>
-        <Brain className="size-3.5 shrink-0 text-muted-foreground/60" />
-        <span className="shrink-0 text-muted-foreground/80">
-          {t("chat.thinking", "Thinking")}
-        </span>
-        {!isExpanded && (
-          <span className="text-muted-foreground/50 truncate flex-1 min-w-0 text-[12px]">
-            {firstLine}
-          </span>
-        )}
-      </button>
+  const charCount = content.length;
 
-      {/* Expandable content with left border accent */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.2, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="ml-[22px] border-l-2 border-muted-foreground/15 pl-3 pb-1 pt-0.5">
+  // Short content (≤3 lines): always show fully, no toggle
+  if (isShort) {
+    return (
+      <div className="w-full min-w-0 pl-1">
+        <div className="border-l-2 border-muted-foreground/20 pl-3 py-1">
+          <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground/70 overflow-hidden break-words text-[13px] leading-relaxed">
+            <CachedStreamdown
+              content={content || ""}
+              mode="static"
+              components={markdownComponents}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full min-w-0 pl-1">
+      <div className="border-l-2 border-muted-foreground/20 pl-3 py-1">
+        {/* Content area */}
+        {isExpanded ? (
+          <AnimatePresence initial={false}>
+            <motion.div
+              initial={skipAnimation ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+              className="overflow-hidden"
+            >
               <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground/70 overflow-hidden break-words text-[13px] leading-relaxed">
                 <CachedStreamdown
                   content={content || ""}
@@ -336,10 +333,39 @@ function ThinkingMessage({
                   components={markdownComponents}
                 />
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <div className="text-muted-foreground/60 text-[13px] leading-relaxed whitespace-pre-line break-words">
+            {previewLines.join("\n")}
+          </div>
         )}
-      </AnimatePresence>
+
+        {/* Toggle button */}
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors cursor-pointer"
+        >
+          <ChevronRight
+            className={cn(
+              "size-3 transition-transform duration-150",
+              isExpanded && "rotate-90"
+            )}
+          />
+          <span>
+            {isExpanded
+              ? t("chat.thinkingShowLess", "Show less")
+              : t("chat.thinkingShowMore", "Show more")}
+          </span>
+          <span className="text-muted-foreground/30">·</span>
+          <span>
+            {charCount >= 1000
+              ? `${(charCount / 1000).toFixed(1)}k chars`
+              : `${charCount} chars`}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -393,6 +419,8 @@ function AssistantMessage({
           </div>
         </div>
       </div>
+      {/* Right spacer — matches user avatar width for symmetric indent */}
+      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }
@@ -418,7 +446,7 @@ function PlanModeMessage({ action, skipAnimation }: { action: "enter" | "exit"; 
         "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
         isEnter ? "bg-amber-500/10" : "bg-green-500/10"
       )}>
-        <FileEdit className={cn("h-4 w-4", isEnter ? "text-amber-500" : "text-green-500")} />
+        <FileEdit className={cn("h-4 w-4", isEnter ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400")} />
       </div>
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className={cn(
@@ -442,6 +470,8 @@ function PlanModeMessage({ action, skipAnimation }: { action: "enter" | "exit"; 
           </p>
         </div>
       </div>
+      {/* Right spacer */}
+      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }

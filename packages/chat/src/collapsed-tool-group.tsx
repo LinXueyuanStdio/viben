@@ -250,7 +250,7 @@ export function CollapsedToolGroup({
           className={cn(
             "truncate",
             hasErrors
-              ? "text-red-500"
+              ? "text-red-600 dark:text-red-400"
               : "text-muted-foreground"
           )}
         >

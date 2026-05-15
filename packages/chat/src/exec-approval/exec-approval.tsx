@@ -18,9 +18,9 @@ export interface ExecApprovalProps {
 }
 
 const kindConfig = {
-  read: { icon: Eye, color: "text-blue-500", bg: "bg-blue-500/10" },
-  edit: { icon: FileEdit, color: "text-amber-500", bg: "bg-amber-500/10" },
-  execute: { icon: Terminal, color: "text-red-500", bg: "bg-red-500/10" },
+  read: { icon: Eye, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+  edit: { icon: FileEdit, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
+  execute: { icon: Terminal, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
 } as const;
 
 export function ExecApproval({
@@ -198,7 +198,7 @@ export function ExecApproval({
       </div>
 
       {/* Tool call info */}
-      <div className="mb-3 rounded-md bg-muted/50 p-2.5">
+      <div className="mb-3 rounded-md bg-code-block p-2.5">
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4 shrink-0", config.color)} />
           <span className="text-sm font-mono truncate">

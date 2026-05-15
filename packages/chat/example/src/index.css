@@ -29,6 +29,7 @@
   --color-ring: var(--ring);
   --color-surface: var(--surface);
   --color-surface-elevated: var(--surface-elevated);
+  --color-code-block: var(--code-block);
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -81,6 +82,7 @@
   --ring: var(--brand-amber-500);
   --surface: oklch(1 0 0);
   --surface-elevated: var(--neutral-100);
+  --code-block: var(--neutral-100);
 }
 
 /* Dark theme */
@@ -106,6 +108,7 @@
   --ring: var(--brand-amber-400);
   --surface: oklch(0.17 0.003 75);
   --surface-elevated: oklch(0.22 0.004 75);
+  --code-block: oklch(0.12 0.003 75);
 }
 
 /* Base styles — inside @layer base so they don't override utilities */
