@@ -1,9 +1,21 @@
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   DesktopChatInput,
   DesktopMessageList,
   type SlashCommand,
 } from "@/components/chat";
-import type { MessageAttachment } from "@viben/chat";
+import {
+  SubagentSheet,
+  PlanApproval,
+  QuestionInput,
+  ExecApproval,
+} from "@viben/chat";
+import type {
+  AgentMessage as ChatAgentMessage,
+  MessageAttachment,
+  PendingExecApproval,
+} from "@viben/chat";
 import type {
   AgentMessage,
   AgentPhase,
@@ -17,6 +29,7 @@ export interface AgentChatTabProps {
   isStreaming: boolean;
   pendingPlan: TaskPlan | null;
   pendingQuestions: PendingQuestion | null;
+  pendingExecApproval?: PendingExecApproval | null;
   artifacts: Artifact[];
   error: string | null | undefined;
   phase: AgentPhase;
@@ -30,6 +43,7 @@ export interface AgentChatTabProps {
   onApprovePlan: () => void;
   onRejectPlan: () => void;
   onAnswerQuestions: (answers: Record<string, string[]>) => void;
+  onApproveExec?: (decision: string, feedback?: string) => void;
   onSlashCommand: (command: SlashCommand) => void;
 }
 
@@ -38,6 +52,7 @@ export function AgentChatTab({
   isStreaming,
   pendingPlan,
   pendingQuestions,
+  pendingExecApproval,
   artifacts,
   error,
   phase,
@@ -51,10 +66,25 @@ export function AgentChatTab({
   onApprovePlan,
   onRejectPlan,
   onAnswerQuestions,
+  onApproveExec,
   onSlashCommand,
 }: AgentChatTabProps) {
+  const [sheetData, setSheetData] = useState<{
+    title: string;
+    subagentType?: string;
+    messages: ChatAgentMessage[];
+  } | null>(null);
+
   return (
     <>
+      <SubagentSheet
+        open={!!sheetData}
+        onClose={() => setSheetData(null)}
+        title={sheetData?.title || ""}
+        subagentType={sheetData?.subagentType}
+        messages={sheetData?.messages || []}
+      />
+
       <DesktopMessageList
         messages={messages}
         isStreaming={isStreaming}
@@ -66,6 +96,9 @@ export function AgentChatTab({
         className="flex-1 min-w-0 overflow-hidden"
         maxMessageWidth="100%"
         artifacts={artifacts}
+        onExpandSubagent={(title, subagentType, msgs) =>
+          setSheetData({ title, subagentType, messages: msgs })
+        }
       />
 
       {error && (
@@ -75,30 +108,90 @@ export function AgentChatTab({
       )}
 
       <div className="border-t border-border">
-        <DesktopChatInput
-          onSend={onSend}
-          onCancel={onCancel}
-          isLoading={isStreaming}
-          disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
-          placeholder={
-            phase === "awaiting_approval"
-              ? waitingForApprovalText
-              : phase === "awaiting_input"
-                ? waitingForInputText
-                : placeholder
-          }
-          autoFocus={false}
-          showTopToolbar
-          showConfigBar
-          showResizeHandle
-          enableWritingMode
-          useGlobalConfig
-          hideAgentSelector={taskStatus !== "backlog"}
-          hideModelSelector={taskStatus !== "backlog"}
-          hideExecutorSelector={taskStatus !== "backlog"}
-          slashCommands={slashCommands}
-          onSlashCommand={onSlashCommand}
-        />
+        <AnimatePresence mode="wait">
+          {pendingPlan ? (
+            <motion.div
+              key="plan"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="px-4 py-3"
+            >
+              <PlanApproval
+                plan={pendingPlan}
+                isPending
+                onApprove={onApprovePlan}
+                onReject={onRejectPlan}
+              />
+            </motion.div>
+          ) : pendingExecApproval && onApproveExec ? (
+            <motion.div
+              key="approval"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="px-4 py-3"
+            >
+              <ExecApproval
+                approval={pendingExecApproval}
+                onDecision={onApproveExec}
+                enableKeyboard
+              />
+            </motion.div>
+          ) : pendingQuestions ? (
+            <motion.div
+              key="questions"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="px-4 py-3"
+            >
+              <QuestionInput
+                questions={pendingQuestions}
+                onSubmit={onAnswerQuestions}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="input"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+            >
+              <DesktopChatInput
+                onSend={onSend}
+                onCancel={onCancel}
+                isLoading={isStreaming}
+                disabled={
+                  phase === "awaiting_approval" ||
+                  phase === "awaiting_input"
+                }
+                placeholder={
+                  phase === "awaiting_approval"
+                    ? waitingForApprovalText
+                    : phase === "awaiting_input"
+                      ? waitingForInputText
+                      : placeholder
+                }
+                autoFocus={false}
+                showTopToolbar
+                showConfigBar
+                showResizeHandle
+                enableWritingMode
+                useGlobalConfig
+                hideAgentSelector={taskStatus !== "backlog"}
+                hideModelSelector={taskStatus !== "backlog"}
+                hideExecutorSelector={taskStatus !== "backlog"}
+                slashCommands={slashCommands}
+                onSlashCommand={onSlashCommand}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );

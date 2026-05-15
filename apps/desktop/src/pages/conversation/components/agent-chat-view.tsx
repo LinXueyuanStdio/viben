@@ -8,6 +8,8 @@ import { isAgentAvailable } from "@/lib/gateway/utils";
 import type { AgentMessage, Artifact, TaskPlan, PendingQuestion, PendingExecApproval } from "@/types";
 import {
   ExecApproval,
+  PlanApproval,
+  QuestionInput,
   CommandQueuePanel,
   SubagentSheet,
 } from "@viben/chat";
@@ -324,10 +326,19 @@ export function AgentChatView({
         />
       )}
 
-      {/* Bottom bar: animated transition between ExecApproval and input */}
+      {/* Bottom bar: animated transition between PlanApproval / ExecApproval / QuestionInput / ChatInput */}
       <div className="border-t border-border">
         <AnimatePresence mode="wait">
-          {pendingExecApproval && onApproveExec ? (
+          {pendingPlan ? (
+            <PlanApproval
+              key="plan"
+              plan={pendingPlan}
+              isPending
+              onApprove={() => onApprovePlan()}
+              onReject={() => onRejectPlan()}
+              className="px-4 py-3"
+            />
+          ) : pendingExecApproval && onApproveExec ? (
             <motion.div
               key="approval"
               initial={{ opacity: 0, y: 8 }}
@@ -342,6 +353,13 @@ export function AgentChatView({
                 enableKeyboard
               />
             </motion.div>
+          ) : pendingQuestions ? (
+            <QuestionInput
+              key="question"
+              questions={pendingQuestions}
+              onSubmit={onAnswerQuestions}
+              className="px-4 py-3"
+            />
           ) : (
             <motion.div
               key="input"

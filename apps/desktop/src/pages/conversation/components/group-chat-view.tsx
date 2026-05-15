@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Users,
@@ -15,7 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import type { AgentMessage } from "@viben/chat";
+import { SubagentSheet } from "@viben/chat";
+import type { AgentMessage, AgentMessage as ChatAgentMessage } from "@viben/chat";
 import type { GroupChatUIMessage, GroupChatMember } from "@/lib/gateway";
 import { SessionSelector, DesktopMessageList, DesktopChatInput } from "./index";
 
@@ -410,8 +411,24 @@ export function GroupChatView({
     [onSendMessage],
   );
 
+  // Subagent sheet state
+  const [sheetData, setSheetData] = useState<{
+    title: string;
+    subagentType?: string;
+    messages: ChatAgentMessage[];
+  } | null>(null);
+
   return (
     <>
+      {/* Subagent Sheet (side panel) */}
+      <SubagentSheet
+        open={!!sheetData}
+        onClose={() => setSheetData(null)}
+        title={sheetData?.title || ""}
+        subagentType={sheetData?.subagentType}
+        messages={sheetData?.messages || []}
+      />
+
       {!headerless ? (
         <div className="flex h-14 items-center justify-between border-b bg-background px-4">
           <GroupChatHeaderCenter
@@ -457,6 +474,9 @@ export function GroupChatView({
         maxMessageWidth="100%"
         welcomeTitle={t("groupChat.emptyTitle", "No messages yet")}
         welcomeDescription={t("groupChat.emptyDescription", "Start the conversation by sending a message.")}
+        onExpandSubagent={(title, subagentType, msgs) =>
+          setSheetData({ title, subagentType, messages: msgs })
+        }
       />
 
       {/* Typing indicator */}
