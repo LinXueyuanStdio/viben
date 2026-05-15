@@ -74,6 +74,7 @@ function mapStackItemToSegment(
   return {
     id: item.id,
     label: item.label,
+    titleKey: item.titleKey,
     href: item.href,
     icon: item.icon,
     descriptorId: item.descriptorId,
@@ -105,6 +106,29 @@ function buildDerivedHeader(
 
   return {
     segments: stack.map(mapStackItemToSegment),
+  };
+}
+
+export function resolveNavigationShellHeader(
+  registeredHeader: RegisteredNavigationShellHeader | null,
+  derivedHeader: NavigationShellHeaderState | null
+): NavigationShellHeaderState | null {
+  if (derivedHeader) {
+    return {
+      workspace: derivedHeader.workspace,
+      segments: derivedHeader.segments ?? EMPTY_SEGMENTS,
+      className: registeredHeader?.className,
+    };
+  }
+
+  if (!registeredHeader) {
+    return null;
+  }
+
+  return {
+    workspace: registeredHeader.workspace,
+    segments: registeredHeader.segments ?? EMPTY_SEGMENTS,
+    className: registeredHeader.className,
   };
 }
 
@@ -220,15 +244,7 @@ export function GlobalBreadcrumbShell() {
   );
 
   const resolvedHeader = useMemo(() => {
-    if (!registeredHeader && !derivedHeader) {
-      return null;
-    }
-
-    return {
-      workspace: derivedHeader?.workspace ?? registeredHeader?.workspace,
-      segments: derivedHeader?.segments ?? registeredHeader?.segments ?? EMPTY_SEGMENTS,
-      className: registeredHeader?.className,
-    };
+    return resolveNavigationShellHeader(registeredHeader, derivedHeader);
   }, [derivedHeader, registeredHeader]);
 
   const handleCenterHostRef = useCallback(

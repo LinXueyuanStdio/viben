@@ -216,7 +216,7 @@ export function DesktopBreadcrumbBar({
         size="sm"
         className="text-muted-foreground"
       />
-      <span className="max-w-[220px] truncate">{segment.label}</span>
+      <span className="max-w-[220px] truncate">{segment.titleKey ? t(segment.titleKey, segment.label) : segment.label}</span>
     </Button>
   );
 

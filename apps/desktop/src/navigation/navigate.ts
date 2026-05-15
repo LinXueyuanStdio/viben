@@ -16,6 +16,7 @@ export function buildNavigateLeaf(url: string, headers?: NavigateHeaders): Bread
   return {
     id: headers?.id ?? url,
     label: headers?.label ?? match?.title ?? fallbackLabel,
+    titleKey: match?.entry.titleKey,
     icon: headers?.icon ?? match?.icon,
     pattern: match?.pattern,
     href: url,

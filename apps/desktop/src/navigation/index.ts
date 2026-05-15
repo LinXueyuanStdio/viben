@@ -12,10 +12,6 @@ export { deriveAncestorsFromPrefix, pickMatchingParams, buildBreadcrumbItem } fr
 export { createTabNavigationState } from "./tab-navigation";
 export type { TabNavigationState } from "@/stores/tab-store";
 
-// ─── Legacy (migration only, do not use in new code) ─────────────────────────
-export { locationToUrl as legacyLocationToUrl } from "./legacy-location-to-url";
-export type { DesktopLocation } from "./legacy-location-to-url";
-
 // ─── Core Types & Meta ────────────────────────────────────────────────────────
 export type {
   WorkspaceSection,

@@ -20,6 +20,7 @@ export { getWorkspaceSectionDescriptor } from "./navigation-meta";
 export interface DesktopBreadcrumbSegment {
   id?: string;
   label: string;
+  titleKey?: string;
   href: string;
   path?: string;
   onClick?: () => void;
@@ -253,7 +254,7 @@ export function resolveSegmentDescriptorId(
   }
 
   const sectionMatch = segment.href.match(
-    /^\/workspace\/[^/]+\/(chat|kanban|cron|ideas|files|github|chat-monitor)$/
+    /^\/workspace\/[^/]+\/(chat|kanban|cron|ideas|pages|files|github|chat-monitor)$/
   );
   if (sectionMatch) {
     return `workspace-section:${sectionMatch[1]}`;
@@ -663,6 +664,22 @@ export function resolvePageIndexBranch({
     },
     {
       matches: (input, descriptorId) =>
+        descriptorId === "settings" &&
+        input.segment.href === "/settings",
+      build: (input) =>
+        buildRootDropdownItems({
+          workspaces: input.workspaces,
+          currentArea: input.currentArea,
+          activeWorkspaceId: input.activeWorkspaceId,
+          currentSection: input.currentSection,
+          activeHref: input.segment.href,
+          buildLabel: input.buildLabel,
+          onSelectWorkspace: input.onSelectWorkspace,
+          labelGlobalWorkspace: input.labelGlobalWorkspace,
+        }),
+    },
+    {
+      matches: (input, descriptorId) =>
         (descriptorId === "virtual-folder" || descriptorId === "workspace-section:pages") &&
         Boolean(input.segment.meta?.workspaceId) &&
         input.segment.href ===
@@ -696,9 +713,28 @@ export function resolvePageIndexBranch({
         Boolean(descriptorId?.startsWith("workspace-section:")) &&
         Boolean(input.workspaceId ?? input.segment.meta?.workspaceId),
       build: (input) => {
-        const section = input.segment.meta?.section ?? input.currentSection ?? "chat";
+        const descriptorId = resolveSegmentDescriptorId(input.segment);
+        const sectionFromDescriptor = descriptorId?.startsWith("workspace-section:")
+          ? descriptorId.slice("workspace-section:".length) as WorkspaceSection
+          : undefined;
+        const section = sectionFromDescriptor ?? input.segment.meta?.section ?? input.currentSection ?? "chat";
+        const wId = input.workspaceId ?? input.segment.meta?.workspaceId ?? "";
+
+        // For pages section, pass pages list for the dropdown
+        if (section === "pages") {
+          return buildWorkspacePagesDropdownItems({
+            workspaceId: wId,
+            activeSection: section,
+            buildLabel: input.buildLabel,
+            onSelectSection: input.onSelectSection,
+            allowGithub: input.allowGithub,
+            pages: input.pages,
+            currentPageSlug: input.currentPageSlug,
+          });
+        }
+
         return buildWorkspaceSectionDropdownItems(section, {
-          workspaceId: input.workspaceId ?? input.segment.meta?.workspaceId ?? "",
+          workspaceId: wId,
           activeSection: section,
           buildLabel: input.buildLabel,
           onSelectSection: input.onSelectSection,

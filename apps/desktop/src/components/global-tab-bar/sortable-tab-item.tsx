@@ -200,7 +200,7 @@ export function SortableTabItem({
               </ContextMenuTrigger>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              {tab.label}
+              {tab.titleKey ? t(tab.titleKey, tab.label) : tab.label}
             </TooltipContent>
           </Tooltip>
           <ContextMenuContent className="w-48">
@@ -294,7 +294,7 @@ export function SortableTabItem({
                 )}
               />
             )}
-            <span className="truncate text-[13px]">{tab.label}</span>
+            <span className="truncate text-[13px]">{tab.titleKey ? t(tab.titleKey, tab.label) : tab.label}</span>
 
             {/* Close button - use span with role="button" to avoid nested button error */}
             {canClose && (

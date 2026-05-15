@@ -44,6 +44,7 @@ export interface TabViewModel extends PageTab {
   currentState: TabNavigationState | null;
   currentUrl: string | null;
   label: string;
+  titleKey?: string;
   icon?: BreadcrumbStackItem["icon"];
   descriptorId?: string;
   meta?: BreadcrumbStackItem["meta"];
@@ -232,6 +233,7 @@ export function getTabViewModel(tab: PageTab): TabViewModel {
     currentState,
     currentUrl: url,
     label: leaf?.label ?? url ?? "Untitled",
+    titleKey: leaf?.titleKey,
     icon: leaf?.icon,
     descriptorId: leaf?.pattern,
     meta: leaf?.meta,

@@ -30,6 +30,7 @@ export interface BreadcrumbMeta {
 export interface BreadcrumbStackItem {
   id: string;
   label: string;
+  titleKey?: string;
   href: string;
   icon?: IconData;
   descriptorId?: string;
@@ -125,6 +126,7 @@ export function buildBreadcrumbItem(
   return {
     id: headers?.id ?? href,
     label: headers?.label ?? title,
+    titleKey: entry.titleKey,
     icon,
     pattern: entry.pattern,
     href,

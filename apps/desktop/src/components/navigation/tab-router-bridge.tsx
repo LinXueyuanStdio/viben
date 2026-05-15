@@ -51,6 +51,10 @@ export function TabRouterBridge() {
   }, [storeUrl, routerNavigate, location.pathname, location.search]);
 
   // Router -> Store: when React Router URL changes externally, update store
+  // NOTE: storeUrl is intentionally NOT in deps. This effect should only fire
+  // when the Router location changes (e.g. browser back/forward). Including
+  // storeUrl caused a race: store updates before Router, triggering this effect
+  // with stale location, which incorrectly reset the breadcrumb to the old path.
   useEffect(() => {
     if (!activeTabId) return;
 
@@ -63,8 +67,13 @@ export function TabRouterBridge() {
       return;
     }
 
+    // Read fresh from store to avoid stale closure
+    const activeTab = selectActiveTab(useTabStore.getState());
+    const currentState = activeTab?.navigationHistory[activeTab.historyIndex];
+
     // Skip if URLs already match
-    if (storeUrl && registry.normalizeUrl(storeUrl) === normalizedUrl) return;
+    const currentStoreUrl = currentState?.url ?? null;
+    if (currentStoreUrl && registry.normalizeUrl(currentStoreUrl) === normalizedUrl) return;
 
     // Match against registry
     const match = registry.match(normalizedUrl);
@@ -75,9 +84,6 @@ export function TabRouterBridge() {
 
     lastPushedToStoreRef.current = normalizedUrl;
 
-    // Get current breadcrumb stack from active tab (read fresh from store)
-    const activeTab = selectActiveTab(useTabStore.getState());
-    const currentState = activeTab?.navigationHistory[activeTab.historyIndex];
     const currentStack = currentState?.breadcrumbStack ?? [];
 
     if (isStackPrefixOf(currentStack, match)) {
@@ -89,7 +95,8 @@ export function TabRouterBridge() {
       const stack = buildColdStartBreadcrumb(normalizedUrl);
       resetNavigation(activeTabId, normalizedUrl, stack);
     }
-  }, [location.pathname, location.search, activeTabId, storeUrl, pushNavigation, resetNavigation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search, activeTabId, pushNavigation, resetNavigation]);
 
   return null;
 }
