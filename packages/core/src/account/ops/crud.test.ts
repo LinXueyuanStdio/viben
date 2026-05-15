@@ -112,7 +112,7 @@ describe("crud", () => {
       const result = await listAccounts();
       expect(result.accounts).toHaveLength(1);
       // Account should not contain credentials
-      const acc = result.accounts[0] as Record<string, unknown>;
+      const acc = result.accounts[0] as unknown as Record<string, unknown>;
       expect(acc.api_key).toBeUndefined();
       expect(acc.secret).toBeUndefined();
     });
