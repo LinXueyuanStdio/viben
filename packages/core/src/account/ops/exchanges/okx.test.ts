@@ -40,6 +40,18 @@ describe("okxExchange", () => {
       expect(result.headers["OK-ACCESS-SIGN"]).toMatch(/^[A-Za-z0-9+/=]+$/);
     });
 
+    it("produces known-value signature", () => {
+      const { createHmac } = require("node:crypto");
+      const credentials = { api_key: "test-key", secret: "test-secret", passphrase: "test-pass" };
+      const params = { method: "GET" as const, path: "/api/v5/account/balance", timestamp: "2026-05-14T10:00:00.000Z" };
+      const result = okxExchange.sign(credentials, params);
+
+      const expected = createHmac("sha256", "test-secret")
+        .update("2026-05-14T10:00:00.000ZGET/api/v5/account/balance")
+        .digest("base64");
+      expect(result.headers["OK-ACCESS-SIGN"]).toBe(expected);
+    });
+
     it("includes body in prehash when provided", () => {
       const credentials = { api_key: "k", secret: "s", passphrase: "p" };
       const withBody = okxExchange.sign(credentials, {
@@ -55,6 +67,13 @@ describe("okxExchange", () => {
       });
       // Different body should produce different signature
       expect(withBody.headers["OK-ACCESS-SIGN"]).not.toBe(withoutBody.headers["OK-ACCESS-SIGN"]);
+    });
+
+    it("handles undefined passphrase gracefully", () => {
+      const credentials = { api_key: "key", secret: "secret" };
+      const params = { method: "GET" as const, path: "/api/v5/test", timestamp: "123" };
+      const result = okxExchange.sign(credentials, params);
+      expect(result.headers["OK-ACCESS-PASSPHRASE"]).toBe("");
     });
   });
 });
