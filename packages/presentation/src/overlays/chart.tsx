@@ -50,13 +50,14 @@ export function Chart({ command }: ChartProps) {
         position: "absolute",
         left: position.x,
         top: position.y,
-        width,
+        width: Math.max(280, width),
+        minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         borderRadius: 16,
         border: "1px solid rgba(255, 255, 255, 0.08)",
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
-        padding: "14px 12px 10px",
+        padding: 16,
         opacity: slide.opacity,
         transform: `translateY(${slide.translateY}px) scale(${slide.scale})`,
         fontFamily: "'SF Pro Display', -apple-system, sans-serif",
@@ -82,7 +83,7 @@ export function Chart({ command }: ChartProps) {
 }
 
 // Module-level static styles (avoid per-frame allocation)
-const AXIS_STYLE = { fontSize: 10, fill: "rgba(255,255,255,0.5)" } as const
+const AXIS_STYLE = { fontSize: 11, fill: "rgba(255,255,255,0.5)" } as const
 const GRID_STYLE = { strokeDasharray: "4 4", stroke: "rgba(255, 255, 255, 0.04)" } as const
 
 function renderChart(

@@ -207,6 +207,9 @@ export { OverlayLogger } from "./components/overlay-logger"
 export type { OverlayLoggerProps } from "./components/overlay-logger"
 
 // Main components
+export { PresentationLayer } from "./components/presentation-layer"
+export type { PresentationLayerProps } from "./components/presentation-layer"
+
 export { PresentationOverlay } from "./components/presentation-overlay"
 export type { PresentationOverlayProps } from "./components/presentation-overlay"
 
@@ -215,6 +218,85 @@ export type { PresentationCompositionProps } from "./components/presentation-com
 
 export { PresentationPlayer } from "./components/presentation-player"
 export type { PresentationPlayerProps } from "./components/presentation-player"
+
+// Cinematic components (high-fidelity 3D-style visuals for Remotion)
+export {
+  CinematicStage,
+  CameraRig,
+  CinematicConceptCard,
+  ConceptCardMatrix,
+  PyramidConceptStack,
+  FloatingConceptCards,
+  CinematicLineChart,
+  CinematicBarChart,
+  PercentageRing,
+  CandlestickChart,
+  WorldMapHeatmap,
+  TimelineChart,
+  FloatingNodeGraph,
+  TreeStructure,
+  RadialStructure,
+  TimelineStructure,
+  KpiBlock,
+  MarketTable,
+  RealtimeTicker,
+  RankingList,
+  StatDashboard,
+  PyramidInfoScene,
+  CausalChainScene,
+  CapitalFlowDiagram,
+  LayeredExplanation,
+  CinematicDollyZoom,
+  FocusPull,
+  SlowOrbit,
+  ParallaxLayers,
+  CinematicFinanceShowcase,
+  cinematicTheme,
+  toneColor,
+  noiseFilterId,
+  volumetricGlow,
+  colorMix,
+  clampInterpolate,
+  softSpring,
+  loopSine,
+  particleTrail,
+  noiseSeed,
+  smoothStep,
+  stagger,
+  formatCompactNumber,
+} from "./cinematic"
+export type {
+  CameraRigProps,
+  CinematicConceptCardProps,
+  ConceptCardData,
+  CinematicLineChartProps,
+  DataPoint,
+  CandlestickData,
+  MapRegion,
+  TimelineEvent,
+  StructureEdge,
+  StructureNode,
+  TreeNode,
+  TickerItem,
+  PyramidLayer,
+  ChainStep,
+  FlowTarget,
+  ExplanationLayer,
+  DollyZoomProps,
+  FocusPullProps,
+  SlowOrbitProps,
+  ParallaxLayersProps,
+  CinematicTone,
+} from "./cinematic"
+
+// Step command definitions (for just-bash integration)
+export { ALL_STEP_COMMANDS, STEP_COMMAND_MAP, createPresentationTools } from "./commands"
+export type {
+  StepCommandDef,
+  CommandCategory,
+  CreatePresentationToolsOptions,
+  PresentationToolDef,
+} from "./commands"
 
 // Re-export useful Remotion types
 export type { PlayerRef } from "@remotion/player"

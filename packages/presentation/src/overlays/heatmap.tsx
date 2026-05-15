@@ -104,6 +104,8 @@ export function Heatmap({ command }: HeatmapProps) {
         opacity: containerOpacity,
         filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
+        minWidth: 280,
+        minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
@@ -155,7 +157,7 @@ export function Heatmap({ command }: HeatmapProps) {
               style={{
                 width: cellSize,
                 textAlign: "center",
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 600,
                 color: "rgba(255,255,255,0.6)",
                 fontFamily: "system-ui, sans-serif",
@@ -181,7 +183,7 @@ export function Heatmap({ command }: HeatmapProps) {
               <div
                 style={{
                   width: labelWidth - 4,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: 600,
                   color: "rgba(255,255,255,0.6)",
                   fontFamily: "system-ui, sans-serif",

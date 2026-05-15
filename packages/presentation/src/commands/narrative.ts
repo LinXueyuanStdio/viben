@@ -1,0 +1,120 @@
+import type { StepCommandDef } from "./types"
+import { num, numOpt, str, strOpt, bool, json } from "./parse-utils"
+
+export const narrativeCommands: StepCommandDef[] = [
+  {
+    name: "callout",
+    description: "Speech bubble pointing to a target area",
+    category: "narrative",
+    defaultDurationMs: 4000,
+    parseArgs: (args) => ({
+      type: "callout",
+      position: json(args.position, { x: 360, y: 240 }),
+      content: str(args.content, "This is a critical observation!"),
+      arrowDirection: (strOpt(args.arrowDirection) as "top" | "bottom" | "left" | "right") ?? "bottom",
+      background: strOpt(args.background) ?? "rgba(99,102,241,0.95)",
+      color: strOpt(args.color),
+      maxWidth: numOpt(args.maxWidth),
+    }),
+  },
+  {
+    name: "timeline",
+    description: "Horizontal / vertical timeline with milestones",
+    category: "narrative",
+    defaultDurationMs: 5000,
+    parseArgs: (args) => ({
+      type: "timeline",
+      position: json(args.position, { x: 200, y: 260 }),
+      events: json(args.events, [
+        { label: "Q1", description: "Launch", active: true },
+        { label: "Q2", description: "Growth" },
+        { label: "Q3", description: "Scale", color: "#10B981" },
+        { label: "Q4", description: "Profit" },
+      ]),
+      direction: (strOpt(args.direction) as "horizontal" | "vertical") ?? "horizontal",
+      width: numOpt(args.width) ?? 560,
+      color: strOpt(args.color),
+    }),
+  },
+  {
+    name: "flowchart",
+    description: "Connected boxes with directional arrows",
+    category: "narrative",
+    defaultDurationMs: 5000,
+    parseArgs: (args) => ({
+      type: "flowchart",
+      position: json(args.position, { x: 180, y: 200 }),
+      nodes: json(args.nodes, [
+        { id: "a", label: "Start", color: "#6366F1" },
+        { id: "b", label: "Process" },
+        { id: "c", label: "Decision", color: "#F59E0B" },
+        { id: "d", label: "End", color: "#10B981" },
+      ]),
+      edges: json(args.edges, [
+        { from: "a", to: "b" },
+        { from: "b", to: "c" },
+        { from: "c", to: "d" },
+      ]),
+      direction: (strOpt(args.direction) as "horizontal" | "vertical") ?? "horizontal",
+      width: numOpt(args.width) ?? 600,
+      height: numOpt(args.height),
+    }),
+  },
+  {
+    name: "table",
+    description: "Data table with row-by-row reveal animation",
+    category: "narrative",
+    defaultDurationMs: 5000,
+    parseArgs: (args) => ({
+      type: "table",
+      position: json(args.position, { x: 260, y: 200 }),
+      headers: json(args.headers, ["Name", "Revenue", "Growth"]),
+      rows: json(args.rows, [
+        ["NVIDIA", "$26B", "+122%"],
+        ["AMD", "$3.5B", "+45%"],
+        ["Intel", "$1.1B", "-8%"],
+      ]),
+      highlights: json(args.highlights, [[0, 2]]),
+      rowStagger: numOpt(args.rowStagger) ?? 4,
+    }),
+  },
+  {
+    name: "list",
+    description: "Animated bullet list with staggered reveal",
+    category: "narrative",
+    defaultDurationMs: 4000,
+    parseArgs: (args) => ({
+      type: "list",
+      position: json(args.position, { x: 320, y: 200 }),
+      items: json(args.items, [
+        { text: "First item", color: "#6366F1" },
+        { text: "Second item", color: "#10B981" },
+        { text: "Third item", color: "#F59E0B" },
+        { text: "Fourth item", color: "#EF4444" },
+      ]),
+      listStyle: (strOpt(args.listStyle) as "bullet" | "number" | "check" | "arrow") ?? "check",
+      stagger: numOpt(args.stagger) ?? 5,
+      color: strOpt(args.color),
+      fontSize: numOpt(args.fontSize),
+    }),
+  },
+  {
+    name: "annotation-group",
+    description: "Grouped annotations with connector lines",
+    category: "narrative",
+    defaultDurationMs: 4000,
+    parseArgs: (args) => ({
+      type: "annotation-group",
+      position: json(args.position, { x: 320, y: 220 }),
+      items: json(args.items, [
+        { label: "Data Collection", color: "#6366F1" },
+        { label: "Preprocessing", color: "#8B5CF6" },
+        { label: "Model Training", color: "#A855F7" },
+        { label: "Evaluation", color: "#EC4899" },
+        { label: "Deployment", color: "#10B981" },
+      ]),
+      direction: (strOpt(args.direction) as "horizontal" | "vertical") ?? "vertical",
+      connector: (strOpt(args.connector) as "line" | "bracket" | "dots") ?? "bracket",
+    }),
+  },
+]

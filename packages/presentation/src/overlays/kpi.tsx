@@ -155,7 +155,7 @@ export function Kpi({ command }: KpiProps) {
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         padding: "22px 26px",
-        minWidth: 190,
+        minWidth: 220,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >

@@ -40,10 +40,12 @@ export function Sankey({ command }: SankeyProps) {
     position: _position,
     nodes,
     links,
-    width = 500,
-    height = 300,
+    width: _width = 500,
+    height: _height = 300,
   } = command
   const position = _position as Point
+  const width = Math.max(280, _width)
+  const height = Math.max(200, _height)
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -180,12 +182,15 @@ export function Sankey({ command }: SankeyProps) {
         top: position.y,
         width,
         height,
+        minWidth: 280,
+        minHeight: 200,
         background: "radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.92) 70%)",
         borderRadius: 14,
         border: "1px solid rgba(255, 255, 255, 0.1)",
         boxShadow: "0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
+        padding: 16,
         fontFamily: "system-ui, -apple-system, sans-serif",
         opacity: containerEntrance.opacity,
         transform: `translateY(${containerEntrance.translateY}px) scale(${containerEntrance.scale})`,

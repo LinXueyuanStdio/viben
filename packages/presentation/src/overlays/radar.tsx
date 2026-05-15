@@ -166,6 +166,8 @@ export function Radar({ command }: RadarProps) {
         opacity: containerOpacity,
         filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
+        minWidth: 280,
+        minHeight: 200,
         background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.92) 70%)",
         borderRadius: 14,
         border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -350,7 +352,7 @@ export function Radar({ command }: RadarProps) {
                 textAnchor={lp.anchor}
                 dominantBaseline="central"
                 fill="rgba(255, 255, 255, 0.45)"
-                fontSize={9}
+                fontSize={10}
                 fontFamily="system-ui, monospace"
                 fontWeight={600}
                 letterSpacing={0.3}

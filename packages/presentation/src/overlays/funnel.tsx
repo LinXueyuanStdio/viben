@@ -28,10 +28,12 @@ export function Funnel({ command }: FunnelProps) {
   const {
     position: _position,
     stages,
-    width = 240,
-    height = 200,
+    width: _width = 240,
+    height: _height = 200,
   } = command
   const position = _position as Point
+  const width = Math.max(280, _width)
+  const height = Math.max(200, _height)
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -105,6 +107,8 @@ export function Funnel({ command }: FunnelProps) {
         opacity: containerOpacity,
         filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
+        minWidth: 280,
+        minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
@@ -249,7 +253,7 @@ export function Funnel({ command }: FunnelProps) {
                 textAnchor="end"
                 dominantBaseline="central"
                 fill="rgba(255,255,255,0.4)"
-                fontSize={8}
+                fontSize={10}
                 fontWeight={600}
                 fontFamily="system-ui, monospace"
                 letterSpacing={0.3}

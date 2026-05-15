@@ -28,11 +28,13 @@ export function Waterfall({ command }: WaterfallProps) {
   const {
     position: _position,
     data,
-    width = 280,
-    height = 180,
+    width: _width = 280,
+    height: _height = 180,
     colors,
   } = command
   const position = _position as Point
+  const width = Math.max(280, _width)
+  const height = Math.max(200, _height)
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -137,10 +139,12 @@ export function Waterfall({ command }: WaterfallProps) {
         opacity: containerOpacity,
         filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
+        minWidth: 280,
+        minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 20,
+        padding: 16,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}
@@ -264,7 +268,7 @@ export function Waterfall({ command }: WaterfallProps) {
                 y={isGrowingUp ? barTop - 8 : barTop + barHeight + 14}
                 textAnchor="middle"
                 fill="#fff"
-                fontSize={9}
+                fontSize={10}
                 fontWeight={700}
                 fontFamily="system-ui, monospace"
                 opacity={labelSpring}
@@ -278,7 +282,7 @@ export function Waterfall({ command }: WaterfallProps) {
                 y={height - padding.bottom + 14}
                 textAnchor="middle"
                 fill="rgba(255,255,255,0.6)"
-                fontSize={9}
+                fontSize={10}
                 fontWeight={600}
                 fontFamily="system-ui, sans-serif"
                 opacity={labelSpring}

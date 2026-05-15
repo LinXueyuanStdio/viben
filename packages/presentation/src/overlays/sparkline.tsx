@@ -136,6 +136,8 @@ export function Sparkline({ command }: SparklineProps) {
         opacity: containerOpacity,
         filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
         willChange: "transform, opacity",
+        minWidth: 220,
+        minHeight: 80,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
@@ -144,7 +146,31 @@ export function Sparkline({ command }: SparklineProps) {
         backdropFilter: "blur(20px) saturate(180%)",
       }}
     >
-      <svg width={width} height={height} style={{ display: "block", overflow: "visible" }}>
+      {/* Noise texture overlay for depth */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 16,
+          opacity: 0.03,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+          pointerEvents: "none",
+        }}
+      />
+      {/* Gradient border accent */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 16,
+          right: 16,
+          height: 1,
+          background: `linear-gradient(90deg, transparent, ${color}40, transparent)`,
+          borderRadius: 1,
+          pointerEvents: "none",
+        }}
+      />
+      <svg width={width} height={height} style={{ display: "block", overflow: "visible", position: "relative" }}>
         <defs>
           {/* Gradient for line stroke */}
           <linearGradient id={`${uid}-line-grad`} x1="0" y1="0" x2="1" y2="0">
