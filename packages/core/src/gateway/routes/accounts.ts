@@ -110,8 +110,12 @@ export function registerAccountsRoutes(fastify: FastifyInstance): void {
   // POST /api/accounts/:id/test — connectivity test
   fastify.post("/api/accounts/:id/test", async (
     req: FastifyRequest<{ Params: { id: string } }>,
+    reply,
   ) => {
     const result = await testAccount(req.params.id);
+    if (!result.success && result.error?.includes("not found")) {
+      reply.code(404);
+    }
     return result;
   });
 }
