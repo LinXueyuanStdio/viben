@@ -1,16 +1,33 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react"
+import React, { useState, useRef, useCallback, useEffect, useMemo, memo } from "react"
 import {
-  PresentationOverlay,
+  PresentationPlayer,
   TargetRectsProvider,
-  useTargetRects,
+  PerfProfiler,
+  formatPerfReport,
   describeCommand,
+  frameToMs,
+  msToFrame,
 } from "@viben/presentation"
-import type { PlayerState, PresentationStep } from "@viben/presentation"
+import type { PerfMetrics } from "@viben/presentation"
+import type { PresentationStep, PlayerRef } from "@viben/presentation"
+import {
+  createJSONEditor,
+  createValueSelection,
+  Mode,
+} from "vanilla-jsoneditor"
+import type { JsonEditor } from "vanilla-jsoneditor"
+import "vanilla-jsoneditor/themes/jse-theme-dark.css"
 import { demoSteps, TOTAL_DURATION_MS } from "./demo-steps"
 import { MockBackground } from "./MockBackground"
+import { StepGallery } from "./StepGallery"
+
+const FPS = 30
+type ActivePanelMode = "list" | "json"
+type JsonMode = "tree" | "text" | "table"
+type JSONPath = string[]
 
 // ============================================================================
-// 内置短剧本 (timeline format) — 必须在 SCRIPTS 之前定义
+// 内置短剧本 (timeline format)
 // ============================================================================
 
 let _stepId = 1000
@@ -29,44 +46,180 @@ function s(startMs: number, command: PresentationStep["command"], endMs?: number
   }
 }
 
+function makeNewTypesSteps(): PresentationStep[] {
+  return [
+    // Data Visualization
+    s(0, { type: "gauge", position: { x: 100, y: 100 }, value: 78, label: "Performance", color: "#6366F1" }, 4000),
+    s(500, { type: "sparkline", position: { x: 400, y: 100 }, data: [10, 25, 18, 42, 35, 60, 55, 72, 68, 80], width: 200, height: 60, color: "#10B981", fill: true, showEndDot: true }, 4000),
+    s(1000, { type: "heatmap", position: { x: 700, y: 80 }, data: [[0.2, 0.8, 0.5], [0.9, 0.3, 0.7], [0.4, 0.6, 1.0]], cellSize: 32, rowLabels: ["A", "B", "C"], colLabels: ["X", "Y", "Z"] }, 4000),
+
+    // More data viz
+    s(4000, { type: "funnel", position: { x: 120, y: 120 }, stages: [{ label: "Visitors", value: 10000, color: "#6366F1" }, { label: "Leads", value: 5200, color: "#8B5CF6" }, { label: "Trials", value: 2100, color: "#A855F7" }, { label: "Customers", value: 800, color: "#C084FC" }], width: 280, height: 220 }, 8000),
+    s(4500, { type: "waterfall", position: { x: 500, y: 100 }, data: [{ label: "Revenue", value: 100, type: "total" }, { label: "Sales", value: 40, type: "increase" }, { label: "Services", value: 25, type: "increase" }, { label: "Costs", value: -35, type: "decrease" }, { label: "Tax", value: -15, type: "decrease" }, { label: "Net", value: 115, type: "total" }], width: 320, height: 200 }, 8000),
+
+    // Narrative/Structural
+    s(8000, { type: "callout", position: { x: 200, y: 200 }, content: "This is an important callout bubble!", arrowDirection: "bottom", background: "rgba(99,102,241,0.95)" }, 11000),
+    s(8500, { type: "timeline", position: { x: 100, y: 400 }, events: [{ label: "Q1", description: "Launch", active: true }, { label: "Q2", description: "Growth" }, { label: "Q3", description: "Scale", color: "#10B981" }, { label: "Q4", description: "Profit" }], direction: "horizontal", width: 500 }, 11500),
+    s(9000, { type: "list", position: { x: 700, y: 180 }, items: [{ text: "First item", color: "#6366F1" }, { text: "Second item", color: "#10B981" }, { text: "Third item", color: "#F59E0B" }, { text: "Fourth item", color: "#EF4444" }], listStyle: "check", stagger: 5 }, 12000),
+
+    // More narrative
+    s(11500, { type: "flowchart", position: { x: 150, y: 150 }, nodes: [{ id: "a", label: "Start", color: "#6366F1" }, { id: "b", label: "Process" }, { id: "c", label: "Decision", color: "#F59E0B" }, { id: "d", label: "End", color: "#10B981" }], edges: [{ from: "a", to: "b" }, { from: "b", to: "c" }, { from: "c", to: "d" }], direction: "horizontal", width: 600 }, 15000),
+    s(12000, { type: "table", position: { x: 150, y: 420 }, headers: ["Name", "Revenue", "Growth"], rows: [["NVIDIA", "$26B", "+122%"], ["AMD", "$3.5B", "+45%"], ["Intel", "$1.1B", "-8%"]], highlights: [[0, 2]], rowStagger: 4 }, 15500),
+
+    // Effects
+    s(15500, { type: "countdown", position: { x: 480, y: 300 }, from: 3, fontSize: 120, color: "#fff" }, 19500),
+    s(19500, { type: "confetti", position: { x: 480, y: 300 }, count: 60, spread: 250, colors: ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD"] }, 23000),
+    s(20000, { type: "morph", position: { x: 480, y: 300 }, from: 0, to: 100, color: "#6366F1", fontSize: 64 }, 23000),
+
+    // Zoom + Reveal
+    s(23000, { type: "reveal", region: { x: 100, y: 100, width: 400, height: 300 }, direction: "center", color: "#1a1a2e" }, 26000),
+    s(24000, { type: "zoom", region: { x: 300, y: 200, width: 200, height: 150 }, scale: 2.5, borderColor: "#6366F1" }, 27000),
+
+    s(27000, { type: "clear" }),
+  ]
+}
+
+function makeAdvancedTypesSteps(): PresentationStep[] {
+  return [
+    s(0, { type: "radar", position: { x: 80, y: 80 }, axes: [{ label: "Speed", value: 85 }, { label: "Power", value: 72 }, { label: "Range", value: 60 }, { label: "Defense", value: 90 }, { label: "Accuracy", value: 78 }, { label: "Stealth", value: 65 }], color: "#6366F1", fillOpacity: 0.3, size: 220 }, 5000),
+    s(500, { type: "kpi", position: { x: 400, y: 80 }, value: 2847000, label: "Monthly Revenue", trend: "up", trendValue: "+12.5%", sparkData: [20, 35, 28, 45, 42, 58, 55, 68, 72, 85], color: "#10B981" }, 5000),
+    s(1000, { type: "kpi", position: { x: 650, y: 80 }, value: 14200, label: "Active Users", trend: "up", trendValue: "+8.3%", sparkData: [100, 120, 115, 140, 135, 160, 158, 175, 180, 195], color: "#6366F1" }, 5000),
+
+    s(5000, { type: "sankey", position: { x: 80, y: 100 }, nodes: [{ id: "organic", label: "Organic" }, { id: "paid", label: "Paid Ads" }, { id: "social", label: "Social" }, { id: "signup", label: "Sign Up" }, { id: "trial", label: "Free Trial" }, { id: "convert", label: "Conversion" }], links: [{ source: "organic", target: "signup", value: 40 }, { source: "organic", target: "trial", value: 25 }, { source: "paid", target: "signup", value: 30 }, { source: "paid", target: "trial", value: 15 }, { source: "social", target: "signup", value: 20 }, { source: "social", target: "trial", value: 10 }, { source: "signup", target: "convert", value: 55 }, { source: "trial", target: "convert", value: 35 }], width: 520, height: 320 }, 10000),
+    s(5500, { type: "matrix", position: { x: 640, y: 100 }, columns: ["Free", "Pro", "Enterprise"], rows: [{ label: "Unlimited projects", values: ["no", "yes", "yes"] }, { label: "Custom domains", values: ["no", "yes", "yes"] }, { label: "Analytics", values: ["partial", "yes", "yes"] }, { label: "API Access", values: ["no", "partial", "yes"] }, { label: "Priority Support", values: ["no", "no", "yes"] }, { label: "SLA Guarantee", values: ["no", "no", "yes"] }], width: 380 }, 10000),
+
+    s(10000, { type: "annotation-group", position: { x: 120, y: 150 }, items: [{ label: "Data Collection", color: "#6366F1" }, { label: "Preprocessing", color: "#8B5CF6" }, { label: "Model Training", color: "#A855F7" }, { label: "Evaluation", color: "#EC4899" }, { label: "Deployment", color: "#10B981" }], direction: "vertical", connector: "bracket" }, 14000),
+    s(10500, { type: "annotation-group", position: { x: 400, y: 150 }, items: [{ label: "Q1 2024", color: "#6366F1" }, { label: "Q2 2024", color: "#10B981" }, { label: "Q3 2024", color: "#F59E0B" }, { label: "Q4 2024", color: "#EF4444" }], direction: "horizontal", connector: "dots" }, 14000),
+    s(11000, { type: "radar", position: { x: 400, y: 280 }, axes: [{ label: "React", value: 92 }, { label: "Vue", value: 78 }, { label: "Angular", value: 65 }, { label: "Svelte", value: 55 }, { label: "Solid", value: 45 }], color: "#EC4899", fillOpacity: 0.2, size: 200 }, 14000),
+    s(11500, { type: "kpi", position: { x: 680, y: 280 }, value: "99.97%", label: "Uptime SLA", trend: "flat", color: "#38BDF8" }, 14000),
+
+    s(14000, { type: "clear" }),
+  ]
+}
+
+function makeVisualizationSteps(): PresentationStep[] {
+  return [
+    // Treemap — hierarchical data
+    s(0, {
+      type: "treemap",
+      position: { x: 60, y: 80 },
+      data: [
+        { label: "React", value: 42, color: "#61DAFB" },
+        { label: "Vue", value: 28, color: "#42B883" },
+        { label: "Angular", value: 18, color: "#DD0031" },
+        { label: "Svelte", value: 12, color: "#FF3E00" },
+        { label: "Solid", value: 8, color: "#2C4F7C" },
+        { label: "Preact", value: 5, color: "#673AB8" },
+      ],
+      width: 360,
+      height: 220,
+    }, 6000),
+
+    // Donut — market share
+    s(500, {
+      type: "donut",
+      position: { x: 500, y: 80 },
+      segments: [
+        { label: "Desktop", value: 54, color: "#6366F1" },
+        { label: "Mobile", value: 32, color: "#10B981" },
+        { label: "Tablet", value: 9, color: "#F59E0B" },
+        { label: "Other", value: 5, color: "#EC4899" },
+      ],
+      size: 180,
+      innerRatio: 0.6,
+    }, 6000),
+
+    // StatCard — performance improvement
+    s(6000, {
+      type: "stat-card",
+      position: { x: 80, y: 120 },
+      label: "Page Load Time",
+      before: 3200,
+      after: 890,
+      unit: "ms",
+      color: "#10B981",
+    }, 11000),
+
+    s(6500, {
+      type: "stat-card",
+      position: { x: 450, y: 120 },
+      label: "Monthly Revenue",
+      before: 48000,
+      after: 127000,
+      unit: "$",
+      color: "#6366F1",
+    }, 11000),
+
+    // CodeBlock — animated code
+    s(11000, {
+      type: "code-block",
+      position: { x: 80, y: 100 },
+      code: "import { spring } from \"remotion\";\n\nconst animation = spring({\n  frame,\n  fps: 30,\n  config: { damping: 12 },\n});\n\nreturn (\n  <div style={{ opacity: animation }}>\n    Hello, Remotion!\n  </div>\n);",
+      language: "typescript",
+      highlightLines: [3, 4, 5, 6],
+    }, 17000),
+
+    s(11500, {
+      type: "donut",
+      position: { x: 560, y: 120 },
+      segments: [
+        { label: "TypeScript", value: 68, color: "#3178C6" },
+        { label: "JavaScript", value: 22, color: "#F7DF1E" },
+        { label: "CSS", value: 7, color: "#264DE4" },
+        { label: "Other", value: 3, color: "#8B5CF6" },
+      ],
+      size: 160,
+      innerRatio: 0.55,
+    }, 17000),
+
+    // Final scene — all together
+    s(17000, {
+      type: "treemap",
+      position: { x: 60, y: 60 },
+      data: [
+        { label: "AWS", value: 32, color: "#FF9900" },
+        { label: "Azure", value: 23, color: "#0078D4" },
+        { label: "GCP", value: 11, color: "#4285F4" },
+        { label: "Others", value: 8, color: "#6B7280" },
+      ],
+      width: 300,
+      height: 180,
+    }, 22000),
+
+    s(17500, {
+      type: "stat-card",
+      position: { x: 420, y: 80 },
+      label: "API Latency (p99)",
+      before: 450,
+      after: 89,
+      unit: "ms",
+      color: "#EC4899",
+    }, 22000),
+
+    s(18000, {
+      type: "code-block",
+      position: { x: 100, y: 320 },
+      code: "// Performance optimization\nconst memo = useMemo(() => {\n  return computeExpensive(data);\n}, [data]);",
+      language: "typescript",
+      highlightLines: [2, 3, 4],
+    }, 22000),
+
+    s(22000, { type: "clear" }),
+  ]
+}
+
 function makeSpotlightSteps(): PresentationStep[] {
   return [
-    s(0, { type: "spotlight", region: { targetId: "title", padding: 12 }, maskOpacity: 0.75, borderRadius: 12, animate: true }, 3000),
-    s(3000, { type: "spotlight", region: { targetId: "card-nvidia", padding: 8 }, maskOpacity: 0.75, borderRadius: 10, animate: true }, 5500),
-    s(5500, { type: "spotlight", region: { targetId: "card-amd", padding: 8 }, maskOpacity: 0.7, borderRadius: 10, animate: true }, 8000),
-    s(8000, { type: "spotlight", region: { targetId: "card-others", padding: 8 }, maskOpacity: 0.7, borderRadius: 10, animate: true }, 10500),
-    s(10500, { type: "spotlight", region: { targetId: "revenue-chart", padding: 10 }, maskOpacity: 0.6, borderRadius: 10, animate: true }, 12000),
-    s(12000, { type: "clear" }),
-  ]
-}
-
-function makeCardSteps(): PresentationStep[] {
-  return [
-    s(0, { type: "card", position: { targetId: "card-nvidia", placement: "right-of-start", offsetX: 10 }, width: 280, title: "从右侧滑入", content: "毛玻璃效果 + 柔和阴影", tag: "Right", tagColor: "#6366F1", enterFrom: "right", animate: true }, 5000),
-    s(1500, { type: "card", position: { targetId: "card-amd", placement: "below-start" }, width: 280, title: "从下方滑入", content: "每个方向都有弹性动画", tag: "Bottom", tagColor: "#F59E0B", enterFrom: "bottom", animate: true }, 6000),
-    s(3000, { type: "card", position: { targetId: "card-others", placement: "below-start" }, width: 280, title: "再从下方滑入", content: "适合展示补充信息", tag: "Below", tagColor: "#10B981", enterFrom: "bottom", animate: true }, 7000),
-    s(5000, { type: "card", position: { targetId: "analysis", placement: "right-of-start", offsetX: 10 }, width: 280, title: "从右侧滑入", content: "组合创建丰富视觉叙事", tag: "RightOf", tagColor: "#EF4444", enterFrom: "right", animate: true }, 9000),
-    s(7000, { type: "text", position: { targetId: "title", placement: "below-start" }, content: "纯 CSS @keyframes，零依赖！", fontSize: 15, fontWeight: 600, color: "#fff", background: "linear-gradient(135deg, #6366F1, #8B5CF6)", animate: true }, 10000),
-    s(10000, { type: "clear" }),
-  ]
-}
-
-function makeNewActionsSteps(): PresentationStep[] {
-  return [
-    s(0, { type: "pulse", center: { targetId: "nvidia-value", anchor: "center" }, radius: 24, color: "#76B900", rings: 3, animate: true }, 3000),
-    s(1000, { type: "badge", position: { targetId: "title", placement: "above-end" }, text: "HOT", color: "#fff", background: "#EF4444", size: "md", animate: true }, 5000),
-    s(3000, { type: "underline", from: { targetId: "bar-nvidia", anchor: "bottom-left" }, to: { targetId: "bar-nvidia", anchor: "bottom-right" }, color: "#F59E0B", strokeWidth: 3, style: "wavy", animate: true }, 7000),
-    s(5000, { type: "progress", position: { targetId: "card-nvidia", placement: "below-start" }, width: 280, value: 80, color: "#76B900", showLabel: true, label: "NVIDIA 80%", animate: true }, 9000),
-    s(7000, { type: "counter", position: { targetId: "card-amd", placement: "below-start" }, value: 26, prefix: "$", suffix: "B", color: "#76B900", fontSize: 48, animate: true }, 11000),
-    s(9000, { type: "bracket", from: { targetId: "bar-intel", anchor: "right" }, to: { targetId: "bar-huawei", anchor: "right" }, direction: "right", color: "#6366F1", strokeWidth: 2, label: "Others", animate: true }, 13000),
-    s(11000, { type: "chart", position: { targetId: "analysis", placement: "below-start" }, width: 320, height: 150, chartType: "bar", title: "季度收入对比", data: [{ name: "NVIDIA", value: 26 }, { name: "AMD", value: 3.5 }, { name: "Intel", value: 1.1 }], colors: ["#76B900", "#ED1C24", "#0071C5"], animate: true }, 15000),
-    s(13000, { type: "typewriter", position: { targetId: "card-nvidia", placement: "below-start" }, content: "以上就是所有动作类型！", fontSize: 16, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #6366F1, #EC4899)", speed: "normal", animate: true }, 17000),
-    s(17000, { type: "clear" }),
+    s(0, { type: "spotlight", region: { targetId: "title", padding: 12 }, maskOpacity: 0.75, borderRadius: 12 }, 3000),
+    s(3000, { type: "spotlight", region: { targetId: "card-nvidia", padding: 8 }, maskOpacity: 0.75, borderRadius: 10 }, 5500),
+    s(5500, { type: "spotlight", region: { targetId: "card-amd", padding: 8 }, maskOpacity: 0.7, borderRadius: 10 }, 8000),
+    s(8000, { type: "spotlight", region: { targetId: "card-others", padding: 8 }, maskOpacity: 0.7, borderRadius: 10 }, 10500),
+    s(10500, { type: "clear" }),
   ]
 }
 
 // ============================================================================
-// 剧本定义
+// Script definitions
 // ============================================================================
 
 interface Script {
@@ -75,181 +228,3089 @@ interface Script {
   description: string
   icon: string
   steps: PresentationStep[]
-  background: React.ComponentType
-  /** Total duration in ms (timeline endpoint) */
   totalDurationMs: number
+  /** Use MockBackground? */
+  useBackground: boolean
+}
+
+interface TimelineItem {
+  step: PresentationStep
+  startMs: number
+  endMs: number
+  lane: number
+}
+
+interface TimelineLane {
+  id: string
+  label: string
+  items: TimelineItem[]
+}
+
+function computeTotalMs(steps: PresentationStep[]): number {
+  if (steps.length === 0) return 0
+  return Math.max(...steps.map((s) => Math.max(s.startMs, s.endMs ?? s.startMs))) + 2000
+}
+
+function formatTime(ms: number): string {
+  const safeMs = Math.max(0, Math.round(ms))
+  const totalSeconds = Math.floor(safeMs / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  const tenths = Math.floor((safeMs % 1000) / 100)
+  return `${minutes}:${seconds.toString().padStart(2, "0")}.${tenths}`
+}
+
+function getStepEndMs(step: PresentationStep, totalDurationMs: number): number {
+  return Math.min(step.endMs ?? totalDurationMs, totalDurationMs)
+}
+
+function buildTimelineLanes(steps: PresentationStep[], totalDurationMs: number): TimelineLane[] {
+  const clearTimes = [...steps]
+    .filter((step) => step.command.type === "clear")
+    .map((step) => step.startMs)
+    .sort((a, b) => a - b)
+
+  const items = [...steps]
+    .filter((step) => step.command.type !== "wait")
+    .map((step): TimelineItem | null => {
+      const startMs = Math.max(0, Math.min(step.startMs, totalDurationMs))
+      const configuredEndMs = step.command.type === "clear"
+        ? Math.min(startMs + 400, totalDurationMs)
+        : getStepEndMs(step, totalDurationMs)
+      const clearAfterStart = clearTimes.find((time) => time > startMs && time <= configuredEndMs)
+      const endMs = Math.max(startMs + 120, clearAfterStart ?? configuredEndMs)
+      return endMs > startMs ? { step, startMs, endMs, lane: 0 } : null
+    })
+    .filter((item): item is TimelineItem => item !== null)
+    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs)
+
+  const laneLabels = Array.from(new Set(items.map((item) => item.step.command.type)))
+  return laneLabels.map((label) => {
+    const laneItems = items
+      .filter((item) => item.step.command.type === label)
+      .map((item, lane) => ({ ...item, lane }))
+    return { id: label, label, items: laneItems }
+  })
+}
+
+function getActiveSteps(steps: PresentationStep[], currentMs: number, totalDurationMs: number): PresentationStep[] {
+  const clearTimes = [...steps]
+    .filter((step) => step.command.type === "clear")
+    .map((step) => step.startMs)
+    .sort((a, b) => a - b)
+
+  return steps
+    .filter((step) => {
+      if (step.command.type === "wait") return false
+      if (step.command.type === "clear") {
+        return currentMs >= step.startMs && currentMs < step.startMs + 500
+      }
+      const configuredEndMs = getStepEndMs(step, totalDurationMs)
+      const clearAfterStart = clearTimes.find((time) => time > step.startMs && time <= configuredEndMs)
+      const effectiveEndMs = clearAfterStart ?? configuredEndMs
+      return currentMs >= step.startMs && currentMs < effectiveEndMs
+    })
+    .sort((a, b) => a.startMs - b.startMs)
+}
+
+function getCurrentStepIndex(steps: PresentationStep[], currentMs: number): number {
+  let currentIndex = 0
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i].startMs <= currentMs) currentIndex = i
+  }
+  return currentIndex
 }
 
 const SCRIPTS: Script[] = [
   {
     id: "ai-chip",
     title: "AI 芯片市场深度分析",
-    description: "小Lin说风格：时间线多轨并行，60s 深度演示",
+    description: "完整180s时间线演示，使用 Remotion 驱动所有动画",
     icon: "📊",
     steps: demoSteps,
-    background: MockBackground,
     totalDurationMs: TOTAL_DURATION_MS,
+    useBackground: true,
+  },
+  {
+    id: "new-types",
+    title: "新动作类型展示",
+    description: "Gauge、Sparkline、Heatmap、Funnel、Timeline、Flowchart、Confetti 等 15 种新类型",
+    icon: "✨",
+    steps: makeNewTypesSteps(),
+    totalDurationMs: computeTotalMs(makeNewTypesSteps()),
+    useBackground: false,
+  },
+  {
+    id: "advanced-types",
+    title: "高级数据类型展示",
+    description: "Radar、Sankey、KPI、Matrix、AnnotationGroup — 5 种高级数据可视化类型",
+    icon: "🎯",
+    steps: makeAdvancedTypesSteps(),
+    totalDurationMs: computeTotalMs(makeAdvancedTypesSteps()),
+    useBackground: false,
+  },
+  {
+    id: "visualization",
+    title: "数据可视化展示",
+    description: "Treemap、Donut、StatCard、CodeBlock — 高级数据可视化组件",
+    icon: "\uD83D\uDCC8",
+    steps: makeVisualizationSteps(),
+    totalDurationMs: computeTotalMs(makeVisualizationSteps()),
+    useBackground: false,
   },
   {
     id: "spotlight-demo",
     title: "聚光灯演示",
-    description: "Spotlight 遮罩效果：暗色蒙层 + 高亮聚焦区域",
+    description: "Spotlight 遮罩聚焦效果",
     icon: "🔦",
     steps: makeSpotlightSteps(),
-    background: MockBackground,
     totalDurationMs: computeTotalMs(makeSpotlightSteps()),
-  },
-  {
-    id: "card-gallery",
-    title: "卡片画廊",
-    description: "信息卡片从四个方向滑入，展示毛玻璃样式和动画效果",
-    icon: "🃏",
-    steps: makeCardSteps(),
-    background: MockBackground,
-    totalDurationMs: computeTotalMs(makeCardSteps()),
-  },
-  {
-    id: "new-actions",
-    title: "新动作展示",
-    description: "Pulse、Underline、Badge、Progress、Counter、Bracket 六种新动作",
-    icon: "✨",
-    steps: makeNewActionsSteps(),
-    background: MockBackground,
-    totalDurationMs: computeTotalMs(makeNewActionsSteps()),
+    useBackground: true,
   },
 ]
 
 // ============================================================================
-// 工具函数
+// Background components
 // ============================================================================
 
-/** Extract sorted unique cues (time points) from steps */
-function getCues(steps: PresentationStep[]): number[] {
-  const set = new Set(steps.map((s) => s.startMs))
-  return [...set].sort((a, b) => a - b)
+function GradientBackground() {
+  return <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)" }} />
 }
 
-/** Auto-compute total duration from steps */
-function computeTotalMs(steps: PresentationStep[]): number {
-  if (steps.length === 0) return 0
-  return Math.max(...steps.map((s) => Math.max(s.startMs, s.endMs ?? s.startMs))) + 2000
+function commandColor(type: string): string {
+  const palette = [
+    "#76B900",
+    "#6366F1",
+    "#F59E0B",
+    "#10B981",
+    "#EC4899",
+    "#38BDF8",
+    "#F97316",
+    "#A855F7",
+    "#EF4444",
+    "#14B8A6",
+  ]
+  let hash = 0
+  for (let i = 0; i < type.length; i++) {
+    hash = (hash * 31 + type.charCodeAt(i)) % palette.length
+  }
+  return palette[Math.abs(hash) % palette.length]
+}
+
+function toEditorMode(mode: JsonMode): Mode {
+  switch (mode) {
+    case "tree":
+      return Mode.tree
+    case "table":
+      return Mode.table
+    case "text":
+      return Mode.text
+  }
+}
+
+
+function JsonInspector({
+  value,
+  height = 205,
+  initialMode = "tree",
+  focusPath,
+  compact = false,
+}: {
+  value: unknown
+  height?: number
+  initialMode?: JsonMode
+  focusPath?: JSONPath
+  compact?: boolean
+}) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<JsonEditor | null>(null)
+  const prevValueRef = useRef<string>("")
+  const [valueChanged, setValueChanged] = useState(false)
+
+  const jsonStr = useMemo(() => JSON.stringify(value, null, 2), [value])
+
+  // Detect value changes for diff flash effect
+  useEffect(() => {
+    if (prevValueRef.current && prevValueRef.current !== jsonStr) {
+      setValueChanged(true)
+      const timer = window.setTimeout(() => setValueChanged(false), 800)
+      prevValueRef.current = jsonStr
+      return () => window.clearTimeout(timer)
+    }
+    prevValueRef.current = jsonStr
+  }, [jsonStr])
+
+  const updateEditorProps = useCallback(() => {
+    editorRef.current?.updateProps({
+      content: { json: value },
+      mode: toEditorMode(initialMode),
+      readOnly: true,
+      mainMenuBar: !compact,
+      navigationBar: !compact,
+      statusBar: !compact,
+      indentation: 2,
+      askToFormat: false,
+    })
+  }, [compact, initialMode, value])
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+
+    editorRef.current = createJSONEditor({
+      target: host,
+      props: {
+        content: { json: value },
+        mode: toEditorMode(initialMode),
+        readOnly: true,
+        mainMenuBar: !compact,
+        navigationBar: !compact,
+        statusBar: !compact,
+        indentation: 2,
+        askToFormat: false,
+      },
+    })
+
+    return () => {
+      void editorRef.current?.destroy()
+      editorRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    updateEditorProps()
+  }, [updateEditorProps])
+
+  useEffect(() => {
+    if (!focusPath || initialMode === "text") return
+    const timer = window.setTimeout(() => {
+      const editor = editorRef.current
+      if (!editor) return
+      const nextSelection = createValueSelection(focusPath)
+      editor.select(nextSelection)
+      void editor.scrollTo(focusPath)
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [focusPath, initialMode, value])
+
+  return (
+    <div
+      className={`jse-theme-dark ${valueChanged ? "pbc-diff-flash" : ""}`}
+      style={{
+        height,
+        minHeight: height,
+        borderRadius: 9,
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.08)",
+        background: "#111827",
+      }}
+    >
+      <div
+        ref={hostRef}
+        style={{
+          height: "100%",
+          ["--jse-font-size-mono" as string]: "11px",
+        }}
+      />
+    </div>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// SVG icon helpers — lightweight inline SVGs instead of text characters
+// ---------------------------------------------------------------------------
+
+function IconSkipBack({ size = 16 }: { size?: number }) {
+  // Go to start: triple bar + triangle (||| <) — mirror of skip forward
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="21 18 13 12 21 6 21 18" fill="currentColor" opacity={0.7} />
+      <line x1="10" y1="5" x2="10" y2="19" strokeWidth={2.2} />
+      <line x1="6" y1="5" x2="6" y2="19" strokeWidth={2.2} />
+      <line x1="2" y1="5" x2="2" y2="19" strokeWidth={2.2} />
+    </svg>
+  )
+}
+
+function IconStepBack({ size = 16 }: { size?: number }) {
+  // Previous step: double triangle (|<<) — mirror of step forward
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="21 20 13 12 21 4 21 20" fill="currentColor" opacity={0.8} />
+      <polygon points="12 20 4 12 12 4 12 20" fill="currentColor" opacity={0.5} />
+      <line x1="3" y1="5" x2="3" y2="19" strokeWidth={2.5} />
+    </svg>
+  )
+}
+
+function IconStepForward({ size = 16 }: { size?: number }) {
+  // Next step: double triangle (>>|) — distinct from single frame advance
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="3 4 11 12 3 20 3 4" fill="currentColor" opacity={0.8} />
+      <polygon points="12 4 20 12 12 20 12 4" fill="currentColor" opacity={0.5} />
+      <line x1="21" y1="5" x2="21" y2="19" strokeWidth={2.5} />
+    </svg>
+  )
+}
+
+function IconSkipForward({ size = 16 }: { size?: number }) {
+  // Go to end: triple bar (|||>) — clearly "jump to end"
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="3 6 11 12 3 18 3 6" fill="currentColor" opacity={0.7} />
+      <line x1="14" y1="5" x2="14" y2="19" strokeWidth={2.2} />
+      <line x1="18" y1="5" x2="18" y2="19" strokeWidth={2.2} />
+      <line x1="22" y1="5" x2="22" y2="19" strokeWidth={2.2} />
+    </svg>
+  )
+}
+
+function IconPlay({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="6 3 20 12 6 21 6 3" />
+    </svg>
+  )
+}
+
+function IconPause({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <rect x="5" y="3" width="5" height="18" rx="1" />
+      <rect x="14" y="3" width="5" height="18" rx="1" />
+    </svg>
+  )
+}
+
+function IconChevronDown({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  )
+}
+
+function IconChevronUp({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 15 12 9 18 15" />
+    </svg>
+  )
+}
+
+function IconLoop({ size = 14, active = false }: { size?: number; active?: boolean }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={active ? "#76B900" : "currentColor"} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  )
+}
+
+function IconFrameBack({ size = 14 }: { size?: number }) {
+  // Single frame back: thin bar with tiny notch arrow — mirror of frame forward
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="4" x2="6" y2="20" />
+      <line x1="18" y1="12" x2="10" y2="12" />
+      <polyline points="13 8 9 12 13 16" />
+    </svg>
+  )
+}
+
+function IconFrameForward({ size = 14 }: { size?: number }) {
+  // Single frame: thin bar with tiny notch arrow — minimal, distinct from step/skip
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="4" x2="18" y2="20" />
+      <line x1="6" y1="12" x2="14" y2="12" />
+      <polyline points="11 8 15 12 11 16" />
+    </svg>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Shared style injection for CSS-based hover/active states & animations
+// (Injected once, scoped via class names, avoids per-component useState for hover)
+// ---------------------------------------------------------------------------
+
+let _stylesInjected = false
+function injectConsoleStyles() {
+  if (_stylesInjected) return
+  _stylesInjected = true
+  const style = document.createElement("style")
+  style.textContent = `
+    .pbc-btn {
+      transition: background 120ms ease, border-color 120ms ease, transform 80ms ease, box-shadow 120ms ease;
+      outline: none;
+    }
+    .pbc-btn:hover { filter: brightness(1.25); }
+    .pbc-btn:active { transform: scale(0.94); }
+    .pbc-btn:focus-visible {
+      box-shadow: 0 0 0 2px rgba(118,185,0,0.5);
+    }
+    .pbc-btn-primary:hover {
+      background: rgba(118,185,0,0.38) !important;
+      border-color: rgba(118,185,0,0.9) !important;
+    }
+    .pbc-btn-primary:active {
+      background: rgba(118,185,0,0.5) !important;
+    }
+    .pbc-btn-ghost:hover {
+      background: rgba(255,255,255,0.12) !important;
+    }
+    .pbc-btn-ghost:active {
+      background: rgba(255,255,255,0.18) !important;
+    }
+    .pbc-seg:hover:not(.pbc-seg-active) {
+      background: rgba(255,255,255,0.08) !important;
+    }
+    .pbc-seg-active {
+      background: rgba(255,255,255,0.18) !important;
+      color: #fff !important;
+    }
+    .pbc-timeline-item {
+      transition: opacity 100ms ease, filter 100ms ease, box-shadow 150ms ease;
+    }
+    .pbc-timeline-item:hover {
+      opacity: 1 !important;
+      filter: brightness(1.35);
+      z-index: 3;
+    }
+    .pbc-timeline-item:focus-visible {
+      outline: 2px solid rgba(118,185,0,0.7);
+      outline-offset: 1px;
+    }
+    @keyframes pbc-active-pulse {
+      0%, 100% { box-shadow: 0 0 8px var(--pulse-color, rgba(118,185,0,0.4)), inset 0 1px 0 rgba(255,255,255,0.15); }
+      50% { box-shadow: 0 0 14px var(--pulse-color, rgba(118,185,0,0.6)), 0 0 4px var(--pulse-color, rgba(118,185,0,0.3)), inset 0 1px 0 rgba(255,255,255,0.2); }
+    }
+    .pbc-timeline-item-active {
+      animation: pbc-active-pulse 1.8s ease-in-out infinite;
+    }
+    .pbc-lane-row {
+      transition: background 120ms ease;
+    }
+    .pbc-lane-row:hover {
+      background: rgba(255,255,255,0.035) !important;
+    }
+    .pbc-cmd-card {
+      transition: background 100ms ease;
+    }
+    .pbc-cmd-card:hover {
+      background: rgba(255,255,255,0.04);
+    }
+    .pbc-collapse-anim {
+      transition: max-height 250ms cubic-bezier(0.4,0,0.2,1), padding 250ms cubic-bezier(0.4,0,0.2,1), opacity 200ms ease;
+    }
+    /* Custom range slider styling */
+    .pbc-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: transparent;
+      cursor: pointer;
+      outline: none;
+    }
+    .pbc-range::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+    }
+    .pbc-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #76B900;
+      border: 2px solid #fff;
+      margin-top: -4px;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(118,185,0,0.5);
+      transition: transform 100ms ease, box-shadow 100ms ease;
+    }
+    .pbc-range::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 14px rgba(118,185,0,0.7);
+    }
+    .pbc-range::-moz-range-track {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+    }
+    .pbc-range::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #76B900;
+      border: 2px solid #fff;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(118,185,0,0.5);
+    }
+    .pbc-range:focus-visible::-webkit-slider-thumb {
+      box-shadow: 0 0 0 3px rgba(118,185,0,0.4), 0 0 12px rgba(118,185,0,0.6);
+    }
+    .pbc-kbd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 9px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.5);
+      font-family: SFMono-Regular, Consolas, monospace;
+      line-height: 1;
+    }
+    /* Enhanced timeline playhead */
+    .pbc-playhead-handle {
+      cursor: ew-resize;
+      transition: transform 80ms ease, filter 80ms ease;
+    }
+    .pbc-playhead-handle:hover {
+      transform: scaleX(1.3);
+      filter: brightness(1.3) drop-shadow(0 0 4px rgba(118,185,0,0.8));
+    }
+    .pbc-playhead-line {
+      background: linear-gradient(180deg, #76B900, #9FE030, #76B900) !important;
+      box-shadow: 0 0 12px rgba(118,185,0,0.7), 0 0 4px rgba(118,185,0,0.9), 0 0 24px rgba(118,185,0,0.3) !important;
+    }
+    /* Timeline track area custom scrollbar */
+    .pbc-track-scroll::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .pbc-track-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .pbc-track-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.12);
+      border-radius: 3px;
+    }
+    .pbc-track-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.22);
+    }
+    .pbc-track-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.12) transparent;
+    }
+    /* Minimap viewport drag */
+    .pbc-minimap-viewport {
+      cursor: grab;
+      transition: border-color 100ms ease, background 100ms ease, box-shadow 100ms ease;
+    }
+    .pbc-minimap-viewport:hover {
+      border-color: rgba(118,185,0,0.7) !important;
+      background: rgba(118,185,0,0.1) !important;
+      box-shadow: 0 0 6px rgba(118,185,0,0.2);
+    }
+    .pbc-minimap-viewport:active {
+      cursor: grabbing;
+      border-color: rgba(118,185,0,0.9) !important;
+    }
+    /* Minimap resize handles */
+    .pbc-minimap-viewport::before,
+    .pbc-minimap-viewport::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 8px;
+      border-radius: 1.5px;
+      background: rgba(118,185,0,0.5);
+      opacity: 0;
+      transition: opacity 100ms ease;
+    }
+    .pbc-minimap-viewport::before { left: 2px; }
+    .pbc-minimap-viewport::after { right: 2px; }
+    .pbc-minimap-viewport:hover::before,
+    .pbc-minimap-viewport:hover::after {
+      opacity: 1;
+    }
+    /* Timeline block label */
+    .pbc-timeline-item .pbc-block-label {
+      opacity: 0.85;
+      transition: opacity 80ms ease;
+    }
+    .pbc-timeline-item:hover .pbc-block-label {
+      opacity: 1;
+    }
+    /* Speed dropdown */
+    .pbc-speed-menu {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px;
+      border-radius: 8px;
+      background: rgba(10, 12, 28, 0.97);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      backdrop-filter: blur(20px);
+      z-index: 20;
+      min-width: 64px;
+    }
+    .pbc-speed-option {
+      display: block;
+      width: 100%;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      background: transparent;
+      color: rgba(255,255,255,0.65);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      font-family: SFMono-Regular, Consolas, monospace;
+      transition: background 80ms ease;
+    }
+    .pbc-speed-option:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .pbc-speed-option-active {
+      color: #76B900 !important;
+      background: rgba(118,185,0,0.12) !important;
+    }
+    /* Empty state clock animation */
+    @keyframes pbc-clock-pulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.08); }
+    }
+    .pbc-empty-clock {
+      animation: pbc-clock-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes pbc-clock-hand {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .pbc-clock-hand-anim {
+      transform-origin: 12px 12px;
+      animation: pbc-clock-hand 3s linear infinite;
+    }
+    /* Command card enter/exit transition */
+    @keyframes pbc-card-enter {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pbc-cmd-card-enter {
+      animation: pbc-card-enter 200ms ease-out;
+    }
+    .pbc-cmd-card:hover {
+      background: rgba(255,255,255,0.06) !important;
+    }
+    /* JSON diff highlight */
+    @keyframes pbc-diff-flash {
+      0% { background: rgba(118,185,0,0.25); }
+      100% { background: transparent; }
+    }
+    .pbc-diff-flash {
+      animation: pbc-diff-flash 800ms ease-out;
+    }
+    /* Copy button feedback */
+    @keyframes pbc-copy-check {
+      0% { transform: scale(0.8); opacity: 0; }
+      30% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .pbc-copy-check {
+      animation: pbc-copy-check 300ms ease-out;
+    }
+    /* Time display glow */
+    .pbc-time-glow {
+      text-shadow: 0 0 12px rgba(118,185,0,0.4), 0 0 4px rgba(118,185,0,0.2);
+    }
+    /* Circular progress ring animation */
+    .pbc-progress-ring {
+      transition: stroke-dashoffset 120ms linear;
+    }
+    /* Speed dial visual */
+    .pbc-speed-dial {
+      transition: transform 200ms cubic-bezier(0.4,0,0.2,1);
+    }
+    /* Panel cross-fade */
+    @keyframes pbc-panel-fadein {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pbc-panel-fade {
+      animation: pbc-panel-fadein 200ms ease-out;
+    }
+    /* Waiting countdown pulse */
+    @keyframes pbc-waiting-pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.9; }
+    }
+    .pbc-waiting-pulse {
+      animation: pbc-waiting-pulse 1.5s ease-in-out infinite;
+    }
+    /* Keyboard shortcut tooltip */
+    .pbc-kbd-group {
+      position: relative;
+      display: inline-flex;
+    }
+    .pbc-kbd-group .pbc-kbd-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 4px 8px;
+      border-radius: 5px;
+      background: rgba(0,0,0,0.92);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.75);
+      font-size: 9px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 30;
+    }
+    .pbc-kbd-group:hover .pbc-kbd-tooltip {
+      display: block;
+    }
+    /* Waveform bar in progress background */
+    .pbc-waveform-bar {
+      display: inline-block;
+      border-radius: 1px;
+      background: rgba(118,185,0,0.25);
+      min-width: 1px;
+    }
+  `
+  document.head.appendChild(style)
+}
+
+function PresentationPlaybackConsole({
+  script,
+  currentMs,
+  currentStepIndex,
+  activeSteps,
+  isPlaying,
+  isLooping,
+  playbackRate,
+  onSeek,
+  onPlay,
+  onPause,
+  onNext,
+  onPrevious,
+  onGoToStart,
+  onGoToEnd,
+  onToggleLoop,
+  onSetPlaybackRate,
+  onFrameStep,
+}: {
+  script: Script
+  currentMs: number
+  currentStepIndex: number
+  activeSteps: PresentationStep[]
+  isPlaying: boolean
+  isLooping: boolean
+  playbackRate: number
+  onSeek: (ms: number) => void
+  onPlay: () => void
+  onPause: () => void
+  onNext: () => void
+  onPrevious: () => void
+  onGoToStart: () => void
+  onGoToEnd: () => void
+  onToggleLoop: () => void
+  onSetPlaybackRate: (rate: number) => void
+  onFrameStep: (direction: 1 | -1) => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const [activePanelMode, setActivePanelMode] = useState<ActivePanelMode>("list")
+  const lanes = useMemo(
+    () => buildTimelineLanes(script.steps, script.totalDurationMs),
+    [script],
+  )
+
+  useEffect(() => { injectConsoleStyles() }, [])
+
+  return (
+    <div
+      role="region"
+      aria-label="Playback console"
+      style={{
+        position: "absolute",
+        left: 16,
+        right: 16,
+        bottom: 16,
+        zIndex: 9998,
+        borderRadius: 14,
+        background: "rgba(8, 10, 22, 0.92)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.55), 0 0 1px rgba(255,255,255,0.1), inset 0 1px 0 rgba(255,255,255,0.04)",
+        backdropFilter: "blur(24px)",
+        color: "#fff",
+        pointerEvents: "auto",
+      }}
+    >
+      {/* Top progress bar — always visible, acts as a thin scrub strip */}
+      <ProgressStrip
+        currentMs={currentMs}
+        totalDurationMs={script.totalDurationMs}
+        onSeek={onSeek}
+      />
+
+      {/* Panel header strip — always visible, contains Collapse/Expand toggle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "3px 14px 0" }}>
+        <button
+          className="pbc-btn pbc-btn-ghost"
+          type="button"
+          title={collapsed ? "Expand (Ctrl+Shift+E)" : "Collapse (Ctrl+Shift+E)"}
+          aria-label={collapsed ? "Expand console" : "Collapse console"}
+          onClick={() => setCollapsed((prev) => !prev)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            height: 22,
+            padding: "0 8px",
+            borderRadius: 11,
+            border: "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(255,255,255,0.05)",
+            color: "rgba(255,255,255,0.55)",
+            cursor: "pointer",
+            fontSize: 9,
+            fontWeight: 600,
+            letterSpacing: 0.3,
+          }}
+        >
+          {collapsed ? <IconChevronUp size={9} /> : <IconChevronDown size={9} />}
+          <span>{collapsed ? "Expand" : "Collapse"}</span>
+        </button>
+      </div>
+
+      <div
+        className="pbc-collapse-anim"
+        style={{
+          display: collapsed ? "flex" : "grid",
+          gridTemplateColumns: collapsed ? undefined : "260px minmax(360px, 1fr) 320px",
+          alignItems: collapsed ? "center" : undefined,
+          gap: collapsed ? 12 : 14,
+          padding: collapsed ? "4px 14px 8px" : "8px 14px 14px",
+          opacity: 1,
+        }}
+      >
+        {collapsed ? (
+          <CollapsedPlaybackConsole
+            title={script.title}
+            currentMs={currentMs}
+            totalDurationMs={script.totalDurationMs}
+            currentStepIndex={currentStepIndex}
+            totalSteps={script.steps.length}
+            activeCount={activeSteps.length}
+            isPlaying={isPlaying}
+            onPlay={onPlay}
+            onPause={onPause}
+            onSeek={onSeek}
+            onNext={onNext}
+            onPrevious={onPrevious}
+          />
+        ) : (
+          <>
+            <PlaybackControls
+              title={script.title}
+              currentMs={currentMs}
+              totalDurationMs={script.totalDurationMs}
+              currentStepIndex={currentStepIndex}
+              totalSteps={script.steps.length}
+              activeSteps={activeSteps}
+              isPlaying={isPlaying}
+              isLooping={isLooping}
+              playbackRate={playbackRate}
+              onSeek={onSeek}
+              onPlay={onPlay}
+              onPause={onPause}
+              onNext={onNext}
+              onPrevious={onPrevious}
+              onGoToStart={onGoToStart}
+              onGoToEnd={onGoToEnd}
+              onToggleLoop={onToggleLoop}
+              onSetPlaybackRate={onSetPlaybackRate}
+              onFrameStep={onFrameStep}
+            />
+
+            <TimelineTracks
+              lanes={lanes}
+              currentMs={currentMs}
+              totalDurationMs={script.totalDurationMs}
+              onSeek={onSeek}
+            />
+
+            <ActiveCommandList
+              steps={activeSteps}
+              currentMs={currentMs}
+              totalDurationMs={script.totalDurationMs}
+              mode={activePanelMode}
+              onModeChange={setActivePanelMode}
+              onSeek={onSeek}
+              isPlaying={isPlaying}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Top progress strip — thin, always visible, clickable for quick scrubbing
+// ---------------------------------------------------------------------------
+
+function ProgressStrip({
+  currentMs,
+  totalDurationMs,
+  onSeek,
+}: {
+  currentMs: number
+  totalDurationMs: number
+  onSeek: (ms: number) => void
+}) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [hoverX, setHoverX] = useState<number | null>(null)
+  const progress = totalDurationMs > 0 ? Math.min(1, currentMs / totalDurationMs) : 0
+
+  const getTimeAtX = useCallback((clientX: number) => {
+    const el = trackRef.current
+    if (!el) return 0
+    const rect = el.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return ratio * totalDurationMs
+  }, [totalDurationMs])
+
+  return (
+    <div
+      ref={trackRef}
+      role="slider"
+      aria-label="Playback position"
+      aria-valuemin={0}
+      aria-valuemax={totalDurationMs}
+      aria-valuenow={Math.round(currentMs)}
+      aria-valuetext={formatTime(currentMs)}
+      tabIndex={0}
+      onClick={(e) => onSeek(getTimeAtX(e.clientX))}
+      onMouseMove={(e) => {
+        const rect = trackRef.current?.getBoundingClientRect()
+        if (rect) setHoverX(e.clientX - rect.left)
+      }}
+      onMouseLeave={() => setHoverX(null)}
+      style={{
+        position: "relative",
+        height: 5,
+        background: "rgba(255,255,255,0.06)",
+        cursor: "pointer",
+        overflow: "visible",
+      }}
+    >
+      {/* Filled portion */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: `${progress * 100}%`,
+          background: "linear-gradient(90deg, #76B900, #38BDF8)",
+          borderRadius: "0 2px 2px 0",
+          transition: "width 80ms linear",
+        }}
+      />
+      {/* Hover time tooltip */}
+      {hoverX !== null && trackRef.current && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: Math.max(24, Math.min(hoverX, trackRef.current.getBoundingClientRect().width - 24)),
+            transform: "translateX(-50%)",
+            padding: "2px 7px",
+            borderRadius: 4,
+            background: "rgba(0,0,0,0.85)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            fontSize: 10,
+            fontWeight: 600,
+            color: "#fff",
+            fontVariantNumeric: "tabular-nums",
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+            zIndex: 5,
+          }}
+        >
+          {formatTime(getTimeAtX(hoverX + (trackRef.current?.getBoundingClientRect().left ?? 0)))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CollapsedPlaybackConsole({
+  title,
+  currentMs,
+  totalDurationMs,
+  currentStepIndex,
+  totalSteps,
+  activeCount,
+  isPlaying,
+  onPlay,
+  onPause,
+  onSeek,
+  onNext,
+  onPrevious,
+}: {
+  title: string
+  currentMs: number
+  totalDurationMs: number
+  currentStepIndex: number
+  totalSteps: number
+  activeCount: number
+  isPlaying: boolean
+  onPlay: () => void
+  onPause: () => void
+  onSeek: (ms: number) => void
+  onNext: () => void
+  onPrevious: () => void
+}) {
+  return (
+    <>
+      {/* Transport cluster */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+        <button
+          className="pbc-btn pbc-btn-ghost"
+          type="button"
+          title="Previous step  [Left]"
+          aria-label="Previous step"
+          onClick={onPrevious}
+          style={{
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(255,255,255,0.05)",
+            color: "rgba(255,255,255,0.7)",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          <IconStepBack size={12} />
+        </button>
+        <button
+          className="pbc-btn pbc-btn-primary"
+          type="button"
+          title={isPlaying ? "Pause  [Space]" : "Play  [Space]"}
+          aria-label={isPlaying ? "Pause" : "Play"}
+          onClick={isPlaying ? onPause : onPlay}
+          style={{
+            width: 34,
+            height: 34,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 8,
+            border: "1px solid rgba(118,185,0,0.7)",
+            background: "rgba(118,185,0,0.25)",
+            color: "#fff",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          {isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
+        </button>
+        <button
+          className="pbc-btn pbc-btn-ghost"
+          type="button"
+          title="Next step  [Right]"
+          aria-label="Next step"
+          onClick={onNext}
+          style={{
+            width: 28,
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(255,255,255,0.05)",
+            color: "rgba(255,255,255,0.7)",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          <IconStepForward size={12} />
+        </button>
+      </div>
+
+      {/* Title + metadata */}
+      <div style={{ minWidth: 140, flex: "0 1 240px" }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#fff",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {title}
+        </div>
+        <div
+          style={{
+            marginTop: 2,
+            display: "flex",
+            gap: 10,
+            fontSize: 10,
+            color: "rgba(255,255,255,0.42)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          <span style={{ color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>
+            {formatTime(currentMs)}
+          </span>
+          <span>/</span>
+          <span>{formatTime(totalDurationMs)}</span>
+          <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
+          <span>Step {Math.min(currentStepIndex + 1, totalSteps)}/{totalSteps}</span>
+          {activeCount > 0 && (
+            <>
+              <span style={{ color: "rgba(255,255,255,0.25)" }}>|</span>
+              <span style={{ color: "#76B900" }}>{activeCount} active</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Scrub slider */}
+      <div style={{ flex: 1, minWidth: 120, display: "flex", alignItems: "center" }}>
+        <input
+          className="pbc-range"
+          aria-label="Presentation progress"
+          type="range"
+          min={0}
+          max={totalDurationMs}
+          value={Math.min(currentMs, totalDurationMs)}
+          onChange={(event) => onSeek(Number(event.currentTarget.value))}
+        />
+      </div>
+
+      {/* Status indicator */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "3px 8px",
+            borderRadius: 5,
+            background: isPlaying ? "rgba(118,185,0,0.12)" : "rgba(255,255,255,0.05)",
+            fontSize: 10,
+            fontWeight: 700,
+            color: isPlaying ? "#76B900" : "rgba(255,255,255,0.4)",
+            letterSpacing: 0.3,
+          }}
+        >
+          <span style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: isPlaying ? "#76B900" : "rgba(255,255,255,0.3)",
+            boxShadow: isPlaying ? "0 0 6px rgba(118,185,0,0.6)" : "none",
+          }} />
+          {isPlaying ? "PLAYING" : "PAUSED"}
+        </div>
+      </div>
+    </>
+  )
+}
+
+const PLAYBACK_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const
+
+function PlaybackControls({
+  title,
+  currentMs,
+  totalDurationMs,
+  currentStepIndex,
+  totalSteps,
+  activeSteps,
+  isPlaying,
+  isLooping,
+  playbackRate,
+  onSeek,
+  onPlay,
+  onPause,
+  onNext,
+  onPrevious,
+  onGoToStart,
+  onGoToEnd,
+  onToggleLoop,
+  onSetPlaybackRate,
+  onFrameStep,
+}: {
+  title: string
+  currentMs: number
+  totalDurationMs: number
+  currentStepIndex: number
+  totalSteps: number
+  activeSteps: PresentationStep[]
+  isPlaying: boolean
+  isLooping: boolean
+  playbackRate: number
+  onSeek: (ms: number) => void
+  onPlay: () => void
+  onPause: () => void
+  onNext: () => void
+  onPrevious: () => void
+  onGoToStart: () => void
+  onGoToEnd: () => void
+  onToggleLoop: () => void
+  onSetPlaybackRate: (rate: number) => void
+  onFrameStep: (direction: 1 | -1) => void
+}) {
+  const progress = totalDurationMs > 0 ? Math.min(100, (currentMs / totalDurationMs) * 100) : 0
+  const progressFraction = totalDurationMs > 0 ? Math.min(1, currentMs / totalDurationMs) : 0
+  const currentFrame = msToFrame(currentMs, FPS)
+  const [speedMenuOpen, setSpeedMenuOpen] = useState(false)
+  const [showRemaining, setShowRemaining] = useState(false)
+
+  // Circular progress ring params
+  const ringRadius = 20
+  const ringCircumference = 2 * Math.PI * ringRadius
+  const ringOffset = ringCircumference * (1 - progressFraction)
+
+  // Speed dial rotation: map speed to angle
+  const speedAngle = useMemo(() => {
+    const idx = PLAYBACK_SPEEDS.indexOf(playbackRate as typeof PLAYBACK_SPEEDS[number])
+    return idx >= 0 ? (idx / (PLAYBACK_SPEEDS.length - 1)) * 270 - 135 : 0
+  }, [playbackRate])
+
+  return (
+    <section
+      aria-label="Playback controls"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        minWidth: 0,
+      }}
+    >
+      {/* Header: title */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#fff",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {title}
+        </div>
+      </div>
+
+      {/* Time display — prominent monospace with glow, click to toggle elapsed/remaining */}
+      <div
+        onClick={() => setShowRemaining((prev) => !prev)}
+        title="Click to toggle elapsed/remaining time"
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 6,
+          fontVariantNumeric: "tabular-nums",
+          cursor: "pointer",
+          userSelect: "none",
+        }}
+      >
+        <span
+          className={isPlaying ? "pbc-time-glow" : ""}
+          style={{
+            fontSize: 26,
+            fontWeight: 800,
+            color: "#fff",
+            letterSpacing: -0.5,
+            fontFamily: "SFMono-Regular, Consolas, monospace",
+            lineHeight: 1,
+          }}
+        >
+          {showRemaining ? `-${formatTime(Math.max(0, totalDurationMs - currentMs))}` : formatTime(currentMs)}
+        </span>
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>
+          / {formatTime(totalDurationMs)}
+        </span>
+        <span style={{
+          fontSize: 10,
+          color: "rgba(255,255,255,0.22)",
+          fontFamily: "SFMono-Regular, Consolas, monospace",
+          marginLeft: 2,
+        }}>
+          F{currentFrame}
+        </span>
+      </div>
+
+      {/* Scrub slider + waveform progress bar */}
+      <div style={{ position: "relative" }}>
+        <input
+          className="pbc-range"
+          aria-label="Presentation progress"
+          type="range"
+          min={0}
+          max={totalDurationMs}
+          value={Math.min(currentMs, totalDurationMs)}
+          onChange={(event) => onSeek(Number(event.currentTarget.value))}
+        />
+        {/* Waveform-style progress background */}
+        <WaveformProgressBar progress={progress} totalDurationMs={totalDurationMs} />
+      </div>
+
+      {/* Transport buttons with circular ring around play/pause */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+        }}
+      >
+        <ConsoleButton title="Go to start  [Home]" icon={<IconSkipBack size={12} />} onClick={onGoToStart} aria-label="Go to start" style={{ color: "#F59E0B" }} />
+        <ConsoleButton title="Previous step  [Left]" icon={<IconStepBack size={12} />} onClick={onPrevious} aria-label="Previous step" style={{ color: "#76B900" }} />
+        <ConsoleButton title="Frame back  [,]" icon={<IconFrameBack size={11} />} onClick={() => onFrameStep(-1)} aria-label="Frame back" style={{ color: "rgba(255,255,255,0.6)" }} />
+
+        {/* Play/Pause with circular progress ring */}
+        <div style={{ position: "relative", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg
+            width={44}
+            height={44}
+            style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}
+          >
+            <circle
+              cx={22}
+              cy={22}
+              r={ringRadius}
+              fill="none"
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth={2.5}
+            />
+            <circle
+              className="pbc-progress-ring"
+              cx={22}
+              cy={22}
+              r={ringRadius}
+              fill="none"
+              stroke="#76B900"
+              strokeWidth={2.5}
+              strokeDasharray={ringCircumference}
+              strokeDashoffset={ringOffset}
+              strokeLinecap="round"
+              style={{ filter: "drop-shadow(0 0 3px rgba(118,185,0,0.5))" }}
+            />
+          </svg>
+          <button
+            className="pbc-btn pbc-btn-primary"
+            type="button"
+            title={isPlaying ? "Pause  [Space]" : "Play  [Space]"}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            onClick={isPlaying ? onPause : onPlay}
+            style={{
+              width: 34,
+              height: 34,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid rgba(118,185,0,0.7)",
+              borderRadius: "50%",
+              background: "rgba(118,185,0,0.22)",
+              color: "#fff",
+              cursor: "pointer",
+              padding: 0,
+              zIndex: 1,
+            }}
+          >
+            {isPlaying ? <IconPause size={14} /> : <IconPlay size={14} />}
+          </button>
+        </div>
+
+        <ConsoleButton title="Frame forward  [.]" icon={<IconFrameForward size={11} />} onClick={() => onFrameStep(1)} aria-label="Frame forward" style={{ color: "rgba(255,255,255,0.6)" }} />
+        <ConsoleButton title="Next step  [Right]" icon={<IconStepForward size={12} />} onClick={onNext} aria-label="Next step" style={{ color: "#76B900" }} />
+        <ConsoleButton title="Go to end  [End]" icon={<IconSkipForward size={12} />} onClick={onGoToEnd} aria-label="Go to end" style={{ color: "#F59E0B" }} />
+      </div>
+
+      {/* Speed + Loop row */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+        }}
+      >
+        {/* Speed selector with dial visual */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 6 }}>
+          {/* Dial indicator */}
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              border: playbackRate !== 1 ? "2px solid rgba(118,185,0,0.5)" : "2px solid rgba(255,255,255,0.12)",
+              background: playbackRate !== 1 ? "rgba(118,185,0,0.08)" : "rgba(255,255,255,0.03)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              className="pbc-speed-dial"
+              style={{
+                width: 2,
+                height: 9,
+                borderRadius: 1,
+                background: playbackRate !== 1 ? "#76B900" : "rgba(255,255,255,0.4)",
+                transformOrigin: "center bottom",
+                transform: `rotate(${speedAngle}deg)`,
+              }}
+            />
+          </div>
+          <button
+            className="pbc-btn pbc-btn-ghost"
+            type="button"
+            title="Playback speed"
+            aria-label={`Playback speed: ${playbackRate}x`}
+            onClick={() => setSpeedMenuOpen(!speedMenuOpen)}
+            style={{
+              height: 26,
+              padding: "0 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              borderRadius: 6,
+              border: playbackRate !== 1 ? "1px solid rgba(118,185,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
+              background: playbackRate !== 1 ? "rgba(118,185,0,0.1)" : "rgba(255,255,255,0.05)",
+              color: playbackRate !== 1 ? "#76B900" : "rgba(255,255,255,0.6)",
+              cursor: "pointer",
+              fontSize: 10,
+              fontWeight: 700,
+              fontFamily: "SFMono-Regular, Consolas, monospace",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {playbackRate}x
+            <IconChevronUp size={9} />
+          </button>
+          {speedMenuOpen && (
+            <div className="pbc-speed-menu">
+              {PLAYBACK_SPEEDS.map((speed) => (
+                <button
+                  key={speed}
+                  type="button"
+                  className={`pbc-speed-option ${speed === playbackRate ? "pbc-speed-option-active" : ""}`}
+                  onClick={() => { onSetPlaybackRate(speed); setSpeedMenuOpen(false) }}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Loop toggle */}
+        <button
+          className="pbc-btn pbc-btn-ghost"
+          type="button"
+          title={`Loop: ${isLooping ? "ON" : "OFF"}  [L]`}
+          aria-label={`Loop ${isLooping ? "enabled" : "disabled"}`}
+          onClick={onToggleLoop}
+          style={{
+            width: 30,
+            height: 26,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 6,
+            border: isLooping ? "1px solid rgba(118,185,0,0.5)" : "1px solid rgba(255,255,255,0.1)",
+            background: isLooping ? "rgba(118,185,0,0.15)" : "rgba(255,255,255,0.05)",
+            color: isLooping ? "#76B900" : "rgba(255,255,255,0.5)",
+            cursor: "pointer",
+            padding: 0,
+            position: "relative",
+          }}
+        >
+          <IconLoop size={13} active={isLooping} />
+          {isLooping && (
+            <span style={{
+              position: "absolute",
+              top: -2,
+              right: -2,
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "#76B900",
+              boxShadow: "0 0 6px rgba(118,185,0,0.6)",
+            }} />
+          )}
+        </button>
+
+        {/* Status indicator */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <span style={{
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: isPlaying ? "#76B900" : "rgba(255,255,255,0.3)",
+            boxShadow: isPlaying ? "0 0 6px rgba(118,185,0,0.6)" : "none",
+          }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: isPlaying ? "#76B900" : "rgba(255,255,255,0.4)" }}>
+            {isPlaying ? "PLAYING" : "PAUSED"}
+          </span>
+        </div>
+      </div>
+
+      {/* Status row: step counter + now-playing indicator + frame */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontSize: 10,
+          color: "rgba(255,255,255,0.4)",
+          fontVariantNumeric: "tabular-nums",
+          gap: 6,
+        }}
+      >
+        <span>Step {Math.min(currentStepIndex + 1, totalSteps)} / {totalSteps}</span>
+        {/* Now-playing indicator: current step type with color dot */}
+        {activeSteps.length > 0 && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "1px 5px", borderRadius: 3, background: "rgba(255,255,255,0.04)" }}>
+            <span style={{ width: 5, height: 5, borderRadius: 2, background: commandColor(activeSteps[0].command.type), boxShadow: `0 0 4px ${commandColor(activeSteps[0].command.type)}66` }} />
+            <span style={{ fontSize: 9, fontWeight: 600, color: commandColor(activeSteps[0].command.type), textTransform: "uppercase" }}>
+              {activeSteps[0].command.type}
+            </span>
+          </span>
+        )}
+        <span style={{ fontFamily: "SFMono-Regular, Consolas, monospace", color: "rgba(255,255,255,0.25)" }}>
+          F{currentFrame} / {msToFrame(totalDurationMs, FPS)}
+        </span>
+      </div>
+
+      {/* Keyboard shortcuts — grouped with hover tooltips */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 4,
+          paddingTop: 2,
+        }}
+      >
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">Space</span>
+          <span className="pbc-kbd-tooltip">Play / Pause</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">&larr;</span>
+          <span className="pbc-kbd-tooltip">Previous step</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">&rarr;</span>
+          <span className="pbc-kbd-tooltip">Next step</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">,</span>
+          <span className="pbc-kbd-tooltip">Frame back</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">.</span>
+          <span className="pbc-kbd-tooltip">Frame forward</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">L</span>
+          <span className="pbc-kbd-tooltip">Toggle loop</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">Home</span>
+          <span className="pbc-kbd-tooltip">Go to start</span>
+        </span>
+        <span className="pbc-kbd-group">
+          <span className="pbc-kbd">End</span>
+          <span className="pbc-kbd-tooltip">Go to end</span>
+        </span>
+      </div>
+    </section>
+  )
+}
+
+/** Waveform-style progress bar showing step density as tiny bars */
+function WaveformProgressBar({ progress, totalDurationMs }: { progress: number; totalDurationMs: number }) {
+  const barCount = 40
+  const bars = useMemo(() => {
+    const result: number[] = []
+    for (let i = 0; i < barCount; i++) {
+      const seed = Math.sin(i * 12.9898 + 78.233) * 43758.5453
+      result.push(0.2 + (seed - Math.floor(seed)) * 0.8)
+    }
+    return result
+  }, [totalDurationMs]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div
+      style={{
+        height: 8,
+        marginTop: 4,
+        borderRadius: 4,
+        background: "rgba(255,255,255,0.04)",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "flex-end",
+        gap: 1,
+        padding: "0 1px",
+        position: "relative",
+      }}
+    >
+      {bars.map((h, i) => {
+        const barProgress = (i / barCount) * 100
+        const isBeforePlayhead = barProgress < progress
+        return (
+          <div
+            key={i}
+            className="pbc-waveform-bar"
+            style={{
+              flex: 1,
+              height: `${h * 100}%`,
+              background: isBeforePlayhead
+                ? "linear-gradient(180deg, #76B900, #38BDF8)"
+                : "rgba(255,255,255,0.12)",
+              opacity: isBeforePlayhead ? 0.8 : 0.4,
+              transition: "background 80ms linear, opacity 80ms linear",
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function ConsoleButton({
+  title,
+  icon,
+  onClick,
+  primary,
+  large,
+  style: styleProp,
+  "aria-label": ariaLabel,
+}: {
+  title: string
+  icon: React.ReactNode
+  onClick: () => void
+  primary?: boolean
+  large?: boolean
+  style?: React.CSSProperties
+  "aria-label"?: string
+}) {
+  const size = large ? 38 : 32
+
+  return (
+    <button
+      className={`pbc-btn ${primary ? "pbc-btn-primary" : "pbc-btn-ghost"}`}
+      type="button"
+      title={title}
+      aria-label={ariaLabel}
+      onClick={onClick}
+      style={{
+        width: size,
+        height: size,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: primary ? "1px solid rgba(118,185,0,0.7)" : "1px solid rgba(255,255,255,0.1)",
+        borderRadius: primary ? 10 : 8,
+        background: primary ? "rgba(118,185,0,0.22)" : "rgba(255,255,255,0.05)",
+        color: "#fff",
+        cursor: "pointer",
+        padding: 0,
+        ...styleProp,
+      }}
+    >
+      {icon}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Track grouping helpers
+// ---------------------------------------------------------------------------
+const TRACK_GROUPS: Record<string, string[]> = {
+  "Text": ["text", "title", "subtitle", "caption", "label", "annotation", "callout", "list"],
+  "Shape": ["rect", "circle", "arrow", "line", "polygon", "highlight", "underline"],
+  "Data": ["gauge", "sparkline", "heatmap", "funnel", "waterfall", "table", "chart"],
+  "Narrative": ["timeline", "flowchart", "countdown", "morph", "reveal"],
+  "Effect": ["confetti", "spotlight", "zoom", "clear"],
+}
+
+function getTrackGroup(type: string): string {
+  for (const [group, types] of Object.entries(TRACK_GROUPS)) {
+    if (types.includes(type)) return group
+  }
+  return "Other"
+}
+
+function computeDensityBuckets(lanes: TimelineLane[], totalDurationMs: number, bucketCount: number): number[] {
+  const buckets = new Array(bucketCount).fill(0)
+  if (totalDurationMs <= 0 || bucketCount <= 0) return buckets
+  const bucketMs = totalDurationMs / bucketCount
+  for (const lane of lanes) {
+    for (const item of lane.items) {
+      const startBucket = Math.max(0, Math.floor(item.startMs / bucketMs))
+      const endBucket = Math.min(bucketCount - 1, Math.floor(item.endMs / bucketMs))
+      for (let b = startBucket; b <= endBucket; b++) buckets[b]++
+    }
+  }
+  return buckets
+}
+
+// ---------------------------------------------------------------------------
+// TimelineTracks  (enhanced: zoom, minimap, density, playhead drag, grouping)
+// ---------------------------------------------------------------------------
+function TimelineTracks({
+  lanes,
+  currentMs,
+  totalDurationMs,
+  onSeek,
+}: {
+  lanes: TimelineLane[]
+  currentMs: number
+  totalDurationMs: number
+  onSeek: (ms: number) => void
+}) {
+  const LABEL_WIDTH = 100
+  const DENSITY_BUCKETS = 120
+  const MIN_ZOOM = 1
+  const MAX_ZOOM = 10
+  // --- zoom state ---
+  const [zoom, setZoom] = useState(1)
+  const [viewCenterMs, setViewCenterMs] = useState(totalDurationMs / 2)
+  const visibleDurationMs = totalDurationMs / zoom
+  const viewStartMs = Math.max(0, Math.min(totalDurationMs - visibleDurationMs, viewCenterMs - visibleDurationMs / 2))
+  const viewEndMs = Math.min(totalDurationMs, viewStartMs + visibleDurationMs)
+
+  // --- drag / hover state ---
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
+  const [hoveredItem, setHoveredItem] = useState<TimelineItem | null>(null)
+  const [hoverTimeMs, setHoverTimeMs] = useState<number | null>(null)
+  const [hoverX, setHoverX] = useState<number | null>(null)
+  const hoverTimerRef = useRef<number | null>(null)
+  const trackAreaRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const minimapDragRef = useRef<{ dragging: boolean; startX: number; startCenterMs: number }>({ dragging: false, startX: 0, startCenterMs: 0 })
+  const lastManualPanRef = useRef<number>(0)
+
+  // --- auto-pan: keep playhead visible when playing ---
+  useEffect(() => {
+    if (zoom <= 1) return
+    if (Date.now() - lastManualPanRef.current < 1500) return
+    if (currentMs < viewStartMs || currentMs > viewEndMs) {
+      setViewCenterMs(currentMs)
+    }
+  }, [currentMs, zoom, viewStartMs, viewEndMs])
+
+  // reset center when total changes
+  useEffect(() => { setViewCenterMs(totalDurationMs / 2) }, [totalDurationMs])
+
+  // --- grouped lanes ---
+  const groupedLanes = useMemo(() => {
+    const groups: Record<string, TimelineLane[]> = {}
+    for (const lane of lanes) {
+      const g = getTrackGroup(lane.label)
+      ;(groups[g] ??= []).push(lane)
+    }
+    return groups
+  }, [lanes])
+
+  // --- density ---
+  const densityBuckets = useMemo(() => computeDensityBuckets(lanes, totalDurationMs, DENSITY_BUCKETS), [lanes, totalDurationMs])
+  const maxDensity = useMemo(() => Math.max(1, ...densityBuckets), [densityBuckets])
+
+  // --- helpers ---
+  const clientXToMs = useCallback((clientX: number): number | null => {
+    const el = trackAreaRef.current
+    if (!el) return null
+    const rect = el.getBoundingClientRect()
+    const x = clientX - rect.left
+    const trackLeft = LABEL_WIDTH
+    const trackWidth = rect.width - trackLeft - 10
+    if (x < trackLeft || trackWidth <= 0) return null
+    const ratio = (x - trackLeft) / trackWidth
+    return viewStartMs + ratio * visibleDurationMs
+  }, [viewStartMs, visibleDurationMs])
+
+  const msToPercent = useCallback((ms: number): number => {
+    return visibleDurationMs > 0 ? ((ms - viewStartMs) / visibleDurationMs) * 100 : 0
+  }, [viewStartMs, visibleDurationMs])
+
+  // --- hover popover ---
+  const showStepPopover = useCallback((item: TimelineItem) => {
+    if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current)
+    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(item), 150)
+  }, [])
+
+  const hideStepPopover = useCallback(() => {
+    if (hoverTimerRef.current != null) { window.clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null }
+    hoverTimerRef.current = window.setTimeout(() => setHoveredItem(null), 200)
+  }, [])
+
+  useEffect(() => () => { if (hoverTimerRef.current != null) window.clearTimeout(hoverTimerRef.current) }, [])
+
+  // --- mouse interactions ---
+  const handleTrackMouseMove = useCallback((e: React.MouseEvent) => {
+    const el = trackAreaRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const trackLeft = LABEL_WIDTH
+    const trackWidth = rect.width - trackLeft - 10
+    if (x >= trackLeft && trackWidth > 0) {
+      const ratio = (x - trackLeft) / trackWidth
+      setHoverTimeMs(Math.round(viewStartMs + ratio * visibleDurationMs))
+      setHoverX(x)
+    } else {
+      setHoverTimeMs(null); setHoverX(null)
+    }
+  }, [viewStartMs, visibleDurationMs])
+
+  // --- snap threshold: fraction of visible duration that equals ~100ms in time ---
+  const snapThresholdMs = Math.min(200, visibleDurationMs * 0.015)
+
+  const snapToNearestStep = useCallback((ms: number): number => {
+    let closest = ms
+    let closestDist = snapThresholdMs
+    for (const lane of lanes) {
+      for (const item of lane.items) {
+        const distToStart = Math.abs(item.startMs - ms)
+        const distToEnd = Math.abs(item.endMs - ms)
+        if (distToStart < closestDist) { closest = item.startMs; closestDist = distToStart }
+        if (distToEnd < closestDist) { closest = item.endMs; closestDist = distToEnd }
+      }
+    }
+    return closest
+  }, [lanes, snapThresholdMs])
+
+  const handleTrackClick = useCallback((e: React.MouseEvent) => {
+    if (isDraggingPlayhead) return
+    const ms = clientXToMs(e.clientX)
+    if (ms != null) {
+      const snapped = snapToNearestStep(ms)
+      onSeek(Math.round(Math.max(0, Math.min(totalDurationMs, snapped))))
+    }
+  }, [clientXToMs, onSeek, totalDurationMs, isDraggingPlayhead, snapToNearestStep])
+
+  // --- playhead drag ---
+  const handlePlayheadMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setIsDraggingPlayhead(true)
+    const onMove = (ev: MouseEvent) => {
+      const ms = clientXToMs(ev.clientX)
+      if (ms != null) onSeek(Math.round(Math.max(0, Math.min(totalDurationMs, ms))))
+    }
+    const onUp = () => {
+      setIsDraggingPlayhead(false)
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }, [clientXToMs, onSeek, totalDurationMs])
+
+  // --- Ctrl+wheel zoom ---
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? -0.3 : 0.3
+    setZoom((prev) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + delta)))
+    lastManualPanRef.current = Date.now()
+    const ms = clientXToMs(e.clientX)
+    if (ms != null) setViewCenterMs((prev) => prev + (ms - prev) * 0.15)
+  }, [clientXToMs])
+
+  // --- minimap drag ---
+  const handleMinimapMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    minimapDragRef.current = { dragging: true, startX: e.clientX, startCenterMs: viewCenterMs }
+    const onMove = (ev: MouseEvent) => {
+      if (!minimapDragRef.current.dragging) return
+      const el = (e.target as HTMLElement).closest("[data-minimap]") as HTMLElement | null
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const dx = ev.clientX - minimapDragRef.current.startX
+      const ratio = dx / rect.width
+      const newCenter = minimapDragRef.current.startCenterMs + ratio * totalDurationMs
+      setViewCenterMs(Math.max(visibleDurationMs / 2, Math.min(totalDurationMs - visibleDurationMs / 2, newCenter)))
+      lastManualPanRef.current = Date.now()
+    }
+    const onUp = () => {
+      minimapDragRef.current.dragging = false
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }, [viewCenterMs, totalDurationMs, visibleDurationMs])
+
+  // --- keyboard zoom (+/-) ---
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      if (e.key === "=" || e.key === "+") {
+        e.preventDefault()
+        setZoom((prev) => Math.min(MAX_ZOOM, prev + 0.5))
+        lastManualPanRef.current = Date.now()
+      } else if (e.key === "-") {
+        e.preventDefault()
+        setZoom((prev) => Math.max(MIN_ZOOM, prev - 0.5))
+        lastManualPanRef.current = Date.now()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  // --- ticks adapted to zoom window ---
+  const tickCount = 6
+  const ticks = useMemo(() => {
+    const result: number[] = []
+    for (let i = 0; i <= tickCount; i++) {
+      result.push(viewStartMs + (i / tickCount) * visibleDurationMs)
+    }
+    return result
+  }, [viewStartMs, visibleDurationMs])
+
+  const playheadPercent = msToPercent(currentMs)
+  const playheadVisible = currentMs >= viewStartMs && currentMs <= viewEndMs
+
+  return (
+    <section
+      aria-label="Multi-track timeline"
+      style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}
+    >
+      {/* Header with zoom controls */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>Timeline</span>
+          <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
+            {lanes.length} tracks
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+            {formatTime(currentMs)}
+          </div>
+          {zoom > 1 && (
+            <span style={{ padding: "1px 5px", borderRadius: 3, background: "rgba(118,185,0,0.15)", fontSize: 9, fontWeight: 700, color: "#76B900", fontVariantNumeric: "tabular-nums" }}>
+              {zoom.toFixed(1)}x
+            </span>
+          )}
+          <button type="button" aria-label="Zoom in" onClick={() => { setZoom((z) => Math.min(MAX_ZOOM, z + 0.5)); lastManualPanRef.current = Date.now() }} style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 700, cursor: "pointer", lineHeight: 1 }}>+</button>
+          <button type="button" aria-label="Zoom out" onClick={() => { setZoom((z) => Math.max(MIN_ZOOM, z - 0.5)); lastManualPanRef.current = Date.now() }} style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 700, cursor: "pointer", lineHeight: 1 }}>-</button>
+          {zoom > 1 && (
+            <button type="button" aria-label="Reset zoom" onClick={() => { setZoom(1); setViewCenterMs(totalDurationMs / 2) }} style={{ height: 20, padding: "0 5px", display: "flex", alignItems: "center", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 9, cursor: "pointer" }}>FIT</button>
+          )}
+        </div>
+      </div>
+
+      {/* Density heatmap strip */}
+      <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, paddingRight: 10 }}>
+        <div style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", paddingLeft: 8 }}>density</div>
+        <div style={{ position: "relative", height: 8, borderRadius: 4, overflow: "hidden", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
+          <div style={{ position: "absolute", inset: 0, display: "flex" }}>
+            {densityBuckets.map((count, i) => {
+              const alpha = count / maxDensity
+              const nextAlpha = i < densityBuckets.length - 1 ? densityBuckets[i + 1] / maxDensity : alpha
+              return <div key={i} style={{ flex: 1, background: alpha > 0 ? `linear-gradient(90deg, rgba(118,185,0,${0.08 + alpha * 0.55}), rgba(118,185,0,${0.08 + nextAlpha * 0.55}))` : "transparent" }} />
+            })}
+          </div>
+          {/* Subtle shine overlay */}
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 60%)", pointerEvents: "none" }} />
+        </div>
+      </div>
+
+      {/* Minimap (only when zoomed) */}
+      {zoom > 1 && (
+        <div data-minimap style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, paddingRight: 10 }}>
+          <div style={{ fontSize: 8, color: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", paddingLeft: 8 }}>overview</div>
+          <div
+            style={{ position: "relative", height: 18, borderRadius: 5, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", overflow: "hidden" }}
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const ratio = (e.clientX - rect.left) / rect.width
+              const newCenter = ratio * totalDurationMs
+              setViewCenterMs(Math.max(visibleDurationMs / 2, Math.min(totalDurationMs - visibleDurationMs / 2, newCenter)))
+              lastManualPanRef.current = Date.now()
+            }}
+          >
+            {/* Density gradient background in minimap */}
+            <div style={{ position: "absolute", inset: 0, display: "flex", opacity: 0.4 }}>
+              {densityBuckets.map((count, i) => {
+                const alpha = count / maxDensity
+                return <div key={`mm-d-${i}`} style={{ flex: 1, background: alpha > 0 ? `rgba(118,185,0,${alpha * 0.35})` : "transparent" }} />
+              })}
+            </div>
+            {lanes.map((lane) => lane.items.map((item) => {
+              const l = totalDurationMs > 0 ? (item.startMs / totalDurationMs) * 100 : 0
+              const w = totalDurationMs > 0 ? Math.max(0.3, ((item.endMs - item.startMs) / totalDurationMs) * 100) : 0
+              return <div key={item.step.id} style={{ position: "absolute", top: 3, bottom: 3, left: `${l}%`, width: `${w}%`, borderRadius: 2, background: `${commandColor(lane.label)}66` }} />
+            }))}
+            <div style={{ position: "absolute", top: 0, bottom: 0, left: `${totalDurationMs > 0 ? (currentMs / totalDurationMs) * 100 : 0}%`, width: 1.5, background: "#76B900", boxShadow: "0 0 4px rgba(118,185,0,0.6)", zIndex: 3 }} />
+            <div className="pbc-minimap-viewport" onMouseDown={handleMinimapMouseDown} style={{ position: "absolute", top: 0, bottom: 0, left: `${totalDurationMs > 0 ? (viewStartMs / totalDurationMs) * 100 : 0}%`, width: `${totalDurationMs > 0 ? (visibleDurationMs / totalDurationMs) * 100 : 100}%`, borderRadius: 4, border: "1.5px solid rgba(118,185,0,0.45)", background: "rgba(118,185,0,0.06)", zIndex: 2 }} />
+          </div>
+        </div>
+      )}
+
+      {/* Time ruler */}
+      <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, paddingRight: 10 }}>
+        <div />
+        <div style={{ position: "relative", height: 20 }}>
+          {ticks.map((t, i) => (
+            <React.Fragment key={i}>
+              <span style={{ position: "absolute", left: `${(i / tickCount) * 100}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "rgba(255,255,255,0.32)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace", whiteSpace: "nowrap" }}>
+                {formatTime(t)}
+              </span>
+              {/* Tick mark */}
+              <span style={{ position: "absolute", left: `${(i / tickCount) * 100}%`, top: 0, width: 1, height: 3, background: "rgba(255,255,255,0.15)" }} />
+            </React.Fragment>
+          ))}
+          {/* Sub-ticks when zoomed in */}
+          {zoom > 1.5 && ticks.slice(0, -1).map((_, i) => {
+            const subTickCount = zoom > 4 ? 4 : 2
+            return Array.from({ length: subTickCount }, (__, j) => {
+              const subPos = ((i + (j + 1) / (subTickCount + 1)) / tickCount) * 100
+              return <span key={`sub-${i}-${j}`} style={{ position: "absolute", left: `${subPos}%`, top: 1, width: 1, height: 2, background: "rgba(255,255,255,0.07)" }} />
+            })
+          })}
+        </div>
+      </div>
+
+      {/* Track area */}
+      <div
+        ref={trackAreaRef}
+        onClick={handleTrackClick}
+        onMouseMove={handleTrackMouseMove}
+        onMouseLeave={() => { setHoverTimeMs(null); setHoverX(null) }}
+        onWheel={handleWheel}
+        style={{ position: "relative", borderRadius: 8, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", cursor: isDraggingPlayhead ? "ew-resize" : "crosshair" }}
+      >
+        {/* Vertical grid lines from ticks */}
+        {ticks.map((_, i) => {
+          const leftPercent = (i / tickCount) * 100
+          return (
+            <div key={`grid-${i}`} style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${leftPercent / 100})`, width: 1, background: "rgba(255,255,255,0.03)", borderLeft: "1px dotted rgba(255,255,255,0.04)", zIndex: 0, pointerEvents: "none" }} />
+          )
+        })}
+
+        <div ref={scrollContainerRef} className="pbc-track-scroll" style={{ maxHeight: 220, overflowY: "auto", overflowX: "hidden", padding: "4px 0 2px", position: "relative" }}>
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: LABEL_WIDTH, width: 1, background: "rgba(255,255,255,0.06)", zIndex: 1 }} />
+          {lanes.length === 0 ? (
+            <div style={{ height: 186, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.25)", fontSize: 12 }}>No tracks</div>
+          ) : (
+            Object.entries(groupedLanes).map(([group, groupLanes], groupIdx) => (
+              <div key={group}>
+                {Object.keys(groupedLanes).length > 1 && (
+                  <div style={{ display: "grid", gridTemplateColumns: `${LABEL_WIDTH}px 1fr`, minHeight: 20, alignItems: "center", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)", borderTop: groupIdx > 0 ? "1px solid rgba(255,255,255,0.06)" : undefined, marginTop: groupIdx > 0 ? 2 : 0 }}>
+                    <div style={{ padding: "0 8px", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 0.6 }}>{group}</div>
+                    <div />
+                  </div>
+                )}
+                {groupLanes.map((lane, laneIndex) => (
+                  <TimelineLaneRow key={lane.id} lane={lane} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} even={laneIndex % 2 === 0} currentMs={currentMs} onSeek={onSeek} onStepHoverStart={showStepPopover} onStepHoverEnd={hideStepPopover} />
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Playhead with glow effect and triangle handle */}
+        {playheadVisible && (
+          <div className="pbc-playhead-line" style={{ position: "absolute", top: 0, bottom: 0, left: `calc(${LABEL_WIDTH}px + (100% - ${LABEL_WIDTH}px - 10px) * ${playheadPercent / 100})`, width: 2, background: "linear-gradient(180deg, #9FE030, #76B900, #9FE030)", boxShadow: "0 0 12px rgba(118,185,0,0.7), 0 0 4px rgba(118,185,0,0.9), 0 0 24px rgba(118,185,0,0.3)", zIndex: 5, pointerEvents: "none", borderRadius: 1 }}>
+            {/* Top triangle handle */}
+            <div className="pbc-playhead-handle" onMouseDown={handlePlayheadMouseDown} style={{ position: "absolute", top: -3, left: -7, width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "9px solid #9FE030", filter: "drop-shadow(0 0 4px rgba(118,185,0,0.8))", pointerEvents: "auto", cursor: "ew-resize" }} />
+            {/* Bottom triangle handle */}
+            <div className="pbc-playhead-handle" onMouseDown={handlePlayheadMouseDown} style={{ position: "absolute", bottom: -3, left: -7, width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "9px solid #9FE030", filter: "drop-shadow(0 0 4px rgba(118,185,0,0.8))", pointerEvents: "auto", cursor: "ew-resize" }} />
+          </div>
+        )}
+
+        {/* Hover time indicator */}
+        {hoverX !== null && hoverTimeMs !== null && (
+          <>
+            <div style={{ position: "absolute", top: 0, bottom: 0, left: hoverX, width: 1, background: "rgba(118,185,0,0.25)", borderLeft: "1px dashed rgba(118,185,0,0.3)", zIndex: 3, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: 2, left: hoverX, transform: "translateX(-50%)", padding: "2px 6px", borderRadius: 4, background: "rgba(118,185,0,0.9)", fontSize: 9, fontWeight: 700, color: "#fff", fontVariantNumeric: "tabular-nums", pointerEvents: "none", zIndex: 6, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>{formatTime(hoverTimeMs)}</div>
+          </>
+        )}
+
+        {hoveredItem && (
+          <StepJsonPopover item={hoveredItem} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} />
+        )}
+      </div>
+
+      {/* Zoom hint footer */}
+      {zoom <= 1 && (
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", textAlign: "right", paddingRight: 4 }}>Ctrl+wheel or +/- to zoom</div>
+      )}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// TimelineLaneRow  (zoom-aware, block labels, visual polish)
+// ---------------------------------------------------------------------------
+function TimelineLaneRow({
+  lane,
+  viewStartMs,
+  visibleDurationMs,
+  labelWidth,
+  even,
+  currentMs,
+  onSeek,
+  onStepHoverStart,
+  onStepHoverEnd,
+}: {
+  lane: TimelineLane
+  viewStartMs: number
+  visibleDurationMs: number
+  labelWidth: number
+  even: boolean
+  currentMs: number
+  onSeek: (ms: number) => void
+  onStepHoverStart: (item: TimelineItem) => void
+  onStepHoverEnd: () => void
+}) {
+  const color = commandColor(lane.label)
+  const viewEndMs = viewStartMs + visibleDurationMs
+
+  const visibleItems = useMemo(() =>
+    lane.items.filter((item) => item.endMs > viewStartMs && item.startMs < viewEndMs),
+    [lane.items, viewStartMs, viewEndMs]
+  )
+
+  return (
+    <div className="pbc-lane-row" style={{ display: "grid", gridTemplateColumns: `${labelWidth}px 1fr`, minHeight: 30, alignItems: "center", position: "relative", background: even ? "linear-gradient(90deg, transparent, rgba(255,255,255,0.008) 30%, rgba(255,255,255,0.012) 70%, transparent)" : "linear-gradient(90deg, transparent, rgba(255,255,255,0.018) 30%, rgba(255,255,255,0.022) 70%, transparent)", borderBottom: "1px solid rgba(255,255,255,0.02)" }}>
+      <div style={{ padding: "0 8px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ flexShrink: 0, width: 7, height: 7, borderRadius: 2, background: `linear-gradient(135deg, ${color}, ${color}cc)`, boxShadow: `0 0 5px ${color}55` }} />
+        <span>{lane.label}</span>
+        <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontWeight: 400 }}>{lane.items.length}</span>
+      </div>
+      <div style={{ position: "relative", height: 24, marginRight: 10, borderRadius: 5, background: "rgba(255,255,255,0.015)" }}>
+        {visibleItems.map((item) => {
+          const left = visibleDurationMs > 0 ? ((item.startMs - viewStartMs) / visibleDurationMs) * 100 : 0
+          const width = visibleDurationMs > 0 ? Math.max(0.4, ((item.endMs - item.startMs) / visibleDurationMs) * 100) : 0
+          const clampedLeft = Math.max(0, left)
+          const clampedWidth = Math.min(width, 100 - clampedLeft)
+          const isActive = currentMs >= item.startMs && currentMs < item.endMs
+          const approxPxWidth = (clampedWidth / 100) * 600
+          const durationMs = item.endMs - item.startMs
+
+          return (
+            <button
+              className={`pbc-timeline-item${isActive ? " pbc-timeline-item-active" : ""}`}
+              key={item.step.id}
+              type="button"
+              title={`${item.step.command.type}  |  ${formatTime(item.startMs)} - ${formatTime(item.endMs)}  (${(durationMs / 1000).toFixed(1)}s)`}
+              aria-label={`${item.step.command.type} at ${formatTime(item.startMs)}`}
+              onClick={(e) => { e.stopPropagation(); onSeek(item.startMs) }}
+              onMouseEnter={() => onStepHoverStart(item)}
+              onMouseLeave={onStepHoverEnd}
+              onFocus={() => onStepHoverStart(item)}
+              onBlur={onStepHoverEnd}
+              style={{
+                ["--pulse-color" as string]: `${color}66`,
+                position: "absolute",
+                top: 3,
+                left: `${clampedLeft}%`,
+                width: `${clampedWidth}%`,
+                minWidth: 4,
+                height: 18,
+                border: isActive ? `1px solid ${color}cc` : "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 5,
+                background: isActive
+                  ? `linear-gradient(180deg, ${color}ee 0%, ${color}aa 50%, ${color}88 100%)`
+                  : `linear-gradient(180deg, ${color}aa 0%, ${color}77 50%, ${color}55 100%)`,
+                boxShadow: isActive
+                  ? `0 0 10px ${color}55, 0 0 4px ${color}33, inset 0 1px 0 rgba(255,255,255,0.2)`
+                  : `inset 0 1px 0 rgba(255,255,255,0.12)`,
+                opacity: isActive ? 1 : 0.78,
+                cursor: "pointer",
+                padding: 0,
+                zIndex: isActive ? 2 : 1,
+                overflow: "hidden",
+              }}
+            >
+              {/* Glass highlight line at top */}
+              <span style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)", pointerEvents: "none" }} />
+              {approxPxWidth > 60 && (
+                <span className="pbc-block-label" style={{ display: "block", padding: "0 5px", fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.92)", lineHeight: "18px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>
+                  {item.step.command.type}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// StepJsonPopover  (zoom-aware positioning, shown below track area)
+// ---------------------------------------------------------------------------
+function StepJsonPopover({
+  item,
+  viewStartMs,
+  visibleDurationMs,
+  labelWidth,
+}: {
+  item: TimelineItem
+  viewStartMs: number
+  visibleDurationMs: number
+  labelWidth: number
+}) {
+  const color = commandColor(item.step.command.type)
+  const itemMidpoint = item.startMs + (item.endMs - item.startMs) / 2
+  const left = visibleDurationMs > 0 ? Math.min(75, Math.max(15, ((itemMidpoint - viewStartMs) / visibleDurationMs) * 100)) : 50
+  const durationMs = item.endMs - item.startMs
+
+  return (
+    <div style={{ position: "absolute", left: `calc(${labelWidth}px + (100% - ${labelWidth}px) * ${left / 100})`, bottom: "calc(100% + 8px)", width: 280, transform: "translateX(-50%)", zIndex: 50, padding: 10, borderRadius: 10, background: "rgba(10, 12, 28, 0.88)", border: `1px solid ${color}44`, boxShadow: `0 -8px 28px rgba(0,0,0,0.45), 0 0 0 1px ${color}22`, backdropFilter: "blur(16px)" }}>
+      {/* Connector arrow pointing down */}
+      <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: `6px solid ${color}44` }} />
+      <div style={{ position: "absolute", bottom: -5, left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid rgba(10, 12, 28, 0.88)" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: 4, background: `${color}33`, border: `1px solid ${color}66` }}>
+          <span style={{ width: 6, height: 6, borderRadius: 2, background: color }} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: "#fff", textTransform: "uppercase", letterSpacing: 0.3 }}>{item.step.command.type}</div>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+            {formatTime(item.startMs)} – {formatTime(item.endMs)} ({(durationMs / 1000).toFixed(1)}s)
+          </div>
+        </div>
+      </div>
+      <JsonInspector
+        value={item.step.command}
+        height={120}
+        initialMode="tree"
+        focusPath={["type"]}
+        compact
+      />
+    </div>
+  )
+}
+
+function ActiveCommandList({
+  steps,
+  currentMs,
+  totalDurationMs,
+  mode,
+  onModeChange,
+  onSeek,
+  isPlaying,
+}: {
+  steps: PresentationStep[]
+  currentMs: number
+  totalDurationMs: number
+  mode: ActivePanelMode
+  onModeChange: (mode: ActivePanelMode) => void
+  onSeek: (ms: number) => void
+  isPlaying: boolean
+}) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const prevStepIdsRef = useRef<Set<string>>(new Set())
+  const [enteringIds, setEnteringIds] = useState<Set<string>>(new Set())
+  const [prevJsonStr, setPrevJsonStr] = useState<string>("")
+  const [jsonChanged, setJsonChanged] = useState(false)
+  const [jsonMaximized, setJsonMaximized] = useState(false)
+
+  // Track entering steps for transition indicators
+  const currentStepIds = useMemo(() => new Set(steps.map((s) => s.id)), [steps])
+
+  useEffect(() => {
+    const prevIds = prevStepIdsRef.current
+    const newEntering = new Set<string>()
+
+    for (const id of currentStepIds) {
+      if (!prevIds.has(id)) newEntering.add(id)
+    }
+
+    if (newEntering.size > 0) {
+      setEnteringIds(newEntering)
+      const timer = window.setTimeout(() => setEnteringIds(new Set()), 400)
+      prevStepIdsRef.current = currentStepIds
+      return () => window.clearTimeout(timer)
+    }
+
+    prevStepIdsRef.current = currentStepIds
+  }, [currentStepIds])
+
+  // Auto-scroll to bottom when playing and new steps appear
+  useEffect(() => {
+    if (isPlaying && listRef.current && steps.length > 0) {
+      const el = listRef.current
+      el.scrollTop = el.scrollHeight
+    }
+  }, [steps.length, isPlaying])
+
+  // Detect JSON changes for diff flash
+  useEffect(() => {
+    if (mode !== "json") return
+    const newStr = JSON.stringify(steps.map((s) => s.id))
+    if (prevJsonStr && newStr !== prevJsonStr) {
+      setJsonChanged(true)
+      const timer = window.setTimeout(() => setJsonChanged(false), 800)
+      setPrevJsonStr(newStr)
+      return () => window.clearTimeout(timer)
+    }
+    setPrevJsonStr(newStr)
+  }, [steps, mode, prevJsonStr])
+
+  // Command count badges by type
+  const typeCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const step of steps) {
+      const t = step.command.type
+      counts.set(t, (counts.get(t) ?? 0) + 1)
+    }
+    return counts
+  }, [steps])
+
+  const hasBadges = steps.length > 0 && typeCounts.size > 0
+  const contentHeight = hasBadges ? 180 : 205
+
+  return (
+    <section
+      aria-label="Active commands"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        minWidth: 0,
+        position: "relative",
+      }}
+    >
+      {/* Header — always visible with List/JSON toggle */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 6,
+        }}
+      >
+        {/* Left: label + count */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
+            {mode === "list" ? "Active" : "JSON"}
+          </span>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 16,
+              height: 16,
+              padding: "0 4px",
+              borderRadius: 8,
+              background: steps.length > 0 ? "rgba(118,185,0,0.18)" : "rgba(255,255,255,0.06)",
+              fontSize: 9,
+              fontWeight: 700,
+              color: steps.length > 0 ? "#76B900" : "rgba(255,255,255,0.35)",
+            }}
+          >
+            {steps.length}
+          </span>
+        </div>
+
+        {/* Right: controls cluster — List/JSON toggle + maximize (in JSON mode) + Collapse */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div
+            style={{
+              display: "flex",
+              padding: 2,
+              borderRadius: 6,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            <SegmentButton
+              label="List"
+              active={mode === "list"}
+              onClick={() => { setJsonMaximized(false); onModeChange("list") }}
+            />
+            <SegmentButton
+              label="JSON"
+              active={mode === "json"}
+              onClick={() => onModeChange("json")}
+            />
+          </div>
+          {mode === "json" && (
+            <button
+              type="button"
+              title={jsonMaximized ? "Exit fullscreen" : "Maximize"}
+              aria-label={jsonMaximized ? "Exit fullscreen" : "Maximize JSON editor"}
+              onClick={() => setJsonMaximized((prev) => !prev)}
+              className="pbc-btn pbc-btn-ghost"
+              style={{
+                width: 22,
+                height: 22,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 5,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: jsonMaximized ? "rgba(118,185,0,0.12)" : "rgba(255,255,255,0.05)",
+                color: jsonMaximized ? "#76B900" : "rgba(255,255,255,0.6)",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: 11,
+              }}
+            >
+              {jsonMaximized ? "⊟" : "⊞"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Type count badges — only in list mode */}
+      {mode === "list" && hasBadges && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {Array.from(typeCounts.entries()).map(([type, count]) => {
+            const color = commandColor(type)
+            return (
+              <span
+                key={type}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  background: `${color}14`,
+                  border: `1px solid ${color}30`,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.3,
+                }}
+              >
+                <span style={{ width: 4, height: 4, borderRadius: 1, background: color }} />
+                {type}
+                {count > 1 && (
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>{count}</span>
+                )}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {mode === "json" ? (
+        <div
+          key="json-panel"
+          className={`pbc-panel-fade ${jsonChanged ? "pbc-diff-flash" : ""}`}
+          style={{
+            borderRadius: 8,
+            position: jsonMaximized ? "absolute" : "relative",
+            top: jsonMaximized ? 28 : undefined,
+            left: jsonMaximized ? 0 : undefined,
+            right: jsonMaximized ? 0 : undefined,
+            bottom: jsonMaximized ? 0 : undefined,
+            zIndex: jsonMaximized ? 20 : undefined,
+            background: jsonMaximized ? "rgba(8, 10, 22, 0.98)" : undefined,
+            padding: jsonMaximized ? 4 : undefined,
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+          }}
+        >
+          <JsonInspector
+            value={steps}
+            height={jsonMaximized ? 380 : contentHeight}
+            initialMode="tree"
+            focusPath={steps.length > 0 ? ["0", "command"] : undefined}
+          />
+        </div>
+      ) : (
+        <div
+          key="list-panel"
+          ref={listRef}
+          className="pbc-panel-fade"
+          style={{
+            minHeight: contentHeight,
+            maxHeight: contentHeight,
+            overflow: "auto",
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.07)",
+          }}
+        >
+          {steps.length === 0 ? (
+            <ActiveEmptyState currentMs={currentMs} totalDurationMs={totalDurationMs} />
+          ) : (
+            <div style={{ padding: 6, display: "flex", flexDirection: "column", gap: 2 }}>
+              {steps.map((step) => (
+                <ActiveCommandCard
+                  key={step.id}
+                  step={step}
+                  currentMs={currentMs}
+                  totalDurationMs={totalDurationMs}
+                  isEntering={enteringIds.has(step.id)}
+                  onClick={() => onSeek(step.startMs)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Enhanced empty state with animated clock and countdown to next step */
+function ActiveEmptyState({ currentMs, totalDurationMs }: { currentMs: number; totalDurationMs: number }) {
+  return (
+    <div
+      style={{
+        height: 205,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        color: "rgba(255,255,255,0.25)",
+        fontSize: 12,
+        textAlign: "center",
+      }}
+    >
+      {/* Animated clock with spinning hand */}
+      <div style={{ position: "relative", width: 36, height: 36 }}>
+        <svg className="pbc-empty-clock" width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="12" r="10" stroke="rgba(118,185,0,0.2)" strokeWidth={0.5} />
+        </svg>
+        <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(118,185,0,0.6)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", top: 0, left: 0 }}>
+          <polyline className="pbc-clock-hand-anim" points="12 7 12 12 15 14" />
+        </svg>
+      </div>
+      <span className="pbc-waiting-pulse" style={{ fontWeight: 600, color: "rgba(255,255,255,0.35)" }}>
+        Waiting for next step...
+      </span>
+      <div style={{ display: "flex", gap: 12, fontSize: 10, color: "rgba(255,255,255,0.2)", fontVariantNumeric: "tabular-nums", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+        <span>{formatTime(currentMs)}</span>
+        <span style={{ color: "rgba(255,255,255,0.1)" }}>/</span>
+        <span>{formatTime(totalDurationMs)}</span>
+      </div>
+    </div>
+  )
+}
+
+function SegmentButton({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      className={`pbc-seg ${active ? "pbc-seg-active" : ""}`}
+      type="button"
+      onClick={onClick}
+      style={{
+        height: 22,
+        minWidth: 42,
+        padding: "0 8px",
+        border: "none",
+        borderRadius: 5,
+        background: active ? "rgba(255,255,255,0.16)" : "transparent",
+        color: active ? "#fff" : "rgba(255,255,255,0.45)",
+        fontSize: 10,
+        fontWeight: 700,
+        cursor: "pointer",
+        transition: "background 100ms ease, color 100ms ease",
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+function ActiveCommandCard({
+  step,
+  currentMs,
+  totalDurationMs,
+  isEntering,
+  onClick,
+}: {
+  step: PresentationStep
+  currentMs: number
+  totalDurationMs: number
+  isEntering: boolean
+  onClick: () => void
+}) {
+  const color = commandColor(step.command.type)
+  const elapsed = Math.max(0, currentMs - step.startMs)
+  const duration = (step.endMs ?? step.startMs) - step.startMs
+  const progressPct = duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 100
+  const endMs = step.endMs ?? totalDurationMs
+  const nearEnd = endMs - currentMs < 500 && endMs - currentMs > 0
+  const remainingSec = Math.max(0, (endMs - currentMs) / 1000)
+
+  return (
+    <div
+      className={`pbc-cmd-card ${isEntering ? "pbc-cmd-card-enter" : ""}`}
+      onClick={onClick}
+      title={`Click to seek to ${formatTime(step.startMs)}`}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+        padding: "7px 8px",
+        borderRadius: 6,
+        position: "relative",
+        overflow: "hidden",
+        cursor: "pointer",
+      }}
+    >
+      {/* Progress background fill */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: `${progressPct}%`,
+          background: `${color}0a`,
+          borderRight: progressPct < 100 ? `1px solid ${color}22` : "none",
+          pointerEvents: "none",
+          transition: "width 100ms linear",
+        }}
+      />
+
+      {/* Top row: type icon + name prominently */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+        {/* Color dot icon */}
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
+          {isEntering && (
+            <span style={{ fontSize: 8, color: "#76B900", lineHeight: 1 }}>&#x2191;</span>
+          )}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 18,
+              height: 18,
+              borderRadius: 4,
+              background: `${color}18`,
+              border: `1px solid ${color}33`,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 2,
+                background: color,
+                boxShadow: `0 0 5px ${color}88`,
+              }}
+            />
+          </span>
+        </div>
+
+        {/* Type name + timing */}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 800,
+              color,
+              textTransform: "uppercase",
+              letterSpacing: 0.4,
+            }}
+          >
+            {step.command.type}
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {nearEnd && (
+              <span style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", fontFamily: "SFMono-Regular, Consolas, monospace" }}>
+                {remainingSec.toFixed(1)}s
+              </span>
+            )}
+            <span
+              style={{
+                fontSize: 9,
+                color: "rgba(255,255,255,0.3)",
+                fontVariantNumeric: "tabular-nums",
+                fontFamily: "SFMono-Regular, Consolas, monospace",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {formatTime(step.startMs)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div
+        style={{
+          fontSize: 11,
+          lineHeight: 1.4,
+          color: "rgba(255,255,255,0.7)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          paddingLeft: 30,
+          position: "relative",
+        }}
+      >
+        {step.description || describeCommand(step.command)}
+      </div>
+
+      {/* Mini-timeline bar showing step progress */}
+      <div
+        style={{
+          marginLeft: 30,
+          height: 3,
+          borderRadius: 2,
+          background: "rgba(255,255,255,0.06)",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            width: `${progressPct}%`,
+            height: "100%",
+            background: `linear-gradient(90deg, ${color}, ${color}aa)`,
+            borderRadius: 2,
+            transition: "width 100ms linear",
+          }}
+        />
+      </div>
+    </div>
+  )
 }
 
 // ============================================================================
 // App
 // ============================================================================
 
-export function App() {
-  const [activeScript, setActiveScript] = useState<Script | null>(null)
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const [playerState, setPlayerState] = useState<PlayerState>("idle")
-  const [showDebugRects, setShowDebugRects] = useState(true) // DEBUG: show rect overlay
+/**
+ * Isolated playback console — manages its own time state via PlayerRef events.
+ * Does NOT cause parent (App/Player) to re-render.
+ */
+function IsolatedPlaybackConsole({
+  script,
+  playerRef,
+}: {
+  script: Script
+  playerRef: React.RefObject<PlayerRef | null>
+}) {
+  const [currentMs, setCurrentMs] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isLooping, setIsLooping] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const currentMsRef = useRef(0)
+  const throttleRef = useRef<number | null>(null)
+  const isLoopingRef = useRef(false)
 
-  const rafRef = useRef<number | null>(null)
-  const startTimeRef = useRef<number>(0)
-  const pausedAtRef = useRef<number>(0)
-
-  // Cues: sorted unique startMs values
-  const cues = useMemo(() => (activeScript ? getCues(activeScript.steps) : []), [activeScript])
-
-  // Current cue index (derived from elapsedMs)
-  const currentCueIndex = useMemo(() => {
-    if (cues.length === 0) return 0
-    let idx = 0
-    for (let i = 0; i < cues.length; i++) {
-      if (cues[i] <= elapsedMs) idx = i
-      else break
-    }
-    return idx
-  }, [cues, elapsedMs])
-
-  // requestAnimationFrame-based timeline player
+  // Keep ref in sync for use in event handlers
   useEffect(() => {
-    if (playerState !== "playing" || !activeScript) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
-      return
-    }
+    isLoopingRef.current = isLooping
+  }, [isLooping])
 
-    const totalDuration = activeScript.totalDurationMs
-    startTimeRef.current = performance.now() - pausedAtRef.current
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player) return
 
-    const tick = () => {
-      const now = performance.now()
-      const elapsed = now - startTimeRef.current
-      if (elapsed >= totalDuration) {
-        setElapsedMs(totalDuration)
-        setPlayerState("paused")
-        return
+    const handleFrameUpdate = ({ detail }: { detail: { frame: number } }) => {
+      const ms = frameToMs(detail.frame, FPS)
+      currentMsRef.current = ms
+      // Throttle UI state to ~10fps -- control panel doesn't need 30fps
+      if (throttleRef.current === null) {
+        throttleRef.current = window.setTimeout(() => {
+          throttleRef.current = null
+          setCurrentMs(currentMsRef.current)
+        }, 100)
       }
-      setElapsedMs(elapsed)
-      rafRef.current = requestAnimationFrame(tick)
     }
-    rafRef.current = requestAnimationFrame(tick)
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => {
+      setIsPlaying(false)
+      setCurrentMs(currentMsRef.current)
+    }
+    const handleEnded = () => {
+      if (isLoopingRef.current) {
+        // Loop: seek to start and replay
+        player.seekTo(0)
+        player.play()
+        currentMsRef.current = 0
+        setCurrentMs(0)
+      } else {
+        setCurrentMs(script.totalDurationMs)
+        currentMsRef.current = script.totalDurationMs
+        setIsPlaying(false)
+      }
+    }
+
+    player.addEventListener("frameupdate", handleFrameUpdate)
+    player.addEventListener("play", handlePlay)
+    player.addEventListener("pause", handlePause)
+    player.addEventListener("ended", handleEnded)
 
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      player.removeEventListener("frameupdate", handleFrameUpdate)
+      player.removeEventListener("play", handlePlay)
+      player.removeEventListener("pause", handlePause)
+      player.removeEventListener("ended", handleEnded)
+      if (throttleRef.current !== null) {
+        window.clearTimeout(throttleRef.current)
+        throttleRef.current = null
+      }
     }
-  }, [playerState, activeScript])
+  }, [script, playerRef])
 
-  // --- Controls ---
-  const handlePlay = useCallback(() => setPlayerState("playing"), [])
-  const handlePause = useCallback(() => {
-    pausedAtRef.current = elapsedMs
-    setPlayerState("paused")
-  }, [elapsedMs])
+  const seekToMs = useCallback((ms: number) => {
+    const safeMs = Math.max(0, Math.min(ms, script.totalDurationMs))
+    playerRef.current?.seekTo(msToFrame(safeMs, FPS))
+    currentMsRef.current = safeMs
+    setCurrentMs(safeMs)
+  }, [script, playerRef])
 
-  const handleNext = useCallback(() => {
-    const nextIdx = Math.min(currentCueIndex + 1, cues.length - 1)
-    const nextMs = cues[nextIdx]
-    setElapsedMs(nextMs)
-    pausedAtRef.current = nextMs
-    setPlayerState("paused")
-  }, [currentCueIndex, cues])
+  const play = useCallback(() => {
+    playerRef.current?.play()
+    setIsPlaying(true)
+  }, [playerRef])
 
-  const handlePrev = useCallback(() => {
-    const prevIdx = Math.max(currentCueIndex - 1, 0)
-    const prevMs = cues[prevIdx]
-    setElapsedMs(prevMs)
-    pausedAtRef.current = prevMs
-    setPlayerState("paused")
-  }, [currentCueIndex, cues])
+  const pause = useCallback(() => {
+    playerRef.current?.pause()
+    setIsPlaying(false)
+  }, [playerRef])
 
-  const handleGoToStart = useCallback(() => {
-    setElapsedMs(0)
-    pausedAtRef.current = 0
-    setPlayerState("paused")
+  const goToStart = useCallback(() => seekToMs(0), [seekToMs])
+
+  const goToEnd = useCallback(() => {
+    seekToMs(script.totalDurationMs)
+    playerRef.current?.pause()
+  }, [script, seekToMs, playerRef])
+
+  const goToNext = useCallback(() => {
+    const nextStep = script.steps.find((step) => step.startMs > currentMsRef.current + 80)
+    seekToMs(nextStep?.startMs ?? script.totalDurationMs)
+  }, [script, seekToMs])
+
+  const goToPrevious = useCallback(() => {
+    const previousStep = [...script.steps]
+      .reverse()
+      .find((step) => step.startMs < currentMsRef.current - 500)
+    seekToMs(previousStep?.startMs ?? 0)
+  }, [script, seekToMs])
+
+  const toggleLoop = useCallback(() => {
+    setIsLooping((prev) => !prev)
   }, [])
 
-  const handleGoToEnd = useCallback(() => {
-    if (!activeScript) return
-    const end = activeScript.totalDurationMs
-    setElapsedMs(end)
-    pausedAtRef.current = end
-    setPlayerState("paused")
-  }, [activeScript])
+  const handleSetPlaybackRate = useCallback((rate: number) => {
+    setPlaybackRate(rate)
+    // Remotion Player uses .setPlaybackRate if available, otherwise we use the
+    // internal play rate mechanism. The Remotion Player exposes playbackRate
+    // control via the `playbackRate` prop, but since we're using a ref-based
+    // approach, we need to pause/play to apply the new rate. However, the
+    // simplest approach is to use the player's internal method if available.
+    const player = playerRef.current as PlayerRef & { setPlaybackRate?: (r: number) => void } | null
+    if (player && typeof player.setPlaybackRate === "function") {
+      player.setPlaybackRate(rate)
+    }
+  }, [playerRef])
 
-  const handleSeek = useCallback((ms: number) => {
-    setElapsedMs(ms)
-    pausedAtRef.current = ms
-    setPlayerState("paused")
+  const frameStep = useCallback((direction: 1 | -1) => {
+    const frameDurationMs = 1000 / FPS
+    const nextMs = currentMsRef.current + direction * frameDurationMs
+    seekToMs(Math.max(0, Math.min(nextMs, script.totalDurationMs)))
+    // Pause when frame-stepping
+    playerRef.current?.pause()
+    setIsPlaying(false)
+  }, [seekToMs, script, playerRef])
+
+  // ---- Keyboard shortcuts ----
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
+
+      switch (e.key) {
+        case " ": {
+          e.preventDefault()
+          if (isPlaying) {
+            pause()
+          } else {
+            play()
+          }
+          break
+        }
+        case "ArrowLeft": {
+          e.preventDefault()
+          if (e.shiftKey) {
+            seekToMs(Math.max(0, currentMsRef.current - 5000))
+          } else {
+            goToPrevious()
+          }
+          break
+        }
+        case "ArrowRight": {
+          e.preventDefault()
+          if (e.shiftKey) {
+            seekToMs(Math.min(script.totalDurationMs, currentMsRef.current + 5000))
+          } else {
+            goToNext()
+          }
+          break
+        }
+        case ",": {
+          e.preventDefault()
+          frameStep(-1)
+          break
+        }
+        case ".": {
+          e.preventDefault()
+          frameStep(1)
+          break
+        }
+        case "l":
+        case "L": {
+          e.preventDefault()
+          toggleLoop()
+          break
+        }
+        case "Home": {
+          e.preventDefault()
+          goToStart()
+          break
+        }
+        case "End": {
+          e.preventDefault()
+          goToEnd()
+          break
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [script, isPlaying, play, pause, seekToMs, goToNext, goToPrevious, goToStart, goToEnd, frameStep, toggleLoop])
+
+  const activeSteps = useMemo(
+    () => getActiveSteps(script.steps, currentMs, script.totalDurationMs),
+    [script, currentMs],
+  )
+
+  const currentStepIndex = useMemo(
+    () => getCurrentStepIndex(script.steps, currentMs),
+    [script, currentMs],
+  )
+
+  return (
+    <PresentationPlaybackConsole
+      script={script}
+      currentMs={currentMs}
+      currentStepIndex={currentStepIndex}
+      activeSteps={activeSteps}
+      isPlaying={isPlaying}
+      isLooping={isLooping}
+      playbackRate={playbackRate}
+      onSeek={seekToMs}
+      onPlay={play}
+      onPause={pause}
+      onNext={goToNext}
+      onPrevious={goToPrevious}
+      onGoToStart={goToStart}
+      onGoToEnd={goToEnd}
+      onToggleLoop={toggleLoop}
+      onSetPlaybackRate={handleSetPlaybackRate}
+      onFrameStep={frameStep}
+    />
+  )
+}
+
+/** Memoized background — never re-renders during playback */
+const MemoizedMockBackground = memo(MockBackground)
+const MemoizedGradientBackground = memo(GradientBackground)
+
+type AppView = "console" | "gallery"
+
+export function App() {
+  const [activeScript, setActiveScript] = useState<Script | null>(null)
+  const [view, setView] = useState<AppView>("console")
+  const playerRef = useRef<PlayerRef>(null)
+  // Enable perf monitor via URL param: ?perf=1
+  const perfMonitorEnabled = useMemo(() => {
+    if (typeof window === "undefined") return false
+    return new URLSearchParams(window.location.search).has("perf")
+  }, [])
+
+  const handlePerfReport = useCallback((_metrics: PerfMetrics, formatted: string) => {
+    console.log(formatted)
   }, [])
 
   const startScript = useCallback((script: Script) => {
     setActiveScript(script)
-    setElapsedMs(0)
-    pausedAtRef.current = 0
-    setPlayerState("playing")
   }, [])
 
   const stopPresentation = useCallback(() => {
+    playerRef.current?.pause()
     setActiveScript(null)
-    setElapsedMs(0)
-    pausedAtRef.current = 0
-    setPlayerState("idle")
   }, [])
 
-  const Background = activeScript?.background
+  const handleGalleryDemo = useCallback((steps: PresentationStep[], totalDurationMs: number) => {
+    const script: Script = {
+      id: `gallery-demo-${Date.now()}`,
+      title: `Demo: ${steps[0]?.command.type ?? "unknown"}`,
+      description: "Gallery demo",
+      icon: "🎬",
+      steps,
+      totalDurationMs,
+      useBackground: false,
+    }
+    setActiveScript(script)
+  }, [])
+
+  const openGallery = useCallback(() => setView("gallery"), [])
+  const openConsole = useCallback(() => setView("console"), [])
 
   return (
     <div
@@ -262,105 +3323,67 @@ export function App() {
         overflow: "hidden",
       }}
     >
-      <TargetRectsProvider>
-        {activeScript && Background ? (
-          <Background />
-        ) : (
-          <Console scripts={SCRIPTS} onSelect={startScript} />
-        )}
+      {activeScript ? (
+        <TargetRectsProvider>
+          {/* Background layer — memoized, never re-renders */}
+          {activeScript.useBackground ? <MemoizedMockBackground /> : <MemoizedGradientBackground />}
 
-        {/* DEBUG: Rect visualization overlay */}
-        {activeScript && showDebugRects && <DebugRectsOverlay />}
-
-        {activeScript && (
-          <PresentationOverlay
-            active={true}
+          {/* Overlay layer (transparent, on top) — stable props, no parent re-render */}
+          <PresentationPlayer
+            ref={playerRef}
             steps={activeScript.steps}
-            elapsedMs={elapsedMs}
-            zIndex={100}
-            onStop={stopPresentation}
-          >
-            <MultiTrackTimeline
-              steps={activeScript.steps}
-              elapsedMs={elapsedMs}
-              totalMs={activeScript.totalDurationMs}
-              onSeek={handleSeek}
-            />
-            <TimelineControls
-              elapsedMs={elapsedMs}
-              totalMs={activeScript.totalDurationMs}
-              cueIndex={currentCueIndex}
-              cueCount={cues.length}
-              playerState={playerState}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onNext={handleNext}
-              onPrev={handlePrev}
-              onGoToStart={handleGoToStart}
-              onGoToEnd={handleGoToEnd}
-              onSeek={handleSeek}
-              showDebug={showDebugRects}
-              onToggleDebug={() => setShowDebugRects((s) => !s)}
-            />
-          </PresentationOverlay>
-        )}
-      </TargetRectsProvider>
-    </div>
-  )
-}
+            fps={FPS}
+            totalDurationMs={activeScript.totalDurationMs}
+            controls={false}
+            autoPlay
+            enablePerfMonitor={perfMonitorEnabled}
+            onPerfReport={handlePerfReport}
+          />
 
-// ============================================================================
-// DebugRectsOverlay — 可视化所有测量到的 data-presentation-id 元素 rect
-// ============================================================================
+          {/* Console layer — isolated rendering, manages own time state */}
+          <IsolatedPlaybackConsole script={activeScript} playerRef={playerRef} />
 
-function DebugRectsOverlay() {
-  const rects = useTargetRects()
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 50, pointerEvents: "none" }}>
-      {[...rects.entries()].map(([id, rect]) => (
-        <div
-          key={id}
-          style={{
-            position: "absolute",
-            left: rect.left,
-            top: rect.top,
-            width: rect.width,
-            height: rect.height,
-            border: "2px dashed rgba(255, 0, 0, 0.6)",
-            borderRadius: 4,
-            background: "rgba(255, 0, 0, 0.05)",
-          }}
-        >
-          <span
+          {/* Back button */}
+          <button
+            onClick={stopPresentation}
             style={{
               position: "absolute",
-              top: -16,
-              left: 0,
-              fontSize: 10,
-              color: "#ff4444",
-              background: "rgba(0,0,0,0.8)",
-              padding: "1px 4px",
-              borderRadius: 2,
-              whiteSpace: "nowrap",
-              fontFamily: "monospace",
+              top: 16,
+              right: 16,
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 16px",
+              borderRadius: 20,
+              background: "rgba(0, 0, 0, 0.7)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: "pointer",
             }}
           >
-            {id} ({rect.width.toFixed(0)}x{rect.height.toFixed(0)})
-          </span>
-        </div>
-      ))}
+            <span style={{ fontSize: 14 }}>&#x2715;</span>
+            Exit
+          </button>
+        </TargetRectsProvider>
+      ) : view === "gallery" ? (
+        <StepGallery onPlayDemo={handleGalleryDemo} onBack={openConsole} />
+      ) : (
+        <Console scripts={SCRIPTS} onSelect={startScript} onOpenGallery={openGallery} />
+      )}
     </div>
   )
 }
 
 // ============================================================================
-// Console — 剧本选择控制台
+// Console — script selector
 // ============================================================================
 
-function Console({ scripts, onSelect }: { scripts: Script[]; onSelect: (s: Script) => void }) {
+function Console({ scripts, onSelect, onOpenGallery }: { scripts: Script[]; onSelect: (s: Script) => void; onOpenGallery: () => void }) {
   const totalSteps = scripts.reduce((acc, s) => acc + s.steps.length, 0)
-  const totalDuration = scripts.reduce((acc, s) => acc + s.totalDurationMs, 0)
   const actionTypes = new Set(scripts.flatMap(s => s.steps.map(st => st.command.type)))
 
   return (
@@ -374,37 +3397,32 @@ function Console({ scripts, onSelect }: { scripts: Script[]; onSelect: (s: Scrip
         overflow: "auto",
       }}
     >
-      {/* Decorative background elements */}
       <div style={{ position: "absolute", top: -200, right: -150, width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.08), transparent 70%)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: -100, left: -80, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(118,185,0,0.06), transparent 70%)", pointerEvents: "none" }} />
 
-      {/* Hero section */}
+      {/* Hero */}
       <div style={{ padding: "60px 40px 40px", textAlign: "center", position: "relative" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 16, padding: "4px 12px", borderRadius: 20, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.2)" }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366F1", animation: "presentationPulseSmall 2s infinite" }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#818CF8", letterSpacing: 0.5 }}>PRESENTATION ENGINE</span>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366F1" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#818CF8", letterSpacing: 0.5 }}>REMOTION-POWERED</span>
         </div>
 
         <h1 style={{ fontSize: 36, fontWeight: 800, color: "#fff", margin: "0 0 12px", letterSpacing: -0.5 }}>
           @viben/presentation
         </h1>
         <p style={{ fontSize: 16, color: "rgba(255,255,255,0.55)", margin: "0 auto", maxWidth: 560, lineHeight: 1.7 }}>
-          时间线驱动的演示覆盖层系统。多轨并行动画，纯 CSS 零依赖，
-          支持 {actionTypes.size} 种动作类型。
+          Remotion 驱动的时间线演示覆盖层系统。{actionTypes.size} 种动作类型，spring 物理动画，支持视频导出。
         </p>
 
-        {/* Stats row */}
         <div style={{ display: "flex", justifyContent: "center", gap: 32, marginTop: 28 }}>
           <StatBadge value={`${actionTypes.size}`} label="动作类型" />
           <StatBadge value={`${totalSteps}`} label="总步骤" />
-          <StatBadge value={`${Math.ceil(totalDuration / 1000)}s`} label="总时长" />
-          <StatBadge value="0" label="运行时依赖" />
+          <StatBadge value="Remotion" label="渲染引擎" />
         </div>
       </div>
 
       {/* Feature pills */}
       <div style={{ display: "flex", justifyContent: "center", gap: 10, padding: "0 40px 32px", flexWrap: "wrap" }}>
-        {["Timeline Mode", "Multi-Track", "Collision Detection", "CSS Animations", "Target Resolution", "React 18/19"].map(f => (
+        {["Remotion Player", "Spring Physics", "Video Export", "Transparent Overlay", "Target Resolution", "33 Action Types"].map(f => (
           <span key={f} style={{ padding: "5px 12px", borderRadius: 6, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>
             {f}
           </span>
@@ -412,48 +3430,65 @@ function Console({ scripts, onSelect }: { scripts: Script[]; onSelect: (s: Scrip
       </div>
 
       {/* Scripts grid */}
-      <div style={{ padding: "0 40px 24px" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16, paddingLeft: 4 }}>
-          Demo Scripts
+      <div style={{ padding: "0 40px 40px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingLeft: 4, paddingRight: 4 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 1 }}>
+            Demo Scripts
+          </div>
+          <button
+            onClick={onOpenGallery}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 18px",
+              borderRadius: 10,
+              background: "rgba(99,102,241,0.12)",
+              border: "1px solid rgba(99,102,241,0.3)",
+              color: "#818CF8",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              transition: "all 150ms ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(99,102,241,0.2)"
+              e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)"
+              e.currentTarget.style.transform = "translateY(-1px)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(99,102,241,0.12)"
+              e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"
+              e.currentTarget.style.transform = "none"
+            }}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            Step Gallery
+            <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: "rgba(99,102,241,0.2)", color: "#A5B4FC" }}>
+              {actionTypes.size}
+            </span>
+          </button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
           {scripts.map((script) => (
             <ScriptCard key={script.id} script={script} onClick={() => onSelect(script)} />
           ))}
         </div>
       </div>
 
-      {/* Action type showcase */}
-      <div style={{ padding: "24px 40px 40px" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16, paddingLeft: 4 }}>
-          Supported Actions
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {Object.entries(TRACK_COLORS).filter(([k]) => k !== "clear" && k !== "wait").map(([type, color]) => (
-            <span key={type} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: `${color}15`, border: `1px solid ${color}33` }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>{type}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer */}
       <div style={{ padding: "16px 40px 24px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
-          Built with React + TypeScript + Pure CSS Keyframes
+          Built with React + Remotion + TypeScript
         </span>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
           github.com/LinXueyuanStdio/viben
         </span>
       </div>
-
-      <style>{`
-        @keyframes presentationPulseSmall {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-      `}</style>
     </div>
   )
 }
@@ -469,9 +3504,7 @@ function StatBadge({ value, label }: { value: string; label: string }) {
 
 function ScriptCard({ script, onClick }: { script: Script; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
-  const cueCount = getCues(script.steps).length
   const durationSec = Math.ceil(script.totalDurationMs / 1000)
-  const actionTypeCount = new Set(script.steps.map(s => s.command.type)).size
 
   return (
     <div
@@ -487,16 +3520,11 @@ function ScriptCard({ script, onClick }: { script: Script; onClick: () => void }
         transition: "all 200ms ease",
         transform: hovered ? "translateY(-2px)" : "none",
         boxShadow: hovered ? "0 8px 32px rgba(99,102,241,0.12)" : "none",
-        position: "relative",
-        overflow: "hidden",
       }}
     >
-      {/* Hover glow */}
-      {hovered && <div style={{ position: "absolute", top: -30, right: -30, width: 80, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.15), transparent 70%)", pointerEvents: "none" }} />}
-
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-        <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{script.icon}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 28, lineHeight: 1 }}>{script.icon}</div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
             {script.title}
           </div>
@@ -505,386 +3533,11 @@ function ScriptCard({ script, onClick }: { script: Script; onClick: () => void }
           </div>
         </div>
       </div>
-
-      {/* Meta row */}
-      <div style={{ marginTop: 14, display: "flex", gap: 12, alignItems: "center" }}>
-        <MetaChip icon="◉" value={`${script.steps.length} 步`} />
-        <MetaChip icon="⏱" value={durationSec >= 60 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : `${durationSec}s`} />
-        <MetaChip icon="◈" value={`${actionTypeCount} 类型`} />
-        <MetaChip icon="⚡" value={`${cueCount} cues`} />
+      <div style={{ marginTop: 14, display: "flex", gap: 12, fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
+        <span>◉ {script.steps.length} steps</span>
+        <span>⏱ {durationSec}s</span>
+        <span>◈ {new Set(script.steps.map(s => s.command.type)).size} types</span>
       </div>
-
-      {/* Play hint on hover */}
-      {hovered && (
-        <div style={{ position: "absolute", top: 20, right: 20, width: 28, height: 28, borderRadius: "50%", background: "rgba(99,102,241,0.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: 12, color: "#fff", marginLeft: 2 }}>▶</span>
-        </div>
-      )}
     </div>
   )
 }
-
-function MetaChip({ icon, value }: { icon: string; value: string }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-      <span style={{ fontSize: 8 }}>{icon}</span>
-      {value}
-    </span>
-  )
-}
-
-// ============================================================================
-// TimelineControls — 完整控件：播放/暂停/前进/后退/最前/最后/进度条/debug
-// ============================================================================
-
-function TimelineControls({
-  elapsedMs,
-  totalMs,
-  cueIndex,
-  cueCount,
-  playerState,
-  onPlay,
-  onPause,
-  onNext,
-  onPrev,
-  onGoToStart,
-  onGoToEnd,
-  onSeek,
-  showDebug,
-  onToggleDebug,
-}: {
-  elapsedMs: number
-  totalMs: number
-  cueIndex: number
-  cueCount: number
-  playerState: PlayerState
-  onPlay: () => void
-  onPause: () => void
-  onNext: () => void
-  onPrev: () => void
-  onGoToStart: () => void
-  onGoToEnd: () => void
-  onSeek: (ms: number) => void
-  showDebug: boolean
-  onToggleDebug: () => void
-}) {
-  const formatTime = (ms: number) => {
-    const s = Math.floor(ms / 1000)
-    const m = Math.floor(s / 60)
-    const sec = s % 60
-    return `${m}:${sec.toString().padStart(2, "0")}`
-  }
-
-  const progress = totalMs > 0 ? (elapsedMs / totalMs) * 100 : 0
-  const btnStyle: React.CSSProperties = {
-    background: "none",
-    border: "none",
-    color: "#fff",
-    fontSize: 14,
-    cursor: "pointer",
-    padding: "4px 6px",
-    opacity: 0.8,
-  }
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 24,
-        left: "50%",
-        transform: "translateX(-50%)",
-        pointerEvents: "auto",
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 16px",
-        borderRadius: 24,
-        background: "rgba(0, 0, 0, 0.8)",
-        backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        minWidth: 480,
-      }}
-    >
-      {/* Go to start */}
-      <button onClick={onGoToStart} style={btnStyle} title="Go to start">⏮</button>
-      {/* Prev */}
-      <button onClick={onPrev} style={btnStyle} title="Previous cue">⏪</button>
-      {/* Play/Pause */}
-      <button onClick={playerState === "playing" ? onPause : onPlay} style={{ ...btnStyle, fontSize: 18 }}>
-        {playerState === "playing" ? "⏸" : "▶️"}
-      </button>
-      {/* Next */}
-      <button onClick={onNext} style={btnStyle} title="Next cue">⏩</button>
-      {/* Go to end */}
-      <button onClick={onGoToEnd} style={btnStyle} title="Go to end">⏭</button>
-
-      {/* Time */}
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "monospace", minWidth: 36 }}>
-        {formatTime(elapsedMs)}
-      </span>
-
-      {/* Progress bar */}
-      <div
-        style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, cursor: "pointer", position: "relative" }}
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect()
-          const ratio = (e.clientX - rect.left) / rect.width
-          onSeek(Math.round(ratio * totalMs))
-        }}
-      >
-        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${progress}%`, background: "#6366F1", borderRadius: 2 }} />
-      </div>
-
-      {/* Total time */}
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontFamily: "monospace", minWidth: 36 }}>
-        {formatTime(totalMs)}
-      </span>
-
-      {/* Cue counter */}
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "monospace" }}>
-        {cueIndex + 1}/{cueCount}
-      </span>
-
-      {/* Debug toggle */}
-      <button
-        onClick={onToggleDebug}
-        style={{ ...btnStyle, fontSize: 11, opacity: showDebug ? 1 : 0.4, color: showDebug ? "#ff4444" : "#fff" }}
-        title="Toggle debug rects"
-      >
-        DBG
-      </button>
-    </div>
-  )
-}
-
-// ============================================================================
-// MultiTrackTimeline — 多轨时间线可视化编排面板
-// ============================================================================
-
-/** Color for each command type */
-const TRACK_COLORS: Record<string, string> = {
-  spotlight: "#F59E0B",
-  arrow: "#10B981",
-  text: "#6366F1",
-  circle: "#EF4444",
-  highlight: "#8B5CF6",
-  card: "#3B82F6",
-  pulse: "#EC4899",
-  underline: "#F97316",
-  badge: "#14B8A6",
-  progress: "#06B6D4",
-  counter: "#84CC16",
-  bracket: "#A855F7",
-  trendline: "#F43F5E",
-  comparison: "#0EA5E9",
-  typewriter: "#D946EF",
-  clear: "#6B7280",
-  wait: "#374151",
-}
-
-function MultiTrackTimeline({
-  steps,
-  elapsedMs,
-  totalMs,
-  onSeek,
-}: {
-  steps: PresentationStep[]
-  elapsedMs: number
-  totalMs: number
-  onSeek: (ms: number) => void
-}) {
-  const [expanded, setExpanded] = useState(true)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Assign each step to a "track" (row) — simple greedy lane assignment
-  const tracks = useMemo(() => {
-    const sorted = [...steps].filter(s => s.command.type !== "clear" && s.command.type !== "wait")
-      .sort((a, b) => a.startMs - b.startMs)
-
-    const lanes: Array<{ endMs: number }> = []
-    const assignments: Array<{ step: PresentationStep; lane: number }> = []
-
-    for (const step of sorted) {
-      const end = step.endMs ?? step.startMs + 2000
-      // Find first lane whose last item ended before this step starts
-      let assigned = false
-      for (let i = 0; i < lanes.length; i++) {
-        if (lanes[i].endMs <= step.startMs) {
-          lanes[i].endMs = end
-          assignments.push({ step, lane: i })
-          assigned = true
-          break
-        }
-      }
-      if (!assigned) {
-        lanes.push({ endMs: end })
-        assignments.push({ step, lane: lanes.length - 1 })
-      }
-    }
-
-    return { assignments, laneCount: lanes.length }
-  }, [steps])
-
-  // Also collect "clear" markers
-  const clearMarkers = useMemo(
-    () => steps.filter(s => s.command.type === "clear").map(s => s.startMs),
-    [steps],
-  )
-
-  const TRACK_HEIGHT = 18
-  const LANE_GAP = 2
-  const MAX_PANEL_HEIGHT = 160
-  const naturalHeight = Math.max(80, tracks.laneCount * (TRACK_HEIGHT + LANE_GAP) + 48)
-  const panelHeight = expanded
-    ? Math.min(naturalHeight, MAX_PANEL_HEIGHT)
-    : 28
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return
-    const rect = containerRef.current.getBoundingClientRect()
-    const ratio = (e.clientX - rect.left) / rect.width
-    onSeek(Math.round(ratio * totalMs))
-  }
-
-  const playheadPct = totalMs > 0 ? (elapsedMs / totalMs) * 100 : 0
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 72,
-        left: "50%",
-        transform: "translateX(-50%)",
-        pointerEvents: "auto",
-        width: "min(90vw, 800px)",
-        background: "rgba(0, 0, 0, 0.85)",
-        backdropFilter: "blur(12px)",
-        borderRadius: 12,
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        overflow: "hidden",
-        transition: "height 200ms ease",
-        height: panelHeight,
-      }}
-    >
-      {/* Header bar — click to toggle */}
-      <div
-        onClick={() => setExpanded(v => !v)}
-        style={{
-          padding: "4px 12px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: "pointer",
-          borderBottom: expanded ? "1px solid rgba(255,255,255,0.08)" : "none",
-          userSelect: "none",
-        }}
-      >
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 600, letterSpacing: 0.5 }}>
-          MULTI-TRACK TIMELINE ({tracks.laneCount} tracks · {steps.length} steps)
-        </span>
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-          {expanded ? "▼" : "▲"}
-        </span>
-      </div>
-
-      {/* Track area */}
-      {expanded && (
-        <div
-          ref={containerRef}
-          onClick={handleClick}
-          style={{
-            position: "relative",
-            padding: "8px 12px",
-            cursor: "crosshair",
-            height: tracks.laneCount * (TRACK_HEIGHT + LANE_GAP) + 16,
-            overflowY: "auto",
-          }}
-        >
-          {/* Time grid lines */}
-          {Array.from({ length: Math.ceil(totalMs / 5000) + 1 }, (_, i) => {
-            const t = i * 5000
-            const pct = (t / totalMs) * 100
-            return (
-              <div key={`grid-${i}`} style={{ position: "absolute", left: `${pct}%`, top: 0, bottom: 0, width: 1, background: "rgba(255,255,255,0.06)" }}>
-                <span style={{ position: "absolute", top: -2, left: 2, fontSize: 8, color: "rgba(255,255,255,0.25)", fontFamily: "monospace" }}>
-                  {Math.floor(t / 1000)}s
-                </span>
-              </div>
-            )
-          })}
-
-          {/* Clear markers */}
-          {clearMarkers.map((ms, i) => (
-            <div
-              key={`clear-${i}`}
-              style={{
-                position: "absolute",
-                left: `${(ms / totalMs) * 100}%`,
-                top: 8,
-                bottom: 8,
-                width: 2,
-                background: "rgba(239, 68, 68, 0.5)",
-                borderRadius: 1,
-              }}
-            >
-              <span style={{ position: "absolute", bottom: -12, left: -8, fontSize: 7, color: "#EF4444", whiteSpace: "nowrap" }}>CLR</span>
-            </div>
-          ))}
-
-          {/* Step bars */}
-          {tracks.assignments.map(({ step, lane }) => {
-            const startPct = (step.startMs / totalMs) * 100
-            const endMs = step.endMs ?? step.startMs + 2000
-            const widthPct = ((endMs - step.startMs) / totalMs) * 100
-            const color = TRACK_COLORS[step.command.type] ?? "#888"
-            const isActive = elapsedMs >= step.startMs && (step.endMs == null || elapsedMs < step.endMs)
-
-            return (
-              <div
-                key={step.id}
-                title={`${step.command.type}: ${step.description || step.id}\n${step.startMs}ms → ${endMs}ms`}
-                style={{
-                  position: "absolute",
-                  left: `${startPct}%`,
-                  width: `${Math.max(widthPct, 0.5)}%`,
-                  top: 8 + lane * (TRACK_HEIGHT + LANE_GAP),
-                  height: TRACK_HEIGHT,
-                  background: isActive ? color : `${color}88`,
-                  borderRadius: 3,
-                  border: isActive ? `1px solid ${color}` : "1px solid transparent",
-                  boxShadow: isActive ? `0 0 6px ${color}66` : "none",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0 4px",
-                  overflow: "hidden",
-                  transition: "opacity 100ms",
-                }}
-              >
-                <span style={{ fontSize: 8, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 500 }}>
-                  {step.command.type}
-                </span>
-              </div>
-            )
-          })}
-
-          {/* Playhead */}
-          <div
-            style={{
-              position: "absolute",
-              left: `${playheadPct}%`,
-              top: 0,
-              bottom: 0,
-              width: 2,
-              background: "#fff",
-              borderRadius: 1,
-              boxShadow: "0 0 4px rgba(255,255,255,0.5)",
-              pointerEvents: "none",
-              transition: "left 16ms linear",
-            }}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-

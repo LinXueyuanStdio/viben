@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from "react"
+import { useMemo } from "react"
 import type { TrendlineCommand, Point } from "../types"
+import { useDraw, useFadeIn } from "../utils/motion"
+import { useCurrentFrame, interpolate } from "remotion"
 
 interface TrendlineProps {
   command: TrendlineCommand
 }
 
 /**
- * Trendline overlay -- SVG polyline/path with stroke-dashoffset draw animation.
+ * Trendline overlay -- SVG polyline/path with Remotion stroke-dashoffset draw animation.
  * Supports optional dots (staggered fade-in), area fill below the line,
  * and an arrowhead at the end point.
+ * Premium: gradient stroke along path, glowing dots with rings, refined area fill.
+ * Static geometry is memoized to avoid recomputation on every frame.
  *
  * Expects pre-resolved coordinates (TargetRef fields resolved to absolute pixels).
  */
@@ -21,69 +25,74 @@ export function Trendline({ command }: TrendlineProps) {
     dotRadius = 4,
     fillBelow,
     endArrow,
-    animate = true,
   } = command
   const points = _points as Point[]
 
-  const pathRef = useRef<SVGPathElement>(null)
-  const [pathLength, setPathLength] = useState(0)
-
-  // Measure real path length once mounted
-  useEffect(() => {
-    if (pathRef.current) {
-      setPathLength(pathRef.current.getTotalLength())
-    }
-  }, [points])
+  const frame = useCurrentFrame()
 
   if (points.length < 2) return null
 
-  // Build the SVG path string from points
-  const pathD = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-    .join(" ")
+  // Memoize all static geometry (depends only on points, not frame)
+  const geometry = useMemo(() => {
+    const pathD = points
+      .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+      .join(" ")
 
-  // Compute bounding box for the fill area
-  const minX = Math.min(...points.map((p) => p.x))
-  const maxX = Math.max(...points.map((p) => p.x))
-  const maxY = Math.max(...points.map((p) => p.y))
+    const minX = Math.min(...points.map((p) => p.x))
+    const maxX = Math.max(...points.map((p) => p.x))
+    const maxY = Math.max(...points.map((p) => p.y))
 
-  // Build the closed area path for fillBelow
-  const areaD = fillBelow
-    ? `${pathD} L ${points[points.length - 1].x} ${maxY + 20} L ${points[0].x} ${maxY + 20} Z`
-    : ""
+    const areaD = fillBelow
+      ? `${pathD} L ${points[points.length - 1].x} ${maxY + 20} L ${points[0].x} ${maxY + 20} Z`
+      : ""
 
-  // End arrow: arrowhead at the last point, pointing in the direction of the last segment
-  const lastPt = points[points.length - 1]
-  const prevPt = points[points.length - 2]
-  const arrowAngle = Math.atan2(lastPt.y - prevPt.y, lastPt.x - prevPt.x)
-  const arrowSize = 10
-  const arrowAngle1 = arrowAngle + Math.PI * 0.8
-  const arrowAngle2 = arrowAngle - Math.PI * 0.8
-  const headX1 = lastPt.x + Math.cos(arrowAngle1) * arrowSize
-  const headY1 = lastPt.y + Math.sin(arrowAngle1) * arrowSize
-  const headX2 = lastPt.x + Math.cos(arrowAngle2) * arrowSize
-  const headY2 = lastPt.y + Math.sin(arrowAngle2) * arrowSize
+    const lastPt = points[points.length - 1]
+    const prevPt = points[points.length - 2]
+    const arrowAngle = Math.atan2(lastPt.y - prevPt.y, lastPt.x - prevPt.x)
+    const arrowSize = 10
+    const headX1 = lastPt.x + Math.cos(arrowAngle + Math.PI * 0.8) * arrowSize
+    const headY1 = lastPt.y + Math.sin(arrowAngle + Math.PI * 0.8) * arrowSize
+    const headX2 = lastPt.x + Math.cos(arrowAngle - Math.PI * 0.8) * arrowSize
+    const headY2 = lastPt.y + Math.sin(arrowAngle - Math.PI * 0.8) * arrowSize
 
-  // Use an estimated length for initial render (before measurement kicks in)
-  const estimatedLength =
-    pathLength > 0
-      ? pathLength
-      : points.reduce((sum, p, i) => {
-          if (i === 0) return 0
-          const prev = points[i - 1]
-          return sum + Math.sqrt((p.x - prev.x) ** 2 + (p.y - prev.y) ** 2)
-        }, 0)
+    // Compute path length from straight segments (exact for polyline)
+    const pathLength = points.reduce((sum, p, i) => {
+      if (i === 0) return 0
+      const prev = points[i - 1]
+      return sum + Math.sqrt((p.x - prev.x) ** 2 + (p.y - prev.y) ** 2)
+    }, 0)
 
-  const lineDrawStyle: React.CSSProperties = animate
-    ? {
-        strokeDasharray: estimatedLength,
-        strokeDashoffset: estimatedLength,
-        animation: `presentationDrawLine 800ms ease-out forwards`,
-      }
-    : {}
+    const base = `trendline-${Math.round(points[0].x)}-${Math.round(points[0].y)}-${points.length}`
+    const gradientId = `${base}-fill`
+    const strokeGradientId = `${base}-stroke`
+    const glowFilterId = `${base}-glow`
+    const dotGlowFilterId = `${base}-dot-glow`
 
-  // Unique gradient ID per instance
-  const gradientId = `trendline-fill-${points.map((p) => `${p.x}-${p.y}`).join("-").slice(0, 40)}`
+    return {
+      pathD, minX, maxX, maxY, areaD, lastPt,
+      headX1, headY1, headX2, headY2,
+      pathLength, gradientId, strokeGradientId, glowFilterId, dotGlowFilterId,
+    }
+  }, [points, fillBelow])
+
+  const {
+    pathD, minX, maxX, areaD, lastPt,
+    headX1, headY1, headX2, headY2,
+    pathLength, gradientId, strokeGradientId, glowFilterId, dotGlowFilterId,
+  } = geometry
+
+  // Remotion animations
+  const drawProgress = useDraw(0, 24)
+  const arrowOpacity = useFadeIn(21, 6)
+
+  // Area fill clip width animated via interpolate
+  const clipWidth = interpolate(frame, [0, 24], [0, maxX - minX], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
+
+  // Derive lighter tint for gradient
+  const colorLight = color + "CC"
 
   return (
     <div
@@ -98,43 +107,47 @@ export function Trendline({ command }: TrendlineProps) {
         height="100%"
         style={{ position: "absolute", inset: 0, overflow: "visible" }}
       >
-        {/* Gradient definition for area fill */}
-        {fillBelow && (
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={fillBelow} stopOpacity={0.4} />
-              <stop offset="100%" stopColor={fillBelow} stopOpacity={0.02} />
-            </linearGradient>
-            <clipPath id={`${gradientId}-clip`}>
-              <rect
-                x={minX}
-                y={0}
-                width={animate ? 0 : maxX - minX}
-                height="100%"
-                style={
-                  animate
-                    ? {
-                        animation: `presentationTrendlineClip 800ms ease-out forwards`,
-                      }
-                    : undefined
-                }
-              >
-                {animate && (
-                  <animate
-                    attributeName="width"
-                    from="0"
-                    to={maxX - minX}
-                    dur="0.8s"
-                    fill="freeze"
-                    calcMode="spline"
-                    keySplines="0.4 0 0.2 1"
-                    keyTimes="0;1"
-                  />
-                )}
-              </rect>
-            </clipPath>
-          </defs>
-        )}
+        <defs>
+          {/* Gradient for area fill */}
+          {fillBelow && (
+            <>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={fillBelow} stopOpacity={0.35} />
+                <stop offset="50%" stopColor={fillBelow} stopOpacity={0.15} />
+                <stop offset="100%" stopColor={fillBelow} stopOpacity={0.02} />
+              </linearGradient>
+              <clipPath id={`${gradientId}-clip`}>
+                <rect
+                  x={minX}
+                  y={0}
+                  width={clipWidth}
+                  height="100%"
+                />
+              </clipPath>
+            </>
+          )}
+          {/* Gradient stroke along the line path */}
+          <linearGradient
+            id={strokeGradientId}
+            x1={points[0].x}
+            y1={points[0].y}
+            x2={points[points.length - 1].x}
+            y2={points[points.length - 1].y}
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0%" stopColor={color} stopOpacity={0.7} />
+            <stop offset="40%" stopColor={color} stopOpacity={1} />
+            <stop offset="100%" stopColor={colorLight} stopOpacity={1} />
+          </linearGradient>
+          {/* Soft glow for the line */}
+          <filter id={glowFilterId} x="-10%" y="-20%" width="120%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" />
+          </filter>
+          {/* Dot glow filter */}
+          <filter id={dotGlowFilterId} x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+          </filter>
+        </defs>
 
         {/* Area fill below line */}
         {fillBelow && (
@@ -145,16 +158,29 @@ export function Trendline({ command }: TrendlineProps) {
           />
         )}
 
-        {/* Main trend line */}
+        {/* Glow layer behind the main line */}
         <path
-          ref={pathRef}
           d={pathD}
           fill="none"
           stroke={color}
+          strokeWidth={strokeWidth + 4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={pathLength}
+          strokeDashoffset={pathLength * (1 - drawProgress)}
+          filter={`url(#${glowFilterId})`}
+          opacity={0.25}
+        />
+        {/* Main trend line with gradient stroke */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke={`url(#${strokeGradientId})`}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={lineDrawStyle}
+          strokeDasharray={pathLength}
+          strokeDashoffset={pathLength * (1 - drawProgress)}
         />
 
         {/* End arrow */}
@@ -162,32 +188,56 @@ export function Trendline({ command }: TrendlineProps) {
           <polygon
             points={`${lastPt.x},${lastPt.y} ${headX1},${headY1} ${headX2},${headY2}`}
             fill={color}
-            style={{
-              opacity: animate ? 0 : 1,
-              animation: animate
-                ? "presentationFadeIn 200ms ease-out 700ms forwards"
-                : undefined,
-            }}
+            style={{ opacity: arrowOpacity }}
           />
         )}
 
-        {/* Dots */}
+        {/* Dots with glow ring */}
         {showDots &&
-          points.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r={dotRadius}
-              fill={color}
-              style={{
-                opacity: animate ? 0 : 1,
-                animation: animate
-                  ? `presentationFadeIn 250ms ease-out ${300 + i * 80}ms forwards`
-                  : undefined,
-              }}
-            />
-          ))}
+          points.map((p, i) => {
+            const dotDelay = 9 + i * 2
+            const dotOpacity = interpolate(frame - dotDelay, [0, 7], [0, 1], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })
+            return (
+              <g key={i} style={{ opacity: dotOpacity }}>
+                {/* Outer glow ring */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={dotRadius + 3}
+                  fill={color}
+                  filter={`url(#${dotGlowFilterId})`}
+                  opacity={0.3}
+                />
+                {/* Outer ring */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={dotRadius + 1.5}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1}
+                  opacity={0.5}
+                />
+                {/* Inner dot */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={dotRadius}
+                  fill={color}
+                />
+                {/* Highlight speck */}
+                <circle
+                  cx={p.x - dotRadius * 0.25}
+                  cy={p.y - dotRadius * 0.25}
+                  r={dotRadius * 0.35}
+                  fill="rgba(255, 255, 255, 0.5)"
+                />
+              </g>
+            )
+          })}
       </svg>
     </div>
   )

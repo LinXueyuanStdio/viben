@@ -105,6 +105,35 @@ export type PresentationCommand =
   | ChartCommand
   | ClearCommand
   | WaitCommand
+  // Data Visualization
+  | GaugeCommand
+  | SparklineCommand
+  | HeatmapCommand
+  | FunnelCommand
+  | WaterfallCommand
+  // Narrative/Structural
+  | CalloutCommand
+  | TimelineCommand
+  | FlowchartCommand
+  | TableCommand
+  | ListCommand
+  // Interaction/Effects
+  | ConfettiCommand
+  | CountdownCommand
+  | RevealCommand
+  | ZoomCommand
+  | MorphCommand
+  // Advanced Data & Annotations
+  | RadarCommand
+  | SankeyCommand
+  | KpiCommand
+  | MatrixCommand
+  | AnnotationGroupCommand
+  // Visualization & Code
+  | TreemapCommand
+  | DonutCommand
+  | StatCardCommand
+  | CodeBlockCommand
 
 /** Info card */
 export interface CardCommand {
@@ -354,6 +383,319 @@ export interface WaitCommand {
   ms: number
 }
 
+// ─── Data Visualization Commands ─────────────────────────────────
+
+/** Gauge: circular gauge meter with animated needle */
+export interface GaugeCommand {
+  type: "gauge"
+  position: PositionOrTarget
+  /** Value 0-100 */
+  value: number
+  /** Gauge radius (default 60) */
+  radius?: number
+  /** Label below gauge */
+  label?: string
+  color?: string
+  /** Track background color */
+  trackColor?: string
+}
+
+/** Sparkline: compact inline line chart */
+export interface SparklineCommand {
+  type: "sparkline"
+  position: PositionOrTarget
+  data: number[]
+  width?: number
+  height?: number
+  color?: string
+  /** Fill area below line */
+  fill?: boolean
+  /** Show end dot */
+  showEndDot?: boolean
+}
+
+/** Heatmap: grid of colored cells */
+export interface HeatmapCommand {
+  type: "heatmap"
+  position: PositionOrTarget
+  /** 2D grid of values (0-1 normalized) */
+  data: number[][]
+  /** Cell size in pixels (default 24) */
+  cellSize?: number
+  /** Row labels */
+  rowLabels?: string[]
+  /** Column labels */
+  colLabels?: string[]
+  /** Color range: [low, high] */
+  colors?: [string, string]
+}
+
+/** Funnel: vertical funnel/pyramid with stage labels */
+export interface FunnelCommand {
+  type: "funnel"
+  position: PositionOrTarget
+  stages: Array<{ label: string; value: number; color?: string }>
+  width?: number
+  height?: number
+}
+
+/** Waterfall: incremental +/- chart */
+export interface WaterfallCommand {
+  type: "waterfall"
+  position: PositionOrTarget
+  data: Array<{ label: string; value: number; type?: "increase" | "decrease" | "total" }>
+  width?: number
+  height?: number
+  /** Colors for increase/decrease/total */
+  colors?: { increase?: string; decrease?: string; total?: string }
+}
+
+// ─── Narrative/Structural Commands ───────────────────────────────
+
+/** Callout: speech bubble pointing to target */
+export interface CalloutCommand {
+  type: "callout"
+  position: PositionOrTarget
+  content: string
+  /** Arrow direction pointing away from bubble */
+  arrowDirection?: "top" | "bottom" | "left" | "right"
+  background?: string
+  color?: string
+  /** Max width (default 240) */
+  maxWidth?: number
+}
+
+/** Timeline: horizontal/vertical timeline with milestones */
+export interface TimelineCommand {
+  type: "timeline"
+  position: PositionOrTarget
+  events: Array<{ label: string; description?: string; color?: string; active?: boolean }>
+  /** Layout direction */
+  direction?: "horizontal" | "vertical"
+  width?: number
+  color?: string
+}
+
+/** Flowchart: connected boxes with arrows */
+export interface FlowchartCommand {
+  type: "flowchart"
+  position: PositionOrTarget
+  nodes: Array<{ id: string; label: string; color?: string }>
+  edges: Array<{ from: string; to: string; label?: string }>
+  /** Layout direction */
+  direction?: "horizontal" | "vertical"
+  width?: number
+  height?: number
+}
+
+/** Table: data table with row-by-row reveal */
+export interface TableCommand {
+  type: "table"
+  position: PositionOrTarget
+  headers: string[]
+  rows: string[][]
+  /** Width per column (default auto) */
+  columnWidths?: number[]
+  /** Highlight specific cells [row, col] */
+  highlights?: Array<[number, number]>
+  headerColor?: string
+  /** Stagger row reveal (frames between rows) */
+  rowStagger?: number
+}
+
+/** List: animated bullet list */
+export interface ListCommand {
+  type: "list"
+  position: PositionOrTarget
+  items: Array<{ text: string; icon?: string; color?: string }>
+  /** List style */
+  listStyle?: "bullet" | "number" | "check" | "arrow"
+  color?: string
+  fontSize?: number
+  /** Stagger between items (frames) */
+  stagger?: number
+}
+
+// ─── Interaction/Effects Commands ────────────────────────────────
+
+/** Confetti: particle burst celebration */
+export interface ConfettiCommand {
+  type: "confetti"
+  /** Origin point of burst */
+  position: PositionOrTarget
+  /** Number of particles (default 50) */
+  count?: number
+  /** Spread radius (default 200) */
+  spread?: number
+  /** Colors for particles */
+  colors?: string[]
+}
+
+/** Countdown: large countdown timer */
+export interface CountdownCommand {
+  type: "countdown"
+  position: PositionOrTarget
+  /** Start number (default 3) */
+  from?: number
+  color?: string
+  fontSize?: number
+}
+
+/** Reveal: mask wipe revealing content */
+export interface RevealCommand {
+  type: "reveal"
+  region: RegionOrTarget
+  /** Wipe direction */
+  direction?: "left" | "right" | "top" | "bottom" | "center"
+  color?: string
+}
+
+/** Zoom: magnifying lens on a region */
+export interface ZoomCommand {
+  type: "zoom"
+  region: RegionOrTarget
+  /** Zoom level (default 2) */
+  scale?: number
+  /** Lens border color */
+  borderColor?: string
+}
+
+/** Morph: shape/number morph transition */
+export interface MorphCommand {
+  type: "morph"
+  position: PositionOrTarget
+  /** From value */
+  from: string | number
+  /** To value */
+  to: string | number
+  color?: string
+  fontSize?: number
+}
+
+// ─── Advanced Data & Annotation Commands ─────────────────────────
+
+/** Radar/Spider chart with multiple axes */
+export interface RadarCommand {
+  type: "radar"
+  position: PositionOrTarget
+  /** Axes with labels and values (0-100 scale) */
+  axes: Array<{ label: string; value: number }>
+  /** Fill/stroke color */
+  color?: string
+  /** Polygon fill opacity (default 0.25) */
+  fillOpacity?: number
+  /** Chart size in pixels (default 200) */
+  size?: number
+}
+
+/** Sankey flow diagram */
+export interface SankeyCommand {
+  type: "sankey"
+  position: PositionOrTarget
+  /** Node definitions */
+  nodes: Array<{ id: string; label: string }>
+  /** Link connections with values proportional to width */
+  links: Array<{ source: string; target: string; value: number }>
+  width?: number
+  height?: number
+}
+
+/** KPI metric card */
+export interface KpiCommand {
+  type: "kpi"
+  position: PositionOrTarget
+  /** Main value (number for counter animation, string for static display) */
+  value: number | string
+  /** Metric label */
+  label: string
+  /** Trend direction */
+  trend?: "up" | "down" | "flat"
+  /** Trend percentage or text (e.g., "+12%") */
+  trendValue?: string
+  /** Mini sparkline data points */
+  sparkData?: number[]
+  /** Accent color */
+  color?: string
+}
+
+/** Comparison matrix with indicators */
+export interface MatrixCommand {
+  type: "matrix"
+  position: PositionOrTarget
+  /** Column headers */
+  columns: string[]
+  /** Row data with yes/no/partial indicators */
+  rows: Array<{ label: string; values: ("yes" | "no" | "partial")[] }>
+  /** Total width (default 420) */
+  width?: number
+}
+
+/** Grouped annotations with connector */
+export interface AnnotationGroupCommand {
+  type: "annotation-group"
+  position: PositionOrTarget
+  /** Annotation items */
+  items: Array<{ label: string; color?: string }>
+  /** Layout direction */
+  direction?: "horizontal" | "vertical"
+  /** Connector style between items */
+  connector?: "line" | "bracket" | "dots"
+}
+
+// ─── Visualization & Code Commands ───────────────────────────────
+
+/** Treemap: rectangular treemap showing hierarchical data */
+export interface TreemapCommand {
+  type: "treemap"
+  position: PositionOrTarget
+  /** Data items with label, value, and color */
+  data: Array<{ label: string; value: number; color: string }>
+  /** Total width (default 320) */
+  width?: number
+  /** Total height (default 200) */
+  height?: number
+}
+
+/** Donut: ring chart with animated arc drawing */
+export interface DonutCommand {
+  type: "donut"
+  position: PositionOrTarget
+  /** Segments with label, value, and color */
+  segments: Array<{ label: string; value: number; color: string }>
+  /** Outer diameter (default 180) */
+  size?: number
+  /** Inner radius as ratio of outer radius (default 0.6) */
+  innerRatio?: number
+}
+
+/** StatCard: before vs after comparison card with delta */
+export interface StatCardCommand {
+  type: "stat-card"
+  position: PositionOrTarget
+  /** Metric label */
+  label: string
+  /** Before value */
+  before: number
+  /** After value */
+  after: number
+  /** Unit suffix (e.g., "%", "ms", "K") */
+  unit?: string
+  /** Accent color */
+  color?: string
+}
+
+/** CodeBlock: animated code snippet with syntax highlighting */
+export interface CodeBlockCommand {
+  type: "code-block"
+  position: PositionOrTarget
+  /** Code content */
+  code: string
+  /** Language for syntax highlighting (default "typescript") */
+  language?: string
+  /** Line numbers to highlight with glow (1-indexed) */
+  highlightLines?: number[]
+}
+
 /** Player state */
 export type PlayerState = "idle" | "playing" | "paused"
 
@@ -481,6 +823,54 @@ export function describeCommand(cmd: PresentationCommand): string {
       return `Typewriter "${cmd.content.slice(0, 30)}"`
     case "chart":
       return `Chart ${cmd.chartType}${cmd.title ? ` "${cmd.title}"` : ""}`
+    case "gauge":
+      return `Gauge ${cmd.value}%${cmd.label ? ` "${cmd.label}"` : ""}`
+    case "sparkline":
+      return `Sparkline ${cmd.data.length} points`
+    case "heatmap":
+      return `Heatmap ${cmd.data.length}x${cmd.data[0]?.length ?? 0}`
+    case "funnel":
+      return `Funnel ${cmd.stages.length} stages`
+    case "waterfall":
+      return `Waterfall ${cmd.data.length} items`
+    case "callout":
+      return `Callout "${cmd.content.slice(0, 30)}"`
+    case "timeline":
+      return `Timeline ${cmd.events.length} events`
+    case "flowchart":
+      return `Flowchart ${cmd.nodes.length} nodes`
+    case "table":
+      return `Table ${cmd.rows.length}x${cmd.headers.length}`
+    case "list":
+      return `List ${cmd.items.length} items`
+    case "confetti":
+      return `Confetti ${cmd.count ?? 50} particles`
+    case "countdown":
+      return `Countdown from ${cmd.from ?? 3}`
+    case "reveal":
+      return `Reveal ${cmd.direction ?? "left"}`
+    case "zoom":
+      return `Zoom ${cmd.scale ?? 2}x`
+    case "morph":
+      return `Morph ${cmd.from} → ${cmd.to}`
+    case "radar":
+      return `Radar ${cmd.axes.length} axes`
+    case "sankey":
+      return `Sankey ${cmd.nodes.length} nodes, ${cmd.links.length} links`
+    case "kpi":
+      return `KPI "${cmd.label}" = ${cmd.value}`
+    case "matrix":
+      return `Matrix ${cmd.rows.length}x${cmd.columns.length}`
+    case "annotation-group":
+      return `AnnotationGroup ${cmd.items.length} items`
+    case "treemap":
+      return `Treemap ${cmd.data.length} items`
+    case "donut":
+      return `Donut ${cmd.segments.length} segments`
+    case "stat-card":
+      return `StatCard "${cmd.label}" ${cmd.before} → ${cmd.after}`
+    case "code-block":
+      return `CodeBlock ${cmd.code.split("\n").length} lines${cmd.language ? ` (${cmd.language})` : ""}`
     case "clear":
       return "Clear canvas"
     case "wait":

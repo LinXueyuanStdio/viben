@@ -6,6 +6,7 @@ import {
   PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts"
+import { useSlideIn } from "../utils/motion"
 
 interface ChartProps {
   command: ChartCommand
@@ -21,6 +22,7 @@ const DEFAULT_COLORS = [
  *
  * Supports line, bar, area, and pie/donut charts with entry animations.
  * Styled with dark glassmorphism to match the presentation overlay system.
+ * Container uses Remotion slide-in; recharts internal animations are kept active.
  */
 export function Chart({ command }: ChartProps) {
   const {
@@ -36,9 +38,11 @@ export function Chart({ command }: ChartProps) {
     title,
     colors = DEFAULT_COLORS,
     innerRadius = 0,
-    animate = true,
   } = command
   const position = _position as Point
+
+  // Remotion slide-in for the container (replaces CSS presentationSlideInDown)
+  const slide = useSlideIn(0, "bottom", 40)
 
   return (
     <div
@@ -47,14 +51,14 @@ export function Chart({ command }: ChartProps) {
         left: position.x,
         top: position.y,
         width,
-        background: "rgba(20, 20, 35, 0.88)",
-        backdropFilter: "blur(12px)",
-        borderRadius: 12,
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-        padding: "12px 8px 8px",
-        opacity: animate ? 0 : 1,
-        animation: animate ? "presentationSlideInDown 500ms ease-out forwards" : undefined,
+        background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
+        borderRadius: 16,
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        padding: "14px 12px 10px",
+        opacity: slide.opacity,
+        transform: `translateY(${slide.translateY}px) scale(${slide.scale})`,
         fontFamily: "'SF Pro Display', -apple-system, sans-serif",
       }}
     >
@@ -62,18 +66,24 @@ export function Chart({ command }: ChartProps) {
         <div style={{
           fontSize: 12,
           fontWeight: 600,
-          color: "rgba(255,255,255,0.7)",
-          marginBottom: 8,
+          color: "rgba(255,255,255,0.6)",
+          marginBottom: 10,
           paddingLeft: 8,
+          letterSpacing: 0.3,
+          textShadow: "0 1px 2px rgba(0,0,0,0.2)",
         }}>
           {title}
         </div>
       )}
 
-      {renderChart(chartType, data, series, dataMulti, colors, showGrid, showAxis, animate, innerRadius, width - 16, height)}
+      {renderChart(chartType, data, series, dataMulti, colors, showGrid, showAxis, innerRadius, width - 24, height)}
     </div>
   )
 }
+
+// Module-level static styles (avoid per-frame allocation)
+const AXIS_STYLE = { fontSize: 10, fill: "rgba(255,255,255,0.5)" } as const
+const GRID_STYLE = { strokeDasharray: "4 4", stroke: "rgba(255, 255, 255, 0.04)" } as const
 
 function renderChart(
   chartType: ChartCommand["chartType"],
@@ -83,14 +93,15 @@ function renderChart(
   colors: string[],
   showGrid: boolean,
   showAxis: boolean,
-  animate: boolean,
   innerRadius: number,
   chartWidth: number,
   chartHeight: number,
 ): React.ReactElement {
-  const axisStyle = { fontSize: 10, fill: "rgba(255,255,255,0.5)" }
-  const gridStyle = { strokeDasharray: "3 3", stroke: "rgba(255,255,255,0.08)" }
+  const axisStyle = AXIS_STYLE
+  const gridStyle = GRID_STYLE
 
+  // Disable recharts CSS animations -- they run on wall-clock time (60fps RAF loop)
+  // which conflicts with Remotion's frame-driven rendering and breaks seek/export.
   switch (chartType) {
     case "line": {
       if (series && dataMulti) {
@@ -107,8 +118,8 @@ function renderChart(
                 dataKey={s.dataKey}
                 stroke={s.color || colors[i % colors.length]}
                 strokeWidth={2}
-                dot={{ r: 3, fill: s.color || colors[i % colors.length] }}
-                isAnimationActive={animate}
+                dot={{ r: 3, fill: s.color || colors[i % colors.length], stroke: "rgba(15,15,30,0.6)", strokeWidth: 1 }}
+                isAnimationActive={false}
                 animationDuration={800}
                 animationEasing="ease-out"
               />
@@ -127,8 +138,8 @@ function renderChart(
             dataKey="value"
             stroke={colors[0]}
             strokeWidth={2.5}
-            dot={{ r: 4, fill: colors[0] }}
-            isAnimationActive={animate}
+            dot={{ r: 4, fill: colors[0], stroke: "rgba(15,15,30,0.6)", strokeWidth: 1.5 }}
+            isAnimationActive={false}
             animationDuration={800}
             animationEasing="ease-out"
           />
@@ -149,8 +160,8 @@ function renderChart(
                 key={s.dataKey}
                 dataKey={s.dataKey}
                 fill={s.color || colors[i % colors.length]}
-                radius={[3, 3, 0, 0]}
-                isAnimationActive={animate}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
                 animationDuration={800}
                 animationEasing="ease-out"
               />
@@ -167,7 +178,7 @@ function renderChart(
           <Bar
             dataKey="value"
             radius={[4, 4, 0, 0]}
-            isAnimationActive={animate}
+            isAnimationActive={false}
             animationDuration={800}
             animationEasing="ease-out"
           >
@@ -193,9 +204,9 @@ function renderChart(
                 type="monotone"
                 dataKey={s.dataKey}
                 stroke={s.color || colors[i % colors.length]}
-                fill={`${s.color || colors[i % colors.length]}40`}
+                fill={`${s.color || colors[i % colors.length]}30`}
                 strokeWidth={2}
-                isAnimationActive={animate}
+                isAnimationActive={false}
                 animationDuration={800}
                 animationEasing="ease-out"
               />
@@ -213,9 +224,9 @@ function renderChart(
             type="monotone"
             dataKey="value"
             stroke={colors[0]}
-            fill={`${colors[0]}40`}
+            fill={`${colors[0]}30`}
             strokeWidth={2}
-            isAnimationActive={animate}
+            isAnimationActive={false}
             animationDuration={800}
             animationEasing="ease-out"
           />
@@ -234,11 +245,11 @@ function renderChart(
             cy="50%"
             innerRadius={innerRadius}
             outerRadius="80%"
-            isAnimationActive={animate}
+            isAnimationActive={false}
             animationDuration={1000}
             animationEasing="ease-out"
             label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-            labelLine={{ stroke: "rgba(255,255,255,0.3)" }}
+            labelLine={{ stroke: "rgba(255,255,255,0.2)" }}
           >
             {data.map((entry, i) => (
               <Cell key={entry.name} fill={entry.color || colors[i % colors.length]} />
@@ -255,9 +266,11 @@ function renderChart(
 }
 
 const tooltipStyle: React.CSSProperties = {
-  background: "rgba(0,0,0,0.85)",
-  border: "1px solid rgba(255,255,255,0.15)",
-  borderRadius: 6,
+  background: "linear-gradient(135deg, rgba(15, 15, 30, 0.95), rgba(25, 25, 50, 0.9))",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 10,
   fontSize: 11,
   color: "#fff",
+  boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+  backdropFilter: "blur(12px)",
 }

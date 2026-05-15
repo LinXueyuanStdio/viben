@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useState, useRef, useCallback } from "react"
+import { createContext, useContext, useLayoutEffect, useRef, useCallback, useSyncExternalStore } from "react"
 import type { ReactNode } from "react"
 
 /**
@@ -10,118 +10,168 @@ export type TargetRectsMap = Map<string, DOMRect>
 const TargetRectsContext = createContext<TargetRectsMap>(new Map())
 
 /**
+ * Compares two TargetRectsMap for value equality (avoids unnecessary re-renders).
+ */
+function rectsEqual(a: TargetRectsMap, b: TargetRectsMap): boolean {
+  if (a.size !== b.size) return false
+  for (const [id, rectA] of a) {
+    const rectB = b.get(id)
+    if (!rectB) return false
+    if (rectA.left !== rectB.left || rectA.top !== rectB.top ||
+        rectA.width !== rectB.width || rectA.height !== rectB.height) return false
+  }
+  return true
+}
+
+/**
  * Provider that observes all [data-presentation-id] elements in the document.
  * Uses ResizeObserver for size/position changes and MutationObserver for DOM additions/removals.
- * Provides a reactive Map<targetId, DOMRect> via context.
+ *
+ * Performance optimizations:
+ * - Only updates React state when rects ACTUALLY change (value comparison)
+ * - MutationObserver only fires when nodes with data-presentation-id are added/removed
+ * - Debounced to avoid thrashing during Remotion playback
  */
 export function TargetRectsProvider({ children }: { children: ReactNode }) {
-  const [rects, setRects] = useState<TargetRectsMap>(new Map())
+  const rectsRef = useRef<TargetRectsMap>(new Map())
+  const elementsRef = useRef<Map<string, Element>>(new Map())
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const mutationObserverRef = useRef<MutationObserver | null>(null)
-  const elementsRef = useRef<Map<string, Element>>(new Map())
+  const scanScheduledRef = useRef(false)
+  const versionRef = useRef(0)
+  const subscribersRef = useRef<Set<() => void>>(new Set())
 
+  // Use useSyncExternalStore for optimal re-render control
+  const subscribe = useCallback((cb: () => void) => {
+    subscribersRef.current.add(cb)
+    return () => { subscribersRef.current.delete(cb) }
+  }, [])
+
+  const getSnapshot = useCallback(() => rectsRef.current, [])
+
+  const notify = useCallback(() => {
+    versionRef.current++
+    for (const cb of subscribersRef.current) cb()
+  }, [])
+
+  /** Measure all known elements, only notify if values changed */
+  const measure = useCallback(() => {
+    const newMap = new Map<string, DOMRect>()
+    for (const [id, el] of elementsRef.current) {
+      newMap.set(id, el.getBoundingClientRect())
+    }
+    if (!rectsEqual(rectsRef.current, newMap)) {
+      rectsRef.current = newMap
+      notify()
+    }
+  }, [notify])
+
+  /** Full DOM scan for [data-presentation-id] elements */
   const scan = useCallback(() => {
     const elements = document.querySelectorAll<HTMLElement>("[data-presentation-id]")
-    const newMap = new Map<string, DOMRect>()
     const newElements = new Map<string, Element>()
-
-    console.group(`[TargetRects] scan() — found ${elements.length} elements`)
 
     elements.forEach((el) => {
       const id = el.dataset.presentationId
-      if (!id) return
-      newElements.set(id, el)
-      const rect = el.getBoundingClientRect()
-      newMap.set(id, rect)
-
-      // Detailed info for debugging container positions
-      const cs = getComputedStyle(el)
-      const parent = el.parentElement
-      const parentRect = parent?.getBoundingClientRect()
-      console.log(
-        `  [${id}]`,
-        `rect={left:${rect.left.toFixed(0)}, top:${rect.top.toFixed(0)}, w:${rect.width.toFixed(0)}, h:${rect.height.toFixed(0)}}`,
-        `| position:${cs.position} display:${cs.display}`,
-        `| parent="${parent?.dataset?.presentationId || parent?.tagName}"`,
-        parentRect ? `parentRect={left:${parentRect.left.toFixed(0)}, top:${parentRect.top.toFixed(0)}, w:${parentRect.width.toFixed(0)}, h:${parentRect.height.toFixed(0)}}` : '',
-        `| offsetLeft:${el.offsetLeft} offsetTop:${el.offsetTop}`,
-      )
-      // 如果 rect 全是 0，标记为异常
-      if (rect.width === 0 && rect.height === 0) {
-        console.warn(`  ⚠️ [${id}] has ZERO size! Element may not be laid out. hidden=${el.hidden} style.display=${cs.display}`)
-      }
+      if (id) newElements.set(id, el)
     })
-    console.groupEnd()
 
-    // Update ResizeObserver: unobserve removed, observe added
+    // Update ResizeObserver
     const ro = resizeObserverRef.current
     if (ro) {
-      // Unobserve elements no longer present
       for (const [id, el] of elementsRef.current) {
-        if (!newElements.has(id)) {
-          ro.unobserve(el)
-        }
+        if (!newElements.has(id)) ro.unobserve(el)
       }
-      // Observe newly added elements
       for (const [id, el] of newElements) {
-        if (!elementsRef.current.has(id)) {
-          ro.observe(el)
-        }
+        if (!elementsRef.current.has(id)) ro.observe(el)
       }
     }
 
     elementsRef.current = newElements
-    setRects(newMap)
-  }, [])
+    measure()
+  }, [measure])
 
-  // useLayoutEffect fires synchronously after DOM mutations, before browser paint.
-  // This ensures we measure elements at the correct time — no flicker, no stale coords.
-  useLayoutEffect(() => {
-    console.log("[TargetRects] useLayoutEffect fired — performing initial scan")
-    // Initial synchronous scan — DOM is committed, elements are measurable
-    scan()
-
-    // ResizeObserver: fires when any observed element changes size/position
-    resizeObserverRef.current = new ResizeObserver((entries) => {
-      console.log(`[TargetRects] ResizeObserver fired for ${entries.length} entries`)
-      const newMap = new Map<string, DOMRect>()
-      for (const [id, el] of elementsRef.current) {
-        newMap.set(id, el.getBoundingClientRect())
-      }
-      setRects(newMap)
-    })
-
-    // MutationObserver: detect DOM additions/removals of target elements
-    mutationObserverRef.current = new MutationObserver((mutations) => {
-      console.log(`[TargetRects] MutationObserver fired (${mutations.length} mutations) — re-scanning`)
+  /** Debounced scan — at most once per frame */
+  const scheduleScan = useCallback(() => {
+    if (scanScheduledRef.current) return
+    scanScheduledRef.current = true
+    requestAnimationFrame(() => {
+      scanScheduledRef.current = false
       scan()
     })
+  }, [scan])
 
-    // Observe the whole document for subtree changes
+  /** Throttled measure — at most once per frame for scroll/resize events */
+  const measureScheduledRef = useRef(false)
+  const throttledMeasure = useCallback(() => {
+    if (measureScheduledRef.current) return
+    measureScheduledRef.current = true
+    requestAnimationFrame(() => {
+      measureScheduledRef.current = false
+      measure()
+    })
+  }, [measure])
+
+  useLayoutEffect(() => {
+    scan()
+
+    // ResizeObserver: fires when observed elements change size/position
+    resizeObserverRef.current = new ResizeObserver(() => throttledMeasure())
+
+    // MutationObserver: only re-scan when nodes are added/removed
+    // Filter: check if any mutation involves data-presentation-id elements
+    mutationObserverRef.current = new MutationObserver((mutations) => {
+      let relevant = false
+      for (const m of mutations) {
+        if (m.type !== "childList") continue
+        // Check added nodes
+        for (let i = 0; i < m.addedNodes.length; i++) {
+          const node = m.addedNodes[i]
+          if (node.nodeType === 1) {
+            const el = node as HTMLElement
+            if (el.hasAttribute("data-presentation-id") ||
+                el.querySelector("[data-presentation-id]")) {
+              relevant = true
+              break
+            }
+          }
+        }
+        if (relevant) break
+        // Check removed nodes
+        for (let i = 0; i < m.removedNodes.length; i++) {
+          const node = m.removedNodes[i]
+          if (node.nodeType === 1) {
+            const el = node as HTMLElement
+            if (el.hasAttribute("data-presentation-id") ||
+                el.querySelector("[data-presentation-id]")) {
+              relevant = true
+              break
+            }
+          }
+        }
+        if (relevant) break
+      }
+      if (relevant) scheduleScan()
+    })
+
     mutationObserverRef.current.observe(document.body, {
       childList: true,
       subtree: true,
     })
 
-    // Also update on scroll and resize
-    const handleUpdate = () => {
-      const newMap = new Map<string, DOMRect>()
-      for (const [id, el] of elementsRef.current) {
-        newMap.set(id, el.getBoundingClientRect())
-      }
-      setRects(newMap)
-    }
-
-    window.addEventListener("resize", handleUpdate)
-    window.addEventListener("scroll", handleUpdate, true)
+    window.addEventListener("resize", throttledMeasure)
+    window.addEventListener("scroll", throttledMeasure, true)
 
     return () => {
       resizeObserverRef.current?.disconnect()
       mutationObserverRef.current?.disconnect()
-      window.removeEventListener("resize", handleUpdate)
-      window.removeEventListener("scroll", handleUpdate, true)
+      window.removeEventListener("resize", throttledMeasure)
+      window.removeEventListener("scroll", throttledMeasure, true)
     }
-  }, [scan])
+  }, [scan, throttledMeasure, scheduleScan])
+
+  // useSyncExternalStore ensures minimal re-renders
+  const rects = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   return (
     <TargetRectsContext.Provider value={rects}>

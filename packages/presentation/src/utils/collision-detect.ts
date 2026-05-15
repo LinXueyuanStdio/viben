@@ -131,6 +131,8 @@ export function estimateBBox(id: string, command: PresentationCommand): OverlayB
     case "clear":
     case "wait":
       return null
+    default:
+      return null
   }
 }
 
@@ -253,6 +255,9 @@ export function logCollisionReport(
   }
 
   const report = lines.join("\n")
+
+  // Log to browser console
+  console.warn("[Presentation Collision]", report)
 
   // Write to local file via dev server
   if (typeof fetch !== "undefined") {

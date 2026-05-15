@@ -13,7 +13,8 @@
     "@viben/presentation": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "remotion": "^4.0.420"
+    "remotion": "^4.0.420",
+    "vanilla-jsoneditor": "^3.12.0"
   },
   "devDependencies": {
     "@remotion/cli": "^4.0.420",

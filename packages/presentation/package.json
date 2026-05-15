@@ -8,7 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bench": "npx tsx scripts/bench-render.ts"
   },
   "dependencies": {
     "@remotion/player": "^4.0.0",

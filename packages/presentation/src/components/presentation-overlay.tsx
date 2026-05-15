@@ -1,8 +1,8 @@
-import { useMemo, useRef, useEffect } from "react"
+import { useMemo, memo } from "react"
+import { useVideoConfig, useCurrentFrame, Sequence, AbsoluteFill } from "remotion"
 import type { PresentationStep, PresentationCommand } from "../types"
-import { useResolvedCommand, resolveCommand } from "../hooks/use-resolved-command"
-import { useTargetRects } from "../hooks/use-target-rects"
-import { estimateBBox } from "../utils/collision-detect"
+import { useResolvedCommand } from "../hooks/use-resolved-command"
+import { msToFrame } from "../utils/motion"
 import { Spotlight } from "../overlays/spotlight"
 import { Arrow } from "../overlays/arrow"
 import { TextAnnotation } from "../overlays/text-annotation"
@@ -19,62 +19,51 @@ import { Trendline } from "../overlays/trendline"
 import { Comparison } from "../overlays/comparison"
 import { Typewriter } from "../overlays/typewriter"
 import { Chart } from "../overlays/chart"
+import { Gauge } from "../overlays/gauge"
+import { Sparkline } from "../overlays/sparkline"
+import { Heatmap } from "../overlays/heatmap"
+import { Funnel } from "../overlays/funnel"
+import { Waterfall } from "../overlays/waterfall"
+import { Callout } from "../overlays/callout"
+import { Timeline } from "../overlays/timeline"
+import { Flowchart } from "../overlays/flowchart"
+import { Table } from "../overlays/table"
+import { List } from "../overlays/list"
+import { Confetti } from "../overlays/confetti"
+import { Countdown } from "../overlays/countdown"
+import { Reveal } from "../overlays/reveal"
+import { Zoom } from "../overlays/zoom"
+import { Morph } from "../overlays/morph"
+import { Radar } from "../overlays/radar"
+import { Sankey } from "../overlays/sankey"
+import { Kpi } from "../overlays/kpi"
+import { Matrix } from "../overlays/matrix"
+import { AnnotationGroup } from "../overlays/annotation-group"
+import { Treemap } from "../overlays/treemap"
+import { Donut } from "../overlays/donut"
+import { StatCard } from "../overlays/stat-card"
+import { CodeBlock } from "../overlays/code-block"
+
+/** Buffer frames for sequence virtualization pre-mount */
+const BUFFER_FRAMES = 5
 
 export interface PresentationOverlayProps {
-  /** Whether the overlay is active */
-  active: boolean
   /** All presentation steps */
   steps: PresentationStep[]
-  /**
-   * Current step index (legacy sequential mode).
-   * If elapsedMs is provided, this is ignored.
-   */
-  currentStep?: number
-  /**
-   * Timeline mode: elapsed time in ms from presentation start.
-   * Determines which steps are visible based on startMs/endMs.
-   */
-  elapsedMs?: number
-  /** z-index (default 9999) */
-  zIndex?: number
-  /** Callback when user clicks stop */
-  onStop?: () => void
-  /** Optional children (e.g., controls) rendered inside the overlay */
-  children?: React.ReactNode
 }
 
 /**
  * Resolves any TargetRef fields in a command before rendering.
- * Returns null (renders nothing) if a target element is not found in the DOM.
+ * Returns null if a target element is not found in the DOM.
  */
-function ResolvedCommandRenderer({ command, stepId }: { command: PresentationCommand; stepId?: string }) {
+const ResolvedCommandRenderer = memo(function ResolvedCommandRenderer({ command }: { command: PresentationCommand }) {
   const resolved = useResolvedCommand(command)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-
-  // Set data-presentation-id on the first child element so subsequent steps can reference it
-  useEffect(() => {
-    if (wrapperRef.current && stepId) {
-      const firstChild = wrapperRef.current.firstElementChild as HTMLElement | null
-      if (firstChild) {
-        firstChild.setAttribute("data-presentation-id", `overlay-${stepId}`)
-      }
-    }
-  })
-
-  if (!resolved) {
-    console.warn(`[Overlay] ❌ step="${stepId}" type="${command.type}" → resolved to NULL (target not found, not rendering)`, command)
-    return null
-  }
-
-  return (
-    <div ref={wrapperRef} style={{ display: "contents" }}>
-      <CommandRenderer command={resolved} />
-    </div>
-  )
-}
+  if (!resolved) return null
+  return <CommandRenderer command={resolved} />
+})
 
 /** Render a single command as an overlay element */
-function CommandRenderer({ command }: { command: PresentationCommand }) {
+const CommandRenderer = memo(function CommandRenderer({ command }: { command: PresentationCommand }) {
   switch (command.type) {
     case "spotlight":
       return <Spotlight command={command} />
@@ -108,361 +97,146 @@ function CommandRenderer({ command }: { command: PresentationCommand }) {
       return <Typewriter command={command} />
     case "chart":
       return <Chart command={command} />
+    case "gauge":
+      return <Gauge command={command} />
+    case "sparkline":
+      return <Sparkline command={command} />
+    case "heatmap":
+      return <Heatmap command={command} />
+    case "funnel":
+      return <Funnel command={command} />
+    case "waterfall":
+      return <Waterfall command={command} />
+    case "callout":
+      return <Callout command={command} />
+    case "timeline":
+      return <Timeline command={command} />
+    case "flowchart":
+      return <Flowchart command={command} />
+    case "table":
+      return <Table command={command} />
+    case "list":
+      return <List command={command} />
+    case "confetti":
+      return <Confetti command={command} />
+    case "countdown":
+      return <Countdown command={command} />
+    case "reveal":
+      return <Reveal command={command} />
+    case "zoom":
+      return <Zoom command={command} />
+    case "morph":
+      return <Morph command={command} />
+    case "radar":
+      return <Radar command={command} />
+    case "sankey":
+      return <Sankey command={command} />
+    case "kpi":
+      return <Kpi command={command} />
+    case "matrix":
+      return <Matrix command={command} />
+    case "annotation-group":
+      return <AnnotationGroup command={command} />
+    case "treemap":
+      return <Treemap command={command} />
+    case "donut":
+      return <Donut command={command} />
+    case "stat-card":
+      return <StatCard command={command} />
+    case "code-block":
+      return <CodeBlock command={command} />
     case "clear":
     case "wait":
       return null
   }
-}
+})
 
 /**
- * PresentationOverlay -- Full-screen transparent overlay container.
+ * PresentationOverlay -- Remotion composition for transparent overlay annotations.
  *
- * Positioned `fixed` with `pointer-events: none` and high z-index.
- * Renders commands cumulatively up to `currentStep` (each new step adds on top
- * of previous, except `clear` which removes all prior annotations).
+ * Renders ONLY the annotation overlays with transparent background.
+ * Must be used inside a Remotion <Composition> or <Player>.
+ * Position this layer on top of your page content.
+ *
+ * Each step becomes a Remotion Sequence based on startMs/endMs.
+ * "clear" commands hide all prior annotations from that point forward.
  */
-export function PresentationOverlay({
-  active,
-  steps,
-  currentStep,
-  elapsedMs,
-  zIndex = 9999,
-  onStop,
-  children,
-}: PresentationOverlayProps) {
-  // Compute which commands to show
-  const visibleCommands = useMemo(() => {
-    if (!active || steps.length === 0) return []
+export function PresentationOverlay({ steps }: PresentationOverlayProps) {
+  const { fps, durationInFrames } = useVideoConfig()
+  const frame = useCurrentFrame()
 
-    // Timeline mode: use elapsedMs to determine visible steps
-    if (elapsedMs != null) {
-      return computeTimelineVisible(steps, elapsedMs)
+  // Compute frame ranges and handle clear commands (stable across frames)
+  const sequences = useMemo(() => {
+    const sorted = [...steps].sort((a, b) => a.startMs - b.startMs)
+
+    // Find clear command times
+    const clearTimes = sorted
+      .filter((s) => s.command.type === "clear")
+      .map((s) => msToFrame(s.startMs, fps))
+
+    return sorted
+      .filter((s) => s.command.type !== "clear" && s.command.type !== "wait")
+      .map((step) => {
+        const startFrame = msToFrame(step.startMs, fps)
+        const endFrame = step.endMs != null
+          ? msToFrame(step.endMs, fps)
+          : durationInFrames
+
+        // Any clear command after this step's start truncates its visibility
+        const clearAfterStart = clearTimes.find((ct) => ct > startFrame && ct <= endFrame)
+        const effectiveEnd = clearAfterStart != null
+          ? Math.min(endFrame, clearAfterStart)
+          : endFrame
+
+        const duration = Math.max(1, effectiveEnd - startFrame)
+
+        return { step, startFrame, duration }
+      })
+      .filter(({ duration }) => duration > 0)
+  }, [steps, fps, durationInFrames])
+
+  // Virtualize: only render Sequences visible at current frame.
+  // Uses binary search on sorted sequences for O(log N) instead of O(N) filter.
+  // Result is sorted by startFrame ASC to maintain correct z-order (later = on top).
+  const visibleSequences = useMemo(() => {
+    const len = sequences.length
+    if (len === 0) return sequences
+
+    // Binary search: find rightmost sequence whose startFrame <= frame + BUFFER
+    let lo = 0, hi = len
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (sequences[mid].startFrame <= frame + BUFFER_FRAMES) lo = mid + 1
+      else hi = mid
     }
-
-    // Legacy sequential mode: cumulative up to currentStep
-    const commands: Array<{ id: string; command: PresentationCommand; meta?: PresentationStep["meta"] }> = []
-    const maxIndex = Math.min(currentStep ?? 0, steps.length - 1)
-
-    for (let i = 0; i <= maxIndex; i++) {
-      const step = steps[i]
-      if (step.command.type === "clear") {
-        commands.length = 0
-      } else if (step.command.type !== "wait") {
-        commands.push({ id: step.id, command: step.command, meta: step.meta })
-      }
+    // lo = first seq with startFrame > frame + BUFFER — only need to check [0, lo)
+    const result: typeof sequences = []
+    for (let i = lo - 1; i >= 0; i--) {
+      const { startFrame, duration } = sequences[i]
+      // Cannot break early: sequences sorted by startFrame, NOT by endFrame.
+      // A short sequence at index i may have ended, but longer sequences at i-1
+      // could still be visible. Use continue instead of break.
+      if (startFrame + duration <= frame) continue
+      if (frame >= startFrame - BUFFER_FRAMES) result.push(sequences[i])
     }
-
-    return commands
-  }, [active, steps, currentStep, elapsedMs])
-
-  // Log each visible element's position, size & per-element collisions (once per second)
-  const rects = useTargetRects()
-  useEffect(() => {
-    if (visibleCommands.length === 0 || elapsedMs == null) return
-    const logKey = Math.floor(elapsedMs / 1000)
-    if ((globalThis as any).__lastOverlayLogKey === logKey) return
-    ;(globalThis as any).__lastOverlayLogKey = logKey
-
-    // Collect all unique targetIds referenced by visible commands
-    const targetIds = new Set<string>()
-    for (const { command } of visibleCommands) {
-      const cmd = command as any
-      // Extract targetId from various field shapes
-      for (const field of ["position", "center", "region", "from", "to"]) {
-        if (cmd[field]?.targetId) targetIds.add(cmd[field].targetId)
-      }
-      if (cmd.points) {
-        for (const p of cmd.points) { if (p?.targetId) targetIds.add(p.targetId) }
-      }
-    }
-
-    // Resolve all bboxes
-    const bboxes: Array<{ id: string; type: string; bbox: ReturnType<typeof estimateBBox>; expect?: { x: number; y: number } }> = []
-    for (const { id, command, meta } of visibleCommands) {
-      const resolved = resolveCommand(command, rects)
-      if (!resolved) {
-        bboxes.push({ id, type: command.type, bbox: null, expect: meta?.expect })
-        continue
-      }
-      bboxes.push({ id, type: command.type, bbox: estimateBBox(id, resolved), expect: meta?.expect })
-    }
-
-    const ts = `t=${(elapsedMs / 1000).toFixed(0)}s`
-    const lines: string[] = [`[${ts}] ${bboxes.length} elements:`]
-
-    // Print target element rects first
-    if (targetIds.size > 0) {
-      lines.push(`  --- targets ---`)
-      for (const tid of targetIds) {
-        const rect = rects.get(tid)
-        if (rect) {
-          lines.push(`  [${tid}] ${rect.width.toFixed(0)}x${rect.height.toFixed(0)} @${rect.left.toFixed(0)},${rect.top.toFixed(0)}`)
-        } else {
-          lines.push(`  [${tid}] NOT FOUND`)
-        }
-      }
-      lines.push(`  --- overlays ---`)
-    }
-
-    for (let i = 0; i < bboxes.length; i++) {
-      const { id, type, bbox, expect } = bboxes[i]
-      if (!bbox) {
-        lines.push(`  ${id} (${type}) — no bbox`)
-        continue
-      }
-      // Find collisions with other bboxes
-      const hits: string[] = []
-      for (let j = 0; j < bboxes.length; j++) {
-        if (i === j) continue
-        const other = bboxes[j].bbox
-        if (!other) continue
-        const xOverlap = Math.max(0, Math.min(bbox.x + bbox.width, other.x + other.width) - Math.max(bbox.x, other.x))
-        const yOverlap = Math.max(0, Math.min(bbox.y + bbox.height, other.y + other.height) - Math.max(bbox.y, other.y))
-        const area = xOverlap * yOverlap
-        if (area > 0) {
-          const smaller = Math.min(bbox.width * bbox.height, other.width * other.height)
-          const pct = Math.round((area / smaller) * 100)
-          hits.push(`${bboxes[j].id}(${pct}%)`)
-        }
-      }
-      const collisionStr = hits.length > 0 ? ` ⚠️ ${hits.join(", ")}` : ""
-      // Validate expect vs actual position
-      let expectStr = ""
-      if (expect) {
-        const dx = Math.abs(bbox.x - expect.x)
-        const dy = Math.abs(bbox.y - expect.y)
-        const maxDim = Math.max(bbox.width, bbox.height, 1)
-        const xPct = (dx / maxDim) * 100
-        const yPct = (dy / maxDim) * 100
-        if (xPct > 5 || yPct > 5) {
-          expectStr = ` ❌ DRIFT expect@${expect.x},${expect.y} Δx=${dx.toFixed(0)}(${xPct.toFixed(0)}%) Δy=${dy.toFixed(0)}(${yPct.toFixed(0)}%)`
-        } else {
-          expectStr = ` ✅ expect@${expect.x},${expect.y}`
-        }
-      }
-      lines.push(`  ${id} (${type}) ${bbox.width.toFixed(0)}x${bbox.height.toFixed(0)} @${bbox.x.toFixed(0)},${bbox.y.toFixed(0)}${collisionStr}${expectStr}`)
-    }
-
-    if (typeof fetch !== "undefined") {
-      fetch("/__collision-log", {
-        method: "POST",
-        body: lines.join("\n"),
-        headers: { "Content-Type": "text/plain" },
-      }).catch(() => {})
-    }
-  }, [visibleCommands, elapsedMs, rects])
-
-  if (!active) return null
+    // Reverse to restore startFrame ASC order → correct z-stacking
+    // (later-appearing overlays render on top)
+    result.reverse()
+    return result
+  }, [sequences, frame])
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex,
-        pointerEvents: "none",
-      }}
-    >
-      {/* CSS Keyframes injection */}
-      <PresentationKeyframes />
-
-      {/* Annotation layer -- resolves TargetRef fields to pixel coords */}
-      {visibleCommands.map(({ id, command }) => (
-        <ResolvedCommandRenderer key={id} command={command} stepId={id} />
-      ))}
-
-      {/* Stop button (top-right) */}
-      {onStop && (
-        <button
-          onClick={onStop}
-          style={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            pointerEvents: "auto",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            borderRadius: 20,
-            background: "rgba(0, 0, 0, 0.7)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid rgba(255, 255, 255, 0.15)",
-            color: "#fff",
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: "pointer",
-            transition: "background 150ms",
-          }}
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {visibleSequences.map(({ step, startFrame, duration }) => (
+        <Sequence
+          key={step.id}
+          from={startFrame}
+          durationInFrames={duration}
+          layout="none"
         >
-          <span style={{ fontSize: 14 }}>&#x2715;</span>
-          Exit
-        </button>
-      )}
-
-      {/* Children (e.g., controls) */}
-      {children}
-    </div>
-  )
-}
-
-/**
- * Timeline mode: compute visible commands at a given elapsed time.
- * Steps are sorted by startMs. "clear" commands at time T remove all prior visible annotations.
- * Steps with endMs are hidden after that time.
- */
-function computeTimelineVisible(
-  steps: PresentationStep[],
-  elapsedMs: number,
-): Array<{ id: string; command: PresentationCommand; meta?: PresentationStep["meta"] }> {
-  // Sort by startMs (stable — preserve order for same startMs)
-  const sorted = [...steps].sort((a, b) => a.startMs - b.startMs)
-
-  const commands: Array<{ id: string; command: PresentationCommand; meta?: PresentationStep["meta"] }> = []
-  const skippedFuture: string[] = []
-  const expired: string[] = []
-
-  for (const step of sorted) {
-    if (step.startMs > elapsedMs) {
-      skippedFuture.push(`${step.id}(${step.command.type}@${step.startMs}ms)`)
-      continue // don't break — steps might not be perfectly sorted if same startMs
-    }
-
-    if (step.command.type === "clear") {
-      commands.length = 0
-      continue
-    }
-    if (step.command.type === "wait") continue
-
-    // Check if step has expired
-    if (step.endMs != null && step.endMs <= elapsedMs) {
-      expired.push(`${step.id}(${step.command.type})`)
-      continue
-    }
-
-    commands.push({ id: step.id, command: step.command, meta: step.meta })
-  }
-
-  // Log every 500ms to avoid spam (use rounded time)
-  const logKey = Math.floor(elapsedMs / 500)
-  if ((globalThis as any).__lastLogKey !== logKey) {
-    (globalThis as any).__lastLogKey = logKey
-    console.log(
-      `[Timeline] t=${(elapsedMs / 1000).toFixed(1)}s → visible: [${commands.map((c) => `${c.id}(${c.command.type})`).join(", ")}]`,
-      `| expired: ${expired.length}`,
-      `| future: ${skippedFuture.length}`,
-    )
-  }
-
-  return commands
-}
-
-/**
- * Injects CSS @keyframes used by overlay components.
- * Rendered once inside the overlay container.
- */
-function PresentationKeyframes() {
-  return (
-    <style>{`
-      @keyframes presentationFadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-
-      @keyframes presentationSlideUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px) scale(0.9);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-
-      @keyframes presentationSlideUpCentered {
-        from {
-          opacity: 0;
-          transform: translateX(-50%) translateY(20px) scale(0.9);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(-50%) translateY(0) scale(1);
-        }
-      }
-
-      @keyframes presentationDrawLine {
-        to { stroke-dashoffset: 0; }
-      }
-
-      @keyframes presentationCircleDraw {
-        to { stroke-dashoffset: 0; }
-      }
-
-      @keyframes presentationHighlightIn {
-        from {
-          opacity: 0;
-          transform: scale(0.95);
-        }
-        to {
-          opacity: var(--target-opacity, 0.3);
-          transform: scale(1);
-        }
-      }
-
-      @keyframes presentationSlideInRight {
-        from {
-          opacity: 0;
-          transform: translateX(60px) scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0) scale(1);
-        }
-      }
-
-      @keyframes presentationSlideInLeft {
-        from {
-          opacity: 0;
-          transform: translateX(-60px) scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0) scale(1);
-        }
-      }
-
-      @keyframes presentationSlideInUp {
-        from {
-          opacity: 0;
-          transform: translateY(-60px) scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-
-      @keyframes presentationSlideInDown {
-        from {
-          opacity: 0;
-          transform: translateY(60px) scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-
-      @keyframes presentationPulse {
-        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-        100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
-      }
-
-      @keyframes presentationTypewriterCursor {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
-      }
-    `}</style>
+          <ResolvedCommandRenderer command={step.command} />
+        </Sequence>
+      ))}
+    </AbsoluteFill>
   )
 }
