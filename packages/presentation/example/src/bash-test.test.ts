@@ -5,34 +5,55 @@
  */
 import { describe, it, expect, beforeEach } from "vitest"
 import type { PresentationStep } from "../../src/types"
+import { ALL_STEP_COMMANDS } from "../../src/commands/index.ts"
 import { createPresentationBash } from "./bash-integration"
 
 // ============================================================================
 // Test infrastructure
 // ============================================================================
 
-let steps: PresentationStep[] = []
-let cursorMs = 0
+describe("presentation bash commands", () => {
+  let steps: PresentationStep[] = []
+  let cursorMs = 0
 
-function createBash() {
-  return createPresentationBash({
-    onStep: (step) => steps.push(step),
-    getCursorMs: () => cursorMs,
-    setCursorMs: (ms) => { cursorMs = ms },
+  function createBash() {
+    return createPresentationBash({
+      onStep: (step) => steps.push(step),
+      getCursorMs: () => cursorMs,
+      setCursorMs: (ms) => { cursorMs = ms },
+    })
+  }
+
+  beforeEach(() => {
+    steps = []
+    cursorMs = 0
   })
-}
 
-beforeEach(() => {
-  steps = []
-  cursorMs = 0
-})
+  // ==========================================================================
+  // Registry full-coverage — every command must produce a valid step with no args
+  // ==========================================================================
 
-// ============================================================================
-// Test scripts
-// ============================================================================
+  describe("registry full-coverage", () => {
+    it.each(ALL_STEP_COMMANDS.map(c => [c.name, c]))(
+      "%s produces a valid step with default args",
+      async (_name, cmd) => {
+        const bash = createBash()
+        const result = await bash.exec(`presentation ${cmd.name}`)
+        expect(result.exitCode).toBe(0)
+        expect(steps).toHaveLength(1)
+        expect(steps[0].command.type).toBe(cmd.name)
+        expect(steps[0].startMs).toBeTypeOf("number")
+        expect(steps[0].endMs).toBeGreaterThan(steps[0].startMs)
+      },
+    )
+  })
 
-const SCRIPTS = {
-  "core-basics": `
+  // ==========================================================================
+  // Script-based tests
+  // ==========================================================================
+
+  const SCRIPTS = {
+    "core-basics": `
 presentation spotlight
 presentation arrow
 presentation text content="Hello World"
@@ -50,9 +71,10 @@ presentation comparison
 presentation typewriter content="Testing typewriter effect..."
 presentation chart chartType=line
 presentation clear
+presentation wait
 `,
 
-  "dataviz-suite": `
+    "dataviz-suite": `
 presentation gauge value=92 label="CPU Load"
 presentation sparkline data='[5,15,25,20,35,40,55,50,65,70]'
 presentation heatmap
@@ -63,7 +85,7 @@ presentation donut
 presentation scatter
 `,
 
-  "narrative-flow": `
+    "narrative-flow": `
 presentation callout content="Welcome to the presentation"
 presentation timeline events='[{"label":"Step 1","description":"Init"},{"label":"Step 2","description":"Process"},{"label":"Step 3","description":"Done","active":true}]'
 presentation flowchart
@@ -72,7 +94,7 @@ presentation list items='[{"text":"First"},{"text":"Second"},{"text":"Third"}]' 
 presentation annotation-group
 `,
 
-  "effects-showcase": `
+    "effects-showcase": `
 presentation confetti count=100 spread=300
 presentation countdown from=5
 presentation reveal direction=left
@@ -80,7 +102,7 @@ presentation zoom scale=3
 presentation morph from=0 to=1000
 `,
 
-  "advanced-analytics": `
+    "advanced-analytics": `
 presentation radar axes='[{"label":"Performance","value":90},{"label":"Reliability","value":75},{"label":"Cost","value":60},{"label":"Speed","value":85}]'
 presentation sankey
 presentation kpi value=1500000 label="ARR" trend=up trendValue="+25%"
@@ -95,14 +117,14 @@ presentation badge-group
 presentation meter value=88 label="Memory" unit="%"
 `,
 
-  "timing-control": `
+    "timing-control": `
 presentation spotlight startMs=0 endMs=3000
 presentation arrow startMs=1000 endMs=4000
 presentation text content="Overlapping!" startMs=2000 endMs=5000
 presentation clear startMs=5000
 `,
 
-  "full-demo": `
+    "full-demo": `
 # Act 1: Introduction
 presentation text content="AI Chip Market Analysis 2024" fontSize=36 color="#fff" position='{"x":280,"y":100}'
 presentation typewriter content="The semiconductor industry is undergoing a transformation..." position='{"x":200,"y":400}'
@@ -122,58 +144,144 @@ presentation clear
 presentation confetti count=80
 presentation text content="The future is accelerated computing" fontSize=28 position='{"x":240,"y":280}'
 `,
-} as const
+  } as const
 
-// ============================================================================
-// Tests
-// ============================================================================
-
-describe("presentation bash commands", () => {
-  describe("core-basics", () => {
-    it("executes all 17 core commands", async () => {
+  describe.each([
+    ["core-basics", 18],
+    ["dataviz-suite", 8],
+    ["narrative-flow", 6],
+    ["effects-showcase", 5],
+    ["advanced-analytics", 12],
+  ] as const)("%s", (scriptName, expectedCount) => {
+    it(`executes all ${expectedCount} commands`, async () => {
       const bash = createBash()
-      const result = await bash.exec(SCRIPTS["core-basics"])
+      const result = await bash.exec(SCRIPTS[scriptName])
       expect(result.exitCode).toBe(0)
-      expect(steps.length).toBe(17)
-      expect(steps[0].command.type).toBe("spotlight")
-      expect(steps[16].command.type).toBe("clear")
+      expect(steps).toHaveLength(expectedCount)
     })
 
-    it("auto-advances cursor after each command", async () => {
+    it("auto-advances cursor correctly", async () => {
       const bash = createBash()
-      await bash.exec(SCRIPTS["core-basics"])
+      await bash.exec(SCRIPTS[scriptName])
+      // Cursor should have advanced by the sum of all command durations
       expect(cursorMs).toBeGreaterThan(0)
-      // Each step's startMs should be >= previous step's startMs
+      // Each step's startMs should be monotonically non-decreasing
       for (let i = 1; i < steps.length; i++) {
         expect(steps[i].startMs).toBeGreaterThanOrEqual(steps[i - 1].startMs)
       }
-    })
-
-    it("parses content arg correctly", async () => {
-      const bash = createBash()
-      await bash.exec('presentation text content="Hello World"')
-      expect(steps[0].command.type).toBe("text")
-      if (steps[0].command.type === "text") {
-        expect(steps[0].command.content).toBe("Hello World")
-      }
+      // Final cursor should equal last step's startMs + its duration
+      const lastStep = steps[steps.length - 1]
+      expect(cursorMs).toBe(lastStep.endMs)
     })
   })
 
-  describe("dataviz-suite", () => {
-    it("executes all 8 dataviz commands", async () => {
+  describe("effects-showcase field checks", () => {
+    it("confetti parses count and spread", async () => {
       const bash = createBash()
-      const result = await bash.exec(SCRIPTS["dataviz-suite"])
+      await bash.exec("presentation confetti count=100 spread=300")
+      expect(steps[0].command).toMatchObject({
+        type: "confetti",
+        count: 100,
+        spread: 300,
+      })
+    })
+
+    it("countdown parses from", async () => {
+      const bash = createBash()
+      await bash.exec("presentation countdown from=5")
+      expect(steps[0].command).toMatchObject({
+        type: "countdown",
+        from: 5,
+      })
+    })
+
+    it("zoom parses scale", async () => {
+      const bash = createBash()
+      await bash.exec("presentation zoom scale=3")
+      expect(steps[0].command).toMatchObject({
+        type: "zoom",
+        scale: 3,
+      })
+    })
+  })
+
+  describe("advanced-analytics field checks", () => {
+    it("kpi parses value, label, trend, trendValue", async () => {
+      const bash = createBash()
+      await bash.exec('presentation kpi value=1500000 label="ARR" trend=up trendValue="+25%"')
+      expect(steps[0].command).toMatchObject({
+        type: "kpi",
+        value: 1500000,
+        label: "ARR",
+        trend: "up",
+        trendValue: "+25%",
+      })
+    })
+
+    it("stat-card parses before/after/unit", async () => {
+      const bash = createBash()
+      await bash.exec('presentation stat-card label="Build Time" before=120 after=45 unit=s')
+      expect(steps[0].command).toMatchObject({
+        type: "stat-card",
+        label: "Build Time",
+        before: 120,
+        after: 45,
+        unit: "s",
+      })
+    })
+
+    it("meter parses value/label/unit", async () => {
+      const bash = createBash()
+      await bash.exec('presentation meter value=88 label="Memory" unit="%"')
+      expect(steps[0].command).toMatchObject({
+        type: "meter",
+        value: 88,
+        label: "Memory",
+        unit: "%",
+      })
+    })
+  })
+
+  describe("timing-control", () => {
+    it("respects explicit startMs and endMs", async () => {
+      const bash = createBash()
+      const result = await bash.exec(SCRIPTS["timing-control"])
       expect(result.exitCode).toBe(0)
-      expect(steps.length).toBe(8)
+      expect(steps[0]).toMatchObject({ startMs: 0, endMs: 3000 })
+      expect(steps[1]).toMatchObject({ startMs: 1000, endMs: 4000 })
+      expect(steps[2]).toMatchObject({ startMs: 2000, endMs: 5000 })
+      expect(steps[3].startMs).toBe(5000)
+    })
+  })
+
+  describe("full-demo", () => {
+    it("executes a complex multi-act script (11 steps, 3 clears)", async () => {
+      const bash = createBash()
+      const result = await bash.exec(SCRIPTS["full-demo"])
+      expect(result.exitCode).toBe(0)
+      expect(steps).toHaveLength(11)
+      const clears = steps.filter(s => s.command.type === "clear")
+      expect(clears).toHaveLength(3)
+    })
+  })
+
+  describe("arg parsing", () => {
+    it("parses content arg correctly", async () => {
+      const bash = createBash()
+      await bash.exec('presentation text content="Hello World"')
+      expect(steps[0].command).toMatchObject({
+        type: "text",
+        content: "Hello World",
+      })
     })
 
     it("parses numeric args", async () => {
       const bash = createBash()
       await bash.exec("presentation gauge value=92")
-      expect(steps[0].command.type).toBe("gauge")
-      if (steps[0].command.type === "gauge") {
-        expect(steps[0].command.value).toBe(92)
-      }
+      expect(steps[0].command).toMatchObject({
+        type: "gauge",
+        value: 92,
+      })
     })
 
     it("parses JSON array args", async () => {
@@ -184,15 +292,6 @@ describe("presentation bash commands", () => {
         expect(steps[0].command.data).toEqual([5, 15, 25, 20, 35])
       }
     })
-  })
-
-  describe("narrative-flow", () => {
-    it("executes all 6 narrative commands", async () => {
-      const bash = createBash()
-      const result = await bash.exec(SCRIPTS["narrative-flow"])
-      expect(result.exitCode).toBe(0)
-      expect(steps.length).toBe(6)
-    })
 
     it("parses JSON object array args", async () => {
       const bash = createBash()
@@ -202,49 +301,25 @@ describe("presentation bash commands", () => {
         expect(steps[0].command.events[0].label).toBe("A")
       }
     })
-  })
 
-  describe("effects-showcase", () => {
-    it("executes all 5 effects commands", async () => {
+    it("handles single-char values (not mistaken for quotes)", async () => {
       const bash = createBash()
-      const result = await bash.exec(SCRIPTS["effects-showcase"])
-      expect(result.exitCode).toBe(0)
-      expect(steps.length).toBe(5)
+      await bash.exec("presentation stat-card unit=s")
+      expect(steps[0].command.type).toBe("stat-card")
+      if (steps[0].command.type === "stat-card") {
+        expect(steps[0].command.unit).toBe("s")
+      }
     })
   })
 
-  describe("advanced-analytics", () => {
-    it("executes all 12 advanced commands", async () => {
+  describe("default values", () => {
+    it("spotlight produces valid region with no args", async () => {
       const bash = createBash()
-      const result = await bash.exec(SCRIPTS["advanced-analytics"])
-      expect(result.exitCode).toBe(0)
-      expect(steps.length).toBe(12)
-    })
-  })
-
-  describe("timing-control", () => {
-    it("respects explicit startMs and endMs", async () => {
-      const bash = createBash()
-      const result = await bash.exec(SCRIPTS["timing-control"])
-      expect(result.exitCode).toBe(0)
-      expect(steps[0].startMs).toBe(0)
-      expect(steps[0].endMs).toBe(3000)
-      expect(steps[1].startMs).toBe(1000)
-      expect(steps[1].endMs).toBe(4000)
-      expect(steps[2].startMs).toBe(2000)
-      expect(steps[2].endMs).toBe(5000)
-    })
-  })
-
-  describe("full-demo", () => {
-    it("executes a complex multi-act script", async () => {
-      const bash = createBash()
-      const result = await bash.exec(SCRIPTS["full-demo"])
-      expect(result.exitCode).toBe(0)
-      expect(steps.length).toBeGreaterThan(5)
-      // Should contain multiple clear commands (act transitions)
-      const clears = steps.filter(s => s.command.type === "clear")
-      expect(clears.length).toBeGreaterThanOrEqual(3)
+      await bash.exec("presentation spotlight")
+      expect(steps[0].command).toMatchObject({
+        type: "spotlight",
+        region: { x: 300, y: 200, width: 360, height: 240 },
+      })
     })
   })
 
@@ -262,18 +337,14 @@ describe("presentation bash commands", () => {
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toContain("spotlight")
       expect(result.stdout).toContain("arrow")
-      expect(result.stdout).toContain("overlay commands")
+      expect(result.stdout).toContain("49 overlay commands")
     })
-  })
 
-  describe("default values", () => {
-    it("produces valid commands with no args", async () => {
+    it("shows help with no subcommand", async () => {
       const bash = createBash()
-      await bash.exec("presentation spotlight")
-      expect(steps[0].command.type).toBe("spotlight")
-      if (steps[0].command.type === "spotlight") {
-        expect(steps[0].command.region).toEqual({ x: 300, y: 200, width: 360, height: 240 })
-      }
+      const result = await bash.exec("presentation")
+      expect(result.exitCode).toBe(0)
+      expect(result.stdout).toContain("overlay commands")
     })
   })
 })

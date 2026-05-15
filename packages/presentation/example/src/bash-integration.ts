@@ -14,20 +14,27 @@ export interface PresentationBashOptions {
 
 /**
  * Parse bash args string "key=value key2='json'" into a Record.
+ * Bare tokens without `=` are treated as boolean flags (value = true).
  */
 function parseArgs(args: string[]): Record<string, unknown> {
   const result: Record<string, unknown> = {}
 
   for (const token of args) {
     const eqIdx = token.indexOf("=")
-    if (eqIdx === -1) continue
+
+    // Bare flag without `=` → treat as boolean true
+    if (eqIdx === -1) {
+      result[token] = true
+      continue
+    }
 
     const key = token.slice(0, eqIdx)
     const raw = token.slice(eqIdx + 1)
 
-    // Strip outer quotes if present
-    const unquoted = (raw.startsWith("'") && raw.endsWith("'"))
-      || (raw.startsWith('"') && raw.endsWith('"'))
+    // Strip outer quotes if present (must be at least 2 chars for open+close)
+    const unquoted = raw.length >= 2
+      && ((raw.startsWith("'") && raw.endsWith("'"))
+        || (raw.startsWith('"') && raw.endsWith('"')))
       ? raw.slice(1, -1)
       : raw
 
