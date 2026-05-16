@@ -2,7 +2,7 @@ import { forwardRef, useState, useEffect, useRef, memo, useMemo } from "react"
 import { Player, type PlayerRef } from "@remotion/player"
 import type { PresentationStep } from "../types"
 import { msToFrame } from "../utils/motion"
-import { computeTotalMs } from "../utils/timeline"
+import { computeTotalMs, getCurrentStepIndex } from "../utils/timeline"
 import { usePlaybackState } from "../hooks/use-playback-state"
 import { PresentationOverlay } from "./presentation-overlay"
 import { PerfProfiler } from "./perf-profiler"
@@ -82,9 +82,13 @@ const OverlayComposition = memo(function OverlayComposition({
   )
 })
 
-/** Stable style for Player element */
+// ---------------------------------------------------------------------------
+// Module-level style constants (zero allocation per render)
+// ---------------------------------------------------------------------------
+
 const PLAYER_STYLE_CONTROLS: React.CSSProperties = { width: "100%", height: "100%", pointerEvents: "auto" }
 const PLAYER_STYLE_NO_CONTROLS: React.CSSProperties = { width: "100%", height: "100%", pointerEvents: "none" }
+const CONTAINER_STYLE_BASE: React.CSSProperties = { position: "absolute", inset: 0, pointerEvents: "none" }
 
 /**
  * PresentationPlayer — Transparent Remotion overlay player.
@@ -153,62 +157,70 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       return () => observer.disconnect()
     }, [])
 
-    const durationMs = totalDurationMsProp ?? computeTotalMs(steps)
+    // Memoize durationMs to avoid O(n) computeTotalMs on every render
+    const durationMs = useMemo(
+      () => totalDurationMsProp ?? computeTotalMs(steps),
+      [totalDurationMsProp, steps],
+    )
     const durationInFrames = Math.max(1, msToFrame(durationMs, fps))
 
-    // Playback state for transport/timeline
+    // Playback state for transport/timeline (useSyncExternalStore-based)
     const playback = usePlaybackState(playerRef, fps, durationMs)
 
-    // Fire onTimeUpdate callback
+    // Latest-ref pattern: avoid re-running effects when callback identity changes
+    const onTimeUpdateRef = useRef(onTimeUpdate)
+    onTimeUpdateRef.current = onTimeUpdate
+    const onStepChangeRef = useRef(onStepChange)
+    onStepChangeRef.current = onStepChange
+
+    // Fire onTimeUpdate callback — dep array excludes callback (latest-ref)
     const prevMsRef = useRef(-1)
     useEffect(() => {
-      if (onTimeUpdate && playback.currentMs !== prevMsRef.current) {
+      if (playback.currentMs !== prevMsRef.current) {
         prevMsRef.current = playback.currentMs
-        onTimeUpdate(playback.currentMs)
+        onTimeUpdateRef.current?.(playback.currentMs)
       }
-    }, [playback.currentMs, onTimeUpdate])
+    }, [playback.currentMs])
 
-    // Fire onStepChange callback
+    // Fire onStepChange callback — uses binary search O(log n)
     const prevStepIdRef = useRef<string>("")
     useEffect(() => {
-      if (!onStepChange) return
-      // Find current active step
-      let activeIdx = -1
-      for (let i = steps.length - 1; i >= 0; i--) {
-        if (steps[i].startMs <= playback.currentMs) {
-          activeIdx = i
-          break
-        }
-      }
+      const cb = onStepChangeRef.current
+      if (!cb) return
+      const activeIdx = getCurrentStepIndex(steps, playback.currentMs)
       const step = activeIdx >= 0 ? steps[activeIdx] : null
       const stepId = step?.id ?? ""
       if (stepId !== prevStepIdRef.current) {
         prevStepIdRef.current = stepId
-        onStepChange(step, activeIdx)
+        cb(step ?? null, activeIdx)
       }
-    }, [playback.currentMs, steps, onStepChange])
+    }, [playback.currentMs, steps])
 
-    // Memoize inputProps to prevent Player from re-rendering composition on every parent render
+    // Memoize inputProps — use latest-ref for onPerfReport to keep props stable
+    const onPerfReportRef = useRef(onPerfReport)
+    onPerfReportRef.current = onPerfReport
+    const stablePerfReport = useMemo(
+      () => (metrics: PerfMetrics, formatted: string) => onPerfReportRef.current?.(metrics, formatted),
+      [],
+    )
+
     const inputProps = useMemo(
-      () => ({ steps, enableLogger, enablePerfMonitor, onPerfReport, fps }),
-      [steps, enableLogger, enablePerfMonitor, onPerfReport, fps],
+      () => ({ steps, enableLogger, enablePerfMonitor, onPerfReport: stablePerfReport, fps }),
+      [steps, enableLogger, enablePerfMonitor, stablePerfReport, fps],
     )
 
     // Determine if Remotion native controls should show
-    // When showTransport is enabled, hide native controls to avoid double UI
     const effectiveControls = showTransport ? false : controls
     const playerStyle = effectiveControls ? PLAYER_STYLE_CONTROLS : PLAYER_STYLE_NO_CONTROLS
+
+    // Container style: avoid spread allocation when no custom style
+    const containerStyle = style ? { ...CONTAINER_STYLE_BASE, ...style } : CONTAINER_STYLE_BASE
 
     return (
       <div
         ref={containerRef}
         className={className}
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-          ...style,
-        }}
+        style={containerStyle}
       >
         {size.width > 0 && size.height > 0 && (
           <Player

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useSyncExternalStore } from "react"
+import { useRef, useSyncExternalStore, useEffect } from "react"
 import type { RefObject } from "react"
 import type { PlayerRef } from "@remotion/player"
 import { frameToMs } from "../utils/motion"
@@ -25,94 +25,127 @@ const INITIAL_STATE: PlaybackState = {
 }
 
 /**
- * Playback state store — useSyncExternalStore compatible.
- * Concurrent-mode safe, avoids tearing between frame reads and React renders.
- * Uses requestAnimationFrame polling with change detection to minimize re-renders.
+ * Mutable playback store — single instance per hook call.
+ * Supports param updates without recreation (avoids stale closures).
+ * rAF loop starts/stops based on subscriber count.
+ * Pauses polling when document is hidden.
  */
-function createPlaybackStore(
-  playerRef: RefObject<PlayerRef | null>,
-  fps: number,
-  totalDurationMs: number,
-) {
-  let state = INITIAL_STATE
-  let prevFrame = -1
-  let prevPlaying = false
-  const listeners = new Set<() => void>()
-  let rafId = 0
+class PlaybackStore {
+  private state = INITIAL_STATE
+  private prevFrame = -1
+  private prevPlaying = false
+  private listeners = new Set<() => void>()
+  private rafId = 0
+  private running = false
 
-  const totalFrames = Math.max(1, Math.ceil((totalDurationMs / 1000) * fps))
+  constructor(
+    private playerRef: RefObject<PlayerRef | null>,
+    private fps: number,
+    private totalDurationMs: number,
+  ) {}
 
-  function poll() {
-    const player = playerRef.current
+  /** Update params without recreating the store */
+  updateParams(fps: number, totalDurationMs: number) {
+    this.fps = fps
+    this.totalDurationMs = totalDurationMs
+  }
+
+  private get totalFrames() {
+    return Math.max(1, Math.ceil((this.totalDurationMs / 1000) * this.fps))
+  }
+
+  private poll = () => {
+    // Skip polling when tab is hidden
+    if (typeof document !== "undefined" && document.hidden) {
+      this.rafId = requestAnimationFrame(this.poll)
+      return
+    }
+
+    const player = this.playerRef.current
     if (player) {
       const frame = player.getCurrentFrame()
       const isPlaying = player.isPlaying()
 
-      if (frame !== prevFrame || isPlaying !== prevPlaying) {
-        prevFrame = frame
-        prevPlaying = isPlaying
-        const currentMs = frameToMs(frame, fps)
+      if (frame !== this.prevFrame || isPlaying !== this.prevPlaying) {
+        this.prevFrame = frame
+        this.prevPlaying = isPlaying
+        const totalFrames = this.totalFrames
+        const currentMs = frameToMs(frame, this.fps)
         const progress = Math.min(1, frame / totalFrames)
-        state = { currentFrame: frame, currentMs, isPlaying, progress, totalFrames }
-        // Notify all subscribers
-        listeners.forEach((fn) => fn())
+        this.state = { currentFrame: frame, currentMs, isPlaying, progress, totalFrames }
+        this.notify()
       }
     }
-    rafId = requestAnimationFrame(poll)
+
+    this.rafId = requestAnimationFrame(this.poll)
   }
 
-  function start() {
-    rafId = requestAnimationFrame(poll)
+  private notify() {
+    this.listeners.forEach((fn) => fn())
   }
 
-  function stop() {
-    cancelAnimationFrame(rafId)
+  private start() {
+    if (this.running) return
+    this.running = true
+    this.rafId = requestAnimationFrame(this.poll)
   }
 
-  function subscribe(listener: () => void) {
-    listeners.add(listener)
-    if (listeners.size === 1) start()
+  private stop() {
+    if (!this.running) return
+    this.running = false
+    cancelAnimationFrame(this.rafId)
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    if (this.listeners.size === 1) this.start()
     return () => {
-      listeners.delete(listener)
-      if (listeners.size === 0) stop()
+      this.listeners.delete(listener)
+      if (this.listeners.size === 0) this.stop()
     }
   }
 
-  function getSnapshot() {
-    return state
-  }
+  getSnapshot = () => this.state
 
-  return { subscribe, getSnapshot }
+  destroy() {
+    this.stop()
+    this.listeners.clear()
+  }
 }
 
 /**
  * Hook that tracks Remotion PlayerRef playback state via useSyncExternalStore.
- * Concurrent-mode safe — no tearing between reads.
- * Only triggers re-renders when frame or playing state actually changes.
+ *
+ * Optimizations:
+ * - Concurrent-mode safe (useSyncExternalStore)
+ * - Single mutable store instance (no stale closures on param changes)
+ * - Skips polling when tab is hidden
+ * - Only notifies on actual state changes
+ * - Proper cleanup on unmount
  */
 export function usePlaybackState(
   playerRef: RefObject<PlayerRef | null>,
   fps: number,
   totalDurationMs: number,
 ): PlaybackState {
-  const storeRef = useRef<ReturnType<typeof createPlaybackStore> | null>(null)
+  const storeRef = useRef<PlaybackStore | null>(null)
 
-  // Recreate store if params change (rare — usually stable)
-  if (
-    !storeRef.current ||
-    // Store identity changes only if fps/duration change
-    false
-  ) {
-    storeRef.current = createPlaybackStore(playerRef, fps, totalDurationMs)
+  // Create store once, update params reactively
+  if (!storeRef.current) {
+    storeRef.current = new PlaybackStore(playerRef, fps, totalDurationMs)
   }
 
-  // Update store params reactively
-  const store = storeRef.current
+  // Update params without recreating store (avoids stale closure)
+  storeRef.current.updateParams(fps, totalDurationMs)
 
-  // Recreate on param change
+  // Cleanup on unmount
   useEffect(() => {
-    storeRef.current = createPlaybackStore(playerRef, fps, totalDurationMs)
-  }, [playerRef, fps, totalDurationMs])
+    return () => {
+      storeRef.current?.destroy()
+      storeRef.current = null
+    }
+  }, [])
 
+  const store = storeRef.current
   return useSyncExternalStore(store.subscribe, store.getSnapshot, () => INITIAL_STATE)
 }

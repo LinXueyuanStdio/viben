@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback, useEffect, useState } from "react"
+import React, { useState, useMemo, useRef, useCallback, useEffect } from "react"
 
 // ============================================================================
 // Types
@@ -53,13 +53,8 @@ const TOKEN_COLORS: Record<TokenType, string> = {
 // ============================================================================
 
 function tokenizeLine(line: string): Token[] {
-  if (line.trim() === "") {
-    return [{ text: line, type: "text" }]
-  }
-
-  if (line.trimStart().startsWith("#")) {
-    return [{ text: line, type: "comment" }]
-  }
+  if (line.trim() === "") return [{ text: line, type: "text" }]
+  if (line.trimStart().startsWith("#")) return [{ text: line, type: "comment" }]
 
   const tokens: Token[] = []
   let remaining = line
@@ -77,62 +72,40 @@ function tokenizeLine(line: string): Token[] {
   function consumeWord(): string | null {
     const match = remaining.match(/^([^\s=]+)/)
     if (match) {
-      const word = match[1]
-      remaining = remaining.slice(word.length)
-      pos += word.length
-      return word
+      remaining = remaining.slice(match[1].length)
+      pos += match[1].length
+      return match[1]
     }
     return null
   }
 
   function tokenizeValue(): void {
     if (remaining.length === 0) return
-
-    if (remaining.startsWith('"')) {
-      const endIdx = findClosingQuote(remaining, '"')
+    if (remaining[0] === '"' || remaining[0] === "'") {
+      const quote = remaining[0]
+      const endIdx = findClosingQuote(remaining, quote)
       const str = remaining.slice(0, endIdx + 1)
       tokens.push({ text: str, type: "string" })
       remaining = remaining.slice(str.length)
       pos += str.length
       return
     }
-
-    if (remaining.startsWith("'")) {
-      const endIdx = findClosingQuote(remaining, "'")
-      const str = remaining.slice(0, endIdx + 1)
-      tokens.push({ text: str, type: "string" })
-      remaining = remaining.slice(str.length)
-      pos += str.length
-      return
-    }
-
     const match = remaining.match(/^([^\s]+)/)
     if (match) {
       const val = match[1]
       remaining = remaining.slice(val.length)
       pos += val.length
-
-      if (val === "true" || val === "false") {
-        tokens.push({ text: val, type: "boolean" })
-      } else if (/^-?\d+(\.\d+)?$/.test(val)) {
-        tokens.push({ text: val, type: "number" })
-      } else {
-        tokens.push({ text: val, type: "text" })
-      }
+      if (val === "true" || val === "false") tokens.push({ text: val, type: "boolean" })
+      else if (/^-?\d+(\.\d+)?$/.test(val)) tokens.push({ text: val, type: "number" })
+      else tokens.push({ text: val, type: "text" })
     }
   }
 
-  function parseKeyValuePairs(): void {
+  function parseKVPairs(): void {
     while (remaining.length > 0) {
       consumeWhitespace()
       if (remaining.length === 0) break
-
-      if (remaining.startsWith("#")) {
-        tokens.push({ text: remaining, type: "comment" })
-        remaining = ""
-        break
-      }
-
+      if (remaining.startsWith("#")) { tokens.push({ text: remaining, type: "comment" }); remaining = ""; break }
       const kvMatch = remaining.match(/^([a-zA-Z_][a-zA-Z0-9_.]*)(\s*)(=)(\s*)/)
       if (kvMatch) {
         const [full, key, ws1, eq, ws2] = kvMatch
@@ -145,59 +118,36 @@ function tokenizeLine(line: string): Token[] {
         tokenizeValue()
       } else {
         const word = consumeWord()
-        if (word) {
-          tokens.push({ text: word, type: "text" })
-        } else {
-          tokens.push({ text: remaining[0], type: "text" })
-          remaining = remaining.slice(1)
-          pos += 1
-        }
+        if (word) tokens.push({ text: word, type: "text" })
+        else { tokens.push({ text: remaining[0], type: "text" }); remaining = remaining.slice(1); pos++ }
       }
     }
   }
 
   consumeWhitespace()
-
   if (remaining.startsWith("presentation")) {
-    const keyword = "presentation"
-    tokens.push({ text: keyword, type: "command" })
-    remaining = remaining.slice(keyword.length)
-    pos += keyword.length
-
+    tokens.push({ text: "presentation", type: "command" })
+    remaining = remaining.slice(12); pos += 12
     consumeWhitespace()
-
     if (remaining.length > 0 && !remaining.startsWith("#")) {
-      const subcommand = consumeWord()
-      if (subcommand) {
-        tokens.push({ text: subcommand, type: "subcommand" })
-      }
+      const sub = consumeWord()
+      if (sub) tokens.push({ text: sub, type: "subcommand" })
     }
-
-    parseKeyValuePairs()
+    parseKVPairs()
   } else {
-    parseKeyValuePairs()
+    parseKVPairs()
   }
-
   return tokens
 }
 
 function findClosingQuote(str: string, quote: string): number {
   let i = 1
   while (i < str.length) {
-    if (str[i] === "\\" && i + 1 < str.length) {
-      i += 2
-      continue
-    }
-    if (str[i] === quote) {
-      return i
-    }
+    if (str[i] === "\\" && i + 1 < str.length) { i += 2; continue }
+    if (str[i] === quote) return i
     i++
   }
   return str.length - 1
-}
-
-function tokenizeScript(value: string): Token[][] {
-  return value.split("\n").map(tokenizeLine)
 }
 
 // ============================================================================
@@ -206,45 +156,139 @@ function tokenizeScript(value: string): Token[][] {
 
 const FONT_FAMILY = "SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace"
 const FONT_SIZE = 11
-const LINE_HEIGHT = 1.5
-const LINE_HEIGHT_PX = Math.round(FONT_SIZE * LINE_HEIGHT)
+const LINE_HEIGHT_PX = 17 // fixed pixel value used by ALL layers to avoid sub-pixel drift
 const GUTTER_WIDTH = 36
 const PADDING_X = 12
 const PADDING_Y = 10
 
 // ============================================================================
-// Memoized Sub-Components
+// Module-level style injection (replaces inline <style> tag)
+// ============================================================================
+
+const STYLE_ID = "bash-editor-scrollbar-hide"
+if (typeof document !== "undefined" && !document.getElementById(STYLE_ID)) {
+  const style = document.createElement("style")
+  style.id = STYLE_ID
+  style.textContent = `.bash-editor-textarea::-webkit-scrollbar{display:none}.bash-editor-textarea{scrollbar-width:none;-ms-overflow-style:none}`
+  document.head.appendChild(style)
+}
+
+// ============================================================================
+// Stable Style Objects
+// ============================================================================
+
+const WRAPPER_STYLE: React.CSSProperties = {
+  position: "relative",
+  background: "rgba(0,0,0,0.4)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 8,
+  overflow: "auto",
+}
+
+const GUTTER_BASE_STYLE: React.CSSProperties = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  width: GUTTER_WIDTH,
+  padding: `${PADDING_Y}px 0`,
+  userSelect: "none",
+  borderRight: "1px solid rgba(255,255,255,0.06)",
+  zIndex: 3,
+  background: "rgba(0,0,0,0.2)",
+}
+
+const GUTTER_INTERACTIVE_STYLE: React.CSSProperties = {
+  ...GUTTER_BASE_STYLE,
+  pointerEvents: "auto",
+}
+
+const GUTTER_NONINTERACTIVE_STYLE: React.CSSProperties = {
+  ...GUTTER_BASE_STYLE,
+  pointerEvents: "none",
+}
+
+const CONTENT_PADDING = `${PADDING_Y}px ${PADDING_X}px ${PADDING_Y}px ${GUTTER_WIDTH + PADDING_X}px`
+
+const HIGHLIGHT_LAYER_STYLE: React.CSSProperties = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: CONTENT_PADDING,
+  margin: 0,
+  border: "none",
+  fontFamily: FONT_FAMILY,
+  fontSize: FONT_SIZE,
+  lineHeight: `${LINE_HEIGHT_PX}px`,
+  whiteSpace: "pre",
+  pointerEvents: "none",
+  userSelect: "none",
+  color: "#e0e0e0",
+  zIndex: 1,
+}
+
+const TEXTAREA_BASE_STYLE: React.CSSProperties = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: CONTENT_PADDING,
+  margin: 0,
+  border: "none",
+  outline: "none",
+  background: "transparent",
+  color: "transparent",
+  caretColor: "#fff",
+  fontFamily: FONT_FAMILY,
+  fontSize: FONT_SIZE,
+  lineHeight: `${LINE_HEIGHT_PX}px`,
+  whiteSpace: "pre",
+  overflowWrap: "normal",
+  wordWrap: "normal",
+  resize: "none",
+  WebkitTextFillColor: "transparent",
+  zIndex: 2,
+  overflow: "auto",
+}
+
+const TEXTAREA_EDITABLE_STYLE: React.CSSProperties = {
+  ...TEXTAREA_BASE_STYLE,
+  cursor: "text",
+}
+
+const TEXTAREA_READONLY_STYLE: React.CSSProperties = {
+  ...TEXTAREA_BASE_STYLE,
+  cursor: "default",
+}
+
+// ============================================================================
+// Sub-Components
 // ============================================================================
 
 const HighlightedLine = React.memo(
-  function HighlightedLine({ tokens, isActive }: { tokens: Token[]; isActive: boolean }) {
+  function HighlightedLine({ tokens, isActive, isCurrent }: { tokens: Token[]; isActive: boolean; isCurrent: boolean }) {
     return (
-      <div
-        style={{
-          height: LINE_HEIGHT_PX,
-          lineHeight: `${LINE_HEIGHT_PX}px`,
-          borderLeft: isActive ? "3px solid #76B900" : "3px solid transparent",
-          paddingLeft: 4,
-          marginLeft: -7,
-          background: isActive ? "rgba(118,185,0,0.08)" : "transparent",
-          borderRadius: isActive ? 2 : 0,
-        }}
-      >
+      <div style={{
+        height: LINE_HEIGHT_PX,
+        lineHeight: `${LINE_HEIGHT_PX}px`,
+        borderLeft: isActive ? "3px solid #76B900" : "3px solid transparent",
+        paddingLeft: 4,
+        marginLeft: -7,
+        background: isActive ? "rgba(118,185,0,0.08)" : isCurrent ? "rgba(255,255,255,0.03)" : "transparent",
+        borderRadius: isActive ? 2 : 0,
+      }}>
         {tokens.map((token, idx) => (
-          <span
-            key={idx}
-            style={{
-              color: TOKEN_COLORS[token.type],
-              fontStyle: token.type === "comment" ? "italic" : "normal",
-            }}
-          >
-            {token.text}
-          </span>
+          <span key={idx} style={{
+            color: TOKEN_COLORS[token.type],
+            fontStyle: token.type === "comment" ? "italic" : "normal",
+          }}>{token.text}</span>
         ))}
       </div>
     )
   },
-  (prev, next) => prev.tokens === next.tokens && prev.isActive === next.isActive,
+  (prev, next) => prev.tokens === next.tokens && prev.isActive === next.isActive && prev.isCurrent === next.isCurrent,
 )
 
 const GutterLine = React.memo(
@@ -264,9 +308,7 @@ const GutterLine = React.memo(
           fontWeight: isActive ? 700 : 400,
           cursor: onClick ? "pointer" : undefined,
         }}
-      >
-        {lineNum}
-      </span>
+      >{lineNum}</span>
     )
   },
   (prev, next) => prev.isActive === next.isActive && prev.lineNum === next.lineNum && prev.onClick === next.onClick,
@@ -275,13 +317,12 @@ const GutterLine = React.memo(
 // ============================================================================
 // Main Component
 //
-// Architecture: A single scrollable wrapper div. Inside it:
-//   1. A "sizer" div with min-height = content height (drives scroll range)
-//   2. The gutter (position: sticky left for line numbers)
-//   3. The pre/code overlay (position: absolute, pointer-events: none)
-//   4. A textarea (position: absolute, transparent, captures input)
+// Layout: wrapper div (overflow:auto) -> sizer div (height = content) ->
+//   - gutter (absolute left)
+//   - pre (absolute, highlight layer, pointer-events:none)
+//   - textarea (absolute, on top, transparent text, white caret)
 //
-// The WRAPPER is the scroll source. All layers are inside it and scroll together.
+// All layers share the same scroll parent (wrapper). No sync needed.
 // ============================================================================
 
 export const BashEditor = React.memo(function BashEditor({
@@ -293,48 +334,70 @@ export const BashEditor = React.memo(function BashEditor({
   style,
 }: BashEditorProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const prevFirstActiveRef = useRef<number | null>(null)
-  const [, forceUpdate] = useState(0)
 
-  const tokenizedLines = useMemo(() => tokenizeScript(value), [value])
+  // -- Cursor line tracking --
+  const [cursorLine, setCursorLine] = useState(1)
+
+  const handleSelect = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget
+    const pos = ta.selectionStart
+    const line = value.slice(0, pos).split("\n").length
+    setCursorLine(line)
+  }, [value])
+
+  // -- Incremental tokenization --
+  const prevLinesRef = useRef<string[]>([])
+  const prevTokensRef = useRef<Token[][]>([])
+
+  const tokenizedLines = useMemo(() => {
+    const newLines = value.split("\n")
+    const prevLines = prevLinesRef.current
+    const prevTokens = prevTokensRef.current
+
+    // If same content, skip
+    if (
+      newLines.length === prevLines.length &&
+      newLines.every((l, i) => l === prevLines[i])
+    ) {
+      return prevTokens
+    }
+
+    // Incremental: reuse tokens for unchanged lines
+    const result: Token[][] = new Array(newLines.length)
+    for (let i = 0; i < newLines.length; i++) {
+      if (i < prevLines.length && newLines[i] === prevLines[i]) {
+        result[i] = prevTokens[i] // same reference -> React.memo skips re-render
+      } else {
+        result[i] = tokenizeLine(newLines[i])
+      }
+    }
+
+    prevLinesRef.current = newLines
+    prevTokensRef.current = result
+    return result
+  }, [value])
+
   const activeLineSet = useMemo(() => new Set(activeLines), [activeLines])
 
   const contentHeight = tokenizedLines.length * LINE_HEIGHT_PX + PADDING_Y * 2
 
-  // Keep textarea size in sync with content
-  useEffect(() => {
-    const textarea = textareaRef.current
-    if (textarea) {
-      textarea.style.height = `${contentHeight}px`
-    }
-  }, [contentHeight])
-
-  // Handle input changes
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      if (!readOnly) {
-        onChange(e.target.value)
-      }
-    },
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => { if (!readOnly) onChange(e.target.value) },
     [onChange, readOnly],
   )
 
-  // Handle tab key
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (readOnly) return
       if (e.key === "Tab") {
         e.preventDefault()
-        const textarea = e.currentTarget
-        const start = textarea.selectionStart
-        const end = textarea.selectionEnd
+        const ta = e.currentTarget
+        const start = ta.selectionStart
+        const end = ta.selectionEnd
         const newValue = value.slice(0, start) + "  " + value.slice(end)
         onChange(newValue)
-        requestAnimationFrame(() => {
-          textarea.selectionStart = start + 2
-          textarea.selectionEnd = start + 2
-        })
+        requestAnimationFrame(() => { ta.selectionStart = start + 2; ta.selectionEnd = start + 2 })
       }
     },
     [value, onChange, readOnly],
@@ -342,142 +405,73 @@ export const BashEditor = React.memo(function BashEditor({
 
   // Auto-scroll to first active line
   useEffect(() => {
-    if (activeLines.length === 0) {
-      prevFirstActiveRef.current = null
-      return
-    }
-
+    if (activeLines.length === 0) { prevFirstActiveRef.current = null; return }
     const firstActive = activeLines[0]
     if (firstActive === prevFirstActiveRef.current) return
     prevFirstActiveRef.current = firstActive
-
     const wrapper = wrapperRef.current
     if (!wrapper) return
-
     const lineTop = (firstActive - 1) * LINE_HEIGHT_PX + PADDING_Y
     const lineBottom = lineTop + LINE_HEIGHT_PX
-    const viewportTop = wrapper.scrollTop
-    const viewportBottom = viewportTop + wrapper.clientHeight
-
-    if (lineTop < viewportTop || lineBottom > viewportBottom) {
-      const targetScroll = lineTop - wrapper.clientHeight / 2 + LINE_HEIGHT_PX / 2
-      wrapper.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" })
+    const vTop = wrapper.scrollTop
+    const vBottom = vTop + wrapper.clientHeight
+    if (lineTop < vTop || lineBottom > vBottom) {
+      wrapper.scrollTo({ top: Math.max(0, lineTop - wrapper.clientHeight / 2 + LINE_HEIGHT_PX / 2), behavior: "smooth" })
     }
   }, [activeLines])
 
-  // Force re-render on scroll to update nothing (scroll is CSS-driven)
-  // Actually we don't need this since all layers share the same scroll container.
+  // Merge wrapper style with user-supplied style
+  const mergedWrapperStyle = useMemo(
+    () => style ? { ...WRAPPER_STYLE, ...style } : WRAPPER_STYLE,
+    [style],
+  )
+
+  const gutterStyle = onLineClick ? GUTTER_INTERACTIVE_STYLE : GUTTER_NONINTERACTIVE_STYLE
+  const textareaStyle = readOnly ? TEXTAREA_READONLY_STYLE : TEXTAREA_EDITABLE_STYLE
 
   return (
     <div
       ref={wrapperRef}
-      style={{
-        position: "relative",
-        background: "rgba(0,0,0,0.4)",
-        border: "1px solid rgba(255,255,255,0.1)",
-        borderRadius: 8,
-        overflow: "auto",
-        ...style,
-      }}
+      style={mergedWrapperStyle}
     >
-      {/* Content sizer - establishes the scroll height */}
-      <div style={{ position: "relative", minHeight: contentHeight, minWidth: "fit-content" }}>
-        {/* Gutter - sticky to left edge */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: GUTTER_WIDTH,
-            padding: `${PADDING_Y}px 0`,
-            pointerEvents: onLineClick ? "auto" : "none",
-            userSelect: "none",
-            borderRight: "1px solid rgba(255,255,255,0.06)",
-            zIndex: 3,
-            background: "rgba(0,0,0,0.2)",
-          }}
-        >
-          {tokenizedLines.map((_, i) => {
-            const lineNum = i + 1
-            return (
-              <GutterLine
-                key={i}
-                lineNum={lineNum}
-                isActive={activeLineSet.has(lineNum)}
-                onClick={onLineClick}
-              />
-            )
-          })}
+      {/* Sizer: establishes scroll dimensions */}
+      <div style={{ position: "relative", height: contentHeight }}>
+
+        {/* Gutter (absolute left) */}
+        <div style={gutterStyle}>
+          {tokenizedLines.map((_, i) => (
+            <GutterLine key={i} lineNum={i + 1} isActive={activeLineSet.has(i + 1)} onClick={onLineClick} />
+          ))}
         </div>
 
-        {/* Syntax-highlighted overlay */}
-        <pre
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            padding: `${PADDING_Y}px ${PADDING_X}px ${PADDING_Y}px ${GUTTER_WIDTH + PADDING_X}px`,
-            margin: 0,
-            border: "none",
-            fontFamily: FONT_FAMILY,
-            fontSize: FONT_SIZE,
-            lineHeight: LINE_HEIGHT,
-            whiteSpace: "pre",
-            overflowWrap: "normal",
-            wordWrap: "normal",
-            pointerEvents: "none",
-            userSelect: "none",
-            color: "#e0e0e0",
-            zIndex: 1,
-          }}
-        >
+        {/* Highlight layer (absolute, behind textarea) */}
+        <pre style={HIGHLIGHT_LAYER_STYLE}>
           <code>
-            {tokenizedLines.map((tokens, lineIdx) => (
+            {tokenizedLines.map((tokens, i) => (
               <HighlightedLine
-                key={lineIdx}
+                key={i}
                 tokens={tokens}
-                isActive={activeLineSet.has(lineIdx + 1)}
+                isActive={activeLineSet.has(i + 1)}
+                isCurrent={cursorLine === i + 1}
               />
             ))}
           </code>
         </pre>
 
-        {/* Textarea - transparent, captures input. Same positioning as the pre overlay */}
+        {/* Textarea: on top, transparent text, visible caret */}
         <textarea
-          ref={textareaRef}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onSelect={handleSelect}
+          onClick={handleSelect}
           readOnly={readOnly}
           spellCheck={false}
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
-          style={{
-            position: "relative",
-            display: "block",
-            width: "100%",
-            minHeight: contentHeight,
-            padding: `${PADDING_Y}px ${PADDING_X}px ${PADDING_Y}px ${GUTTER_WIDTH + PADDING_X}px`,
-            margin: 0,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: "transparent",
-            caretColor: "#fff",
-            fontFamily: FONT_FAMILY,
-            fontSize: FONT_SIZE,
-            lineHeight: LINE_HEIGHT,
-            whiteSpace: "pre",
-            overflowWrap: "normal",
-            wordWrap: "normal",
-            resize: "none",
-            WebkitTextFillColor: "transparent",
-            cursor: readOnly ? "default" : "text",
-            zIndex: 2,
-            overflow: "hidden",
-          }}
+          style={textareaStyle}
+          className="bash-editor-textarea"
           aria-label="Bash script editor"
         />
       </div>
