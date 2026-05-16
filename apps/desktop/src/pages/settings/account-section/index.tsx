@@ -12,7 +12,6 @@ import {
 import { LogOut } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -21,14 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import * as React from "react";
 import type { OAuthStatus } from "./constants";
 import { OAUTH_TIMEOUT_MS, OAUTH_STEPS } from "./constants";
-import { SettingsItem } from "../components";
-import { TradingAccountsDialog } from "../trading-accounts-dialog";
-
-interface TradingAccountSummary {
-  id: string;
-  exchange: string;
-  name: string;
-}
+import { TradingAccountsSection } from "../trading-accounts-section";
 
 export function AccountSection() {
   const { t } = useTranslation();
@@ -39,16 +31,6 @@ export function AccountSection() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Trading accounts
-  const [tradingDialogOpen, setTradingDialogOpen] = useState(false);
-  const [tradingAccounts, setTradingAccounts] = useState<TradingAccountSummary[]>([]);
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:18790/api/accounts")
-      .then((r) => r.json())
-      .then((data) => setTradingAccounts(data.accounts ?? []))
-      .catch(() => {});
-  }, [tradingDialogOpen]);
 
   // Dev mode: manual OAuth code input
   const isDev = import.meta.env.DEV;
@@ -404,35 +386,7 @@ export function AccountSection() {
       )}
 
       {/* Trading Accounts */}
-      <div>
-        <h2 className="text-xl font-semibold font-serif mb-1">交易账户</h2>
-        <p className="text-sm text-muted-foreground">
-          管理交易所 API 账户，用于自动化交易和数据获取。
-        </p>
-      </div>
-
-      <div className="rounded-xl border bg-card p-4">
-        <SettingsItem
-          title="已配置账户"
-          description={`${tradingAccounts.length} 个交易账户`}
-        >
-          <Button variant="outline" onClick={() => setTradingDialogOpen(true)}>
-            管理交易账户
-          </Button>
-        </SettingsItem>
-
-        {tradingAccounts.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {tradingAccounts.map((acc) => (
-              <Badge key={acc.id} variant="secondary">
-                {acc.name}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <TradingAccountsDialog open={tradingDialogOpen} onOpenChange={setTradingDialogOpen} />
+      <TradingAccountsSection />
     </div>
   );
 }

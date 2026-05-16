@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 
@@ -85,6 +85,7 @@ interface TabActions {
 const generateTabId = () =>
   `tab-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 const MAX_RECENTLY_CLOSED_TABS = 20;
+const MAX_NAVIGATION_HISTORY = 50;
 export const TAB_STORE_STORAGE_KEY = "viben-tab-store-v2";
 const TAB_STORE_VERSION = 2;
 
@@ -464,11 +465,18 @@ export const useTabStore = create<TabState & TabActions>()(
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
             const current = normalizeTab(tab);
-            const baseHistory = current.navigationHistory.slice(0, current.historyIndex + 1);
+            let history = [...current.navigationHistory.slice(0, current.historyIndex + 1), next];
+            let index = history.length - 1;
+            // Trim oldest entries if history exceeds limit
+            if (history.length > MAX_NAVIGATION_HISTORY) {
+              const excess = history.length - MAX_NAVIGATION_HISTORY;
+              history = history.slice(excess);
+              index = history.length - 1;
+            }
             return normalizeTab({
               ...current,
-              navigationHistory: [...baseHistory, next],
-              historyIndex: baseHistory.length,
+              navigationHistory: history,
+              historyIndex: index,
             });
           }),
         }));
@@ -635,6 +643,17 @@ export const useTabStore = create<TabState & TabActions>()(
     {
       name: TAB_STORE_STORAGE_KEY,
       version: TAB_STORE_VERSION,
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => localStorage.getItem(name),
+        setItem: (name: string, value: string) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch {
+            // QuotaExceededError — silently skip persist
+          }
+        },
+        removeItem: (name: string) => localStorage.removeItem(name),
+      })),
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId,
