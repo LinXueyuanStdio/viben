@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { titleKey: "nav.devices", href: "/devices/pair", icon: Smartphone, iconValue: "smartphone" },
   {
     titleKey: "settings.title",
-    href: `/settings/${defaultSettingsDescriptor?.routePath ?? DEFAULT_SETTINGS_SECTION}`,
+    href: `/settings/${defaultSettingsDescriptor?.section ?? DEFAULT_SETTINGS_SECTION}`,
     icon: defaultSettingsConfig?.icon ?? Settings,
     iconValue: defaultSettingsDescriptor?.icon.value ?? "settings",
     settingsSection: defaultSettingsDescriptor?.section ?? DEFAULT_SETTINGS_SECTION,

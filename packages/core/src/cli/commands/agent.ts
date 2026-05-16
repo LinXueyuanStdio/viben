@@ -17,10 +17,9 @@ import {
 import { agentManager, memoryManager } from "../../agents";
 import { configManager } from "../../config";
 import {
-  EXECUTOR_TYPES,
+  getRegisteredTypes,
   isExecutorType,
-  executorSupportsChat,
-  CHAT_SUPPORTED_EXECUTORS,
+  getExecutor,
   createChatProxyAsync,
   chatProxyFactory,
 } from "../../executors";
@@ -151,7 +150,7 @@ export function registerAgentCommand(program: Command): void {
           if (!isExecutorType(upperType)) {
             throw CliError.invalidArgument(
               "executor-type",
-              `Invalid executor type: ${options.executorType}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+              `Invalid executor type: ${options.executorType}. Valid types: ${getRegisteredTypes().join(", ")}`
             );
           }
           options.executorType = upperType as ExecutorType;
@@ -275,7 +274,7 @@ export function registerAgentCommand(program: Command): void {
           if (!isExecutorType(upperType)) {
             throw CliError.invalidArgument(
               "executor-type",
-              `Invalid executor type: ${options.executorType}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+              `Invalid executor type: ${options.executorType}. Valid types: ${getRegisteredTypes().join(", ")}`
             );
           }
           options.executorType = upperType as ExecutorType;
@@ -666,10 +665,10 @@ export function registerAgentCommand(program: Command): void {
         }
 
         // Check if executor supports chat
-        if (!executorSupportsChat(executorType)) {
+        if (!getExecutor(executorType).supports("CHAT")) {
           throw new Error(
             `Chat not supported for agent type: ${executorType}\n\n` +
-            `Supported types: ${CHAT_SUPPORTED_EXECUTORS.join(", ")}`
+            `Supported types: ${getRegisteredTypes().filter(t => getExecutor(t).supports("CHAT")).join(", ")}`
           );
         }
 

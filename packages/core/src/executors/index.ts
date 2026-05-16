@@ -1,30 +1,92 @@
 /**
  * Executors module - AI coding agent executors
+ *
+ * Unified API: engines (implementations) + ops (registry/operations) + chat (proxy pattern)
  */
 
-// Types
+// =============================================================================
+// Engines (executor implementations, self-registering)
+// =============================================================================
+
+// Import engines to ensure they self-register
+import "./engines";
+
+export {
+  AmpExecutor,
+  ClaudeExecutor,
+  CodexExecutor,
+  CopilotExecutor,
+  CursorAgentExecutor,
+  DroidExecutor,
+  GeminiExecutor,
+  OpencodeExecutor,
+  OpenClawExecutor,
+  QwenCodeExecutor,
+  BaseExecutor,
+} from "./engines";
 export type {
-  RepoContext,
-  ExecutionEnv,
-  CommandParts,
-  ExecutorExitResult,
-  SpawnedChild,
-  ProcessRunStatus,
-  ProcessState,
+  AmpExecutorConfig,
+  ClaudeExecutorConfig,
+  CodexExecutorConfig,
+  CopilotExecutorConfig,
+  CursorAgentExecutorConfig,
+  DroidExecutorConfig,
+  OpencodeExecutorConfig,
+  OpenClawExecutorConfig,
+  QwenCodeExecutorConfig,
+} from "./engines";
+
+// =============================================================================
+// Ops (registry + types)
+// =============================================================================
+
+export {
+  registerExecutor,
+  getExecutor,
+  hasExecutor,
+  getRegisteredTypes,
+  getAvailableExecutors,
+} from "./ops";
+
+export type {
+  Executor,
+  ExecutorCapability,
   ExecutorConfig,
-  ExecutorApprovalService,
-  StandardCodingAgentExecutor,
-  // Chat types
+  SpawnOptions,
+  SpawnResult,
   ChatFormat,
   ChatOptions,
-  ChatSpawnResult,
-} from "./types";
+  ChatResult,
+  ExecutionResult,
+  ExecutorErrorType,
+  RunCommandOptions,
+  SSEMessage,
+  SSETextMessage,
+  SSEToolUseMessage,
+  SSEToolResultMessage,
+  SSEResultMessage,
+  SSEErrorMessage,
+  SSEQuestionMessage,
+  SSESdkSessionMessage,
+  SSEAssistantMessage,
+  SSEStreamEventMessage,
+} from "./ops";
 
+// Re-export types from main types
+export type {
+  ExecutorType,
+  AgentCapability,
+  AvailabilityInfo,
+} from "../types";
+
+// =============================================================================
 // Chat Proxy Module
+// =============================================================================
+
 export type {
   ChatProxy,
   ChatProxyType,
-  ChatResult,
+  ChatResult as ChatProxyResult,
   ChatProxyOptions,
   ChatProxyFactoryInterface,
 } from "./chat";
@@ -40,185 +102,29 @@ export {
   createChatProxyAsync,
 } from "./chat";
 
-// Re-export types from main types
-export type {
-  ExecutorType,
-  AgentCapability,
-  AvailabilityInfo,
-} from "../types";
+// =============================================================================
+// Command Builder
+// =============================================================================
 
-// Utilities
-export { createExecutionEnv, applyEnvToSpawnOptions } from "./types";
 export { CommandBuilder, CommandBuildError, createCommandParts } from "./command";
+export type { CommandParts } from "./command";
+
+// =============================================================================
+// Utilities
+// =============================================================================
+
 export { which, whichSync, getConfigDir, getDataDir } from "./utils";
 
-// Executor implementations
-export {
-  ClaudeCode,
-  createClaudeCode,
-  type ClaudeCodeConfig,
-  Amp,
-  createAmp,
-  type AmpConfig,
-  Gemini,
-  createGemini,
-  type GeminiConfig,
-  Codex,
-  createCodex,
-  type CodexConfig,
-  Opencode,
-  createOpencode,
-  type OpencodeConfig,
-  CursorAgent,
-  createCursorAgent,
-  type CursorAgentConfig,
-  QwenCode,
-  createQwenCode,
-  type QwenCodeConfig,
-  Copilot,
-  createCopilot,
-  type CopilotConfig,
-  Droid,
-  createDroid,
-  type DroidConfig,
-} from "./executors";
+// =============================================================================
+// Type Guard
+// =============================================================================
 
-import type { ExecutorType, ExecutorConfig, StandardCodingAgentExecutor, ChatOptions, ChatSpawnResult } from "./types";
-import {
-  ClaudeCode,
-  Amp,
-  Gemini,
-  Codex,
-  Opencode,
-  CursorAgent,
-  QwenCode,
-  Copilot,
-  Droid,
-} from "./executors";
-import { ExecutorError } from "../error";
+import { hasExecutor } from "./ops";
+import type { ExecutorType } from "../types";
 
 /**
- * Create an executor by type
- */
-export function createExecutor(
-  executorType: ExecutorType,
-  config: ExecutorConfig = {}
-): StandardCodingAgentExecutor {
-  switch (executorType) {
-    case "CLAUDE_CODE":
-      return new ClaudeCode(config);
-    case "AMP":
-      return new Amp(config);
-    case "GEMINI":
-      return new Gemini(config);
-    case "CODEX":
-      return new Codex(config);
-    case "OPENCODE":
-      return new Opencode(config);
-    case "CURSOR_AGENT":
-      return new CursorAgent(config);
-    case "QWEN_CODE":
-      return new QwenCode(config);
-    case "COPILOT":
-      return new Copilot(config);
-    case "DROID":
-      return new Droid(config);
-    default:
-      throw ExecutorError.unknownType(executorType);
-  }
-}
-
-/**
- * All available executor types
- */
-export const EXECUTOR_TYPES: ExecutorType[] = [
-  "CLAUDE_CODE",
-  "AMP",
-  "GEMINI",
-  "CODEX",
-  "OPENCODE",
-  "CURSOR_AGENT",
-  "QWEN_CODE",
-  "COPILOT",
-  "DROID",
-];
-
-/**
- * Check if a type is a valid executor type
+ * Check if a string is a valid registered executor type
  */
 export function isExecutorType(type: string): type is ExecutorType {
-  return EXECUTOR_TYPES.includes(type as ExecutorType);
+  return hasExecutor(type as ExecutorType);
 }
-
-/**
- * Get all executors with their availability info
- */
-export function getAllExecutorsAvailability(): Record<ExecutorType, { available: boolean; executor: StandardCodingAgentExecutor }> {
-  const result: Record<string, { available: boolean; executor: StandardCodingAgentExecutor }> = {};
-
-  for (const type of EXECUTOR_TYPES) {
-    const executor = createExecutor(type);
-    const info = executor.getAvailabilityInfo();
-    result[type] = {
-      available: info.status === "LOGIN_DETECTED" || info.status === "INSTALLATION_FOUND",
-      executor,
-    };
-  }
-
-  return result as Record<ExecutorType, { available: boolean; executor: StandardCodingAgentExecutor }>;
-}
-
-/**
- * Executor types that support non-interactive chat mode
- */
-export const CHAT_SUPPORTED_EXECUTORS: ExecutorType[] = [
-  "CLAUDE_CODE",
-  "GEMINI",
-  "CODEX",
-  "OPENCLAW",
-];
-
-/**
- * Check if an executor type supports non-interactive chat mode
- */
-export function executorSupportsChat(executorType: ExecutorType): boolean {
-  return CHAT_SUPPORTED_EXECUTORS.includes(executorType);
-}
-
-/**
- * Spawn a non-interactive chat process for an executor type.
- * This is a convenience function that creates an executor and calls spawnChat.
- *
- * @param executorType - The executor type (e.g., "CLAUDE_CODE", "GEMINI")
- * @param options - Chat options including prompt, cwd, format, etc.
- * @returns ChatSpawnResult with the spawned process and exit promise
- * @throws ExecutorError if the executor type doesn't support chat
- */
-export async function spawnChat(
-  executorType: ExecutorType,
-  options: ChatOptions
-): Promise<ChatSpawnResult> {
-  const executor = createExecutor(executorType);
-
-  if (!executor.supportsChat?.() || !executor.spawnChat) {
-    throw ExecutorError.chatNotSupported(executorType);
-  }
-
-  return executor.spawnChat(options);
-}
-
-// =============================================================================
-// Compatibility Layer - Forward to unified executor module
-// =============================================================================
-
-// Import unified module to ensure engines are registered
-import "../executor";
-
-// Re-export registry functions for gradual migration
-// Note: These use the unified registry, not the old switch-based factory
-export {
-  getExecutor as getUnifiedExecutor,
-  hasExecutor as hasUnifiedExecutor,
-  getRegisteredTypes as getUnifiedExecutorTypes,
-  getAvailableExecutors as getUnifiedAvailableExecutors,
-} from "../executor";

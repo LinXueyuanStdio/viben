@@ -6,11 +6,11 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { resolveHeaderSegments } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import { PageAppGrid } from "./components/page-app-grid";
+import { PageIconGrid } from "./components/page-app-grid";
 
-export function WorkspaceAppsPage() {
+export function WorkspacePage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading } = useLocalWorkspaces();
@@ -23,26 +23,20 @@ export function WorkspaceAppsPage() {
       return [];
     }
 
-    const resolved = resolveLocationNavigation({
-      location: {
-        kind: "workspace-apps",
-        workspaceId,
-      },
-      workspace,
-    });
+    const url = registry.build("/workspace/:workspaceId/pages", { workspaceId });
+    const stack = buildColdStartBreadcrumb(url);
 
     return resolveHeaderSegments({
       stack: currentStack,
-      fallback: resolved.breadcrumbStack.slice(1).map((item) => ({
+      fallback: stack.slice(1).map((item) => ({
         id: item.id,
         label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
+        href: item.href ?? "#",
         icon: item.icon,
-        descriptorId: item.descriptorId,
         meta: item.meta,
       })),
     });
-  }, [currentStack, workspace, workspaceId]);
+  }, [currentStack, workspaceId]);
 
   if (isLoading || !workspace) {
     return (
@@ -64,10 +58,10 @@ export function WorkspaceAppsPage() {
       />
       <div className="min-h-0 flex-1 bg-background">
         <div className="border-b px-6 py-4">
-          <h1 className="text-lg font-semibold">{t("page.pages", "Apps")}</h1>
+          <h1 className="text-lg font-semibold">{t("page.pages", "Pages")}</h1>
         </div>
         <div className="min-h-0 h-[calc(100%-65px)]">
-          <PageAppGrid
+          <PageIconGrid
             workspaceId={workspace.id}
             workspacePath={workspace.path}
           />
@@ -77,4 +71,4 @@ export function WorkspaceAppsPage() {
   );
 }
 
-export default WorkspaceAppsPage;
+export default WorkspacePage;

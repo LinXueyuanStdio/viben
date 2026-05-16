@@ -420,6 +420,14 @@ Follow your agent instructions to execute the task workflow. Read task.json from
   // Cleanup registry after process exits
   registryRemoveById(agentId, repoRoot);
 
+  // Update task status based on exit code (non-worktree mode only)
+  // Worktree mode tasks get their status set by `viben task create-pr`
+  const updatedTask = readTaskJson(taskDirAbs);
+  if (updatedTask && !updatedTask.worktree && exitCode === 0) {
+    updatedTask.status = "review";
+    writeTaskJson(taskDirAbs, updatedTask as Record<string, unknown>);
+  }
+
   return {
     success: exitCode === 0,
     agentId,

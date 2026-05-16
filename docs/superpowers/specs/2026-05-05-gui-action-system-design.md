@@ -86,19 +86,14 @@ useActionProvider('chat', {
 
 ```typescript
 import { create } from 'zustand';
+import type { ClientToolResult } from '@/lib/client-side-tool/types';
 
 interface ActionDef {
   name: string;           // 不含 namespace 前缀的短名称
   description: string;
   input_schema?: JSONSchema7;
   output_schema?: JSONSchema7;
-  execute: (payload: unknown, ctx: ExecutionContext) => Promise<ActionResult>;
-}
-
-interface ActionResult {
-  success: boolean;
-  data?: unknown;
-  error?: string;
+  execute: (payload: unknown, ctx: ExecutionContext) => Promise<ClientToolResult>;
 }
 
 interface ActionInfo {
@@ -122,7 +117,7 @@ interface ActionStoreState {
   getActionDetail: (fullName: string) => ActionDetail | null;
 
   // 执行 action
-  execute: (fullName: string, payload: unknown, ctx: ExecutionContext) => Promise<ActionResult>;
+  execute: (fullName: string, payload: unknown, ctx: ExecutionContext) => Promise<ClientToolResult>;
 
   // 注册/注销
   register: (namespace: string, actions: ActionDef[]) => void;
@@ -130,10 +125,12 @@ interface ActionStoreState {
 }
 ```
 
+**返回类型**: action 的 `execute` 直接返回 `ClientToolResult`（来自 `apps/desktop/src/lib/client-side-tool/types.ts`），与现有 client-tool 管道完全对齐。`ClientToolResult` 包含 `content: (TextContent | ImageContent)[]` 和可选的 `structuredContent`、`isError`。
+
 **内置 action** 在 store 内部实现，不通过 registry：
-- `list_actions`: 遍历 registry 生成列表
+- `list_actions`: 遍历 registry 生成列表，返回 `{ content: [{ type: 'text', text: JSON.stringify(actions) }] }`
 - `get_action_detail`: 查找 registry 返回 schema
-- `read_window`: 调用 `html-to-image` 截图
+- `read_window`: 调用 `html-to-image` 截图，返回 `{ content: [{ type: 'image', data: base64, mimeType: 'image/png' }] }`
 - `navigate_to`: 调用 router.navigate()
 
 ### 2. useActionProvider Hook (`apps/desktop/src/hooks/use-action-provider.ts`)
@@ -188,6 +185,8 @@ interface ExecutionContext {
 在前端 SSE 处理逻辑中，当收到 `GUI_execute` 的 tool_use event：
 
 ```typescript
+import type { ClientToolResult } from '@/lib/client-side-tool/types';
+
 async function handleGUIExecute(toolUseId: string, sessionId: string, input: {
   action: string;
   payload?: unknown;
@@ -195,22 +194,22 @@ async function handleGUIExecute(toolUseId: string, sessionId: string, input: {
   const store = useActionStore.getState();
   const ctx = createExecutionContext(sessionId, toolUseId);
 
-  let result: ActionResult;
+  let result: ClientToolResult;
   try {
     result = await store.execute(input.action, input.payload ?? {}, ctx);
   } catch (err) {
     if (err instanceof UserCancelledException) {
-      result = { success: false, error: 'user_cancelled' };
+      result = { content: [{ type: 'text', text: 'User cancelled the action' }], isError: true };
     } else {
-      result = { success: false, error: String(err) };
+      result = { content: [{ type: 'text', text: String(err) }], isError: true };
     }
   }
 
-  // 通过现有管道回传结果
+  // 通过现有管道回传结果（类型已完全对齐）
   await getGatewayClient().completeClientTool({
     tool_use_id: toolUseId,
     session_id: sessionId,
-    result: { content: JSON.stringify(result) },
+    result,
   });
 }
 ```
@@ -326,13 +325,15 @@ packages/core/src/
 
 ## 错误处理
 
-| 场景 | 行为 |
+所有错误通过 `ClientToolResult` 的 `isError: true` 标记，错误信息放在 `content[0].text` 中：
+
+| 场景 | 返回 |
 |------|------|
-| action 不存在 | 返回 `{ success: false, error: 'action_not_available', message: '...' }` |
-| action 在执行期间被注销（页面切换） | action executor 捕获异常，返回 `{ success: false, error: 'action_unavailable_during_execution' }` |
-| 用户取消审批 | 返回 `{ success: false, error: 'user_cancelled' }` |
+| action 不存在 | `{ content: [{ type: 'text', text: 'action_not_available: chat.submit is not registered' }], isError: true }` |
+| action 在执行期间被注销 | `{ content: [{ type: 'text', text: 'action_unavailable_during_execution' }], isError: true }` |
+| 用户取消审批 | `{ content: [{ type: 'text', text: 'user_cancelled' }], isError: true }` |
 | action 执行超时 | clientToolCompletionRegistry 内置超时机制，超时返回 timeout error |
-| payload 不符合 input_schema | 前端执行前验证，返回 `{ success: false, error: 'validation_error', message: '...' }` |
+| payload 不符合 input_schema | `{ content: [{ type: 'text', text: 'validation_error: missing required field "text"' }], isError: true }` |
 
 ## 约束与边界
 

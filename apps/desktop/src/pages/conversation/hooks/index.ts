@@ -30,10 +30,10 @@ export type {
   UseExecutorSessionMessagesReturn,
 } from "./use-executor-sessions";
 
-// Command Queue
-export { useCommandQueue } from "./use-command-queue";
+// Command Queue (re-exported from @viben/chat)
+export { useCommandQueue } from "@viben/chat";
 export type {
   CommandQueueItem,
   UseCommandQueueOptions,
   UseCommandQueueReturn,
-} from "./use-command-queue";
+} from "@viben/chat";

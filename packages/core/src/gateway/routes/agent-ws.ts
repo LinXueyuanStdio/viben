@@ -6,8 +6,8 @@
  * that require real-time client responses during agent execution.
  *
  * Protocol:
- * - Client sends: start, answer, approve, reject, cancel
- * - Server sends: session, text, tool_use, tool_result, question, plan, result, error, done
+ * - Client sends: start, answer, approve, reject, cancel, steer, ping, exec_approve
+ * - Server sends: session, text, thinking, tool_use, tool_result, question, plan, result, error, done, pong, exec_approval
  */
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { WebSocket } from "ws";
@@ -15,11 +15,11 @@ import { randomUUID } from "node:crypto";
 import { agentService } from "../../services/agent";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
-import { OpenClawChatProxy } from "../../executor/engines/openclaw/chat-proxy";
-import { OpenClawConnectionManager, OpenClawClient } from "../../executor/engines/openclaw/connection";
-import { OpenClawProcessManager } from "../../executor/engines/openclaw/process-manager";
-import { loadGatewayConfig } from "../../executor/engines/openclaw/config";
-import { resetEventMapper } from "../../executor/engines/openclaw/event-mapper";
+import { OpenClawChatProxy } from "../../executors/engines/openclaw/chat-proxy";
+import { OpenClawConnectionManager, OpenClawClient } from "../../executors/engines/openclaw/connection";
+import { OpenClawProcessManager } from "../../executors/engines/openclaw/process-manager";
+import { loadGatewayConfig } from "../../executors/engines/openclaw/config";
+import { resetEventMapper } from "../../executors/engines/openclaw/event-mapper";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
@@ -69,7 +69,7 @@ interface AgentConfigPayload {
  * Client to Server message types
  */
 interface ClientMessage {
-  type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer" | "ping";
+  type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer" | "ping" | "exec_approve";
   // For "start" - begin agent execution
   prompt?: string;
   agent_config?: AgentConfigPayload;
@@ -82,6 +82,9 @@ interface ClientMessage {
   plan_id?: string;
   // For "steer" - inject message during agent execution
   message?: string;
+  // For "exec_approve" - respond to exec approval request
+  approval_id?: string;
+  decision?: string; // "allow_once" | "allow_always" | "reject"
 }
 
 /**
@@ -89,11 +92,11 @@ interface ClientMessage {
  * Reuses the same format as SSE messages for compatibility (snake_case)
  */
 interface ServerMessage {
-  type: "session" | "sdk_session" | "status" | "text" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done" | "pong";
+  type: "session" | "sdk_session" | "status" | "text" | "thinking" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done" | "pong" | "exec_approval" | "context_usage";
   // session
   session_id?: string;
   trace_id?: string;
-  // text
+  // text / thinking
   content?: string;
   // tool_use
   id?: string;
@@ -128,6 +131,18 @@ interface ServerMessage {
   // status
   status?: string;
   status_message?: string;
+  // exec_approval
+  approval_id?: string;
+  tool_call?: {
+    title?: string;
+    kind?: "read" | "edit" | "execute";
+    command?: string;
+    cwd?: string;
+  };
+  options?: Array<{ id: string; label: string }>;
+  // context_usage
+  used?: number;
+  total?: number;
 }
 
 /**
@@ -145,6 +160,7 @@ interface WsSession {
   is_running: boolean;
   pending_question_resolver?: (answers: Record<string, string>) => void;
   pending_plan_resolver?: (approved: boolean) => void;
+  pending_exec_approval_resolver?: (decision: string) => void;
   active_proxy?: import("../../executors/chat/sdk-proxy").SdkChatProxy;
   active_openclaw_proxy?: OpenClawChatProxy;
   active_openclaw_client?: OpenClawClient;
@@ -339,7 +355,9 @@ async function executeOpenClawAgent(session: WsSession, prompt: string, resume?:
       session.active_openclaw_client = client;
     }
 
-    const proxy = new OpenClawChatProxy(client);
+    // Check if agent has approvals enabled (non-YOLO)
+    const approvalMode = agentConfig?.approvals ? "interactive" : "yolo";
+    const proxy = new OpenClawChatProxy(client, { approvalMode: approvalMode as "yolo" | "interactive" });
     session.active_openclaw_proxy = proxy;
 
     // Stream via OpenClaw (pass resume for multi-turn session continuity)
@@ -401,6 +419,19 @@ async function executeOpenClawAgent(session: WsSession, prompt: string, resume?:
             log.warn({ err }, "Failed to send answer back to OpenClaw session");
           }
         }
+        continue;
+      }
+
+      // Handle exec_approval messages - forward with proper field mapping
+      if (message.type === "exec_approval") {
+        const approvalMsg = message as { type: "exec_approval"; id: string; tool_call: { title?: string; kind?: "read" | "edit" | "execute"; command?: string; cwd?: string }; options: Array<{ id: string; label: string }> };
+        sendMessage(socket, {
+          type: "exec_approval",
+          approval_id: approvalMsg.id,
+          id: approvalMsg.id,
+          tool_call: approvalMsg.tool_call,
+          options: approvalMsg.options,
+        } as ServerMessage);
         continue;
       }
 
@@ -881,6 +912,22 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 break;
               }
 
+              case "exec_approve": {
+                if (!msg.approval_id || !msg.decision) {
+                  sendMessage(socket, {
+                    type: "error",
+                    message: "approval_id and decision are required",
+                  });
+                  return;
+                }
+
+                // Resolve pending exec approval via the proxy
+                if (session.active_openclaw_proxy) {
+                  session.active_openclaw_proxy.resolveApproval(msg.decision);
+                }
+                break;
+              }
+
               case "cancel": {
                 if (!session.is_running) {
                   sendMessage(socket, { type: "error", message: "No agent is running" });
@@ -903,6 +950,10 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                 if (session.pending_plan_resolver) {
                   session.pending_plan_resolver(false);
                   session.pending_plan_resolver = undefined;
+                }
+                if (session.pending_exec_approval_resolver) {
+                  session.pending_exec_approval_resolver("reject");
+                  session.pending_exec_approval_resolver = undefined;
                 }
                 break;
               }

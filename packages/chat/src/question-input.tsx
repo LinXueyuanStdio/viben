@@ -9,6 +9,7 @@ export interface QuestionInputProps {
   questions: PendingQuestion;
   onSubmit: (answers: Record<string, string[]>) => void;
   isSubmitting?: boolean;
+  readOnly?: boolean;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ interface QuestionItemProps {
   selectedOptions: string[];
   otherInput: string;
   showOther: boolean;
+  readOnly?: boolean;
   onSelectOption: (option: string) => void;
   onOtherInput: (value: string) => void;
   onToggleOther: () => void;
@@ -27,6 +29,7 @@ function QuestionItem({
   selectedOptions,
   otherInput,
   showOther,
+  readOnly,
   onSelectOption,
   onOtherInput,
   onToggleOther,
@@ -56,12 +59,16 @@ function QuestionItem({
             <button
               key={oIndex}
               type="button"
-              onClick={() => onSelectOption(option.label)}
+              onClick={() => !readOnly && onSelectOption(option.label)}
+              disabled={readOnly}
               className={cn(
                 "flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
+                readOnly && "cursor-default",
                 isSelected
                   ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                  : "border-border/60 bg-background hover:border-primary/50 hover:bg-accent/50"
+                  : readOnly
+                    ? "border-border/60 bg-background"
+                    : "border-border/60 bg-background hover:border-primary/50 hover:bg-accent/50"
               )}
             >
               <div
@@ -96,44 +103,46 @@ function QuestionItem({
           );
         })}
 
-        {/* Other option */}
-        <button
-          type="button"
-          onClick={onToggleOther}
-          className={cn(
-            "flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
-            showOther || otherInput
-              ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-              : "border-border/60 bg-background hover:border-primary/50 hover:bg-accent/50"
-          )}
-        >
-          <div
+        {/* Other option (hidden in readOnly mode) */}
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={onToggleOther}
             className={cn(
-              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-              question.multiSelect ? "rounded-md" : "rounded-full",
+              "flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
               showOther || otherInput
-                ? "border-primary bg-primary"
-                : "border-muted-foreground/40"
+                ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                : "border-border/60 bg-background hover:border-primary/50 hover:bg-accent/50"
             )}
           >
-            {(showOther || otherInput) && (
-              <Check className="h-3 w-3 text-primary-foreground" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p
+            <div
               className={cn(
-                "text-sm font-medium",
-                (showOther || otherInput) && "text-primary"
+                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                question.multiSelect ? "rounded-md" : "rounded-full",
+                showOther || otherInput
+                  ? "border-primary bg-primary"
+                  : "border-muted-foreground/40"
               )}
             >
-              {t("chat.other", "Other")}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {t("chat.customInput", "Custom input")}
-            </p>
-          </div>
-        </button>
+              {(showOther || otherInput) && (
+                <Check className="h-3 w-3 text-primary-foreground" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  "text-sm font-medium",
+                  (showOther || otherInput) && "text-primary"
+                )}
+              >
+                {t("chat.other", "Other")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("chat.customInput", "Custom input")}
+              </p>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* Other input field */}
@@ -174,6 +183,7 @@ export function QuestionInput({
   questions,
   onSubmit,
   isSubmitting = false,
+  readOnly = false,
   className,
 }: QuestionInputProps) {
   const { t } = useTranslation();
@@ -252,8 +262,8 @@ export function QuestionInput({
     onSubmit(formattedAnswers);
   }, [questions, selectedAnswers, otherInputs, onSubmit]);
 
-  // Check if at least one answer is provided for each question
-  const hasAnswers = questions.questions.some((_, idx) => {
+  // Check if every question has at least one answer provided
+  const hasAnswers = questions.questions.every((_, idx) => {
     const hasSelected =
       selectedAnswers[idx] && selectedAnswers[idx].length > 0;
     const hasOther = otherInputs[idx]?.trim();
@@ -264,20 +274,25 @@ export function QuestionInput({
     <motion.div
       initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
       className={cn("flex gap-3", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
-        <HelpCircle className="h-4 w-4 text-amber-500" />
+        <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
       </div>
       <div className="flex-1">
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-amber-500/20">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              {!readOnly && (
+                <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              )}
               <span className="text-sm font-medium text-foreground">
-                {t("chat.needsInput", "Needs your input")}
+                {readOnly
+                  ? t("chat.questionFromAgent", "Question from Agent")
+                  : t("chat.needsInput", "Needs your input")}
               </span>
             </div>
           </div>
@@ -296,6 +311,7 @@ export function QuestionInput({
                 selectedOptions={selectedAnswers[qIdx] || []}
                 otherInput={otherInputs[qIdx] || ""}
                 showOther={showOtherFlags[qIdx] || false}
+                readOnly={readOnly}
                 onSelectOption={(option) =>
                   handleOptionSelect(qIdx, option, question.multiSelect)
                 }
@@ -305,21 +321,23 @@ export function QuestionInput({
             </div>
           ))}
 
-          {/* Submit button */}
-          <div className="px-4 py-3 bg-muted/50 border-t border-amber-500/20">
-            <Button
-              onClick={handleSubmit}
-              disabled={!hasAnswers || isSubmitting}
-              className="w-full"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              {t("chat.submitAnswer", "Submit")}
-            </Button>
-          </div>
+          {/* Submit button (hidden in readOnly mode) */}
+          {!readOnly && (
+            <div className="px-4 py-3 bg-muted/50 border-t border-amber-500/20">
+              <Button
+                onClick={handleSubmit}
+                disabled={!hasAnswers || isSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                {t("chat.submitAnswer", "Submit")}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

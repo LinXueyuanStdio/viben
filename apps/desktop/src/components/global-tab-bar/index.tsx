@@ -45,10 +45,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useTabList, useActiveTabState, useTabActions, useTabNavigation } from "@/hooks/use-page-tabs";
 import { useTabStore } from "@/stores/tab-store";
 import { SortableTabItem } from "./sortable-tab-item";
 import { WindowControls } from "./window-controls";
+import { createTabNavigationState } from "@/navigation/tab-navigation";
+import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 
 export interface GlobalTabBarProps {
   className?: string;
@@ -117,20 +119,11 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     };
   }, []);
 
-  // Get tab data from hooks
-  const {
-    tabs,
-    activeTabId,
-    goBackInTab,
-    goForwardInTab,
-    canGoBack,
-    canGoForward,
-    switchToTab,
-    closeTab,
-    detachTabToNewWindow,
-    getTabLink,
-    jumpToHistory,
-  } = usePageTabs();
+  // Get tab data from granular hooks
+  const tabs = useTabList();
+  const { activeTabId, canGoBack, canGoForward } = useActiveTabState();
+  const { switchToTab, closeTab, detachTabToNewWindow, getTabLink } = useTabActions();
+  const { goBackInTab, goForwardInTab, jumpToHistory } = useTabNavigation();
 
   // Get additional store actions
   const pinTab = useTabStore((state) => state.pinTab);
@@ -151,6 +144,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     // Find new tabs (ids that exist now but didn't exist before)
     const addedIds = currentTabIds.filter((id) => !prevTabIds.includes(id));
 
+    // Always update ref to prevent re-detecting the same tabs
+    prevTabIdsRef.current = currentTabIds;
+
     if (addedIds.length > 0) {
       setNewTabIds((prev) => {
         const next = new Set(prev);
@@ -169,8 +165,6 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
       return () => clearTimeout(timer);
     }
-
-    prevTabIdsRef.current = currentTabIds;
   }, [tabs]);
 
   // DnD sensors
@@ -307,7 +301,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           historyIndex: index,
           label:
             state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
-            state.location.kind,
+            state.url,
         }))
         .reverse()
     : [];
@@ -318,7 +312,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           historyIndex: activeTab.historyIndex + offset + 1,
           label:
             state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
-            state.location.kind,
+            state.url,
         }))
     : [];
 
@@ -327,16 +321,12 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
   // Handle new tab creation
   const handleNewTab = useCallback(() => {
-    openTab(
-      {
-        type: "new-tab",
-        name: t("common.newTab", "New Tab"),
-        icon: { type: "lucide", value: "plus" },
-        pinned: false,
-      },
-      "/documents"
-    );
-  }, [openTab, t]);
+    const url = "/workspace";
+    openTab({
+      navigationState: createTabNavigationState(url, buildColdStartBreadcrumb(url)),
+      pinned: false,
+    });
+  }, [openTab]);
 
 
   // Tab IDs for sortable context

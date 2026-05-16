@@ -1,5 +1,5 @@
 /**
- * PageAppIcon Component
+ * PageIcon Component
  *
  * iPad-style app icon for a workspace page.
  * - Regular pages: gradient background square + icon + name
@@ -31,7 +31,7 @@ import { getPageGradientColors } from "../utils";
 // Types
 // =============================================================================
 
-export interface PageAppIconProps {
+export interface PageIconProps {
   node: PageTreeNode;
   workspacePath: string;
   onClick: () => void;
@@ -45,7 +45,7 @@ export interface PageAppIconProps {
 // Component
 // =============================================================================
 
-export function PageAppIcon({
+export function PageIcon({
   node,
   workspacePath,
   onClick,
@@ -53,7 +53,7 @@ export function PageAppIcon({
   onCreateSubpage,
   onDeleteClick,
   onPermissionsClick,
-}: PageAppIconProps) {
+}: PageIconProps) {
   const { t } = useTranslation();
   const { page, children } = node;
   const isFolder = children.length > 0;
@@ -84,7 +84,7 @@ export function PageAppIcon({
           {isFolder ? (
             <FolderIcon childNodes={children} workspacePath={workspacePath} />
           ) : (
-            <AppIcon page={page} gradientColors={gradientColors} workspacePath={workspacePath} />
+            <PageIconSquare page={page} gradientColors={gradientColors} workspacePath={workspacePath} />
           )}
 
           {/* App name */}
@@ -131,7 +131,7 @@ export function PageAppIcon({
 // =============================================================================
 
 /** Regular page icon: gradient square with centered icon */
-function AppIcon({
+function PageIconSquare({
   page,
   gradientColors,
   workspacePath,

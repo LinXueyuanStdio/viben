@@ -1,0 +1,173 @@
+/*
+ * Viben Page Design Tokens v1
+ * oklch format - aligned with Desktop App Tailwind v4
+ * DO NOT use hsl() to wrap these variables
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Brand */
+  --brand-amber-400: oklch(0.78 0.16 75);
+  --brand-amber-500: oklch(0.70 0.18 75);
+  --brand-amber-600: oklch(0.62 0.18 75);
+  --brand-amber-700: oklch(0.52 0.16 75);
+  --brand-teal-500: oklch(0.65 0.14 195);
+
+  /* Neutral (warm hue=75) */
+  --neutral-50: oklch(0.985 0.002 75);
+  --neutral-100: oklch(0.97 0.002 75);
+  --neutral-200: oklch(0.92 0.004 75);
+  --neutral-300: oklch(0.85 0.004 75);
+  --neutral-400: oklch(0.70 0.004 75);
+  --neutral-500: oklch(0.56 0.004 75);
+  --neutral-600: oklch(0.44 0.004 75);
+  --neutral-700: oklch(0.32 0.004 75);
+  --neutral-800: oklch(0.22 0.004 75);
+  --neutral-900: oklch(0.15 0.004 75);
+
+  /* Light Theme Semantic */
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-900);
+  --surface: oklch(1 0 0);
+  --surface-elevated: var(--neutral-100);
+  --foreground-secondary: var(--neutral-600);
+  --foreground-tertiary: var(--neutral-500);
+  --primary: var(--brand-amber-600);
+  --primary-hover: var(--brand-amber-700);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: var(--neutral-100);
+  --secondary-foreground: var(--neutral-900);
+  --accent: var(--neutral-100);
+  --accent-foreground: var(--neutral-900);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--neutral-900);
+  --border: var(--neutral-200);
+  --border-strong: var(--neutral-300);
+  --input: var(--neutral-200);
+  --ring: var(--brand-amber-500);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--neutral-900);
+  --muted: var(--neutral-100);
+  --muted-foreground: var(--neutral-600);
+
+  /* Status (oklch only) */
+  --success: oklch(0.65 0.18 145);
+  --warning: oklch(0.70 0.18 75);
+  --error: oklch(0.58 0.22 25);
+  --info: oklch(0.62 0.18 240);
+
+  /* Chart palette */
+  --chart-1: var(--brand-amber-500);
+  --chart-2: var(--brand-teal-500);
+  --chart-3: oklch(0.65 0.18 145);
+  --chart-4: oklch(0.62 0.18 240);
+  --chart-5: oklch(0.68 0.16 55);
+  --chart-6: oklch(0.58 0.14 310);
+
+  /* Typography */
+  --font-serif: 'Crimson Pro', 'Georgia', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.1), 0 1px 2px -1px oklch(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.1), 0 2px 4px -2px oklch(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.1), 0 4px 6px -4px oklch(0 0 0 / 0.1);
+  --shadow-primary: 0 8px 16px -4px oklch(0.70 0.18 75 / 0.3);
+
+  /* Animation */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+}
+
+.dark {
+  --background: var(--neutral-900);
+  --foreground: var(--neutral-50);
+  --surface: var(--neutral-800);
+  --surface-elevated: var(--neutral-700);
+  --foreground-secondary: var(--neutral-400);
+  --foreground-tertiary: var(--neutral-500);
+  --primary: var(--brand-amber-400);
+  --primary-hover: var(--brand-amber-500);
+  --primary-foreground: var(--neutral-900);
+  --secondary: var(--neutral-800);
+  --secondary-foreground: var(--neutral-50);
+  --accent: var(--neutral-800);
+  --accent-foreground: var(--neutral-50);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --popover: var(--neutral-800);
+  --popover-foreground: var(--neutral-50);
+  --border: var(--neutral-700);
+  --border-strong: var(--neutral-600);
+  --input: var(--neutral-700);
+  --ring: var(--brand-amber-400);
+  --card: var(--neutral-800);
+  --card-foreground: var(--neutral-50);
+  --muted: var(--neutral-800);
+  --muted-foreground: var(--neutral-400);
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: var(--neutral-900);
+    --foreground: var(--neutral-50);
+    --surface: var(--neutral-800);
+    --surface-elevated: var(--neutral-700);
+    --foreground-secondary: var(--neutral-400);
+    --foreground-tertiary: var(--neutral-500);
+    --primary: var(--brand-amber-400);
+    --primary-hover: var(--brand-amber-500);
+    --primary-foreground: var(--neutral-900);
+    --secondary: var(--neutral-800);
+    --secondary-foreground: var(--neutral-50);
+    --accent: var(--neutral-800);
+    --accent-foreground: var(--neutral-50);
+    --destructive: oklch(0.65 0.22 25);
+    --destructive-foreground: oklch(1 0 0);
+    --popover: var(--neutral-800);
+    --popover-foreground: var(--neutral-50);
+    --border: var(--neutral-700);
+    --border-strong: var(--neutral-600);
+    --input: var(--neutral-700);
+    --ring: var(--brand-amber-400);
+    --card: var(--neutral-800);
+    --card-foreground: var(--neutral-50);
+    --muted: var(--neutral-800);
+    --muted-foreground: var(--neutral-400);
+    --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.4);
+    --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.5);
+  }
+}
+
+/* Theme transition (triggered by SDK) */
+html.vp-transitioning * {
+  transition: background-color 0.3s ease, color 0.2s ease, border-color 0.3s ease !important;
+}

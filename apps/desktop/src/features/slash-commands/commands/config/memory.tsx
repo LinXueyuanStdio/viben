@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Brain } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const memoryCommand: SlashCommandDefinition = {
   id: "memory",
   name: "memory",
-  description: "Manage agent memory and context",
+  get description() { return i18n.t("chat.slashCommands.memoryDesc"); },
   icon: createElement(Brain, { className: "h-4 w-4" }),
   category: "config",
   source: "builtin",

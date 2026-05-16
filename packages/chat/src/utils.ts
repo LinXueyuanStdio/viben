@@ -61,3 +61,24 @@ export function formatTokens(tokens: number): string {
   }
   return tokens.toString();
 }
+
+/**
+ * Convert an absolute file path to a shorter display form.
+ * - If path is under `cwd`, show relative path
+ * - If path starts with home directory, show ~/...
+ * - Otherwise show last 3 segments
+ */
+export function getDisplayPath(filePath: string, cwd?: string): string {
+  if (!filePath) return "";
+
+  // Try relative to cwd
+  if (cwd && filePath.startsWith(cwd)) {
+    const relative = filePath.slice(cwd.length);
+    return relative.startsWith("/") ? relative.slice(1) : relative;
+  }
+
+  // For browser context, just show last 3 segments
+  const segments = filePath.split("/").filter(Boolean);
+  if (segments.length <= 3) return filePath;
+  return segments.slice(-3).join("/");
+}

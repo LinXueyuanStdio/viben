@@ -10,7 +10,8 @@
 export * from "./types";
 
 // Utilities
-export { cn, isImageFile, formatTokens, getMimeType } from "./utils";
+export { cn, isImageFile, formatTokens, getMimeType, getDisplayPath } from "./utils";
+export { useMinDisplayTime } from "./use-min-display-time";
 
 // Model icons
 export { getModelIcon } from "./model-icons";
@@ -58,6 +59,57 @@ export type { MessageListProps, MessageListHandle } from "./message-list";
 export { MessageItem } from "./message-item";
 export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
-export type { ToolExecutionItemProps, ArtifactInfo } from "./tool-execution-item";
+export type { ToolExecutionItemProps, ToolExecutionStatus, ArtifactInfo } from "./tool-execution-item";
 export { PlanApproval } from "./plan-approval";
 export { QuestionInput } from "./question-input";
+export { CollapsedToolGroup } from "./collapsed-tool-group";
+export type { CollapsedToolGroupProps } from "./collapsed-tool-group";
+
+// Command Queue
+export { useCommandQueue, CommandQueuePanel } from "./command-queue";
+export type {
+  CommandQueueItem,
+  UseCommandQueueOptions,
+  UseCommandQueueReturn,
+  CommandQueuePanelProps,
+} from "./command-queue";
+
+// Message Queue
+export { useMessageQueue } from "./message-queue";
+export type {
+  MessageQueueItem,
+  UseMessageQueueOptions,
+  UseMessageQueueReturn,
+} from "./message-queue";
+
+// Subagent Sheet (side panel)
+export { SubagentSheet } from "./subagent-sheet";
+export type { SubagentSheetProps } from "./subagent-sheet";
+
+// Exec Approval
+export { ExecApproval } from "./exec-approval";
+export type { ExecApprovalProps, PendingExecApproval } from "./exec-approval";
+
+// Streaming Text
+export { StreamingTextBlock } from "./streaming-text-block";
+export type { StreamingTextBlockProps } from "./streaming-text-block";
+
+// Message Lookups (performance utilities)
+export { buildMessageLookups, updateMessageLookupsIncremental, EMPTY_LOOKUPS } from "./message-lookups";
+export type { MessageLookups } from "./message-lookups";
+export { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
+
+// Message Preprocessing Pipeline
+export { preprocessMessages, normalizeMessages, collapseConsecutiveTools, buildPipelineLookups } from "./preprocessing";
+export type {
+  ProcessedMessages,
+  ProcessedItem,
+  CollapsedGroup,
+  CollapsedCounts,
+  ToolPair,
+  PipelineLookups,
+} from "./preprocessing";
+
+// Virtual Scroll
+export { useVirtualScroll } from "./hooks/use-virtual-scroll";
+export type { UseVirtualScrollOptions, UseVirtualScrollResult } from "./hooks/use-virtual-scroll";

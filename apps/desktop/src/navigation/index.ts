@@ -1,44 +1,40 @@
-// ─── Core Types & Meta ───────────────────────────────────────────────────────
+// ─── Route Registry (single source of truth) ─────────────────────────────────
+export { registry, ROUTE_ENTRIES, humanize } from "./route-registry";
+export type { RouteEntry, RouteMatch } from "./route-compiler";
+
+// ─── Navigate API ─────────────────────────────────────────────────────────────
+export { navigate, buildNavigateLeaf, buildColdStartBreadcrumb, popToBreadcrumb, isStackPrefixOf } from "./navigate";
+export type { NavigateMethod } from "./navigate";
+export type { NavigateHeaders, BreadcrumbMeta, BreadcrumbStackItem } from "./breadcrumb-builder";
+export { deriveAncestorsFromPrefix, pickMatchingParams, buildBreadcrumbItem } from "./breadcrumb-builder";
+
+// ─── Tab Navigation ──────────────────────────────────────────────────────────
+export { createTabNavigationState } from "./tab-navigation";
+export type { TabNavigationState } from "@/stores/tab-store";
+
+// ─── Core Types & Meta ────────────────────────────────────────────────────────
 export type {
   WorkspaceSection,
-  ViewTarget,
-  BreadcrumbItemDescriptor,
-  BreadcrumbStackItem,
-  VirtualPageIndexNode,
-  TabNavigationState,
-  PushPageOptions,
-  TabNavigationApi,
   SettingsSection,
-  WorkspaceSectionDescriptor,
-  SettingsSectionDescriptor,
+  VirtualPageIndexNode,
+  PushPageOptions,
+  WorkspaceSectionInfo,
+  SettingsSectionInfo,
 } from "./navigation-meta";
 export {
-  buildViewTarget,
-  WORKSPACE_SECTION_DESCRIPTORS,
-  SETTINGS_SECTION_DESCRIPTORS,
-  GLOBAL_ROUTE_DESCRIPTORS,
+  WORKSPACE_SECTIONS,
+  SETTINGS_SECTIONS,
   VALID_SETTINGS_SECTIONS,
-  GLOBAL_ROUTE_META,
   getDescriptorIcon,
-  getDescriptor,
-  getDescriptorForLocation,
-  LOCATION_DESCRIPTOR_MAP,
-  ALL_DESCRIPTORS,
-  getGlobalRouteDescriptor,
   getWorkspaceSectionDescriptor,
   getWorkspaceSectionRoutePath,
-  isWorkspaceSection,
   normalizeWorkspaceSection,
   getSettingsSectionDescriptor,
-  isSettingsSection,
+  normalizeSettingsSection,
   getSettingsSectionLabel,
   getSettingsSectionIcon,
   getWorkspaceSectionLabel,
 } from "./navigation-meta";
-
-// ─── Location ────────────────────────────────────────────────────────────────
-export type { DesktopLocation } from "./navigation-meta";
-export { locationToUrl, urlToLocation } from "./navigation-meta";
 
 // ─── Breadcrumb Stack (atomic operations) ────────────────────────────────────
 export {
@@ -47,23 +43,7 @@ export {
   replaceStackTop,
   popTo,
   createBreadcrumbItem,
-  createLocationBreadcrumbItem,
 } from "./breadcrumb-stack";
-
-// ─── Location Navigation (Location → BreadcrumbStack) ────────────────────────
-export {
-  createStackForLocation,
-  resolveLocationNavigation,
-} from "./location-navigation";
-
-// ─── Tab Navigation (state machine operations) ───────────────────────────────
-export {
-  createTabNavigationState,
-  replaceLocation,
-  pushPage,
-  popTo as popTabTo,
-  resetStack,
-} from "./tab-navigation";
 
 // ─── Navigation State ────────────────────────────────────────────────────────
 export type {

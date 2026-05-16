@@ -1,12 +1,12 @@
 import { Navigate } from "react-router-dom";
 import { useAppStore } from "@/stores/app-store";
-import { useTabStore, selectActiveTab } from "@/stores/tab-store";
+import { getTabUrl, useTabStore, selectActiveTab } from "@/stores/tab-store";
 
 /**
  * Home redirect component - redirects based on app state.
  * - First-time users are redirected to /onboarding
  * - Returning users are redirected to the active tab's current URL
- * - Fallback to /workspace/global if no active tab
+ * - Fallback to /workspace if no active tab
  */
 export function HomeRedirect() {
   const { onboardingCompleted } = useAppStore();
@@ -17,9 +17,7 @@ export function HomeRedirect() {
   }
 
   // Restore the active tab's current URL if available
-  const activeUrl = activeTab
-    ? activeTab.history[activeTab.historyIndex]
-    : null;
+  const activeUrl = activeTab ? getTabUrl(activeTab) : null;
 
-  return <Navigate to={activeUrl || "/workspace/global"} replace />;
+  return <Navigate to={activeUrl || "/workspace"} replace />;
 }

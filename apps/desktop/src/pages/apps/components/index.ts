@@ -2,6 +2,6 @@ export { PagePreview, type PagePreviewProps, type PageViewMode } from "./page-pr
 export { PageSection, type PageSectionProps } from "./page-section";
 export { CreatePageDialog, type CreatePageDialogProps } from "./create-page-dialog";
 export { PagePermissionsDialog, type PagePermissionsDialogProps } from "./page-permissions-dialog";
-export { PageAppGrid, type PageAppGridProps } from "./page-app-grid";
-export { PageAppIcon, type PageAppIconProps } from "./page-app-icon";
+export { PageIconGrid, type PageIconGridProps } from "./page-app-grid";
+export { PageIcon, type PageIconProps } from "./page-app-icon";
 export { YooptaMarkdownRenderer, type YooptaMarkdownRendererProps } from "./yoopta-markdown-renderer";

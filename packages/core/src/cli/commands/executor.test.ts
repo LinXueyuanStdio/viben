@@ -30,7 +30,7 @@ vi.mock("../../agents", () => ({
 }));
 
 // Mock the unified executor module
-vi.mock("../../executor", () => {
+vi.mock("../../executors/ops", () => {
   const MOCK_EXECUTOR_TYPES = [
     "CLAUDE_CODE",
     "AMP",

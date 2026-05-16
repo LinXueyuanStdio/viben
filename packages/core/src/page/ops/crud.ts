@@ -4,9 +4,10 @@
  * Page CRUD operations
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import matter from "gray-matter";
 import type {
   ListPagesResult,
   ViewPageResult,
@@ -300,7 +301,6 @@ export async function updatePageContent(
 
   // Read existing file and extract frontmatter
   const existing = readFileSync(skillPath, "utf-8");
-  const matter = (await import("gray-matter")).default;
   const { data } = matter(existing);
 
   // Rebuild SKILL.md with original frontmatter + new content
@@ -335,7 +335,6 @@ export async function updatePageConfig(
 
   // Read existing file and extract frontmatter + content
   const existing = readFileSync(skillPath, "utf-8");
-  const matter = (await import("gray-matter")).default;
   const { data, content } = matter(existing);
 
   // Merge only provided fields into frontmatter
@@ -430,7 +429,6 @@ export async function duplicatePage(
   const targetDir = join(pagesDir, newSlug);
 
   // Copy the entire directory recursively
-  const { cpSync } = await import("node:fs");
   cpSync(sourceDir, targetDir, { recursive: true });
 
   // Update the name in the COPY's SKILL.md to indicate it's a duplicate.

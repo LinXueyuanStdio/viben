@@ -1,41 +1,22 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { IconData } from "@/components/ui/icon-picker";
-import { createStackForLocation } from "@/navigation/location-navigation";
-import {
-  createTabNavigationState,
-  popTo as popNavigationState,
-  pushPage as pushNavigationState,
-  replaceLocation as replaceNavigationState,
-  resetStack as resetNavigationState,
-} from "@/navigation/tab-navigation";
-import { locationToUrl, normalizeSettingsSection, urlToLocation } from "@/navigation/navigation-meta";
-import type {
-  DesktopLocation,
-  BreadcrumbStackItem,
-  PushPageOptions,
-  TabNavigationState,
-} from "@/navigation/navigation-meta";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
+import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 
-export type TabType =
-  | "page"
-  | "chat"
-  | "workspace"
-  | "settings"
-  | "web"
-  | "new-tab";
+// ─── TabNavigationState (URL-based) ─────────────────────────────────────────
+
+export interface TabNavigationState {
+  url: string;
+  breadcrumbStack: BreadcrumbStackItem[];
+  activeNodeId?: string;
+  activeIndexPath?: string[];
+}
 
 export type PageViewMode = "skill" | "page";
 
 export interface PageTab {
   id: string;
-  type: TabType;
-  slug?: string;
-  workspaceId?: string;
-  name: string;
-  icon?: IconData;
   pinned: boolean;
-  history: string[];
   historyIndex: number;
   navigationHistory: TabNavigationState[];
   viewMode?: PageViewMode;
@@ -53,32 +34,40 @@ interface TabState {
   recentlyClosedTabs: ClosedTabSnapshot[];
 }
 
-interface OpenTabInput extends Omit<PageTab, "id" | "history" | "historyIndex" | "navigationHistory"> {
-  navigationState?: TabNavigationState;
+interface OpenTabInput {
+  pinned?: boolean;
+  viewMode?: PageViewMode;
+  navigationState: TabNavigationState;
+}
+
+export interface TabViewModel extends PageTab {
+  currentState: TabNavigationState | null;
+  currentUrl: string | null;
+  label: string;
+  titleKey?: string;
+  icon?: BreadcrumbStackItem["icon"];
+  descriptorId?: string;
+  meta?: BreadcrumbStackItem["meta"];
+  url: string | null;
 }
 
 interface TabActions {
-  openTab: (tab: OpenTabInput, url?: string) => string;
+  openTab: (tab: OpenTabInput) => string;
   closeTab: (tabId: string) => void;
   closeOtherTabs: (tabId: string) => void;
   closeTabsToRight: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
-  updateTab: (tabId: string, updates: Partial<Omit<PageTab, "id">>) => void;
   pinTab: (tabId: string) => void;
   unpinTab: (tabId: string) => void;
   setViewMode: (tabId: string, mode: PageViewMode) => void;
   moveTab: (fromIndex: number, toIndex: number) => void;
   navigate: (tabId: string, url: string) => void;
-  navigateToLocation: (tabId: string, location: DesktopLocation, patch?: Partial<TabNavigationState>) => void;
-  replaceLocation: (tabId: string, location: DesktopLocation, patch?: Partial<TabNavigationState>) => void;
-  pushPage: (
-    tabId: string,
-    item: BreadcrumbStackItem,
-    location: DesktopLocation,
-    options?: PushPageOptions
-  ) => void;
-  popTo: (tabId: string, index: number) => void;
-  resetStack: (tabId: string, next: TabNavigationState) => void;
+  pushNavigation: (tabId: string, url: string, leaf: BreadcrumbStackItem) => void;
+  replaceNavigation: (tabId: string, url: string, leaf: BreadcrumbStackItem) => void;
+  resetNavigation: (tabId: string, url: string, stack: BreadcrumbStackItem[]) => void;
+  replaceLocation: (tabId: string, next: TabNavigationState) => void;
+  pushLocation: (tabId: string, next: TabNavigationState) => void;
+  insertHistoryBeforeCurrent: (tabId: string, state: TabNavigationState) => void;
   jumpToHistory: (tabId: string, historyIndex: number) => void;
   goBack: (tabId: string) => void;
   goForward: (tabId: string) => void;
@@ -86,6 +75,7 @@ interface TabActions {
   canGoForward: (tabId: string) => boolean;
   getCurrentUrl: (tabId: string) => string | null;
   getCurrentNavigationState: (tabId: string) => TabNavigationState | null;
+  findHistoryEntryByUrl: (tabId: string, url: string) => number;
   closeAllTabs: () => void;
   duplicateTab: (tabId: string) => string | null;
   reopenClosedTab: () => string | null;
@@ -95,6 +85,9 @@ interface TabActions {
 const generateTabId = () =>
   `tab-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 const MAX_RECENTLY_CLOSED_TABS = 20;
+const MAX_NAVIGATION_HISTORY = 50;
+export const TAB_STORE_STORAGE_KEY = "viben-tab-store-v2";
+const TAB_STORE_VERSION = 2;
 
 function findLastPinnedIndex(tabs: PageTab[]): number {
   for (let index = tabs.length - 1; index >= 0; index -= 1) {
@@ -105,82 +98,83 @@ function findLastPinnedIndex(tabs: PageTab[]): number {
   return -1;
 }
 
-function buildFallbackLocation(url: string): DesktopLocation {
-  if (url.startsWith("/workspace/") && url.includes("/apps")) {
-    const parts = url.split("/").filter(Boolean);
-    const workspaceId = parts[1];
-    if (workspaceId) {
-      return { kind: "workspace-apps", workspaceId };
-    }
-  }
-
-  if (url.startsWith("/documents")) {
-    return { kind: "documents" };
-  }
-
-  if (url.startsWith("/devices/pair")) {
-    return { kind: "device-pair" };
-  }
-
-  if (url.startsWith("/settings")) {
-    const section = url.split("/")[2];
-    return { kind: "settings", section: normalizeSettingsSection(section) };
-  }
-
-  return { kind: "documents" };
-}
-
 function buildStateFromUrl(url?: string): TabNavigationState {
-  const location = (url ? urlToLocation(url) : null) ?? buildFallbackLocation(url ?? "/documents");
-  return createTabNavigationState(location, createStackForLocation(location));
+  const targetUrl = url ?? "/documents";
+  const stack = buildColdStartBreadcrumb(targetUrl);
+  return { url: targetUrl, breadcrumbStack: stack };
 }
 
-function stateToUrl(state: TabNavigationState): string {
-  return locationToUrl(state.location);
+function isNavigationState(value: unknown): value is TabNavigationState {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<TabNavigationState>;
+  return typeof candidate.url === "string" && Array.isArray(candidate.breadcrumbStack);
 }
 
-function syncLegacyHistory(tab: PageTab): PageTab {
-  const history = tab.navigationHistory.map(stateToUrl);
+function isPersistedPageTab(value: unknown): value is PageTab {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<PageTab>;
+  return typeof candidate.id === "string" && Array.isArray(candidate.navigationHistory);
+}
+
+function isPersistedSnapshot(value: unknown): value is ClosedTabSnapshot {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ClosedTabSnapshot>;
+  return (
+    isPersistedPageTab(candidate.tab) &&
+    typeof candidate.originIndex === "number" &&
+    typeof candidate.closedAt === "number"
+  );
+}
+
+function normalizeTab(tab: PageTab): PageTab {
+  const navigationHistory = tab.navigationHistory.filter(isNavigationState);
+  const safeHistory = navigationHistory.length > 0 ? navigationHistory : [buildStateFromUrl("/workspace")];
   const historyIndex = Math.min(
-    Math.max(tab.historyIndex, 0),
-    Math.max(history.length - 1, 0)
+    Math.max(tab.historyIndex ?? safeHistory.length - 1, 0),
+    safeHistory.length - 1
   );
 
   return {
-    ...tab,
-    history,
+    id: tab.id,
+    pinned: Boolean(tab.pinned),
     historyIndex,
+    navigationHistory: safeHistory,
+    viewMode: tab.viewMode,
   };
 }
 
-function coerceNavigationHistory(tab: PageTab): PageTab {
-  const navigationHistory =
-    tab.navigationHistory?.length
-      ? tab.navigationHistory
-      : tab.history?.length
-        ? tab.history.map((url) => buildStateFromUrl(url))
-        : [buildStateFromUrl("/documents")];
-
-  return syncLegacyHistory({
-    ...tab,
-    navigationHistory,
-    historyIndex: Math.min(
-      tab.historyIndex ?? navigationHistory.length - 1,
-      navigationHistory.length - 1
-    ),
-  });
+function normalizeSnapshot(snapshot: ClosedTabSnapshot): ClosedTabSnapshot {
+  return {
+    tab: normalizeTab(snapshot.tab),
+    originIndex: snapshot.originIndex,
+    closedAt: snapshot.closedAt,
+  };
 }
 
-function updateTabHistory(
-  tab: PageTab,
-  updater: (tab: PageTab) => PageTab
-): PageTab {
-  return syncLegacyHistory(updater(coerceNavigationHistory(tab)));
+export function mergePersistedTabState(
+  persisted: Partial<TabState> | undefined,
+  current: TabState
+): TabState {
+  const tabs = (persisted?.tabs ?? []).filter(isPersistedPageTab).map(normalizeTab);
+  const tabIds = new Set(tabs.map((tab) => tab.id));
+  const activeTabId =
+    persisted?.activeTabId && tabIds.has(persisted.activeTabId)
+      ? persisted.activeTabId
+      : tabs[0]?.id ?? null;
+
+  return {
+    ...current,
+    tabs,
+    activeTabId,
+    recentlyClosedTabs: (persisted?.recentlyClosedTabs ?? [])
+      .filter(isPersistedSnapshot)
+      .map(normalizeSnapshot),
+  };
 }
 
 function cloneTabWithNewId(tab: PageTab, overrides?: Partial<PageTab>): PageTab {
-  return syncLegacyHistory({
-    ...coerceNavigationHistory(tab),
+  return normalizeTab({
+    ...normalizeTab(tab),
     ...overrides,
     id: generateTabId(),
   });
@@ -188,7 +182,7 @@ function cloneTabWithNewId(tab: PageTab, overrides?: Partial<PageTab>): PageTab 
 
 function createClosedSnapshot(tab: PageTab, originIndex: number): ClosedTabSnapshot {
   return {
-    tab: coerceNavigationHistory(tab),
+    tab: normalizeTab(tab),
     originIndex,
     closedAt: Date.now(),
   };
@@ -216,6 +210,54 @@ function restoreClosedTabIntoTabs(
   return { tabs: nextTabs, restoredTab };
 }
 
+export function getTabCurrentState(tab: PageTab): TabNavigationState | null {
+  return tab.navigationHistory[tab.historyIndex] ?? null;
+}
+
+export function getTabCurrentLeaf(tab: PageTab): BreadcrumbStackItem | null {
+  const current = getTabCurrentState(tab);
+  return current?.breadcrumbStack[current.breadcrumbStack.length - 1] ?? null;
+}
+
+export function getTabUrl(tab: PageTab): string | null {
+  const current = getTabCurrentState(tab);
+  return current?.url ?? null;
+}
+
+export function getTabViewModel(tab: PageTab): TabViewModel {
+  const currentState = getTabCurrentState(tab);
+  const leaf = getTabCurrentLeaf(tab);
+  const url = getTabUrl(tab);
+
+  return {
+    ...tab,
+    currentState,
+    currentUrl: url,
+    label: leaf?.label ?? url ?? "Untitled",
+    titleKey: leaf?.titleKey,
+    icon: leaf?.icon,
+    descriptorId: leaf?.pattern,
+    meta: leaf?.meta,
+    url,
+  };
+}
+
+function findHistoryEntryByUrlInHistory(
+  navigationHistory: TabNavigationState[],
+  historyIndex: number,
+  url: string
+): number {
+  for (let index = historyIndex - 1; index >= 0; index -= 1) {
+    if (navigationHistory[index].url === url) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
 export const useTabStore = create<TabState & TabActions>()(
   persist(
     (set, get) => ({
@@ -223,17 +265,14 @@ export const useTabStore = create<TabState & TabActions>()(
       activeTabId: null,
       recentlyClosedTabs: [],
 
-      openTab: (tabData, url) => {
+      openTab: (tabData) => {
         const id = generateTabId();
-        const navigationState =
-          tabData.navigationState ?? buildStateFromUrl(url);
-
-        const newTab = syncLegacyHistory({
-          ...tabData,
+        const newTab = normalizeTab({
           id,
-          navigationHistory: [navigationState],
-          history: [],
+          pinned: tabData.pinned ?? false,
+          navigationHistory: [tabData.navigationState],
           historyIndex: 0,
+          viewMode: tabData.viewMode,
         });
 
         set((state) => ({
@@ -312,14 +351,6 @@ export const useTabStore = create<TabState & TabActions>()(
         set({ activeTabId: tabId });
       },
 
-      updateTab: (tabId, updates) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId ? syncLegacyHistory({ ...coerceNavigationHistory(tab), ...updates }) : tab
-          ),
-        }));
-      },
-
       pinTab: (tabId) => {
         set((state) => {
           const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
@@ -384,121 +415,84 @@ export const useTabStore = create<TabState & TabActions>()(
       },
 
       navigate: (tabId, url) => {
+        get().pushLocation(tabId, buildStateFromUrl(url));
+      },
+
+      pushNavigation: (tabId, url, leaf) => {
+        const tab = get().tabs.find((entry) => entry.id === tabId);
+        const current = tab ? getTabCurrentState(normalizeTab(tab)) : null;
+        const currentStack = current?.breadcrumbStack ?? [];
+        const nextState: TabNavigationState = {
+          url,
+          breadcrumbStack: [...currentStack, leaf],
+        };
+        get().pushLocation(tabId, nextState);
+      },
+
+      replaceNavigation: (tabId, url, leaf) => {
+        const tab = get().tabs.find((entry) => entry.id === tabId);
+        const current = tab ? getTabCurrentState(normalizeTab(tab)) : null;
+        const currentStack = current?.breadcrumbStack ?? [];
+        const nextState: TabNavigationState = {
+          url,
+          breadcrumbStack: [...currentStack.slice(0, -1), leaf],
+        };
+        get().pushLocation(tabId, nextState);
+      },
+
+      resetNavigation: (tabId, url, stack) => {
+        const nextState: TabNavigationState = { url, breadcrumbStack: stack };
+        get().pushLocation(tabId, nextState);
+      },
+
+      replaceLocation: (tabId, next) => {
         set((state) => ({
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
-
-            return updateTabHistory(tab, (current) => {
-              const baseHistory = current.navigationHistory.slice(0, current.historyIndex + 1);
-              const nextState = buildStateFromUrl(url);
-              return {
-                ...current,
-                navigationHistory: [...baseHistory, nextState],
-                historyIndex: baseHistory.length,
-              };
+            const current = normalizeTab(tab);
+            const baseHistory = current.navigationHistory.slice(0, current.historyIndex);
+            return normalizeTab({
+              ...current,
+              navigationHistory: [...baseHistory, next],
+              historyIndex: baseHistory.length,
             });
           }),
         }));
       },
 
-      navigateToLocation: (tabId, location, patch) => {
+      pushLocation: (tabId, next) => {
         set((state) => ({
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
-
-            return updateTabHistory(tab, (current) => {
-              const nextState = createTabNavigationState(
-                location,
-                patch?.breadcrumbStack ?? createStackForLocation(location),
-                patch
-              );
-              const baseHistory = current.navigationHistory.slice(0, current.historyIndex + 1);
-
-              return {
-                ...current,
-                navigationHistory: [...baseHistory, nextState],
-                historyIndex: baseHistory.length,
-              };
+            const current = normalizeTab(tab);
+            let history = [...current.navigationHistory.slice(0, current.historyIndex + 1), next];
+            let index = history.length - 1;
+            // Trim oldest entries if history exceeds limit
+            if (history.length > MAX_NAVIGATION_HISTORY) {
+              const excess = history.length - MAX_NAVIGATION_HISTORY;
+              history = history.slice(excess);
+              index = history.length - 1;
+            }
+            return normalizeTab({
+              ...current,
+              navigationHistory: history,
+              historyIndex: index,
             });
           }),
         }));
       },
 
-      replaceLocation: (tabId, location, patch) => {
+      insertHistoryBeforeCurrent: (tabId, next) => {
         set((state) => ({
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
-
-            return updateTabHistory(tab, (current) => {
-              const currentState =
-                current.navigationHistory[current.historyIndex] ?? buildStateFromUrl();
-              const nextState = replaceNavigationState(currentState, location, patch);
-              const navigationHistory = [...current.navigationHistory];
-              navigationHistory[current.historyIndex] = nextState;
-
-              return {
-                ...current,
-                navigationHistory,
-              };
-            });
-          }),
-        }));
-      },
-
-      pushPage: (tabId, item, location, options) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-
-            return updateTabHistory(tab, (current) => {
-              const currentState =
-                current.navigationHistory[current.historyIndex] ?? buildStateFromUrl();
-              const nextState = pushNavigationState(currentState, item, location, options);
-              const baseHistory = current.navigationHistory.slice(0, current.historyIndex + 1);
-
-              return {
-                ...current,
-                navigationHistory: [...baseHistory, nextState],
-                historyIndex: baseHistory.length,
-              };
-            });
-          }),
-        }));
-      },
-
-      popTo: (tabId, index) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-
-            return updateTabHistory(tab, (current) => {
-              const currentState =
-                current.navigationHistory[current.historyIndex] ?? buildStateFromUrl();
-              const nextState = popNavigationState(currentState, index);
-              const baseHistory = current.navigationHistory.slice(0, current.historyIndex + 1);
-
-              return {
-                ...current,
-                navigationHistory: [...baseHistory, nextState],
-                historyIndex: baseHistory.length,
-              };
-            });
-          }),
-        }));
-      },
-
-      resetStack: (tabId, next) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-
-            return updateTabHistory(tab, (current) => {
-              const baseHistory = current.navigationHistory.slice(0, current.historyIndex + 1);
-              return {
-                ...current,
-                navigationHistory: [...baseHistory, resetNavigationState(next)],
-                historyIndex: baseHistory.length,
-              };
+            const current = normalizeTab(tab);
+            const before = current.navigationHistory.slice(0, current.historyIndex);
+            const fromCurrent = current.navigationHistory.slice(current.historyIndex);
+            return normalizeTab({
+              ...current,
+              navigationHistory: [...before, next, ...fromCurrent],
+              historyIndex: before.length,
             });
           }),
         }));
@@ -508,19 +502,10 @@ export const useTabStore = create<TabState & TabActions>()(
         set((state) => ({
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
-            const current = coerceNavigationHistory(tab);
-            const nextIndex = Math.max(
-              0,
-              Math.min(historyIndex, current.navigationHistory.length - 1)
-            );
-
-            if (nextIndex === current.historyIndex) {
-              return current;
-            }
-
-            return syncLegacyHistory({
+            const current = normalizeTab(tab);
+            return normalizeTab({
               ...current,
-              historyIndex: nextIndex,
+              historyIndex,
             });
           }),
         }));
@@ -530,12 +515,12 @@ export const useTabStore = create<TabState & TabActions>()(
         set((state) => ({
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
-            const current = coerceNavigationHistory(tab);
+            const current = normalizeTab(tab);
             if (current.historyIndex <= 0) return current;
-            return syncLegacyHistory({
+            return {
               ...current,
               historyIndex: current.historyIndex - 1,
-            });
+            };
           }),
         }));
       },
@@ -544,43 +529,51 @@ export const useTabStore = create<TabState & TabActions>()(
         set((state) => ({
           tabs: state.tabs.map((tab) => {
             if (tab.id !== tabId) return tab;
-            const current = coerceNavigationHistory(tab);
+            const current = normalizeTab(tab);
             if (current.historyIndex >= current.navigationHistory.length - 1) {
               return current;
             }
-            return syncLegacyHistory({
+            return {
               ...current,
               historyIndex: current.historyIndex + 1,
-            });
+            };
           }),
         }));
       },
 
       canGoBack: (tabId) => {
         const tab = get().tabs.find((item) => item.id === tabId);
-        return tab ? coerceNavigationHistory(tab).historyIndex > 0 : false;
+        return tab ? normalizeTab(tab).historyIndex > 0 : false;
       },
 
       canGoForward: (tabId) => {
         const tab = get().tabs.find((item) => item.id === tabId);
-        return tab
-          ? coerceNavigationHistory(tab).historyIndex <
-              coerceNavigationHistory(tab).navigationHistory.length - 1
-          : false;
+        if (!tab) return false;
+        const current = normalizeTab(tab);
+        return current.historyIndex < current.navigationHistory.length - 1;
       },
 
       getCurrentUrl: (tabId) => {
         const tab = get().tabs.find((item) => item.id === tabId);
         if (!tab) return null;
-        const current = coerceNavigationHistory(tab);
-        return current.history[current.historyIndex] ?? null;
+        const current = getTabCurrentState(normalizeTab(tab));
+        return current?.url ?? null;
       },
 
       getCurrentNavigationState: (tabId) => {
         const tab = get().tabs.find((item) => item.id === tabId);
-        if (!tab) return null;
-        const current = coerceNavigationHistory(tab);
-        return current.navigationHistory[current.historyIndex] ?? null;
+        return tab ? getTabCurrentState(normalizeTab(tab)) : null;
+      },
+
+      findHistoryEntryByUrl: (tabId, url) => {
+        const tab = get().tabs.find((item) => item.id === tabId);
+        if (!tab) return -1;
+        const current = normalizeTab(tab);
+        return findHistoryEntryByUrlInHistory(
+          current.navigationHistory,
+          current.historyIndex,
+          url
+        );
       },
 
       closeAllTabs: () => {
@@ -620,10 +613,6 @@ export const useTabStore = create<TabState & TabActions>()(
       },
 
       reopenClosedTab: () => {
-        const state = get();
-        const snapshot = state.recentlyClosedTabs[0];
-        if (!snapshot) return null;
-
         let restoredTabId: string | null = null;
 
         set((current) => {
@@ -652,25 +641,31 @@ export const useTabStore = create<TabState & TabActions>()(
       },
     }),
     {
-      name: "viben-tab-store",
+      name: TAB_STORE_STORAGE_KEY,
+      version: TAB_STORE_VERSION,
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => localStorage.getItem(name),
+        setItem: (name: string, value: string) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch {
+            // QuotaExceededError — silently skip persist
+          }
+        },
+        removeItem: (name: string) => localStorage.removeItem(name),
+      })),
       partialize: (state) => ({
         tabs: state.tabs,
         activeTabId: state.activeTabId,
         recentlyClosedTabs: state.recentlyClosedTabs,
       }),
       merge: (persisted, current) => {
-        const merged = {
-          ...current,
-          ...(persisted as Partial<TabState>),
-        };
-
         return {
-          ...merged,
-          tabs: (merged.tabs ?? []).map(coerceNavigationHistory),
-          recentlyClosedTabs: (merged.recentlyClosedTabs ?? []).map((snapshot) => ({
-            ...snapshot,
-            tab: coerceNavigationHistory(snapshot.tab),
-          })),
+          ...current,
+          ...mergePersistedTabState(
+            persisted as Partial<TabState> | undefined,
+            current
+          ),
         };
       },
     }

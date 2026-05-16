@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { access, constants, readdir, realpath } from "node:fs/promises";
 import { getConfigPath } from "../../config/paths";
 import { readYaml, writeYaml } from "../../config/yaml";
+import { createProxyFetch } from "../../http/proxy";
 import { logger as globalLogger } from "../../telemetry";
 
 // Module-level logger
@@ -1076,5 +1077,41 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       type: type(),
       viben_dir: join(homedir(), ".viben"),
     };
+  });
+
+  /**
+   * GET /api/system/public-ip
+   * Get the server's public IP address via ipify (cached for 5 minutes)
+   */
+  let publicIpCache: { ip: string; ts: number } | null = null;
+  const PUBLIC_IP_TTL = 5 * 60 * 1000; // 5 minutes
+
+  fastify.get("/api/system/public-ip", async (_request, reply) => {
+    if (publicIpCache && Date.now() - publicIpCache.ts < PUBLIC_IP_TTL) {
+      return { ip: publicIpCache.ip };
+    }
+
+    try {
+      const proxyFetch = createProxyFetch();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const response = await proxyFetch("https://api.ipify.org?format=json", {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        reply.code(502);
+        return { error: "Failed to fetch public IP" };
+      }
+
+      const data = (await response.json()) as { ip: string };
+      publicIpCache = { ip: data.ip, ts: Date.now() };
+      return { ip: data.ip };
+    } catch {
+      reply.code(502);
+      return { error: "Failed to fetch public IP" };
+    }
   });
 }

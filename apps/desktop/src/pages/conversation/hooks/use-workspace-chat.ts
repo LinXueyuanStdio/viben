@@ -41,8 +41,6 @@ export function useWorkspaceChat() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const {
-    openAgentDetail,
-    openExecutorDetail,
     openWorkspaceAgentDetail,
     openWorkspaceExecutorDetail,
     openPath,
@@ -448,6 +446,7 @@ export function useWorkspaceChat() {
     isStreaming,
     pendingPlan,
     pendingQuestions,
+    pendingExecApproval,
     artifacts,
     toolUsages,
     error,
@@ -456,18 +455,22 @@ export function useWorkspaceChat() {
     approvePlan,
     rejectPlan,
     answerQuestions,
+    approveExec,
     cancel,
     clearMessages,
     loadMessages,
     gatewayConnected,
     connectionStatus,
+    contextUsage,
     checkGatewayConnection,
+    commandQueue,
   } = useAgentConversation(workspace?.path || "", {
     agentConfigPath: currentAgent?.config_path,
     agentDir: currentAgent?.agent_dir,
     agentConfig: currentAgent?.config_path ? undefined : currentAgentConfig,
     sessionId: selectedConversationId || undefined,
     sandboxConfig,
+    useWebSocket: currentAgent?.executor_type === "OPENCLAW",
   });
 
   // Debug log
@@ -1365,17 +1368,21 @@ export function useWorkspaceChat() {
     isStreaming,
     pendingPlan,
     pendingQuestions,
+    pendingExecApproval,
     artifacts,
     toolUsages,
     error,
     approvePlan,
     rejectPlan,
     answerQuestions,
+    approveExec,
     cancel,
     clearMessages,
     gatewayConnected,
     connectionStatus,
+    contextUsage,
     checkGatewayConnection,
+    commandQueue,
 
     // Executor
     selectedSidebarExecutorId, setSelectedSidebarExecutorId,

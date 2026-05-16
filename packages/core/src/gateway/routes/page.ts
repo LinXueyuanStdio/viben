@@ -15,6 +15,8 @@
  * - POST /api/page/update-config - Update page config (name, description, icon)
  * - POST /api/page/templates - List available page templates
  */
+import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import type { FastifyInstance } from "fastify";
 import {
   // CRUD operations
@@ -896,5 +898,37 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       url: serveUrl,
       filename: result.filename,
     };
+  });
+
+  // ============================================================================
+  // GET /api/page/_sdk/v1/viben-page-sdk.js - Serve page SDK
+  // ============================================================================
+  fastify.get("/api/page/_sdk/v1/viben-page-sdk.js", {
+    schema: {
+      description: "Serve viben-page-sdk.js",
+      tags: ["page"],
+    },
+  }, async (_request, reply) => {
+    const sdkPath = join(__dirname, "../../../assets/viben-page-sdk.js");
+    const content = readFileSync(sdkPath, "utf-8");
+    reply.type("application/javascript; charset=utf-8");
+    reply.header("Cache-Control", "public, max-age=3600");
+    return reply.send(content);
+  });
+
+  // ============================================================================
+  // GET /api/page/_sdk/v1/viben-page-tokens.css - Serve page tokens CSS
+  // ============================================================================
+  fastify.get("/api/page/_sdk/v1/viben-page-tokens.css", {
+    schema: {
+      description: "Serve viben-page-tokens.css",
+      tags: ["page"],
+    },
+  }, async (_request, reply) => {
+    const cssPath = join(__dirname, "../../../assets/viben-page-tokens.css");
+    const content = readFileSync(cssPath, "utf-8");
+    reply.type("text/css; charset=utf-8");
+    reply.header("Cache-Control", "public, max-age=3600");
+    return reply.send(content);
   });
 }

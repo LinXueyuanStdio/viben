@@ -12,13 +12,10 @@ function createWorkspacePagesIndexDescriptor(
   return {
     id: `${workspaceId}:pages`,
     descriptorId: "virtual-folder",
-    label: i18n.t("page.pages", "Apps"),
+    label: i18n.t("page.pages", "Pages"),
+    href: `/workspace/${encodeURIComponent(workspaceId)}/pages`,
     icon: { type: "lucide", value: "layout-grid" },
     meta: { workspaceId },
-    location: {
-      kind: "workspace-home",
-      workspaceId,
-    },
   };
 }
 
@@ -29,11 +26,8 @@ function createWorkspaceRootDescriptor(
     id: `workspace:${workspaceId}`,
     descriptorId: "workspace",
     label: workspaceId,
+    href: `/workspace/${encodeURIComponent(workspaceId)}`,
     meta: { workspaceId },
-    location: {
-      kind: "workspace-home",
-      workspaceId,
-    },
   };
 }
 
@@ -72,13 +66,9 @@ function buildWorkspacePagePathDescriptors(
       id: `${workspaceId}:page:${slugAtDepth}`,
       descriptorId: "workspace-page",
       label: matchedPage?.name ?? segment,
+      href: `/workspace/${encodeURIComponent(workspaceId)}/pages/${slugAtDepth}`,
       icon: matchedPage?.icon,
       meta: {
-        workspaceId,
-        pageSlug: slugAtDepth,
-      },
-      location: {
-        kind: "workspace-page",
         workspaceId,
         pageSlug: slugAtDepth,
       },
@@ -94,13 +84,9 @@ function buildWorkspacePageTreeDescriptors(
     id: `${workspaceId}:page:${item.page.slug}`,
     descriptorId: "workspace-page",
     label: item.page.name,
+    href: `/workspace/${encodeURIComponent(workspaceId)}/pages/${item.page.slug}`,
     icon: item.page.icon,
     meta: {
-      workspaceId,
-      pageSlug: item.page.slug,
-    },
-    location: {
-      kind: "workspace-page",
       workspaceId,
       pageSlug: item.page.slug,
     },

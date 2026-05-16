@@ -47,7 +47,7 @@ import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -160,22 +160,15 @@ export function McpServerDetailPage() {
     stack: currentStack,
     fallback:
       workspace && server
-        ? resolveLocationNavigation({
-            location: {
-              kind: "mcp-server-detail",
-              serverName: server.name,
-              executorType,
-              workspacePath: effectiveWorkspacePath || undefined,
-            },
-            workspace,
-            title: server.name,
-            icon: { type: "lucide", value: "server" },
-          }).breadcrumbStack.slice(1).map((item) => ({
+        ? buildColdStartBreadcrumb(
+            registry.build("/mcp-server/:serverName", { serverName: server.name }) +
+              `?workspace_path=${encodeURIComponent(effectiveWorkspacePath || "")}&executor_type=${encodeURIComponent(executorType)}`,
+            { label: server.name, icon: { type: "lucide", value: "server" } }
+          ).slice(1).map((item) => ({
             id: item.id,
             label: item.label,
-            href: item.target?.canonicalUrl ?? "#",
+            href: item.href ?? "#",
             icon: item.icon,
-            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],

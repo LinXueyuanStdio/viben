@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import * as React from "react";
 import type { OAuthStatus } from "./constants";
 import { OAUTH_TIMEOUT_MS, OAUTH_STEPS } from "./constants";
+import { TradingAccountsSection } from "../trading-accounts-section";
 
 export function AccountSection() {
   const { t } = useTranslation();
@@ -29,6 +30,7 @@ export function AccountSection() {
   const [currentStep, setCurrentStep] = useState(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 
   // Dev mode: manual OAuth code input
   const isDev = import.meta.env.DEV;
@@ -382,6 +384,9 @@ export function AccountSection() {
           </div>
         </div>
       )}
+
+      {/* Trading Accounts */}
+      <TradingAccountsSection />
     </div>
   );
 }

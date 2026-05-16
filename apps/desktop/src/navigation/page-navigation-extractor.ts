@@ -102,7 +102,7 @@ function buildMentionItem(
   return {
     id: `page:${normalized}:${order}`,
     kind: "page-mention",
-    label: label?.trim() || normalized.split("/").at(-1),
+    label: label?.trim() || normalized.split("/").filter(Boolean).slice(-1)[0] || normalized,
     order,
     pageSlug: normalized,
     nav,

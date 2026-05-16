@@ -6,7 +6,7 @@
  */
 
 import type { ChatProxy, ChatResult } from "./types";
-import type { ChatOptions } from "../types";
+import type { ChatOptions } from "../ops/types";
 import type * as ClaudeAgentSdk from "@anthropic-ai/claude-agent-sdk";
 import { resolveSdkMcpServers } from "./sdk-mcp-registry";
 

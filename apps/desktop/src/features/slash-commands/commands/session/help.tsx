@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { HelpCircle } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const helpCommand: SlashCommandDefinition = {
   id: "help",
   name: "help",
-  description: "Show all available commands",
+  get description() { return i18n.t("chat.slashCommands.helpDesc"); },
   icon: createElement(HelpCircle, { className: "h-4 w-4" }),
   category: "session",
   source: "builtin",

@@ -155,6 +155,7 @@ export type {
   CliToolName,
   CliToolsInfo,
   CliToolsConfig,
+  PublicIpResponse,
 } from "./system";
 
 // Log Types

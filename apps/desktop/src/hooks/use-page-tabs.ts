@@ -1,546 +1,377 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useQueryClient } from "@tanstack/react-query";
-import { useTabStore, selectActiveTab } from "@/stores/tab-store";
-import type { PageTab, TabType } from "@/stores/tab-store";
-import type { ListPagesResult, PageConfig } from "@/lib/gateway";
+import { getTabViewModel, useTabStore } from "@/stores/tab-store";
+import type { TabNavigationState, TabViewModel } from "@/stores/tab-store";
 import type { IconData } from "@/components/ui/icon-picker";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb } from "@/navigation/navigate";
+import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import {
-  type DesktopLocation,
-  type BreadcrumbStackItem,
-  type PushPageOptions,
-  type TabNavigationState,
-  locationToUrl,
-  urlToLocation,
-  getSettingsSectionIcon,
-  getSettingsSectionLabel,
-  getWorkspaceSectionLabel,
   normalizeSettingsSection,
   normalizeWorkspaceSection,
 } from "@/navigation/navigation-meta";
-import { pageKeys } from "@/hooks/use-pages";
+import { registry } from "@/navigation/route-registry";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import type { PageConfig } from "@/hooks/use-pages";
 
-export interface TabInfo {
-  type: TabType;
-  name: string;
-  icon?: IconData;
-  slug?: string;
-  workspaceId?: string;
+// ─── Hook 1: useTabList ─────────────────────────────────────────────────────
+// Returns the tab view model list. Only re-renders when the tabs array changes.
+
+export function useTabList(): TabViewModel[] {
+  const rawTabs = useTabStore((state) => state.tabs);
+  return useMemo(() => rawTabs.map(getTabViewModel), [rawTabs]);
 }
 
-function inferTabType(location: DesktopLocation, fallback?: TabType): TabType {
-  if (fallback) return fallback;
+// ─── Hook 2: useActiveTabState ──────────────────────────────────────────────
+// Returns reactive state about the active tab. Re-renders when active tab changes.
 
-  switch (location.kind) {
-    case "workspace-apps":
-      return "workspace";
-    case "workspace-page":
-    case "skill-detail":
-    case "mcp-server-detail":
-    case "subagent-detail":
-    case "prompt-detail":
-    case "command-detail":
-      return "page";
-    case "workspace-web":
-      return "web";
-    case "settings":
-      return "settings";
-    case "documents":
-    case "device-pair":
-      return "workspace";
-    case "workspace-home":
-    case "workspace-section":
-    case "workspace-agent-detail":
-    case "workspace-executor-detail":
-    case "agent-detail":
-    case "executor-detail":
-    case "global-route":
-      return "workspace";
-    default: {
-      const exhaustive: never = location;
-      return exhaustive;
-    }
-  }
+export interface ActiveTabState {
+  activeTabId: string | null;
+  activeTab: TabViewModel | null;
+  canGoBack: boolean;
+  canGoForward: boolean;
+  currentUrl: string | null;
+  currentNavigationState: TabNavigationState | null;
 }
 
-function inferTabName(location: DesktopLocation, fallback?: string): string {
-  if (fallback) return fallback;
-
-  switch (location.kind) {
-    case "workspace-home":
-      return location.workspaceId;
-    case "workspace-apps":
-      return "Apps";
-    case "workspace-section":
-      return getWorkspaceSectionLabel(location.section) || location.section;
-    case "workspace-agent-detail":
-      return location.agentId;
-    case "workspace-executor-detail":
-      return location.executorType;
-    case "workspace-page":
-      return location.pageSlug;
-    case "workspace-web":
-      return location.title;
-    case "agent-detail":
-      return location.agentId;
-    case "executor-detail":
-      return location.executorType;
-    case "skill-detail":
-      return location.skillId;
-    case "mcp-server-detail":
-      return location.serverName;
-    case "subagent-detail":
-      return location.configId;
-    case "prompt-detail":
-      return location.promptId;
-    case "command-detail":
-      return location.commandId;
-    case "settings":
-      return getSettingsSectionLabel(location.section);
-    case "documents":
-      return "Documents";
-    case "device-pair":
-      return "Devices";
-    case "global-route":
-      return location.path.replace(/^\//, "");
-    default: {
-      const exhaustive: never = location;
-      return exhaustive;
-    }
-  }
-}
-
-function inferTabSlug(location: DesktopLocation, fallback?: string): string | undefined {
-  if (fallback) return fallback;
-
-  switch (location.kind) {
-    case "workspace-apps":
-      return "apps";
-    case "workspace-section":
-      return location.section;
-    case "workspace-agent-detail":
-      return location.agentId;
-    case "workspace-executor-detail":
-      return location.executorType;
-    case "workspace-page":
-      return location.pageSlug;
-    case "workspace-web":
-      return location.webId ?? location.url;
-    case "agent-detail":
-      return location.agentId;
-    case "executor-detail":
-      return location.executorType;
-    case "skill-detail":
-      return location.skillId;
-    case "mcp-server-detail":
-      return location.serverName;
-    case "subagent-detail":
-      return location.configId;
-    case "prompt-detail":
-      return location.promptId;
-    case "command-detail":
-      return location.commandId;
-    case "settings":
-      return location.section;
-    case "global-route":
-      return location.path;
-    default:
-      return undefined;
-  }
-}
-
-function inferWorkspaceId(location: DesktopLocation, fallback?: string): string | undefined {
-  if (fallback) return fallback;
-  return "workspaceId" in location ? location.workspaceId : undefined;
-}
-
-export function usePageTabs() {
-  const queryClient = useQueryClient();
-  const { getWorkspace } = useLocalWorkspaces();
-  const tabs = useTabStore((state) => state.tabs);
+export function useActiveTabState(): ActiveTabState {
   const activeTabId = useTabStore((state) => state.activeTabId);
-  const activeTab = useTabStore(selectActiveTab);
+  const activeTabRaw = useTabStore((state) =>
+    state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
+  );
+  const canGoBackFn = useTabStore((state) => state.canGoBack);
+  const canGoForwardFn = useTabStore((state) => state.canGoForward);
+  const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
+  const getCurrentNavigationState = useTabStore(
+    (state) => state.getCurrentNavigationState
+  );
+
+  const activeTab = useMemo(
+    () => (activeTabRaw ? getTabViewModel(activeTabRaw) : null),
+    [activeTabRaw]
+  );
+
+  const canGoBack = activeTabId ? canGoBackFn(activeTabId) : false;
+  const canGoForward = activeTabId ? canGoForwardFn(activeTabId) : false;
+  const currentUrl = activeTabId ? getCurrentUrl(activeTabId) : null;
+  const currentNavigationState = activeTabId
+    ? getCurrentNavigationState(activeTabId)
+    : null;
+
+  return useMemo(
+    () => ({
+      activeTabId,
+      activeTab,
+      canGoBack,
+      canGoForward,
+      currentUrl,
+      currentNavigationState,
+    }),
+    [activeTabId, activeTab, canGoBack, canGoForward, currentUrl, currentNavigationState]
+  );
+}
+
+// ─── Hook 3: useTabActions ──────────────────────────────────────────────────
+// Returns stable action functions for tab operations. These reference Zustand
+// store actions + resolve navigation logic. Actions that depend on activeTabId
+// will have their identity change when activeTabId changes.
+
+export interface TabActions {
+  openUrl: (
+    url: string,
+    options?: { breadcrumbStack?: BreadcrumbStackItem[]; openInNewTab?: boolean }
+  ) => string;
+  replaceUrl: (
+    url: string,
+    patch?: Partial<TabNavigationState>
+  ) => string | undefined;
+  pushUrl: (
+    url: string,
+    patch?: Partial<TabNavigationState>
+  ) => string | undefined;
+  pushPage: (
+    item: BreadcrumbStackItem,
+    url: string
+  ) => string | undefined;
+  popTo: (index: number) => void;
+  resetStack: (next: TabNavigationState) => string | undefined;
+  navigateTo: (
+    url: string,
+    input: { label: string; icon?: IconData; descriptorId?: string; meta?: BreadcrumbStackItem["meta"] }
+  ) => string | undefined;
+  openPageTab: (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => string;
+  openPageInNewTab: (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => string;
+  openWorkspaceView: (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => string;
+  openGlobalView: (path: string, name: string, icon: IconData) => string;
+  openWebUrl: (url: string, title?: string, workspaceId?: string) => string;
+  openChatTab: (chatId: string, chatName: string, workspaceId: string) => string;
+  switchToTab: (tabId: string) => string | null;
+  closeTab: (tabId: string) => void;
+  detachTabToNewWindow: (tabId: string) => Promise<boolean>;
+  getTabLink: (tabId: string) => string | null;
+}
+
+export function useTabActions(): TabActions {
+  const { getWorkspace } = useLocalWorkspaces();
+  const activeTabId = useTabStore((state) => state.activeTabId);
+  const rawTabs = useTabStore((state) => state.tabs);
 
   const openTab = useTabStore((state) => state.openTab);
   const closeTabStore = useTabStore((state) => state.closeTab);
   const setActiveTab = useTabStore((state) => state.setActiveTab);
-  const updateTab = useTabStore((state) => state.updateTab);
-  const navigate = useTabStore((state) => state.navigate);
-  const navigateToLocationStore = useTabStore((state) => state.navigateToLocation);
   const replaceLocationStore = useTabStore((state) => state.replaceLocation);
-  const pushPageStore = useTabStore((state) => state.pushPage);
-  const popToStore = useTabStore((state) => state.popTo);
-  const resetStackStore = useTabStore((state) => state.resetStack);
-  const jumpToHistoryStore = useTabStore((state) => state.jumpToHistory);
-  const goBack = useTabStore((state) => state.goBack);
-  const goForward = useTabStore((state) => state.goForward);
-  const canGoBack = useTabStore((state) => state.canGoBack);
-  const canGoForward = useTabStore((state) => state.canGoForward);
+  const pushLocationStore = useTabStore((state) => state.pushLocation);
   const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
-  const getCurrentNavigationState = useTabStore((state) => state.getCurrentNavigationState);
-
-  const resolveNavigation = useCallback(
-    (
-      location: DesktopLocation,
-      input?: {
-        breadcrumbStack?: BreadcrumbStackItem[];
-        title?: string;
-        icon?: IconData;
-        workspaceId?: string;
-      }
-    ) => {
-      const workspaceId =
-        input?.workspaceId ?? ("workspaceId" in location ? location.workspaceId : undefined);
-      const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-      const cachedPages = workspace?.path
-        ? queryClient.getQueryData<ListPagesResult | PageConfig[]>(
-            pageKeys.list(workspace.path)
-          )
-        : undefined;
-      const pages = Array.isArray(cachedPages)
-        ? cachedPages
-        : cachedPages?.pages;
-
-      return resolveLocationNavigation({
-        location,
-        workspace,
-        pages,
-        breadcrumbStack: input?.breadcrumbStack,
-        title: input?.title,
-        icon: input?.icon,
-      });
-    },
-    [getWorkspace, queryClient]
+  const getCurrentNavigationState = useTabStore(
+    (state) => state.getCurrentNavigationState
   );
 
-  const openLocation = useCallback(
+  const openUrl = useCallback(
     (
-      location: DesktopLocation,
+      url: string,
       options?: {
-        tabInfo?: Partial<TabInfo>;
         breadcrumbStack?: BreadcrumbStackItem[];
         openInNewTab?: boolean;
       }
     ) => {
-      const resolvedNavigation = resolveNavigation(location, {
-        breadcrumbStack: options?.breadcrumbStack,
-        title: options?.tabInfo?.name,
-        icon: options?.tabInfo?.icon,
-        workspaceId: options?.tabInfo?.workspaceId,
-      });
-      const navigationState: TabNavigationState = {
-        location,
-        breadcrumbStack: resolvedNavigation.breadcrumbStack,
-      };
-      const leaf = resolvedNavigation.leaf;
+      const breadcrumbStack =
+        options?.breadcrumbStack?.length
+          ? options.breadcrumbStack
+          : buildColdStartBreadcrumb(url);
 
-      const nextTab = {
-        type: inferTabType(location, options?.tabInfo?.type),
-        slug: inferTabSlug(location, options?.tabInfo?.slug),
-        workspaceId: inferWorkspaceId(location, options?.tabInfo?.workspaceId),
-        name: leaf?.label ?? inferTabName(location, options?.tabInfo?.name),
-        icon: leaf?.icon ?? options?.tabInfo?.icon,
-        pinned: false,
+      const navigationState: TabNavigationState = {
+        url,
+        breadcrumbStack,
       };
 
       if (options?.openInNewTab || !activeTabId) {
         return openTab({
-          ...nextTab,
           navigationState,
+          pinned: false,
         });
       }
 
-      updateTab(activeTabId, nextTab);
-      navigateToLocationStore(activeTabId, location, {
-        breadcrumbStack: navigationState.breadcrumbStack,
-      });
+      replaceLocationStore(activeTabId, navigationState);
       return activeTabId;
     },
-    [activeTabId, navigateToLocationStore, openTab, resolveNavigation, updateTab]
+    [activeTabId, openTab, replaceLocationStore]
   );
 
-  const replaceLocation = useCallback(
+  const replaceUrl = useCallback(
     (
-      location: DesktopLocation,
-      patch?: Partial<TabNavigationState>,
-      tabInfo?: Partial<TabInfo>
+      url: string,
+      patch?: Partial<TabNavigationState>
     ) => {
       if (!activeTabId) {
-        return openLocation(location, {
-          tabInfo,
+        return openUrl(url, {
           breadcrumbStack: patch?.breadcrumbStack,
           openInNewTab: true,
         });
       }
 
-      updateTab(activeTabId, {
-        type: inferTabType(location, tabInfo?.type),
-        slug: inferTabSlug(location, tabInfo?.slug),
-        workspaceId: inferWorkspaceId(location, tabInfo?.workspaceId),
-        name: inferTabName(location, tabInfo?.name),
-        icon: tabInfo?.icon,
+      const breadcrumbStack =
+        patch?.breadcrumbStack?.length
+          ? patch.breadcrumbStack
+          : buildColdStartBreadcrumb(url);
+
+      replaceLocationStore(activeTabId, {
+        url,
+        breadcrumbStack,
+        activeIndexPath: patch?.activeIndexPath,
+        activeNodeId: patch?.activeNodeId,
       });
-      replaceLocationStore(activeTabId, location, patch);
       return activeTabId;
     },
-    [activeTabId, openLocation, replaceLocationStore, updateTab]
+    [activeTabId, openUrl, replaceLocationStore]
+  );
+
+  const pushUrl = useCallback(
+    (
+      url: string,
+      patch?: Partial<TabNavigationState>
+    ) => {
+      if (!activeTabId) {
+        return openUrl(url, {
+          breadcrumbStack: patch?.breadcrumbStack,
+          openInNewTab: true,
+        });
+      }
+
+      const breadcrumbStack =
+        patch?.breadcrumbStack?.length
+          ? patch.breadcrumbStack
+          : buildColdStartBreadcrumb(url);
+
+      pushLocationStore(activeTabId, {
+        url,
+        breadcrumbStack,
+        activeIndexPath: patch?.activeIndexPath,
+        activeNodeId: patch?.activeNodeId,
+      });
+      return activeTabId;
+    },
+    [activeTabId, openUrl, pushLocationStore]
   );
 
   const pushPage = useCallback(
     (
       item: BreadcrumbStackItem,
-      nextLocation: DesktopLocation,
-      options?: PushPageOptions,
-      tabInfo?: Partial<TabInfo>
+      url: string
     ) => {
       if (!activeTabId) {
-        const resolvedNavigation = resolveNavigation(nextLocation, {
-          title: tabInfo?.name,
-          icon: tabInfo?.icon,
-          workspaceId: tabInfo?.workspaceId,
-        });
-        return openLocation(nextLocation, {
-          tabInfo,
-          breadcrumbStack: [...resolvedNavigation.breadcrumbStack, item],
+        const stack = buildColdStartBreadcrumb(url);
+        return openUrl(url, {
+          breadcrumbStack: [...stack, item],
           openInNewTab: true,
         });
       }
 
-      updateTab(activeTabId, {
-        type: inferTabType(nextLocation, tabInfo?.type),
-        slug: inferTabSlug(nextLocation, tabInfo?.slug),
-        workspaceId: inferWorkspaceId(nextLocation, tabInfo?.workspaceId),
-        name: inferTabName(nextLocation, tabInfo?.name),
-        icon: tabInfo?.icon,
+      // Push: append item to current breadcrumb stack
+      const currentState = getCurrentNavigationState(activeTabId);
+      const currentStack = currentState?.breadcrumbStack ?? [];
+      pushLocationStore(activeTabId, {
+        url,
+        breadcrumbStack: [...currentStack, item],
       });
-      pushPageStore(activeTabId, item, nextLocation, options);
       return activeTabId;
     },
-    [activeTabId, openLocation, pushPageStore, updateTab]
+    [activeTabId, getCurrentNavigationState, openUrl, pushLocationStore]
   );
 
   const popTo = useCallback(
     (index: number) => {
       if (!activeTabId) return;
-      popToStore(activeTabId, index);
+      const currentState = getCurrentNavigationState(activeTabId);
+      if (!currentState) return;
+
+      const targetItem = currentState.breadcrumbStack[index];
+      if (!targetItem?.href) return;
+
+      // Navigate to the breadcrumb target URL with truncated stack
+      replaceLocationStore(activeTabId, {
+        url: targetItem.href,
+        breadcrumbStack: currentState.breadcrumbStack.slice(0, index + 1),
+      });
     },
-    [activeTabId, popToStore]
+    [activeTabId, getCurrentNavigationState, replaceLocationStore]
   );
 
   const resetStack = useCallback(
-    (next: TabNavigationState, tabInfo?: Partial<TabInfo>) => {
+    (next: TabNavigationState) => {
       if (!activeTabId) {
-        return openLocation(next.location, {
-          tabInfo,
+        return openUrl(next.url, {
           breadcrumbStack: next.breadcrumbStack,
           openInNewTab: true,
         });
       }
 
-      updateTab(activeTabId, {
-        type: inferTabType(next.location, tabInfo?.type),
-        slug: inferTabSlug(next.location, tabInfo?.slug),
-        workspaceId: inferWorkspaceId(next.location, tabInfo?.workspaceId),
-        name: inferTabName(next.location, tabInfo?.name),
-        icon: tabInfo?.icon,
-      });
-      resetStackStore(activeTabId, next);
+      replaceLocationStore(activeTabId, next);
       return activeTabId;
     },
-    [activeTabId, openLocation, resetStackStore, updateTab]
+    [activeTabId, openUrl, replaceLocationStore]
   );
 
   const navigateTo = useCallback(
-    (url: string, tabInfo: TabInfo) => {
+    (url: string, input: { label: string; icon?: IconData; descriptorId?: string; meta?: BreadcrumbStackItem["meta"] }) => {
       const isExternal = url.startsWith("http://") || url.startsWith("https://");
       if (isExternal) {
-        const workspaceId = tabInfo.workspaceId ?? "global";
-        return openLocation(
-          {
-            kind: "workspace-web",
-            workspaceId,
-            url,
-            title: tabInfo.name,
-          },
-          { tabInfo }
-        );
+        const workspaceId = input.meta?.workspaceId ?? "global";
+        const params = new URLSearchParams({ url, title: input.label });
+        const webUrl = `/workspace/${encodeURIComponent(workspaceId)}/web?${params.toString()}`;
+        return openUrl(webUrl);
       }
 
+      // Use URL-based navigation directly
+      const stack = buildColdStartBreadcrumb(url, {
+        label: input.label,
+        icon: input.icon,
+      });
+
       if (activeTabId) {
-        updateTab(activeTabId, {
-          type: tabInfo.type,
-          slug: tabInfo.slug,
-          workspaceId: tabInfo.workspaceId,
-          name: tabInfo.name,
-          icon: tabInfo.icon,
+        replaceLocationStore(activeTabId, {
+          url,
+          breadcrumbStack: stack,
         });
-        navigate(activeTabId, url);
         return activeTabId;
       }
 
-      const location = buildLocationFromLegacyUrl(url);
-      const resolvedNavigation = resolveNavigation(location, {
-        title: tabInfo.name,
-        icon: tabInfo.icon,
-        workspaceId: tabInfo.workspaceId,
-      });
       return openTab({
-        type: tabInfo.type,
-        slug: tabInfo.slug,
-        workspaceId: tabInfo.workspaceId,
-        name: tabInfo.name,
-        icon: tabInfo.icon,
         pinned: false,
         navigationState: {
-          location,
-          breadcrumbStack: resolvedNavigation.breadcrumbStack,
+          url,
+          breadcrumbStack: stack,
         },
       });
     },
-    [activeTabId, navigate, openLocation, openTab, resolveNavigation, updateTab]
+    [activeTabId, openUrl, openTab, replaceLocationStore]
   );
 
   const openPageTab = useCallback(
-    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) =>
-      openLocation(
-        {
-          kind: "workspace-page",
-          workspaceId,
-          pageSlug: page.slug,
-        },
-        {
-          breadcrumbStack,
-          tabInfo: {
-            type: "page",
-            slug: page.slug,
-            workspaceId,
-            name: page.name,
-            icon: page.icon ?? { type: "lucide", value: "file-text" },
-          },
-        }
-      ),
-    [openLocation]
+    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => {
+      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+        workspaceId,
+        pageSlug: page.slug,
+      });
+      return openUrl(url, { breadcrumbStack });
+    },
+    [openUrl]
   );
 
   const openPageInNewTab = useCallback(
-    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) =>
-      openLocation(
-        {
-          kind: "workspace-page",
-          workspaceId,
-          pageSlug: page.slug,
-        },
-        {
-          openInNewTab: true,
-          breadcrumbStack,
-          tabInfo: {
-            type: "page",
-            slug: page.slug,
-            workspaceId,
-            name: page.name,
-            icon: page.icon ?? { type: "lucide", value: "file-text" },
-          },
-        }
-      ),
-    [openLocation]
+    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => {
+      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+        workspaceId,
+        pageSlug: page.slug,
+      });
+      return openUrl(url, { openInNewTab: true, breadcrumbStack });
+    },
+    [openUrl]
   );
 
   const openWorkspaceView = useCallback(
-    (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => {
+    (workspaceId: string, viewPath: string, _viewName: string, _icon: IconData) => {
       if (!viewPath) {
-        return openLocation(
-          { kind: "workspace-home", workspaceId },
-          {
-            tabInfo: {
-              type: "workspace",
-              slug: "home",
-              workspaceId,
-              name: viewName,
-              icon,
-            },
-          }
-        );
+        const url = registry.build("/workspace/:workspaceId", { workspaceId });
+        return openUrl(url);
       }
-
-      return openLocation(
-        {
-          kind: "workspace-section",
-          workspaceId,
-          section: normalizeWorkspaceSection(viewPath),
-        },
-        {
-          tabInfo: {
-            type: "workspace",
-            slug: viewPath,
-            workspaceId,
-            name: viewName,
-            icon,
-          },
-        }
-      );
+      const section = normalizeWorkspaceSection(viewPath);
+      const url = registry.build(`/workspace/:workspaceId/${section}`, { workspaceId });
+      return openUrl(url);
     },
-    [openLocation]
+    [openUrl]
   );
 
   const openGlobalView = useCallback(
-    (path: string, name: string, icon: IconData) => {
-      const location = buildLocationFromLegacyUrl(path);
-      return openLocation(location, {
-        tabInfo: {
-          type: inferTabType(location, "settings"),
-          name,
-          icon:
-            location.kind === "settings"
-              ? getSettingsSectionIcon(location.section)
-              : icon,
-        },
-      });
+    (path: string, _name: string, _icon: IconData) => {
+      return openUrl(path);
     },
-    [openLocation]
+    [openUrl]
   );
 
   const openWebUrl = useCallback(
-    (url: string, title?: string, workspaceId = activeTab?.workspaceId ?? "global") =>
-      openLocation(
-        {
-          kind: "workspace-web",
-          workspaceId,
-          title: title ?? safeHostname(url),
-          url,
-        },
-        {
-          tabInfo: {
-            type: "web",
-            workspaceId,
-            name: title ?? safeHostname(url),
-            icon: { type: "lucide", value: "globe" },
-          },
-        }
-      ),
-    [activeTab?.workspaceId, openLocation]
+    (url: string, title?: string, workspaceId?: string) => {
+      // Derive workspaceId from current tab URL via registry match
+      const currentTabUrl = activeTabId ? getCurrentUrl(activeTabId) : null;
+      const routeMatch = currentTabUrl ? registry.match(currentTabUrl) : null;
+      const wsId =
+        workspaceId ??
+        routeMatch?.params.workspaceId ??
+        "global";
+      const params = new URLSearchParams({
+        url,
+        title: title ?? safeHostname(url),
+      });
+      const webUrl = `/workspace/${encodeURIComponent(wsId)}/web?${params.toString()}`;
+      return openUrl(webUrl);
+    },
+    [activeTabId, getCurrentUrl, openUrl]
   );
 
   const openChatTab = useCallback(
-    (_chatId: string, chatName: string, workspaceId: string) =>
-      openLocation(
-        {
-          kind: "workspace-section",
-          workspaceId,
-          section: "chat",
-        },
-        {
-          tabInfo: {
-            type: "chat",
-            slug: "chat",
-            workspaceId,
-            name: chatName,
-            icon: { type: "lucide", value: "message-square" },
-          },
-        }
-      ),
-    [openLocation]
+    (_chatId: string, _chatName: string, workspaceId: string) => {
+      const url = registry.build("/workspace/:workspaceId/chat", { workspaceId });
+      return openUrl(url);
+    },
+    [openUrl]
   );
 
   const switchToTab = useCallback(
@@ -558,25 +389,134 @@ export function usePageTabs() {
     [closeTabStore]
   );
 
-  const navigateInTab = useCallback(
-    (url: string) => {
-      if (!activeTabId) return;
-      navigate(activeTabId, url);
+  const getTabLink = useCallback(
+    (tabId: string) => {
+      const state = getCurrentNavigationState(tabId);
+      return state?.url ?? null;
     },
-    [activeTabId, navigate]
+    [getCurrentNavigationState]
   );
 
+  const detachTabToNewWindow = useCallback(
+    async (tabId: string) => {
+      const tab = rawTabs.find((item) => item.id === tabId);
+      const state = getCurrentNavigationState(tabId);
+      const tabView = tab ? getTabViewModel(tab) : null;
+
+      if (!tab || !state) {
+        return false;
+      }
+
+      // Use registry match to extract route info from the URL
+      const match = registry.match(state.url);
+      const workspaceId = match?.params.workspaceId;
+      if (!workspaceId) {
+        return false;
+      }
+
+      const pageSlug = match?.params.pageSlug;
+      const isPageRoute = match?.pattern === "/workspace/:workspaceId/page/:pageSlug+";
+
+      if (isPageRoute && pageSlug) {
+        const workspace = getWorkspace(workspaceId);
+        if (!workspace?.path) {
+          return false;
+        }
+
+        await invoke("open_workspace_page_preview_window", {
+          workspaceId,
+          workspacePath: workspace.path,
+          slug: pageSlug,
+          title: tabView?.label ?? pageSlug,
+          view: tab.viewMode ?? "page",
+        });
+        closeTabStore(tabId);
+        return true;
+      }
+
+      await invoke("open_workspace_in_new_window", {
+        workspaceId,
+        routePath: state.url,
+        title: tabView?.label ?? state.url,
+      });
+      closeTabStore(tabId);
+      return true;
+    },
+    [closeTabStore, getCurrentNavigationState, getWorkspace, rawTabs]
+  );
+
+  return useMemo(
+    () => ({
+      openUrl,
+      replaceUrl,
+      pushUrl,
+      pushPage,
+      popTo,
+      resetStack,
+      navigateTo,
+      openPageTab,
+      openPageInNewTab,
+      openWorkspaceView,
+      openGlobalView,
+      openWebUrl,
+      openChatTab,
+      switchToTab,
+      closeTab,
+      detachTabToNewWindow,
+      getTabLink,
+    }),
+    [
+      openUrl,
+      replaceUrl,
+      pushUrl,
+      pushPage,
+      popTo,
+      resetStack,
+      navigateTo,
+      openPageTab,
+      openPageInNewTab,
+      openWorkspaceView,
+      openGlobalView,
+      openWebUrl,
+      openChatTab,
+      switchToTab,
+      closeTab,
+      detachTabToNewWindow,
+      getTabLink,
+    ]
+  );
+}
+
+// ─── Hook 4: useTabNavigation ───────────────────────────────────────────────
+// Returns navigation actions bound to the active tab (history back/forward/jump).
+
+export interface TabNavigationActions {
+  goBackInTab: () => void;
+  goForwardInTab: () => void;
+  jumpToHistory: (historyIndex: number) => void;
+  navigateInTab: (url: string) => void;
+}
+
+export function useTabNavigation(): TabNavigationActions {
+  const activeTabId = useTabStore((state) => state.activeTabId);
+  const navigate = useTabStore((state) => state.navigate);
+  const goBack = useTabStore((state) => state.goBack);
+  const goForward = useTabStore((state) => state.goForward);
+  const canGoBackFn = useTabStore((state) => state.canGoBack);
+  const canGoForwardFn = useTabStore((state) => state.canGoForward);
+  const jumpToHistoryStore = useTabStore((state) => state.jumpToHistory);
+
   const goBackInTab = useCallback(() => {
-    if (activeTabId && canGoBack(activeTabId)) {
+    if (activeTabId && canGoBackFn(activeTabId)) {
       goBack(activeTabId);
     }
-  }, [activeTabId, canGoBack, goBack]);
+  }, [activeTabId, canGoBackFn, goBack]);
 
   const goForwardInTab = useCallback(() => {
-    if (activeTabId && canGoForward(activeTabId)) {
+    if (activeTabId && canGoForwardFn(activeTabId)) {
       goForward(activeTabId);
     }
-  }, [activeTabId, canGoForward, goForward]);
+  }, [activeTabId, canGoForwardFn, goForward]);
 
   const jumpToHistory = useCallback(
     (historyIndex: number) => {
@@ -586,84 +526,42 @@ export function usePageTabs() {
     [activeTabId, jumpToHistoryStore]
   );
 
-  const getTabLink = useCallback(
-    (tabId: string) => {
-      const state = getCurrentNavigationState(tabId);
-      return state ? locationToUrl(state.location) : null;
+  const navigateInTab = useCallback(
+    (url: string) => {
+      if (!activeTabId) return;
+      navigate(activeTabId, url);
     },
-    [getCurrentNavigationState]
+    [activeTabId, navigate]
   );
 
-  const detachTabToNewWindow = useCallback(
-    async (tabId: string) => {
-      const tab = tabs.find((item) => item.id === tabId);
-      const state = getCurrentNavigationState(tabId);
-
-      if (!tab || !state || !("workspaceId" in state.location)) {
-        return false;
-      }
-
-      if (state.location.kind === "workspace-page") {
-        const workspace = getWorkspace(state.location.workspaceId);
-        if (!workspace?.path) {
-          return false;
-        }
-
-        await invoke("open_workspace_page_preview_window", {
-          workspaceId: state.location.workspaceId,
-          workspacePath: workspace.path,
-          slug: state.location.pageSlug,
-          title: tab.name,
-          view: tab.viewMode ?? "page",
-        });
-        closeTabStore(tabId);
-        return true;
-      }
-
-      const routePath = locationToUrl(state.location);
-      await invoke("open_workspace_in_new_window", {
-        workspaceId: state.location.workspaceId,
-        routePath,
-        title: tab.name,
-      });
-      closeTabStore(tabId);
-      return true;
-    },
-    [closeTabStore, getCurrentNavigationState, getWorkspace, tabs]
+  return useMemo(
+    () => ({ goBackInTab, goForwardInTab, jumpToHistory, navigateInTab }),
+    [goBackInTab, goForwardInTab, jumpToHistory, navigateInTab]
   );
-
-  return {
-    tabs,
-    activeTab,
-    activeTabId,
-    navigateTo,
-    openLocation,
-    replaceLocation,
-    pushPage,
-    popTo,
-    resetStack,
-    openPageTab,
-    openWorkspaceView,
-    openGlobalView,
-    openWebUrl,
-    openChatTab,
-    openPageInNewTab,
-    switchToTab,
-    closeTab,
-    detachTabToNewWindow,
-    getTabLink,
-    navigateInTab,
-    goBackInTab,
-    goForwardInTab,
-    jumpToHistory,
-    canGoBack: activeTabId ? canGoBack(activeTabId) : false,
-    canGoForward: activeTabId ? canGoForward(activeTabId) : false,
-    currentUrl: activeTabId ? getCurrentUrl(activeTabId) : null,
-    currentNavigationState: activeTabId
-      ? getCurrentNavigationState(activeTabId)
-      : null,
-  };
 }
+
+// ─── Composed hook: usePageTabs (backward-compatible) ───────────────────────
+// Composes the 4 granular hooks. Existing consumers can continue using this
+// without changes, but new code should prefer the granular hooks.
+
+export function usePageTabs() {
+  const tabs = useTabList();
+  const activeState = useActiveTabState();
+  const actions = useTabActions();
+  const navigation = useTabNavigation();
+
+  return useMemo(
+    () => ({
+      tabs,
+      ...activeState,
+      ...actions,
+      ...navigation,
+    }),
+    [tabs, activeState, actions, navigation]
+  );
+}
+
+// ─── Utilities ──────────────────────────────────────────────────────────────
 
 function safeHostname(url: string): string {
   try {
@@ -672,102 +570,3 @@ function safeHostname(url: string): string {
     return url;
   }
 }
-
-function buildLocationFromLegacyUrl(url: string): DesktopLocation {
-  const parsed = urlToLocation(url);
-  if (parsed) {
-    return parsed;
-  }
-
-  if (url === "/documents") {
-    return { kind: "documents" };
-  }
-  if (url === "/devices/pair") {
-    return { kind: "device-pair" };
-  }
-  if (url.startsWith("/settings")) {
-    const section = url.split("/")[2];
-    return { kind: "settings", section: normalizeSettingsSection(section) };
-  }
-
-  if (url === "/publish" || url === "/my-packages" || url === "/analytics") {
-    return { kind: "global-route", path: url };
-  }
-
-  if (url.startsWith("/workspace/page")) {
-    const parsed = new URL(url, "http://desktop.local");
-    const workspaceId = parsed.searchParams.get("workspace_id");
-    const pagePath = parsed.searchParams.get("page_path");
-    return {
-      kind: "workspace-page",
-      workspaceId: workspaceId ?? "global",
-      pageSlug:
-        pagePath?.replace(/^pages\//, "").replace(/\/SKILL\.md$/, "") ?? "page",
-    };
-  }
-
-  if (url.startsWith("/workspace/")) {
-    const parsed = new URL(url, "http://desktop.local");
-    const parts = parsed.pathname.split("/").filter(Boolean);
-    const workspaceId = parts[1];
-    if (!workspaceId) {
-      return { kind: "documents" };
-    }
-
-    if (parts.length === 2) {
-      return { kind: "workspace-home", workspaceId };
-    }
-
-    if (parts[2] === "apps" && !parts[3]) {
-      return { kind: "workspace-apps", workspaceId };
-    }
-
-    if (parts[2] === "page" && parts[3]) {
-      return {
-        kind: "workspace-page",
-        workspaceId,
-        pageSlug: parts
-          .slice(3)
-          .map((part) => decodeURIComponent(part))
-          .join("/"),
-      };
-    }
-
-    if (parts[2] === "agent" && parts[3]) {
-      return {
-        kind: "workspace-agent-detail",
-        workspaceId,
-        agentId: decodeURIComponent(parts[3]),
-      };
-    }
-
-    if (parts[2] === "executor" && parts[3]) {
-      return {
-        kind: "workspace-executor-detail",
-        workspaceId,
-        executorType: decodeURIComponent(parts[3]),
-      };
-    }
-
-    if (parts[2] === "web") {
-      return {
-        kind: "workspace-web",
-        workspaceId,
-        url: parsed.searchParams.get("url") ?? "",
-        title: parsed.searchParams.get("title") ?? "Web",
-        sourcePageSlug: parsed.searchParams.get("source_page") ?? undefined,
-        webId: parsed.searchParams.get("web_id") ?? undefined,
-      };
-    }
-
-    return {
-      kind: "workspace-section",
-      workspaceId,
-      section: normalizeWorkspaceSection(parts[2] ?? "chat"),
-    };
-  }
-
-  return { kind: "global-route", path: url };
-}
-
-export type { PageTab, TabType };

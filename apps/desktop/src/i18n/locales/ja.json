@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "スキル",
       "preferences": "設定",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "ページ"
     },
     "agentConfigs": "エージェント",
     "agentConfigsDesc": "エージェント設定ファイル（.claude/agents/*.md）",

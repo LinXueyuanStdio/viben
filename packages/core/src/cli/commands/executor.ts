@@ -17,7 +17,7 @@ import {
 import {
   getExecutor,
   getRegisteredTypes,
-} from "../../executor";
+} from "../../executors/ops";
 // Legacy imports for chat proxy (not yet migrated to unified module)
 import {
   createChatProxyAsync,

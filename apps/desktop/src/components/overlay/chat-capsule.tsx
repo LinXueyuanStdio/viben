@@ -5,6 +5,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { X, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { SubagentSheet } from '@viben/chat';
+import type { AgentMessage as ChatAgentMessage } from '@viben/chat';
 import i18n from '@/i18n';
 import { cn } from '@/lib/utils';
 import { DesktopMessageList } from '@/pages/conversation/components/desktop-message-list';
@@ -81,6 +83,9 @@ export function ChatCapsule({
 }: ChatCapsuleProps): ReactElement | null {
   const [expanded, setExpanded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [sheetData, setSheetData] = useState<{
+    title: string; subagentType?: string; messages: ChatAgentMessage[]
+  } | null>(null);
   const msgListRef = useRef<HTMLDivElement>(null);
   const capsuleRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -210,6 +215,7 @@ export function ChatCapsule({
     : '0';
 
   const capsule = (
+    <>
     <div
       ref={capsuleRef}
       className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-fit pointer-events-auto"
@@ -314,11 +320,24 @@ export function ChatCapsule({
               maxMessageWidth="100%"
               className="min-h-0"
               toolExpandedInline
+              onExpandSubagent={(title, subagentType, msgs) =>
+                setSheetData({ title, subagentType, messages: msgs })
+              }
             />
           )}
         </div>
       </div>
     </div>
+    {sheetData && (
+      <SubagentSheet
+        open={!!sheetData}
+        onClose={() => setSheetData(null)}
+        title={sheetData?.title || ""}
+        subagentType={sheetData?.subagentType}
+        messages={sheetData?.messages || []}
+      />
+    )}
+    </>
   );
 
   return createPortal(capsule, document.body);

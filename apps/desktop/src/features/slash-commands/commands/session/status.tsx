@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Activity } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const statusCommand: SlashCommandDefinition = {
   id: "status",
   name: "status",
-  description: "Show current session status",
+  get description() { return i18n.t("chat.slashCommands.statusDesc"); },
   icon: createElement(Activity, { className: "h-4 w-4" }),
   category: "session",
   source: "builtin",

@@ -1355,6 +1355,10 @@
     "openclawConnecting": "Connecting...",
     "openclawConnected": "Connected",
     "openclawConnectionFailed": "Connection failed",
+    "openclawPairingRequired": "Pairing required",
+    "openclawPairingWaiting": "Waiting for approval on the remote gateway. Please approve this device on the gateway admin panel.",
+    "openclawPairingTimeout": "Pairing timed out. Please approve on the remote gateway and try again.",
+    "openclawDeviceId": "Device ID",
     "mcpServersLabel": "MCP Servers",
     "skillsLabel": "Skills",
     "noMcpServers": "No servers configured",
@@ -2927,7 +2931,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Pages"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -4497,6 +4502,27 @@
     "openclawOfflineHint": "OpenClaw unavailable, click to retry",
     "openclawUnavailableBanner": "OpenClaw gateway is not reachable. Please check that OpenClaw is running and your connection settings are correct.",
     "openclawUnavailableAction": "Check Settings",
+    "errors": {
+      "openclawUnavailable": "OpenClaw is not available. Check agent settings.",
+      "reconnectFailed": "Failed to reconnect. Please check your connection.",
+      "runtimeMismatch": "Config mismatch detected"
+    },
+    "commandQueue": {
+      "queued": "Message queued",
+      "pending": "messages in queue"
+    },
+    "execApproval": {
+      "title": "Permission Required",
+      "allow": "Allow",
+      "always": "Always",
+      "reject": "Reject",
+      "tabForFeedback": "for feedback",
+      "feedbackPlaceholder": "Add context or instructions...",
+      "submitFeedback": "submit",
+      "closeFeedback": "close",
+      "newLine": "new line",
+      "unknownCommand": "Unknown command"
+    },
     "refreshSessions": "Refresh sessions",
     "scrollToBottom": "Scroll to bottom",
     "selectExecutor": "Executor",
@@ -5890,7 +5916,7 @@
     "currentDayDesc": "Current day (01-31)"
   },
   "page": {
-    "pages": "Apps",
+    "pages": "Pages",
     "createPage": "Create Page",
     "createSubpage": "Create Subpage",
     "openInNewTab": "Open in New Tab",

@@ -2,7 +2,17 @@
  * Command builder for executor processes
  */
 
-import type { CommandParts } from "./types";
+/**
+ * Parsed command parts ready for execution
+ */
+export interface CommandParts {
+  /** The program to execute */
+  program: string;
+  /** Arguments to pass to the program */
+  args: string[];
+  /** Environment variables to set */
+  env: Record<string, string>;
+}
 
 /**
  * Error building a command

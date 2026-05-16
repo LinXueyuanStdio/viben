@@ -241,24 +241,11 @@ export {
 
 // Executors
 export {
-  // Types
-  type RepoContext,
-  type ExecutionEnv,
-  type CommandParts,
-  type ExecutorExitResult,
-  type SpawnedChild,
-  type ProcessRunStatus,
-  type ProcessState,
+  // Types (unified)
   type ExecutorConfig,
-  type ExecutorApprovalService,
-  type StandardCodingAgentExecutor,
-  // Chat types (non-interactive streaming)
   type ChatFormat,
   type ChatOptions,
-  type ChatSpawnResult,
   // Utilities
-  createExecutionEnv,
-  applyEnvToSpawnOptions,
   CommandBuilder,
   CommandBuildError,
   createCommandParts,
@@ -266,43 +253,39 @@ export {
   whichSync,
   getConfigDir,
   getDataDir,
-  // Factory
-  createExecutor,
-  EXECUTOR_TYPES,
+  // Registry
+  getExecutor,
+  hasExecutor,
+  getRegisteredTypes,
+  getAvailableExecutors,
+  registerExecutor,
   isExecutorType,
-  getAllExecutorsAvailability,
-  // Chat helpers
-  CHAT_SUPPORTED_EXECUTORS,
-  executorSupportsChat,
-  spawnChat,
-  // Executors
-  ClaudeCode,
-  createClaudeCode,
-  type ClaudeCodeConfig,
-  Amp,
-  createAmp,
-  type AmpConfig,
-  Gemini,
-  createGemini,
-  type GeminiConfig,
-  Codex,
-  createCodex,
-  type CodexConfig,
-  Opencode,
-  createOpencode,
-  type OpencodeConfig,
-  CursorAgent,
-  createCursorAgent,
-  type CursorAgentConfig,
-  QwenCode,
-  createQwenCode,
-  type QwenCodeConfig,
-  Copilot,
-  createCopilot,
-  type CopilotConfig,
-  Droid,
-  createDroid,
-  type DroidConfig,
+  // Chat proxy
+  type ChatProxy,
+  type ChatProxyType,
+  type ChatProxyOptions,
+  type ChatProxyFactoryInterface,
+  SpawnChatProxy,
+  createSpawnChatProxy,
+  SdkChatProxy,
+  createSdkChatProxy,
+  isSdkAvailable,
+  ChatProxyFactory,
+  chatProxyFactory,
+  createChatProxy,
+  createChatProxyAsync,
+  // Engine classes
+  AmpExecutor,
+  ClaudeExecutor,
+  CodexExecutor,
+  CopilotExecutor,
+  CursorAgentExecutor,
+  DroidExecutor,
+  GeminiExecutor,
+  OpencodeExecutor,
+  OpenClawExecutor,
+  QwenCodeExecutor,
+  BaseExecutor,
 } from "./executors";
 
 // Database (file-based)
@@ -663,40 +646,14 @@ export {
 //   const gateway = await import("@viben/core/gateway");
 
 // =============================================================================
-// Unified Executor Module (new)
+// Unified Executor Module — Types
 // =============================================================================
 
-// Export with namespace to avoid collision with existing executors
-export {
-  // Registry
-  getExecutor as getUnifiedExecutor,
-  hasExecutor as hasUnifiedExecutor,
-  getRegisteredTypes as getUnifiedExecutorTypes,
-  getAvailableExecutors as getUnifiedAvailableExecutors,
-  registerExecutor as registerUnifiedExecutor,
-  // Engine classes
-  AmpExecutor,
-  ClaudeExecutor,
-  CodexExecutor,
-  CopilotExecutor,
-  CursorAgentExecutor,
-  DroidExecutor,
-  GeminiExecutor,
-  OpencodeExecutor,
-  OpenClawExecutor,
-  QwenCodeExecutor,
-  BaseExecutor,
-} from "./executor";
-
-// Export types (no collision risk for types)
 export type {
   Executor,
   ExecutorCapability,
-  ExecutorConfig as UnifiedExecutorConfig,
   SpawnOptions,
   SpawnResult,
-  ChatOptions as UnifiedChatOptions,
-  ChatResult,
   ExecutionResult,
   ExecutorErrorType,
   RunCommandOptions,
@@ -708,6 +665,9 @@ export type {
   SSEErrorMessage,
   SSEQuestionMessage,
   SSESdkSessionMessage,
+  SSEAssistantMessage,
+  SSEStreamEventMessage,
+  CommandParts,
   AmpExecutorConfig,
   ClaudeExecutorConfig,
   CodexExecutorConfig,
@@ -717,7 +677,7 @@ export type {
   OpencodeExecutorConfig,
   OpenClawExecutorConfig,
   QwenCodeExecutorConfig,
-} from "./executor";
+} from "./executors";
 
 /**
  * Initialize all core managers

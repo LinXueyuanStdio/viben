@@ -239,12 +239,22 @@ export function WorkspaceChatPage() {
               isStreaming={chat.isStreaming}
               pendingPlan={chat.pendingPlan}
               pendingQuestions={chat.pendingQuestions}
+              pendingExecApproval={chat.pendingExecApproval}
+              contextUsage={chat.contextUsage}
               artifacts={chat.artifacts}
               error={chat.error}
               highlightedMessageId={chat.highlightedMessageId}
               gatewayConnected={chat.gatewayConnected}
               executorType={chat.currentAgent?.executor_type}
               isLoadingSessions={chat.isLoadingSessions}
+              commandQueue={chat.commandQueue ? {
+                items: chat.commandQueue.items,
+                isPaused: chat.commandQueue.isPaused,
+                onRemove: chat.commandQueue.remove,
+                onClear: chat.commandQueue.clear,
+                onPause: chat.commandQueue.pause,
+                onResume: chat.commandQueue.resume,
+              } : undefined}
               slashCommands={chat.slashCommands}
               onSelectSession={(sessionId) => chat.setSelectedConversationId(sessionId)}
               onCreateConversation={chat.handleCreateConversation}
@@ -262,6 +272,7 @@ export function WorkspaceChatPage() {
               onApprovePlan={chat.approvePlan}
               onRejectPlan={chat.rejectPlan}
               onAnswerQuestions={chat.answerQuestions}
+              onApproveExec={chat.approveExec}
               onSlashCommand={chat.handleSlashCommand}
               onArtifactClick={(artifactId) => {
                 const artifact = chat.artifacts.find((a) => a.id === artifactId);

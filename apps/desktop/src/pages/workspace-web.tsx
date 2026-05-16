@@ -10,7 +10,7 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 
 function isEmbeddableUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -50,28 +50,22 @@ export function WorkspaceWebPage() {
       pageSlug: sourcePageSlug,
       url: url || undefined,
     };
-    const resolvedNavigation = resolveLocationNavigation({
-      location: {
-        kind: "workspace-web",
-        workspaceId: workspaceId ?? "global",
-        title: resolvedTitle,
-        url,
-        webId: searchParams.get("web_id") ?? undefined,
-        sourcePageSlug,
-      },
-      workspace,
-      title: resolvedTitle,
+    const webUrl = registry.build("/workspace/:workspaceId/web", { workspaceId: workspaceId ?? "global" }) +
+      `?url=${encodeURIComponent(url)}&title=${encodeURIComponent(resolvedTitle)}` +
+      (searchParams.get("web_id") ? `&web_id=${encodeURIComponent(searchParams.get("web_id")!)}` : "") +
+      (sourcePageSlug ? `&source_page=${encodeURIComponent(sourcePageSlug)}` : "");
+    const stack = buildColdStartBreadcrumb(webUrl, {
+      label: resolvedTitle,
       icon: { type: "lucide", value: "globe" },
     });
 
     return resolveHeaderSegments({
       stack: currentStack,
-      fallback: resolvedNavigation.breadcrumbStack.slice(1).map((item) => ({
+      fallback: stack.slice(1).map((item) => ({
         id: item.id,
         label: item.label,
-        href: item.target?.canonicalUrl ?? "#",
+        href: item.href ?? "#",
         icon: item.icon,
-        descriptorId: item.descriptorId,
         meta: item.meta,
       })),
       patchLast: {

@@ -59,7 +59,7 @@ import { homeDir } from "@tauri-apps/api/path";
 import { FolderOpen, Globe } from "lucide-react";
 import { getGatewayClient, type AgentResponse as GatewayAgentTemplate } from "@/lib/gateway";
 import { useChatConfigStore } from "@/stores/chat-config-store";
-import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
+import { buildWorkspaceSectionHeaderSegment } from "@/navigation/page-index";
 import type { ListItem, WorkspaceAgentsPageProps } from "./types";
 
 export function WorkspaceAgentsPage({
@@ -454,21 +454,13 @@ export function WorkspaceAgentsPage({
     );
   }
 
-  const agentSection = getWorkspaceSectionDescriptor("agent");
-  const agentHeaderSegments = agentSection
-    ? [{
-        id: `workspace:${workspace.id}:${agentSection.routePath}`,
-        label: t(agentSection.titleKey, agentSection.fallbackLabel),
-        href: `/workspace/${workspace.id}/${agentSection.routePath}`,
-        kind: "workspace-section" as const,
-        icon: agentSection.icon,
-        meta: {
-          workspaceId: workspace.id,
-          section: agentSection.section,
-          routePath: agentSection.routePath,
-        },
-      }]
-    : [];
+  const agentHeaderSegments = [
+    buildWorkspaceSectionHeaderSegment(
+      workspace.id,
+      "agent",
+      (key, fallback) => t(key, fallback)
+    ),
+  ];
 
   // Content wrapper - different based on mode
   const content = (
@@ -693,7 +685,7 @@ export function WorkspaceAgentsPage({
               onNavigateToEdit={() => handleEditItem(selectedAgent.id, isWorkspaceAgent ? "workspace-agent" : "agent")}
               onNavigateToChat={workspace?.id ? () => {
                 useChatConfigStore.getState().setSelectedAgentId(selectedAgent.id);
-                openWorkspaceSection(workspace.id, "chat");
+                openWorkspaceSection(workspace.id, "chat", { stackMode: "push" });
               } : undefined}
               isWorkspaceScoped={isWorkspaceAgent}
             />

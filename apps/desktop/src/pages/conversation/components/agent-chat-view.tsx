@@ -1,13 +1,22 @@
 import { useCallback, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion } from "framer-motion";
 import { Plus, MessageSquare, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getGatewayClient } from "@/lib/gateway";
 import { isAgentAvailable } from "@/lib/gateway/utils";
-import type { AgentMessage, Artifact, TaskPlan, PendingQuestion } from "@/types";
-import type { SlashCommand } from "@viben/chat";
+import type { AgentMessage, Artifact, TaskPlan, PendingQuestion, PendingExecApproval } from "@/types";
+import {
+  ExecApproval,
+  PlanApproval,
+  QuestionInput,
+  CommandQueuePanel,
+  SubagentSheet,
+} from "@viben/chat";
+import type { SlashCommand, CommandQueueItem, AgentMessage as ChatAgentMessage } from "@viben/chat";
 import { DesktopChatInput, DesktopMessageList } from "./index";
 import { ChatHeader } from "./chat-header";
+import { ContextUsageIndicator } from "./context-usage-indicator";
 import type { Conversation } from "../conversation-utils";
 
 interface AgentChatViewProps {
@@ -34,6 +43,8 @@ interface AgentChatViewProps {
   isStreaming: boolean;
   pendingPlan: TaskPlan | null;
   pendingQuestions: PendingQuestion | null;
+  pendingExecApproval?: PendingExecApproval | null;
+  contextUsage?: { used: number; total: number } | null;
   artifacts: Artifact[];
   error: string | null;
   highlightedMessageId: string | null;
@@ -42,6 +53,16 @@ interface AgentChatViewProps {
   gatewayConnected: boolean | null;
   executorType?: string;
   isLoadingSessions: boolean;
+
+  // Command Queue
+  commandQueue?: {
+    items: CommandQueueItem[];
+    isPaused: boolean;
+    onRemove: (id: string) => void;
+    onClear: () => void;
+    onPause: () => void;
+    onResume: () => void;
+  };
 
   // Slash commands
   slashCommands: SlashCommand[];
@@ -63,6 +84,7 @@ interface AgentChatViewProps {
   onApprovePlan: (feedback?: string) => void;
   onRejectPlan: (feedback?: string) => void;
   onAnswerQuestions: (answers: Record<string, string[]>) => void;
+  onApproveExec?: (decision: string, feedback?: string) => void;
   onSlashCommand: (command: SlashCommand) => void;
   onArtifactClick: (artifactId: string) => void;
   onAgentAvatarClick: () => void;
@@ -94,12 +116,15 @@ export function AgentChatView({
   isStreaming,
   pendingPlan,
   pendingQuestions,
+  pendingExecApproval,
+  contextUsage,
   artifacts,
   error,
   highlightedMessageId,
   gatewayConnected,
   executorType,
   isLoadingSessions,
+  commandQueue,
   slashCommands,
   onSelectSession,
   onCreateConversation,
@@ -117,6 +142,7 @@ export function AgentChatView({
   onApprovePlan,
   onRejectPlan,
   onAnswerQuestions,
+  onApproveExec,
   onSlashCommand,
   onArtifactClick,
   onAgentAvatarClick,
@@ -142,6 +168,13 @@ export function AgentChatView({
       onSendMessage(message);
     }
   }, [isStreaming, onSteerMessage, onSendMessage]);
+
+  // Subagent sheet state (uses @viben/chat's AgentMessage type for SubagentSheet compatibility)
+  const [sheetData, setSheetData] = useState<{
+    title: string;
+    subagentType?: string;
+    messages: ChatAgentMessage[];
+  } | null>(null);
 
   // OpenClaw unavailability check
   const [openclawUnavailable, setOpenclawUnavailable] = useState(false);
@@ -194,6 +227,15 @@ export function AgentChatView({
 
   return (
     <>
+      {/* Subagent Sheet (side panel) */}
+      <SubagentSheet
+        open={!!sheetData}
+        onClose={() => setSheetData(null)}
+        title={sheetData?.title || ""}
+        subagentType={sheetData?.subagentType}
+        messages={sheetData?.messages || []}
+      />
+
       {!headerless ? (
         <ChatHeader
           currentConversation={currentConversation}
@@ -260,6 +302,9 @@ export function AgentChatView({
         artifacts={artifacts}
         highlightedMessageId={highlightedMessageId}
         onArtifactClick={onArtifactClick}
+        onExpandSubagent={(title, subagentType, msgs) =>
+          setSheetData({ title, subagentType, messages: msgs })
+        }
       />
 
       {/* Error display */}
@@ -269,35 +314,97 @@ export function AgentChatView({
         </div>
       )}
 
-      {/* Input */}
-      <div className="border-t border-border">
-        <DesktopChatInput
-          onSend={handleSend}
-          onCancel={onCancel}
-          isLoading={isStreaming}
-          disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
-          placeholder={
-            phase === "awaiting_approval"
-              ? t("chat.waitingForApproval")
-              : phase === "awaiting_input"
-                ? t("chat.waitingForInput")
-                : undefined
-          }
-          autoFocus
-          showTopToolbar
-          showConfigBar
-          showResizeHandle
-          enableWritingMode
-          allowSendWhileLoading={!!onSteerMessage}
-          useGlobalConfig
-          hideAgentSelector
-          hideExecutorSelector
-          hideModelSelector
-          showSandboxToggle
-          slashCommands={slashCommands}
-          onSlashCommand={onSlashCommand}
-          onAgentSettings={(agentId) => onAgentSettings(agentId)}
+      {/* Command Queue Panel */}
+      {commandQueue && commandQueue.items.length > 0 && (
+        <CommandQueuePanel
+          items={commandQueue.items}
+          isPaused={commandQueue.isPaused}
+          onRemove={commandQueue.onRemove}
+          onClear={commandQueue.onClear}
+          onPause={commandQueue.onPause}
+          onResume={commandQueue.onResume}
         />
+      )}
+
+      {/* Bottom bar: animated transition between PlanApproval / ExecApproval / QuestionInput / ChatInput */}
+      <div className="border-t border-border">
+        <AnimatePresence mode="wait">
+          {pendingPlan ? (
+            <PlanApproval
+              key="plan"
+              plan={pendingPlan}
+              isPending
+              onApprove={() => onApprovePlan()}
+              onReject={() => onRejectPlan()}
+              className="px-4 py-3"
+            />
+          ) : pendingExecApproval && onApproveExec ? (
+            <motion.div
+              key="approval"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="px-4 py-3"
+            >
+              <ExecApproval
+                approval={pendingExecApproval}
+                onDecision={onApproveExec}
+                enableKeyboard
+              />
+            </motion.div>
+          ) : pendingQuestions ? (
+            <QuestionInput
+              key="question"
+              questions={pendingQuestions}
+              onSubmit={onAnswerQuestions}
+              className="px-4 py-3"
+            />
+          ) : (
+            <motion.div
+              key="input"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="relative"
+            >
+              {/* Context Usage Indicator - positioned top-right of input area */}
+              {contextUsage && (
+                <div className="absolute top-2 right-3 z-10">
+                  <ContextUsageIndicator used={contextUsage.used} total={contextUsage.total} />
+                </div>
+              )}
+              <DesktopChatInput
+                onSend={handleSend}
+                onCancel={onCancel}
+                isLoading={isStreaming}
+                disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
+                placeholder={
+                  phase === "awaiting_approval"
+                    ? t("chat.waitingForApproval")
+                    : phase === "awaiting_input"
+                      ? t("chat.waitingForInput")
+                      : undefined
+                }
+                autoFocus
+                showTopToolbar
+                showConfigBar
+                showResizeHandle
+                enableWritingMode
+                allowSendWhileLoading={!!onSteerMessage}
+                useGlobalConfig
+                hideAgentSelector
+                hideExecutorSelector
+                hideModelSelector
+                showSandboxToggle
+                slashCommands={slashCommands}
+                onSlashCommand={onSlashCommand}
+                onAgentSettings={(agentId) => onAgentSettings(agentId)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );

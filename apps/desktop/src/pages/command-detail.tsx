@@ -49,7 +49,7 @@ import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -239,22 +239,15 @@ export function CommandDetailPage() {
     stack: currentStack,
     fallback:
       workspace && command
-        ? resolveLocationNavigation({
-            location: {
-              kind: "command-detail",
-              commandId: command.id,
-              executorType,
-              workspacePath: effectiveWorkspacePath || undefined,
-            },
-            workspace,
-            title: `/${command.id}`,
-            icon: { type: "lucide", value: "terminal" },
-          }).breadcrumbStack.slice(1).map((item) => ({
+        ? buildColdStartBreadcrumb(
+            registry.build("/command/:commandId", { commandId: command.id }) +
+              `?workspace_path=${encodeURIComponent(effectiveWorkspacePath || "")}&executor_type=${encodeURIComponent(executorType)}`,
+            { label: `/${command.id}`, icon: { type: "lucide", value: "terminal" } }
+          ).slice(1).map((item) => ({
             id: item.id,
             label: item.label,
-            href: item.target?.canonicalUrl ?? "#",
+            href: item.href ?? "#",
             icon: item.icon,
-            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],

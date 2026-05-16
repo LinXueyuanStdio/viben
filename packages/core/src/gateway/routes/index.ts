@@ -54,6 +54,7 @@ import { registerPageRoutes } from "./page";
 import { registerMeshRoutes } from "./mesh";
 import { registerDeviceRoutes } from "./devices";
 import { registerClientToolRoutes } from "./client-tools";
+import { registerAccountsRoutes } from "./accounts";
 
 /**
  * Register all routes
@@ -110,6 +111,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerPageRoutes(fastify);
   registerMeshRoutes(fastify, state);
   registerDeviceRoutes(fastify, state);
+  registerAccountsRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -170,6 +172,7 @@ export { registerPageRoutes } from "./page";
 export { registerMeshRoutes } from "./mesh";
 export { registerDeviceRoutes } from "./devices";
 export { registerClientToolRoutes } from "./client-tools";
+export { registerAccountsRoutes } from "./accounts";
 // Task SSE manager for state machine events
 export { TaskSSEManager, taskSSEManager, type TaskSSEEvent, type TaskSSEEventType, type TaskSSEListener } from "../sse/task-sse-manager";
 export type {

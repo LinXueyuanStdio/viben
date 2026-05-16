@@ -1,22 +1,16 @@
 import type { IconData } from "@/components/ui/icon-picker";
-import type {
-  DesktopLocation,
-  BreadcrumbStackItem,
-} from "./navigation-meta";
-import {
-  createBreadcrumbItem,
-  createLocationBreadcrumbItem,
-} from "./breadcrumb-stack";
+import type { BreadcrumbStackItem, BreadcrumbMeta } from "./breadcrumb-builder";
+import { createBreadcrumbItem } from "./breadcrumb-stack";
 
 export interface BreadcrumbNodeDescriptor {
   id?: string;
   descriptorId?: string;
   label: string;
+  href: string;
   icon?: IconData;
-  meta?: BreadcrumbStackItem["meta"];
+  meta?: BreadcrumbMeta;
   sourceNodeId?: string;
   parentNodeId?: string;
-  location?: DesktopLocation;
 }
 
 export interface ResolvedNavigationState<TValue> {
@@ -27,16 +21,10 @@ export interface ResolvedNavigationState<TValue> {
 export function createBreadcrumbNode(
   descriptor: BreadcrumbNodeDescriptor
 ): BreadcrumbStackItem {
-  if (descriptor.location) {
-    return createLocationBreadcrumbItem(descriptor.location, {
-      ...descriptor,
-      descriptorId: descriptor.descriptorId,
-    });
-  }
-
   return createBreadcrumbItem({
-    id: descriptor.id ?? descriptor.label,
+    id: descriptor.id ?? descriptor.href,
     label: descriptor.label,
+    href: descriptor.href,
     icon: descriptor.icon,
     meta: descriptor.meta,
     sourceNodeId: descriptor.sourceNodeId,

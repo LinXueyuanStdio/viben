@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Settings } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const configCommand: SlashCommandDefinition = {
   id: "config",
   name: "config",
-  description: "Open settings panel",
+  get description() { return i18n.t("chat.slashCommands.configDesc"); },
   icon: createElement(Settings, { className: "h-4 w-4" }),
   category: "config",
   source: "builtin",

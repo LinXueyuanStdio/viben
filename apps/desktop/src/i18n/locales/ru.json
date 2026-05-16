@@ -2788,7 +2788,8 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences",
-      "agents": "Agents"
+      "agents": "Agents",
+      "pages": "Страницы"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",

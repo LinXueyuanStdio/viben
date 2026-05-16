@@ -1,91 +1,126 @@
 /**
  * Container Service Tests
  *
- * Tests for process management in ContainerService.
+ * Tests for process management in ContainerService using the unified Executor API.
  * For integration tests with real processes, see container.integration.test.ts
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { EventEmitter } from "node:events";
-import type { ChildProcess } from "node:child_process";
 import { ContainerService, type ProcessState } from "./container";
 import { EventService } from "./events";
 import { SessionStoreService } from "./session-store";
-import type { StandardCodingAgentExecutor, SpawnedChild, ExecutionEnv } from "../executors/types";
+import type { Executor, SSEMessage, ChatOptions, ExecutorCapability } from "../executors/ops/types";
 
 /**
- * Create a mock child process
+ * Create a mock executor that yields the given SSE messages from chatStreaming.
+ * The async generator resolves immediately (synchronously-ish) so background
+ * consumption finishes quickly.
  */
-function createMockChildProcess(): ChildProcess {
-  const emitter = new EventEmitter();
-  const stdout = new EventEmitter();
-  const stderr = new EventEmitter();
+function createMockExecutor(messages: SSEMessage[] = []): Executor {
+  const chatStreamingFn = vi.fn(function* (_options: ChatOptions) {
+    // We need an async generator, but vi.fn wraps sync generators fine.
+    // Use the async wrapper below instead.
+  });
 
-  const child = Object.assign(emitter, {
-    pid: 12345,
-    stdout,
-    stderr,
-    stdin: null,
-    stdio: [null, stdout, stderr, null, null] as const,
-    connected: true,
-    exitCode: null,
-    signalCode: null,
-    killed: false,
-    spawnargs: [],
-    spawnfile: "",
-    kill: vi.fn(() => true),
-    send: vi.fn(),
-    disconnect: vi.fn(),
-    unref: vi.fn(),
-    ref: vi.fn(),
-    [Symbol.dispose]: vi.fn(),
-  }) as unknown as ChildProcess;
+  // Build a proper async generator mock
+  const chatStreamingMock = vi.fn(async function* (_options: ChatOptions): AsyncGenerator<SSEMessage> {
+    for (const msg of messages) {
+      yield msg;
+    }
+  });
 
-  return child;
-}
-
-/**
- * Create a mock executor
- */
-function createMockExecutor(mockChild: ChildProcess): StandardCodingAgentExecutor {
   return {
     type: "CLAUDE_CODE",
-    spawn: vi.fn().mockResolvedValue({
-      child: mockChild,
-      exitPromise: Promise.resolve("success"),
-      cancel: vi.fn(),
-    } as SpawnedChild),
-    spawnFollowUp: vi.fn().mockResolvedValue({
-      child: mockChild,
-      exitPromise: Promise.resolve("success"),
-      cancel: vi.fn(),
-    } as SpawnedChild),
+    getAvailabilityInfo: vi.fn().mockReturnValue({ status: "INSTALLATION_FOUND" }),
+    capabilities: vi.fn().mockReturnValue(["CHAT_STREAMING"] as ExecutorCapability[]),
+    supports: vi.fn().mockReturnValue(true),
     defaultMcpConfigPath: vi.fn().mockReturnValue(null),
-    getAvailabilityInfo: vi.fn().mockReturnValue({ available: true }),
-    capabilities: vi.fn().mockReturnValue([]),
-  };
+    getConfigDirName: vi.fn().mockReturnValue(".claude"),
+    getConfigDir: vi.fn().mockReturnValue("/tmp/.claude"),
+    getAgentConfigPath: vi.fn().mockReturnValue("/tmp/.claude/agent.yaml"),
+    getCommandsPath: vi.fn().mockReturnValue("/tmp/.claude/commands"),
+    getVibenCommandPath: vi.fn().mockReturnValue("commands/viben"),
+    getCliName: vi.fn().mockReturnValue("claude"),
+    buildRunCommand: vi.fn().mockReturnValue(["claude", "run"]),
+    buildResumeCommand: vi.fn().mockReturnValue(["claude", "resume"]),
+    getResumeCommandStr: vi.fn().mockReturnValue("claude resume session-id"),
+    getNonInteractiveEnv: vi.fn().mockReturnValue({}),
+    extractSessionIdFromLog: vi.fn().mockReturnValue(null),
+    spawn: vi.fn().mockResolvedValue({ success: true }),
+    chat: vi.fn().mockResolvedValue({ success: true }),
+    chatStreaming: chatStreamingMock,
+    resume: vi.fn().mockResolvedValue({ success: true }),
+    supportsSessionIdOnCreate: vi.fn().mockReturnValue(false),
+    supportsCLIAgents: vi.fn().mockReturnValue(true),
+  } as unknown as Executor;
 }
 
 /**
- * Create a mock execution environment
+ * Create a mock executor whose chatStreaming throws an error.
  */
-function createMockEnv(): ExecutionEnv {
+function createFailingExecutor(error: Error = new Error("Stream failed")): Executor {
+  const chatStreamingMock = vi.fn(async function* (_options: ChatOptions): AsyncGenerator<SSEMessage> {
+    throw error;
+  });
+
   return {
-    vars: {},
-    repoContext: {
-      workspaceRoot: "/workspace",
-      repoNames: [],
-    },
-    commitReminder: false,
-    commitReminderPrompt: "",
-  };
+    type: "CLAUDE_CODE",
+    getAvailabilityInfo: vi.fn().mockReturnValue({ status: "INSTALLATION_FOUND" }),
+    capabilities: vi.fn().mockReturnValue(["CHAT_STREAMING"] as ExecutorCapability[]),
+    supports: vi.fn().mockReturnValue(true),
+    defaultMcpConfigPath: vi.fn().mockReturnValue(null),
+    getConfigDirName: vi.fn().mockReturnValue(".claude"),
+    getConfigDir: vi.fn().mockReturnValue("/tmp/.claude"),
+    getAgentConfigPath: vi.fn().mockReturnValue("/tmp/.claude/agent.yaml"),
+    getCommandsPath: vi.fn().mockReturnValue("/tmp/.claude/commands"),
+    getVibenCommandPath: vi.fn().mockReturnValue("commands/viben"),
+    getCliName: vi.fn().mockReturnValue("claude"),
+    buildRunCommand: vi.fn().mockReturnValue(["claude", "run"]),
+    buildResumeCommand: vi.fn().mockReturnValue(["claude", "resume"]),
+    getResumeCommandStr: vi.fn().mockReturnValue("claude resume session-id"),
+    getNonInteractiveEnv: vi.fn().mockReturnValue({}),
+    extractSessionIdFromLog: vi.fn().mockReturnValue(null),
+    spawn: vi.fn().mockResolvedValue({ success: true }),
+    chat: vi.fn().mockResolvedValue({ success: true }),
+    chatStreaming: chatStreamingMock,
+    resume: vi.fn().mockResolvedValue({ success: true }),
+    supportsSessionIdOnCreate: vi.fn().mockReturnValue(false),
+    supportsCLIAgents: vi.fn().mockReturnValue(true),
+  } as unknown as Executor;
+}
+
+/**
+ * Create a blocking executor whose chatStreaming hangs until the returned
+ * resolve function is called. Useful for tests that need the process to stay
+ * in "running" status.
+ */
+function createBlockingExecutor(): { executor: Executor; unblock: () => void } {
+  let unblock: () => void;
+  const blocker = new Promise<void>((r) => { unblock = r; });
+
+  const base = createMockExecutor();
+  (base.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+    async function* () {
+      await blocker;
+    }
+  );
+
+  return { executor: base, unblock: unblock! };
+}
+
+/**
+ * Wait for background stream processing to complete.
+ * The ContainerService consumes the stream in a background IIFE,
+ * so we need to give it a tick to finish.
+ */
+async function waitForStreamProcessing(): Promise<void> {
+  // Multiple ticks to ensure async generator is fully consumed
+  await new Promise((r) => setTimeout(r, 50));
 }
 
 describe("ContainerService", () => {
   let service: ContainerService;
   let eventService: EventService;
   let sessionStore: SessionStoreService;
-  let mockChild: ChildProcess;
-  let mockExecutor: StandardCodingAgentExecutor;
 
   beforeEach(() => {
     eventService = new EventService();
@@ -96,8 +131,6 @@ describe("ContainerService", () => {
     } as unknown as SessionStoreService;
 
     service = new ContainerService(eventService, sessionStore);
-    mockChild = createMockChildProcess();
-    mockExecutor = createMockExecutor(mockChild);
   });
 
   afterEach(() => {
@@ -122,15 +155,17 @@ describe("ContainerService", () => {
   });
 
   describe("spawnAgent", () => {
-    it("should spawn a new agent process", async () => {
+    it("should spawn a new agent process and call chatStreaming", async () => {
       const sessionId = "session-123";
       const agentId = "my-agent";
       const agentType = "claude_code";
       const workdir = "/workspace";
       const prompt = "Hello, agent!";
-      const env = createMockEnv();
+      const env = {};
 
-      const result = await service.spawnAgent(
+      const mockExecutor = createMockExecutor();
+
+      await service.spawnAgent(
         sessionId,
         mockExecutor,
         agentId,
@@ -140,22 +175,43 @@ describe("ContainerService", () => {
         env
       );
 
-      expect(result.child).toBe(mockChild);
-      expect(mockExecutor.spawn).toHaveBeenCalledWith(workdir, prompt, env);
+      expect(mockExecutor.chatStreaming).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt,
+          cwd: workdir,
+          env,
+          sessionId,
+        })
+      );
     });
 
-    it("should track the spawned process", async () => {
-      const sessionId = "session-123";
-      const env = createMockEnv();
-
-      await service.spawnAgent(
-        sessionId,
+    it("should return void (no SpawnedChild)", async () => {
+      const mockExecutor = createMockExecutor();
+      const result = await service.spawnAgent(
+        "session-123",
         mockExecutor,
         "my-agent",
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
+      );
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should track the spawned process", async () => {
+      const sessionId = "session-123";
+      const { executor, unblock } = createBlockingExecutor();
+
+      await service.spawnAgent(
+        sessionId,
+        executor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
       );
 
       const state = service.getProcess(sessionId);
@@ -163,8 +219,10 @@ describe("ContainerService", () => {
       expect(state?.sessionId).toBe(sessionId);
       expect(state?.agentType).toBe("claude_code");
       expect(state?.workdir).toBe("/workspace");
-      expect(state?.pid).toBe(12345);
       expect(state?.status).toBe("running");
+
+      unblock();
+      await waitForStreamProcessing();
     });
 
     it("should emit agent_spawned event", async () => {
@@ -172,7 +230,7 @@ describe("ContainerService", () => {
       eventService.subscribe(listener);
 
       const sessionId = "session-123";
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -181,7 +239,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
       expect(listener).toHaveBeenCalledWith(
@@ -195,7 +253,7 @@ describe("ContainerService", () => {
     it("should save user message to session store", async () => {
       const sessionId = "session-123";
       const prompt = "Hello, agent!";
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -204,7 +262,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         prompt,
-        env
+        {}
       );
 
       expect(sessionStore.appendMessage).toHaveBeenCalledWith(
@@ -220,7 +278,7 @@ describe("ContainerService", () => {
     it("should save UI user message to session store", async () => {
       const sessionId = "session-123";
       const prompt = "Hello, agent!";
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -229,7 +287,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         prompt,
-        env
+        {}
       );
 
       expect(sessionStore.appendUIMessage).toHaveBeenCalledWith(
@@ -241,12 +299,122 @@ describe("ContainerService", () => {
         })
       );
     });
+
+    it("should mark process as completed after stream finishes", async () => {
+      const sessionId = "session-123";
+      const mockExecutor = createMockExecutor([
+        { type: "text", content: "Hello" } as SSEMessage,
+      ]);
+
+      await service.spawnAgent(
+        sessionId,
+        mockExecutor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
+      );
+
+      await waitForStreamProcessing();
+
+      const state = service.getProcess(sessionId);
+      expect(state?.status).toBe("completed");
+    });
+
+    it("should mark process as failed when stream throws", async () => {
+      const sessionId = "session-123";
+      const failingExecutor = createFailingExecutor(new Error("Stream error"));
+
+      await service.spawnAgent(
+        sessionId,
+        failingExecutor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
+      );
+
+      await waitForStreamProcessing();
+
+      const state = service.getProcess(sessionId);
+      expect(state?.status).toBe("failed");
+    });
+
+    it("should emit agent_completed after stream finishes successfully", async () => {
+      const listener = vi.fn();
+      eventService.subscribe(listener);
+
+      const sessionId = "session-123";
+      const { executor, unblock } = createBlockingExecutor();
+
+      await service.spawnAgent(
+        sessionId,
+        executor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
+      );
+
+      // Stream is still blocked, no agent_completed yet
+      const completedBefore = listener.mock.calls.filter(
+        (call) => call[0].type === "agent_completed"
+      );
+      expect(completedBefore).toHaveLength(0);
+
+      // Unblock the stream
+      unblock();
+      await waitForStreamProcessing();
+
+      expect(listener).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "agent_completed",
+          data: expect.objectContaining({
+            session_id: sessionId,
+            success: true,
+          }),
+        })
+      );
+    });
+
+    it("should emit agent_completed with success=false when stream fails", async () => {
+      const listener = vi.fn();
+      eventService.subscribe(listener);
+
+      const sessionId = "session-123";
+      const failingExecutor = createFailingExecutor();
+
+      await service.spawnAgent(
+        sessionId,
+        failingExecutor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
+      );
+
+      await waitForStreamProcessing();
+
+      expect(listener).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "agent_completed",
+          data: expect.objectContaining({
+            session_id: sessionId,
+            success: false,
+          }),
+        })
+      );
+    });
   });
 
   describe("getProcess", () => {
     it("should return process state by session ID", async () => {
       const sessionId = "session-456";
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -255,7 +423,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Test prompt",
-        env
+        {}
       );
 
       const state = service.getProcess(sessionId);
@@ -271,37 +439,64 @@ describe("ContainerService", () => {
 
   describe("runningProcesses", () => {
     it("should list all running processes", async () => {
-      const env = createMockEnv();
+      const mockExecutor1 = createMockExecutor();
+      const mockExecutor2 = createMockExecutor();
 
-      // Spawn multiple processes
+      // Use executors that yield messages slowly so they stay "running"
+      // Actually, the background IIFE may finish before we check. Use a
+      // long-running generator for this test.
+      let resolve1: () => void;
+      let resolve2: () => void;
+      const blocker1 = new Promise<void>((r) => { resolve1 = r; });
+      const blocker2 = new Promise<void>((r) => { resolve2 = r; });
+
+      const blockingExecutor1 = createMockExecutor();
+      (blockingExecutor1.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+        async function* () {
+          await blocker1;
+        }
+      );
+
+      const blockingExecutor2 = createMockExecutor();
+      (blockingExecutor2.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+        async function* () {
+          await blocker2;
+        }
+      );
+
       await service.spawnAgent(
         "session-1",
-        mockExecutor,
+        blockingExecutor1,
         "agent-1",
         "claude_code",
         "/workspace1",
         "Prompt 1",
-        env
+        {}
       );
 
       await service.spawnAgent(
         "session-2",
-        mockExecutor,
+        blockingExecutor2,
         "agent-2",
         "gemini",
         "/workspace2",
         "Prompt 2",
-        env
+        {}
       );
 
       const running = service.runningProcesses();
       expect(running).toHaveLength(2);
       expect(running.map((p) => p.sessionId)).toContain("session-1");
       expect(running.map((p) => p.sessionId)).toContain("session-2");
+
+      // Cleanup: unblock the generators
+      resolve1!();
+      resolve2!();
+      await waitForStreamProcessing();
     });
 
     it("should not include completed processes", async () => {
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         "session-1",
@@ -310,7 +505,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       // Mark as completed
@@ -321,7 +516,7 @@ describe("ContainerService", () => {
     });
 
     it("should not include cancelled processes", async () => {
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         "session-1",
@@ -330,7 +525,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       // Mark as cancelled
@@ -343,8 +538,8 @@ describe("ContainerService", () => {
 
   describe("markCompleted", () => {
     it("should mark process as completed with success", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -353,7 +548,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       service.markCompleted(sessionId, true);
@@ -363,8 +558,8 @@ describe("ContainerService", () => {
     });
 
     it("should mark process as failed when success is false", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -373,7 +568,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       service.markCompleted(sessionId, false);
@@ -386,8 +581,8 @@ describe("ContainerService", () => {
       const listener = vi.fn();
       eventService.subscribe(listener);
 
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -396,7 +591,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       // Clear previous events
@@ -421,8 +616,8 @@ describe("ContainerService", () => {
 
   describe("markCancelled", () => {
     it("should mark process as cancelled", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -431,7 +626,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       service.markCancelled(sessionId);
@@ -444,8 +639,8 @@ describe("ContainerService", () => {
       const listener = vi.fn();
       eventService.subscribe(listener);
 
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         sessionId,
@@ -454,7 +649,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       // Clear previous events
@@ -473,88 +668,110 @@ describe("ContainerService", () => {
 
   describe("process status tracking", () => {
     it("should track status transitions from running to completed", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const { executor, unblock } = createBlockingExecutor();
 
       await service.spawnAgent(
         sessionId,
-        mockExecutor,
+        executor,
         "agent-1",
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       expect(service.getProcess(sessionId)?.status).toBe("running");
 
       service.markCompleted(sessionId, true);
       expect(service.getProcess(sessionId)?.status).toBe("completed");
+
+      unblock();
+      await waitForStreamProcessing();
     });
 
     it("should track status transitions from running to failed", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const { executor, unblock } = createBlockingExecutor();
 
       await service.spawnAgent(
         sessionId,
-        mockExecutor,
+        executor,
         "agent-1",
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       expect(service.getProcess(sessionId)?.status).toBe("running");
 
       service.markCompleted(sessionId, false);
       expect(service.getProcess(sessionId)?.status).toBe("failed");
+
+      unblock();
+      await waitForStreamProcessing();
     });
 
     it("should track status transitions from running to cancelled", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const { executor, unblock } = createBlockingExecutor();
 
       await service.spawnAgent(
         sessionId,
-        mockExecutor,
+        executor,
         "agent-1",
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       expect(service.getProcess(sessionId)?.status).toBe("running");
 
       service.markCancelled(sessionId);
       expect(service.getProcess(sessionId)?.status).toBe("cancelled");
+
+      unblock();
+      await waitForStreamProcessing();
     });
   });
 
   describe("killAllRunningProcesses", () => {
     it("should mark all running processes as cancelled", async () => {
-      const env = createMockEnv();
+      let resolve1: () => void;
+      let resolve2: () => void;
+      const blocker1 = new Promise<void>((r) => { resolve1 = r; });
+      const blocker2 = new Promise<void>((r) => { resolve2 = r; });
+
+      const executor1 = createMockExecutor();
+      (executor1.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+        async function* () { await blocker1; }
+      );
+
+      const executor2 = createMockExecutor();
+      (executor2.chatStreaming as ReturnType<typeof vi.fn>).mockImplementation(
+        async function* () { await blocker2; }
+      );
 
       await service.spawnAgent(
         "session-1",
-        mockExecutor,
+        executor1,
         "agent-1",
         "claude_code",
         "/workspace1",
         "Prompt 1",
-        env
+        {}
       );
 
       await service.spawnAgent(
         "session-2",
-        mockExecutor,
+        executor2,
         "agent-2",
         "gemini",
         "/workspace2",
         "Prompt 2",
-        env
+        {}
       );
 
       service.killAllRunningProcesses();
@@ -562,10 +779,15 @@ describe("ContainerService", () => {
       expect(service.getProcess("session-1")?.status).toBe("cancelled");
       expect(service.getProcess("session-2")?.status).toBe("cancelled");
       expect(service.runningProcesses()).toHaveLength(0);
+
+      // Cleanup
+      resolve1!();
+      resolve2!();
+      await waitForStreamProcessing();
     });
 
     it("should not affect already completed processes", async () => {
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnAgent(
         "session-1",
@@ -574,7 +796,7 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Prompt",
-        env
+        {}
       );
 
       // Mark as completed first
@@ -588,35 +810,10 @@ describe("ContainerService", () => {
   });
 
   describe("spawnFollowUp", () => {
-    it("should spawn a follow-up session", async () => {
+    it("should spawn a follow-up session using chatStreaming with resume", async () => {
       const sessionId = "new-session";
       const existingSessionId = "existing-session";
-      const env = createMockEnv();
-
-      const result = await service.spawnFollowUp(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Follow-up prompt",
-        existingSessionId,
-        env
-      );
-
-      expect(result.child).toBe(mockChild);
-      expect(mockExecutor.spawnFollowUp).toHaveBeenCalledWith(
-        "/workspace",
-        "Follow-up prompt",
-        existingSessionId,
-        undefined,
-        env
-      );
-    });
-
-    it("should track the follow-up process", async () => {
-      const sessionId = "new-session";
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnFollowUp(
         sessionId,
@@ -625,14 +822,57 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Follow-up prompt",
+        existingSessionId,
+        {}
+      );
+
+      expect(mockExecutor.chatStreaming).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: "Follow-up prompt",
+          cwd: "/workspace",
+          resume: existingSessionId,
+        })
+      );
+    });
+
+    it("should return void", async () => {
+      const mockExecutor = createMockExecutor();
+      const result = await service.spawnFollowUp(
+        "new-session",
+        mockExecutor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Follow-up",
+        "existing",
+        {}
+      );
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should track the follow-up process", async () => {
+      const sessionId = "new-session";
+      const { executor, unblock } = createBlockingExecutor();
+
+      await service.spawnFollowUp(
+        sessionId,
+        executor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Follow-up prompt",
         "existing-session",
-        env
+        {}
       );
 
       const state = service.getProcess(sessionId);
       expect(state).toBeDefined();
       expect(state?.sessionId).toBe(sessionId);
       expect(state?.status).toBe("running");
+
+      unblock();
+      await waitForStreamProcessing();
     });
 
     it("should emit agent_spawned event for follow-up", async () => {
@@ -640,7 +880,7 @@ describe("ContainerService", () => {
       eventService.subscribe(listener);
 
       const sessionId = "new-session";
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       await service.spawnFollowUp(
         sessionId,
@@ -650,7 +890,7 @@ describe("ContainerService", () => {
         "/workspace",
         "Follow-up",
         "existing",
-        env
+        {}
       );
 
       expect(listener).toHaveBeenCalledWith(
@@ -662,10 +902,14 @@ describe("ContainerService", () => {
     });
   });
 
-  describe("stdout streaming and JSON parsing", () => {
-    it("should process JSON output from stdout", async () => {
-      const env = createMockEnv();
+  describe("SSE message processing", () => {
+    it("should process text SSE message and emit session_message", async () => {
       const sessionId = "session-123";
+      const textMsg: SSEMessage = { type: "text", content: "Hello from agent" };
+      const mockExecutor = createMockExecutor([textMsg]);
+
+      const listener = vi.fn();
+      eventService.subscribe(listener);
 
       await service.spawnAgent(
         sessionId,
@@ -674,15 +918,10 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      // Simulate JSON output from the process
-      const jsonLine = JSON.stringify({ type: "text", content: "Hello from agent" });
-      mockChild.stdout!.emit("data", Buffer.from(jsonLine + "\n"));
+      await waitForStreamProcessing();
 
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -696,129 +935,30 @@ describe("ContainerService", () => {
       );
     });
 
-    it("should handle non-JSON output as plain log", async () => {
-      const env = createMockEnv();
+    it("should handle tool_use SSE message", async () => {
       const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      // Simulate non-JSON output
-      mockChild.stdout!.emit("data", Buffer.from("Plain text output\n"));
-
-      expect(listener).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "execution_log",
-          data: expect.objectContaining({
-            session_id: sessionId,
-            log_type: "output",
-            content: "Plain text output",
-          }),
-        })
-      );
-    });
-
-    it("should handle buffered partial JSON lines", async () => {
-      const env = createMockEnv();
-      const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      // Send partial line first
-      const fullJson = JSON.stringify({ type: "text", content: "Split message" });
-      const part1 = fullJson.slice(0, 10);
-      const part2 = fullJson.slice(10) + "\n";
-
-      mockChild.stdout!.emit("data", Buffer.from(part1));
-      mockChild.stdout!.emit("data", Buffer.from(part2));
-
-      expect(listener).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "session_message",
-          data: expect.objectContaining({
-            content: "Split message",
-          }),
-        })
-      );
-    });
-
-    it("should process remaining buffer on stdout end", async () => {
-      const env = createMockEnv();
-      const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      // Send line without trailing newline
-      const jsonLine = JSON.stringify({ type: "text", content: "Final message" });
-      mockChild.stdout!.emit("data", Buffer.from(jsonLine));
-      mockChild.stdout!.emit("end");
-
-      expect(listener).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "session_message",
-          data: expect.objectContaining({
-            content: "Final message",
-          }),
-        })
-      );
-    });
-
-    it("should handle tool_use message type", async () => {
-      const env = createMockEnv();
-      const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      const toolUse = {
+      const toolUseMsg: SSEMessage = {
         type: "tool_use",
         id: "tool-123",
         name: "read_file",
         input: { path: "/test.txt" },
       };
-      mockChild.stdout!.emit("data", Buffer.from(JSON.stringify(toolUse) + "\n"));
+      const mockExecutor = createMockExecutor([toolUseMsg]);
+
+      const listener = vi.fn();
+      eventService.subscribe(listener);
+
+      await service.spawnAgent(
+        sessionId,
+        mockExecutor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
+      );
+
+      await waitForStreamProcessing();
 
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -840,9 +980,18 @@ describe("ContainerService", () => {
       );
     });
 
-    it("should handle tool_result message type", async () => {
-      const env = createMockEnv();
+    it("should handle tool_result SSE message", async () => {
       const sessionId = "session-123";
+      const toolResultMsg: SSEMessage = {
+        type: "tool_result",
+        tool_use_id: "tool-123",
+        output: "File content here",
+        is_error: false,
+      };
+      const mockExecutor = createMockExecutor([toolResultMsg]);
+
+      const listener = vi.fn();
+      eventService.subscribe(listener);
 
       await service.spawnAgent(
         sessionId,
@@ -851,19 +1000,10 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      const toolResult = {
-        type: "tool_result",
-        tool_use_id: "tool-123",
-        content: "File content here",
-        is_error: false,
-      };
-      mockChild.stdout!.emit("data", Buffer.from(JSON.stringify(toolResult) + "\n"));
+      await waitForStreamProcessing();
 
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -876,9 +1016,16 @@ describe("ContainerService", () => {
       );
     });
 
-    it("should handle result message type", async () => {
-      const env = createMockEnv();
+    it("should handle result SSE message", async () => {
       const sessionId = "session-123";
+      const resultMsg: SSEMessage = {
+        type: "result",
+        result: "Task completed successfully",
+      };
+      const mockExecutor = createMockExecutor([resultMsg]);
+
+      const listener = vi.fn();
+      eventService.subscribe(listener);
 
       await service.spawnAgent(
         sessionId,
@@ -887,17 +1034,10 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      const result = {
-        type: "result",
-        result: "Task completed successfully",
-      };
-      mockChild.stdout!.emit("data", Buffer.from(JSON.stringify(result) + "\n"));
+      await waitForStreamProcessing();
 
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -909,9 +1049,16 @@ describe("ContainerService", () => {
       );
     });
 
-    it("should handle error message type", async () => {
-      const env = createMockEnv();
+    it("should handle error SSE message", async () => {
       const sessionId = "session-123";
+      const errorMsg: SSEMessage = {
+        type: "error",
+        message: "Something went wrong",
+      };
+      const mockExecutor = createMockExecutor([errorMsg]);
+
+      const listener = vi.fn();
+      eventService.subscribe(listener);
 
       await service.spawnAgent(
         sessionId,
@@ -920,17 +1067,10 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      const error = {
-        type: "error",
-        message: "Something went wrong",
-      };
-      mockChild.stdout!.emit("data", Buffer.from(JSON.stringify(error) + "\n"));
+      await waitForStreamProcessing();
 
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -943,8 +1083,21 @@ describe("ContainerService", () => {
     });
 
     it("should handle assistant message with content array", async () => {
-      const env = createMockEnv();
       const sessionId = "session-123";
+      const assistantMsg: SSEMessage = {
+        type: "assistant",
+        message: {
+          role: "assistant",
+          content: [
+            { type: "text", text: "Here is my response" },
+            { type: "tool_use", id: "tool-1", name: "bash", input: { command: "ls" } },
+          ],
+        },
+      };
+      const mockExecutor = createMockExecutor([assistantMsg]);
+
+      const listener = vi.fn();
+      eventService.subscribe(listener);
 
       await service.spawnAgent(
         sessionId,
@@ -953,22 +1106,10 @@ describe("ContainerService", () => {
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      const assistantMsg = {
-        type: "assistant",
-        message: {
-          content: [
-            { type: "text", text: "Here is my response" },
-            { type: "tool_use", id: "tool-1", name: "bash", input: { command: "ls" } },
-          ],
-        },
-      };
-      mockChild.stdout!.emit("data", Buffer.from(JSON.stringify(assistantMsg) + "\n"));
+      await waitForStreamProcessing();
 
       // Should emit session_message for text content
       expect(listener).toHaveBeenCalledWith(
@@ -990,111 +1131,67 @@ describe("ContainerService", () => {
         })
       );
     });
-  });
 
-  describe("process exit handling", () => {
-    it("should mark process as completed on successful exit", async () => {
-      const env = createMockEnv();
+    it("should handle unknown/default SSE message types as execution logs", async () => {
       const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      // Simulate process exit with code 0
-      mockChild.emit("exit", 0);
-
-      const state = service.getProcess(sessionId);
-      expect(state?.status).toBe("completed");
-    });
-
-    it("should mark process as failed on non-zero exit", async () => {
-      const env = createMockEnv();
-      const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      // Simulate process exit with code 1
-      mockChild.emit("exit", 1);
-
-      const state = service.getProcess(sessionId);
-      expect(state?.status).toBe("failed");
-    });
-
-    it("should emit agent_completed event on exit", async () => {
-      const env = createMockEnv();
-      const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
+      const streamEventMsg = {
+        type: "stream_event",
+        event: "start",
+        data: {},
+      } as SSEMessage;
+      const mockExecutor = createMockExecutor([streamEventMsg]);
 
       const listener = vi.fn();
       eventService.subscribe(listener);
 
-      mockChild.emit("exit", 0);
+      await service.spawnAgent(
+        sessionId,
+        mockExecutor,
+        "my-agent",
+        "claude_code",
+        "/workspace",
+        "Hello",
+        {}
+      );
+
+      await waitForStreamProcessing();
 
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "agent_completed",
+          type: "execution_log",
           data: expect.objectContaining({
             session_id: sessionId,
-            success: true,
+            log_type: "stream_event",
           }),
         })
       );
     });
   });
 
-  describe("no stdout handling", () => {
-    it("should handle child process without stdout", async () => {
-      const childWithoutStdout = createMockChildProcess();
-      (childWithoutStdout as unknown as { stdout: null }).stdout = null;
+  describe("agent message storage", () => {
+    it("should save raw agent messages to session store", async () => {
+      const sessionId = "session-123";
+      const textMsg: SSEMessage = { type: "text", content: "Agent response" };
+      const mockExecutor = createMockExecutor([textMsg]);
 
-      const executorWithNoStdout = createMockExecutor(childWithoutStdout);
-
-      const listener = vi.fn();
-      eventService.subscribe(listener);
-
-      const env = createMockEnv();
       await service.spawnAgent(
-        "session-123",
-        executorWithNoStdout,
+        sessionId,
+        mockExecutor,
         "my-agent",
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      // Should emit agent_completed immediately when no stdout
-      expect(listener).toHaveBeenCalledWith(
+      await waitForStreamProcessing();
+
+      expect(sessionStore.appendAgentMessage).toHaveBeenCalledWith(
+        "my-agent",
+        sessionId,
         expect.objectContaining({
-          type: "agent_completed",
-          data: expect.objectContaining({
-            session_id: "session-123",
-            success: true,
-          }),
+          raw: textMsg,
+          source: "claude_code",
         })
       );
     });
@@ -1109,49 +1206,21 @@ describe("ContainerService", () => {
       } as unknown as SessionStoreService;
 
       const serviceWithFailingStore = new ContainerService(eventService, failingStore);
-      const env = createMockEnv();
+      const mockExecutor = createMockExecutor();
 
       // Should not throw
-      const result = await serviceWithFailingStore.spawnAgent(
+      await serviceWithFailingStore.spawnAgent(
         "session-123",
         mockExecutor,
         "my-agent",
         "claude_code",
         "/workspace",
         "Hello",
-        env
+        {}
       );
 
-      expect(result.child).toBe(mockChild);
-    });
-  });
-
-  describe("agent message storage", () => {
-    it("should save raw agent messages to session store", async () => {
-      const env = createMockEnv();
-      const sessionId = "session-123";
-
-      await service.spawnAgent(
-        sessionId,
-        mockExecutor,
-        "my-agent",
-        "claude_code",
-        "/workspace",
-        "Hello",
-        env
-      );
-
-      const jsonOutput = { type: "text", content: "Agent response" };
-      mockChild.stdout!.emit("data", Buffer.from(JSON.stringify(jsonOutput) + "\n"));
-
-      expect(sessionStore.appendAgentMessage).toHaveBeenCalledWith(
-        "my-agent",
-        sessionId,
-        expect.objectContaining({
-          raw: jsonOutput,
-          source: "claude_code",
-        })
-      );
+      // spawnAgent returns void, so just verify it didn't throw
+      expect(serviceWithFailingStore.getProcess("session-123")).toBeDefined();
     });
   });
 });

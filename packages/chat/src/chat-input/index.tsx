@@ -27,6 +27,7 @@ import {
   Paperclip,
   Image,
   Square,
+  Shield,
 } from "lucide-react";
 import {
   cn,
@@ -58,6 +59,7 @@ export function ChatInput({
   isLoading,
   allowSendWhileLoading,
   disabled,
+  blockedReason,
   placeholder,
   className,
   autoFocus = false,
@@ -468,6 +470,14 @@ export function ChatInput({
         attachments={attachments}
         onRemove={removeAttachment}
       />
+
+      {/* Blocked reason indicator */}
+      {disabled && blockedReason && (
+        <div className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground border-b border-border/40">
+          <Shield className="size-3 text-amber-500" />
+          <span>{blockedReason}</span>
+        </div>
+      )}
 
       {/* Textarea with Slash Command Menu */}
       <div

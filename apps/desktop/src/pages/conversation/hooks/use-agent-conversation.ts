@@ -18,11 +18,13 @@ import type {
   MessageAttachment,
   TaskPlan,
   PendingQuestion,
+  PendingExecApproval,
   Artifact,
   ToolUsage,
 } from "@/types";
 import type { ExecutorType } from "@viben/core/shared";
-import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient, getGatewayUrl, isAgentAvailable } from "@/lib/gateway";
+import { getOpenClawRuntimeConfig } from "@/lib/gateway/modules/agent-execution";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import type { SandboxConfig } from "@/hooks/use-sandbox";
 import {
@@ -33,9 +35,16 @@ import {
 } from "@/lib/background-tasks";
 import i18n from "@/i18n";
 import { useOverlayStore } from "@/stores/overlay-store";
-import type { PresentationCommand } from "@/lib/presentation/types";
+import { completeClientSideToolOnce } from "@/lib/client-side-tool/complete";
+import {
+  compilePresentationCommands,
+  normalizePresentationToolName,
+} from "@viben/presentation";
+import { toast } from "sonner";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
-import { useCommandQueue } from "./use-command-queue";
+import { useCommandQueue } from "@viben/chat";
+import type { MessageAttachment as ChatMessageAttachment } from "@viben/chat";
+import { isGUIExecuteTool, handleGUIExecute } from "@/lib/action-system";
 
 /**
  * Generate a unique ID
@@ -52,100 +61,82 @@ const generateTaskId = () => `task_${Date.now()}_${Math.random().toString(36).sl
  * File size limits for artifact preview
  */
 const MAX_PREVIEW_SIZE = 50000; // 50KB max preview content
+
+/**
+ * Format attachments as a prompt prefix, based on executor type.
+ * - OpenClaw: @path format (native file reference)
+ * - Others: [Attached image: path] format (for Read tool)
+ */
+function formatAttachmentsForPrompt(
+  attachments: MessageAttachment[],
+  executorType: string | undefined
+): string {
+  if (!attachments.length) return "";
+  const isOpenClaw = executorType?.toUpperCase() === "OPENCLAW";
+  const parts: string[] = [];
+  for (const att of attachments) {
+    const ref = att.path || att.name;
+    if (!ref) continue;
+    if (isOpenClaw) {
+      parts.push(ref.includes(" ") ? `@"${ref}"` : `@${ref}`);
+    } else {
+      parts.push(att.path ? `[Attached ${att.type}: ${att.path}]` : `[Attached file: ${att.name}]`);
+    }
+  }
+  return parts.length ? parts.join(" ") + "\n\n" : "";
+}
+/**
+ * Runtime mismatch between agent config and gateway's effective config
+ */
+interface RuntimeMismatch {
+  field: string;
+  expected: string;
+  actual: string;
+}
+
+/**
+ * Compare agent's OpenClaw config against gateway runtime config.
+ * Returns list of mismatches (empty = all good).
+ */
+function checkRuntimeMismatches(
+  agentConfig: { gateway?: { host?: string; port?: number }; cliPath?: string },
+  runtimeConfig: { host: string; port: number; cli_path?: string }
+): RuntimeMismatch[] {
+  const mismatches: RuntimeMismatch[] = [];
+
+  if (agentConfig.gateway?.host && agentConfig.gateway.host !== runtimeConfig.host) {
+    mismatches.push({
+      field: "host",
+      expected: agentConfig.gateway.host,
+      actual: runtimeConfig.host,
+    });
+  }
+
+  if (agentConfig.gateway?.port && agentConfig.gateway.port !== runtimeConfig.port) {
+    mismatches.push({
+      field: "port",
+      expected: String(agentConfig.gateway.port),
+      actual: String(runtimeConfig.port),
+    });
+  }
+
+  if (agentConfig.cliPath && runtimeConfig.cli_path && agentConfig.cliPath !== runtimeConfig.cli_path) {
+    mismatches.push({
+      field: "cliPath",
+      expected: agentConfig.cliPath,
+      actual: runtimeConfig.cli_path,
+    });
+  }
+
+  return mismatches;
+}
+
 const LARGE_FILE_THRESHOLD = 100000; // 100KB - files larger than this are marked as "too large"
 
 /**
  * Mock delay for fallback implementation
  */
 const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-type PresentationColor =
-  | "black"
-  | "grey"
-  | "light-violet"
-  | "violet"
-  | "blue"
-  | "light-blue"
-  | "yellow"
-  | "orange"
-  | "green"
-  | "light-green"
-  | "light-red"
-  | "red"
-  | "white";
-
-interface PresentationPoint {
-  x: number;
-  y: number;
-}
-
-interface PresentationRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface SpotlightToolInput {
-  target?: PresentationRect;
-  title?: string;
-  description?: string;
-  notePosition?: PresentationPoint;
-  style?: "highlight" | "circle";
-  color?: PresentationColor;
-  holdMs?: number;
-  clearBefore?: boolean;
-  animate?: boolean;
-}
-
-interface CalloutToolInput {
-  target?: PresentationRect;
-  from?: PresentationPoint;
-  label?: string;
-  description?: string;
-  color?: PresentationColor;
-  holdMs?: number;
-  clearBefore?: boolean;
-  animate?: boolean;
-}
-
-interface WalkthroughStepInput {
-  target?: PresentationRect;
-  title?: string;
-  description?: string;
-  notePosition?: PresentationPoint;
-  style?: "highlight" | "circle";
-  color?: PresentationColor;
-  holdMs?: number;
-  animate?: boolean;
-}
-
-interface WalkthroughToolInput {
-  steps?: WalkthroughStepInput[];
-  clearBefore?: boolean;
-  clearBetween?: boolean;
-}
-
-interface CompareSideInput {
-  target?: PresentationRect;
-  label?: string;
-  color?: PresentationColor;
-}
-
-interface CompareToolInput {
-  left?: CompareSideInput;
-  right?: CompareSideInput;
-  title?: string;
-  description?: string;
-  holdMs?: number;
-  clearBefore?: boolean;
-  animate?: boolean;
-}
-
-const PRESENTATION_DRAW_TOOL_NAMES = new Set([
-  "presentation_draw",
-  "mcp__presentation__presentation_draw",
-]);
 
 const PRESENTATION_CLEAR_TOOL_NAMES = new Set([
   "presentation_clear",
@@ -157,26 +148,6 @@ const PRESENTATION_STOP_TOOL_NAMES = new Set([
   "mcp__presentation__presentation_stop",
 ]);
 
-const PRESENTATION_SPOTLIGHT_TOOL_NAMES = new Set([
-  "presentation_spotlight",
-  "mcp__presentation__presentation_spotlight",
-]);
-
-const PRESENTATION_CALLOUT_TOOL_NAMES = new Set([
-  "presentation_callout",
-  "mcp__presentation__presentation_callout",
-]);
-
-const PRESENTATION_WALKTHROUGH_TOOL_NAMES = new Set([
-  "presentation_walkthrough",
-  "mcp__presentation__presentation_walkthrough",
-]);
-
-const PRESENTATION_COMPARE_TOOL_NAMES = new Set([
-  "presentation_compare",
-  "mcp__presentation__presentation_compare",
-]);
-
 /**
  * All client-side presentation tools that should be intercepted and
  * dispatched to the overlay store (excluding clear/stop which have
@@ -184,10 +155,15 @@ const PRESENTATION_COMPARE_TOOL_NAMES = new Set([
  */
 const PRESENTATION_CLIENT_SIDE_TOOLS = new Set([
   "presentation_draw",
+  "mcp__presentation__presentation_draw",
   "presentation_spotlight",
+  "mcp__presentation__presentation_spotlight",
   "presentation_callout",
+  "mcp__presentation__presentation_callout",
   "presentation_walkthrough",
+  "mcp__presentation__presentation_walkthrough",
   "presentation_compare",
+  "mcp__presentation__presentation_compare",
 ]);
 
 /**
@@ -195,295 +171,23 @@ const PRESENTATION_CLIENT_SIDE_TOOLS = new Set([
  * client-side presentation tool that needs interception.
  */
 function isClientSidePresentationTool(toolName: string): boolean {
-  const bare = toolName.replace(/^mcp__\w+__/, "");
-  return PRESENTATION_CLIENT_SIDE_TOOLS.has(bare);
-}
-
-function isRect(value: unknown): value is PresentationRect {
-  if (!value || typeof value !== "object") return false;
-  const rect = value as Record<string, unknown>;
-  return (
-    typeof rect.x === "number" &&
-    typeof rect.y === "number" &&
-    typeof rect.width === "number" &&
-    typeof rect.height === "number"
-  );
-}
-
-function isPoint(value: unknown): value is PresentationPoint {
-  if (!value || typeof value !== "object") return false;
-  const point = value as Record<string, unknown>;
-  return typeof point.x === "number" && typeof point.y === "number";
-}
-
-function clampHoldMs(ms: unknown): number | undefined {
-  if (typeof ms !== "number" || Number.isNaN(ms)) return undefined;
-  return Math.max(0, Math.min(10000, ms));
-}
-
-function getRectCenter(rect: PresentationRect): PresentationPoint {
-  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
-}
-
-function getRectOutlineStyle(style: SpotlightToolInput["style"], rect: PresentationRect) {
-  if (style === "circle") {
-    return {
-      type: "circle" as const,
-      center: getRectCenter(rect),
-      radius: Math.max(rect.width, rect.height) / 2,
-    };
-  }
-
-  return {
-    type: "highlight" as const,
-    region: rect,
-  };
-}
-
-function buildNoteContent(title?: string, description?: string): string | undefined {
-  const lines = [title?.trim(), description?.trim()].filter(Boolean);
-  if (!lines.length) return undefined;
-  return lines.join("\n");
-}
-
-function getDefaultNotePosition(rect: PresentationRect): PresentationPoint {
-  return {
-    x: rect.x,
-    y: Math.max(24, rect.y - 56),
-  };
-}
-
-function buildSpotlightCommands(input: SpotlightToolInput): PresentationCommand[] {
-  if (!isRect(input.target)) return [];
-
-  const commands: PresentationCommand[] = [];
-  const color = input.color ?? "yellow";
-  const holdMs = clampHoldMs(input.holdMs);
-
-  if (input.clearBefore) {
-    commands.push({ type: "clear" });
-  }
-
-  const outline = getRectOutlineStyle(input.style, input.target);
-  if (outline.type === "circle") {
-    commands.push({
-      type: "circle",
-      center: outline.center,
-      radius: outline.radius,
-      color,
-      animate: input.animate,
-    });
-  } else {
-    commands.push({
-      type: "highlight",
-      region: outline.region,
-      color,
-      animate: input.animate,
-    });
-  }
-
-  const noteContent = buildNoteContent(input.title, input.description);
-  const notePosition = isPoint(input.notePosition)
-    ? input.notePosition
-    : getDefaultNotePosition(input.target);
-  if (noteContent) {
-    commands.push({
-      type: "text",
-      position: notePosition,
-      content: noteContent,
-      color: input.color ?? "black",
-      size: "m",
-    });
-  }
-
-  if (holdMs !== undefined && holdMs > 0) {
-    commands.push({ type: "wait", ms: holdMs });
-  }
-
-  return commands;
-}
-
-function buildCalloutCommands(input: CalloutToolInput): PresentationCommand[] {
-  if (!isRect(input.target) || !isPoint(input.from)) return [];
-
-  const commands: PresentationCommand[] = [];
-  const color = input.color ?? "red";
-  const holdMs = clampHoldMs(input.holdMs);
-  const center = getRectCenter(input.target);
-  const noteContent = buildNoteContent(input.label, input.description);
-
-  if (input.clearBefore) {
-    commands.push({ type: "clear" });
-  }
-
-  commands.push({
-    type: "highlight",
-    region: input.target,
-    color,
-    animate: input.animate,
-  });
-  commands.push({
-    type: "arrow",
-    from: input.from,
-    to: center,
-    color,
-    label: input.label?.trim() || undefined,
-    size: "m",
-    animate: input.animate,
-  });
-
-  if (noteContent) {
-    commands.push({
-      type: "text",
-      position: input.from,
-      content: noteContent,
-      color: input.color ?? "black",
-      size: "m",
-    });
-  }
-
-  if (holdMs !== undefined && holdMs > 0) {
-    commands.push({ type: "wait", ms: holdMs });
-  }
-
-  return commands;
-}
-
-function buildWalkthroughCommands(input: WalkthroughToolInput): PresentationCommand[] {
-  const steps = Array.isArray(input.steps) ? input.steps : [];
-  const commands: PresentationCommand[] = [];
-
-  if (input.clearBefore) {
-    commands.push({ type: "clear" });
-  }
-
-  steps.forEach((step, index) => {
-    if (!isRect(step.target)) return;
-    if (index > 0 && input.clearBetween) {
-      commands.push({ type: "clear" });
-    }
-    commands.push(...buildSpotlightCommands({
-      target: step.target,
-      title: step.title ? `Step ${index + 1}: ${step.title}` : `Step ${index + 1}`,
-      description: step.description,
-      notePosition: step.notePosition,
-      style: step.style,
-      color: step.color ?? "blue",
-      holdMs: step.holdMs ?? 900,
-      animate: step.animate ?? true,
-      clearBefore: false,
-    }));
-  });
-
-  return commands;
-}
-
-function buildCompareCommands(input: CompareToolInput): PresentationCommand[] {
-  if (!isRect(input.left?.target) || !isRect(input.right?.target)) return [];
-
-  const commands: PresentationCommand[] = [];
-  const holdMs = clampHoldMs(input.holdMs);
-  const leftColor = input.left.color ?? "blue";
-  const rightColor = input.right.color ?? "orange";
-
-  if (input.clearBefore) {
-    commands.push({ type: "clear" });
-  }
-
-  if (input.title?.trim()) {
-    const topY = Math.max(24, Math.min(input.left.target.y, input.right.target.y) - 72);
-    commands.push({
-      type: "text",
-      position: {
-        x: Math.min(input.left.target.x, input.right.target.x),
-        y: topY,
-      },
-      content: buildNoteContent(input.title, input.description) ?? input.title.trim(),
-      color: "black",
-      size: "l",
-    });
-  }
-
-  commands.push({
-    type: "highlight",
-    region: input.left.target,
-    color: leftColor,
-    animate: input.animate,
-  });
-  commands.push({
-    type: "highlight",
-    region: input.right.target,
-    color: rightColor,
-    animate: input.animate,
-  });
-
-  if (input.left.label?.trim()) {
-    commands.push({
-      type: "text",
-      position: getDefaultNotePosition(input.left.target),
-      content: input.left.label.trim(),
-      color: leftColor,
-      size: "m",
-    });
-  }
-
-  if (input.right.label?.trim()) {
-    commands.push({
-      type: "text",
-      position: getDefaultNotePosition(input.right.target),
-      content: input.right.label.trim(),
-      color: rightColor,
-      size: "m",
-    });
-  }
-
-  commands.push({
-    type: "line",
-    points: [
-      getRectCenter(input.left.target),
-      getRectCenter(input.right.target),
-    ],
-    color: "grey",
-    size: "s",
-    animate: input.animate,
-  });
-
-  if (holdMs !== undefined && holdMs > 0) {
-    commands.push({ type: "wait", ms: holdMs });
-  }
-
-  return commands;
-}
-
-function compilePresentationCommands(toolName: string, toolInput: Record<string, unknown>): PresentationCommand[] {
-  if (PRESENTATION_DRAW_TOOL_NAMES.has(toolName)) {
-    return Array.isArray(toolInput.commands) ? (toolInput.commands as PresentationCommand[]) : [];
-  }
-
-  if (PRESENTATION_SPOTLIGHT_TOOL_NAMES.has(toolName)) {
-    return buildSpotlightCommands(toolInput as SpotlightToolInput);
-  }
-
-  if (PRESENTATION_CALLOUT_TOOL_NAMES.has(toolName)) {
-    return buildCalloutCommands(toolInput as CalloutToolInput);
-  }
-
-  if (PRESENTATION_WALKTHROUGH_TOOL_NAMES.has(toolName)) {
-    return buildWalkthroughCommands(toolInput as WalkthroughToolInput);
-  }
-
-  if (PRESENTATION_COMPARE_TOOL_NAMES.has(toolName)) {
-    return buildCompareCommands(toolInput as CompareToolInput);
-  }
-
-  return [];
+  return PRESENTATION_CLIENT_SIDE_TOOLS.has(toolName);
 }
 
 /**
  * SSE message data from /api/agent/run endpoint
  */
 interface SSEMessageData {
-  type: "session" | "sdk_session" | "status" | "text" | "thinking" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done" | "pong";
+  type: "session" | "sdk_session" | "status" | "text" | "thinking" | "tool_use" | "tool_result" | "plan" | "question" | "exec_approval" | "context_usage" | "result" | "error" | "done" | "pong";
+  // exec_approval
+  approval_id?: string;
+  tool_call?: {
+    title?: string;
+    kind?: "read" | "edit" | "execute";
+    command?: string;
+    cwd?: string;
+  };
+  options?: Array<{ id: string; label: string }>;
   // session (backend sends snake_case: session_id, trace_id)
   sessionId?: string;
   session_id?: string;
@@ -528,6 +232,9 @@ interface SSEMessageData {
   // status (OpenClaw connection lifecycle)
   status?: string;
   status_message?: string;
+  // context_usage
+  used?: number;
+  total?: number;
 }
 
 /**
@@ -592,6 +299,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<TaskPlan | null>(null);
   const [pendingQuestions, setPendingQuestions] = useState<PendingQuestion | null>(null);
+  const [pendingExecApproval, setPendingExecApproval] = useState<PendingExecApproval | null>(null);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [toolUsages, setToolUsages] = useState<ToolUsage[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -602,9 +310,12 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   const [traceId, setTraceId] = useState<string | null>(null);
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [contextUsage, setContextUsage] = useState<{ used: number; total: number } | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const openclawAvailCacheRef = useRef<{ ok: boolean; ts: number } | null>(null);
+  const openclawRuntimeCacheRef = useRef<{ config: { host: string; port: number; cli_path?: string }; ts: number } | null>(null);
   const client = useMemo(() => getGatewayClient(), []);
 
   // Track current streaming message ID for text accumulation
@@ -631,8 +342,10 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Close WebSocket with code 1000 to prevent onclose from triggering reconnection
       if (wsRef.current) {
-        wsRef.current.close();
+        wsRef.current.close(1000, "Component unmount");
+        wsRef.current = null;
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -640,6 +353,16 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
         refreshIntervalRef.current = null;
+      }
+      // Clear reconnection timeout to prevent post-unmount reconnection attempts
+      if (wsReconnectTimeoutRef.current) {
+        clearTimeout(wsReconnectTimeoutRef.current);
+        wsReconnectTimeoutRef.current = null;
+      }
+      // Clear heartbeat interval
+      if (wsHeartbeatIntervalRef.current) {
+        clearInterval(wsHeartbeatIntervalRef.current);
+        wsHeartbeatIntervalRef.current = null;
       }
     };
   }, []);
@@ -834,10 +557,27 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         if (isClientSidePresentationTool(toolName)) {
           console.log("[Presentation] Tool intercepted:", toolName, JSON.stringify(toolInput));
           const store = useOverlayStore.getState();
-          if (!store.presentationActive) {
-            store.actions.startPresentation(sessionIdRef.current || "");
+          const sessionId = sessionIdRef.current || "";
+          if (!sessionId) {
+            console.error("[Presentation] Cannot complete tool without session id:", data.id || toolId);
+            break;
           }
-          const commands = compilePresentationCommands(toolName, toolInput);
+          if (store.presentationActive && store.presentationSessionId && store.presentationSessionId !== sessionId) {
+            completeClientSideToolOnce(data.id || toolId, sessionId, {
+              content: [{ type: "text", text: "presentation_error: another presentation session is active" }],
+              isError: true,
+            }).catch((err) => {
+              console.error("[Presentation] Failed to complete session-conflict error:", err);
+            });
+            break;
+          }
+          if (!store.presentationActive) {
+            store.actions.startPresentation(sessionId);
+          }
+          const normalizedPresentationToolName = normalizePresentationToolName(toolName);
+          const commands = normalizedPresentationToolName
+            ? compilePresentationCommands(normalizedPresentationToolName, toolInput)
+            : [];
           if (Array.isArray(commands) && commands.length > 0) {
             console.log("[Presentation] Adding", commands.length, "steps to store");
             store.actions.addPresentationSteps({
@@ -848,6 +588,12 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
             });
           } else {
             console.warn("[Presentation] No commands compiled for tool. Keys:", Object.keys(toolInput));
+            completeClientSideToolOnce(data.id || toolId, sessionId, {
+              content: [{ type: "text", text: "presentation_error: invalid or empty presentation command payload" }],
+              isError: true,
+            }).catch((err) => {
+              console.error("[Presentation] Failed to complete invalid-payload error:", err);
+            });
           }
         } else if (PRESENTATION_CLEAR_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
@@ -865,6 +611,16 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           if (store.presentationActive) {
             store.actions.stopPresentation();
           }
+        }
+
+        // GUI Action system interception
+        if (isGUIExecuteTool(toolName)) {
+          handleGUIExecute(data.id || toolId, sessionIdRef.current || "", {
+            action: (toolInput as { action?: string }).action || "",
+            payload: (toolInput as { payload?: unknown }).payload,
+          }).catch((err) => {
+            console.error("[GUI_execute] Failed:", err);
+          });
         }
         break;
       }
@@ -935,6 +691,30 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           setIsStreaming(false);
           streamingMessageIdRef.current = null;
           console.log("[useAgent] Question received, pausing for user input");
+        }
+        break;
+      }
+
+      case "exec_approval": {
+        const approvalId = data.approval_id || data.id || generateId();
+        const approval: PendingExecApproval = {
+          id: approvalId,
+          tool_call: data.tool_call || { title: "exec approval", kind: "execute" },
+          options: data.options || [
+            { id: "allow_once", label: "Allow" },
+            { id: "allow_always", label: "Always Allow" },
+            { id: "reject", label: "Reject" },
+          ],
+        };
+        setPendingExecApproval(approval);
+        setPhase("awaiting_input");
+        console.log("[useAgent] Exec approval required:", approvalId);
+        break;
+      }
+
+      case "context_usage": {
+        if (data.used != null && data.total != null) {
+          setContextUsage({ used: data.used, total: data.total });
         }
         break;
       }
@@ -1035,6 +815,9 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   // Track pending connection promise to avoid duplicate connections
   const wsConnectPromiseRef = useRef<Promise<void> | null>(null);
 
+  // Store connectWebSocket in a ref so onclose reconnection always calls the latest version
+  const connectWebSocketRef = useRef<() => Promise<void>>(null!);
+
   /**
    * Connect to the WebSocket agent endpoint
    * Returns a Promise that resolves when connected or rejects on error
@@ -1048,6 +831,24 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     // Connection in progress - return existing promise
     if (wsRef.current?.readyState === WebSocket.CONNECTING && wsConnectPromiseRef.current) {
       return wsConnectPromiseRef.current;
+    }
+
+    // If socket is in CLOSING state, wait for it to finish before creating a new one
+    if (wsRef.current?.readyState === WebSocket.CLOSING) {
+      return new Promise<void>((resolve, reject) => {
+        const checkInterval = setInterval(() => {
+          if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
+            clearInterval(checkInterval);
+            connectWebSocketRef.current().then(resolve, reject);
+          }
+        }, 50);
+        // Timeout after 3 seconds
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          wsRef.current = null;
+          connectWebSocketRef.current().then(resolve, reject);
+        }, 3000);
+      });
     }
 
     const gatewayUrl = getGatewayUrl();
@@ -1083,6 +884,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           setGatewayConnected(true);
           startHeartbeat();
           wsConnectPromiseRef.current = null;
+          // Reset streaming ref on new connection to avoid appending to stale messages
+          streamingMessageIdRef.current = null;
           resolve();
         };
 
@@ -1123,7 +926,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
             );
 
             wsReconnectTimeoutRef.current = setTimeout(() => {
-              connectWebSocket().catch(() => {
+              // Use ref to always call the latest version of connectWebSocket
+              connectWebSocketRef.current().catch(() => {
                 // Reconnect failures are logged in the function
               });
             }, RECONNECT_DELAY_MS * wsReconnectAttemptsRef.current);
@@ -1144,6 +948,9 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     return connectPromise;
   }, [workspaceId, agentConfigPath, agentDir, persistSessionId, persistTaskId, handleSSEMessage, startHeartbeat, stopHeartbeat]);
 
+  // Keep ref in sync so onclose always uses the latest connectWebSocket
+  connectWebSocketRef.current = connectWebSocket;
+
   /**
    * Disconnect WebSocket
    */
@@ -1152,18 +959,20 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       clearTimeout(wsReconnectTimeoutRef.current);
       wsReconnectTimeoutRef.current = null;
     }
+    stopHeartbeat();
     if (wsRef.current) {
       wsRef.current.close(1000, "Client disconnect");
       wsRef.current = null;
     }
-  }, []);
+    wsConnectPromiseRef.current = null;
+  }, [stopHeartbeat]);
 
   /**
    * Send a message via WebSocket
    */
   const sendWebSocketMessage = useCallback(
     (message: {
-      type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer";
+      type: "start" | "answer" | "approve" | "reject" | "cancel" | "steer" | "exec_approve";
       prompt?: string;
       agent_config?: AgentConfig;
       resume?: string;
@@ -1171,6 +980,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       answers?: Record<string, string>;
       plan_id?: string;
       message?: string;
+      approval_id?: string;
+      decision?: string;
     }) => {
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
         console.error("[useAgent] WebSocket not connected");
@@ -1220,19 +1031,64 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // Build prompt with attachment file paths
-      let effectivePrompt = content;
-      if (attachments && attachments.length > 0) {
-        const parts: string[] = [];
-        for (const att of attachments) {
-          if (att.path) {
-            parts.push(`[Attached image: ${att.path}]`);
-          } else if (att.type === "file" && att.name) {
-            parts.push(`[Attached file: ${att.name}]`);
+      // Build prompt with attachment file paths (format depends on executor type)
+      const effectivePrompt = formatAttachmentsForPrompt(attachments ?? [], agentConfig?.executor_type) + content;
+
+      // Pre-send diagnostics: check WebSocket state and OPENCLAW availability
+      if (wsRef.current && wsRef.current.readyState !== WebSocket.OPEN) {
+        console.log("[useAgent] WebSocket not open (state:", wsRef.current.readyState, "), reconnecting...");
+      }
+
+      if (agentConfig?.executor_type?.toUpperCase() === "OPENCLAW") {
+        const now = Date.now();
+        const cache = openclawAvailCacheRef.current;
+        if (!cache || (now - cache.ts) > 30_000) {
+          try {
+            const info = await client.checkAvailability("OPENCLAW");
+            const ok = isAgentAvailable(info);
+            openclawAvailCacheRef.current = { ok, ts: now };
+            if (!ok) {
+              setError(i18n.t("chat.errors.openclawUnavailable", "OpenClaw is not available. Check agent settings."));
+              setPhase("error");
+              setIsStreaming(false);
+              return;
+            }
+          } catch {
+            // Availability check failed - proceed anyway (gateway might still work)
+            console.warn("[useAgent] OpenClaw availability check failed, proceeding");
           }
+        } else if (!cache.ok) {
+          setError(i18n.t("chat.errors.openclawUnavailable", "OpenClaw is not available. Check agent settings."));
+          setPhase("error");
+          setIsStreaming(false);
+          return;
         }
-        if (parts.length > 0) {
-          effectivePrompt = parts.join("\n") + "\n\n" + content;
+      }
+
+      // Runtime config mismatch check (non-blocking warning)
+      if (agentConfig?.executor_type?.toUpperCase() === "OPENCLAW" && agentConfig.executor_config) {
+        const now = Date.now();
+        const rtCache = openclawRuntimeCacheRef.current;
+        if (!rtCache || (now - rtCache.ts) > 60_000) {
+          try {
+            const rtConfig = await getOpenClawRuntimeConfig(getGatewayUrl());
+            openclawRuntimeCacheRef.current = { config: rtConfig, ts: now };
+            const openclawCfg = agentConfig.executor_config as { gateway?: { host?: string; port?: number }; cliPath?: string };
+            const mismatches = checkRuntimeMismatches(openclawCfg, rtConfig);
+            if (mismatches.length > 0) {
+              const details = mismatches.map(m => `${m.field}: ${m.expected} → ${m.actual}`).join(", ");
+              toast.warning(i18n.t("chat.errors.runtimeMismatch", "Config mismatch detected"), { description: details, duration: 5000 });
+            }
+          } catch {
+            // Non-critical - skip if endpoint unavailable
+          }
+        } else {
+          const openclawCfg = agentConfig.executor_config as { gateway?: { host?: string; port?: number }; cliPath?: string };
+          const mismatches = checkRuntimeMismatches(openclawCfg, rtCache.config);
+          if (mismatches.length > 0) {
+            const details = mismatches.map(m => `${m.field}: ${m.expected} → ${m.actual}`).join(", ");
+            toast.warning(i18n.t("chat.errors.runtimeMismatch", "Config mismatch detected"), { description: details, duration: 5000 });
+          }
         }
       }
 
@@ -1296,6 +1152,28 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       });
     },
     [pendingQuestions, sendWebSocketMessage]
+  );
+
+  /**
+   * Approve/reject exec via WebSocket
+   */
+  const approveExecWebSocket = useCallback(
+    (decision: string, feedback?: string) => {
+      if (!pendingExecApproval) return;
+
+      const approvalId = pendingExecApproval.id;
+      setPendingExecApproval(null);
+      setPhase("running");
+      setIsStreaming(true);
+
+      sendWebSocketMessage({
+        type: "exec_approve",
+        approval_id: approvalId,
+        decision,
+        message: feedback || undefined,
+      });
+    },
+    [pendingExecApproval, sendWebSocketMessage]
   );
 
   /**
@@ -1374,10 +1252,13 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     setPhase("completed");
   }, [sendWebSocketMessage]);
 
-  // Connect WebSocket on mount if useWebSocket is enabled
+  // Connect WebSocket on mount or when useWebSocket flag changes
+  // Use refs to avoid reconnect flapping when connectWebSocket identity changes due to prop updates
   useEffect(() => {
     if (useWebSocket && !mockMode) {
-      connectWebSocket();
+      connectWebSocketRef.current().catch((err) => {
+        console.warn("[useAgent] Initial WebSocket connection failed:", err);
+      });
     }
 
     return () => {
@@ -1385,7 +1266,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         disconnectWebSocket();
       }
     };
-  }, [useWebSocket, mockMode, connectWebSocket, disconnectWebSocket]);
+  }, [useWebSocket, mockMode, disconnectWebSocket]);
 
   // ============================================================================
   // SSE Mode Implementation
@@ -1426,24 +1307,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // Build prompt with attachment file paths for the agent
-      // Claude Code SDK query() only accepts string prompt, so we prepend
-      // image file paths for the agent to read via its Read tool
-      let effectivePrompt = content;
-      if (attachments && attachments.length > 0) {
-        const attachmentParts: string[] = [];
-        for (const att of attachments) {
-          if (att.path) {
-            // Use file path - agent can read images natively
-            attachmentParts.push(`[Attached image: ${att.path}]`);
-          } else if (att.type === "file" && att.name) {
-            attachmentParts.push(`[Attached file: ${att.name}]`);
-          }
-        }
-        if (attachmentParts.length > 0) {
-          effectivePrompt = attachmentParts.join("\n") + "\n\n" + content;
-        }
-      }
+      // Build prompt with attachment file paths for the agent (format depends on executor type)
+      const effectivePrompt = formatAttachmentsForPrompt(attachments ?? [], agentConfig?.executor_type) + content;
 
       try {
         // Use the new SSE endpoint /api/agent/run
@@ -1574,7 +1439,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
       }
     },
-    [agentConfigPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId, sandboxConfig, sdkSessionId]
+    [agentConfigPath, agentConfig, workspaceId, handleSSEMessage, persistSessionId, persistTaskId, sandboxConfig, sdkSessionId]
   );
 
   /**
@@ -1952,6 +1817,17 @@ The workspace ID for this session is: \`${workspaceId}\`
   );
 
   /**
+   * Approve/reject exec (only used in WebSocket mode for OpenClaw interactive approvals)
+   */
+  const approveExec = useCallback(
+    (decision: string, feedback?: string) => {
+      if (!pendingExecApproval) return;
+      approveExecWebSocket(decision, feedback);
+    },
+    [pendingExecApproval, approveExecWebSocket]
+  );
+
+  /**
    * Cancel the current operation
    */
   const cancel = useCallback(async () => {
@@ -1982,6 +1858,7 @@ The workspace ID for this session is: \`${workspaceId}\`
 
     setPendingPlan(null);
     setPendingQuestions(null);
+    setPendingExecApproval(null);
     setIsStreaming(false);
     setPhase("idle");
   }, [agentConfig, client, gatewayConnected, mockMode, sessionId, useWebSocket, cancelWebSocket]);
@@ -2047,19 +1924,22 @@ The workspace ID for this session is: \`${workspaceId}\`
   const queueConversationId = persistSessionId || workspaceId;
 
   const commandQueue = useCommandQueue({
-    conversationId: queueConversationId,
+    id: queueConversationId,
     enabled: useWebSocket,
     isBusy: isStreaming,
     supportsSteer,
-    onSend: async (input: string, files?: string[]) => {
-      // Convert files to attachments if present
-      const attachments: MessageAttachment[] | undefined = files?.length
-        ? files.map((f) => ({ id: crypto.randomUUID(), type: "file" as const, name: f, path: f }))
+    onSend: async (content: string, attachments?: ChatMessageAttachment[]) => {
+      // Convert @viben/chat attachments to desktop MessageAttachment if present
+      const desktopAttachments: MessageAttachment[] | undefined = attachments?.length
+        ? attachments.map((a) => ({ id: a.id || crypto.randomUUID(), type: (a.type || "file") as MessageAttachment["type"], name: a.name || "", path: a.path }))
         : undefined;
-      await sendMessage(input, attachments);
+      await sendMessage(content, desktopAttachments);
     },
-    onSteer: async (input: string) => {
-      await steerMessage(input);
+    onSteer: async (content: string) => {
+      await steerMessage(content);
+    },
+    onQueued: () => {
+      toast.info("Message queued");
     },
   });
 
@@ -2198,6 +2078,12 @@ The workspace ID for this session is: \`${workspaceId}\`
     return false;
   }, [moveToBackground, loadMessages]);
 
+  // Ref to track message count for polling (avoids stale closure)
+  const messageCountRef = useRef(0);
+  useEffect(() => {
+    messageCountRef.current = messages.length;
+  }, [messages.length]);
+
   /**
    * Start polling for new messages (for background task restoration)
    */
@@ -2232,8 +2118,8 @@ The workspace ID for this session is: \`${workspaceId}\`
       }
 
       if (isStillActive) {
-        // Check for stuck state
-        const currentCount = messages.length;
+        // Check for stuck state using ref to get latest value
+        const currentCount = messageCountRef.current;
         if (currentCount === lastMessageCount) {
           stuckCount++;
           if (stuckCount >= MAX_STUCK_COUNT) {
@@ -2253,7 +2139,7 @@ The workspace ID for this session is: \`${workspaceId}\`
         }
       }
     }, 1000);
-  }, [messages.length]);
+  }, []);
 
   /**
    * Check if there's a running background task for this workspace
@@ -2520,6 +2406,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     isStreaming,
     pendingPlan,
     pendingQuestions,
+    pendingExecApproval,
     artifacts,
     toolUsages,
     error,
@@ -2527,6 +2414,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     traceId,
     gatewayConnected,
     connectionStatus,
+    contextUsage,
 
     // Actions
     sendMessage,
@@ -2534,6 +2422,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     approvePlan,
     rejectPlan,
     answerQuestions,
+    approveExec,
     cancel,
     clearMessages,
     loadMessages,

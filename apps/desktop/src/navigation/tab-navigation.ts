@@ -1,84 +1,14 @@
-import {
-  type DesktopLocation,
-  locationToUrl,
-  buildViewTarget,
-  type BreadcrumbStackItem,
-  type PushPageOptions,
-  type TabNavigationState,
-} from "./navigation-meta";
-import { popTo as popBreadcrumbStack, pushStackItem, replaceStackTop } from "./breadcrumb-stack";
+// apps/desktop/src/navigation/tab-navigation.ts
+import type { BreadcrumbStackItem } from "./breadcrumb-builder";
+import type { TabNavigationState } from "@/stores/tab-store";
 
-function ensureItemTarget(
-  item: BreadcrumbStackItem,
-  location: DesktopLocation
-): BreadcrumbStackItem {
-  return {
-    ...item,
-    target:
-      item.target ??
-      buildViewTarget(location, locationToUrl(location)),
-  };
-}
-
+/**
+ * Create a new TabNavigationState from a URL and breadcrumb stack.
+ */
 export function createTabNavigationState(
-  location: DesktopLocation,
+  url: string,
   breadcrumbStack: BreadcrumbStackItem[],
-  patch?: Partial<TabNavigationState>
+  patch?: Partial<TabNavigationState>,
 ): TabNavigationState {
-  return {
-    location,
-    breadcrumbStack,
-    activeNodeId: patch?.activeNodeId,
-    activeIndexPath: patch?.activeIndexPath,
-  };
-}
-
-export function replaceLocation(
-  state: TabNavigationState,
-  location: DesktopLocation,
-  patch?: Partial<TabNavigationState>
-): TabNavigationState {
-  return {
-    ...state,
-    ...patch,
-    location,
-    breadcrumbStack: patch?.breadcrumbStack ?? state.breadcrumbStack,
-  };
-}
-
-export function pushPage(
-  state: TabNavigationState,
-  item: BreadcrumbStackItem,
-  location: DesktopLocation,
-  options?: PushPageOptions
-): TabNavigationState {
-  const nextItem = ensureItemTarget(item, location);
-  const nextStack =
-    options?.mode === "replace"
-      ? replaceStackTop(state.breadcrumbStack, nextItem)
-      : pushStackItem(state.breadcrumbStack, nextItem);
-
-  return {
-    ...state,
-    location,
-    breadcrumbStack: nextStack,
-  };
-}
-
-export function popTo(
-  state: TabNavigationState,
-  index: number
-): TabNavigationState {
-  const nextStack = popBreadcrumbStack(state.breadcrumbStack, index);
-  const nextTop = nextStack[nextStack.length - 1];
-
-  return {
-    ...state,
-    location: nextTop?.target?.location ?? state.location,
-    breadcrumbStack: nextStack,
-  };
-}
-
-export function resetStack(next: TabNavigationState): TabNavigationState {
-  return next;
+  return { url, breadcrumbStack, ...patch };
 }

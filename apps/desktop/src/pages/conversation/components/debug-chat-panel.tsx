@@ -18,9 +18,16 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { AnimatePresence, motion } from "framer-motion";
 import { DesktopChatInput } from "./desktop-chat-input";
 import { DesktopMessageList } from "./desktop-message-list";
-import type { SlashCommand } from "@viben/chat";
+import {
+  ExecApproval,
+  PlanApproval,
+  QuestionInput,
+  SubagentSheet,
+} from "@viben/chat";
+import type { SlashCommand, AgentMessage as ChatAgentMessage } from "@viben/chat";
 import { cn } from "@/lib/utils";
 import type { ExecutorType } from "@viben/core/shared";
 import type { ExecutorConfig } from "@/types";
@@ -37,6 +44,7 @@ import type {
   AgentPhase,
   TaskPlan,
   PendingQuestion,
+  PendingExecApproval,
   ToolUsage,
 } from "@/types";
 
@@ -124,6 +132,7 @@ export function DebugChatPanel({
   const [isStreaming, setIsStreaming] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<TaskPlan | null>(null);
   const [pendingQuestions, setPendingQuestions] = useState<PendingQuestion | null>(null);
+  const [pendingExecApproval, setPendingExecApproval] = useState<PendingExecApproval | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [_toolUsages, setToolUsages] = useState<ToolUsage[]>([]);
@@ -137,6 +146,11 @@ export function DebugChatPanel({
   const [showSettings, setShowSettings] = useState(false);
   const [gatewayUrlInput, setGatewayUrlInput] = useState(getGatewayUrl());
   const [workdirInput, setWorkdirInput] = useState(DEBUG_WORKDIR);
+
+  // Subagent sheet state
+  const [sheetData, setSheetData] = useState<{
+    title: string; subagentType?: string; messages: ChatAgentMessage[]
+  } | null>(null);
 
   // WebSocket ref
   const wsRef = useRef<WebSocket | null>(null);
@@ -465,6 +479,7 @@ export function DebugChatPanel({
     setError(null);
     setPendingPlan(null);
     setPendingQuestions(null);
+    setPendingExecApproval(null);
     setToolUsages([]);
   };
 
@@ -681,37 +696,118 @@ export function DebugChatPanel({
               setPendingQuestions(null);
               setPhase("running");
             }}
+            onExpandSubagent={(title, subagentType, msgs) =>
+              setSheetData({ title, subagentType, messages: msgs })
+            }
             className="flex-1"
           />
 
-          {/* Input */}
+          {/* Bottom bar: animated transition between approval states and input */}
           <div className="border-t border-border bg-background">
-            <DesktopChatInput
-              onSend={handleSendMessage}
-              onCancel={handleCancel}
-              isLoading={isStreaming}
-              disabled={
-                !gatewayConnected ||
-                phase === "awaiting_approval" ||
-                phase === "awaiting_input"
-              }
-              placeholder={
-                !gatewayConnected
-                  ? t("gateway.connectFirst", { defaultValue: "Connect to Gateway first..." })
-                  : undefined
-              }
-              autoFocus
-              showTopToolbar
-              showConfigBar
-              showResizeHandle
-              enableWritingMode
-              hideAgentSelector
-              hideModelSelector
-              slashCommands={slashCommands}
-              onSlashCommand={handleSlashCommand}
-            />
+            <AnimatePresence mode="wait">
+              {pendingPlan ? (
+                <motion.div
+                  key="plan"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-4 py-3"
+                >
+                  <PlanApproval
+                    plan={pendingPlan}
+                    isPending
+                    onApprove={() => {
+                      setPendingPlan(null);
+                      setPhase("running");
+                    }}
+                    onReject={() => {
+                      setPendingPlan(null);
+                      setPhase("idle");
+                    }}
+                  />
+                </motion.div>
+              ) : pendingExecApproval ? (
+                <motion.div
+                  key="approval"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-4 py-3"
+                >
+                  <ExecApproval
+                    approval={pendingExecApproval}
+                    onDecision={(decision, feedback) => {
+                      console.log("[DebugChatPanel] Exec decision:", decision, "Feedback:", feedback);
+                      setPendingExecApproval(null);
+                      setPhase("running");
+                    }}
+                    enableKeyboard
+                  />
+                </motion.div>
+              ) : pendingQuestions ? (
+                <motion.div
+                  key="questions"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-4 py-3"
+                >
+                  <QuestionInput
+                    questions={pendingQuestions}
+                    onSubmit={() => {
+                      setPendingQuestions(null);
+                      setPhase("running");
+                    }}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="input"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <DesktopChatInput
+                    onSend={handleSendMessage}
+                    onCancel={handleCancel}
+                    isLoading={isStreaming}
+                    disabled={
+                      !gatewayConnected ||
+                      phase === "awaiting_approval" ||
+                      phase === "awaiting_input"
+                    }
+                    placeholder={
+                      !gatewayConnected
+                        ? t("gateway.connectFirst", { defaultValue: "Connect to Gateway first..." })
+                        : undefined
+                    }
+                    autoFocus
+                    showTopToolbar
+                    showConfigBar
+                    showResizeHandle
+                    enableWritingMode
+                    hideAgentSelector
+                    hideModelSelector
+                    slashCommands={slashCommands}
+                    onSlashCommand={handleSlashCommand}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
+
+        <SubagentSheet
+          open={!!sheetData}
+          onClose={() => setSheetData(null)}
+          title={sheetData?.title || ""}
+          subagentType={sheetData?.subagentType}
+          messages={sheetData?.messages || []}
+        />
       </SheetContent>
     </Sheet>
   );

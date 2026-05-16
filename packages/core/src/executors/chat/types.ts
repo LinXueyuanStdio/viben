@@ -5,7 +5,7 @@
  * different execution strategies for AI agent chat interactions.
  */
 
-import type { ChatOptions, ChatFormat } from "../types";
+import type { ChatOptions, ChatFormat } from "../ops/types";
 import type { ExecutorType } from "../../types";
 
 /**

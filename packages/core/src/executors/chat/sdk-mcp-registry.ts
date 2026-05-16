@@ -16,11 +16,14 @@ import type { AgentMcpServerEntry } from "../../types";
 
 export type McpServerFactory = (sdk: typeof ClaudeAgentSdk, context?: { sessionId?: string }) => ReturnType<typeof ClaudeAgentSdk.createSdkMcpServer>;
 
-// Use a getter to avoid TDZ issues from circular imports in bundled output.
-// When the bundle flattens modules, side-effect imports (presentation.ts)
-// may run before `registry` is assigned. A lazy getter ensures the Map
-// is created on first access regardless of module evaluation order.
-let registry: Map<string, McpServerFactory> | undefined;
+// Use `var` to avoid TDZ (temporal dead zone) issues.
+// ES module `import` statements are hoisted and execute before any other code,
+// so side-effect imports (presentation.ts, gui-action.ts) at the bottom of this
+// file call registerSdkMcpServer() before `const`/`let` declarations are initialized.
+// `var` is function-scoped and hoisted with `undefined`, allowing the lazy getter
+// pattern to work correctly during module evaluation.
+// eslint-disable-next-line no-var
+var registry: Map<string, McpServerFactory> | undefined;
 function getRegistry(): Map<string, McpServerFactory> {
   if (!registry) {
     registry = new Map<string, McpServerFactory>();
@@ -120,3 +123,4 @@ export function getRegisteredSdkMcpServerNames(): string[] {
 
 // Import built-in servers (side-effect: registers into the registry)
 import "./sdk-mcp-servers/presentation";
+import "./sdk-mcp-servers/gui-action";

@@ -1,7 +1,7 @@
 /**
  * ChatInput Config Bar Component
  *
- * Bottom configuration bar with agent, model, executor, tools, skills, context, and send buttons.
+ * Bottom configuration bar with agent, model, context, settings (tools+skills), and send buttons.
  */
 
 import * as React from "react";
@@ -123,7 +123,6 @@ export function ChatInputConfigBar({
 }: ChatInputConfigBarProps) {
   const { t } = useTranslation();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [isSkillsOpen, setIsSkillsOpen] = useState(false);
   const [isContextOpen, setIsContextOpen] = useState(false);
 
   // Calculate actual enabled counts from arrays if provided
@@ -151,7 +150,7 @@ export function ChatInputConfigBar({
         className
       )}
     >
-      <div className="flex items-center gap-1">
+      <div className="flex min-w-0 items-center gap-1 overflow-hidden">
         {/* 智能体 (Agent Selector) - shows agent name and configured model */}
         {showAgentSelector && (
           <Popover>
@@ -159,11 +158,11 @@ export function ChatInputConfigBar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto min-h-8 px-2 py-1.5 gap-1.5 text-xs"
+                className="h-8 max-w-[140px] shrink-0 px-2 gap-1.5 text-xs"
                 disabled={isLoading || disabled}
               >
                 <Bot className="h-3.5 w-3.5 shrink-0" />
-                <span className="max-w-[200px] truncate">
+                <span className="truncate">
                   {selectedAgent?.name || t("chat.agent", "Agent")}
                   {selectedAgent?.model && (
                     <span className="text-muted-foreground ml-1">
@@ -251,16 +250,16 @@ export function ChatInputConfigBar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 gap-1.5 text-xs"
+                className="h-8 max-w-[120px] shrink-0 px-2 gap-1.5 text-xs"
                 disabled={isLoading || disabled}
               >
                 <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center">
                   {getModelIcon(selectedModelId || undefined, { size: 14 })}
                 </span>
-                <span className="max-w-[80px] truncate">
+                <span className="truncate">
                   {selectedModel?.name || t("chat.model", "Model")}
                 </span>
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3 shrink-0" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-1" align="start">
@@ -298,61 +297,13 @@ export function ChatInputConfigBar({
           </Popover>
         )}
 
-        {/* 工具 (Tools) - with label */}
-        {tools.length > 0 && onToggleTool ? (
-          <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 gap-1.5 text-xs"
-                disabled={isLoading || disabled}
-              >
-                <Wrench className="h-3.5 w-3.5" />
-                <span>{t("chat.tools", "Tools")}</span>
-                {actualToolsCount > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="h-4 min-w-4 px-1 text-[10px]"
-                  >
-                    {actualToolsCount}
-                  </Badge>
-                )}
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-3" align="start">
-              <ToolsConfigPopover tools={tools} onToggleTool={onToggleTool} />
-            </PopoverContent>
-          </Popover>
-        ) : onToolsClick ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 gap-1.5 text-xs"
-            disabled={isLoading || disabled}
-            onClick={onToolsClick}
-          >
-            <Wrench className="h-3.5 w-3.5" />
-            <span>{t("chat.tools", "Tools")}</span>
-            {actualToolsCount > 0 && (
-              <Badge
-                variant="secondary"
-                className="h-4 min-w-4 px-1 text-[10px]"
-              >
-                {actualToolsCount}
-              </Badge>
-            )}
-          </Button>
-        ) : null}
-
         {/* 用量统计 (Context/Usage Stats) - icon only */}
         <Popover open={isContextOpen} onOpenChange={setIsContextOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 gap-1 text-xs"
+              className="h-8 shrink-0 px-2 gap-1 text-xs"
               disabled={isLoading || disabled}
               onClick={onContextClick ? () => onContextClick() : undefined}
             >
@@ -404,53 +355,55 @@ export function ChatInputConfigBar({
           </Popover>
         )}
 
-        {/* Skills - hidden by default, only show when explicitly provided */}
-        {skills.length > 0 && onToggleSkill ? (
-          <Popover open={isSkillsOpen} onOpenChange={setIsSkillsOpen}>
+        {/* Settings (Tools + Skills combined) - single icon */}
+        {((tools.length > 0 && onToggleTool) || (skills.length > 0 && onToggleSkill) || onToolsClick || onSkillsClick) && (
+          <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 gap-1.5 text-xs"
+                className="h-8 w-8 shrink-0 p-0"
                 disabled={isLoading || disabled}
               >
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>{t("chat.skills", "Skills")}</span>
-                {actualSkillsCount > 0 && (
-                  <Badge
-                    variant="secondary"
-                    className="h-4 min-w-4 px-1 text-[10px]"
-                  >
-                    {actualSkillsCount}
-                  </Badge>
-                )}
-                <ChevronDown className="h-3 w-3" />
+                <Settings className="h-3.5 w-3.5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-3" align="start">
-              <SkillsConfigPopover skills={skills} onToggleSkill={onToggleSkill} />
+            <PopoverContent className="w-72 p-0" align="start">
+              <div className="max-h-80 overflow-y-auto">
+                {/* Tools Section */}
+                {tools.length > 0 && onToggleTool && (
+                  <div className="p-3 border-b border-border/50">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium">{t("chat.tools", "Tools")}</span>
+                      {actualToolsCount > 0 && (
+                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                          {actualToolsCount}/{tools.length}
+                        </Badge>
+                      )}
+                    </div>
+                    <ToolsConfigPopover tools={tools} onToggleTool={onToggleTool} />
+                  </div>
+                )}
+                {/* Skills Section */}
+                {skills.length > 0 && onToggleSkill && (
+                  <div className="p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-medium">{t("chat.skills", "Skills")}</span>
+                      {actualSkillsCount > 0 && (
+                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                          {actualSkillsCount}/{skills.length}
+                        </Badge>
+                      )}
+                    </div>
+                    <SkillsConfigPopover skills={skills} onToggleSkill={onToggleSkill} />
+                  </div>
+                )}
+              </div>
             </PopoverContent>
           </Popover>
-        ) : onSkillsClick ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 gap-1.5 text-xs"
-            disabled={isLoading || disabled}
-            onClick={onSkillsClick}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>{t("chat.skills", "Skills")}</span>
-            {actualSkillsCount > 0 && (
-              <Badge
-                variant="secondary"
-                className="h-4 min-w-4 px-1 text-[10px]"
-              >
-                {actualSkillsCount}
-              </Badge>
-            )}
-          </Button>
-        ) : null}
+        )}
 
         {/* Extra content slot */}
         {leftExtraContent}

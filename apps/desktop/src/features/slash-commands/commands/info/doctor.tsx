@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Stethoscope } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const doctorCommand: SlashCommandDefinition = {
   id: "doctor",
   name: "doctor",
-  description: "Diagnose system configuration and connectivity",
+  get description() { return i18n.t("chat.slashCommands.doctorDesc"); },
   icon: createElement(Stethoscope, { className: "h-4 w-4" }),
   category: "info",
   source: "builtin",

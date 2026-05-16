@@ -67,7 +67,7 @@ export function WorkspaceHeader({
     setIsDeleting(true);
     try {
       await onRemove();
-      openRoute({ kind: "global-route", path: "/mcp-services/dashboard" });
+      openRoute("/workspace");
     } catch {
       // Error handled in hook
     } finally {

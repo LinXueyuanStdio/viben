@@ -1,14 +1,12 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   ChevronDown,
   ChevronRight,
   Wrench,
-  Loader2,
   CheckCircle2,
-  XCircle,
   Bot,
   X,
   FileText,
@@ -17,9 +15,11 @@ import {
   File,
   Globe,
   Image,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "@viben/ui";
-import type { AgentMessage } from "./types";
+import { getDisplayPath } from "./utils";
+import type { AgentMessage, ContentBlock } from "./types";
 
 /** Artifact info for linking tool_use messages to artifacts */
 export interface ArtifactInfo {
@@ -28,13 +28,20 @@ export interface ArtifactInfo {
   type: string;
 }
 
+/** Execution status for a tool call */
+export type ToolExecutionStatus = "queued" | "executing" | "success" | "error";
+
 export interface ToolExecutionItemProps {
   name: string;
   displayName?: string;
   input?: Record<string, unknown>;
-  output?: string;
+  output?: string | ContentBlock[];
+  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
   isExecuting?: boolean;
+  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
   isError?: boolean;
+  /** Explicit execution status. When provided, takes precedence over isExecuting/isError. */
+  status?: ToolExecutionStatus;
   className?: string;
   /** Compact mode for use within task groups */
   compact?: boolean;
@@ -50,34 +57,34 @@ export interface ToolExecutionItemProps {
   onArtifactClick?: (artifactId: string) => void;
   /** When true, show full tool input/output inline without requiring a click-to-open modal */
   expandedInline?: boolean;
+  /** Callback to expand subagent messages in a side panel */
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
 }
 
 // ============================================================================
 // Content Block Parsing — render image blocks from tool results
 // ============================================================================
 
-interface TextContentBlock {
-  type: "text";
-  text: string;
-}
-
-interface ImageContentBlock {
-  type: "image";
-  source: {
-    type: "base64";
-    media_type: string;
-    data: string;
-  };
-}
-
-type ContentBlock = TextContentBlock | ImageContentBlock;
-
 /**
- * Try to parse tool output as an array of content blocks (text / image).
- * Returns null if the output is not a JSON content block array.
+ * Resolve tool output to content blocks if applicable.
+ * - If output is already ContentBlock[], return it directly.
+ * - If output is a JSON-stringified content block array, parse and return it.
+ * - Otherwise return null (plain text output).
  */
-function parseContentBlocks(output: string | undefined): ContentBlock[] | null {
-  if (!output || typeof output !== "string") return null;
+function resolveContentBlocks(output: string | ContentBlock[] | undefined): ContentBlock[] | null {
+  if (!output) return null;
+  // Already an array of content blocks
+  if (Array.isArray(output)) {
+    if (output.length === 0) return null;
+    if (output.every(
+      (b) => typeof b === "object" && b !== null && "type" in b && (b.type === "text" || b.type === "image")
+    )) {
+      return output as ContentBlock[];
+    }
+    return null;
+  }
+  // Try parsing JSON string as content blocks (legacy format)
+  if (typeof output !== "string") return null;
   const trimmed = output.trim();
   if (!trimmed.startsWith("[")) return null;
   try {
@@ -90,7 +97,7 @@ function parseContentBlocks(output: string | undefined): ContentBlock[] | null {
           typeof b === "object" &&
           b !== null &&
           "type" in b &&
-          (b.type === "text" || b.type === "image")
+          ((b as { type: string }).type === "text" || (b as { type: string }).type === "image")
       )
     ) {
       return null;
@@ -140,6 +147,27 @@ function RenderContentBlocks({ blocks, maxTextLength }: { blocks: ContentBlock[]
 // ============================================================================
 
 /**
+ * Extract a human-readable label from a bash command.
+ * If the command starts with a # comment line, use that as the display label.
+ * Otherwise return null to fall through to normal truncation.
+ */
+function extractBashLabel(command: string): string | null {
+  if (!command) return null;
+  const trimmed = command.trim();
+
+  // Check if command starts with a # comment (common pattern: "# Do something\nactual-command")
+  const lines = trimmed.split("\n");
+  if (lines.length >= 2 && lines[0].startsWith("#")) {
+    const comment = lines[0].slice(1).trim();
+    if (comment.length > 0 && comment.length <= 80) {
+      return comment;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Get the most relevant parameter for inline display
  */
 function getToolParam(
@@ -149,13 +177,19 @@ function getToolParam(
   if (!input) return "";
 
   switch (toolName) {
-    case "Bash":
-      return (input.command as string) || "";
+    case "Bash": {
+      const command = (input.command as string) || "";
+      const label = extractBashLabel(command);
+      if (label) return label;
+      // For multi-line commands, show only first line
+      const firstLine = command.split("\n")[0] || command;
+      return firstLine;
+    }
     case "Read":
     case "Write":
     case "Edit":
     case "MultiEdit":
-      return (input.file_path as string) || "";
+      return getDisplayPath((input.file_path as string) || "");
     case "Grep":
     case "Glob":
       return (input.pattern as string) || "";
@@ -164,6 +198,7 @@ function getToolParam(
     case "WebSearch":
       return (input.query as string) || "";
     case "Task":
+    case "Agent":
       return (input.description as string) || "";
     case "TodoWrite":
     case "TaskCreate":
@@ -240,6 +275,75 @@ function isExpectedWarning(toolName: string, output: string): boolean {
   return false;
 }
 
+// ============================================================================
+// Status Dot Indicator
+// ============================================================================
+
+/**
+ * Resolve execution status from explicit `status` prop or legacy `isExecuting`/`isError` props.
+ * When `status` is provided, it takes precedence.
+ */
+function resolveStatus(
+  statusProp: ToolExecutionStatus | undefined,
+  isExecuting: boolean | undefined,
+  isError: boolean | undefined,
+  output: string | ContentBlock[] | undefined,
+): ToolExecutionStatus {
+  if (statusProp) return statusProp;
+  // Legacy fallback
+  if (isExecuting && !output) return "executing";
+  if (isError) return "error";
+  if (output) return "success";
+  return "queued";
+}
+
+/**
+ * Animated status dot indicator for tool execution state.
+ *
+ * - queued: muted static dot (low opacity)
+ * - executing: pulsing/blinking dot (amber)
+ * - success: solid green dot
+ * - error: solid red dot
+ */
+function StatusDot({
+  status,
+  isWarning = false,
+  className,
+}: {
+  status: ToolExecutionStatus;
+  /** When true and status is error, show amber instead of red */
+  isWarning?: boolean;
+  className?: string;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  const dotClass = cn(
+    "mt-1.5 size-2 shrink-0 rounded-full",
+    status === "queued" && "bg-muted-foreground/40",
+    status === "executing" && "bg-amber-500",
+    status === "success" && "bg-emerald-500",
+    status === "error" && (isWarning ? "bg-amber-500" : "bg-red-500"),
+    className,
+  );
+
+  // For the executing state, use framer-motion for a smooth pulsing animation
+  if (status === "executing" && !prefersReducedMotion) {
+    return (
+      <motion.span
+        className={dotClass}
+        animate={{ opacity: [1, 0.3, 1] }}
+        transition={{
+          duration: 1.4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+    );
+  }
+
+  return <span className={dotClass} />;
+}
+
 interface ResultInfo {
   summary: string;
   isWarning: boolean;
@@ -250,17 +354,16 @@ interface ResultInfo {
  */
 function useResultSummary(
   toolName: string,
-  output: string | undefined,
+  output: string | ContentBlock[] | undefined,
   isError: boolean | undefined,
 ): ResultInfo {
   const { t } = useTranslation();
-  // Handle non-string output (could be object at runtime despite types)
-  if (!output || typeof output !== "string") {
-    return { summary: output ? JSON.stringify(output) : "", isWarning: false };
+  if (!output) {
+    return { summary: "", isWarning: false };
   }
 
-  // Detect content block arrays with images
-  const blocks = parseContentBlocks(output);
+  // Handle ContentBlock[] directly
+  const blocks = resolveContentBlocks(output);
   if (blocks) {
     const imageCount = blocks.filter((b) => b.type === "image").length;
     const textCount = blocks.filter((b) => b.type === "text").length;
@@ -270,8 +373,28 @@ function useResultSummary(
       if (textCount > 0) parts.push(`${textCount} text block${textCount > 1 ? "s" : ""}`);
       return { summary: parts.join(" + "), isWarning: false };
     }
+    // Text-only blocks: extract text for summary
+    const textOutput = blocks
+      .filter((b): b is { type: "text"; text: string } => b.type === "text")
+      .map((b) => b.text)
+      .join("\n");
+    return useResultSummaryFromString(toolName, textOutput, isError, t);
   }
 
+  // String output
+  if (typeof output !== "string") {
+    return { summary: "", isWarning: false };
+  }
+  return useResultSummaryFromString(toolName, output, isError, t);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function useResultSummaryFromString(
+  toolName: string,
+  output: string,
+  isError: boolean | undefined,
+  t: (...args: any[]) => any,
+): ResultInfo {
   // Extract content from <tool_use_error> tag if present
   const toolUseErrorMatch = output.match(
     /<tool_use_error>([\s\S]*?)<\/tool_use_error>/
@@ -331,6 +454,7 @@ function useResultSummary(
       return { summary: t("chat.toolResult.taskUpdated", "Task updated"), isWarning: false };
 
     case "Task":
+    case "Agent":
       return { summary: t("chat.toolResult.subtaskCompleted", "Subtask completed"), isWarning: false };
 
     default:
@@ -348,7 +472,7 @@ function useResultSummary(
 interface ToolDetailModalProps {
   toolName: string;
   input: Record<string, unknown> | undefined;
-  output: string | undefined;
+  output: string | ContentBlock[] | undefined;
   isError: boolean;
   isWarning: boolean;
   onClose: () => void;
@@ -373,9 +497,12 @@ function ToolDetailModal({
     }
   };
 
-  const formatOutput = (output: string | undefined): string => {
+  const formatOutput = (output: string | ContentBlock[] | undefined): string => {
     if (!output) return t("chat.toolResult.noOutputLabel", "No output");
-    // Handle non-string output (could be object at runtime despite types)
+    if (Array.isArray(output)) {
+      // Content blocks handled separately via resolveContentBlocks
+      return "";
+    }
     if (typeof output !== "string") {
       return JSON.stringify(output, null, 2);
     }
@@ -403,12 +530,12 @@ function ToolDetailModal({
           <div className="flex items-center gap-2">
             <span className="font-mono font-medium">{toolName}</span>
             {isError && (
-              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-500">
+              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-600 dark:text-red-400">
                 {t("common.error", "Error")}
               </span>
             )}
             {isWarning && !isError && (
-              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-500">
+              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
                 {t("common.info", "Info")}
               </span>
             )}
@@ -428,7 +555,7 @@ function ToolDetailModal({
             <h3 className="text-muted-foreground mb-2 text-sm font-medium">
               {t("chat.toolInput", "Input")}
             </h3>
-            <pre className="bg-muted/50 max-h-[200px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap">
+            <pre className="bg-code-block max-h-[200px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap">
               {formatInput(input)}
             </pre>
           </div>
@@ -439,14 +566,14 @@ function ToolDetailModal({
               {t("chat.toolOutput", "Output")}
             </h3>
             {(() => {
-              const blocks = parseContentBlocks(output);
+              const blocks = resolveContentBlocks(output);
               if (blocks) {
                 return (
                   <div className={cn(
                     "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs",
-                    isError ? "bg-red-500/10 text-red-400"
+                    isError ? "bg-red-500/10 text-red-600 dark:text-red-400"
                       : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      : "bg-muted/50"
+                      : "bg-code-block"
                   )}>
                     <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
                   </div>
@@ -460,7 +587,7 @@ function ToolDetailModal({
                       ? "bg-red-500/10 text-red-400"
                       : isWarning
                         ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : "bg-muted/50"
+                        : "bg-code-block"
                   )}
                 >
                   {formatOutput(output)}
@@ -509,6 +636,67 @@ function ArtifactBadge({ artifactInfo, onClick }: ArtifactBadgeProps) {
 }
 
 // ============================================================================
+// Progress Text for Executing State
+// ============================================================================
+
+/**
+ * Get tool-specific progress text for the executing state.
+ * Instead of a generic "Running...", show contextual info like the command,
+ * file path, or search pattern being processed.
+ */
+function getProgressText(
+  toolName: string,
+  input: Record<string, unknown> | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  t: (...args: any[]) => any,
+): string {
+  if (!input) return t("chat.running", "Running...");
+
+  switch (toolName) {
+    case "Bash": {
+      const cmd = (input.command as string) || "";
+      const label = extractBashLabel(cmd);
+      if (label) return label;
+      const truncated = cmd.length > 80 ? cmd.slice(0, 80) + "\u2026" : cmd;
+      return truncated || t("chat.running", "Running...");
+    }
+    case "Read": {
+      const filename = getDisplayPath((input.file_path as string) || "");
+      return filename
+        ? t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: filename })
+        : t("chat.running", "Running...");
+    }
+    case "Write": {
+      const filename = getDisplayPath((input.file_path as string) || "");
+      return filename
+        ? t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: filename })
+        : t("chat.running", "Running...");
+    }
+    case "Edit":
+    case "MultiEdit": {
+      const filename = getDisplayPath((input.file_path as string) || "");
+      return filename
+        ? t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: filename })
+        : t("chat.running", "Running...");
+    }
+    case "Grep": {
+      const pattern = (input.pattern as string) || "";
+      return pattern
+        ? t("chat.activity.searching", { defaultValue: "Searching \"{{pattern}}\"...", pattern: pattern.slice(0, 40) })
+        : t("chat.running", "Running...");
+    }
+    case "Glob": {
+      const pattern = (input.pattern as string) || "";
+      return pattern
+        ? t("chat.activity.findingFiles", { defaultValue: "Finding {{pattern}}...", pattern: pattern.slice(0, 40) })
+        : t("chat.running", "Running...");
+    }
+    default:
+      return t("chat.running", "Running...");
+  }
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -519,41 +707,51 @@ export function ToolExecutionItem({
   output,
   isExecuting,
   isError,
+  status: statusProp,
   className,
   compact = false,
-  subagentId,
+  subagentId: _subagentId,
   subagentMessages,
   renderMessage,
   artifactInfo,
   onArtifactClick,
   expandedInline = false,
+  onExpandSubagent,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const [showModal, setShowModal] = useState(false);
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
-  // Default to expanded when there are subagent messages
-  const [isExpanded, setIsExpanded] = useState(hasSubagentMessages);
+  // Default to expanded when there are subagent messages or when output already exists
+  const [isExpanded, setIsExpanded] = useState(!!hasSubagentMessages || !!output);
 
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
   const truncatedParam = truncateParam(param);
   const { summary, isWarning } = useResultSummary(name, output, isError);
 
-  // Determine status
-  const isRunning = isExecuting && !output;
-  const hasError = !!isError;
+  // Resolve execution status (new prop takes precedence over legacy props)
+  const resolvedStatus = resolveStatus(statusProp, isExecuting, isError, output);
+
+  // Derive convenience booleans from resolved status
+  const isRunning = resolvedStatus === "executing";
+  const hasError = resolvedStatus === "error";
   const isActualError = hasError && !isWarning;
-  const isCompleted = !isRunning && !isActualError && output;
+  const isCompleted = resolvedStatus === "success";
 
   // Check if this is a Task tool (sub-agent)
-  const isTaskTool = name === "Task";
+  const isTaskTool = name === "Task" || name === "Agent";
   const taskInput = isTaskTool && input ? input as {
     subagent_type?: string;
     description?: string;
     prompt?: string;
     model?: string;
   } : null;
+
+  // Auto-expand Task/Agent tool when running or when result arrives
+  useEffect(() => {
+    if (isTaskTool && (isRunning || output)) setIsExpanded(true);
+  }, [isRunning, isTaskTool, output]);
 
   const hasDetails = input || output || hasSubagentMessages;
 
@@ -579,21 +777,7 @@ export function ToolExecutionItem({
         >
           {/* Line 1: bullet + tool name + params */}
           <div className="flex items-start gap-2">
-            {/* Bullet indicator */}
-            <span
-              className={cn(
-                "mt-1.5 size-2 shrink-0 rounded-full",
-                isRunning
-                  ? "animate-pulse bg-amber-500"
-                  : isActualError
-                    ? "bg-red-500"
-                    : isWarning
-                      ? "bg-amber-500"
-                      : isCompleted
-                        ? "bg-emerald-500"
-                        : "bg-muted-foreground"
-              )}
-            />
+            <StatusDot status={resolvedStatus} isWarning={isWarning} />
 
             {/* Tool call text */}
             <div className="min-w-0 flex-1">
@@ -601,6 +785,11 @@ export function ToolExecutionItem({
                 <span className="text-foreground font-semibold">
                   {displayName || name}
                 </span>
+                {resolvedStatus === "queued" && (
+                  <span className="text-[11px] text-muted-foreground/60 ml-1">
+                    {t("chat.queued", "queued")}
+                  </span>
+                )}
                 {param && (
                   <>
                     <span className="text-muted-foreground">(</span>
@@ -617,17 +806,17 @@ export function ToolExecutionItem({
           {/* Line 2: Result summary */}
           {(summary || isRunning) && (
             <div className="mt-0.5 ml-1 flex items-start gap-2">
-              <span className="text-muted-foreground/40 leading-none">└</span>
+              <span className="text-muted-foreground/40 leading-none">{"\u2514"}</span>
               <span
                 className={cn(
                   isActualError
-                    ? "text-red-500"
+                    ? "text-red-600 dark:text-red-400"
                     : isWarning
-                      ? "text-amber-500"
+                      ? "text-amber-600 dark:text-amber-400"
                       : "text-muted-foreground"
                 )}
               >
-                {isRunning ? t("chat.running", "Running...") : summary}
+                {isRunning ? getProgressText(name, input, t) : summary}
               </span>
             </div>
           )}
@@ -662,157 +851,173 @@ export function ToolExecutionItem({
   // Task Tool (Sub-agent) - Special display with expandable conversation
   // ============================================================================
   if (isTaskTool && taskInput) {
-    const status = isExecuting
+    const status = isRunning
       ? "executing"
-      : isError
+      : hasError
         ? "error"
         : (output || hasSubagentMessages)
           ? "completed"
           : "pending";
 
-    const StatusIcon = {
-      executing: Loader2,
-      completed: CheckCircle2,
-      error: XCircle,
-      pending: Wrench,
-    }[status];
+    // Pre-merge tool_result into tool_use for subagent messages
+    const mergedSubagentMessages = React.useMemo(() => {
+      if (!subagentMessages || subagentMessages.length === 0) return undefined;
+      const resultMap = new Map<string, AgentMessage>();
+      for (const msg of subagentMessages) {
+        if (msg.type === "tool_result" && msg.toolUseId) {
+          resultMap.set(msg.toolUseId, msg);
+        }
+      }
+      return subagentMessages
+        .filter(msg => msg.type !== "tool_result")
+        .map(msg => {
+          if (msg.type === "tool_use" && msg.toolUseId) {
+            const result = resultMap.get(msg.toolUseId);
+            if (result) {
+              return { ...msg, output: result.output, isError: result.isError };
+            }
+          }
+          return msg;
+        });
+    }, [subagentMessages]);
 
-    const statusColor = {
-      executing: "text-primary",
-      completed: "text-green-500",
-      error: "text-destructive",
-      pending: "text-muted-foreground",
-    }[status];
+    const toolUseCount = mergedSubagentMessages
+      ? mergedSubagentMessages.filter(m => m.type === "tool_use").length
+      : 0;
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
+        initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-        className={cn("flex gap-3 w-full min-w-0", className)}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+        className={cn("w-full min-w-0", className)}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
-          <Bot className="h-4 w-4 text-violet-500" />
-        </div>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
-            {/* Header */}
+        <div className="rounded-lg border border-border overflow-hidden font-mono text-[13px]">
+          {/* Header */}
+          <div className="flex items-center">
             <button
               type="button"
               onClick={() => hasDetails && setIsExpanded(!isExpanded)}
               disabled={!hasDetails}
               className={cn(
-                "flex w-full items-center gap-3 px-4 py-3 text-left",
-                hasDetails && "cursor-pointer hover:bg-violet-500/10",
+                "flex flex-1 items-center gap-2 px-3 py-2 text-left min-w-0",
+                hasDetails && "cursor-pointer hover:bg-accent/50",
                 "transition-colors"
               )}
             >
+              <StatusDot status={resolvedStatus} isWarning={isWarning} />
+              <Bot className="h-3.5 w-3.5 shrink-0 text-violet-500" />
+              <span className="truncate font-semibold text-foreground">
+                {taskInput.description || taskInput.subagent_type || "Sub-Agent"}
+              </span>
+              {taskInput.subagent_type && (
+                <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                  {taskInput.subagent_type}
+                </span>
+              )}
+              {toolUseCount > 0 && (
+                <span className="text-[11px] text-muted-foreground shrink-0">
+                  · {toolUseCount} tools
+                </span>
+              )}
               {hasDetails && (
-                <span className="shrink-0 text-violet-500">
-                  {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
+                <span className="ml-auto shrink-0 text-muted-foreground">
+                  {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 </span>
               )}
-              <div className="flex flex-1 items-center gap-2 min-w-0">
-                <StatusIcon
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    status === "executing" ? "text-violet-500" : statusColor,
-                    status === "executing" && "animate-spin"
-                  )}
-                />
-                <span className="truncate font-medium text-sm text-violet-600 dark:text-violet-400">
-                  {t("chat.subAgent", "Sub-Agent")}: {taskInput.subagent_type || "unknown"}
-                </span>
-                {taskInput.description && (
-                  <span className="text-xs text-muted-foreground truncate">
-                    — {taskInput.description}
-                  </span>
-                )}
-              </div>
             </button>
-
-            {/* Expandable details */}
-            <AnimatePresence>
-              {isExpanded && hasDetails && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="border-t border-violet-500/10 px-4 py-3 space-y-3 min-w-0 overflow-hidden">
-                    {/* Task prompt */}
-                    {taskInput.prompt && (
-                      <div className="min-w-0 overflow-hidden">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          {t("chat.taskPrompt", "Task Prompt")}
-                        </p>
-                        <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] max-w-full">
-                          <code className="whitespace-pre-wrap break-all text-xs">{taskInput.prompt}</code>
-                        </pre>
-                      </div>
-                    )}
-
-                    {/* Model if specified */}
-                    {taskInput.model && (
-                      <div className="text-xs text-muted-foreground">
-                        {t("chat.model", "Model")}: <span className="font-medium">{taskInput.model}</span>
-                      </div>
-                    )}
-
-                    {/* Subagent ID */}
-                    {subagentId && (
-                      <div className="text-xs text-muted-foreground">
-                        {t("chat.subAgentId", "Agent ID")}: <span className="font-mono">{subagentId}</span>
-                      </div>
-                    )}
-
-                    {/* Subagent messages (recursive rendering) */}
-                    {hasSubagentMessages && renderMessage && (
-                      <div className="min-w-0 overflow-hidden">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">
-                          {t("chat.subAgentConversation", "Sub-Agent Conversation")}
-                        </p>
-                        <div className="space-y-2 pl-2 border-l-2 border-violet-500/20">
-                          {subagentMessages.map((msg, idx) => (
-                            <div key={msg.id || idx} className="min-w-0">
-                              {renderMessage(msg, idx)}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Output (fallback when no subagent messages) */}
-                    {output && !hasSubagentMessages && (
-                      <div className="min-w-0 overflow-hidden">
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          {t("chat.subAgentResult", "Sub-Agent Result")}
-                        </p>
-                        <pre
-                          className={cn(
-                            "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] max-w-full",
-                            isError
-                              ? "bg-destructive/10 text-destructive"
-                              : "bg-muted"
-                          )}
-                        >
-                          <code className="whitespace-pre-wrap break-all text-xs">
-                            {output}
-                          </code>
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Expand to side panel button */}
+            {hasSubagentMessages && onExpandSubagent && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExpandSubagent(
+                    taskInput.description || taskInput.subagent_type || "Sub-Agent",
+                    taskInput.subagent_type,
+                    subagentMessages!
+                  );
+                }}
+                className="shrink-0 mr-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                title={t("chat.expandSubagent", "Open in side panel")}
+              >
+                <Maximize2 className="h-3 w-3" />
+              </button>
+            )}
           </div>
+
+          {/* Status line */}
+          {(status === "executing" || status === "completed") && (
+            <div className="px-3 pb-2 -mt-0.5">
+              <span className="text-[11px] text-muted-foreground ml-4">
+                ⎿ {status === "executing" ? t("chat.subAgentRunning", "Running…") : t("chat.done", "Done")}
+              </span>
+            </div>
+          )}
+
+          {/* Expandable details */}
+          <AnimatePresence>
+            {isExpanded && hasDetails && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-border px-3 py-2 space-y-2 min-w-0 overflow-hidden">
+                  {/* Task prompt (collapsed by default for brevity) */}
+                  {taskInput.prompt && (
+                    <details className="min-w-0 overflow-hidden">
+                      <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground select-none">
+                        {t("chat.taskPrompt", "Task Prompt")}
+                      </summary>
+                      <pre className="mt-1 overflow-x-auto overflow-y-auto rounded bg-muted p-2 text-xs max-h-[120px] max-w-full">
+                        <code className="whitespace-pre-wrap break-words text-xs">{taskInput.prompt}</code>
+                      </pre>
+                    </details>
+                  )}
+
+                  {/* Subagent messages (merged, rendered inline) */}
+                  {mergedSubagentMessages && mergedSubagentMessages.length > 0 && renderMessage && (
+                    <div className="space-y-1 min-w-0 overflow-hidden">
+                      {mergedSubagentMessages.map((msg, idx) => (
+                        <div key={msg.id || idx} className="min-w-0">
+                          {renderMessage(msg, idx)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Output (fallback when no subagent messages) */}
+                  {output && !hasSubagentMessages && (() => {
+                    const blocks = resolveContentBlocks(output);
+                    if (blocks) {
+                      return (
+                        <div className="overflow-x-auto overflow-y-auto rounded p-2 text-xs max-h-[200px] max-w-full bg-muted">
+                          <RenderContentBlocks blocks={blocks} maxTextLength={5000} />
+                        </div>
+                      );
+                    }
+                    return (
+                      <pre
+                        className={cn(
+                          "overflow-x-auto overflow-y-auto rounded p-2 text-xs max-h-[200px] max-w-full",
+                          hasError
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-muted"
+                        )}
+                      >
+                        <code className="whitespace-pre-wrap break-words text-xs">
+                          {typeof output === "string" ? output : JSON.stringify(output, null, 2)}
+                        </code>
+                      </pre>
+                    );
+                  })()}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     );
@@ -865,23 +1070,9 @@ export function ToolExecutionItem({
             onClick={expandedInline ? undefined : handleClick}
           >
             <div className="px-4 py-3">
-              {/* Line 1: bullet + tool name + params */}
+              {/* Line 1: status dot + tool name + params */}
               <div className="flex items-start gap-2">
-                {/* Bullet indicator */}
-                <span
-                  className={cn(
-                    "mt-1.5 size-2 shrink-0 rounded-full",
-                    isRunning
-                      ? "animate-pulse bg-amber-500"
-                      : isActualError
-                        ? "bg-red-500"
-                        : isWarning
-                          ? "bg-amber-500"
-                          : isCompleted
-                            ? "bg-emerald-500"
-                            : "bg-muted-foreground"
-                  )}
-                />
+                <StatusDot status={resolvedStatus} isWarning={isWarning} />
 
                 {/* Tool call text */}
                 <div className="min-w-0 flex-1">
@@ -889,6 +1080,11 @@ export function ToolExecutionItem({
                     <span className="text-foreground font-semibold">
                       {displayName || name}
                     </span>
+                    {resolvedStatus === "queued" && (
+                      <span className="text-[11px] text-muted-foreground/60 ml-1">
+                        {t("chat.queued", "queued")}
+                      </span>
+                    )}
                     {!expandedInline && param && (
                       <>
                         <span className="text-muted-foreground">(</span>
@@ -909,13 +1105,14 @@ export function ToolExecutionItem({
                   <span
                     className={cn(
                       isActualError
-                        ? "text-red-500"
+                        ? "text-red-600 dark:text-red-400"
                         : isWarning
-                          ? "text-amber-500"
+                          ? "text-amber-600 dark:text-amber-400"
                           : "text-muted-foreground"
                     )}
                   >
-                    {isRunning ? t("chat.running", "Running...") : summary}
+                    {isCompleted && <CheckCircle2 className="inline-block size-3 mr-1 align-text-bottom" />}
+                    {isRunning ? getProgressText(name, input, t) : summary}
                   </span>
                 </div>
               )}
@@ -939,7 +1136,7 @@ export function ToolExecutionItem({
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolInput", "Input")}
                     </p>
-                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted/50 p-2 text-xs max-h-[200px] break-words whitespace-pre-wrap">
+                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-code-block p-2 text-xs max-h-[200px] break-words whitespace-pre-wrap">
                       <code>{formatInlineInput(input)}</code>
                     </pre>
                   </div>
@@ -950,19 +1147,20 @@ export function ToolExecutionItem({
                       {t("chat.toolOutput", "Output")}
                     </p>
                     {(() => {
-                      const blocks = parseContentBlocks(output);
+                      const blocks = resolveContentBlocks(output);
                       if (blocks) {
                         return (
                           <div className={cn(
                             "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[300px]",
                             isActualError ? "bg-red-500/10 text-red-400"
                               : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                              : "bg-muted/50"
+                              : "bg-code-block"
                           )}>
                             <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
                           </div>
                         );
                       }
+                      const outputStr = typeof output === "string" ? output : "";
                       return (
                         <pre
                           className={cn(
@@ -971,10 +1169,10 @@ export function ToolExecutionItem({
                               ? "bg-red-500/10 text-red-400"
                               : isWarning
                                 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                                : "bg-muted/50"
+                                : "bg-code-block"
                           )}
                         >
-                          <code>{formatInlineOutput(output)}</code>
+                          <code>{formatInlineOutput(outputStr)}</code>
                         </pre>
                       );
                     })()}
@@ -984,6 +1182,8 @@ export function ToolExecutionItem({
             )}
           </div>
         </div>
+        {/* Right spacer — symmetric indent */}
+        <div className="w-8 shrink-0" />
       </motion.div>
 
       {/* Modal (only used when not in expandedInline mode) */}

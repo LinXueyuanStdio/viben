@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Minimize2 } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const compactCommand: SlashCommandDefinition = {
   id: "compact",
   name: "compact",
-  description: "Compress conversation history to reduce token usage",
+  get description() { return i18n.t("chat.slashCommands.compactDesc"); },
   icon: createElement(Minimize2, { className: "h-4 w-4" }),
   category: "session",
   source: "builtin",
@@ -13,7 +14,7 @@ export const compactCommand: SlashCommandDefinition = {
     {
       name: "summary",
       required: false,
-      description: "Optional custom summary for the compression",
+      get description() { return i18n.t("chat.slashCommands.compactArgDesc"); },
     },
   ],
   execute: async (context, args) => {

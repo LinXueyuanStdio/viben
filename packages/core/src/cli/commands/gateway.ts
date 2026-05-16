@@ -14,6 +14,7 @@
 import chalk from "chalk";
 import { execSync, spawn } from "node:child_process";
 import * as fs from "node:fs";
+import { createServer } from "node:http";
 import { dirname } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
@@ -158,8 +159,6 @@ async function runSimpleGatewayServer(options: {
 }): Promise<void> {
   const { host, port } = options;
   const addr = `${host}:${port}`;
-
-  const { createServer } = await import("node:http");
 
   const server = createServer((req, res) => {
     const url = new URL(req.url || "/", `http://${addr}`);

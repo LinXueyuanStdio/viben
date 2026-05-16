@@ -56,7 +56,7 @@ export function SidebarIconButton({
     // Fallback: use href for direct navigation
     if (href) {
       openPath(href, {
-        type: href.startsWith("/settings") ? "settings" : "workspace",
+        descriptorId: href.startsWith("/settings") ? "settings" : "workspace",
         title: tooltip,
       });
     }

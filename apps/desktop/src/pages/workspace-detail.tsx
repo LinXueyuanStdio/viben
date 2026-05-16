@@ -22,7 +22,7 @@ import type { WorkspaceSection } from "@/navigation/navigation-meta";
 import { cn } from "@/lib/utils";
 import { WorkspaceHeader } from "@/components/workspace";
 import { PageWrapper } from "@/components/layout";
-import { PageAppGrid } from "./apps/components/page-app-grid";
+import { PageIconGrid } from "./apps/components/page-app-grid";
 import { GRADIENT_COLORS } from "./apps/utils/gradient-colors";
 import type { GradientColorKey } from "./apps/utils/gradient-colors";
 import "./workspace-detail.css";
@@ -247,7 +247,7 @@ export function WorkspaceDetailPage() {
           {/* Main Desktop - Page App Grid (iPad home screen) */}
           <div className="flex-1 relative overflow-hidden min-h-0">
             {workspace && workspaceId ? (
-              <PageAppGrid
+              <PageIconGrid
                 workspaceId={workspaceId}
                 workspacePath={workspace.path}
               />

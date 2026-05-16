@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { Edit3 } from "lucide-react";
+import i18n from "@/i18n";
 import type { SlashCommandDefinition } from "../../types";
 
 export const vimCommand: SlashCommandDefinition = {
   id: "vim",
   name: "vim",
-  description: "Toggle vim editing mode (desktop: opens fullscreen editor)",
+  get description() { return i18n.t("chat.slashCommands.vimDesc"); },
   icon: createElement(Edit3, { className: "h-4 w-4" }),
   category: "session",
   source: "builtin",

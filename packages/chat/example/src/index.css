@@ -1,0 +1,143 @@
+@import "tailwindcss";
+@import "streamdown/styles.css";
+
+@source "../../src/**/*.tsx";
+@source "../node_modules/@viben/ui/src/**/*.tsx";
+
+/* dark: variant uses .dark class selector (not media query) */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-code-block: var(--code-block);
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+}
+
+:root {
+  --neutral-50: oklch(0.985 0.002 75);
+  --neutral-100: oklch(0.97 0.002 75);
+  --neutral-200: oklch(0.92 0.004 75);
+  --neutral-300: oklch(0.85 0.004 75);
+  --neutral-400: oklch(0.70 0.004 75);
+  --neutral-500: oklch(0.56 0.004 75);
+  --neutral-600: oklch(0.44 0.004 75);
+  --neutral-700: oklch(0.32 0.004 75);
+  --neutral-800: oklch(0.22 0.004 75);
+  --neutral-900: oklch(0.15 0.004 75);
+
+  --brand-amber-400: oklch(0.78 0.16 75);
+  --brand-amber-500: oklch(0.70 0.18 75);
+  --brand-amber-600: oklch(0.62 0.18 75);
+  --brand-amber-700: oklch(0.52 0.16 75);
+
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Crimson Pro', 'Source Serif Pro', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Light theme */
+:root {
+  --background: var(--neutral-50);
+  --foreground: var(--neutral-900);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--neutral-900);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--neutral-900);
+  --primary: var(--brand-amber-600);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: var(--neutral-200);
+  --secondary-foreground: var(--neutral-900);
+  --muted: var(--neutral-100);
+  --muted-foreground: var(--neutral-600);
+  --accent: var(--neutral-100);
+  --accent-foreground: var(--neutral-900);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --border: var(--neutral-200);
+  --input: var(--neutral-200);
+  --ring: var(--brand-amber-500);
+  --surface: oklch(1 0 0);
+  --surface-elevated: var(--neutral-100);
+  --code-block: var(--neutral-100);
+}
+
+/* Dark theme */
+.dark {
+  --background: oklch(0.13 0.003 75);
+  --foreground: var(--neutral-50);
+  --card: oklch(0.17 0.003 75);
+  --card-foreground: var(--neutral-50);
+  --popover: oklch(0.19 0.003 75);
+  --popover-foreground: var(--neutral-50);
+  --primary: var(--brand-amber-500);
+  --primary-foreground: var(--neutral-900);
+  --secondary: oklch(0.21 0.004 75);
+  --secondary-foreground: var(--neutral-50);
+  --muted: oklch(0.19 0.003 75);
+  --muted-foreground: var(--neutral-400);
+  --accent: oklch(0.22 0.004 75);
+  --accent-foreground: var(--neutral-50);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.24 0.004 75);
+  --input: oklch(0.24 0.004 75);
+  --ring: var(--brand-amber-400);
+  --surface: oklch(0.17 0.003 75);
+  --surface-elevated: oklch(0.22 0.004 75);
+  --code-block: oklch(0.12 0.003 75);
+}
+
+/* Base styles — inside @layer base so they don't override utilities */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--border);
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+
+  code, pre, kbd, samp {
+    font-family: var(--font-mono);
+  }
+}

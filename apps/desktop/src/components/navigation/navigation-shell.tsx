@@ -8,10 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import { DesktopBreadcrumbBar } from "./desktop-breadcrumb-bar";
-import { usePageTabs } from "@/hooks/use-page-tabs";
+import { useActiveTabState } from "@/hooks/use-page-tabs";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { DesktopBreadcrumbSegment } from "@/navigation/page-index";
-import type { BreadcrumbStackItem } from "@/navigation/navigation-meta";
+import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import type { Workspace } from "@/types";
 
 interface NavigationShellHeaderState {
@@ -74,7 +74,8 @@ function mapStackItemToSegment(
   return {
     id: item.id,
     label: item.label,
-    href: item.target?.canonicalUrl ?? "#",
+    titleKey: item.titleKey,
+    href: item.href,
     icon: item.icon,
     descriptorId: item.descriptorId,
     meta: item.meta,
@@ -105,6 +106,29 @@ function buildDerivedHeader(
 
   return {
     segments: stack.map(mapStackItemToSegment),
+  };
+}
+
+export function resolveNavigationShellHeader(
+  registeredHeader: RegisteredNavigationShellHeader | null,
+  derivedHeader: NavigationShellHeaderState | null
+): NavigationShellHeaderState | null {
+  if (derivedHeader) {
+    return {
+      workspace: derivedHeader.workspace,
+      segments: derivedHeader.segments ?? EMPTY_SEGMENTS,
+      className: registeredHeader?.className,
+    };
+  }
+
+  if (!registeredHeader) {
+    return null;
+  }
+
+  return {
+    workspace: registeredHeader.workspace,
+    segments: registeredHeader.segments ?? EMPTY_SEGMENTS,
+    className: registeredHeader.className,
   };
 }
 
@@ -211,7 +235,7 @@ export function useNavigationShellSlots() {
 export function GlobalBreadcrumbShell() {
   const registeredHeader = useContext(NavigationShellHeaderContext);
   const slots = useContext(NavigationShellSlotsContext);
-  const { currentNavigationState } = usePageTabs();
+  const { currentNavigationState } = useActiveTabState();
   const { workspaces } = useLocalWorkspaces();
 
   const derivedHeader = useMemo(
@@ -220,23 +244,8 @@ export function GlobalBreadcrumbShell() {
   );
 
   const resolvedHeader = useMemo(() => {
-    if (!registeredHeader && !derivedHeader) {
-      return null;
-    }
-
-    return {
-      workspace: registeredHeader?.workspace ?? derivedHeader?.workspace,
-      segments:
-        registeredHeader && "segments" in registeredHeader
-          ? registeredHeader.segments ?? derivedHeader?.segments ?? EMPTY_SEGMENTS
-          : derivedHeader?.segments ?? EMPTY_SEGMENTS,
-      className: registeredHeader?.className,
-    };
+    return resolveNavigationShellHeader(registeredHeader, derivedHeader);
   }, [derivedHeader, registeredHeader]);
-
-  if (!resolvedHeader) {
-    return null;
-  }
 
   const handleCenterHostRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -251,6 +260,10 @@ export function GlobalBreadcrumbShell() {
     },
     [slots]
   );
+
+  if (!resolvedHeader) {
+    return null;
+  }
 
   return (
     <DesktopBreadcrumbBar

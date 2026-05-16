@@ -43,10 +43,13 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
-import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
+import { DesktopMessageList, DesktopChatInput, ExecutorCapabilities } from "@/components/chat";
+import { SubagentSheet } from "@viben/chat";
+import type { SlashCommand, AgentMessage as ChatAgentMessage } from "@viben/chat";
+import { OpenClawConfigSection } from "@/components/agent/openclaw-config-section";
 import { ResizeHandle, CollapsibleSection } from "./components";
 import { getExecutorColor } from "./utils";
 import {
@@ -98,6 +101,11 @@ export function ExecutorDetailPage() {
   const [claudeMdContent, setClaudeMdContent] = useState<string>("");
   const [claudeMdLoading, setClaudeMdLoading] = useState(true);
   const [claudeMdError, setClaudeMdError] = useState<string | null>(null);
+
+  // OpenClaw config state (for testing connection; per-agent config is saved via agent settings)
+  const [openclawConfig, setOpenclawConfig] = useState<Record<string, unknown>>({
+    gateway: { host: "127.0.0.1", port: 18789 },
+  });
 
   // Load CLAUDE.md content
   useEffect(() => {
@@ -231,6 +239,13 @@ export function ExecutorDetailPage() {
     }
   }, [clearMessages]);
 
+  // Subagent sheet state (uses @viben/chat's AgentMessage type for SubagentSheet compatibility)
+  const [sheetData, setSheetData] = useState<{
+    title: string;
+    subagentType?: string;
+    messages: ChatAgentMessage[];
+  } | null>(null);
+
   // Loading state
   if (executorsLoading) {
     return (
@@ -261,21 +276,17 @@ export function ExecutorDetailPage() {
     stack: currentStack,
     fallback:
       workspace && executor
-        ? resolveLocationNavigation({
-            location: {
-              kind: "workspace-executor-detail",
+        ? buildColdStartBreadcrumb(
+            registry.build("/workspace/:workspaceId/executor/:executorType", {
               workspaceId: workspace.id,
               executorType: executor.type,
-            },
-            workspace,
-            title: executor.name,
-            icon: { type: "lucide", value: "terminal" },
-          }).breadcrumbStack.slice(1).map((item) => ({
+            }),
+            { label: executor.name, icon: { type: "lucide", value: "terminal" } }
+          ).slice(1).map((item) => ({
             id: item.id,
             label: item.label,
-            href: item.target?.canonicalUrl ?? "#",
+            href: item.href ?? "#",
             icon: item.icon,
-            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],
@@ -283,6 +294,15 @@ export function ExecutorDetailPage() {
 
   // Determine config source
   return (
+    <>
+    {/* Subagent Sheet (side panel) */}
+    <SubagentSheet
+      open={!!sheetData}
+      onClose={() => setSheetData(null)}
+      title={sheetData?.title || ""}
+      subagentType={sheetData?.subagentType}
+      messages={sheetData?.messages || []}
+    />
     <PageWrapper className="h-full flex flex-col">
       {/* Breadcrumb Header */}
       {workspace ? (
@@ -482,6 +502,16 @@ export function ExecutorDetailPage() {
                 </div>
               )}
 
+              {/* OpenClaw Connection Config */}
+              {executorType === "OPENCLAW" && (
+                <div className="mb-4">
+                  <OpenClawConfigSection
+                    config={openclawConfig}
+                    onConfigChange={setOpenclawConfig}
+                  />
+                </div>
+              )}
+
               {/* Capabilities Section - using reusable component */}
               <ExecutorCapabilities
                 executorType={executorType || ""}
@@ -549,7 +579,7 @@ export function ExecutorDetailPage() {
           </div>
 
           {/* Chat Messages */}
-          <MessageList
+          <DesktopMessageList
             messages={messages}
             isStreaming={isStreaming}
             pendingPlan={pendingPlan}
@@ -557,12 +587,16 @@ export function ExecutorDetailPage() {
             onApprovePlan={approvePlan}
             onRejectPlan={rejectPlan}
             onAnswerQuestions={answerQuestions}
-            className="flex-1"
+            className="flex-1 min-w-0 overflow-hidden"
+            maxMessageWidth="100%"
+            onExpandSubagent={(title, subagentType, msgs) =>
+              setSheetData({ title, subagentType, messages: msgs })
+            }
           />
 
           {/* Chat Input */}
           <div className="border-t border-border bg-background">
-            <ChatInput
+            <DesktopChatInput
               onSend={sendMessage}
               onCancel={cancel}
               isLoading={isStreaming}
@@ -581,6 +615,8 @@ export function ExecutorDetailPage() {
               enableWritingMode
               hideAgentSelector
               hideModelSelector
+              hideExecutorSelector
+              useGlobalConfig
               slashCommands={slashCommands}
               onSlashCommand={handleSlashCommand}
             />
@@ -591,5 +627,6 @@ export function ExecutorDetailPage() {
         </div>
       </div>
     </PageWrapper>
+    </>
   );
 }

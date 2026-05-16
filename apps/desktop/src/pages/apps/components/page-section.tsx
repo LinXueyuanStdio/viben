@@ -86,7 +86,7 @@ import {
   getPageHref,
 } from "../utils";
 import type { PageTreeNode, PageOrderMap } from "../utils";
-import { urlToLocation } from "@/navigation/navigation-meta";
+import { registry } from "@/navigation/route-registry";
 
 // =============================================================================
 // Types
@@ -157,14 +157,14 @@ function PageTreeItemContent({
   // Check if page is read-only (has read but not write permission)
   const isReadOnly = node.page.permission.includes("read") && !node.page.permission.includes("write");
 
-  const currentLocation = useMemo(
-    () => urlToLocation(`${location.pathname}${location.search}${location.hash}`),
+  const currentMatch = useMemo(
+    () => registry.match(`${location.pathname}${location.search}${location.hash}`),
     [location.hash, location.pathname, location.search]
   );
   const isActive =
-    currentLocation?.kind === "workspace-page" &&
-    currentLocation.workspaceId === workspaceId &&
-    currentLocation.pageSlug === node.page.slug;
+    currentMatch?.pattern === "/workspace/:workspaceId/pages/:pageSlug+" &&
+    currentMatch.params.workspaceId === workspaceId &&
+    currentMatch.params.pageSlug === node.page.slug;
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((e: React.MouseEvent) => {

@@ -47,7 +47,7 @@ import { FileTree, CodeEditor } from "@/components/skill-files";
 import {
   resolveHeaderSegments,
 } from "@/navigation/page-index";
-import { resolveLocationNavigation } from "@/navigation/location-navigation";
+import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
@@ -237,22 +237,15 @@ export function PromptDetailPage() {
     stack: currentStack,
     fallback:
       workspace && prompt
-        ? resolveLocationNavigation({
-            location: {
-              kind: "prompt-detail",
-              promptId: prompt.id,
-              executorType,
-              workspacePath: effectiveWorkspacePath || undefined,
-            },
-            workspace,
-            title: prompt.name,
-            icon: { type: "lucide", value: "quote" },
-          }).breadcrumbStack.slice(1).map((item) => ({
+        ? buildColdStartBreadcrumb(
+            registry.build("/prompt/:promptId", { promptId: prompt.id }) +
+              `?workspace_path=${encodeURIComponent(effectiveWorkspacePath || "")}&executor_type=${encodeURIComponent(executorType)}`,
+            { label: prompt.name, icon: { type: "lucide", value: "quote" } }
+          ).slice(1).map((item) => ({
             id: item.id,
             label: item.label,
-            href: item.target?.canonicalUrl ?? "#",
+            href: item.href ?? "#",
             icon: item.icon,
-            descriptorId: item.descriptorId,
             meta: item.meta,
           }))
         : [],

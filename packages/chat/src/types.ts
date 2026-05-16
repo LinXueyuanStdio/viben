@@ -68,6 +68,23 @@ export interface PendingQuestion {
   questions: AgentQuestion[];
 }
 
+/** Content block in tool output (text or image) */
+export interface TextContentBlock {
+  type: "text";
+  text: string;
+}
+
+export interface ImageContentBlock {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: string;
+    data: string;
+  };
+}
+
+export type ContentBlock = TextContentBlock | ImageContentBlock;
+
 /** Agent message */
 export interface AgentMessage {
   id?: string;
@@ -75,7 +92,7 @@ export interface AgentMessage {
   content?: string;
   name?: string; // Tool name for tool_use
   input?: Record<string, unknown>; // Tool input for tool_use
-  output?: string; // Tool output for tool_result
+  output?: string | ContentBlock[]; // Tool output for tool_result (string or content blocks with images)
   toolUseId?: string; // For matching tool_result to tool_use
   isError?: boolean;
   message?: string; // Error message
@@ -83,9 +100,26 @@ export interface AgentMessage {
   attachments?: MessageAttachment[]; // For user messages with attachments
   questions?: AgentQuestion[]; // For ask_question type (AskUserQuestion tool)
   planModeAction?: "enter" | "exit"; // For plan_mode type
-  subagentId?: string; // For Task tool, the subagent ID
-  subagentMessages?: AgentMessage[]; // For Task tool, recursively loaded subagent messages
+  subagentId?: string; // For Agent/Task tool, the subagent ID
+  subagentMessages?: AgentMessage[]; // For Agent/Task tool, recursively loaded subagent messages
+  timestamp?: number; // Unix timestamp (ms) for turn separator display
 }
+
+// ============================================================================
+// Streaming Text Types
+// ============================================================================
+
+/**
+ * Streaming text state for the MessageList component.
+ * When non-null, the streaming block is shown as a separate sibling
+ * after the message list — avoiding full list reconciliation.
+ *
+ * Parent contract (atomic transition):
+ * 1. During streaming: set `streamingText` to current accumulated text
+ * 2. On stream end: in ONE setState batch, set `streamingText = null`
+ *    AND append the final assistant message to the messages array
+ */
+export type StreamingTextState = string | null;
 
 // ============================================================================
 // Slash Command Types

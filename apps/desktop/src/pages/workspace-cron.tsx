@@ -750,15 +750,15 @@ export function WorkspaceCronPage() {
   const cronSection = getWorkspaceSectionDescriptor("cron");
   const cronHeaderSegments = cronSection
     ? [{
-        id: `workspace:${workspace.id}:${cronSection.routePath}`,
+        id: `workspace:${workspace.id}:${cronSection.section}`,
         label: t(cronSection.titleKey, cronSection.fallbackLabel),
-        href: `/workspace/${workspace.id}/${cronSection.routePath}`,
+        href: `/workspace/${workspace.id}/${cronSection.section}`,
         icon: cronSection.icon,
         kind: "workspace-section" as const,
         meta: {
           workspaceId: workspace.id,
           section: cronSection.section,
-          routePath: cronSection.routePath,
+          routePath: cronSection.section,
         },
       }]
     : [];

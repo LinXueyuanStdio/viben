@@ -105,7 +105,7 @@ export function WorkspaceGitHubPage({
       meta: {
         workspaceId,
         section: "github" as const,
-        routePath: githubDescriptor?.routePath ?? "github",
+        routePath: githubDescriptor?.section ?? "github",
       },
     };
     return resolveHeaderSegments({
