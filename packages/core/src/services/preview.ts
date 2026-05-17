@@ -289,7 +289,8 @@ export class PreviewManager {
     options: { command?: string; readyPattern?: string; timeout?: number }
   ): Promise<void> {
     const command = options.command!;
-    const timeout = options.timeout ?? STARTUP_TIMEOUT_MS;
+    // timeout from SKILL.md is in seconds, convert to ms; fallback to default
+    const timeout = options.timeout ? options.timeout * 1000 : STARTUP_TIMEOUT_MS;
     const readyPattern = options.readyPattern;
 
     // Install dependencies if node_modules doesn't exist
@@ -358,7 +359,7 @@ export class PreviewManager {
     childProcess.stdout?.on("data", (data: Buffer) => {
       const output = data.toString().trim();
       if (output) {
-        log.debug({ output }, "server stdout");
+        log.info({ output }, "server stdout");
         if (readyRegex && readyRegex.test(output)) {
           readyDetected = true;
         }
@@ -369,7 +370,7 @@ export class PreviewManager {
       const output = data.toString().trim();
       if (output) {
         stderrOutput += output + "\n";
-        log.debug({ output }, "server stderr");
+        log.info({ output }, "server stderr");
         if (readyRegex && readyRegex.test(output)) {
           readyDetected = true;
         }
@@ -380,7 +381,7 @@ export class PreviewManager {
       processExited = true;
       processExitCode = code;
       if (instance.status === "running" || instance.status === "starting") {
-        log.info({ code }, "Custom server process exited");
+        log.info({ code, stderr: stderrOutput }, "Custom server process exited");
         instance.status = "stopped";
         this.cleanup(instance);
       }
@@ -410,7 +411,7 @@ export class PreviewManager {
         log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Custom server running (pattern matched)");
       } else {
         const errMsg = processExited
-          ? `Process exited with code ${processExitCode}: ${stderrOutput.slice(-500)}`
+          ? `Process exited with code ${processExitCode}: ${stderrOutput}`
           : "Server failed to emit ready pattern within timeout";
         instance.status = "error";
         instance.error = errMsg;
@@ -427,7 +428,7 @@ export class PreviewManager {
         log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Custom server running");
       } else {
         const errMsg = processExited
-          ? `Process exited with code ${processExitCode}: ${stderrOutput.slice(-500)}`
+          ? `Process exited with code ${processExitCode}: ${stderrOutput}`
           : "Server failed to start within timeout";
         instance.status = "error";
         instance.error = errMsg;
