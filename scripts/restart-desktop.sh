@@ -16,22 +16,38 @@ echo "📦 Checking workspace dependencies..."
 # --- Auto-build sidecar binary ---
 SIDECAR_DIR="$ROOT_DIR/apps/desktop/src-tauri/binaries"
 ARCH=$(uname -m)
-case "$ARCH" in
-    x86_64)  TARGET_TRIPLE="x86_64-unknown-linux-gnu" ;;
-    aarch64) TARGET_TRIPLE="aarch64-unknown-linux-gnu" ;;
-    arm64)   TARGET_TRIPLE="aarch64-apple-darwin" ;;
-    *)       TARGET_TRIPLE="$ARCH-unknown-linux-gnu" ;;
+OS=$(uname -s)
+
+EXE_SUFFIX=""
+case "$OS" in
+    Darwin)
+        case "$ARCH" in
+            x86_64)        TARGET_TRIPLE="x86_64-apple-darwin" ;;
+            aarch64|arm64) TARGET_TRIPLE="aarch64-apple-darwin" ;;
+            *)             TARGET_TRIPLE="$ARCH-apple-darwin" ;;
+        esac
+        ;;
+    Linux)
+        case "$ARCH" in
+            x86_64)        TARGET_TRIPLE="x86_64-unknown-linux-gnu" ;;
+            aarch64|arm64) TARGET_TRIPLE="aarch64-unknown-linux-gnu" ;;
+            *)             TARGET_TRIPLE="$ARCH-unknown-linux-gnu" ;;
+        esac
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        EXE_SUFFIX=".exe"
+        case "$ARCH" in
+            x86_64|AMD64)  TARGET_TRIPLE="x86_64-pc-windows-msvc" ;;
+            aarch64|arm64) TARGET_TRIPLE="aarch64-pc-windows-msvc" ;;
+            *)             TARGET_TRIPLE="$ARCH-pc-windows-msvc" ;;
+        esac
+        ;;
+    *)
+        TARGET_TRIPLE="$ARCH-unknown-linux-gnu"
+        ;;
 esac
 
-# macOS detection
-if [ "$(uname -s)" = "Darwin" ]; then
-    case "$ARCH" in
-        x86_64)  TARGET_TRIPLE="x86_64-apple-darwin" ;;
-        arm64)   TARGET_TRIPLE="aarch64-apple-darwin" ;;
-    esac
-fi
-
-SIDECAR_BIN="$SIDECAR_DIR/viben-$TARGET_TRIPLE"
+SIDECAR_BIN="$SIDECAR_DIR/viben-${TARGET_TRIPLE}${EXE_SUFFIX}"
 
 if [ ! -f "$SIDECAR_BIN" ]; then
     echo "📦 Building sidecar binary (viben-$TARGET_TRIPLE)..."

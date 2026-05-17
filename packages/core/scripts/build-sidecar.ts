@@ -12,15 +12,17 @@
  *   npx tsx packages/core/scripts/build-sidecar.ts [options]
  *
  * Options:
- *   --platform <platform>  Build for specific platform: macos-arm64, macos-x64, win-x64, linux-x64, all, current (default: current)
+ *   --platform <platform>  Build for specific platform: macos-arm64, macos-x64, win-x64, win-arm64, linux-x64, linux-arm64, all, current (default: current)
  *   --output <dir>         Output directory (default: apps/desktop/src-tauri/binaries)
  *   --skip-build           Skip the TypeScript build step (use existing dist)
  *
  * Output files (Tauri sidecar naming convention):
- *   - viben-aarch64-apple-darwin     (macOS ARM64)
- *   - viben-x86_64-apple-darwin      (macOS x64)
+ *   - viben-aarch64-apple-darwin       (macOS ARM64)
+ *   - viben-x86_64-apple-darwin        (macOS x64)
  *   - viben-x86_64-pc-windows-msvc.exe (Windows x64)
- *   - viben-x86_64-unknown-linux-gnu (Linux x64)
+ *   - viben-aarch64-pc-windows-msvc.exe (Windows ARM64)
+ *   - viben-x86_64-unknown-linux-gnu   (Linux x64)
+ *   - viben-aarch64-unknown-linux-gnu  (Linux ARM64)
  *
  * Note: Bun can only compile for the current platform. Cross-compilation requires
  * running this script on each target platform (handled by CI matrix).
@@ -58,9 +60,17 @@ const PLATFORMS: Record<string, PlatformConfig> = {
     bunTarget: "bun-windows-x64",
     tauriSuffix: "x86_64-pc-windows-msvc",
   },
+  "win-arm64": {
+    bunTarget: "bun-windows-arm64",
+    tauriSuffix: "aarch64-pc-windows-msvc",
+  },
   "linux-x64": {
     bunTarget: "bun-linux-x64",
     tauriSuffix: "x86_64-unknown-linux-gnu",
+  },
+  "linux-arm64": {
+    bunTarget: "bun-linux-arm64",
+    tauriSuffix: "aarch64-unknown-linux-gnu",
   },
 };
 
@@ -72,9 +82,9 @@ function getCurrentPlatform(): string {
   if (platform === "darwin") {
     return arch === "arm64" ? "macos-arm64" : "macos-x64";
   } else if (platform === "win32") {
-    return "win-x64";
+    return arch === "arm64" ? "win-arm64" : "win-x64";
   } else if (platform === "linux") {
-    return "linux-x64";
+    return arch === "arm64" ? "linux-arm64" : "linux-x64";
   }
 
   throw new Error(`Unsupported platform: ${platform}-${arch}`);
