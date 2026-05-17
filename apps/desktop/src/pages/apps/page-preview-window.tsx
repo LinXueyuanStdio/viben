@@ -5,6 +5,7 @@ import { PagePreview } from "./components";
 import type { PageViewMode } from "./components/page-preview";
 import { usePage } from "@/hooks/use-pages";
 import { useVitePreview } from "@/hooks/use-vite-preview";
+import type { ServerPageConfig } from "@/lib/gateway/types/page";
 import { cn } from "@/lib/utils";
 
 function getSearchParam(name: string): string | undefined {
@@ -49,7 +50,16 @@ export function PagePreviewWindow() {
 
   const handleStartLivePreview = useCallback(() => {
     if (!workspacePath || !page) return;
-    startPreview(`${workspacePath}/pages/${page.slug}`);
+    const pageDir = `${workspacePath}/pages/${page.slug}`;
+    const options = page.type === "server"
+      ? {
+          command: (page as ServerPageConfig).command,
+          port: (page as ServerPageConfig).port,
+          ready_pattern: (page as ServerPageConfig).ready_pattern,
+          timeout: (page as ServerPageConfig).timeout,
+        }
+      : undefined;
+    startPreview(pageDir, options);
   }, [page, startPreview, workspacePath]);
 
   if (!workspaceId || !workspacePath || !slug) {

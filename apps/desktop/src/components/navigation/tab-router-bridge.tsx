@@ -4,6 +4,7 @@ import { registry } from "@/navigation/route-registry";
 import { buildColdStartBreadcrumb, buildBreadcrumbItem } from "@/navigation/breadcrumb-builder";
 import { isStackPrefixOf } from "@/navigation/navigate";
 import { useTabStore, selectActiveTab } from "@/stores/tab-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 
 /**
  * Tab-Router Bridge
@@ -21,7 +22,6 @@ export function TabRouterBridge() {
   const lastPushedToStoreRef = useRef<string | null>(null);
 
   // Get the active tab's current URL from the store
-  const activeTabId = useTabStore((s) => s.activeTabId);
   const storeUrl = useTabStore((s) => {
     const tab = selectActiveTab(s);
     return tab?.navigationHistory[tab.historyIndex]?.url ?? null;
@@ -38,6 +38,16 @@ export function TabRouterBridge() {
     const currentRouterPath = location.pathname + location.search;
     const normalizedStoreUrl = registry.normalizeUrl(storeUrl);
 
+    // Sync workspace store whenever the active tab's URL changes
+    const match = registry.match(normalizedStoreUrl);
+    const workspaceId = match?.params?.workspaceId ?? null;
+    if (workspaceId) {
+      const { activeWorkspaceId } = useWorkspaceStore.getState();
+      if (activeWorkspaceId !== workspaceId) {
+        useWorkspaceStore.getState().setActiveWorkspace(workspaceId);
+      }
+    }
+
     if (normalizedStoreUrl === currentRouterPath) return;
 
     // Skip if this store URL was set by our Router->Store sync
@@ -51,12 +61,15 @@ export function TabRouterBridge() {
   }, [storeUrl, routerNavigate, location.pathname, location.search]);
 
   // Router -> Store: when React Router URL changes externally, update store
-  // NOTE: storeUrl is intentionally NOT in deps. This effect should only fire
-  // when the Router location changes (e.g. browser back/forward). Including
-  // storeUrl caused a race: store updates before Router, triggering this effect
-  // with stale location, which incorrectly reset the breadcrumb to the old path.
+  // NOTE: Neither storeUrl nor activeTabId are in deps. This effect must only
+  // fire when the Router location actually changes (browser back/forward, deep
+  // link, etc.). Including activeTabId caused a critical race: on tab switch,
+  // this effect fires with the OLD location (router hasn't updated yet) and
+  // overwrites the new tab's URL with the old tab's URL. All store reads happen
+  // via getState() inside the effect to get fresh values without dep coupling.
   useEffect(() => {
-    if (!activeTabId) return;
+    const { activeTabId: currentTabId } = useTabStore.getState();
+    if (!currentTabId) return;
 
     const currentRouterUrl = location.pathname + location.search;
     const normalizedUrl = registry.normalizeUrl(currentRouterUrl);
@@ -89,14 +102,14 @@ export function TabRouterBridge() {
     if (isStackPrefixOf(currentStack, match)) {
       // Smart push: existing stack is valid ancestor chain
       const leaf = buildBreadcrumbItem(match.entry, match.params);
-      pushNavigation(activeTabId, normalizedUrl, leaf);
+      pushNavigation(currentTabId, normalizedUrl, leaf);
     } else {
       // Cold-start reset: deep link or direct URL entry
       const stack = buildColdStartBreadcrumb(normalizedUrl);
-      resetNavigation(activeTabId, normalizedUrl, stack);
+      resetNavigation(currentTabId, normalizedUrl, stack);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, activeTabId, pushNavigation, resetNavigation]);
+  }, [location.pathname, location.search, pushNavigation, resetNavigation]);
 
   return null;
 }

@@ -137,12 +137,12 @@ export function useLocalWorkspaces() {
       try {
         const client = getGatewayClient();
         await client.deleteWorkspace(workspaceId);
-        removeWorkspaceFromStore(workspaceId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
         throw new Error(message);
       }
+      removeWorkspaceFromStore(workspaceId);
     },
     [removeWorkspaceFromStore, setError]
   );

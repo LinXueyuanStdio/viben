@@ -5,10 +5,10 @@
  * Displays pages as app icons with folder overlay support.
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useState, useMemo, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -24,11 +24,12 @@ import { toast } from "@/hooks/use-toast";
 import { usePages, useDeletePage } from "@/hooks/use-pages";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { CreatePageDialog } from "./create-page-dialog";
+import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { PageIcon } from "./page-app-icon";
-import {
-  buildPageTree,
-} from "../utils";
+import { FolderOverlay } from "./folder-overlay";
+import { usePageDialogs } from "./use-page-dialogs";
+import { buildPageTree } from "../utils";
 import type { PageTreeNode } from "../utils";
 import type { PageConfig } from "@/hooks/use-pages";
 
@@ -51,11 +52,19 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
   const { data: pages, isLoading, error } = usePages(workspacePath);
   const deletePageMutation = useDeletePage();
 
-  // Dialog states
-  const [pageToDelete, setPageToDelete] = useState<PageConfig | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createParentSlug, setCreateParentSlug] = useState<string | undefined>(undefined);
-  const [permissionsPage, setPermissionsPage] = useState<PageConfig | null>(null);
+  // Dialog states (extracted hook)
+  const {
+    pageToDelete,
+    setPageToDelete,
+    createDialogOpen,
+    createParentSlug,
+    openCreateDialog,
+    closeCreateDialog,
+    permissionsPage,
+    setPermissionsPage,
+    editPage,
+    setEditPage,
+  } = usePageDialogs();
 
   // Folder overlay state
   const [openFolder, setOpenFolder] = useState<PageTreeNode | null>(null);
@@ -67,7 +76,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     return buildPageTree(pages);
   }, [pages]);
 
-  // Handlers
+  // Stable handlers
   const handlePageClick = useCallback(
     (page: PageConfig) => {
       openWorkspacePage(workspaceId, page.slug, {
@@ -105,15 +114,16 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     }
   };
 
-  const handleCreateSubpage = useCallback((parentSlug: string) => {
-    setCreateParentSlug(parentSlug);
-    setCreateDialogOpen(true);
-  }, []);
+  const handleCreateSubpage = useCallback(
+    (parentSlug: string) => {
+      openCreateDialog(parentSlug);
+    },
+    [openCreateDialog]
+  );
 
   const handleCreatePage = useCallback(() => {
-    setCreateParentSlug(undefined);
-    setCreateDialogOpen(true);
-  }, []);
+    openCreateDialog();
+  }, [openCreateDialog]);
 
   const handleCreateSuccess = useCallback(
     (slug: string) => {
@@ -129,9 +139,8 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
   const handleNodeClick = useCallback(
     (node: PageTreeNode, e?: React.MouseEvent) => {
       if (node.children.length > 0) {
-        // Capture viewport-relative origin for folder animation
         if (e) {
-          const target = (e.currentTarget as HTMLElement);
+          const target = e.currentTarget as HTMLElement;
           const iconRect = target.getBoundingClientRect();
           setFolderOrigin({
             x: iconRect.left + iconRect.width / 2,
@@ -148,6 +157,9 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     },
     [openWorkspacePage, workspaceId]
   );
+
+  // Stable no-op for PageIcon onClick (click handled by parent wrapper)
+  const noop = useCallback(() => {}, []);
 
   // Loading
   if (isLoading) {
@@ -215,11 +227,12 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
                 <PageIcon
                   node={node}
                   workspacePath={workspacePath}
-                  onClick={() => {/* handled by parent wrapper for position tracking */}}
+                  onClick={noop}
                   onOpenInNewTab={handleOpenInNewTab}
                   onCreateSubpage={handleCreateSubpage}
                   onDeleteClick={setPageToDelete}
                   onPermissionsClick={setPermissionsPage}
+                  onEditClick={setEditPage}
                 />
               </div>
             ))}
@@ -265,6 +278,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
             onCreateSubpage={handleCreateSubpage}
             onDeleteClick={setPageToDelete}
             onPermissionsClick={setPermissionsPage}
+            onEditClick={setEditPage}
             onClose={() => setOpenFolder(null)}
           />
         )}
@@ -306,7 +320,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
       {/* Create dialog */}
       <CreatePageDialog
         open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        onOpenChange={(open) => !open && closeCreateDialog()}
         workspacePath={workspacePath}
         parentSlug={createParentSlug}
         onSuccess={handleCreateSuccess}
@@ -319,167 +333,14 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
         page={permissionsPage}
         workspacePath={workspacePath}
       />
+
+      {/* Edit page dialog */}
+      <EditPageDialog
+        open={!!editPage}
+        onOpenChange={(open) => !open && setEditPage(null)}
+        page={editPage}
+        workspacePath={workspacePath}
+      />
     </>
-  );
-}
-
-// =============================================================================
-// Folder Overlay
-// =============================================================================
-
-interface FolderOverlayProps {
-  folder: PageTreeNode;
-  origin: { x: number; y: number } | null;
-  workspacePath: string;
-  onPageClick: (page: PageConfig) => void;
-  onOpenInNewTab: (page: PageConfig) => void;
-  onCreateSubpage: (parentSlug: string) => void;
-  onDeleteClick: (page: PageConfig) => void;
-  onPermissionsClick: (page: PageConfig) => void;
-  onClose: () => void;
-}
-
-function FolderOverlay({
-  folder,
-  origin,
-  workspacePath,
-  onPageClick,
-  onOpenInNewTab,
-  onCreateSubpage,
-  onDeleteClick,
-  onPermissionsClick,
-  onClose,
-}: FolderOverlayProps) {
-  const { t } = useTranslation();
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  // Close when clicking outside
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === overlayRef.current) {
-        onClose();
-      }
-    },
-    [onClose]
-  );
-
-  const handleChildClick = useCallback(
-    (node: PageTreeNode) => {
-      onPageClick(node.page);
-      onClose();
-    },
-    [onClose, onPageClick]
-  );
-
-  // Calculate offset from viewport center to icon position (for iPad-style expand animation)
-  const offsetX = origin ? origin.x - window.innerWidth / 2 : 0;
-  const offsetY = origin ? origin.y - window.innerHeight / 2 : 0;
-
-  return (
-    <motion.div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{
-        background: origin
-          ? `radial-gradient(600px circle at ${origin.x}px ${origin.y}px, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.6) 100%)`
-          : "radial-gradient(ellipse at center, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.6) 100%)",
-        backdropFilter: "blur(12px) saturate(120%)",
-        WebkitBackdropFilter: "blur(12px) saturate(120%)",
-      }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      onClick={handleBackdropClick}
-    >
-      <motion.div
-        className="relative max-w-sm w-full mx-4 rounded-2xl p-5"
-        style={{
-          backgroundColor: "rgba(255, 255, 255, 0.15)",
-          backdropFilter: "blur(40px)",
-          WebkitBackdropFilter: "blur(40px)",
-          border: "1px solid rgba(255, 255, 255, 0.2)",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
-        }}
-        initial={{ scale: 0.4, opacity: 0, x: offsetX * 0.5, y: offsetY * 0.5 }}
-        animate={{ scale: 1, opacity: 1, x: 0, y: 0 }}
-        exit={{ scale: 0.4, opacity: 0, x: offsetX * 0.5, y: offsetY * 0.5 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-      >
-        {/* Close button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-3 right-3 p-1 rounded-full hover:bg-white/10 transition-colors"
-        >
-          <X className="h-4 w-4" style={{ color: "rgba(255, 255, 255, 0.6)" }} />
-        </button>
-
-        {/* Folder name */}
-        <h3
-          className="text-base font-semibold text-center mb-4"
-          style={{
-            color: "rgba(255, 255, 255, 0.9)",
-            textShadow: "0 1px 3px rgba(0, 0, 0, 0.4)",
-          }}
-        >
-          {folder.page.name}
-        </h3>
-
-        {/* Child pages grid */}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-y-5 gap-x-2 justify-items-center">
-          {folder.children.map((child) => (
-            <PageIcon
-              key={child.page.slug}
-              node={child}
-              workspacePath={workspacePath}
-              onClick={() => handleChildClick(child)}
-              onOpenInNewTab={onOpenInNewTab}
-              onCreateSubpage={onCreateSubpage}
-              onDeleteClick={onDeleteClick}
-              onPermissionsClick={onPermissionsClick}
-            />
-          ))}
-          {/* Add subpage button */}
-          <button
-            type="button"
-            onClick={() => {
-              onCreateSubpage(folder.page.slug);
-              onClose();
-            }}
-            className={cn(
-              "flex flex-col items-center gap-1.5 w-[76px]",
-              "transition-transform duration-150 ease-out",
-              "hover:scale-105 active:scale-95"
-            )}
-          >
-            <div
-              className="w-[60px] h-[60px] rounded-[14px] flex items-center justify-center"
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-                border: "2px dashed rgba(255, 255, 255, 0.25)",
-              }}
-            >
-              <Plus className="h-5 w-5" style={{ color: "rgba(255, 255, 255, 0.5)" }} />
-            </div>
-            <span
-              className="text-[11px]"
-              style={{ color: "rgba(255, 255, 255, 0.5)" }}
-            >
-              {t("page.createSubpage")}
-            </span>
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * EditPageDialog Component
  *
- * Dialog for editing existing page config (name, description, icon).
+ * Dialog for editing existing page config (name, description, icon, cover, page_width, show_toc).
  * Slug and page type are read-only (structural, cannot be changed).
  */
 
@@ -20,11 +20,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { useUpdatePageConfig } from "@/hooks/use-pages";
 import { toast } from "@/hooks/use-toast";
 import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
 import type { IconData } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
+import type { PageWidth } from "@/lib/gateway/types/page";
 
 // =============================================================================
 // Types
@@ -54,6 +58,9 @@ export function EditPageDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState<IconData | null>(null);
+  const [cover, setCover] = useState("");
+  const [pageWidth, setPageWidth] = useState<PageWidth>("default");
+  const [showToc, setShowToc] = useState(false);
 
   // Initialize form from page when dialog opens
   useEffect(() => {
@@ -61,6 +68,9 @@ export function EditPageDialog({
       setName(page.name);
       setDescription(page.description ?? "");
       setIcon(page.icon ?? { type: "lucide", value: "file-text" });
+      setCover(page.cover ?? "");
+      setPageWidth(page.page_width ?? "default");
+      setShowToc(page.show_toc ?? false);
     }
   }, [open, page]);
 
@@ -80,6 +90,9 @@ export function EditPageDialog({
         name: name.trim(),
         description: description.trim() || null,
         icon: icon ? { type: icon.type, value: icon.value } : null,
+        cover: cover.trim() || null,
+        page_width: pageWidth,
+        show_toc: showToc,
       });
       toast.success(t("page.updateSuccess", "Page updated successfully"));
       onOpenChange(false);
@@ -94,6 +107,9 @@ export function EditPageDialog({
     name,
     description,
     icon,
+    cover,
+    pageWidth,
+    showToc,
     updatePageConfigMutation,
     t,
     onOpenChange,
@@ -180,6 +196,60 @@ export function EditPageDialog({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
+            />
+          </div>
+
+          <Separator />
+
+          {/* Cover URL */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-page-cover">
+              {t("page.cover", "Cover")}
+              <span className="ml-1 text-muted-foreground">({t("common.optional", "Optional")})</span>
+            </Label>
+            <Input
+              id="edit-page-cover"
+              placeholder={t("page.coverPlaceholder", "https://example.com/cover.jpg")}
+              value={cover}
+              onChange={(e) => setCover(e.target.value)}
+            />
+          </div>
+
+          {/* Page Width */}
+          <div className="space-y-2">
+            <Label>{t("page.pageWidth", "Page Width")}</Label>
+            <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+              {(["default", "wide", "full"] as const).map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setPageWidth(w)}
+                  className={cn(
+                    "flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    pageWidth === w
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {w === "default"
+                    ? t("page.pageWidthDefault", "Default")
+                    : w === "wide"
+                      ? t("page.pageWidthWide", "Wide")
+                      : t("page.pageWidthFull", "Full")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Show TOC */}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="edit-page-show-toc" className="cursor-pointer">
+              {t("page.showToc", "Show Table of Contents")}
+            </Label>
+            <Switch
+              id="edit-page-show-toc"
+              checked={showToc}
+              onCheckedChange={setShowToc}
             />
           </div>
         </div>

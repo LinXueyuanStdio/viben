@@ -49,6 +49,12 @@ export interface StartPreviewRequest {
   work_dir: string;
   /** Preferred port (optional, auto-assign if not specified) */
   port?: number;
+  /** Custom command to run (e.g., "npm run serve") */
+  command?: string;
+  /** Regex pattern to detect server ready in stdout/stderr */
+  ready_pattern?: string;
+  /** Startup timeout in milliseconds */
+  timeout?: number;
 }
 
 /**
@@ -111,24 +117,27 @@ export async function checkNodeAvailable(baseUrl: string): Promise<boolean> {
 }
 
 /**
- * Start a Vite preview server
+ * Start a preview server
  *
  * @param baseUrl - Gateway base URL
  * @param taskId - Task identifier
  * @param workDir - Working directory path
- * @param port - Optional preferred port
+ * @param options - Optional server options (port, command, ready_pattern, timeout)
  * @returns Preview status
  */
 export async function startPreview(
   baseUrl: string,
   taskId: string,
   workDir: string,
-  port?: number
+  options?: { port?: number; command?: string; ready_pattern?: string; timeout?: number }
 ): Promise<PreviewStatusResponse> {
   const request: StartPreviewRequest = {
     task_id: taskId,
     work_dir: workDir,
-    port,
+    port: options?.port,
+    command: options?.command,
+    ready_pattern: options?.ready_pattern,
+    timeout: options?.timeout,
   };
 
   const response = await fetch(`${baseUrl}/api/preview/start`, {
@@ -271,6 +280,38 @@ export async function listPreviews(
       `Failed to list previews: ${errorMessage}`,
       response.status,
       "PREVIEW_LIST_FAILED"
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Kill the process occupying a specific port
+ *
+ * @param baseUrl - Gateway base URL
+ * @param port - Port number to free
+ * @returns Success status
+ */
+export async function killPort(
+  baseUrl: string,
+  port: number
+): Promise<{ success: boolean; error?: string }> {
+  const response = await fetch(`${baseUrl}/api/preview/kill-port`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ port }),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to kill port: ${errorMessage}`,
+      response.status,
+      "PREVIEW_KILL_PORT_FAILED"
     );
   }
 

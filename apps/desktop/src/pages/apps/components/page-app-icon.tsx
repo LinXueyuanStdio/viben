@@ -6,13 +6,14 @@
  * - Folder pages: frosted glass with 2x2 child icon preview
  */
 
-import { useCallback } from "react";
+import { memo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Plus,
   Trash2,
   Shield,
   ExternalLink,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -39,13 +40,14 @@ export interface PageIconProps {
   onCreateSubpage: (parentSlug: string) => void;
   onDeleteClick: (page: PageConfig) => void;
   onPermissionsClick: (page: PageConfig) => void;
+  onEditClick?: (page: PageConfig) => void;
 }
 
 // =============================================================================
 // Component
 // =============================================================================
 
-export function PageIcon({
+export const PageIcon = memo(function PageIcon({
   node,
   workspacePath,
   onClick,
@@ -53,6 +55,7 @@ export function PageIcon({
   onCreateSubpage,
   onDeleteClick,
   onPermissionsClick,
+  onEditClick,
 }: PageIconProps) {
   const { t } = useTranslation();
   const { page, children } = node;
@@ -108,6 +111,12 @@ export function PageIcon({
           <Plus className="mr-2 h-4 w-4" />
           {t("page.createSubpage")}
         </ContextMenuItem>
+        {onEditClick && (
+          <ContextMenuItem onClick={() => onEditClick(page)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            {t("common.edit", "Edit")}
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem onClick={() => onPermissionsClick(page)}>
           <Shield className="mr-2 h-4 w-4" />
@@ -124,7 +133,16 @@ export function PageIcon({
       </ContextMenuContent>
     </ContextMenu>
   );
-}
+}, (prev, next) => {
+  // Compare identity and display-relevant props only; skip callback functions
+  return (
+    prev.node.page.slug === next.node.page.slug &&
+    prev.node.page.name === next.node.page.name &&
+    prev.node.page.icon === next.node.page.icon &&
+    prev.node.children.length === next.node.children.length &&
+    prev.workspacePath === next.workspacePath
+  );
+});
 
 // =============================================================================
 // Sub-components

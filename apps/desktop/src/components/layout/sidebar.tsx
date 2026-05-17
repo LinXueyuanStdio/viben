@@ -596,7 +596,10 @@ export function Sidebar() {
                 {t("common.cancel")}
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleDeleteWorkspace}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDeleteWorkspace();
+                }}
                 disabled={isDeleting}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >

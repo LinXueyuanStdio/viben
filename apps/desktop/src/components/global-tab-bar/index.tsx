@@ -34,10 +34,10 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { IconDisplay } from "@/components/ui/icon-picker";
 import {
   Tooltip,
   TooltipContent,
@@ -294,26 +294,50 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   );
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
+
+  // Build current page item for context display in history menus
+  const currentPageItem = activeTab
+    ? (() => {
+        const currentState = activeTab.navigationHistory[activeTab.historyIndex];
+        if (!currentState) return null;
+        const leaf = currentState.breadcrumbStack[currentState.breadcrumbStack.length - 1];
+        return {
+          historyIndex: activeTab.historyIndex,
+          label: leaf?.label ?? currentState.url,
+          titleKey: leaf?.titleKey,
+          icon: leaf?.icon,
+        };
+      })()
+    : null;
+
   const backHistoryItems = activeTab
     ? activeTab.navigationHistory
         .slice(0, activeTab.historyIndex)
-        .map((state, index) => ({
-          historyIndex: index,
-          label:
-            state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
-            state.url,
-        }))
+        .map((state, index) => {
+          const leaf = state.breadcrumbStack[state.breadcrumbStack.length - 1];
+          return {
+            historyIndex: index,
+            label: leaf?.label ?? state.url,
+            titleKey: leaf?.titleKey,
+            icon: leaf?.icon,
+          };
+        })
         .reverse()
+        .slice(0, 10)
     : [];
   const forwardHistoryItems = activeTab
     ? activeTab.navigationHistory
         .slice(activeTab.historyIndex + 1)
-        .map((state, offset) => ({
-          historyIndex: activeTab.historyIndex + offset + 1,
-          label:
-            state.breadcrumbStack[state.breadcrumbStack.length - 1]?.label ??
-            state.url,
-        }))
+        .map((state, offset) => {
+          const leaf = state.breadcrumbStack[state.breadcrumbStack.length - 1];
+          return {
+            historyIndex: activeTab.historyIndex + offset + 1,
+            label: leaf?.label ?? state.url,
+            titleKey: leaf?.titleKey,
+            icon: leaf?.icon,
+          };
+        })
+        .slice(0, 10)
     : [];
 
   // Get openTab action for creating new tabs
@@ -370,17 +394,37 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                 {t("common.back", "Go Back")}
               </TooltipContent>
             </Tooltip>
-            <ContextMenuContent className="w-56">
-              <ContextMenuLabel>{t("tabBar.backHistory", "Back History")}</ContextMenuLabel>
+            <ContextMenuContent className="w-64">
               {backHistoryItems.length > 0 ? (
-                backHistoryItems.map((item) => (
-                  <ContextMenuItem
-                    key={`back-${item.historyIndex}`}
-                    onClick={() => jumpToHistory(item.historyIndex)}
-                  >
-                    {item.label}
-                  </ContextMenuItem>
-                ))
+                <>
+                  {backHistoryItems.map((item) => (
+                    <ContextMenuItem
+                      key={`back-${item.historyIndex}`}
+                      onClick={() => jumpToHistory(item.historyIndex)}
+                      className="gap-2"
+                    >
+                      {item.icon && (
+                        <IconDisplay icon={item.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="truncate max-w-[220px]">
+                        {item.titleKey ? t(item.titleKey, item.label) : item.label}
+                      </span>
+                    </ContextMenuItem>
+                  ))}
+                  {currentPageItem && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem disabled className="gap-2 font-medium">
+                        {currentPageItem.icon && (
+                          <IconDisplay icon={currentPageItem.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                        )}
+                        <span className="truncate max-w-[220px]">
+                          {currentPageItem.titleKey ? t(currentPageItem.titleKey, currentPageItem.label) : currentPageItem.label}
+                        </span>
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </>
               ) : (
                 <ContextMenuItem disabled>
                   {t("tabBar.noBackHistory", "No back history")}
@@ -409,17 +453,37 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                 {t("common.forward", "Go Forward")}
               </TooltipContent>
             </Tooltip>
-            <ContextMenuContent className="w-56">
-              <ContextMenuLabel>{t("tabBar.forwardHistory", "Forward History")}</ContextMenuLabel>
+            <ContextMenuContent className="w-64">
               {forwardHistoryItems.length > 0 ? (
-                forwardHistoryItems.map((item) => (
-                  <ContextMenuItem
-                    key={`forward-${item.historyIndex}`}
-                    onClick={() => jumpToHistory(item.historyIndex)}
-                  >
-                    {item.label}
-                  </ContextMenuItem>
-                ))
+                <>
+                  {currentPageItem && (
+                    <>
+                      <ContextMenuItem disabled className="gap-2 font-medium">
+                        {currentPageItem.icon && (
+                          <IconDisplay icon={currentPageItem.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                        )}
+                        <span className="truncate max-w-[220px]">
+                          {currentPageItem.titleKey ? t(currentPageItem.titleKey, currentPageItem.label) : currentPageItem.label}
+                        </span>
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                    </>
+                  )}
+                  {forwardHistoryItems.map((item) => (
+                    <ContextMenuItem
+                      key={`forward-${item.historyIndex}`}
+                      onClick={() => jumpToHistory(item.historyIndex)}
+                      className="gap-2"
+                    >
+                      {item.icon && (
+                        <IconDisplay icon={item.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="truncate max-w-[220px]">
+                        {item.titleKey ? t(item.titleKey, item.label) : item.label}
+                      </span>
+                    </ContextMenuItem>
+                  ))}
+                </>
               ) : (
                 <ContextMenuItem disabled>
                   {t("tabBar.noForwardHistory", "No forward history")}

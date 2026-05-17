@@ -13,6 +13,7 @@ import {
   getPreviewStatus as apiGetPreviewStatus,
   startPreview as apiStartPreview,
   stopPreview as apiStopPreview,
+  killPort as apiKillPort,
   type PreviewStatusResponse,
 } from "@/lib/gateway/modules/preview";
 
@@ -27,6 +28,15 @@ export type PreviewStatus =
   | "stopped";
 
 /**
+ * Port conflict info
+ */
+export interface PortConflict {
+  port: number;
+  workingDir: string;
+  options?: StartPreviewOptions;
+}
+
+/**
  * Preview state
  */
 export interface PreviewState {
@@ -34,18 +44,40 @@ export interface PreviewState {
   status: PreviewStatus;
   error: string | null;
   port: number | null;
+  /** Non-null when a port conflict is detected, awaiting user decision */
+  portConflict: PortConflict | null;
+}
+
+/**
+ * Options for starting a preview server
+ */
+export interface StartPreviewOptions {
+  /** Custom command (e.g., "npm run serve") */
+  command?: string;
+  /** Preferred port */
+  port?: number;
+  /** Regex pattern to detect server ready */
+  ready_pattern?: string;
+  /** Startup timeout in ms */
+  timeout?: number;
 }
 
 /**
  * Hook return type
  */
 export interface UseVitePreviewReturn extends PreviewState {
-  startPreview: (workingDir: string) => Promise<void>;
+  startPreview: (workingDir: string, options?: StartPreviewOptions) => Promise<void>;
   stopPreview: () => Promise<void>;
   refreshPreview: () => void;
   refreshStatus: () => Promise<void>;
   isNodeAvailable: boolean | null;
   checkNodeAvailable: () => Promise<boolean>;
+  /** Kill the process on the conflicting port and retry */
+  killPortAndRetry: () => Promise<void>;
+  /** Retry with an auto-assigned port (ignore preferred port) */
+  retryWithNewPort: () => Promise<void>;
+  /** Dismiss the port conflict (cancel) */
+  dismissPortConflict: () => void;
 }
 
 // Poll interval for checking server startup status
@@ -63,6 +95,7 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
   const [error, setError] = useState<string | null>(null);
   const [port, setPort] = useState<number | null>(null);
   const [isNodeAvailable, setIsNodeAvailable] = useState<boolean | null>(null);
+  const [portConflict, setPortConflict] = useState<PortConflict | null>(null);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const taskIdRef = useRef<string | null>(taskId);
@@ -155,10 +188,10 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
   }, [taskId, refreshStatus]);
 
   /**
-   * Start the Vite preview server
+   * Start the preview server
    */
   const startPreview = useCallback(
-    async (workingDir: string) => {
+    async (workingDir: string, options?: StartPreviewOptions) => {
       if (!taskIdRef.current) {
         setError(i18n.t("errors.vitePreview.noTaskId"));
         setStatus("error");
@@ -173,15 +206,26 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
 
       setStatus("starting");
       setError(null);
+      setPortConflict(null);
 
       try {
         console.log("[useVitePreview] Starting preview for:", taskIdRef.current);
-        console.log("[useVitePreview] workingDir:", workingDir);
+        console.log("[useVitePreview] workingDir:", workingDir, "options:", options);
 
         const baseUrl = getGatewayUrl();
-        const data = await apiStartPreview(baseUrl, taskIdRef.current, workingDir);
+        const data = await apiStartPreview(baseUrl, taskIdRef.current, workingDir, options);
 
         console.log("[useVitePreview] Start response:", data);
+
+        // Check for PORT_IN_USE error
+        if (data.status === "error" && data.error?.startsWith("PORT_IN_USE:")) {
+          const conflictPort = parseInt(data.error.split(":")[1], 10);
+          setPortConflict({ port: conflictPort, workingDir, options });
+          setStatus("error");
+          setError(`Port ${conflictPort} is already in use`);
+          return;
+        }
+
         updateStateFromResponse(data);
 
         // If still starting, poll for status updates
@@ -244,16 +288,68 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
     setPreviewUrl((prev) => prev);
   }, []);
 
+  /**
+   * Kill the process on the conflicting port and retry starting
+   */
+  const killPortAndRetry = useCallback(async () => {
+    if (!portConflict) return;
+
+    const { port: conflictPort, workingDir, options } = portConflict;
+    setPortConflict(null);
+
+    try {
+      const baseUrl = getGatewayUrl();
+      const result = await apiKillPort(baseUrl, conflictPort);
+      if (!result.success) {
+        setStatus("error");
+        setError(`Failed to kill port ${conflictPort}: ${result.error}`);
+        return;
+      }
+      // Retry with the same options
+      await startPreview(workingDir, options);
+    } catch (err) {
+      setStatus("error");
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [portConflict, startPreview]);
+
+  /**
+   * Retry with an auto-assigned port (no preferred port)
+   */
+  const retryWithNewPort = useCallback(async () => {
+    if (!portConflict) return;
+
+    const { workingDir, options } = portConflict;
+    setPortConflict(null);
+
+    // Remove the port preference so Gateway auto-assigns
+    const newOptions = options ? { ...options, port: undefined } : undefined;
+    await startPreview(workingDir, newOptions);
+  }, [portConflict, startPreview]);
+
+  /**
+   * Dismiss the port conflict (user chose to cancel)
+   */
+  const dismissPortConflict = useCallback(() => {
+    setPortConflict(null);
+    setStatus("idle");
+    setError(null);
+  }, []);
+
   return {
     previewUrl,
     status,
     error,
     port,
+    portConflict,
     startPreview,
     stopPreview,
     refreshPreview,
     refreshStatus,
     isNodeAvailable,
     checkNodeAvailable,
+    killPortAndRetry,
+    retryWithNewPort,
+    dismissPortConflict,
   };
 }

@@ -24,18 +24,39 @@ import {
   RefreshCw,
   Square,
   Wrench,
+  MoreHorizontal,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { toast } from "@/hooks/use-toast";
-import { PagePreview } from "./components";
+import { PagePreview, PageIconGrid } from "./components";
+import { EditPageDialog } from "./components/edit-page-dialog";
 import type { PageViewMode } from "./components/page-preview";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { usePage } from "@/hooks/use-pages";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useVitePreview } from "@/hooks/use-vite-preview";
+import type { ServerPageConfig, PageConfig } from "@/lib/gateway/types/page";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import {
   resolveHeaderSegments,
@@ -82,7 +103,7 @@ function getPageServeUrl(workspacePath: string, slug: string): string {
 
 /**
  * Toolbar for page preview — rendered inside WorkspaceHeader's rightContent.
- * Layout: [view toggle] [status dot] [action buttons]
+ * Layout: [view toggle] [status dot] [refresh] [more dropdown]
  */
 function PageToolbar({
   page,
@@ -96,6 +117,7 @@ function PageToolbar({
   onDetach,
   isFullscreen,
   onToggleFullscreen,
+  onEditConfig,
 }: {
   page: { type: string; name: string };
   viewMode: PageViewMode;
@@ -108,6 +130,7 @@ function PageToolbar({
   onDetach: () => void | Promise<void>;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
+  onEditConfig: () => void;
 }) {
   const { t } = useTranslation();
   const isServerType = page.type === "server";
@@ -189,7 +212,7 @@ function PageToolbar({
             )}
           >
             <Eye className="h-3.5 w-3.5" />
-            {t("page.viewPage", "页面")}
+            {t("page.viewPage", "Page")}
           </button>
         </div>
       )}
@@ -202,63 +225,74 @@ function PageToolbar({
         </div>
       )}
 
-      {/* Action buttons */}
-      <button
-        onClick={onDetach}
-        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        title={t("tabBar.detachToNewWindow", "Detach to New Window")}
-      >
-        <PanelTopOpen className="h-3.5 w-3.5" />
-      </button>
-
+      {/* Refresh button (standalone - most common action) */}
       {viewMode === "page" && (
-        <>
-          <button
-            onClick={onRefresh}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={t("common.refresh")}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={handleDevTools}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={t("page.devTools", "DevTools")}
-          >
-            <Wrench className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={handleOpenExternal}
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={t("preview.openInNewTab")}
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </button>
-        </>
-      )}
-
-      <button
-        onClick={onToggleFullscreen}
-        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        title={isFullscreen ? t("preview.exitFullscreen") : t("preview.fullscreen")}
-      >
-        {isFullscreen ? (
-          <Minimize2 className="h-3.5 w-3.5" />
-        ) : (
-          <Maximize2 className="h-3.5 w-3.5" />
-        )}
-      </button>
-
-      {/* Stop server (only for server type when running) */}
-      {viewMode === "page" && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
         <button
-          onClick={onStopLivePreview}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950"
-          title={t("preview.stopServer")}
+          onClick={onRefresh}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          title={t("common.refresh")}
         >
-          <Square className="h-3.5 w-3.5" />
+          <RefreshCw className="h-3.5 w-3.5" />
         </button>
       )}
+
+      {/* More actions dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t("common.more", "More")}
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => void onDetach()}>
+            <PanelTopOpen className="mr-2 h-4 w-4" />
+            {t("page.openInNewWindow", "Open in New Window")}
+          </DropdownMenuItem>
+          {viewMode === "page" && (
+            <DropdownMenuItem onClick={handleOpenExternal}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              {t("page.openExternal", "Open in Browser")}
+            </DropdownMenuItem>
+          )}
+          {viewMode === "page" && (
+            <DropdownMenuItem onClick={handleDevTools}>
+              <Wrench className="mr-2 h-4 w-4" />
+              {t("page.devTools", "DevTools")}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={onToggleFullscreen}>
+            {isFullscreen ? (
+              <Minimize2 className="mr-2 h-4 w-4" />
+            ) : (
+              <Maximize2 className="mr-2 h-4 w-4" />
+            )}
+            {isFullscreen
+              ? t("page.exitFullscreen", "Exit Fullscreen")
+              : t("page.fullscreen", "Fullscreen")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onEditConfig}>
+            <Pencil className="mr-2 h-4 w-4" />
+            {t("page.editConfig", "Edit Page Settings")}
+          </DropdownMenuItem>
+          {/* Stop server (only for server type when running) */}
+          {viewMode === "page" && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onStopLivePreview}
+                className="text-destructive focus:text-destructive"
+              >
+                <Square className="mr-2 h-4 w-4" />
+                {t("page.stopServer", "Stop Server")}
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -299,6 +333,7 @@ export function WorkspacePage() {
   const [viewMode, setViewMode] = useState<PageViewMode>(initialViewMode);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   // Get workspace
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
@@ -321,8 +356,12 @@ export function WorkspacePage() {
     previewUrl,
     status: previewStatus,
     error: previewError,
+    portConflict,
     startPreview,
     stopPreview,
+    killPortAndRetry,
+    retryWithNewPort,
+    dismissPortConflict,
   } = useVitePreview(pageId);
 
   // Gateway serve URL
@@ -335,7 +374,15 @@ export function WorkspacePage() {
   const handleStartLivePreview = () => {
     if (!workspace?.path || !page) return;
     const pageDir = `${workspace.path}/pages/${page.slug}`;
-    startPreview(pageDir);
+    const options = page.type === "server"
+      ? {
+          command: (page as ServerPageConfig).command,
+          port: (page as ServerPageConfig).port,
+          ready_pattern: (page as ServerPageConfig).ready_pattern,
+          timeout: (page as ServerPageConfig).timeout,
+        }
+      : undefined;
+    startPreview(pageDir, options);
   };
 
   // Portal target for editor header buttons (rendered in breadcrumb bar)
@@ -460,7 +507,7 @@ export function WorkspacePage() {
     );
   }
 
-  // Invalid page path
+  // No slug — show pages listing
   if (!slug) {
     return (
       <PageWrapper className="flex flex-col h-full">
@@ -470,32 +517,11 @@ export function WorkspacePage() {
           showRemove={false}
           showRefresh={false}
         />
-        <div className="flex flex-col items-center justify-center flex-1">
-          <FileQuestion className="h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">
-            {t("page.invalidPath", "Invalid Page Path")}
-          </h2>
-          <p className="text-muted-foreground mb-4 text-center max-w-md">
-            {t("page.invalidPathDesc", "The page path format is invalid.")}
-          </p>
-          {pagePath && (
-            <p className="text-xs text-muted-foreground/70 mb-4 font-mono bg-muted px-3 py-1.5 rounded">
-              {pagePath}
-            </p>
-          )}
-          <Button asChild>
-            <button
-              type="button"
-              onClick={() => {
-                if (workspaceId) {
-                  openWorkspaceSection(workspaceId, "files");
-                }
-              }}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t("page.backToFiles", "Back to Files")}
-            </button>
-          </Button>
+        <div className="min-h-0 flex-1 bg-background">
+          <PageIconGrid
+            workspaceId={workspace.id}
+            workspacePath={workspace.path}
+          />
         </div>
       </PageWrapper>
     );
@@ -558,8 +584,8 @@ export function WorkspacePage() {
   }
 
   // Render page preview — single-row header: [breadcrumb][ ][toggle][actions]
-  return (
-    <PageWrapper className={cn("flex flex-col h-full", isFullscreen && "fixed inset-0 z-50")}>
+  const content = (
+    <PageWrapper className="flex flex-col h-full">
       <WorkspaceHeader
         workspace={workspace}
         segments={pageHeaderSegments}
@@ -580,6 +606,7 @@ export function WorkspacePage() {
               onDetach={handleDetach}
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+              onEditConfig={() => setEditDialogOpen(true)}
             />
           </div>
         }
@@ -603,6 +630,91 @@ export function WorkspacePage() {
         />
       </div>
     </PageWrapper>
+  );
+
+  const editDialog = (
+    <EditPageDialog
+      open={editDialogOpen}
+      onOpenChange={setEditDialogOpen}
+      page={page as PageConfig}
+      workspacePath={workspace.path}
+    />
+  );
+
+  const portConflictDialog = portConflict && (
+    <PortConflictDialog
+      port={portConflict.port}
+      onKillAndRetry={killPortAndRetry}
+      onUseNewPort={retryWithNewPort}
+      onCancel={dismissPortConflict}
+    />
+  );
+
+  if (isFullscreen) {
+    return (
+      <>
+        <div className="absolute inset-0 z-50 bg-background">
+          {content}
+        </div>
+        {editDialog}
+        {portConflictDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {content}
+      {editDialog}
+      {portConflictDialog}
+    </>
+  );
+}
+
+/**
+ * Dialog shown when a port conflict is detected during preview start
+ */
+function PortConflictDialog({
+  port,
+  onKillAndRetry,
+  onUseNewPort,
+  onCancel,
+}: {
+  port: number;
+  onKillAndRetry: () => void;
+  onUseNewPort: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <AlertDialog open>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {t("page.portConflict.title", "Port {{port}} is in use", { port })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {t(
+              "page.portConflict.description",
+              "Another process is already using port {{port}}. How would you like to proceed?",
+              { port }
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel onClick={onCancel}>
+            {t("common.cancel", "Cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={onUseNewPort} className="bg-secondary text-secondary-foreground hover:bg-secondary/80">
+            {t("page.portConflict.useNewPort", "Use another port")}
+          </AlertDialogAction>
+          <AlertDialogAction onClick={onKillAndRetry}>
+            {t("page.portConflict.killAndRetry", "Kill process & retry")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

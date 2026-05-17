@@ -733,6 +733,33 @@
         "retry": "Try Again"
       }
     },
+    "tradingAccounts": {
+      "title": "Trading Accounts",
+      "description": "Manage exchange API accounts for automated trading and data fetching.",
+      "configured": "Configured Accounts",
+      "loading": "Loading...",
+      "countSummary": "{{count}} trading accounts, {{exchanges}} exchanges",
+      "noAccounts": "No trading accounts configured yet",
+      "testAll": "Test All",
+      "testing": "Testing...",
+      "manageAccounts": "Manage Accounts",
+      "addAccount": "Add Account",
+      "addFirstAccount": "Add First Account",
+      "clearResults": "Clear test results",
+      "testConnection": "Test API connection for all accounts",
+      "emptyTitle": "No Trading Accounts",
+      "emptyDescription": "Add exchange API keys to start using automated trading and real-time data fetching. Supports Binance, OKX, Bybit, and other major exchanges.",
+      "accountCount": "{{count}} accounts",
+      "untested": "Untested",
+      "testingStatus": "Testing...",
+      "latency": "Latency {{ms}}ms",
+      "failed": "Failed",
+      "connectionFailed": "Connection failed, please check API Key",
+      "networkError": "Network error",
+      "allSuccess": "All {{count}} accounts connected successfully",
+      "someFailed": "{{failed}} accounts failed, {{success}} connected",
+      "singleTest": "Test connection"
+    },
     "notifications": {
       "description": "Configure how and when you receive notifications",
       "permissionRequired": "System Notification Permission Required",
@@ -5982,7 +6009,20 @@
     "copyLink": "Copy Link",
     "linkCopied": "Link copied to clipboard",
     "duplicate": "Duplicate",
-    "duplicateSuccess": "Page duplicated successfully"
+    "duplicateSuccess": "Page duplicated successfully",
+    "cover": "Cover",
+    "coverPlaceholder": "https://example.com/cover.jpg",
+    "pageWidth": "Page Width",
+    "pageWidthDefault": "Default",
+    "pageWidthWide": "Wide",
+    "pageWidthFull": "Full",
+    "showToc": "Show Table of Contents",
+    "editConfig": "Edit Page Settings",
+    "openInNewWindow": "Open in New Window",
+    "openExternal": "Open in Browser",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit Fullscreen",
+    "stopServer": "Stop Server"
   },
   "emojiPicker": {
     "categories": {
