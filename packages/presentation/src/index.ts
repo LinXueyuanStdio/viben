@@ -124,7 +124,11 @@ export type {
 
 // Hooks
 export { useResolvedCommand } from "./hooks/use-resolved-command"
-export { TargetRectsProvider, useTargetRects, useTargetRect } from "./hooks/use-target-rects"
+export { TargetRectsProvider, useTargetRects, useTargetRect, useTargetRectsFor } from "./hooks/use-target-rects"
+export { useViewportClamp } from "./hooks/use-viewport-clamp"
+export type { ViewportClampOptions, ViewportClampResult } from "./hooks/use-viewport-clamp"
+export { useOverlayStyle } from "./hooks/use-overlay-style"
+export type { UseOverlayStyleOptions } from "./hooks/use-overlay-style"
 
 // Command compiler
 export {
@@ -140,6 +144,10 @@ export {
   hasCompletionCallback,
   consumeCompletionCallback,
 } from "./completion-callbacks"
+
+// Overlay utility components
+export { OverlayContainer } from "./overlays/overlay-container"
+export type { OverlayContainerProps } from "./overlays/overlay-container"
 
 // Overlay components (Remotion-animated annotations)
 export { Spotlight } from "./overlays/spotlight"
@@ -205,10 +213,12 @@ export {
   buildTimelineLanes,
   getActiveSteps,
   getActiveStepsWithClearTimes,
+  buildPrecomputedTimeline,
+  getActiveStepsPrecomputed,
   getCurrentStepIndex,
   commandColor,
 } from "./utils/timeline"
-export type { TimelineItem, TimelineLane } from "./utils/timeline"
+export type { TimelineItem, TimelineLane, PrecomputedTimeline } from "./utils/timeline"
 
 // Playback state hook
 export { usePlaybackState } from "./hooks/use-playback-state"

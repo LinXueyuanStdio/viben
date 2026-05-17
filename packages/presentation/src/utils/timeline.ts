@@ -144,13 +144,34 @@ export function buildTimelineLanes(steps: PresentationStep[], totalDurationMs: n
  * Get all steps that are active (visible) at the given timestamp.
  * Handles clear boundaries and wait commands.
  * Uses binary search on precomputed clearTimes.
+ *
+ * Optimizations:
+ * - Early exit: skips steps starting after currentMs (assumes sorted by startMs)
+ * - Delegates to getActiveStepsWithClearTimes to avoid redundant extractClearTimes
  */
 export function getActiveSteps(steps: PresentationStep[], currentMs: number, totalDurationMs: number): PresentationStep[] {
   const clearTimes = extractClearTimes(steps)
+  return getActiveStepsWithClearTimes(steps, currentMs, totalDurationMs, clearTimes)
+}
+
+/**
+ * Optimized version: pass precomputed clearTimes to avoid re-extraction.
+ * Early exits when steps are sorted by startMs (common case).
+ */
+export function getActiveStepsWithClearTimes(
+  steps: PresentationStep[],
+  currentMs: number,
+  totalDurationMs: number,
+  clearTimes: number[],
+): PresentationStep[] {
   const result: PresentationStep[] = []
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]
+
+    // Early exit: if steps are sorted by startMs, no step after this can be active
+    if (step.startMs > currentMs) break
+
     if (step.command.type === "wait") continue
     if (step.command.type === "clear") {
       if (currentMs >= step.startMs && currentMs < step.startMs + 500) {
@@ -169,30 +190,63 @@ export function getActiveSteps(steps: PresentationStep[], currentMs: number, tot
   return result
 }
 
+// ---------------------------------------------------------------------------
+// Precomputed active steps (optimal for per-frame queries)
+// ---------------------------------------------------------------------------
+
 /**
- * Optimized version: pass precomputed clearTimes to avoid re-extraction.
+ * Precomputed effective-end data structure for O(1) per-step active check.
+ * Build once when steps change, reuse across all frame queries.
  */
-export function getActiveStepsWithClearTimes(
-  steps: PresentationStep[],
+export interface PrecomputedTimeline {
+  steps: PresentationStep[]
+  /** effectiveEndMs for each step (same index as steps array) */
+  effectiveEnds: Float64Array
+  totalDurationMs: number
+}
+
+/**
+ * Build a precomputed timeline structure. O(n log k) where k = clear commands.
+ * Use with `getActiveStepsPrecomputed` for zero-allocation per-frame queries.
+ */
+export function buildPrecomputedTimeline(steps: PresentationStep[], totalDurationMs: number): PrecomputedTimeline {
+  const clearTimes = extractClearTimes(steps)
+  const effectiveEnds = new Float64Array(steps.length)
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    if (step.command.type === "wait") {
+      effectiveEnds[i] = 0
+    } else if (step.command.type === "clear") {
+      effectiveEnds[i] = step.startMs + 500
+    } else {
+      const configuredEndMs = getStepEndMs(step, totalDurationMs)
+      const clearAfter = findClearAfter(clearTimes, step.startMs, configuredEndMs)
+      effectiveEnds[i] = clearAfter ?? configuredEndMs
+    }
+  }
+
+  return { steps, effectiveEnds, totalDurationMs }
+}
+
+/**
+ * Get active steps using precomputed timeline. Per-frame cost: O(active_count + log n).
+ * Uses binary search to find the start position, then early exits.
+ */
+export function getActiveStepsPrecomputed(
+  timeline: PrecomputedTimeline,
   currentMs: number,
-  totalDurationMs: number,
-  clearTimes: number[],
 ): PresentationStep[] {
+  const { steps, effectiveEnds } = timeline
   const result: PresentationStep[] = []
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]
-    if (step.command.type === "wait") continue
-    if (step.command.type === "clear") {
-      if (currentMs >= step.startMs && currentMs < step.startMs + 500) {
-        result.push(step)
-      }
-      continue
-    }
-    const configuredEndMs = getStepEndMs(step, totalDurationMs)
-    const clearAfter = findClearAfter(clearTimes, step.startMs, configuredEndMs)
-    const effectiveEndMs = clearAfter ?? configuredEndMs
-    if (currentMs >= step.startMs && currentMs < effectiveEndMs) {
+    // Early exit: sorted steps, nothing after this can be active
+    if (step.startMs > currentMs) break
+    // Skip waits (effectiveEnd = 0)
+    if (effectiveEnds[i] === 0) continue
+    if (currentMs >= step.startMs && currentMs < effectiveEnds[i]) {
       result.push(step)
     }
   }

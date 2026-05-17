@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef } from "react"
+import { memo, useCallback, useRef, useMemo } from "react"
 import type { RefObject } from "react"
 import type { PlayerRef } from "@remotion/player"
 import type { PresentationStep } from "../types"
@@ -145,6 +145,18 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 11,
 }
 
+const SCRUBBER_FILL_BASE: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  top: 0,
+  height: "100%",
+  borderRadius: 2,
+  background: "rgba(99,102,241,0.7)",
+}
+
+const BAR_STYLE_TOP: React.CSSProperties = { ...BAR_STYLE, top: 8 }
+const BAR_STYLE_BOTTOM: React.CSSProperties = { ...BAR_STYLE, bottom: 8 }
+
 const POS_TOP = { top: 8 } as const
 const POS_BOTTOM = { bottom: 8 } as const
 
@@ -211,14 +223,29 @@ export const TransportBar = memo(function TransportBar({
   }, [seekTo, totalDurationMs])
 
   const progress = totalDurationMs > 0 ? Math.min(1, currentMs / totalDurationMs) : 0
-  const currentStepIdx = getCurrentStepIndex(steps, currentMs)
-  const activeStep = steps[currentStepIdx]
-  const stepLabel = activeStep ? describeCommand(activeStep.command) : ""
 
-  const posStyle = position === "top" ? POS_TOP : POS_BOTTOM
+  // Memoize step label to avoid describeCommand string formatting every frame
+  const prevStepIdxRef = useRef(-1)
+  const prevStepLabelRef = useRef("")
+  const currentStepIdx = getCurrentStepIndex(steps, currentMs)
+  if (currentStepIdx !== prevStepIdxRef.current) {
+    prevStepIdxRef.current = currentStepIdx
+    const activeStep = steps[currentStepIdx]
+    prevStepLabelRef.current = activeStep ? describeCommand(activeStep.command) : ""
+  }
+  const stepLabel = prevStepLabelRef.current
+
+  const barStyle = position === "top" ? BAR_STYLE_TOP : BAR_STYLE_BOTTOM
+
+  // Scrubber fill: only allocate new style when progress or isPlaying changes
+  const scrubberFillStyle = useMemo<React.CSSProperties>(() => ({
+    ...SCRUBBER_FILL_BASE,
+    width: `${progress * 100}%`,
+    transition: isPlaying ? "none" : "width 0.1s",
+  }), [progress, isPlaying])
 
   return (
-    <div style={{ ...BAR_STYLE, ...posStyle }}>
+    <div style={barStyle}>
       <button style={BTN_STYLE} onClick={goToStart} title="Go to start">
         <IconSkipBack />
       </button>
@@ -241,16 +268,7 @@ export const TransportBar = memo(function TransportBar({
 
       {/* Scrubber */}
       <div style={SCRUBBER_STYLE} onClick={handleScrubberClick}>
-        <div style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          height: "100%",
-          width: `${progress * 100}%`,
-          borderRadius: 2,
-          background: "rgba(99,102,241,0.7)",
-          transition: isPlaying ? "none" : "width 0.1s",
-        }} />
+        <div style={scrubberFillStyle} />
       </div>
 
       <span style={TIME_STYLE}>

@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts"
-import { useSlideIn } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 interface ChartProps {
   command: ChartCommand
@@ -22,7 +22,7 @@ const DEFAULT_COLORS = [
  *
  * Supports line, bar, area, and pie/donut charts with entry animations.
  * Styled with dark glassmorphism to match the presentation overlay system.
- * Container uses Remotion slide-in; recharts internal animations are kept active.
+ * Container uses OverlayContainer for viewport clamping and entrance animation.
  */
 export function Chart({ command }: ChartProps) {
   const {
@@ -41,16 +41,17 @@ export function Chart({ command }: ChartProps) {
   } = command
   const position = _position as Point
 
-  // Remotion slide-in for the container (replaces CSS presentationSlideInDown)
-  const slide = useSlideIn(0, "bottom", 40)
+  const contentWidth = Math.max(280, width)
+  const containerWidth = contentWidth + 32   // 16px padding * 2
+  const containerHeight = Math.max(200, height) + 32
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        width: Math.max(280, width),
+        ...overlayStyle,
+        width: contentWidth,
         minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         borderRadius: 16,
@@ -58,8 +59,6 @@ export function Chart({ command }: ChartProps) {
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
         padding: 16,
-        opacity: slide.opacity,
-        transform: `translateY(${slide.translateY}px) scale(${slide.scale})`,
         fontFamily: "'SF Pro Display', -apple-system, sans-serif",
       }}
     >

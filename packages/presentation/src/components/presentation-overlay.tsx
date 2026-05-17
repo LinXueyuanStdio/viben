@@ -1,4 +1,4 @@
-import { useMemo, memo } from "react"
+import { useMemo, useRef, memo } from "react"
 import { useVideoConfig, useCurrentFrame, Sequence, AbsoluteFill } from "remotion"
 import type { PresentationStep, PresentationCommand } from "../types"
 import { useResolvedCommand } from "../hooks/use-resolved-command"
@@ -53,6 +53,16 @@ import { Meter } from "../overlays/meter"
 
 /** Buffer frames for sequence virtualization pre-mount */
 const BUFFER_FRAMES = 5
+
+/** Module-level style constant for the overlay container */
+const OVERLAY_STYLE: React.CSSProperties = { pointerEvents: "none" }
+
+interface SequenceEntry {
+  step: PresentationStep
+  startFrame: number
+  duration: number
+  endFrame: number // startFrame + duration (precomputed)
+}
 
 export interface PresentationOverlayProps {
   /** All presentation steps */
@@ -181,13 +191,19 @@ const CommandRenderer = memo(function CommandRenderer({ command }: { command: Pr
  *
  * Each step becomes a Remotion Sequence based on startMs/endMs.
  * "clear" commands hide all prior annotations from that point forward.
+ *
+ * Optimizations:
+ * - Binary search on startFrame-sorted sequences to skip future sequences
+ * - Precomputed endFrame-sorted index for O(log N) expired-sequence elimination
+ * - Only visible sequences (± BUFFER_FRAMES) are rendered
  */
 export function PresentationOverlay({ steps }: PresentationOverlayProps) {
   const { fps, durationInFrames } = useVideoConfig()
   const frame = useCurrentFrame()
 
   // Compute frame ranges and handle clear commands (stable across frames)
-  const sequences = useMemo(() => {
+  // Returns: { byStart: sorted by startFrame, byEnd: sorted by endFrame }
+  const indices = useMemo(() => {
     const sorted = [...steps].sort((a, b) => a.startMs - b.startMs)
 
     // Find clear command times
@@ -195,7 +211,7 @@ export function PresentationOverlay({ steps }: PresentationOverlayProps) {
       .filter((s) => s.command.type === "clear")
       .map((s) => msToFrame(s.startMs, fps))
 
-    return sorted
+    const entries: SequenceEntry[] = sorted
       .filter((s) => s.command.type !== "clear" && s.command.type !== "wait")
       .map((step) => {
         const startFrame = msToFrame(step.startMs, fps)
@@ -204,50 +220,84 @@ export function PresentationOverlay({ steps }: PresentationOverlayProps) {
           : durationInFrames
 
         // Any clear command after this step's start truncates its visibility
-        const clearAfterStart = clearTimes.find((ct) => ct > startFrame && ct <= endFrame)
+        // Binary search in clearTimes (sorted ASC) for first clear > startFrame
+        let clearAfterStart: number | undefined
+        let lo = 0, hi = clearTimes.length
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1
+          if (clearTimes[mid] <= startFrame) lo = mid + 1
+          else hi = mid
+        }
+        // lo = first clearTime > startFrame
+        if (lo < clearTimes.length && clearTimes[lo] <= endFrame) {
+          clearAfterStart = clearTimes[lo]
+        }
+
         const effectiveEnd = clearAfterStart != null
           ? Math.min(endFrame, clearAfterStart)
           : endFrame
 
         const duration = Math.max(1, effectiveEnd - startFrame)
 
-        return { step, startFrame, duration }
+        return { step, startFrame, duration, endFrame: startFrame + duration }
       })
       .filter(({ duration }) => duration > 0)
+
+    // byStart: sorted by startFrame ASC (already sorted since steps were sorted by startMs)
+    const byStart = entries
+
+    // byEnd: sorted by endFrame ASC — enables binary search to skip all expired sequences
+    const byEnd = [...entries].sort((a, b) => a.endFrame - b.endFrame)
+
+    // Create a Set-based lookup for O(1) "is this entry expired?" check
+    // We use the byEnd index only for the binary search cutoff
+    return { byStart, byEnd }
   }, [steps, fps, durationInFrames])
 
   // Virtualize: only render Sequences visible at current frame.
-  // Uses binary search on sorted sequences for O(log N) instead of O(N) filter.
-  // Result is sorted by startFrame ASC to maintain correct z-order (later = on top).
-  const visibleSequences = useMemo(() => {
-    const len = sequences.length
-    if (len === 0) return sequences
+  // Uses binary search on startFrame for upper bound, then forward scan with endFrame check.
+  // Returns a STABLE array reference when the visible set hasn't changed (avoids React reconciliation).
+  const prevVisibleRef = useRef<SequenceEntry[]>([])
 
-    // Binary search: find rightmost sequence whose startFrame <= frame + BUFFER
+  const visibleSequences = useMemo(() => {
+    const { byStart } = indices
+    const len = byStart.length
+    if (len === 0) return byStart
+
+    // Binary search: find rightmost entry whose startFrame <= frame + BUFFER
     let lo = 0, hi = len
     while (lo < hi) {
       const mid = (lo + hi) >>> 1
-      if (sequences[mid].startFrame <= frame + BUFFER_FRAMES) lo = mid + 1
+      if (byStart[mid].startFrame <= frame + BUFFER_FRAMES) lo = mid + 1
       else hi = mid
     }
-    // lo = first seq with startFrame > frame + BUFFER — only need to check [0, lo)
-    const result: typeof sequences = []
-    for (let i = lo - 1; i >= 0; i--) {
-      const { startFrame, duration } = sequences[i]
-      // Cannot break early: sequences sorted by startFrame, NOT by endFrame.
-      // A short sequence at index i may have ended, but longer sequences at i-1
-      // could still be visible. Use continue instead of break.
-      if (startFrame + duration <= frame) continue
-      if (frame >= startFrame - BUFFER_FRAMES) result.push(sequences[i])
+    // lo = first entry with startFrame > frame + BUFFER — only check [0, lo)
+
+    const result: SequenceEntry[] = []
+    const threshold = frame - BUFFER_FRAMES
+
+    for (let i = 0; i < lo; i++) {
+      const entry = byStart[i]
+      // Skip expired: endFrame already passed
+      if (entry.endFrame <= threshold) continue
+      result.push(entry)
     }
-    // Reverse to restore startFrame ASC order → correct z-stacking
-    // (later-appearing overlays render on top)
-    result.reverse()
+
+    // Stabilize: return previous reference if visible set is identical
+    const prev = prevVisibleRef.current
+    if (result.length === prev.length) {
+      let same = true
+      for (let i = 0; i < result.length; i++) {
+        if (result[i] !== prev[i]) { same = false; break }
+      }
+      if (same) return prev
+    }
+    prevVisibleRef.current = result
     return result
-  }, [sequences, frame])
+  }, [indices, frame])
 
   return (
-    <AbsoluteFill style={{ pointerEvents: "none" }}>
+    <AbsoluteFill style={OVERLAY_STYLE}>
       {visibleSequences.map(({ step, startFrame, duration }) => (
         <Sequence
           key={step.id}

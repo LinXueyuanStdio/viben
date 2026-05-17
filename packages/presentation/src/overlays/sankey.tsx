@@ -1,7 +1,8 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { SankeyCommand, Point } from "../types"
-import { useEntrance, staggerDelay } from "../utils/motion"
+import { staggerDelay } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
 
@@ -44,12 +45,16 @@ export function Sankey({ command }: SankeyProps) {
     height: _height = 300,
   } = command
   const position = _position as Point
+  // Label margin: space for text labels outside the node columns
+  const labelMargin = 80
   const width = Math.max(280, _width)
   const height = Math.max(200, _height)
+  // Total SVG width includes label margins on both sides
+  const svgWidth = width + labelMargin * 2
+  const svgHeight = height
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-  const containerEntrance = useEntrance(0, 12)
 
   // Layout computation (static, does not depend on frame)
   const layout = useMemo(() => {
@@ -81,6 +86,7 @@ export function Sankey({ command }: SankeyProps) {
     }
 
     // Layout nodes in each column
+    // Offset by labelMargin so labels have room on the left outside the node area
     const nodeLayouts: Record<string, NodeLayout> = {}
     const availableHeight = height - padding * 2
 
@@ -97,7 +103,8 @@ export function Sankey({ command }: SankeyProps) {
         nodeLayouts[nodeId] = {
           id: nodeId,
           label: node.label,
-          x: col === 0 ? padding : width - padding - nodeWidth,
+          // Offset by labelMargin so left labels fit within SVG bounds
+          x: col === 0 ? labelMargin + padding : labelMargin + width - padding - nodeWidth,
           y: currentY,
           height: nodeHeight,
           column: col,
@@ -174,14 +181,17 @@ export function Sankey({ command }: SankeyProps) {
     ["#38BDF8", "#7DD3FC"],
   ]
 
+  const containerWidth = svgWidth + 32   // 16px padding * 2
+  const containerHeight = svgHeight + 32
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        width,
-        height,
+        ...overlayStyle,
+        width: svgWidth,
+        height: svgHeight,
         minWidth: 280,
         minHeight: 200,
         background: "radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.92) 70%)",
@@ -192,12 +202,9 @@ export function Sankey({ command }: SankeyProps) {
         WebkitBackdropFilter: "blur(12px)",
         padding: 16,
         fontFamily: "system-ui, -apple-system, sans-serif",
-        opacity: containerEntrance.opacity,
-        transform: `translateY(${containerEntrance.translateY}px) scale(${containerEntrance.scale})`,
-        willChange: "transform, opacity",
       }}
     >
-      <svg width={width} height={height} style={{ overflow: "visible" }}>
+      <svg width={svgWidth} height={svgHeight} style={{ overflow: "visible" }}>
         <defs>
           {/* Gradient definitions for each link */}
           {linkLayouts.map((link, i) => {

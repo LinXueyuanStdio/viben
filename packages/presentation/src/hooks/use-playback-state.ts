@@ -24,11 +24,18 @@ const INITIAL_STATE: PlaybackState = {
   totalFrames: 1,
 }
 
+/** Slow polling interval (ms) when player is paused */
+const PAUSED_POLL_INTERVAL = 500
+
 /**
  * Mutable playback store — single instance per hook call.
  * Supports param updates without recreation (avoids stale closures).
- * rAF loop starts/stops based on subscriber count.
- * Pauses polling when document is hidden.
+ *
+ * Optimizations:
+ * - rAF loop only runs while playing; falls back to slow setTimeout when paused
+ * - Skips polling entirely when document is hidden
+ * - Only creates new snapshot object when values actually change (reference stability)
+ * - Starts/stops based on subscriber count
  */
 class PlaybackStore {
   private state = INITIAL_STATE
@@ -36,7 +43,9 @@ class PlaybackStore {
   private prevPlaying = false
   private listeners = new Set<() => void>()
   private rafId = 0
+  private timerId = 0
   private running = false
+  private mode: "raf" | "slow" | "none" = "none"
 
   constructor(
     private playerRef: RefObject<PlayerRef | null>,
@@ -57,7 +66,7 @@ class PlaybackStore {
   private poll = () => {
     // Skip polling when tab is hidden
     if (typeof document !== "undefined" && document.hidden) {
-      this.rafId = requestAnimationFrame(this.poll)
+      this.scheduleNext()
       return
     }
 
@@ -75,25 +84,53 @@ class PlaybackStore {
         this.state = { currentFrame: frame, currentMs, isPlaying, progress, totalFrames }
         this.notify()
       }
+
+      // Switch polling mode based on play state
+      this.switchMode(isPlaying ? "raf" : "slow")
     }
 
-    this.rafId = requestAnimationFrame(this.poll)
+    this.scheduleNext()
+  }
+
+  /** Schedule next poll based on current mode */
+  private scheduleNext() {
+    if (!this.running) return
+    if (this.mode === "raf") {
+      this.rafId = requestAnimationFrame(this.poll)
+    } else {
+      this.timerId = window.setTimeout(this.poll, PAUSED_POLL_INTERVAL)
+    }
+  }
+
+  /** Switch between fast (rAF) and slow (setTimeout) modes */
+  private switchMode(newMode: "raf" | "slow") {
+    if (this.mode === newMode) return
+    // Cancel current schedule — next scheduleNext() will use new mode
+    this.cancelScheduled()
+    this.mode = newMode
+  }
+
+  private cancelScheduled() {
+    if (this.rafId) { cancelAnimationFrame(this.rafId); this.rafId = 0 }
+    if (this.timerId) { clearTimeout(this.timerId); this.timerId = 0 }
   }
 
   private notify() {
-    this.listeners.forEach((fn) => fn())
+    for (const fn of this.listeners) fn()
   }
 
   private start() {
     if (this.running) return
     this.running = true
+    this.mode = "raf" // Start with rAF to detect initial state quickly
     this.rafId = requestAnimationFrame(this.poll)
   }
 
   private stop() {
     if (!this.running) return
     this.running = false
-    cancelAnimationFrame(this.rafId)
+    this.cancelScheduled()
+    this.mode = "none"
   }
 
   subscribe = (listener: () => void) => {
@@ -119,8 +156,9 @@ class PlaybackStore {
  * Optimizations:
  * - Concurrent-mode safe (useSyncExternalStore)
  * - Single mutable store instance (no stale closures on param changes)
+ * - rAF loop only when playing; slow poll (500ms) when paused — saves CPU/battery
  * - Skips polling when tab is hidden
- * - Only notifies on actual state changes
+ * - Only notifies on actual state changes (reference-stable snapshots)
  * - Proper cleanup on unmount
  */
 export function usePlaybackState(

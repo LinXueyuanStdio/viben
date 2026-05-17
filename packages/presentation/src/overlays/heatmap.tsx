@@ -2,9 +2,10 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { HeatmapCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
-const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_CELL = { damping: 18, stiffness: 120, mass: 0.8 } as const
+const SPRING_LABEL = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 
 interface HeatmapProps {
@@ -40,16 +41,6 @@ export function Heatmap({ command }: HeatmapProps) {
 
   const rows = data.length
   const cols = data[0].length
-
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   const labelWidth = rowLabels ? 48 : 0
   const gap = 3
@@ -88,22 +79,21 @@ export function Heatmap({ command }: HeatmapProps) {
   // Label entrance
   const labelDelay = 4
   const labelFrame = Math.max(0, frame - labelDelay)
-  const labelSpring = frame < labelDelay ? 0 : spring({ frame: labelFrame, fps, config: SPRING_CONTAINER })
+  const labelSpring = frame < labelDelay ? 0 : spring({ frame: labelFrame, fps, config: SPRING_LABEL })
   const labelSettled = labelSpring >= 0.999
   const labelOpacity = labelSettled ? 1 : interpolate(labelSpring, [0, 0.4], [0, 1], CLAMP)
 
   const uid = `heatmap-${position.x}-${position.y}`
 
+  const containerWidth = Math.max(280, labelWidth + cols * (cellSize + gap)) + 40   // 20px padding * 2
+  const containerHeight = Math.max(200, rows * (cellSize + gap) + 40) + 40
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         minWidth: 280,
         minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",

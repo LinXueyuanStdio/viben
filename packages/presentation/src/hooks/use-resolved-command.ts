@@ -1,16 +1,75 @@
 import { useMemo, useRef } from "react"
 import type { PresentationCommand, PositionOrTarget, RegionOrTarget, TargetRef } from "../types"
-import { useTargetRects, type TargetRectsMap } from "./use-target-rects"
+import { isTargetRef } from "../types"
+import { useTargetRectsFor, type TargetRectsMap } from "./use-target-rects"
+
+/**
+ * Extract all targetIds referenced by a command.
+ * Used to subscribe only to relevant target changes.
+ */
+function extractTargetIds(command: PresentationCommand): string[] {
+  const ids: string[] = []
+
+  const collectFromPosition = (pos: PositionOrTarget) => {
+    if (isTargetRef(pos)) ids.push(pos.targetId)
+  }
+  const collectFromRegion = (region: RegionOrTarget) => {
+    if (isTargetRef(region as any)) ids.push((region as TargetRef).targetId)
+  }
+
+  switch (command.type) {
+    case "spotlight":
+    case "highlight":
+    case "reveal":
+    case "zoom":
+      collectFromRegion(command.region)
+      break
+    case "arrow":
+    case "underline":
+    case "bracket":
+      collectFromPosition(command.from)
+      collectFromPosition(command.to)
+      break
+    case "trendline":
+      for (const p of command.points) {
+        collectFromPosition(p as PositionOrTarget)
+      }
+      break
+    case "circle":
+    case "pulse":
+      collectFromPosition(command.center)
+      break
+    case "clear":
+    case "wait":
+      break
+    default:
+      // All other commands have a `position` field
+      if ("position" in command) {
+        collectFromPosition((command as any).position)
+      }
+      break
+  }
+
+  return ids
+}
 
 /**
  * Resolves any TargetRef fields in a command to absolute pixel coordinates.
- * Reads positions from the reactive TargetRectsProvider context (no DOM queries).
+ * Reads positions from the reactive TargetRectsProvider context.
  * Returns null if any target cannot be resolved (element not found).
  *
- * Stabilizes output reference: only returns a new object when resolved values actually change.
+ * Optimizations:
+ * - Per-target subscription: only re-renders when THIS command's targets move
+ * - Stabilizes output reference: only returns a new object when resolved values change
  */
 export function useResolvedCommand(command: PresentationCommand): PresentationCommand | null {
-  const rects = useTargetRects()
+  // Extract targetIds from command (stable unless command identity changes)
+  const targetIds = useMemo(() => extractTargetIds(command), [command])
+
+  // Subscribe ONLY to the targets this command references
+  // If targetIds is empty (absolute coords), this is a no-op subscription
+  const rects = useTargetRectsFor(targetIds)
+
   const prevRef = useRef<PresentationCommand | null>(null)
 
   const resolved = useMemo(() => resolveCommand(command, rects), [command, rects])

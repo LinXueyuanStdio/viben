@@ -1,7 +1,7 @@
-import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { TimelineCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_NODE = { damping: 14, stiffness: 120, mass: 0.7 } as const
@@ -36,16 +36,6 @@ export function Timeline({ command }: TimelineProps) {
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   const isHorizontal = direction === "horizontal"
   const nodeSpacing = isHorizontal
@@ -89,16 +79,18 @@ export function Timeline({ command }: TimelineProps) {
 
   const uid = `tl-${position.x}-${position.y}`
 
+  // Container size: content + padding (20 * 2) + label area
+  const contentWidth = isHorizontal ? width : 240
+  const contentHeight = isHorizontal ? 120 : totalLength + 80
+  const containerWidth = contentWidth + 40
+  const containerHeight = contentHeight + 40
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         borderRadius: 16,
         border: "1px solid rgba(255, 255, 255, 0.08)",

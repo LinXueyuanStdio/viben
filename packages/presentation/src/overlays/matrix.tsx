@@ -1,6 +1,7 @@
 import { useCurrentFrame, useVideoConfig, spring } from "remotion"
 import type { MatrixCommand, Point } from "../types"
-import { useEntrance, staggerDelay } from "../utils/motion"
+import { staggerDelay } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
 
@@ -26,7 +27,6 @@ export function Matrix({ command }: MatrixProps) {
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-  const containerEntrance = useEntrance(0, 12)
 
   // Header animation
   const headerProgress = spring({
@@ -65,12 +65,16 @@ export function Matrix({ command }: MatrixProps) {
 
   const colWidth = Math.floor((width - 140) / columns.length)
 
+  // Container size: content width + padding (16 * 2), estimated height
+  const containerWidth = width + 32
+  const containerHeight = (rows.length + 1) * 40 + 32
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
+        ...overlayStyle,
         width,
         background: "radial-gradient(ellipse at 30% 10%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.92) 70%)",
         borderRadius: 14,
@@ -80,9 +84,6 @@ export function Matrix({ command }: MatrixProps) {
         WebkitBackdropFilter: "blur(12px)",
         padding: 16,
         fontFamily: "system-ui, -apple-system, sans-serif",
-        opacity: containerEntrance.opacity,
-        transform: `translateY(${containerEntrance.translateY}px) scale(${containerEntrance.scale})`,
-        willChange: "transform, opacity",
       }}
     >
       {/* Header row with gradient background */}

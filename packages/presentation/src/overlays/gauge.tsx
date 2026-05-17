@@ -1,9 +1,9 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { GaugeCommand, Point } from "../types"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 // Spring configs for layered timing
-const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_NEEDLE = { damping: 8, stiffness: 120, mass: 0.7 } as const
 const SPRING_VALUE = { damping: 14, stiffness: 130, mass: 0.6 } as const
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
@@ -38,16 +38,6 @@ export function Gauge({ command }: GaugeProps) {
   const { fps } = useVideoConfig()
 
   const clampedValue = Math.min(100, Math.max(0, value))
-
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.9, 0.93, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   // ── Arc draw: spring-based with overshoot ──
   const arcDelay = 8
@@ -151,16 +141,15 @@ export function Gauge({ command }: GaugeProps) {
 
   const uid = `gauge-${position.x}-${position.y}`
 
+  const containerWidth = Math.max(280, (radius + 16) * 2) + 40   // content + 20px padding * 2
+  const containerHeight = Math.max(200, (radius + 16) * 2 + 40) + 40
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         minWidth: 280,
         minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
@@ -242,8 +231,8 @@ export function Gauge({ command }: GaugeProps) {
           strokeLinecap="round"
         />
 
-        {/* Rotating glow ring (subtle) */}
-        {containerSettled && (
+        {/* Rotating glow ring (subtle, shown after entrance settles) */}
+        {frame > 20 && (
           <path
             d={trackPath}
             fill="none"

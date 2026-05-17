@@ -1,9 +1,9 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { SparklineCommand, Point } from "../types"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 // Spring configs
-const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_DOT = { damping: 8, stiffness: 160, mass: 0.5 } as const
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 
@@ -36,16 +36,6 @@ export function Sparkline({ command }: SparklineProps) {
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
-
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [3, 0], CLAMP)
 
   // ── Line draw progress: ease-in-out with acceleration ──
   const drawDelay = 8
@@ -126,16 +116,15 @@ export function Sparkline({ command }: SparklineProps) {
   const dashOffset = totalLength * (1 - drawProgress)
   const uid = `sparkline-${position.x}-${position.y}`
 
+  const containerWidth = Math.max(220, width) + 40   // 20px padding * 2
+  const containerHeight = Math.max(80, height) + 40
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         minWidth: 220,
         minHeight: 80,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",

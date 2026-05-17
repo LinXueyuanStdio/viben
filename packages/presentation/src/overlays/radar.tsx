@@ -2,8 +2,9 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { RadarCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
-const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
+const SPRING_RING = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_POLYGON = { damping: 14, stiffness: 80, mass: 1.0 } as const
 const SPRING_LABEL = { damping: 18, stiffness: 120, mass: 0.8 } as const
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
@@ -38,22 +39,12 @@ export function Radar({ command }: RadarProps) {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
-
   const axisCount = axes.length
 
   // Static geometry (does not depend on frame)
   const geometry = useMemo(() => {
-    const cx = size / 2
-    const cy = size / 2
+    const cx = size / 2 + labelMargin
+    const cy = size / 2 + labelMargin
     const radius = size / 2 - 30
     const angleStep = (2 * Math.PI) / axisCount
 
@@ -102,7 +93,7 @@ export function Radar({ command }: RadarProps) {
   // ── Grid ring entrances (staggered from center) ──
   const ringOpacities = rings.map((_, i) => {
     const delay = 4 + i * 3
-    const progress = spring({ frame: frame - delay, fps, config: SPRING_CONTAINER })
+    const progress = spring({ frame: frame - delay, fps, config: SPRING_RING })
     return progress >= 0.999 ? 1 : Math.max(0, progress)
   })
 
@@ -156,16 +147,18 @@ export function Radar({ command }: RadarProps) {
   const glowId = `radar-glow-${position.x}-${position.y}`
   const strokeGradId = `radar-stroke-${position.x}-${position.y}`
 
+  // Label margin: labels sit outside radius, need extra room
+  const labelMargin = 40
+  const svgSize = size + labelMargin * 2
+  const containerWidth = Math.max(280, svgSize) + 32   // 16px padding * 2
+  const containerHeight = Math.max(200, svgSize) + 32
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         minWidth: 280,
         minHeight: 200,
         background: "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.92) 70%)",
@@ -189,7 +182,7 @@ export function Radar({ command }: RadarProps) {
         }}
       />
 
-      <svg width={size} height={size} style={{ overflow: "visible" }}>
+      <svg width={svgSize} height={svgSize} style={{ overflow: "visible" }}>
         <defs>
           {/* Radial gradient for polygon fill */}
           <radialGradient id={gradId} cx="50%" cy="50%" r="50%">

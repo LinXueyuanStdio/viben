@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { TreemapCommand, Point } from "../types"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -45,31 +46,21 @@ export function Treemap({ command }: TreemapProps) {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.9, 0.93, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
-
   // Compute treemap layout (squarified)
   const rects = useMemo(() => {
     return computeTreemapLayout(data, width, height)
   }, [data, width, height])
 
+  // Container size: content + padding (16 * 2)
+  const containerWidth = width + 32
+  const containerHeight = height + 32
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         minWidth: 280,
         minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",

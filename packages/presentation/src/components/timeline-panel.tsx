@@ -77,6 +77,22 @@ const PLAYHEAD_CONTAINER_STYLE: React.CSSProperties = {
 const POS_TOP = { top: 0 } as const
 const POS_BOTTOM = { bottom: 0 } as const
 
+const PLAYHEAD_STYLE_BASE: React.CSSProperties = {
+  position: "absolute",
+  top: 0,
+  bottom: 0,
+  width: 1.5,
+  background: "rgba(99,102,241,0.9)",
+  zIndex: 10,
+  pointerEvents: "none",
+}
+
+const LANES_CONTAINER_STYLE: React.CSSProperties = {
+  overflowY: "auto",
+  height: "100%",
+  padding: "4px 8px 4px 0",
+}
+
 // ---------------------------------------------------------------------------
 // Lane Item — memo'd to skip re-render when isActive hasn't changed
 // ---------------------------------------------------------------------------
@@ -156,24 +172,27 @@ export const TimelinePanel = memo(function TimelinePanel({
   const progressPct = totalDurationMs > 0 ? (currentMs / totalDurationMs) * 100 : 0
   const posStyle = position === "top" ? POS_TOP : POS_BOTTOM
 
+  // Playhead style: only allocate new object when progressPct changes
+  const playheadStyle = useMemo<React.CSSProperties>(
+    () => ({ ...PLAYHEAD_STYLE_BASE, left: `${progressPct}%` }),
+    [progressPct],
+  )
+
+  // Panel style: stable when position/height don't change
+  const panelStyle = useMemo<React.CSSProperties>(
+    () => ({ ...PANEL_STYLE, ...posStyle, height }),
+    [posStyle, height],
+  )
+
   return (
-    <div style={{ ...PANEL_STYLE, ...posStyle, height }}>
+    <div style={panelStyle}>
       {/* Playhead indicator */}
       <div style={PLAYHEAD_CONTAINER_STYLE}>
-        <div style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: `${progressPct}%`,
-          width: 1.5,
-          background: "rgba(99,102,241,0.9)",
-          zIndex: 10,
-          pointerEvents: "none",
-        }} />
+        <div style={playheadStyle} />
       </div>
 
       {/* Lane rows */}
-      <div style={{ overflowY: "auto", height: "100%", padding: "4px 8px 4px 0" }}>
+      <div style={LANES_CONTAINER_STYLE}>
         {lanes.map((lane) => (
           <div key={lane.id} style={LANE_ROW_STYLE}>
             <div style={LANE_LABEL_STYLE} title={lane.label}>

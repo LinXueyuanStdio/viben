@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { KpiCommand, Point } from "../types"
 import { useCounter } from "../utils/motion"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_VALUE = { damping: 12, stiffness: 130, mass: 0.6 } as const
@@ -40,15 +41,9 @@ export function Kpi({ command }: KpiProps) {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  // ── Container entrance ──
+  // ── Container settled check (for breathing glow) ──
   const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
   const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.92, 0.95, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
 
   // ── Label entrance ──
   const labelDelay = 4
@@ -138,16 +133,16 @@ export function Kpi({ command }: KpiProps) {
   const sparkFillGradId = `${uid}-fill`
   const trendGradId = `${uid}-trend`
 
+  // Container size: content + padding (22+22 vert, 26+26 horiz)
+  const containerWidth = Math.max(220, 52 + 120) + 52
+  const containerHeight = 200
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         background: "radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.92) 70%)",
         borderRadius: 16,
         border: `1px solid rgba(255, 255, 255, ${breatheGlow})`,
@@ -159,35 +154,35 @@ export function Kpi({ command }: KpiProps) {
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      {/* Noise texture */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: 16,
-          opacity: 0.03,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
-          pointerEvents: "none",
-        }}
-      />
+        {/* Noise texture */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 16,
+            opacity: 0.03,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E")`,
+            pointerEvents: "none",
+          }}
+        />
 
-      {/* Color accent bar at top with animated width */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 16,
-          right: 16,
-          height: 3,
-          borderRadius: "0 0 3px 3px",
-          background: `linear-gradient(90deg, ${color}00, ${color}, ${color}00)`,
-          opacity: containerOpacity,
-          boxShadow: `0 2px 12px ${color}40`,
-          transform: `scaleX(${containerSettled ? 1 : containerProgress})`,
-        }}
-      />
+        {/* Color accent bar at top with animated width */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 16,
+            right: 16,
+            height: 3,
+            borderRadius: "0 0 3px 3px",
+            background: `linear-gradient(90deg, ${color}00, ${color}, ${color}00)`,
+            opacity: containerSettled ? 1 : containerProgress,
+            boxShadow: `0 2px 12px ${color}40`,
+            transform: `scaleX(${containerSettled ? 1 : containerProgress})`,
+          }}
+        />
 
-      {/* Label with delayed entrance */}
+        {/* Label with delayed entrance */}
       <div
         style={{
           fontSize: 11,

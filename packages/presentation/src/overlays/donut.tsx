@@ -1,9 +1,9 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { DonutCommand, Point } from "../types"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 // Spring configs
-const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_ARC = { damping: 10, stiffness: 120, mass: 0.7 } as const
 const SPRING_LABEL = { damping: 14, stiffness: 130, mass: 0.6 } as const
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
@@ -44,16 +44,6 @@ export function Donut({ command }: DonutProps) {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
-  // ── Container entrance ──
-  const containerProgress = spring({ frame, fps, config: SPRING_CONTAINER })
-  const containerSettled = containerProgress >= 0.999
-  const containerOpacity = containerSettled ? 1 : interpolate(containerProgress, [0, 0.3], [0, 1], CLAMP)
-  const containerScale = containerSettled
-    ? 1
-    : interpolate(containerProgress, [0, 0.3, 0.8, 1], [0.9, 0.93, 1.02, 1], CLAMP)
-  const containerTranslateY = containerSettled ? 0 : (1 - containerProgress) * 12
-  const containerBlur = containerSettled ? 0 : interpolate(containerProgress, [0, 0.5], [4, 0], CLAMP)
-
   // Compute arc segments
   const arcs = useMemo(() => {
     const total = segments.reduce((s, seg) => s + seg.value, 0)
@@ -87,16 +77,16 @@ export function Donut({ command }: DonutProps) {
 
   const uid = `donut-${position.x}-${position.y}`
 
+  // Container size: content area (svgSize) + padding (20 * 2) + legend (~40)
+  const containerWidth = Math.max(280, svgSize + 40)
+  const containerHeight = Math.max(200, svgSize + 40 + 52)
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
-        transform: `translateY(${containerTranslateY}px) scale(${containerScale})`,
-        opacity: containerOpacity,
-        filter: containerBlur > 0.01 ? `blur(${containerBlur}px)` : undefined,
-        willChange: "transform, opacity",
+        ...overlayStyle,
         minWidth: 280,
         minHeight: 200,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",

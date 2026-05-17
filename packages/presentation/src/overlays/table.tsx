@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { TableCommand, Point } from "../types"
+import { useOverlayStyle } from "../hooks/use-overlay-style"
 
 // Spring configs
 const SPRING_HEADER = { damping: 14, stiffness: 110, mass: 0.8 } as const
@@ -94,12 +95,17 @@ export function Table({ command }: TableProps) {
   const rowHeight = 32
   const totalHeight = headerHeight + rows.length * rowHeight
 
+  // Container size: total columns width + padding (20 * 2)
+  const totalColWidth = colWidths.reduce((a, b) => a + b, 0)
+  const containerWidth = totalColWidth + 40
+  const containerHeight = totalHeight + 40
+
+  const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
+
   return (
     <div
       style={{
-        position: "absolute",
-        left: position.x,
-        top: position.y,
+        ...overlayStyle,
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         borderRadius: 16,
         border: "1px solid rgba(255, 255, 255, 0.08)",
