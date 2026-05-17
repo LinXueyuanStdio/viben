@@ -1,22 +1,82 @@
-model_name: "ni_hao_wei_ben"
-target_phrase: "你好微本"
+# 唤醒词训练配置 - "你好微本"
+# 使用 livekit-wakeword + VoxCPM 中文 TTS
+model_name: ni_hao_wei_ben
+target_phrases:
+  - "你好微本"
 
-tts:
-  model: "zh_CN-huayan-medium"
-  num_samples: 5000
+# TTS 后端 - 使用 VoxCPM 支持中文
+tts_backend: voxcpm
 
-training:
-  epochs: 100
-  batch_size: 64
-  learning_rate: 0.001
-  validation_split: 0.1
+# 训练样本数
+n_samples: 25000
+n_samples_val: 5000
 
-augmentation:
-  noise_snr_range: [5, 20]
-  speed_range: [0.9, 1.1]
-  reverb: true
-  pitch_shift_range: [-2, 2]
+# 模型配置
+model:
+  model_type: conv_attention
+  model_size: small
 
+# 训练步数
+steps: 50000
+
+# 目标误触率 (每小时)
+target_fp_per_hour: 0.2
+
+# VoxCPM TTS 配置 - 多样化中文说话人
+voxcpm_tts:
+  voice_design_prompts:
+    - "A young adult woman, clear mid-pitch voice, moderate pace, calm and professional"
+    - "A young adult man, warm baritone, steady pace, friendly and articulate"
+    - "A middle-aged woman, slightly low pitch, measured pace, confident tone"
+    - "A middle-aged man, deep voice, slow pace, authoritative"
+    - "A young woman, high pitch, fast pace, energetic and cheerful"
+    - "A young man, light tenor, quick pace, enthusiastic"
+    - "An older woman, gentle voice, slow pace, warm and caring"
+    - "An older man, gravelly voice, deliberate pace, wise"
+    - "A young adult woman, breathy voice, moderate pace, soft-spoken"
+    - "A young adult man, nasal voice, fast pace, casual"
+    - "A middle-aged woman, crisp articulation, moderate pace, formal"
+    - "A middle-aged man, rich bass, moderate pace, reassuring"
+    - "A young woman, bright soprano, varied pace, expressive"
+    - "A young man, husky voice, slow pace, relaxed"
+    - "A middle-aged woman, slightly raspy, moderate pace, determined"
+    - "A young adult man, clear voice, fast pace, impatient"
+    - "An older woman, thin voice, slow pace, patient"
+    - "A young woman, melodic voice, moderate pace, pleasant"
+    - "A middle-aged man, commanding voice, moderate pace, direct"
+    - "A young adult woman, quiet voice, slow pace, thoughtful"
+    - "A young man, strong voice, fast pace, confident"
+    - "An older man, warm voice, slow pace, storytelling"
+    - "A young woman, sharp voice, fast pace, decisive"
+    - "A middle-aged woman, smooth voice, moderate pace, diplomatic"
+    - "A young adult man, resonant voice, moderate pace, friendly"
+    - "A middle-aged man, mellow voice, slow pace, contemplative"
+    - "A young woman, vibrant voice, fast pace, passionate"
+    - "An older woman, steady voice, moderate pace, composed"
+    - "A young adult man, high-energy voice, fast pace, excited"
+    - "A middle-aged woman, low voice, moderate pace, measured"
+    - "A young man, soft voice, slow pace, gentle"
+    - "A young woman, powerful voice, moderate pace, assertive"
+    - "An older man, hoarse voice, slow pace, experienced"
+    - "A middle-aged man, smooth baritone, moderate pace, charming"
+    - "A young adult woman, lilting voice, varied pace, playful"
+    - "A young man, deep voice, fast pace, urgent"
+    - "A middle-aged woman, warm alto, moderate pace, nurturing"
+    - "An older woman, clear voice, slow pace, dignified"
+    - "A young adult man, boyish voice, fast pace, eager"
+    - "A middle-aged man, gruff voice, slow pace, no-nonsense"
+    - "A young woman, sweet voice, moderate pace, sincere"
+    - "A young adult man, smooth voice, moderate pace, laid-back"
+    - "An older woman, authoritative voice, moderate pace, experienced"
+    - "A middle-aged woman, energetic voice, fast pace, motivating"
+    - "A young man, muffled voice, slow pace, sleepy"
+    - "A young woman, crystal clear voice, moderate pace, precise"
+    - "An older man, gentle voice, slow pace, grandfatherly"
+    - "A middle-aged man, booming voice, moderate pace, theatrical"
+    - "A young adult woman, airy voice, fast pace, bubbly"
+    - "A young man, gravelly voice, moderate pace, street-smart"
+
+# 导出配置
 export:
-  output_dir: "../../apps/desktop/public/openwakeword/models"
+  output_dir: "../../apps/desktop/public/wakeword/models"
   threshold: 0.5

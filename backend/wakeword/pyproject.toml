@@ -1,24 +1,31 @@
 [project]
 name = "wakeword-trainer"
-version = "0.1.0"
-description = "Custom wake word training for Viben"
-requires-python = ">=3.9"
+version = "0.2.0"
+description = "Custom wake word training for Viben (powered by livekit-wakeword)"
+requires-python = ">=3.11"
 
 dependencies = [
-    "openwakeword>=0.6.0",
-    "torch>=2.0.0",
-    "torchaudio>=2.0.0",
-    "onnx>=1.14.0",
-    "numpy>=1.24.0",
+    "livekit-wakeword[train,eval,export,voxcpm]",
     "pyyaml>=6.0",
+    "sounddevice>=0.4.6",
+    "soundfile>=0.12.0",
+    "numpy>=1.24.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
+listener = [
+    "livekit-wakeword[listener]",
+]
+
+[project.scripts]
+wakeword-train = "wakeword_trainer.train:main"
+wakeword-record = "wakeword_trainer.record:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -26,3 +33,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
