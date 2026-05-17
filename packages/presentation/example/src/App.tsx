@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo, memo } from "react"
+import React, { useState, useRef, useCallback, useEffect, useMemo, memo } from "react"
 import { createPortal } from "react-dom"
 import {
   PresentationPlayer,
@@ -2538,6 +2538,7 @@ function TimelineTracks({
   const [editorText, setEditorText] = useState("")
   const [editorError, setEditorError] = useState<string | null>(null)
   const [isRunning, setIsRunning] = useState(false)
+  const [errorLines, setErrorLines] = useState<Map<number, string>>(new Map())
 
   // Memoize line↔step mapping (only recomputes when script text changes)
   const lineMapping = useMemo(
@@ -2562,8 +2563,15 @@ function TimelineTracks({
   const switchToEditor = useCallback(() => {
     setEditorText(stepsToBashScript(steps))
     setEditorError(null)
+    setErrorLines(new Map())
     setTimelineMode("editor")
   }, [steps])
+
+  // Clear per-line errors when editor text changes
+  useEffect(() => {
+    if (errorLines.size > 0) setErrorLines(new Map())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorText])
 
   const handleLineClick = useCallback((lineNumber: number) => {
     if (!lineMapping) return
@@ -2576,6 +2584,7 @@ function TimelineTracks({
   const handleEditorRun = useCallback(async () => {
     setIsRunning(true)
     setEditorError(null)
+    setErrorLines(new Map())
     try {
       const newSteps: PresentationStep[] = []
       let cursorMs = 0
@@ -2584,12 +2593,26 @@ function TimelineTracks({
         getCursorMs: () => cursorMs,
         setCursorMs: (ms) => { cursorMs = ms },
       })
-      const result = await bash.exec(fixJsonQuoting(joinMultilineQuotes(editorText)))
-      if (result.exitCode !== 0 && result.stderr) {
-        setEditorError(result.stderr)
-      } else if (newSteps.length > 0) {
+      // Pre-process the script text (fix quoting, join multiline)
+      const processed = fixJsonQuoting(joinMultilineQuotes(editorText))
+      const lines = processed.split("\n")
+      const errors = new Map<number, string>()
+
+      // Execute line by line to track per-line errors
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (line === "" || line.startsWith("#")) continue
+        const result = await bash.exec(lines[i])
+        if (result.exitCode !== 0) {
+          errors.set(i + 1, result.stderr || "Error") // 1-based line number
+        }
+      }
+
+      setErrorLines(errors)
+
+      if (newSteps.length > 0) {
         onStepsChange(newSteps, cursorMs)
-      } else {
+      } else if (errors.size === 0) {
         setEditorError("No steps produced. Check your script.")
       }
     } catch (err: unknown) {
@@ -2598,6 +2621,7 @@ function TimelineTracks({
       setIsRunning(false)
     }
   }, [editorText, onStepsChange])
+
 
   // --- drag / hover state ---
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false)
@@ -3161,9 +3185,16 @@ function TimelineTracks({
             </span>
           )}
           {timelineMode === "editor" && (
-            <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(118,185,0,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(118,185,0,0.6)" }}>
-              {steps.length} steps • {formatTime(totalDurationMs)}
-            </span>
+            <>
+              <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(118,185,0,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(118,185,0,0.6)" }}>
+                {steps.length} steps • {formatTime(totalDurationMs)}
+              </span>
+              {errorLines.size > 0 && (
+                <span style={{ fontSize: 9, background: "rgba(239,68,68,0.2)", color: "#ef4444", padding: "1px 5px", borderRadius: 8, fontWeight: 600 }}>
+                  {errorLines.size} error{errorLines.size > 1 ? "s" : ""}
+                </span>
+              )}
+            </>
           )}
         </div>
         {timelineMode === "timeline" && (
@@ -3202,7 +3233,10 @@ function TimelineTracks({
             value={editorText}
             onChange={setEditorText}
             activeLines={activeLines}
+            errorLines={errorLines}
             onLineClick={handleLineClick}
+            steps={steps}
+            onRun={handleEditorRun}
             style={{ flex: 1, minHeight: 180, maxHeight: 260 }}
           />
           {activeLines.length > 0 && (
@@ -3223,7 +3257,24 @@ function TimelineTracks({
               {editorError}
             </div>
           )}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          {errorLines.size > 0 && (
+            <div style={{
+              padding: "4px 8px",
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.15)",
+              borderRadius: 4,
+              fontSize: 10,
+              color: "#ef4444",
+              maxHeight: 60,
+              overflow: "auto",
+              fontFamily: "SFMono-Regular, Consolas, monospace",
+            }}>
+              {Array.from(errorLines.entries()).map(([line, msg]) => (
+                <div key={line}>Line {line}: {msg.trim()}</div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
             <button
               type="button"
               onClick={handleEditorRun}
