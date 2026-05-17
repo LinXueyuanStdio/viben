@@ -1,22 +1,13 @@
-"""Tests for configuration loading and WakeWordConfig creation.
-
-Covers:
-- YAML loading (happy path + missing file)
-- YAML dict -> WakeWordConfig conversion
-- Default values for unspecified fields
-- tts_backend = "voxcpm" config
-"""
+"""Tests for configuration loading and WakeWordConfig creation."""
 from pathlib import Path
 
 import pytest
-import yaml
+
+from livekit.wakeword import WakeWordConfig
+from livekit.wakeword.config import ModelConfig, VoxCpmTtsConfig
 
 from wakeword_trainer.train import create_wakeword_config, load_yaml_config
 
-
-# ---------------------------------------------------------------------------
-# test_load_yaml_config
-# ---------------------------------------------------------------------------
 
 class TestLoadYamlConfig:
     """Tests for ``load_yaml_config``."""
@@ -49,10 +40,6 @@ class TestLoadYamlConfig:
             load_yaml_config("/nonexistent/path/missing.yaml")
 
 
-# ---------------------------------------------------------------------------
-# test_create_wakeword_config
-# ---------------------------------------------------------------------------
-
 class TestCreateWakeWordConfig:
     """Tests for ``create_wakeword_config``."""
 
@@ -61,6 +48,7 @@ class TestCreateWakeWordConfig:
         _, data = tmp_config
         config = create_wakeword_config(data)
 
+        assert isinstance(config, WakeWordConfig)
         assert config.model_name == data["model_name"]
         assert config.target_phrases == data["target_phrases"]
         assert config.n_samples == data["n_samples"]
@@ -69,15 +57,13 @@ class TestCreateWakeWordConfig:
 
     def test_config_defaults(self):
         """Unspecified fields fall back to WakeWordConfig defaults."""
-        minimal = {"model_name": "tiny"}
+        minimal = {"model_name": "tiny", "target_phrases": ["hey tiny"]}
         config = create_wakeword_config(minimal)
 
         assert config.model_name == "tiny"
-        # All other fields should still be accessible (they get their defaults).
-        assert hasattr(config, "target_phrases")
-        assert hasattr(config, "n_samples")
-        assert hasattr(config, "steps")
-        assert hasattr(config, "tts_backend")
+        assert config.target_phrases == ["hey tiny"]
+        assert config.n_samples > 0
+        assert config.steps > 0
 
     def test_config_voxcpm_backend(self):
         """tts_backend is correctly set to 'voxcpm'."""
@@ -90,28 +76,32 @@ class TestCreateWakeWordConfig:
             "steps": 1000,
         }
         config = create_wakeword_config(data)
+        assert config.tts_backend.value == "voxcpm"
 
-        assert config.tts_backend == "voxcpm"
-
-    def test_config_model_type_mapping(self):
-        """Nested model.model_type is mapped to the top-level model_type attr."""
+    def test_config_model_nested(self):
+        """Nested model config creates a ModelConfig object."""
         data = {
             "model_name": "test",
+            "target_phrases": ["hey test"],
             "model": {
                 "model_type": "conv_attention",
                 "model_size": "small",
             },
         }
         config = create_wakeword_config(data)
-        assert config.model_type == "conv_attention"
-        assert config.model_size == "small"
+        assert isinstance(config.model, ModelConfig)
+        assert config.model.model_type == "conv_attention"
+        assert config.model.model_size == "small"
 
     def test_config_voice_design_prompts(self):
-        """voxcpm_tts.voice_design_prompts are passed through."""
+        """voxcpm_tts.voice_design_prompts are passed as VoxCpmTtsConfig."""
         prompts = ["A young woman, bright voice", "A middle-aged man, deep voice"]
         data = {
             "model_name": "test",
+            "target_phrases": ["hey test"],
+            "tts_backend": "voxcpm",
             "voxcpm_tts": {"voice_design_prompts": prompts},
         }
         config = create_wakeword_config(data)
-        assert config.voice_design_prompts == prompts
+        assert isinstance(config.voxcpm_tts, VoxCpmTtsConfig)
+        assert config.voxcpm_tts.voice_design_prompts == prompts

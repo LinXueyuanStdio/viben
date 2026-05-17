@@ -25,14 +25,24 @@ def _make_config(data_override=None):
     """Build a WakeWordConfig from a minimal YAML-like dict."""
     base = {
         "model_name": "test_export",
-        "target_phrases": ["hello"],
-        "n_samples": 100,
-        "n_samples_val": 20,
-        "steps": 500,
+        "target_phrases": ["hello export"],
+        "tts_backend": "piper_vits",
+        "n_samples": 10,
+        "n_samples_val": 5,
+        "steps": 10,
     }
     if data_override:
         base.update(data_override)
     return create_wakeword_config(base)
+
+
+def _create_fake_onnx(tmp_path, name="test_export.onnx"):
+    """Create a temporary ONNX file and return its string path."""
+    src_dir = tmp_path / "livekit_output"
+    src_dir.mkdir(exist_ok=True)
+    onnx_file = src_dir / name
+    onnx_file.write_bytes(b"\x00" * 32)
+    return str(onnx_file)
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +55,7 @@ class TestExportModel:
     def test_export_model_default_path(self, lk, tmp_path):
         """When no output_dir is passed, run_export is called and its return
         value is converted to a Path."""
-        onnx_path = str(tmp_path / "test_export.onnx")
+        onnx_path = _create_fake_onnx(tmp_path)
         lk["run_export"].return_value = onnx_path
         config = _make_config()
 
@@ -58,12 +68,8 @@ class TestExportModel:
     def test_export_model_custom_path(self, lk, tmp_path):
         """When output_dir is provided, the ONNX file is copied to that
         directory and the new path is returned."""
-        # run_export produces the file in a "default" location.
-        default_dir = tmp_path / "default"
-        default_dir.mkdir()
-        default_onnx = default_dir / "test_export.onnx"
-        default_onnx.write_bytes(b"\x00" * 32)
-        lk["run_export"].return_value = str(default_onnx)
+        onnx_path = _create_fake_onnx(tmp_path)
+        lk["run_export"].return_value = onnx_path
 
         custom_dir = tmp_path / "custom_output"
         config = _make_config()
@@ -76,24 +82,21 @@ class TestExportModel:
         assert result.name == "test_export.onnx"
 
     def test_export_model_no_output_dir_returns_raw(self, lk, tmp_path):
-        """Without output_dir, the raw path from run_export is returned."""
-        raw = "/some/path/model.onnx"
-        lk["run_export"].return_value = raw
+        """Without output_dir, the raw path from run_export is returned
+        as a Path object (no copy)."""
+        onnx_path = _create_fake_onnx(tmp_path, "model.onnx")
+        lk["run_export"].return_value = onnx_path
         config = _make_config()
 
         result = export_model(config, output_dir=None)
 
-        assert result == Path(raw)
+        assert result == Path(onnx_path)
 
     def test_export_copies_to_desktop(self, lk, tmp_path):
         """Simulate copying the model to the desktop app's wakeword
         models directory (via output_dir)."""
-        # Simulate run_export producing a file.
-        src_dir = tmp_path / "train_output"
-        src_dir.mkdir()
-        src_onnx = src_dir / "test_export.onnx"
-        src_onnx.write_bytes(b"\xDE\xAD" * 16)
-        lk["run_export"].return_value = str(src_onnx)
+        onnx_path = _create_fake_onnx(tmp_path)
+        lk["run_export"].return_value = onnx_path
 
         desktop_dir = tmp_path / "apps" / "desktop" / "public" / "wakeword" / "models"
         config = _make_config()
@@ -117,7 +120,7 @@ class TestEvaluateModel:
         expected = {"aut": 0.001, "fpph": 0.08, "recall": 0.86}
         lk["run_eval"].return_value = expected
         # run_export must also return a string path for the fallback branch.
-        lk["run_export"].return_value = str(tmp_path / "model.onnx")
+        lk["run_export"].return_value = _create_fake_onnx(tmp_path)
 
         config = _make_config()
         result = evaluate_model(config)
@@ -129,8 +132,8 @@ class TestEvaluateModel:
         assert result == expected
 
     def test_evaluate_model_with_explicit_path(self, lk, tmp_path):
-        """When model_path is provided, run_export is NOT called to get the
-        path (only run_eval is called)."""
+        """When model_path is provided, run_export is NOT called to locate
+        the model."""
         expected = {"aut": 0.002, "fpph": 0.05, "recall": 0.90}
         lk["run_eval"].return_value = expected
 
@@ -141,12 +144,14 @@ class TestEvaluateModel:
         result = evaluate_model(config, model_path=model_path)
 
         lk["run_eval"].assert_called_once()
+        # run_export should NOT have been called because we provided model_path.
+        lk["run_export"].assert_not_called()
         assert result == expected
 
     def test_evaluate_model_no_path_calls_export_first(self, lk, tmp_path):
-        """When model_path is None, run_export is called first to get a
-        default path, then run_eval runs."""
-        lk["run_export"].return_value = str(tmp_path / "auto.onnx")
+        """When model_path is None, run_export is called first to obtain
+        the default path, then run_eval evaluates it."""
+        lk["run_export"].return_value = _create_fake_onnx(tmp_path, "auto.onnx")
         lk["run_eval"].return_value = {"aut": 0.0}
 
         config = _make_config()

@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 from livekit.wakeword import WakeWordConfig, run_train
+from livekit.wakeword.config import ModelConfig, VoxCpmTtsConfig
 
 from .export import evaluate_model, export_model
 from .generate import augment_data, generate_data
@@ -74,17 +75,15 @@ def create_wakeword_config(yaml_config: dict[str, Any]) -> WakeWordConfig:
         if field in yaml_config:
             kwargs[field] = yaml_config[field]
 
-    # model 嵌套配置
+    # model 嵌套配置 -> ModelConfig 对象
     model_config = yaml_config.get("model", {})
-    if "model_type" in model_config:
-        kwargs["model_type"] = model_config["model_type"]
-    if "model_size" in model_config:
-        kwargs["model_size"] = model_config["model_size"]
+    if model_config:
+        kwargs["model"] = ModelConfig(**model_config)
 
-    # VoxCPM TTS 配置
+    # VoxCPM TTS 配置 -> VoxCpmTtsConfig 对象
     voxcpm_config = yaml_config.get("voxcpm_tts", {})
-    if "voice_design_prompts" in voxcpm_config:
-        kwargs["voice_design_prompts"] = voxcpm_config["voice_design_prompts"]
+    if voxcpm_config:
+        kwargs["voxcpm_tts"] = VoxCpmTtsConfig(**voxcpm_config)
 
     config = WakeWordConfig(**kwargs)
     logger.info(
