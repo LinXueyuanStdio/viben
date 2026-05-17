@@ -13,6 +13,33 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 echo "📦 Checking workspace dependencies..."
 "$SCRIPT_DIR/build-deps.sh" "$ROOT_DIR/apps/desktop"
 
+# --- Auto-build sidecar binary ---
+SIDECAR_DIR="$ROOT_DIR/apps/desktop/src-tauri/binaries"
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  TARGET_TRIPLE="x86_64-unknown-linux-gnu" ;;
+    aarch64) TARGET_TRIPLE="aarch64-unknown-linux-gnu" ;;
+    arm64)   TARGET_TRIPLE="aarch64-apple-darwin" ;;
+    *)       TARGET_TRIPLE="$ARCH-unknown-linux-gnu" ;;
+esac
+
+# macOS detection
+if [ "$(uname -s)" = "Darwin" ]; then
+    case "$ARCH" in
+        x86_64)  TARGET_TRIPLE="x86_64-apple-darwin" ;;
+        arm64)   TARGET_TRIPLE="aarch64-apple-darwin" ;;
+    esac
+fi
+
+SIDECAR_BIN="$SIDECAR_DIR/viben-$TARGET_TRIPLE"
+
+if [ ! -f "$SIDECAR_BIN" ]; then
+    echo "📦 Building sidecar binary (viben-$TARGET_TRIPLE)..."
+    (cd "$ROOT_DIR" && pnpm --filter @viben/core build:sidecar)
+else
+    echo "✓ Sidecar binary exists: viben-$TARGET_TRIPLE"
+fi
+
 # --- Kill existing processes ---
 echo ""
 echo "🔄 Restarting Viben Desktop..."
