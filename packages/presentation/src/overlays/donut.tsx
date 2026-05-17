@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { DonutCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs
 const SPRING_ARC = { damping: 10, stiffness: 120, mass: 0.7 } as const
@@ -36,10 +38,20 @@ export function Donut({ command }: DonutProps) {
   const {
     position: _position,
     segments,
-    size = 180,
+    size: _size = 180,
     innerRatio = 0.6,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 0
+  const csHeight = cardSizeResult?.height ?? 0
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, csWidth || _size + 80, csHeight || _size + 80), [mode, csWidth, csHeight, _size])
+  const size = cardSizeResult
+    ? Math.min(csWidth, csHeight) - layout.padding * 2
+    : _size
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -77,9 +89,9 @@ export function Donut({ command }: DonutProps) {
 
   const uid = `donut-${position.x}-${position.y}`
 
-  // Container size: content area (svgSize) + padding (20 * 2) + legend (~40)
-  const containerWidth = Math.max(280, svgSize + 40)
-  const containerHeight = Math.max(200, svgSize + 40 + 52)
+  // Container size: content area (svgSize) + padding + legend (~40)
+  const containerWidth = Math.max(280, svgSize + layout.padding * 2)
+  const containerHeight = Math.max(200, svgSize + layout.padding * 2 + 52)
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -92,7 +104,7 @@ export function Donut({ command }: DonutProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 20,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
         display: "flex",

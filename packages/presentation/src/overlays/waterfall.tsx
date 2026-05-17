@@ -3,6 +3,8 @@ import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { WaterfallCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_BAR = { damping: 14, stiffness: 110, mass: 0.8 } as const
 const SPRING_LABEL = { damping: 12, stiffness: 130, mass: 0.6 } as const
@@ -31,10 +33,15 @@ export function Waterfall({ command }: WaterfallProps) {
     width: _width = 280,
     height: _height = 180,
     colors,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
-  const width = Math.max(280, _width)
-  const height = Math.max(200, _height)
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = Math.max(280, cardSizeResult?.width ?? _width)
+  const height = Math.max(200, cardSizeResult?.height ?? _height)
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -119,8 +126,8 @@ export function Waterfall({ command }: WaterfallProps) {
 
   const uid = `wf-${position.x}-${position.y}`
 
-  const containerWidth = width + 32   // 16px padding * 2
-  const containerHeight = height + 32
+  const containerWidth = width + layout.padding * 2
+  const containerHeight = height + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -133,7 +140,7 @@ export function Waterfall({ command }: WaterfallProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 16,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}
@@ -257,7 +264,7 @@ export function Waterfall({ command }: WaterfallProps) {
                 y={isGrowingUp ? barTop - 8 : barTop + barHeight + 14}
                 textAnchor="middle"
                 fill="#fff"
-                fontSize={10}
+                fontSize={layout.fontSize.axis}
                 fontWeight={700}
                 fontFamily="system-ui, monospace"
                 opacity={labelSpring}
@@ -271,7 +278,7 @@ export function Waterfall({ command }: WaterfallProps) {
                 y={height - padding.bottom + 14}
                 textAnchor="middle"
                 fill="rgba(255,255,255,0.6)"
-                fontSize={10}
+                fontSize={layout.fontSize.axis}
                 fontWeight={600}
                 fontFamily="system-ui, sans-serif"
                 opacity={labelSpring}

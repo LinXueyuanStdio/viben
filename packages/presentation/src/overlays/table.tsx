@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { TableCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs
 const SPRING_HEADER = { damping: 14, stiffness: 110, mass: 0.8 } as const
@@ -33,8 +35,15 @@ export function Table({ command }: TableProps) {
     highlights = [],
     headerColor = "#6366F1",
     rowStagger = 3,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 0
+  const csHeight = cardSizeResult?.height ?? 0
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, csWidth || 400, csHeight || 300), [mode, csWidth, csHeight])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -95,10 +104,10 @@ export function Table({ command }: TableProps) {
   const rowHeight = 32
   const totalHeight = headerHeight + rows.length * rowHeight
 
-  // Container size: total columns width + padding (20 * 2)
+  // Container size: total columns width + padding
   const totalColWidth = colWidths.reduce((a, b) => a + b, 0)
-  const containerWidth = totalColWidth + 40
-  const containerHeight = totalHeight + 40
+  const containerWidth = totalColWidth + layout.padding * 2
+  const containerHeight = totalHeight + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -111,7 +120,7 @@ export function Table({ command }: TableProps) {
         border: "1px solid rgba(255, 255, 255, 0.08)",
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
-        padding: 20,
+        padding: layout.padding,
         fontFamily: "'SF Mono', 'JetBrains Mono', 'Fira Code', monospace",
         overflow: "hidden",
       }}
@@ -139,7 +148,7 @@ export function Table({ command }: TableProps) {
             key={colIndex}
             style={{
               width: colWidths[colIndex],
-              fontSize: 11,
+              fontSize: layout.fontSize.axis,
               fontWeight: 700,
               color: headerColor,
               textTransform: "uppercase",
@@ -181,7 +190,7 @@ export function Table({ command }: TableProps) {
                     key={colIndex}
                     style={{
                       width: colWidths[colIndex],
-                      fontSize: 12,
+                      fontSize: layout.fontSize.label,
                       color: isHighlighted ? "#FFFFFF" : "rgba(255, 255, 255, 0.65)",
                       textShadow: isHighlighted ? "0 1px 2px rgba(0,0,0,0.3)" : "none",
                       padding: "7px 10px",

@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { TreemapCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -38,10 +40,15 @@ export function Treemap({ command }: TreemapProps) {
     data,
     width: _width = 320,
     height: _height = 200,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
-  const width = Math.max(280, _width)
-  const height = Math.max(200, _height)
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = Math.max(280, cardSizeResult?.width ?? _width)
+  const height = Math.max(200, cardSizeResult?.height ?? _height)
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -51,9 +58,9 @@ export function Treemap({ command }: TreemapProps) {
     return computeTreemapLayout(data, width, height)
   }, [data, width, height])
 
-  // Container size: content + padding (16 * 2)
-  const containerWidth = width + 32
-  const containerHeight = height + 32
+  // Container size: content + padding
+  const containerWidth = width + layout.padding * 2
+  const containerHeight = height + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -66,7 +73,7 @@ export function Treemap({ command }: TreemapProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 16,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}

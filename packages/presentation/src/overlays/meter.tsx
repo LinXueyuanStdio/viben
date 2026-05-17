@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { MeterCommand, Point } from "../types"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -31,15 +33,21 @@ export function Meter({ command }: MeterProps) {
     value,
     min = 0,
     max = 100,
-    width = 280,
+    width: _width = 280,
     label,
     color = "#6366F1",
     trackColor = "rgba(255,255,255,0.08)",
     ticks = 5,
     unit = "",
     showNeedle = true,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, 120), [mode, width])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -121,7 +129,7 @@ export function Meter({ command }: MeterProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 16,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
         display: "flex",
@@ -141,7 +149,7 @@ export function Meter({ command }: MeterProps) {
         {label && (
           <span
             style={{
-              fontSize: 11,
+              fontSize: layout.fontSize.axis,
               fontWeight: 600,
               color: "rgba(255,255,255,0.6)",
               fontFamily: "system-ui, sans-serif",
@@ -153,7 +161,7 @@ export function Meter({ command }: MeterProps) {
         )}
         <span
           style={{
-            fontSize: 18,
+            fontSize: layout.fontSize.value,
             fontWeight: 800,
             color: "#fff",
             fontFamily: "system-ui, monospace",
@@ -228,7 +236,7 @@ export function Meter({ command }: MeterProps) {
                 y={padding.top + meterHeight + 18}
                 textAnchor="middle"
                 fill="rgba(255,255,255,0.4)"
-                fontSize={8}
+                fontSize={layout.fontSize.axis}
                 fontFamily="system-ui, monospace"
               >
                 {Math.round(min + frac * (max - min))}

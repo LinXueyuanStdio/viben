@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import type { ChartCommand, Point } from "../types"
 import {
   LineChart, Line,
@@ -7,6 +8,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout, type CardLayout } from "../utils/card-layout"
 
 interface ChartProps {
   command: ChartCommand
@@ -27,8 +30,8 @@ const DEFAULT_COLORS = [
 export function Chart({ command }: ChartProps) {
   const {
     position: _position,
-    width = 360,
-    height = 200,
+    width: _width = 360,
+    height: _height = 200,
     chartType,
     data,
     series,
@@ -38,12 +41,19 @@ export function Chart({ command }: ChartProps) {
     title,
     colors = DEFAULT_COLORS,
     innerRadius = 0,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
 
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const height = cardSizeResult?.height ?? _height
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
+
   const contentWidth = Math.max(280, width)
-  const containerWidth = contentWidth + 32   // 16px padding * 2
-  const containerHeight = Math.max(200, height) + 32
+  const containerWidth = contentWidth + layout.padding * 2
+  const containerHeight = Math.max(200, height) + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -58,13 +68,13 @@ export function Chart({ command }: ChartProps) {
         border: "1px solid rgba(255, 255, 255, 0.08)",
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
-        padding: 16,
+        padding: layout.padding,
         fontFamily: "'SF Pro Display', -apple-system, sans-serif",
       }}
     >
       {title && (
         <div style={{
-          fontSize: 12,
+          fontSize: layout.fontSize.label,
           fontWeight: 600,
           color: "rgba(255,255,255,0.6)",
           marginBottom: 10,
@@ -76,13 +86,12 @@ export function Chart({ command }: ChartProps) {
         </div>
       )}
 
-      {renderChart(chartType, data, series, dataMulti, colors, showGrid, showAxis, innerRadius, width - 24, height)}
+      {renderChart(chartType, data, series, dataMulti, colors, showGrid, showAxis, innerRadius, width - 24, height, layout)}
     </div>
   )
 }
 
 // Module-level static styles (avoid per-frame allocation)
-const AXIS_STYLE = { fontSize: 11, fill: "rgba(255,255,255,0.5)" } as const
 const GRID_STYLE = { strokeDasharray: "4 4", stroke: "rgba(255, 255, 255, 0.04)" } as const
 
 function renderChart(
@@ -96,9 +105,19 @@ function renderChart(
   innerRadius: number,
   chartWidth: number,
   chartHeight: number,
+  layout: CardLayout,
 ): React.ReactElement {
-  const axisStyle = AXIS_STYLE
+  const axisStyle = { fontSize: layout.fontSize.axis, fill: "rgba(255,255,255,0.5)" } as const
   const gridStyle = GRID_STYLE
+  const tooltipStyle: React.CSSProperties = {
+    background: "linear-gradient(135deg, rgba(15, 15, 30, 0.95), rgba(25, 25, 50, 0.9))",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 10,
+    fontSize: layout.fontSize.axis,
+    color: "#fff",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+    backdropFilter: "blur(12px)",
+  }
 
   // Disable recharts CSS animations -- they run on wall-clock time (60fps RAF loop)
   // which conflicts with Remotion's frame-driven rendering and breaks seek/export.
@@ -257,7 +276,7 @@ function renderChart(
           </Pie>
           <Tooltip contentStyle={tooltipStyle} />
           <Legend
-            wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.6)" }}
+            wrapperStyle={{ fontSize: layout.fontSize.axis, color: "rgba(255,255,255,0.6)" }}
           />
         </PieChart>
       )
@@ -265,12 +284,3 @@ function renderChart(
   }
 }
 
-const tooltipStyle: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(15, 15, 30, 0.95), rgba(25, 25, 50, 0.9))",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 10,
-  fontSize: 11,
-  color: "#fff",
-  boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-  backdropFilter: "blur(12px)",
-}

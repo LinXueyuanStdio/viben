@@ -3,6 +3,8 @@ import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { RadarCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_RING = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_POLYGON = { damping: 14, stiffness: 80, mass: 1.0 } as const
@@ -32,9 +34,20 @@ export function Radar({ command }: RadarProps) {
     axes,
     color = "#6366F1",
     fillOpacity = 0.25,
-    size = 200,
+    size: _size = 200,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: undefined, height: undefined, cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 0
+  const csHeight = cardSizeResult?.height ?? 0
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, csWidth || _size + 80, csHeight || _size + 80), [mode, csWidth, csHeight, _size])
+  const size = cardSizeResult
+    ? Math.min(csWidth, csHeight) - layout.padding * 2
+    : _size
+  const labelMargin = Math.floor(size * 0.08)
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -86,7 +99,7 @@ export function Radar({ command }: RadarProps) {
     })
 
     return { cx, cy, radius, angleStep, rings, axisEndpoints, valuePoints, labelPositions }
-  }, [axes, axisCount, size])
+  }, [axes, axisCount, size, labelMargin])
 
   const { cx, cy, radius, rings, axisEndpoints, valuePoints, labelPositions } = geometry
 
@@ -147,8 +160,6 @@ export function Radar({ command }: RadarProps) {
   const glowId = `radar-glow-${position.x}-${position.y}`
   const strokeGradId = `radar-stroke-${position.x}-${position.y}`
 
-  // Label margin: labels sit outside radius, need extra room
-  const labelMargin = 40
   const svgSize = size + labelMargin * 2
   const containerWidth = Math.max(280, svgSize) + 32   // 16px padding * 2
   const containerHeight = Math.max(200, svgSize) + 32
@@ -316,7 +327,7 @@ export function Radar({ command }: RadarProps) {
                 textAnchor={lp.anchor}
                 dominantBaseline="central"
                 fill={color}
-                fontSize={11}
+                fontSize={layout.fontSize.label}
                 fontFamily="system-ui, -apple-system, sans-serif"
                 fontWeight={600}
                 opacity={0.3}
@@ -331,7 +342,7 @@ export function Radar({ command }: RadarProps) {
                 textAnchor={lp.anchor}
                 dominantBaseline="central"
                 fill="rgba(255, 255, 255, 0.9)"
-                fontSize={11}
+                fontSize={layout.fontSize.label}
                 fontFamily="system-ui, -apple-system, sans-serif"
                 fontWeight={600}
                 style={{ filter: labelEntrance.blur > 0.01 ? `blur(${labelEntrance.blur}px)` : undefined }}
@@ -345,7 +356,7 @@ export function Radar({ command }: RadarProps) {
                 textAnchor={lp.anchor}
                 dominantBaseline="central"
                 fill="rgba(255, 255, 255, 0.45)"
-                fontSize={10}
+                fontSize={layout.fontSize.axis}
                 fontFamily="system-ui, monospace"
                 fontWeight={600}
                 letterSpacing={0.3}

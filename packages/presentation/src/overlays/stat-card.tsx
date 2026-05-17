@@ -1,6 +1,9 @@
+import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { StatCardCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -34,8 +37,15 @@ export function StatCard({ command }: StatCardProps) {
     after,
     unit = "",
     color = "#6366F1",
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 300
+  const csHeight = cardSizeResult?.height ?? 180
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, csWidth, csHeight), [mode, csWidth, csHeight])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -114,9 +124,9 @@ export function StatCard({ command }: StatCardProps) {
   const breathePhase = containerSettled ? (frame - 20) * 0.06 : 0
   const breatheGlow = containerSettled ? 0.08 + 0.03 * Math.sin(breathePhase) : 0.08
 
-  // Container size: content + padding (24 * 2)
-  const containerWidth = Math.max(220, 300) + 48
-  const containerHeight = Math.max(120, 180) + 48
+  // Container size: content + padding
+  const containerWidth = Math.max(220, csWidth) + layout.padding * 2
+  const containerHeight = Math.max(120, csHeight) + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -127,7 +137,7 @@ export function StatCard({ command }: StatCardProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: `1px solid rgba(255, 255, 255, ${breatheGlow})`,
         borderRadius: 16,
-        padding: 24,
+        padding: layout.padding,
         boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 40px ${color}08`,
         backdropFilter: "blur(20px) saturate(180%)",
         minWidth: 220,
@@ -163,7 +173,7 @@ export function StatCard({ command }: StatCardProps) {
       {/* Label with delayed entrance */}
       <div
         style={{
-          fontSize: 11,
+          fontSize: layout.fontSize.axis,
           fontWeight: 600,
           color: "rgba(255,255,255,0.5)",
           fontFamily: "system-ui, sans-serif",
@@ -189,7 +199,7 @@ export function StatCard({ command }: StatCardProps) {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, opacity: beforeValueOpacity }}>
           <span
             style={{
-              fontSize: 10,
+              fontSize: layout.fontSize.axis,
               fontWeight: 600,
               color: "rgba(255,255,255,0.35)",
               fontFamily: "system-ui, sans-serif",
@@ -201,7 +211,7 @@ export function StatCard({ command }: StatCardProps) {
           </span>
           <span
             style={{
-              fontSize: 28,
+              fontSize: layout.fontSize.value,
               fontWeight: 800,
               color: "rgba(255,255,255,0.7)",
               fontFamily: "system-ui, monospace",
@@ -252,7 +262,7 @@ export function StatCard({ command }: StatCardProps) {
         }}>
           <span
             style={{
-              fontSize: 10,
+              fontSize: layout.fontSize.axis,
               fontWeight: 600,
               color: "rgba(255,255,255,0.35)",
               fontFamily: "system-ui, sans-serif",
@@ -264,7 +274,7 @@ export function StatCard({ command }: StatCardProps) {
           </span>
           <span
             style={{
-              fontSize: 28,
+              fontSize: layout.fontSize.value,
               fontWeight: 800,
               color: "#fff",
               fontFamily: "system-ui, monospace",
@@ -304,7 +314,7 @@ export function StatCard({ command }: StatCardProps) {
         >
           <span
             style={{
-              fontSize: 12,
+              fontSize: layout.fontSize.label,
               color: deltaColor,
               lineHeight: 1,
               fontWeight: 700,
@@ -314,7 +324,7 @@ export function StatCard({ command }: StatCardProps) {
           </span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: layout.fontSize.label,
               fontWeight: 700,
               color: deltaColor,
               fontFamily: "system-ui, monospace",
@@ -326,7 +336,7 @@ export function StatCard({ command }: StatCardProps) {
         </div>
         <span
           style={{
-            fontSize: 11,
+            fontSize: layout.fontSize.axis,
             color: "rgba(255,255,255,0.4)",
             fontFamily: "system-ui, sans-serif",
             fontVariantNumeric: "tabular-nums",

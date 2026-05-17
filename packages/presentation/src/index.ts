@@ -130,6 +130,14 @@ export type { ViewportClampOptions, ViewportClampResult } from "./hooks/use-view
 export { useOverlayStyle } from "./hooks/use-overlay-style"
 export type { UseOverlayStyleOptions } from "./hooks/use-overlay-style"
 
+// Card size system
+export { CARD_SIZES, REFERENCE_VIEWPORT, PAGE_MARGIN, CARD_GAP } from "./utils/card-sizes"
+export type { CardSizeMode } from "./utils/card-sizes"
+export { getCardLayout } from "./utils/card-layout"
+export type { CardLayout } from "./utils/card-layout"
+export { useCardSize } from "./hooks/use-card-size"
+export type { CardSizeResult } from "./hooks/use-card-size"
+
 // Command compiler
 export {
   compilePresentationCommands,

@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import type { ComparisonCommand, Point } from "../types"
 import { useFadeIn, useCounter } from "../utils/motion"
 import { useCurrentFrame, interpolate } from "remotion"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 interface ComparisonProps {
   command: ComparisonCommand
@@ -16,7 +18,7 @@ interface ComparisonProps {
 export function Comparison({ command }: ComparisonProps) {
   const {
     position: _position,
-    width,
+    width: _width,
     leftLabel,
     rightLabel,
     leftValue,
@@ -24,8 +26,14 @@ export function Comparison({ command }: ComparisonProps) {
     leftColor,
     rightColor,
     unit = "",
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, 120), [mode, width])
 
   const frame = useCurrentFrame()
 
@@ -47,8 +55,8 @@ export function Comparison({ command }: ComparisonProps) {
   const valueLabelOpacity = useFadeIn(18, 9)
 
   const barHeight = 32
-  const labelFontSize = 12
-  const valueFontSize = 13
+  const labelFontSize = layout.fontSize.label
+  const valueFontSize = layout.fontSize.label
 
   // Memoize borderRadius strings derived from barHeight (stable constant)
   const radiusStyles = useMemo(() => ({
@@ -66,7 +74,7 @@ export function Comparison({ command }: ComparisonProps) {
         width,
         pointerEvents: "none",
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.5), rgba(25, 25, 50, 0.35))",
-        padding: "16px 20px",
+        padding: layout.padding,
         borderRadius: 16,
         border: "1px solid rgba(255, 255, 255, 0.06)",
         boxShadow:

@@ -3,6 +3,8 @@ import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { KpiCommand, Point } from "../types"
 import { useCounter } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_VALUE = { damping: 12, stiffness: 130, mass: 0.6 } as const
@@ -35,8 +37,15 @@ export function Kpi({ command }: KpiProps) {
     trendValue,
     sparkData,
     color = "#6366F1",
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 224
+  const csHeight = cardSizeResult?.height ?? 200
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, csWidth, csHeight), [mode, csWidth, csHeight])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -133,9 +142,9 @@ export function Kpi({ command }: KpiProps) {
   const sparkFillGradId = `${uid}-fill`
   const trendGradId = `${uid}-trend`
 
-  // Container size: content + padding (22+22 vert, 26+26 horiz)
-  const containerWidth = Math.max(220, 52 + 120) + 52
-  const containerHeight = 200
+  // Container size: content + padding
+  const containerWidth = Math.max(220, csWidth) + layout.padding * 2
+  const containerHeight = csHeight + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -149,7 +158,7 @@ export function Kpi({ command }: KpiProps) {
         boxShadow: `0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 60px ${color}10`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        padding: "22px 26px",
+        padding: layout.padding,
         minWidth: 220,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
@@ -185,7 +194,7 @@ export function Kpi({ command }: KpiProps) {
         {/* Label with delayed entrance */}
       <div
         style={{
-          fontSize: 11,
+          fontSize: layout.fontSize.axis,
           fontWeight: 600,
           color: "rgba(255, 255, 255, 0.5)",
           marginBottom: 8,
@@ -203,7 +212,7 @@ export function Kpi({ command }: KpiProps) {
         {/* Big number with gradient text and scale entrance */}
         <div
           style={{
-            fontSize: 38,
+            fontSize: layout.fontSize.value,
             fontWeight: 800,
             fontVariantNumeric: "tabular-nums",
             letterSpacing: -1.5,
@@ -259,7 +268,7 @@ export function Kpi({ command }: KpiProps) {
             {trendValue && (
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: layout.fontSize.label,
                   fontWeight: 700,
                   fontVariantNumeric: "tabular-nums",
                   color: trendColorStart,

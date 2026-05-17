@@ -3,6 +3,8 @@ import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { SankeyCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
 
@@ -43,21 +45,27 @@ export function Sankey({ command }: SankeyProps) {
     links,
     width: _width = 500,
     height: _height = 300,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
-  // Label margin: space for text labels outside the node columns
-  const labelMargin = 80
-  const width = Math.max(280, _width)
-  const height = Math.max(200, _height)
-  // Total SVG width includes label margins on both sides
-  const svgWidth = width + labelMargin * 2
-  const svgHeight = height
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = Math.max(280, cardSizeResult?.width ?? _width)
+  const height = Math.max(200, cardSizeResult?.height ?? _height)
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
+
+  // Label margin: proportional space for text labels outside the node columns
+  const labelMargin = Math.floor(layout.contentWidth * 0.12)
+  // SVG fits within the content area
+  const svgWidth = layout.contentWidth
+  const svgHeight = layout.contentHeight
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
   // Layout computation (static, does not depend on frame)
-  const layout = useMemo(() => {
+  const sankeyLayout = useMemo(() => {
     const nodeWidth = 24
     const padding = 40
 
@@ -88,7 +96,7 @@ export function Sankey({ command }: SankeyProps) {
     // Layout nodes in each column
     // Offset by labelMargin so labels have room on the left outside the node area
     const nodeLayouts: Record<string, NodeLayout> = {}
-    const availableHeight = height - padding * 2
+    const availableHeight = svgHeight - padding * 2
 
     for (let col = 0; col < columns.length; col++) {
       const colNodes = columns[col]
@@ -104,7 +112,7 @@ export function Sankey({ command }: SankeyProps) {
           id: nodeId,
           label: node.label,
           // Offset by labelMargin so left labels fit within SVG bounds
-          x: col === 0 ? labelMargin + padding : labelMargin + width - padding - nodeWidth,
+          x: col === 0 ? labelMargin + padding : svgWidth - labelMargin - padding - nodeWidth,
           y: currentY,
           height: nodeHeight,
           column: col,
@@ -148,9 +156,9 @@ export function Sankey({ command }: SankeyProps) {
     })
 
     return { nodeLayouts, linkLayouts, nodeWidth, columns }
-  }, [nodes, links, width, height])
+  }, [nodes, links, svgWidth, svgHeight, labelMargin])
 
-  const { nodeLayouts, linkLayouts, nodeWidth, columns } = layout
+  const { nodeLayouts, linkLayouts, nodeWidth, columns } = sankeyLayout
 
   // Node entrance animations (staggered)
   const nodeEntrances = nodes.map((_, i) => {
@@ -181,8 +189,8 @@ export function Sankey({ command }: SankeyProps) {
     ["#38BDF8", "#7DD3FC"],
   ]
 
-  const containerWidth = svgWidth + 32   // 16px padding * 2
-  const containerHeight = svgHeight + 32
+  const containerWidth = width
+  const containerHeight = height
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -200,7 +208,7 @@ export function Sankey({ command }: SankeyProps) {
         boxShadow: "0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        padding: 16,
+        padding: layout.padding,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
@@ -336,7 +344,7 @@ export function Sankey({ command }: SankeyProps) {
                 textAnchor={isRight ? "start" : "end"}
                 dominantBaseline="central"
                 fill="rgba(255, 255, 255, 0.9)"
-                fontSize={11}
+                fontSize={layout.fontSize.label}
                 fontWeight={600}
                 style={{ textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}
               >

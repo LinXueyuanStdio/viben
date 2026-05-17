@@ -3,6 +3,8 @@ import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { FunnelCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_STAGE = { damping: 14, stiffness: 110, mass: 0.8 } as const
 const SPRING_VALUE = { damping: 12, stiffness: 130, mass: 0.6 } as const
@@ -30,10 +32,15 @@ export function Funnel({ command }: FunnelProps) {
     stages,
     width: _width = 240,
     height: _height = 200,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
-  const width = Math.max(280, _width)
-  const height = Math.max(200, _height)
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = Math.max(280, cardSizeResult?.width ?? _width)
+  const height = Math.max(200, cardSizeResult?.height ?? _height)
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -87,8 +94,8 @@ export function Funnel({ command }: FunnelProps) {
     })
   }, [stages])
 
-  const containerWidth = width + 40   // 20px padding * 2
-  const containerHeight = height + 40
+  const containerWidth = width + layout.padding * 2
+  const containerHeight = height + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -101,7 +108,7 @@ export function Funnel({ command }: FunnelProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 20,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}
@@ -201,7 +208,7 @@ export function Funnel({ command }: FunnelProps) {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="#fff"
-                fontSize={11}
+                fontSize={layout.fontSize.label}
                 fontWeight={700}
                 fontFamily="system-ui, sans-serif"
                 opacity={valueSpring}
@@ -216,7 +223,7 @@ export function Funnel({ command }: FunnelProps) {
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill="rgba(255,255,255,0.75)"
-                fontSize={10}
+                fontSize={layout.fontSize.axis}
                 fontWeight={600}
                 fontFamily="system-ui, monospace"
                 opacity={valueSpring}
@@ -242,7 +249,7 @@ export function Funnel({ command }: FunnelProps) {
                 textAnchor="end"
                 dominantBaseline="central"
                 fill="rgba(255,255,255,0.4)"
-                fontSize={10}
+                fontSize={layout.fontSize.axis}
                 fontWeight={600}
                 fontFamily="system-ui, monospace"
                 letterSpacing={0.3}

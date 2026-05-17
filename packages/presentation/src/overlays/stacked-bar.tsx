@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { StackedBarCommand, Point } from "../types"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -26,11 +28,18 @@ export function StackedBar({ command }: StackedBarProps) {
   const {
     position: _position,
     bars,
-    width = 320,
+    width: _width = 320,
     barHeight = 32,
     gap = 12,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const mode = cardSizeResult?.mode ?? "md"
+  const totalHeight = bars.length * (barHeight + gap) - gap + 40
+  const cardLayout = useMemo(() => getCardLayout(mode, width, totalHeight), [mode, width, totalHeight])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -60,8 +69,6 @@ export function StackedBar({ command }: StackedBarProps) {
     })
   }, [bars, width])
 
-  const totalHeight = bars.length * (barHeight + gap) - gap + 40
-
   return (
     <div
       style={{
@@ -75,7 +82,7 @@ export function StackedBar({ command }: StackedBarProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 20,
+        padding: cardLayout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}
@@ -100,7 +107,7 @@ export function StackedBar({ command }: StackedBarProps) {
                 textAnchor="start"
                 dominantBaseline="central"
                 fill="rgba(255,255,255,0.7)"
-                fontSize={11}
+                fontSize={cardLayout.fontSize.label}
                 fontFamily="system-ui, sans-serif"
                 fontWeight={600}
                 opacity={labelOpacity}
@@ -141,7 +148,7 @@ export function StackedBar({ command }: StackedBarProps) {
                         textAnchor="middle"
                         dominantBaseline="central"
                         fill="rgba(255,255,255,0.9)"
-                        fontSize={10}
+                        fontSize={cardLayout.fontSize.axis}
                         fontFamily="system-ui, monospace"
                         fontWeight={700}
                         opacity={segOpacity}

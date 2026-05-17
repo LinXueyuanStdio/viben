@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { GaugeCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_NEEDLE = { damping: 8, stiffness: 120, mass: 0.7 } as const
@@ -27,12 +29,20 @@ export function Gauge({ command }: GaugeProps) {
   const {
     position: _position,
     value,
-    radius = 60,
+    radius: _radius,
     label,
     color = "#6366F1",
     trackColor = "rgba(255,255,255,0.08)",
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: undefined, height: undefined, cardSize: _cardSize })
+  const w = cardSizeResult?.width ?? 0
+  const h = cardSizeResult?.height ?? 0
+  const radius = cardSizeResult ? Math.floor((Math.min(w, h) - 80) / 2) : (_radius ?? 60)
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, w || (radius + 16) * 2, h || (radius + 16) * 2), [mode, w, h, radius])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -283,7 +293,7 @@ export function Gauge({ command }: GaugeProps) {
             textAnchor="middle"
             dominantBaseline="central"
             fill="#fff"
-            fontSize={radius * 0.35}
+            fontSize={Math.max(layout.fontSize.value, radius * 0.35)}
             fontFamily="system-ui, monospace"
             fontWeight={700}
             style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)", fontVariantNumeric: "tabular-nums" } as React.CSSProperties}
@@ -297,7 +307,7 @@ export function Gauge({ command }: GaugeProps) {
       {label && (
         <div
           style={{
-            fontSize: 12,
+            fontSize: layout.fontSize.label,
             color: "rgba(255,255,255,0.6)",
             fontFamily: "system-ui, sans-serif",
             textAlign: "center",

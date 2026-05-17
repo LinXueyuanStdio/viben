@@ -1,7 +1,10 @@
+import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring } from "remotion"
 import type { MatrixCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_CONFIG = { damping: 18, stiffness: 120, mass: 0.8 } as const
 
@@ -21,9 +24,15 @@ export function Matrix({ command }: MatrixProps) {
     position: _position,
     columns,
     rows,
-    width = 420,
+    width: _width = 420,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, (rows.length + 1) * 40 + 32), [mode, width, rows.length])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -65,9 +74,9 @@ export function Matrix({ command }: MatrixProps) {
 
   const colWidth = Math.floor((width - 140) / columns.length)
 
-  // Container size: content width + padding (16 * 2), estimated height
-  const containerWidth = width + 32
-  const containerHeight = (rows.length + 1) * 40 + 32
+  // Container size: content width + padding, estimated height
+  const containerWidth = width + layout.padding * 2
+  const containerHeight = (rows.length + 1) * 40 + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -82,7 +91,7 @@ export function Matrix({ command }: MatrixProps) {
         boxShadow: "0 8px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        padding: 16,
+        padding: layout.padding,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
@@ -104,14 +113,14 @@ export function Matrix({ command }: MatrixProps) {
           transform: `translateY(${headerTranslateY}px)`,
         }}
       >
-        <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <div style={{ fontSize: layout.fontSize.axis, fontWeight: 600, color: "rgba(255, 255, 255, 0.35)", textTransform: "uppercase", letterSpacing: 0.5 }}>
           Feature
         </div>
         {columns.map((col, i) => (
           <div
             key={i}
             style={{
-              fontSize: 11,
+              fontSize: layout.fontSize.label,
               fontWeight: 700,
               color: "rgba(255, 255, 255, 0.9)",
               textAlign: "center",
@@ -145,7 +154,7 @@ export function Matrix({ command }: MatrixProps) {
             {/* Row label */}
             <div
               style={{
-                fontSize: 12,
+                fontSize: layout.fontSize.label,
                 fontWeight: 500,
                 color: "rgba(255, 255, 255, 0.75)",
                 overflow: "hidden",

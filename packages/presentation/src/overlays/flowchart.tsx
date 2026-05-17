@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { FlowchartCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_NODE = { damping: 10, stiffness: 140, mass: 0.6 } as const
@@ -36,10 +38,17 @@ export function Flowchart({ command }: FlowchartProps) {
     nodes,
     edges,
     direction = "horizontal",
-    width = 500,
-    height = 300,
+    width: _width = 500,
+    height: _height = 300,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const height = cardSizeResult?.height ?? _height
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -95,9 +104,9 @@ export function Flowchart({ command }: FlowchartProps) {
 
   const uid = `fc-${position.x}-${position.y}`
 
-  // Container size: content + padding (20 * 2)
-  const containerWidth = width + 40
-  const containerHeight = height + 40
+  // Container size: content + padding
+  const containerWidth = width + layout.padding * 2
+  const containerHeight = height + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -112,7 +121,7 @@ export function Flowchart({ command }: FlowchartProps) {
         border: "1px solid rgba(255, 255, 255, 0.08)",
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
-        padding: 20,
+        padding: layout.padding,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
@@ -202,7 +211,7 @@ export function Flowchart({ command }: FlowchartProps) {
                     y={(startY + endY) / 2 - 8}
                     textAnchor="middle"
                     fill="rgba(255, 255, 255, 0.5)"
-                    fontSize={10}
+                    fontSize={layout.fontSize.axis}
                     style={{ opacity: labelOpacity }}
                   >
                     {edge.label}
@@ -244,7 +253,7 @@ export function Flowchart({ command }: FlowchartProps) {
             >
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: layout.fontSize.label,
                   fontWeight: 500,
                   color: "#FFFFFF",
                   textShadow: "0 1px 2px rgba(0,0,0,0.3)",

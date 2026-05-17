@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { ScatterCommand, Point } from "../types"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -27,15 +29,22 @@ export function Scatter({ command }: ScatterProps) {
   const {
     position: _position,
     points,
-    width = 280,
-    height = 200,
+    width: _width = 280,
+    height: _height = 200,
     color = "#6366F1",
     dotRadius = 5,
     xLabel,
     yLabel,
     showGrid = true,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const height = cardSizeResult?.height ?? _height
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -106,7 +115,7 @@ export function Scatter({ command }: ScatterProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 16,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}
@@ -177,7 +186,7 @@ export function Scatter({ command }: ScatterProps) {
             y={height - 4}
             textAnchor="middle"
             fill="rgba(255,255,255,0.5)"
-            fontSize={9}
+            fontSize={layout.fontSize.axis}
             fontFamily="system-ui, sans-serif"
             opacity={axisProgress}
           >
@@ -190,7 +199,7 @@ export function Scatter({ command }: ScatterProps) {
             y={padding.top + plotH / 2}
             textAnchor="middle"
             fill="rgba(255,255,255,0.5)"
-            fontSize={9}
+            fontSize={layout.fontSize.axis}
             fontFamily="system-ui, sans-serif"
             opacity={axisProgress}
             transform={`rotate(-90, 10, ${padding.top + plotH / 2})`}
@@ -233,7 +242,7 @@ export function Scatter({ command }: ScatterProps) {
                   y={y - dot.size - 4}
                   textAnchor="middle"
                   fill="rgba(255,255,255,0.7)"
-                  fontSize={8}
+                  fontSize={layout.fontSize.axis}
                   fontFamily="system-ui, sans-serif"
                   fontWeight={600}
                 >

@@ -3,6 +3,8 @@ import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { HeatmapCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_CELL = { damping: 18, stiffness: 120, mass: 0.8 } as const
 const SPRING_LABEL = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -27,12 +29,18 @@ export function Heatmap({ command }: HeatmapProps) {
   const {
     position: _position,
     data,
-    cellSize = 24,
+    cellSize: _cellSize,
     rowLabels,
     colLabels,
     colors = ["#1E3A5F", "#EF4444"],
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: undefined, height: undefined, cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 0
+  const csHeight = cardSizeResult?.height ?? 0
+  const mode = cardSizeResult?.mode ?? "md"
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -44,6 +52,19 @@ export function Heatmap({ command }: HeatmapProps) {
 
   const labelWidth = rowLabels ? 48 : 0
   const gap = 3
+
+  // Derive cellSize: if cardSize provided and no explicit _cellSize, auto-derive from content area
+  const layout = useMemo(() => getCardLayout(mode, csWidth || 280, csHeight || 200), [mode, csWidth, csHeight])
+  const cellSize = useMemo(() => {
+    if (_cellSize != null) return _cellSize
+    if (!cardSizeResult) return 24  // existing default
+    // Auto-derive: fit cells into content dimensions
+    const availW = layout.contentWidth - labelWidth
+    const availH = layout.contentHeight - (colLabels ? 24 : 0)
+    const maxCellW = cols > 0 ? Math.floor((availW - gap * (cols - 1)) / cols) : 24
+    const maxCellH = rows > 0 ? Math.floor((availH - gap * (rows - 1)) / rows) : 24
+    return Math.max(8, Math.min(maxCellW, maxCellH))
+  }, [_cellSize, cardSizeResult, layout.contentWidth, layout.contentHeight, labelWidth, colLabels, cols, rows, gap])
 
   // Pre-compute all cell colors (only depends on data + colors, not frame)
   const cellColors = useMemo(() => {
@@ -147,7 +168,7 @@ export function Heatmap({ command }: HeatmapProps) {
               style={{
                 width: cellSize,
                 textAlign: "center",
-                fontSize: 10,
+                fontSize: layout.fontSize.axis,
                 fontWeight: 600,
                 color: "rgba(255,255,255,0.6)",
                 fontFamily: "system-ui, sans-serif",
@@ -173,7 +194,7 @@ export function Heatmap({ command }: HeatmapProps) {
               <div
                 style={{
                   width: labelWidth - 4,
-                  fontSize: 10,
+                  fontSize: layout.fontSize.label,
                   fontWeight: 600,
                   color: "rgba(255,255,255,0.6)",
                   fontFamily: "system-ui, sans-serif",

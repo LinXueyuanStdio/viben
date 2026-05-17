@@ -1,7 +1,10 @@
+import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { TimelineCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
 const SPRING_NODE = { damping: 14, stiffness: 120, mass: 0.7 } as const
@@ -29,10 +32,16 @@ export function Timeline({ command }: TimelineProps) {
     position: _position,
     events,
     direction = "horizontal",
-    width = 400,
+    width: _width = 400,
     color = "#6366F1",
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, 200), [mode, width])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -79,11 +88,11 @@ export function Timeline({ command }: TimelineProps) {
 
   const uid = `tl-${position.x}-${position.y}`
 
-  // Container size: content + padding (20 * 2) + label area
+  // Container size: content + padding + label area
   const contentWidth = isHorizontal ? width : 240
   const contentHeight = isHorizontal ? 120 : totalLength + 80
-  const containerWidth = contentWidth + 40
-  const containerHeight = contentHeight + 40
+  const containerWidth = contentWidth + layout.padding * 2
+  const containerHeight = contentHeight + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -96,7 +105,7 @@ export function Timeline({ command }: TimelineProps) {
         border: "1px solid rgba(255, 255, 255, 0.08)",
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
-        padding: 20,
+        padding: layout.padding,
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
@@ -236,7 +245,7 @@ export function Timeline({ command }: TimelineProps) {
               >
                 <div
                   style={{
-                    fontSize: 12,
+                    fontSize: layout.fontSize.label,
                     fontWeight: 700,
                     color: isActive ? "#FFFFFF" : "rgba(255, 255, 255, 0.8)",
                     textShadow: isActive ? `0 1px 2px rgba(0,0,0,0.3), 0 0 8px ${dotColor}33` : "none",
@@ -251,7 +260,7 @@ export function Timeline({ command }: TimelineProps) {
                 {event.description && (
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: layout.fontSize.axis,
                       fontWeight: 500,
                       color: "rgba(255, 255, 255, 0.45)",
                       marginTop: 3,

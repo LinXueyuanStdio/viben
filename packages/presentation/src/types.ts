@@ -4,6 +4,8 @@
  * Real-time transparent overlay for rendering animated annotations on top of page content.
  */
 
+import type { CardSizeMode } from "./utils/card-sizes"
+
 export interface Point {
   x: number
   y: number
@@ -336,6 +338,8 @@ export interface ComparisonCommand {
   rightColor: string
   unit?: string
   animate?: boolean
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Typewriter: text that types itself character by character */
@@ -378,6 +382,8 @@ export interface ChartCommand {
   /** Pie: inner radius for donut effect (0 = full pie) */
   innerRadius?: number
   animate?: boolean
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Clear canvas */
@@ -406,6 +412,8 @@ export interface GaugeCommand {
   color?: string
   /** Track background color */
   trackColor?: string
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Sparkline: compact inline line chart */
@@ -420,6 +428,8 @@ export interface SparklineCommand {
   fill?: boolean
   /** Show end dot */
   showEndDot?: boolean
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Heatmap: grid of colored cells */
@@ -436,6 +446,8 @@ export interface HeatmapCommand {
   colLabels?: string[]
   /** Color range: [low, high] */
   colors?: [string, string]
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Funnel: vertical funnel/pyramid with stage labels */
@@ -445,6 +457,8 @@ export interface FunnelCommand {
   stages: Array<{ label: string; value: number; color?: string }>
   width?: number
   height?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Waterfall: incremental +/- chart */
@@ -456,6 +470,8 @@ export interface WaterfallCommand {
   height?: number
   /** Colors for increase/decrease/total */
   colors?: { increase?: string; decrease?: string; total?: string }
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 // ─── Narrative/Structural Commands ───────────────────────────────
@@ -482,6 +498,8 @@ export interface TimelineCommand {
   direction?: "horizontal" | "vertical"
   width?: number
   color?: string
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Flowchart: connected boxes with arrows */
@@ -494,6 +512,8 @@ export interface FlowchartCommand {
   direction?: "horizontal" | "vertical"
   width?: number
   height?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Table: data table with row-by-row reveal */
@@ -509,6 +529,8 @@ export interface TableCommand {
   headerColor?: string
   /** Stagger row reveal (frames between rows) */
   rowStagger?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** List: animated bullet list */
@@ -594,6 +616,8 @@ export interface RadarCommand {
   fillOpacity?: number
   /** Chart size in pixels (default 200) */
   size?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Sankey flow diagram */
@@ -606,6 +630,8 @@ export interface SankeyCommand {
   links: Array<{ source: string; target: string; value: number }>
   width?: number
   height?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** KPI metric card */
@@ -624,6 +650,8 @@ export interface KpiCommand {
   sparkData?: number[]
   /** Accent color */
   color?: string
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Comparison matrix with indicators */
@@ -636,6 +664,8 @@ export interface MatrixCommand {
   rows: Array<{ label: string; values: ("yes" | "no" | "partial")[] }>
   /** Total width (default 420) */
   width?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Grouped annotations with connector */
@@ -662,6 +692,8 @@ export interface TreemapCommand {
   width?: number
   /** Total height (default 200) */
   height?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Donut: ring chart with animated arc drawing */
@@ -674,6 +706,8 @@ export interface DonutCommand {
   size?: number
   /** Inner radius as ratio of outer radius (default 0.6) */
   innerRatio?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** StatCard: before vs after comparison card with delta */
@@ -690,6 +724,8 @@ export interface StatCardCommand {
   unit?: string
   /** Accent color */
   color?: string
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** CodeBlock: animated code snippet with syntax highlighting */
@@ -722,6 +758,8 @@ export interface RibbonCommand {
   fontSize?: number
   /** Ribbon variant (default "flat") */
   variant?: "flat" | "award"
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** PolarArea: Polar area chart (rose chart) with animated segments */
@@ -734,6 +772,8 @@ export interface PolarAreaCommand {
   size?: number
   /** Color palette (cycles if fewer colors than segments) */
   colors?: string[]
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** StackedBar: Horizontal stacked bar chart with labels */
@@ -751,6 +791,8 @@ export interface StackedBarCommand {
   barHeight?: number
   /** Gap between bars (default 12) */
   gap?: number
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Tooltip: contextual tooltip pointing at a target */
@@ -805,6 +847,8 @@ export interface ScatterCommand {
   yLabel?: string
   /** Show grid lines (default true) */
   showGrid?: boolean
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Meter: linear meter with gradient fill, tick marks, and animated needle */
@@ -831,6 +875,8 @@ export interface MeterCommand {
   unit?: string
   /** Show needle indicator (default true) */
   showNeedle?: boolean
+  /** Card size mode (sm: 3×3 grid, md: 2×2 grid, lg: full screen) */
+  cardSize?: CardSizeMode
 }
 
 /** Player state */

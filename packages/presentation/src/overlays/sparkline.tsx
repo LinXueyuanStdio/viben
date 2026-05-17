@@ -2,6 +2,8 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { SparklineCommand, Point } from "../types"
 import { useOverlayStyle } from "../hooks/use-overlay-style"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs
 const SPRING_DOT = { damping: 8, stiffness: 160, mass: 0.5 } as const
@@ -26,13 +28,20 @@ export function Sparkline({ command }: SparklineProps) {
   const {
     position: _position,
     data,
-    width = 160,
-    height = 48,
+    width: _width = 160,
+    height: _height = 48,
     color = "#6366F1",
     fill = false,
     showEndDot = true,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })
+  const width = cardSizeResult?.width ?? _width
+  const height = cardSizeResult?.height ?? _height
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, width, height), [mode, width, height])
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -116,8 +125,8 @@ export function Sparkline({ command }: SparklineProps) {
   const dashOffset = totalLength * (1 - drawProgress)
   const uid = `sparkline-${position.x}-${position.y}`
 
-  const containerWidth = Math.max(220, width) + 40   // 20px padding * 2
-  const containerHeight = Math.max(80, height) + 40
+  const containerWidth = Math.max(220, width) + layout.padding * 2
+  const containerHeight = Math.max(80, height) + layout.padding * 2
 
   const overlayStyle = useOverlayStyle({ position, width: containerWidth, height: containerHeight })
 
@@ -130,7 +139,7 @@ export function Sparkline({ command }: SparklineProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 20,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}

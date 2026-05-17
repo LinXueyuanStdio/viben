@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { PolarAreaCommand, Point } from "../types"
+import { useCardSize } from "../hooks/use-card-size"
+import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -26,10 +28,20 @@ export function PolarArea({ command }: PolarAreaProps) {
   const {
     position: _position,
     segments,
-    size = 200,
+    size: _size = 200,
     colors,
+    cardSize: _cardSize,
   } = command
   const position = _position as Point
+
+  const cardSizeResult = useCardSize({ cardSize: _cardSize })
+  const csWidth = cardSizeResult?.width ?? 0
+  const csHeight = cardSizeResult?.height ?? 0
+  const mode = cardSizeResult?.mode ?? "md"
+  const layout = useMemo(() => getCardLayout(mode, csWidth || _size + 80, csHeight || _size + 80), [mode, csWidth, csHeight, _size])
+  const size = cardSizeResult
+    ? Math.min(csWidth, csHeight) - layout.padding * 2
+    : _size
 
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
@@ -95,7 +107,7 @@ export function PolarArea({ command }: PolarAreaProps) {
         background: "linear-gradient(135deg, rgba(15, 15, 30, 0.88), rgba(25, 25, 50, 0.82))",
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: 16,
-        padding: 20,
+        padding: layout.padding,
         boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
         backdropFilter: "blur(20px) saturate(180%)",
       }}
@@ -157,7 +169,7 @@ export function PolarArea({ command }: PolarAreaProps) {
                   textAnchor="middle"
                   dominantBaseline="central"
                   fill="rgba(255,255,255,0.8)"
-                  fontSize={9}
+                  fontSize={layout.fontSize.axis}
                   fontFamily="system-ui, sans-serif"
                   fontWeight={600}
                   opacity={labelOpacity}
