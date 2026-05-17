@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,6 +18,8 @@ import {
   AlertCircle,
   Zap,
   Plus,
+  Settings2,
+  X,
 } from "lucide-react";
 import { exchangeIcons } from "./exchange-icons";
 import { TradingAccountsDialog } from "./trading-accounts-dialog";
@@ -34,6 +37,14 @@ interface ExchangeGroup {
   exchange: string;
   displayName: string;
   accounts: AccountSummary[];
+}
+
+type TestState = "idle" | "testing" | "success" | "error";
+
+interface TestResult {
+  state: TestState;
+  latency_ms?: number;
+  error?: string;
 }
 
 /** Brand color classes for exchange mini-cards (background + text). */
@@ -107,22 +118,27 @@ const cardVariants = {
 };
 
 export function TradingAccountsSection() {
+  const { t } = useTranslation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [accounts, setAccounts] = useState<AccountSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Bulk test state
+  // Per-account test state (streaming updates)
   const [testingAll, setTestingAll] = useState(false);
-  const [testResults, setTestResults] = useState<
-    Map<string, { success: boolean; latency_ms?: number; error?: string }>
-  >(new Map());
+  const [testResults, setTestResults] = useState<Map<string, TestResult>>(
+    new Map()
+  );
 
   const fetchAccounts = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch(`${GATEWAY}/api/accounts`);
       const data = await res.json();
       setAccounts(data.accounts ?? []);
     } catch {
       // silently fail -- gateway may not be running
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -132,11 +148,49 @@ export function TradingAccountsSection() {
 
   const groups = useMemo(() => groupByExchange(accounts), [accounts]);
 
-  // -- Bulk test all accounts --
+  // -- Single account test --
+  const handleTestSingle = async (accId: string) => {
+    setTestResults((prev) => {
+      const next = new Map(prev);
+      next.set(accId, { state: "testing" });
+      return next;
+    });
+
+    try {
+      const res = await fetch(`${GATEWAY}/api/accounts/${accId}/test`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      setTestResults((prev) => {
+        const next = new Map(prev);
+        next.set(
+          accId,
+          data.success
+            ? { state: "success", latency_ms: data.latency_ms }
+            : { state: "error", error: data.error ?? "Unknown" }
+        );
+        return next;
+      });
+    } catch {
+      setTestResults((prev) => {
+        const next = new Map(prev);
+        next.set(accId, { state: "error", error: t("settings.tradingAccounts.networkError") });
+        return next;
+      });
+    }
+  };
+
+  // -- Bulk test all accounts (streaming per-card feedback) --
   const handleTestAll = async () => {
     if (accounts.length === 0) return;
     setTestingAll(true);
-    setTestResults(new Map());
+
+    // Set all to testing
+    const initial = new Map<string, TestResult>();
+    for (const acc of accounts) {
+      initial.set(acc.id, { state: "testing" });
+    }
+    setTestResults(initial);
 
     const results = await Promise.allSettled(
       accounts.map(async (acc) => {
@@ -144,84 +198,93 @@ export function TradingAccountsSection() {
           method: "POST",
         });
         const data = await res.json();
+        // Update immediately per-card
+        setTestResults((prev) => {
+          const next = new Map(prev);
+          next.set(
+            acc.id,
+            data.success
+              ? { state: "success", latency_ms: data.latency_ms }
+              : { state: "error", error: data.error ?? "Unknown" }
+          );
+          return next;
+        });
         return { id: acc.id, data };
       })
     );
 
-    const nextResults = new Map<
-      string,
-      { success: boolean; latency_ms?: number; error?: string }
-    >();
+    setTestingAll(false);
+
     let successCount = 0;
     let failCount = 0;
-
     for (const result of results) {
-      if (result.status === "fulfilled") {
-        const { id, data } = result.value;
-        if (data.success) {
-          nextResults.set(id, { success: true, latency_ms: data.latency_ms });
-          successCount++;
-        } else {
-          nextResults.set(id, {
-            success: false,
-            error: data.error ?? "Unknown",
-          });
-          failCount++;
-        }
+      if (result.status === "fulfilled" && result.value.data.success) {
+        successCount++;
       } else {
         failCount++;
       }
     }
 
-    setTestResults(nextResults);
-    setTestingAll(false);
-
     if (failCount === 0) {
-      toast.success(`全部 ${successCount} 个账户连接正常`);
+      toast.success(t("settings.tradingAccounts.allSuccess", { count: successCount }));
     } else {
-      toast.error(`${failCount} 个账户连接失败，${successCount} 个正常`);
+      toast.error(t("settings.tradingAccounts.someFailed", { failed: failCount, success: successCount }));
     }
-
-    // Clear results after 8 seconds
-    setTimeout(() => setTestResults(new Map()), 8000);
   };
 
+  const clearResults = () => setTestResults(new Map());
+  const hasResults = testResults.size > 0;
   const hasAccounts = accounts.length > 0;
 
   return (
-    <div className="space-y-6">
-      {/* Section header */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-          <Wallet className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-semibold font-serif mb-1">
-            交易账户
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            管理交易所 API 账户，用于自动化交易和数据获取。
-          </p>
-        </div>
-      </div>
-
-      {/* Main content card */}
-      <div className="rounded-xl border bg-card">
-        {/* Top bar with count and actions */}
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <div>
-            <h3 className="text-sm font-medium text-foreground">
-              已配置账户
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {hasAccounts
-                ? `${accounts.length} 个交易账户，${groups.length} 个交易所`
-                : "尚未配置任何交易账户"}
+    <TooltipProvider>
+      <div className="space-y-6">
+        {/* Section header */}
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+            <Wallet className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-semibold font-serif mb-1">{t("settings.tradingAccounts.title")}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t("settings.tradingAccounts.description")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {hasAccounts && (
-              <TooltipProvider>
+        </div>
+
+        {/* Main content card */}
+        <div className="rounded-xl border bg-card">
+          {/* Top bar with count and actions */}
+          <div className="flex items-center justify-between px-5 py-4 border-b">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">
+                {t("settings.tradingAccounts.configured")}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {loading
+                  ? t("settings.tradingAccounts.loading")
+                  : hasAccounts
+                    ? t("settings.tradingAccounts.countSummary", { count: accounts.length, exchanges: groups.length })
+                    : t("settings.tradingAccounts.noAccounts")}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasResults && !testingAll && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={clearResults}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("settings.tradingAccounts.clearResults")}</TooltipContent>
+                </Tooltip>
+              )}
+              {hasAccounts && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -236,198 +299,279 @@ export function TradingAccountsSection() {
                       ) : (
                         <Zap className="h-3.5 w-3.5" />
                       )}
-                      {testingAll ? "测试中..." : "测试全部"}
+                      {testingAll ? t("settings.tradingAccounts.testing") : t("settings.tradingAccounts.testAll")}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    测试所有账户的 API 连接
-                  </TooltipContent>
+                  <TooltipContent>{t("settings.tradingAccounts.testConnection")}</TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
-            )}
-            <Button
-              variant={hasAccounts ? "outline" : "default"}
-              size="sm"
-              onClick={() => setDialogOpen(true)}
-              className="gap-1.5"
-            >
-              {hasAccounts ? (
-                "管理账户"
-              ) : (
-                <>
-                  <Plus className="h-3.5 w-3.5" />
-                  添加账户
-                </>
               )}
-            </Button>
+              <Button
+                variant={hasAccounts ? "default" : "default"}
+                size="sm"
+                onClick={() => setDialogOpen(true)}
+                className="gap-1.5"
+              >
+                {hasAccounts ? (
+                  <>
+                    <Settings2 className="h-3.5 w-3.5" />
+                    {t("settings.tradingAccounts.manageAccounts")}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("settings.tradingAccounts.addAccount")}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Account list, skeleton, or empty state */}
+          <div className="p-5">
+            <AnimatePresence mode="wait">
+              {loading ? (
+                /* Skeleton loading state */
+                <motion.div
+                  key="skeleton"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="space-y-3"
+                >
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="h-14 rounded-lg bg-muted/60 animate-pulse"
+                    />
+                  ))}
+                </motion.div>
+              ) : hasAccounts ? (
+                <motion.div
+                  key="accounts-list"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="space-y-5"
+                >
+                  {groups.map((group) => (
+                    <motion.div
+                      key={group.exchange}
+                      variants={cardVariants}
+                      className="space-y-2.5"
+                    >
+                      {/* Exchange group header with divider line */}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "flex items-center justify-center w-7 h-7 rounded-md",
+                            getExchangeBg(group.exchange)
+                          )}
+                        >
+                          {exchangeIcons[group.exchange]
+                            ? exchangeIcons[group.exchange]({ size: 15 })
+                            : (
+                                <span className="text-[10px] font-bold">
+                                  {group.displayName.charAt(0)}
+                                </span>
+                              )}
+                        </span>
+                        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                          {group.displayName}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/50">
+                          {t("settings.tradingAccounts.accountCount", { count: group.accounts.length })}
+                        </span>
+                        <div className="flex-1 h-px bg-border/60 ml-1" />
+                      </div>
+
+                      {/* Account mini-cards */}
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {group.accounts.map((acc) => {
+                          const result = testResults.get(acc.id);
+                          return (
+                            <motion.div
+                              key={acc.id}
+                              variants={cardVariants}
+                              className={cn(
+                                "group relative flex items-center gap-3 rounded-lg border px-3.5 py-3",
+                                "bg-background/60 transition-colors",
+                                "hover:border-foreground/15 hover:bg-background"
+                              )}
+                            >
+                              {/* Exchange icon avatar */}
+                              <span
+                                className={cn(
+                                  "flex items-center justify-center w-8 h-8 rounded-md shrink-0",
+                                  getExchangeBg(acc.exchange)
+                                )}
+                              >
+                                {result?.state === "testing" ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : exchangeIcons[acc.exchange] ? (
+                                  exchangeIcons[acc.exchange]({ size: 16 })
+                                ) : (
+                                  <span className="text-xs font-bold">
+                                    {exchangeDisplayName(acc.exchange).charAt(0)}
+                                  </span>
+                                )}
+                              </span>
+
+                              {/* Account info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-sm font-medium truncate">
+                                    {acc.name}
+                                  </p>
+                                  {/* Status dot with tooltip */}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span
+                                        className={cn(
+                                          "inline-block w-1.5 h-1.5 rounded-full shrink-0",
+                                          !result || result.state === "idle"
+                                            ? "bg-muted-foreground/30"
+                                            : result.state === "testing"
+                                              ? "bg-muted-foreground/30 animate-pulse"
+                                              : result.state === "success"
+                                                ? "bg-green-500"
+                                                : "bg-red-500"
+                                        )}
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {!result || result.state === "idle"
+                                        ? t("settings.tradingAccounts.untested")
+                                        : result.state === "testing"
+                                          ? t("settings.tradingAccounts.testingStatus")
+                                          : result.state === "success"
+                                            ? t("settings.tradingAccounts.latency", { ms: result.latency_ms })
+                                            : result.error ?? t("settings.tradingAccounts.connectionFailed")}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {acc.created_at
+                                    ? new Date(
+                                        acc.created_at
+                                      ).toLocaleDateString(undefined, {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                      })
+                                    : exchangeDisplayName(acc.exchange)}
+                                </p>
+                              </div>
+
+                              {/* Right area: hover action OR test result badge */}
+                              <div className="w-16 shrink-0 flex items-center justify-end">
+                                <AnimatePresence mode="wait">
+                                  {result &&
+                                  result.state !== "idle" &&
+                                  result.state !== "testing" ? (
+                                    /* Test result badge */
+                                    <motion.span
+                                      key="result"
+                                      initial={{ opacity: 0, x: 4 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      exit={{ opacity: 0, x: 4 }}
+                                      transition={{ duration: 0.18 }}
+                                      className={cn(
+                                        "text-[10px] font-medium px-1.5 py-0.5 rounded-full",
+                                        result.state === "success"
+                                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                                          : "bg-red-500/10 text-red-600 dark:text-red-400"
+                                      )}
+                                    >
+                                      {result.state === "success" ? (
+                                        <span className="flex items-center gap-0.5">
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          {result.latency_ms}ms
+                                        </span>
+                                      ) : (
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <span className="flex items-center gap-0.5 cursor-help">
+                                              <AlertCircle className="h-3 w-3" />
+                                              {t("settings.tradingAccounts.failed")}
+                                            </span>
+                                          </TooltipTrigger>
+                                          <TooltipContent
+                                            side="left"
+                                            className="max-w-[200px] text-xs break-words"
+                                          >
+                                            {result.error ??
+                                              t("settings.tradingAccounts.connectionFailed")}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      )}
+                                    </motion.span>
+                                  ) : (
+                                    /* Hover action: single test */
+                                    <motion.button
+                                      key="action"
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      exit={{ opacity: 0 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTestSingle(acc.id);
+                                      }}
+                                      disabled={result?.state === "testing"}
+                                      className={cn(
+                                        "opacity-0 group-hover:opacity-100 transition-opacity",
+                                        "p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+                                      )}
+                                    >
+                                      {result?.state === "testing" ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Zap className="h-3.5 w-3.5" />
+                                      )}
+                                    </motion.button>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              ) : (
+                /* Empty state */
+                <motion.div
+                  key="empty-state"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  className="flex flex-col items-center justify-center py-8 text-center"
+                >
+                  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
+                    <KeyRound className="h-6 w-6 text-primary/60" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    {t("settings.tradingAccounts.emptyTitle")}
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-[300px] mb-5 leading-relaxed">
+                    {t("settings.tradingAccounts.emptyDescription")}
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => setDialogOpen(true)}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("settings.tradingAccounts.addFirstAccount")}
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
-        {/* Account list or empty state */}
-        <div className="p-5">
-          <AnimatePresence mode="wait">
-            {hasAccounts ? (
-              <motion.div
-                key="accounts-list"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-5"
-              >
-                {groups.map((group) => (
-                  <motion.div
-                    key={group.exchange}
-                    variants={cardVariants}
-                    className="space-y-2.5"
-                  >
-                    {/* Exchange group header */}
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "flex items-center justify-center w-6 h-6 rounded-md",
-                          getExchangeBg(group.exchange)
-                        )}
-                      >
-                        {exchangeIcons[group.exchange]
-                          ? exchangeIcons[group.exchange]({ size: 14 })
-                          : (
-                              <span className="text-[10px] font-bold">
-                                {group.displayName.charAt(0)}
-                              </span>
-                            )}
-                      </span>
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        {group.displayName}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/60">
-                        {group.accounts.length} 个账户
-                      </span>
-                    </div>
-
-                    {/* Account mini-cards */}
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {group.accounts.map((acc) => {
-                        const result = testResults.get(acc.id);
-                        return (
-                          <motion.div
-                            key={acc.id}
-                            variants={cardVariants}
-                            whileHover={{ scale: 1.01 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                            className={cn(
-                              "group relative flex items-center gap-3 rounded-lg border px-3.5 py-3",
-                              "bg-background/60 transition-colors",
-                              "hover:border-foreground/15 hover:bg-background"
-                            )}
-                          >
-                            {/* Exchange icon avatar */}
-                            <span
-                              className={cn(
-                                "flex items-center justify-center w-8 h-8 rounded-md shrink-0",
-                                getExchangeBg(acc.exchange)
-                              )}
-                            >
-                              {exchangeIcons[acc.exchange]
-                                ? exchangeIcons[acc.exchange]({ size: 16 })
-                                : (
-                                    <span className="text-xs font-bold">
-                                      {exchangeDisplayName(acc.exchange).charAt(0)}
-                                    </span>
-                                  )}
-                            </span>
-
-                            {/* Account info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium truncate">
-                                  {acc.name}
-                                </p>
-                                {/* Connected indicator dot */}
-                                <span
-                                  className={cn(
-                                    "inline-block w-1.5 h-1.5 rounded-full shrink-0",
-                                    result
-                                      ? result.success
-                                        ? "bg-green-500"
-                                        : "bg-red-500"
-                                      : "bg-green-500/60"
-                                  )}
-                                />
-                              </div>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                {exchangeDisplayName(acc.exchange)}
-                              </p>
-                            </div>
-
-                            {/* Test result badge (appears after bulk test) */}
-                            <AnimatePresence>
-                              {result && (
-                                <motion.span
-                                  initial={{ opacity: 0, scale: 0.8 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.8 }}
-                                  transition={{ duration: 0.2 }}
-                                  className={cn(
-                                    "text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0",
-                                    result.success
-                                      ? "bg-green-500/10 text-green-600 dark:text-green-400"
-                                      : "bg-red-500/10 text-red-600 dark:text-red-400"
-                                  )}
-                                >
-                                  {result.success ? (
-                                    <span className="flex items-center gap-0.5">
-                                      <CheckCircle2 className="h-3 w-3" />
-                                      {result.latency_ms}ms
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-0.5">
-                                      <AlertCircle className="h-3 w-3" />
-                                      失败
-                                    </span>
-                                  )}
-                                </motion.span>
-                              )}
-                            </AnimatePresence>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            ) : (
-              /* Empty state */
-              <motion.div
-                key="empty-state"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
-                className="flex flex-col items-center justify-center py-10 text-center"
-              >
-                <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/80 mb-5">
-                  <KeyRound className="h-7 w-7 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-medium text-foreground mb-1">
-                  暂未配置交易账户
-                </p>
-                <p className="text-xs text-muted-foreground max-w-[300px] mb-5 leading-relaxed">
-                  添加交易所 API 密钥以开始使用自动化交易和实时数据获取功能。支持币安、OKX、Bybit 等主流交易所。
-                </p>
-                <Button
-                  size="sm"
-                  onClick={() => setDialogOpen(true)}
-                  className="gap-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  添加第一个账户
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <TradingAccountsDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       </div>
-
-      <TradingAccountsDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-    </div>
+    </TooltipProvider>
   );
 }
