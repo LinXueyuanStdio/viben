@@ -432,16 +432,8 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
       // Decode workspace path from ID (base64url)
       const workspacePath = Buffer.from(id, "base64url").toString();
 
-      // Check if workspace exists in registry
-      const workspaces = await workspaceManager.listWorkspaces();
-      const workspace = workspaces.find((w) => w.path === workspacePath);
-
-      if (!workspace) {
-        reply.status(404);
-        return { error: "Workspace not found" };
-      }
-
-      // Unregister workspace (does not delete folder)
+      // Idempotent delete: unregister workspace from registry.
+      // If it doesn't exist, this is a no-op — the desired state is already achieved.
       await workspaceManager.unregisterWorkspace(workspacePath);
 
       return { success: true, message: "Workspace removed from registry" };

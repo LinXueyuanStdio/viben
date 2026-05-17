@@ -247,7 +247,7 @@ export class WorkspaceManager {
 
   /**
    * List all known workspaces with their info.
-   * Filters out workspaces that no longer exist.
+   * Returns all registered workspaces, including those without .viben config.
    */
   async listWorkspaces(): Promise<Workspace[]> {
     const known = await this.readKnownWorkspaces();
@@ -261,6 +261,16 @@ export class WorkspaceManager {
           info.name = entry.name;
         }
         workspaces.push(info);
+      } else {
+        // Workspace is registered but has no .viben config — still include it
+        // with minimal info so it can be displayed and deleted.
+        workspaces.push({
+          path: entry.path,
+          name: entry.name || basename(entry.path),
+          configPath: join(entry.path, WORKSPACE_DIR, WORKSPACE_CONFIG_FILE),
+          created_at: entry.registeredAt,
+          updated_at: entry.lastAccessed,
+        });
       }
     }
 

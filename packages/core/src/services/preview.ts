@@ -25,6 +25,12 @@ export interface PreviewConfig {
   workDir: string;
   /** Preferred port (auto-assign if unavailable) */
   port?: number;
+  /** Custom command to run instead of vite (e.g., "npm run serve") */
+  command?: string;
+  /** Regex pattern to detect when server is ready (matched against stdout/stderr) */
+  readyPattern?: string;
+  /** Startup timeout in ms (overrides default) */
+  timeout?: number;
 }
 
 /**
@@ -144,7 +150,7 @@ export class PreviewManager {
    * Start a Vite preview server for the given task
    */
   async startPreview(config: PreviewConfig): Promise<PreviewStatus> {
-    const { taskId, workDir, port: preferredPort } = config;
+    const { taskId, workDir, port: preferredPort, command, readyPattern, timeout } = config;
 
     // Check if already running
     const existing = this.instances.get(taskId);
@@ -185,6 +191,18 @@ export class PreviewManager {
       };
     }
 
+    // Check if port is already in use before starting
+    const portBusy = await this.isPortInUse(port);
+    if (portBusy) {
+      this.releasePort(port);
+      return {
+        id: `preview-${taskId}`,
+        task_id: taskId,
+        status: "error",
+        error: `PORT_IN_USE:${port}`,
+      };
+    }
+
     // Create instance
     const instance: PreviewInstance = {
       id: `preview-${taskId}`,
@@ -198,7 +216,7 @@ export class PreviewManager {
     this.instances.set(taskId, instance);
 
     // Start the server asynchronously
-    this.startViteServer(instance, workDir).catch((error) => {
+    this.startServer(instance, workDir, { command, readyPattern, timeout }).catch((error) => {
       log.error({ err: error, taskId }, "Failed to start preview");
       instance.status = "error";
       instance.error = error instanceof Error ? error.message : String(error);
@@ -209,21 +227,53 @@ export class PreviewManager {
   }
 
   /**
-   * Start the Vite server
+   * Kill the process occupying a port
    */
-  private async startViteServer(
+  async killPort(port: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Find PID using the port (macOS/Linux)
+      const result = execSync(`lsof -ti :${port}`, { encoding: "utf-8" }).trim();
+      if (result) {
+        const pids = result.split("\n").map((p) => p.trim()).filter(Boolean);
+        for (const pid of pids) {
+          log.info({ pid, port }, "Killing process on port");
+          execSync(`kill -9 ${pid}`);
+        }
+        // Wait a moment for port to be released
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return { success: true };
+      }
+      return { success: true }; // No process found, port might be free now
+    } catch (error) {
+      log.error({ err: error, port }, "Failed to kill port process");
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Start the server (custom command or default Vite)
+   */
+  private async startServer(
     instance: PreviewInstance,
-    workDir: string
+    workDir: string,
+    options: { command?: string; readyPattern?: string; timeout?: number }
   ): Promise<void> {
     try {
-      // Ensure project files exist (zero-config support)
-      await this.ensureProjectFiles(workDir, instance.port);
-
-      log.info({ taskId: instance.task_id, port: instance.port }, "Starting Vite server");
-
-      await this.startViteProcess(instance, workDir);
+      if (options.command) {
+        // Use custom command from SKILL.md
+        log.info({ taskId: instance.task_id, port: instance.port, command: options.command }, "Starting custom server");
+        await this.startCustomProcess(instance, workDir, options);
+      } else {
+        // Default: Vite zero-config
+        await this.ensureProjectFiles(workDir, instance.port);
+        log.info({ taskId: instance.task_id, port: instance.port }, "Starting Vite server");
+        await this.startViteProcess(instance, workDir, options.timeout);
+      }
     } catch (error) {
-      log.error({ err: error }, "Error starting Vite server");
+      log.error({ err: error }, "Error starting server");
       instance.status = "error";
       instance.error = error instanceof Error ? error.message : String(error);
       throw error;
@@ -231,11 +281,186 @@ export class PreviewManager {
   }
 
   /**
+   * Start a custom command process (e.g., "npm run serve")
+   */
+  private async startCustomProcess(
+    instance: PreviewInstance,
+    workDir: string,
+    options: { command?: string; readyPattern?: string; timeout?: number }
+  ): Promise<void> {
+    const command = options.command!;
+    const timeout = options.timeout ?? STARTUP_TIMEOUT_MS;
+    const readyPattern = options.readyPattern;
+
+    // Install dependencies if node_modules doesn't exist
+    const nodeModulesPath = path.join(workDir, "node_modules");
+    let needsInstall = false;
+    try {
+      await fs.access(nodeModulesPath);
+    } catch {
+      needsInstall = true;
+    }
+
+    if (needsInstall) {
+      log.info({ workDir }, "node_modules not found, installing dependencies...");
+      await new Promise<void>((resolve, reject) => {
+        const npmInstall = spawn("npm", ["install"], {
+          cwd: workDir,
+          shell: true,
+          stdio: "pipe",
+        });
+
+        let stderr = "";
+        npmInstall.stderr?.on("data", (data: Buffer) => { stderr += data.toString(); });
+
+        const installTimeout = setTimeout(() => {
+          npmInstall.kill();
+          reject(new Error("npm install timed out after 2 minutes"));
+        }, 120000);
+
+        npmInstall.on("close", (code) => {
+          clearTimeout(installTimeout);
+          if (code === 0) {
+            log.info("npm install completed");
+            resolve();
+          } else {
+            reject(new Error(`npm install failed (exit code ${code}): ${stderr}`));
+          }
+        });
+
+        npmInstall.on("error", (err) => {
+          clearTimeout(installTimeout);
+          reject(err);
+        });
+      });
+    }
+
+    log.info({ command, port: instance.port }, "Running custom command");
+
+    const childProcess = spawn(command, [], {
+      cwd: workDir,
+      shell: true,
+      stdio: "pipe",
+      env: { ...process.env, PORT: String(instance.port), FORCE_COLOR: "0" },
+    });
+
+    instance.process = childProcess;
+
+    // Track process alive state
+    let processExited = false;
+    let processExitCode: number | null = null;
+    let stderrOutput = "";
+
+    // If readyPattern provided, use it to detect server ready
+    let readyDetected = false;
+    const readyRegex = readyPattern ? new RegExp(readyPattern) : null;
+
+    childProcess.stdout?.on("data", (data: Buffer) => {
+      const output = data.toString().trim();
+      if (output) {
+        log.debug({ output }, "server stdout");
+        if (readyRegex && readyRegex.test(output)) {
+          readyDetected = true;
+        }
+      }
+    });
+
+    childProcess.stderr?.on("data", (data: Buffer) => {
+      const output = data.toString().trim();
+      if (output) {
+        stderrOutput += output + "\n";
+        log.debug({ output }, "server stderr");
+        if (readyRegex && readyRegex.test(output)) {
+          readyDetected = true;
+        }
+      }
+    });
+
+    childProcess.on("close", (code) => {
+      processExited = true;
+      processExitCode = code;
+      if (instance.status === "running" || instance.status === "starting") {
+        log.info({ code }, "Custom server process exited");
+        instance.status = "stopped";
+        this.cleanup(instance);
+      }
+    });
+
+    childProcess.on("error", (error) => {
+      processExited = true;
+      log.error({ err: error }, "Custom server process error");
+      instance.status = "error";
+      instance.error = error.message;
+      this.cleanup(instance);
+    });
+
+    const isProcessAlive = () => !processExited;
+
+    // Wait for server to be ready (either via readyPattern or HTTP polling)
+    if (readyRegex) {
+      // Wait for readyPattern match in output
+      const isReady = await this.waitForReadyPattern(() => {
+        if (processExited) return false; // short-circuit if process died
+        return readyDetected;
+      }, timeout);
+      if (isReady && !processExited) {
+        instance.status = "running";
+        this.startHealthCheck(instance);
+        this.resetIdleTimeout(instance);
+        log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Custom server running (pattern matched)");
+      } else {
+        const errMsg = processExited
+          ? `Process exited with code ${processExitCode}: ${stderrOutput.slice(-500)}`
+          : "Server failed to emit ready pattern within timeout";
+        instance.status = "error";
+        instance.error = errMsg;
+        if (!processExited) childProcess.kill();
+        this.cleanup(instance);
+      }
+    } else {
+      // Fall back to HTTP polling (with process alive check)
+      const isReady = await this.waitForServerReady(instance.port, timeout, isProcessAlive);
+      if (isReady && !processExited) {
+        instance.status = "running";
+        this.startHealthCheck(instance);
+        this.resetIdleTimeout(instance);
+        log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Custom server running");
+      } else {
+        const errMsg = processExited
+          ? `Process exited with code ${processExitCode}: ${stderrOutput.slice(-500)}`
+          : "Server failed to start within timeout";
+        instance.status = "error";
+        instance.error = errMsg;
+        if (!processExited) childProcess.kill();
+        this.cleanup(instance);
+      }
+    }
+  }
+
+  /**
+   * Wait for ready pattern to be detected in output
+   */
+  private async waitForReadyPattern(
+    isReady: () => boolean,
+    timeout: number
+  ): Promise<boolean> {
+    const startTime = Date.now();
+    const checkInterval = 500;
+
+    while (Date.now() - startTime < timeout) {
+      if (isReady()) return true;
+      await new Promise((resolve) => setTimeout(resolve, checkInterval));
+    }
+    return false;
+  }
+
+  /**
    * Start Vite process
    */
   private async startViteProcess(
     instance: PreviewInstance,
-    workDir: string
+    workDir: string,
+    timeout?: number
   ): Promise<void> {
     // Install dependencies if vite is not installed
     const viteBinPath = path.join(workDir, "node_modules", ".bin", "vite");
@@ -374,7 +599,7 @@ export class PreviewManager {
     });
 
     // Wait for server to be ready
-    const isReady = await this.waitForServerReady(instance.port);
+    const isReady = await this.waitForServerReady(instance.port, timeout ?? STARTUP_TIMEOUT_MS);
     if (isReady) {
       instance.status = "running";
       this.startHealthCheck(instance);
@@ -389,11 +614,31 @@ export class PreviewManager {
   }
 
   /**
+   * Check if a port is already in use
+   */
+  private async isPortInUse(port: number): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      const response = await fetch(`http://localhost:${port}`, {
+        method: "HEAD",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response.ok || response.status === 404;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Wait for the server to be ready
+   * @param isProcessAlive - optional function to check if the spawned process is still alive
    */
   private async waitForServerReady(
     port: number,
-    timeout: number = STARTUP_TIMEOUT_MS
+    timeout: number = STARTUP_TIMEOUT_MS,
+    isProcessAlive?: () => boolean
   ): Promise<boolean> {
     const startTime = Date.now();
     const checkInterval = 1000; // Check every 1 second
@@ -402,6 +647,12 @@ export class PreviewManager {
     log.debug({ port, timeoutSeconds: timeout / 1000 }, "Waiting for server");
 
     while (Date.now() - startTime < timeout) {
+      // If the process already exited, no point waiting
+      if (isProcessAlive && !isProcessAlive()) {
+        log.warn({ port, attempts }, "Process exited before server became ready");
+        return false;
+      }
+
       attempts++;
       try {
         const controller = new AbortController();

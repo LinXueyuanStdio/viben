@@ -28,6 +28,9 @@ interface PreviewStartRequest {
   task_id: string;
   work_dir: string;
   port?: number;
+  command?: string;
+  ready_pattern?: string;
+  timeout?: number;
 }
 
 interface PreviewStopRequest {
@@ -87,6 +90,9 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
           task_id: { type: "string", description: "Task identifier" },
           work_dir: { type: "string", description: "Working directory path" },
           port: { type: "number", description: "Preferred port (optional)" },
+          command: { type: "string", description: "Custom command to run (e.g., 'npm run serve')" },
+          ready_pattern: { type: "string", description: "Regex pattern to detect server ready in stdout/stderr" },
+          timeout: { type: "number", description: "Startup timeout in milliseconds" },
         },
       },
       response: {
@@ -120,7 +126,7 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
     },
   }, async (request, reply) => {
     try {
-      const { task_id, work_dir, port } = request.body;
+      const { task_id, work_dir, port, command, ready_pattern, timeout } = request.body;
 
       if (!task_id) {
         return reply.status(400).send({ error: "task_id is required" });
@@ -130,12 +136,15 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
         return reply.status(400).send({ error: "work_dir is required" });
       }
 
-      log.info({ taskId: task_id, workDir: work_dir }, "Starting preview");
+      log.info({ taskId: task_id, workDir: work_dir, command }, "Starting preview");
 
       const config: PreviewConfig = {
         taskId: task_id,
         workDir: work_dir,
         port,
+        command,
+        readyPattern: ready_pattern,
+        timeout,
       };
 
       const manager = getPreviewManager();
@@ -364,5 +373,50 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
       previews,
       count: previews.length,
     };
+  });
+
+  /**
+   * Kill process occupying a port
+   * POST /api/preview/kill-port
+   */
+  fastify.post<{ Body: { port: number } }>("/api/preview/kill-port", {
+    schema: {
+      description: "Kill the process occupying a specific port",
+      tags: ["preview"],
+      body: {
+        type: "object",
+        required: ["port"],
+        properties: {
+          port: { type: "number", description: "Port number to free" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      const { port } = request.body;
+      if (!port) {
+        return reply.status(400).send({ success: false, error: "port is required" });
+      }
+
+      log.info({ port }, "Killing process on port");
+      const manager = getPreviewManager();
+      const result = await manager.killPort(port);
+      return result;
+    } catch (error) {
+      log.error({ err: error }, "Kill-port error");
+      return reply.status(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 }
