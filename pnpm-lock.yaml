@@ -1782,12 +1782,18 @@ importers:
       '@just-bash/executor':
         specifier: ^1.0.2
         version: 1.0.2(just-bash@3.0.1)
+      '@monaco-editor/react':
+        specifier: ^4.7.0
+        version: 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@viben/presentation':
         specifier: workspace:*
         version: link:..
       just-bash:
         specifier: ^3.0.1
         version: 3.0.1
+      monaco-editor:
+        specifier: ^0.55.1
+        version: 0.55.1
       react:
         specifier: ^19.0.0
         version: 19.2.4
