@@ -23,9 +23,9 @@ import {
   Minimize2,
   RefreshCw,
   Square,
-  Wrench,
   MoreHorizontal,
   Pencil,
+  CopyPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -118,6 +118,7 @@ function PageToolbar({
   isFullscreen,
   onToggleFullscreen,
   onEditConfig,
+  onOpenInNewTab,
 }: {
   page: { type: string; name: string };
   viewMode: PageViewMode;
@@ -131,6 +132,7 @@ function PageToolbar({
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   onEditConfig: () => void;
+  onOpenInNewTab: () => void;
 }) {
   const { t } = useTranslation();
   const isServerType = page.type === "server";
@@ -180,10 +182,6 @@ function PageToolbar({
       }
     }
   }, [viewMode, page.type, livePreviewUrl, gatewayServeUrl]);
-
-  const handleDevTools = useCallback(() => {
-    console.log("DevTools clicked");
-  }, []);
 
   return (
     <div className="flex items-center gap-2">
@@ -247,6 +245,10 @@ function PageToolbar({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={onOpenInNewTab}>
+            <CopyPlus className="mr-2 h-4 w-4" />
+            {t("page.openInNewTab", "Open in New Tab")}
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => void onDetach()}>
             <PanelTopOpen className="mr-2 h-4 w-4" />
             {t("page.openInNewWindow", "Open in New Window")}
@@ -255,12 +257,6 @@ function PageToolbar({
             <DropdownMenuItem onClick={handleOpenExternal}>
               <ExternalLink className="mr-2 h-4 w-4" />
               {t("page.openExternal", "Open in Browser")}
-            </DropdownMenuItem>
-          )}
-          {viewMode === "page" && (
-            <DropdownMenuItem onClick={handleDevTools}>
-              <Wrench className="mr-2 h-4 w-4" />
-              {t("page.devTools", "DevTools")}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem onClick={onToggleFullscreen}>
@@ -308,6 +304,7 @@ export function WorkspacePage() {
     pushCurrentPageChild,
     openCurrentPageWeb,
     openWorkspaceSection,
+    openWorkspacePage,
     closeCurrentTab,
   } = useDesktopRouting();
 
@@ -456,6 +453,11 @@ export function WorkspacePage() {
     },
     [openCurrentPageWeb, workspaceId]
   );
+
+  const handleOpenInNewTab = useCallback(() => {
+    if (!workspaceId || !slug) return;
+    openWorkspacePage(workspaceId, slug, { openMode: "new-tab" });
+  }, [openWorkspacePage, workspaceId, slug]);
 
   // Loading state
   const isLoading = isLoadingWorkspaces || isLoadingPage;
@@ -607,6 +609,7 @@ export function WorkspacePage() {
               isFullscreen={isFullscreen}
               onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
               onEditConfig={() => setEditDialogOpen(true)}
+              onOpenInNewTab={handleOpenInNewTab}
             />
           </div>
         }
