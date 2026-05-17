@@ -291,5 +291,5 @@ docs/index/
 core.*
 /pages/
 /docs/references.claude/worktrees/
-infra/claude-code/
+infra/
 .superpowers/
