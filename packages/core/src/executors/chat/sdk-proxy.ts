@@ -196,6 +196,7 @@ export class SdkChatProxy implements ChatProxy {
       type: "user",
       message: { role: "user", content: message },
       parent_tool_use_id: null,
+      session_id: this.emittedSdkSessionId ?? "",
     };
     async function* singleMessage() {
       yield userMessage;
