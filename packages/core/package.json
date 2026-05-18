@@ -77,7 +77,7 @@
     "@opentelemetry/instrumentation-http": "^0.212.0",
     "@opentelemetry/sdk-metrics": "^2.5.1",
     "@opentelemetry/sdk-node": "^0.214.0",
-    "@opentelemetry/sdk-trace-base": "^2.6.1",
+    "@opentelemetry/sdk-trace-base": "^2.7.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
     "@viben/api-client": "workspace:*",
     "adm-zip": "^0.5.17",
