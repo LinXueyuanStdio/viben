@@ -1,13 +1,13 @@
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion"
 import { CinematicStage, CameraRig } from "./CinematicStage"
 import { ConceptCardMatrix, type ConceptCardData } from "./ConceptCards"
-import { CinematicLineChart, CinematicBarChart, PercentageRing, CandlestickChart, WorldMapHeatmap, TimelineChart, type CandlestickData, type MapRegion, type TimelineEvent } from "./CinematicCharts"
-import { FloatingNodeGraph, TreeStructure, type StructureEdge, type StructureNode, type TreeNode } from "./Structures"
-import { KpiBlock, MarketTable, RealtimeTicker, type TickerItem } from "./DataHud"
+import { CinematicLineChart, PercentageRing, CandlestickChart, WorldMapHeatmap, type CandlestickData, type MapRegion } from "./CinematicCharts"
+import { FloatingNodeGraph, type StructureEdge, type StructureNode } from "./Structures"
+import { KpiBlock, RealtimeTicker, type TickerItem } from "./DataHud"
 import { PyramidInfoScene, CausalChainScene, CapitalFlowDiagram, type PyramidLayer, type ChainStep, type FlowTarget } from "./Infographics"
 import { CinematicDollyZoom, SlowOrbit, FocusPull } from "./Camera"
 import { cinematicTheme } from "./theme"
-import { clampInterpolate, loopSine } from "./motion"
+import { clampInterpolate } from "./motion"
 
 // ─── DATA ──────────────────────────────────────────────────
 
@@ -75,23 +75,6 @@ const graphEdges: StructureEdge[] = [
   { from: "liquidity", to: "hedge" },
   { from: "hedge", to: "allocation" },
 ]
-
-const treeRoot: TreeNode = {
-  id: "macro",
-  title: "宏观框架",
-  subtitle: "MACRO FRAMEWORK",
-  tone: "gold",
-  children: [
-    { id: "monetary", title: "货币政策", tone: "amber", children: [
-      { id: "rates-tree", title: "利率", tone: "gold" },
-      { id: "qe", title: "量化宽松", tone: "amber" },
-    ]},
-    { id: "fiscal", title: "财政政策", tone: "purple", children: [
-      { id: "spending", title: "政府支出", tone: "purple" },
-      { id: "tax", title: "税收", tone: "magenta" },
-    ]},
-  ],
-}
 
 const pyramidLayers: PyramidLayer[] = [
   { title: "系统性风险", subtitle: "Systemic Risk — tail events, contagion", value: "极端", tone: "magenta" },

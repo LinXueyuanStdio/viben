@@ -5,7 +5,6 @@ import {
   softSpring,
   stagger,
   loopSine,
-  smoothStep,
   formatCompactNumber,
   noiseSeed,
 } from "./motion"
@@ -813,10 +812,6 @@ export function FunnelAnalysis({
           const nextStage = stages[i + 1]
           const dropoffPct = nextStage ? Math.round((1 - nextStage.value / stage.value) * 100) : 0
 
-          // Color gradient per stage (shifts hue slightly)
-          const hueShift = i * 12
-          const stageColor = i === 0 ? accent : accent
-
           return (
             <div key={i} style={{ position: "relative", marginBottom: 8 }}>
               {/* Stage bar */}
@@ -952,7 +947,7 @@ export function FunnelAnalysis({
         viewBox={`0 0 ${width} ${height}`}
         style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }}
       >
-        {stages.map((stage, i) => {
+        {stages.map((_stage, i) => {
           if (i === 0) return null
           const stageEnter2 = softSpring(frame, fps, delay + 14 + stagger(i, count, 28))
           const sparkleY = 44 + i * (stageH + 18) - 4

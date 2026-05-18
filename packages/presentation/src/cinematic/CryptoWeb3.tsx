@@ -24,7 +24,6 @@ export function BlockchainFlow({
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const enter = softSpring(frame, fps, delay)
-  const accent = toneColor(tone)
   const blockWidth = 140
   const linkWidth = 48
   const totalWidth = blocks.length * (blockWidth + linkWidth) - linkWidth
@@ -173,7 +172,6 @@ export function TokenomicsRing({
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const enter = softSpring(frame, fps, delay)
-  const accent = toneColor(tone)
   const size = 340
   const centerX = size / 2
   const centerY = size / 2

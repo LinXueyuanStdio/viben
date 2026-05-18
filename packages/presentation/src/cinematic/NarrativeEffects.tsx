@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, softSpring, stagger, loopSine, noiseSeed, smoothStep } from "./motion"
+import { clampInterpolate, softSpring, stagger, loopSine } from "./motion"
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * ChapterTitle

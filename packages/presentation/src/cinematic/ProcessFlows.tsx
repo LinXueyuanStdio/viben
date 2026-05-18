@@ -813,7 +813,6 @@ export function DecisionTree({
     }
   }
 
-  const maxDepth = Math.max(...layoutNodes.map((ln) => ln.depth), 0)
   const totalNodes = layoutNodes.length
 
   // Edges

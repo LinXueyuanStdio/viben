@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, formatCompactNumber, loopSine, softSpring, particleTrail, stagger } from "./motion"
+import { clampInterpolate, formatCompactNumber, loopSine, softSpring, particleTrail } from "./motion"
 
 export interface DataPoint {
   label: string
@@ -151,7 +151,6 @@ export function CinematicBarChart({
   const enter = softSpring(frame, fps, delay)
   const accent = toneColor(tone)
   const max = Math.max(...data.map((d) => d.value))
-  const chartBottom = height - 62
   const barW = Math.min(62, (width - 120) / data.length - 16)
 
   return (

@@ -402,7 +402,6 @@ export function useStaggeredReveal(
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const gapFrames = options?.gapFrames ?? 5
-  const durationFrames = options?.durationFrames ?? 20
 
   // Non-linear stagger: ease-in-out curve across items.
   // Normalized position 0..1 through the list, then apply sine ease-in-out

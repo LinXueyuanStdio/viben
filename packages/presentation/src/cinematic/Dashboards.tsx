@@ -33,8 +33,6 @@ export function SwotMatrix({
   const enter = softSpring(frame, fps, delay)
   const accent = toneColor(tone)
   const glow = 0.35 + Math.max(0, loopSine(frame, 64, delay) * 0.2)
-  const halfW = width / 2
-  const cellW = halfW - 12
   const height = width * 0.88
 
   const quadrants: Array<{

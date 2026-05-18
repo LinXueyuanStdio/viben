@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, loopSine, softSpring, stagger } from "./motion"
+import { clampInterpolate, loopSine, softSpring } from "./motion"
 
 export interface StructureNode {
   id: string
@@ -170,7 +170,7 @@ export function TreeStructure({
   root,
   delay = 0,
   tone = "gold",
-  orientation = "vertical",
+  orientation: _orientation = "vertical",
 }: {
   root: TreeNode
   delay?: number
@@ -180,7 +180,6 @@ export function TreeStructure({
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const nodes = layoutTree(root)
-  const accent = toneColor(tone)
 
   const edges: Array<{ from: LayoutNode; to: LayoutNode; index: number }> = []
   let edgeIndex = 0
@@ -370,7 +369,7 @@ export function RadialStructure({
         {center.subtitle && <div style={{ marginTop: 3, fontSize: 10, color: "rgba(234,236,239,0.5)" }}>{center.subtitle}</div>}
       </div>
       {/* Orbit nodes */}
-      {allNodes.map((node, i) => {
+      {allNodes.map((node, _i) => {
         const nodeEnter = softSpring(frame, fps, delay + 18 + node.orbitIdx * 8 + node.nodeIdx * 4)
         const nodeAccent = toneColor(node.tone ?? tone)
         return (

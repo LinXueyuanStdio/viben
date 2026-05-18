@@ -42,12 +42,11 @@ export function toneColor(tone: CinematicTone = "gold"): string {
   }
 }
 
-let noiseCounter = 0
 export function noiseFilterId(seed: number): string {
   return `cinematic-noise-${seed}`
 }
 
-export function volumetricGlow(color: string, radius: number, opacity: number): string {
+export function volumetricGlow(color: string, radius: number, _opacity: number): string {
   return `radial-gradient(circle, ${color} 0%, transparent ${radius}%)`
 }
 

@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, loopSine, noiseSeed, softSpring, stagger } from "./motion"
+import { clampInterpolate, loopSine, softSpring, stagger } from "./motion"
 
 // ─── NeuralNetworkViz ─────────────────────────────────────────────────────────
 
@@ -31,7 +31,6 @@ export function NeuralNetworkViz({
   const height = 380
   const padX = 60
   const padY = 40
-  const maxNodes = Math.max(...layers)
   const layerSpacing = (width - padX * 2) / Math.max(1, layers.length - 1)
 
   function nodePos(layerIdx: number, nodeIdx: number, layerSize: number) {
@@ -658,7 +657,6 @@ export function AttentionMatrix({
                 const scanRow = Math.floor(scanProgress * n)
                 const isScanRow = ri === scanRow
                 const brightness = clampedW * cellEnter
-                const noise = noiseSeed(ri, ci)
 
                 return (
                   <div

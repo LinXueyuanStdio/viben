@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, loopSine, softSpring, stagger, noiseSeed, particleTrail } from "./motion"
+import { clampInterpolate, loopSine, softSpring, stagger, noiseSeed } from "./motion"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,14 +67,6 @@ function nodeIcon(type?: "server" | "database" | "client" | "service" | "router"
   }
 }
 
-function hexPath(cx: number, cy: number, r: number): string {
-  const points: string[] = []
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 3) * i - Math.PI / 6
-    points.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`)
-  }
-  return `M${points.join("L")}Z`
-}
 
 // ─── NetworkMap ──────────────────────────────────────────────────────────────
 
@@ -494,12 +486,10 @@ export function MetroMap({
       if (Math.abs(dx) > Math.abs(dy)) {
         const diag = Math.min(Math.abs(dy), Math.abs(dx) * 0.3)
         const diagX = dx > 0 ? diag : -diag
-        const diagY = dy > 0 ? diag : -diag
         const midX = prev.x + dx - diagX
         d += ` L ${midX} ${prev.y} L ${curr.x} ${curr.y}`
       } else {
         const diag = Math.min(Math.abs(dx), Math.abs(dy) * 0.3)
-        const diagX = dx > 0 ? diag : -diag
         const diagY = dy > 0 ? diag : -diag
         const midY = prev.y + dy - diagY
         d += ` L ${prev.x} ${midY} L ${curr.x} ${curr.y}`
@@ -603,7 +593,6 @@ export function MetroMap({
           const lineDelay = delay + stagger(lineIdx, lines.length, 24)
           const draw = clampInterpolate(frame, [lineDelay, lineDelay + 36], [0, 1])
           const path = metroPath(line.stations)
-          const pLen = pathLength(line.stations)
 
           // Animated train dot
           const trainT = ((frame * 0.012 + lineIdx * 0.3) % 1)

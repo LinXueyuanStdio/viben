@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, loopSine, softSpring, stagger } from "./motion"
+import { clampInterpolate, loopSine, softSpring } from "./motion"
 
 export interface PyramidLayer {
   title: string
@@ -161,7 +161,7 @@ export function CausalChainScene({
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
         </defs>
-        {steps.slice(0, -1).map((step, i) => {
+        {steps.slice(0, -1).map((_step, i) => {
           const lineDelay = delay + 14 + i * 10
           const draw = clampInterpolate(frame, [lineDelay, lineDelay + 28], [0, 1])
           const from = positions[i]

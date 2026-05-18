@@ -1,6 +1,6 @@
 import { useCurrentFrame, useVideoConfig } from "remotion"
 import { cinematicTheme, type CinematicTone, toneColor } from "./theme"
-import { clampInterpolate, softSpring, stagger, loopSine, noiseSeed, smoothStep, particleTrail } from "./motion"
+import { clampInterpolate, softSpring, stagger, loopSine, noiseSeed } from "./motion"
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * ParticleField
@@ -229,7 +229,7 @@ export function WaveformVisualizer({
   })
 
   // Color interpolation: low = cold, high = warm
-  const barColor = (index: number, barHeight: number) => {
+  const barColor = (index: number, _barHeight: number) => {
     const t = index / bars
     if (t < 0.33) return cinematicTheme.colors.purple
     if (t < 0.66) return accent

@@ -767,7 +767,6 @@ export function DeployPipeline({
               {si < stageCount - 1 && (
                 <svg width={20} height={20} viewBox="0 0 20 20" style={{ flexShrink: 0 }}>
                   {(() => {
-                    const nextStatus = stages[si + 1].status
                     const isComplete = stage.status === "success"
                     const arrowColor = isComplete ? statusColor : "rgba(234,236,239,0.2)"
                     const dashAnim = !isComplete ? `${(frame * 0.5) % 12}` : undefined
@@ -857,7 +856,6 @@ export function SystemMetricsPanel({
 
   const colCount = 2
   const metricCardWidth = (width - 80) / colCount
-  const metricCardHeight = 120
 
   return (
     <div

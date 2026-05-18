@@ -8,7 +8,6 @@ import {
   loopSine,
   smoothStep,
   formatCompactNumber,
-  noiseSeed,
 } from "./motion"
 
 // ─── Shared Helpers ─────────────────────────────────────────────────────────────

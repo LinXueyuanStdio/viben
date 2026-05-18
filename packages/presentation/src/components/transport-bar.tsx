@@ -157,9 +157,6 @@ const SCRUBBER_FILL_BASE: React.CSSProperties = {
 const BAR_STYLE_TOP: React.CSSProperties = { ...BAR_STYLE, top: 8 }
 const BAR_STYLE_BOTTOM: React.CSSProperties = { ...BAR_STYLE, bottom: 8 }
 
-const POS_TOP = { top: 8 } as const
-const POS_BOTTOM = { bottom: 8 } as const
-
 /**
  * TransportBar — built-in playback control bar for PresentationPlayer.
  * Renders play/pause, step navigation, scrubber, and time display.

@@ -1,5 +1,5 @@
 import type { StepCommandDef } from "./types"
-import { num, numOpt, str, strOpt, bool, json } from "./parse-utils"
+import { numOpt, str, strOpt, json } from "./parse-utils"
 
 export const narrativeCommands: StepCommandDef[] = [
   {

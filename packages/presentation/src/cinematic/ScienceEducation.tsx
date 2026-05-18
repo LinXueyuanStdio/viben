@@ -298,7 +298,6 @@ export function DNAHelix({
 
   // Helix geometry
   const helixAmplitude = width * 0.28
-  const verticalSpacing = height / (basePairs + 1)
   const svgW = width
   const svgH = height
 

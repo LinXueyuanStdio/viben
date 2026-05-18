@@ -1,7 +1,6 @@
 import type { CSSProperties, ReactNode } from "react"
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion"
 import { clampInterpolate, loopSine, softSpring } from "./motion"
-import { cinematicTheme } from "./theme"
 
 export interface DollyZoomProps {
   children: ReactNode
@@ -64,15 +63,13 @@ export interface FocusPullProps {
 export function FocusPull({
   children,
   nearBlur,
-  farBlur,
   pullFrame,
-  duration,
+  duration: _duration,
   delay = 0,
 }: FocusPullProps) {
   const frame = useCurrentFrame()
   const t = clampInterpolate(frame, [delay, delay + pullFrame], [0, 1])
   const nearB = nearBlur * (1 - t)
-  const farB = farBlur * t
 
   return (
     <AbsoluteFill style={{ perspective: 1400, transformStyle: "preserve-3d" }}>

@@ -1,5 +1,5 @@
 import type { StepCommandDef } from "./types"
-import { num, numOpt, str, strOpt, bool, json } from "./parse-utils"
+import { num, numOpt, strOpt, bool, json } from "./parse-utils"
 
 export const datavizCommands: StepCommandDef[] = [
   {
