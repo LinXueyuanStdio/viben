@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Data files (large audio/model assets)
+data/backgrounds/
+data/features/
+data/rirs/
+data/voxcpm/
+
+# Training output
+output/
+
+# Models (keep .gitkeep)
+models/*.onnx
+models/*.pt
+models/*.pth
+models/*.safetensors
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+.cache/

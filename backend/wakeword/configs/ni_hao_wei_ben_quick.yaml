@@ -1,0 +1,33 @@
+# 唤醒词训练配置 - "你好微本" (快速验证版)
+# 缩减样本数，用于验证全流程是否正常
+model_name: ni_hao_wei_ben
+target_phrases:
+  - "你好微本"
+
+tts_backend: voxcpm
+
+# 缩减样本数
+n_samples: 500
+n_samples_val: 100
+
+model:
+  model_type: conv_attention
+  model_size: small
+
+# 缩减训练步数
+steps: 2000
+
+target_fp_per_hour: 0.2
+
+voxcpm_tts:
+  voice_design_prompts:
+    - "A young adult woman, clear mid-pitch voice, moderate pace, calm and professional"
+    - "A young adult man, warm baritone, steady pace, friendly and articulate"
+    - "A middle-aged woman, slightly low pitch, measured pace, confident tone"
+    - "A middle-aged man, deep voice, slow pace, authoritative"
+    - "A young woman, high pitch, fast pace, energetic and cheerful"
+    - "A young man, light tenor, quick pace, enthusiastic"
+
+export:
+  output_dir: "../../apps/desktop/public/wakeword/models"
+  threshold: 0.5

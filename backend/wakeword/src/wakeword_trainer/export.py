@@ -4,6 +4,13 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
+
+# numpy <2.0 兼容性: livekit-wakeword 使用了 np.trapezoid (numpy 2.0+)
+# 但本项目限制 numpy <2.0 以兼容 audiomentations
+if not hasattr(np, "trapezoid"):
+    np.trapezoid = np.trapz  # type: ignore[attr-defined]
+
 from livekit.wakeword import WakeWordConfig, run_eval, run_export
 
 logger = logging.getLogger(__name__)

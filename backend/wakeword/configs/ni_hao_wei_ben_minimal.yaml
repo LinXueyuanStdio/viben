@@ -1,0 +1,30 @@
+# 唤醒词训练配置 - "你好微本" (最小验证版)
+# 仅用于验证全流程能跑通，不追求模型质量
+model_name: ni_hao_wei_ben
+target_phrases:
+  - "你好微本"
+
+tts_backend: voxcpm
+
+# 最小样本数（利用已生成的 clip resume）
+n_samples: 10
+n_samples_val: 5
+
+model:
+  model_type: conv_attention
+  model_size: small
+
+# 最小训练步数
+steps: 200
+
+target_fp_per_hour: 0.5
+
+# 仅用 2 个 voice prompt 减少计算
+voxcpm_tts:
+  voice_design_prompts:
+    - "A young adult woman, clear mid-pitch voice, moderate pace, calm and professional"
+    - "A young adult man, warm baritone, steady pace, friendly and articulate"
+
+export:
+  output_dir: "models"
+  threshold: 0.5
