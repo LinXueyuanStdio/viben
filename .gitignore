@@ -291,5 +291,7 @@ docs/index/
 core.*
 /pages/
 /docs/references.claude/worktrees/
-infra/
 .superpowers/
+
+/infra/
+!/infra/Yoopta-Editor/
