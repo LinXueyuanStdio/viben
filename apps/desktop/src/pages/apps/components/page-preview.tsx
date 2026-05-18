@@ -13,7 +13,6 @@
 
 import { useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { updatePageConfig } from "@/lib/gateway/modules/pages";
@@ -21,7 +20,7 @@ import { VitePreview } from "@/pages/conversation/components/vite-preview";
 import { YooptaMarkdownRenderer } from "./yoopta-markdown-renderer";
 import { StaticPagePreview } from "./static-page-preview";
 import type { PageConfig } from "@/hooks/use-pages";
-import type { StaticPageConfig } from "@/lib/gateway/types/page";
+import type { StaticPageConfig, ProxyPageConfig } from "@/lib/gateway/types/page";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
 /** View mode for the page preview */
@@ -184,23 +183,19 @@ export function PagePreview({
                     error={livePreviewError ?? null}
                     onStart={onStartLivePreview}
                     onStop={onStopLivePreview}
+                    hideHeader
                     className="h-full"
                   />
                 )}
 
-                {/* Proxy pages - coming soon */}
+                {/* Proxy pages - iframe to target URL */}
                 {isProxy && (
-                  <div className="flex h-full flex-col items-center justify-center bg-muted/20 p-8">
-                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-background">
-                      <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                    <h3 className="mb-1 text-sm font-medium text-foreground">
-                      {t("page.proxyPage", "Proxy Page")}
-                    </h3>
-                    <p className="max-w-xs text-center text-xs text-muted-foreground">
-                      {t("page.proxyComingSoon", "Proxy page preview is coming soon")}
-                    </p>
-                  </div>
+                  <iframe
+                    key={iframeKey}
+                    src={(page as ProxyPageConfig).url}
+                    className="h-full w-full border-0"
+                    title={page.name}
+                  />
                 )}
               </>
             )}

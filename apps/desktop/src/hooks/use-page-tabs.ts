@@ -5,10 +5,7 @@ import type { TabNavigationState, TabViewModel } from "@/stores/tab-store";
 import type { IconData } from "@/components/ui/icon-picker";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
-import {
-  normalizeSettingsSection,
-  normalizeWorkspaceSection,
-} from "@/navigation/navigation-meta";
+import { normalizeWorkspaceSection } from "@/navigation/navigation-meta";
 import { registry } from "@/navigation/route-registry";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import type { PageConfig } from "@/hooks/use-pages";

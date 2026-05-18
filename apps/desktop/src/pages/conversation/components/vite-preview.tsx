@@ -34,6 +34,8 @@ interface VitePreviewProps {
   onStop?: () => void;
   /** Callback to close the preview panel */
   onClose?: () => void;
+  /** Hide the built-in header (when parent provides its own toolbar) */
+  hideHeader?: boolean;
   /** Additional class names */
   className?: string;
 }
@@ -48,6 +50,7 @@ export function VitePreview({
   onStart,
   onStop,
   onClose,
+  hideHeader = false,
   className,
 }: VitePreviewProps) {
   const { t } = useTranslation();
@@ -98,16 +101,18 @@ export function VitePreview({
           className
         )}
       >
-        <PreviewHeader
-          url={null}
-          status={status}
-          onRefresh={handleRefresh}
-          onOpenExternal={handleOpenExternal}
-          onStop={onStop}
-          onClose={onClose}
-          onFullscreen={() => setIsFullscreen(!isFullscreen)}
-          isFullscreen={isFullscreen}
-        />
+        {!hideHeader && (
+          <PreviewHeader
+            url={null}
+            status={status}
+            onRefresh={handleRefresh}
+            onOpenExternal={handleOpenExternal}
+            onStop={onStop}
+            onClose={onClose}
+            onFullscreen={() => setIsFullscreen(!isFullscreen)}
+            isFullscreen={isFullscreen}
+          />
+        )}
         <div className="flex flex-1 flex-col items-center justify-center bg-muted/20 p-8">
           <Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
           <h3 className="mb-1 text-sm font-medium text-foreground">
@@ -134,16 +139,18 @@ export function VitePreview({
           className
         )}
       >
-        <PreviewHeader
-          url={null}
-          status={status}
-          onRefresh={handleRefresh}
-          onOpenExternal={handleOpenExternal}
-          onStop={onStop}
-          onClose={onClose}
-          onFullscreen={() => setIsFullscreen(!isFullscreen)}
-          isFullscreen={isFullscreen}
-        />
+        {!hideHeader && (
+          <PreviewHeader
+            url={null}
+            status={status}
+            onRefresh={handleRefresh}
+            onOpenExternal={handleOpenExternal}
+            onStop={onStop}
+            onClose={onClose}
+            onFullscreen={() => setIsFullscreen(!isFullscreen)}
+            isFullscreen={isFullscreen}
+          />
+        )}
         <div className="flex flex-1 flex-col items-center justify-center bg-muted/20 p-8">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
             <AlertCircle className="h-8 w-8 text-red-500" />
@@ -178,16 +185,18 @@ export function VitePreview({
           className
         )}
       >
-        <PreviewHeader
-          url={null}
-          status={status}
-          onRefresh={handleRefresh}
-          onOpenExternal={handleOpenExternal}
-          onStop={onStop}
-          onClose={onClose}
-          onFullscreen={() => setIsFullscreen(!isFullscreen)}
-          isFullscreen={isFullscreen}
-        />
+        {!hideHeader && (
+          <PreviewHeader
+            url={null}
+            status={status}
+            onRefresh={handleRefresh}
+            onOpenExternal={handleOpenExternal}
+            onStop={onStop}
+            onClose={onClose}
+            onFullscreen={() => setIsFullscreen(!isFullscreen)}
+            isFullscreen={isFullscreen}
+          />
+        )}
         <div className="flex flex-1 flex-col items-center justify-center bg-muted/20 p-8">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-border bg-background">
             <Play className="h-8 w-8 text-muted-foreground/50" />
@@ -221,16 +230,18 @@ export function VitePreview({
         className
       )}
     >
-      <PreviewHeader
-        url={previewUrl}
-        status={status}
-        onRefresh={handleRefresh}
-        onOpenExternal={handleOpenExternal}
-        onStop={onStop}
-        onClose={onClose}
-        onFullscreen={() => setIsFullscreen(!isFullscreen)}
-        isFullscreen={isFullscreen}
-      />
+      {!hideHeader && (
+        <PreviewHeader
+          url={previewUrl}
+          status={status}
+          onRefresh={handleRefresh}
+          onOpenExternal={handleOpenExternal}
+          onStop={onStop}
+          onClose={onClose}
+          onFullscreen={() => setIsFullscreen(!isFullscreen)}
+          isFullscreen={isFullscreen}
+        />
+      )}
       <div className="flex-1 overflow-hidden bg-white">
         <iframe
           key={iframeKey}

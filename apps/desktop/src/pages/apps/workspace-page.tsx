@@ -138,40 +138,6 @@ function PageToolbar({
   const isServerType = page.type === "server";
   const showViewToggle = page.type !== "markdown";
 
-  const getStatusColor = () => {
-    if (viewMode === "skill") return "bg-gray-400";
-    if (viewMode === "page" && isServerType) {
-      switch (livePreviewStatus) {
-        case "running":
-          return "bg-green-500";
-        case "starting":
-          return "animate-pulse bg-yellow-500";
-        case "error":
-          return "bg-red-500";
-        default:
-          return "bg-gray-400";
-      }
-    }
-    return "bg-gray-400";
-  };
-
-  const getStatusText = () => {
-    if (viewMode === "skill") return "";
-    if (viewMode === "page" && isServerType) {
-      switch (livePreviewStatus) {
-        case "running":
-          return t("preview.running", "Running");
-        case "starting":
-          return t("preview.starting", "Starting...");
-        case "error":
-          return t("preview.error", "Error");
-        default:
-          return t("preview.stopped", "Stopped");
-      }
-    }
-    return "";
-  };
-
   const handleOpenExternal = useCallback(async () => {
     const url = viewMode === "page" && page.type === "server" ? livePreviewUrl : gatewayServeUrl;
     if (url) {
@@ -215,14 +181,6 @@ function PageToolbar({
         </div>
       )}
 
-      {/* Status indicator (server type in page view) */}
-      {viewMode === "page" && isServerType && (
-        <div className="flex items-center gap-1.5">
-          <div className={cn("h-2 w-2 rounded-full", getStatusColor())} />
-          <span className="text-xs text-muted-foreground">{getStatusText()}</span>
-        </div>
-      )}
-
       {/* Refresh button (standalone - most common action) */}
       {viewMode === "page" && (
         <button
@@ -231,6 +189,28 @@ function PageToolbar({
           title={t("common.refresh")}
         >
           <RefreshCw className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {/* Fullscreen button */}
+      {viewMode === "page" && (
+        <button
+          onClick={onToggleFullscreen}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          title={isFullscreen ? t("page.exitFullscreen", "Exit Fullscreen") : t("page.fullscreen", "Fullscreen")}
+        >
+          {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        </button>
+      )}
+
+      {/* Stop server button (server type when running) */}
+      {viewMode === "page" && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
+        <button
+          onClick={onStopLivePreview}
+          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950"
+          title={t("page.stopServer", "Stop Server")}
+        >
+          <Square className="h-3.5 w-3.5" />
         </button>
       )}
 
@@ -259,34 +239,11 @@ function PageToolbar({
               {t("page.openExternal", "Open in Browser")}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={onToggleFullscreen}>
-            {isFullscreen ? (
-              <Minimize2 className="mr-2 h-4 w-4" />
-            ) : (
-              <Maximize2 className="mr-2 h-4 w-4" />
-            )}
-            {isFullscreen
-              ? t("page.exitFullscreen", "Exit Fullscreen")
-              : t("page.fullscreen", "Fullscreen")}
-          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onEditConfig}>
             <Pencil className="mr-2 h-4 w-4" />
             {t("page.editConfig", "Edit Page Settings")}
           </DropdownMenuItem>
-          {/* Stop server (only for server type when running) */}
-          {viewMode === "page" && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onStopLivePreview}
-                className="text-destructive focus:text-destructive"
-              >
-                <Square className="mr-2 h-4 w-4" />
-                {t("page.stopServer", "Stop Server")}
-              </DropdownMenuItem>
-            </>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -459,6 +416,27 @@ export function WorkspacePage() {
     openWorkspacePage(workspaceId, slug, { openMode: "new-tab" });
   }, [openWorkspacePage, workspaceId, slug]);
 
+  // Center content: status indicator + URL for server pages in page view
+  const centerContent = useMemo(() => {
+    if (viewMode !== "page" || page?.type !== "server") return undefined;
+    const statusColor =
+      previewStatus === "running" ? "bg-green-500" :
+      previewStatus === "starting" ? "animate-pulse bg-yellow-500" :
+      previewStatus === "error" ? "bg-red-500" : "bg-gray-400";
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className={cn("h-2 w-2 rounded-full", statusColor)} />
+        <span className="font-medium">{t("preview.livePreview")}</span>
+        {previewUrl && (
+          <>
+            <span className="text-muted-foreground/50">|</span>
+            <span className="truncate max-w-[200px]">{previewUrl}</span>
+          </>
+        )}
+      </div>
+    );
+  }, [viewMode, page?.type, previewStatus, previewUrl, t]);
+
   // Loading state
   const isLoading = isLoadingWorkspaces || isLoadingPage;
 
@@ -593,6 +571,7 @@ export function WorkspacePage() {
         segments={pageHeaderSegments}
         showRemove={false}
         showRefresh={false}
+        centerContent={centerContent}
         rightContent={
           <div className="flex items-center gap-2">
             <div ref={setEditorHeaderEl} />
