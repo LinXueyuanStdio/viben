@@ -829,19 +829,19 @@ testing = ["coverage", "pytest", "pytest-cov", "pytest-regressions", "requests"]
 
 [[package]]
 name = "mcp"
-version = "1.26.0"
+version = "1.27.1"
 description = "Model Context Protocol SDK"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "mcp-1.26.0-py3-none-any.whl", hash = "sha256:904a21c33c25aa98ddbeb47273033c435e595bbacfdb177f4bd87f6dceebe1ca"},
-    {file = "mcp-1.26.0.tar.gz", hash = "sha256:db6e2ef491eecc1a0d93711a76f28dec2e05999f93afd48795da1c1137142c66"},
+    {file = "mcp-1.27.1-py3-none-any.whl", hash = "sha256:1af3c4203b329430fde7a87b4fcb6392a041f5cb851fd68fc674016ab4e7c06f"},
+    {file = "mcp-1.27.1.tar.gz", hash = "sha256:0f47e1820f8f8f941466b39749eb1d1839a04caddca2bc60e9d46e8a99914924"},
 ]
 
 [package.dependencies]
 anyio = ">=4.5"
-httpx = ">=0.27.1"
+httpx = ">=0.27.1,<1.0.0"
 httpx-sse = ">=0.4"
 jsonschema = ">=4.20.0"
 pydantic = ">=2.11.0,<3.0.0"
