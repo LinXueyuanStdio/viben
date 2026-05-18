@@ -86,7 +86,7 @@
     "cloudflared": "^0.7.1",
     "commander": "^12.1.0",
     "cron-parser": "^5.5.0",
-    "fastify": "^5.8.2",
+    "fastify": "^5.8.5",
     "gray-matter": "^4.0.3",
     "nanoid": "^5.1.11",
     "open": "^11.0.0",
