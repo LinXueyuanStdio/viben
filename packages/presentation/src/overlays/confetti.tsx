@@ -139,12 +139,6 @@ export function Confetti({ command }: ConfettiProps) {
     const effectiveFrame = frame * burstMultiplier
 
     for (const p of particles) {
-      // Air resistance: velocity decays exponentially
-      const decayFactor = Math.pow(airResistance, effectiveFrame)
-      const px = p.x + p.vx * effectiveFrame * decayFactor + p.wobbleAmplitude * Math.sin(frame * p.wobbleSpeed)
-      const py = p.y + p.vy * effectiveFrame * decayFactor + 0.5 * gravity * effectiveFrame * effectiveFrame
-      const rot = ((p.rotation + p.rotationSpeed * effectiveFrame) * Math.PI) / 180
-
       // Motion trail
       const trailSteps = 3
       for (let t = trailSteps; t >= 0; t--) {

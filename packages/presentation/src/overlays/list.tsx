@@ -1,4 +1,3 @@
-import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring } from "remotion"
 import type { ListCommand, Point } from "../types"
 import { staggerDelay } from "../utils/motion"

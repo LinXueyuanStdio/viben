@@ -21,7 +21,7 @@ export function Reveal({ command }: RevealProps) {
   const region = _region as Rect
 
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
+  const { fps: _fps } = useVideoConfig()
 
   // Total reveal duration: 30 frames (1 second at 30fps)
   const revealDuration = 30
@@ -69,27 +69,6 @@ export function Reveal({ command }: RevealProps) {
     : direction === "top" ? "180deg"
     : direction === "bottom" ? "0deg"
     : "135deg"
-
-  // Shimmer position along the reveal edge
-  const shimmerPos = progress * 100
-
-  // Compute shimmer edge position for the sparkle line
-  const getShimmerTransform = () => {
-    switch (direction) {
-      case "left":
-        return `translateX(${-progress * 100}%)`
-      case "right":
-        return `translateX(${progress * 100}%)`
-      case "top":
-        return `translateY(${-progress * 100}%)`
-      case "bottom":
-        return `translateY(${progress * 100}%)`
-      case "center":
-        return `scale(${1 - progress})`
-      default:
-        return `translateX(${-progress * 100}%)`
-    }
-  }
 
   const isHorizontal = direction === "left" || direction === "right"
 

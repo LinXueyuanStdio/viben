@@ -201,7 +201,6 @@ function DonutArc({
   const circumference = 2 * Math.PI * arcRadius
   const arcLength = (sweepAngle / 360) * circumference
   const drawnLength = arcLength * clampedProgress
-  const gapSize = circumference - arcLength
   // Offset to start at the right angle
   const rotateOffset = ((arc.startAngle + 90) / 360) * circumference
 
@@ -227,7 +226,7 @@ function DonutArc({
 function CenterLabel({
   segments,
   size,
-  svgSize,
+  svgSize: _svgSize,
   frame,
   fps,
 }: {

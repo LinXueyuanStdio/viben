@@ -104,8 +104,6 @@ export function Heatmap({ command }: HeatmapProps) {
   const labelSettled = labelSpring >= 0.999
   const labelOpacity = labelSettled ? 1 : interpolate(labelSpring, [0, 0.4], [0, 1], CLAMP)
 
-  const uid = `heatmap-${position.x}-${position.y}`
-
   const containerWidth = Math.max(280, labelWidth + cols * (cellSize + gap)) + 40   // 20px padding * 2
   const containerHeight = Math.max(200, rows * (cellSize + gap) + 40) + 40
 

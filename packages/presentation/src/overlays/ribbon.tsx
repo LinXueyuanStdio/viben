@@ -2,7 +2,6 @@ import { useMemo } from "react"
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion"
 import type { RibbonCommand, Point } from "../types"
 import { useCardSize } from "../hooks/use-card-size"
-import { getCardLayout } from "../utils/card-layout"
 
 // Spring configs for layered timing
 const SPRING_CONTAINER = { damping: 16, stiffness: 100, mass: 0.9 } as const
@@ -40,8 +39,6 @@ export function Ribbon({ command }: RibbonProps) {
 
   const cardSizeResult = useCardSize({ width: _width, cardSize: _cardSize })
   const width = cardSizeResult?.width ?? _width
-  const mode = cardSizeResult?.mode ?? "md"
-  const layout = useMemo(() => getCardLayout(mode, width, 60), [mode, width])
   const fontSize = _fontSize
 
   const frame = useCurrentFrame()

@@ -8,7 +8,6 @@ import { getCardLayout } from "../utils/card-layout"
 // Spring configs
 const SPRING_HEADER = { damping: 14, stiffness: 110, mass: 0.8 } as const
 const SPRING_ROW = { damping: 16, stiffness: 120, mass: 0.7 } as const
-const SPRING_HIGHLIGHT = { damping: 10, stiffness: 140, mass: 0.5 } as const
 const CLAMP = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 
 interface TableProps {
@@ -69,11 +68,6 @@ export function Table({ command }: TableProps) {
   // ── Row entrances: non-linear stagger (slow -> fast -> slow / bell curve) ──
   const rowCount = rows.length
   const rowEntrances = rows.map((_, rowIndex) => {
-    // Bell-curve stagger: edges slower, middle faster
-    const normalizedPos = rowCount <= 1 ? 0.5 : rowIndex / (rowCount - 1)
-    // Parabolic stagger: gap is smallest in the middle
-    const staggerMultiplier = 1 + 1.5 * Math.abs(normalizedPos - 0.5)
-    const gap = rowStagger * staggerMultiplier
     const delay = computeRowDelay(rowIndex, rowStagger, rowCount) + 8 // 8 frames after header
     const rowFrame = Math.max(0, frame - delay)
     const progress = frame < delay ? 0 : spring({ frame: rowFrame, fps, config: SPRING_ROW })

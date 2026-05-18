@@ -189,7 +189,7 @@ export function Waterfall({ command }: WaterfallProps) {
         />
 
         {/* Connection lines between bars -- dashed */}
-        {bars.map((bar, i) => {
+        {bars.map((_bar, i) => {
           if (i === 0) return null
           const prevBar = bars[i - 1]
           const prevX = padding.left + barGap + (i - 1) * (barWidth + barGap) + barWidth

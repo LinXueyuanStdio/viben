@@ -101,7 +101,7 @@ export function Radar({ command }: RadarProps) {
     return { cx, cy, radius, angleStep, rings, axisEndpoints, valuePoints, labelPositions }
   }, [axes, axisCount, size, labelMargin])
 
-  const { cx, cy, radius, rings, axisEndpoints, valuePoints, labelPositions } = geometry
+  const { cx, cy, radius: _radius, rings, axisEndpoints, valuePoints, labelPositions } = geometry
 
   // ── Grid ring entrances (staggered from center) ──
   const ringOpacities = rings.map((_, i) => {

@@ -27,7 +27,7 @@ export function Callout({ command }: CalloutProps) {
     position: _position,
     content,
     arrowDirection = "bottom",
-    background = "rgba(0, 0, 0, 0.9)",
+    background: _background = "rgba(0, 0, 0, 0.9)",
     color = "#FFFFFF",
     maxWidth = 240,
   } = command

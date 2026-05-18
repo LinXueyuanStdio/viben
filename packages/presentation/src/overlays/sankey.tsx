@@ -158,7 +158,7 @@ export function Sankey({ command }: SankeyProps) {
     return { nodeLayouts, linkLayouts, nodeWidth, columns }
   }, [nodes, links, svgWidth, svgHeight, labelMargin])
 
-  const { nodeLayouts, linkLayouts, nodeWidth, columns } = sankeyLayout
+  const { nodeLayouts, linkLayouts, nodeWidth, columns: _columns } = sankeyLayout
 
   // Node entrance animations (staggered)
   const nodeEntrances = nodes.map((_, i) => {

@@ -183,7 +183,7 @@ function ConnectorSvg({
   direction,
   connector,
   itemCount,
-  itemSpacing,
+  itemSpacing: _itemSpacing,
   connectorLength,
   progress,
   colors,
