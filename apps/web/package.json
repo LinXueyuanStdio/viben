@@ -37,7 +37,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
-    "framer-motion": "^12.29.2",
+    "framer-motion": "^12.38.0",
     "i18next": "^25.8.17",
     "i18next-browser-languagedetector": "^8.2.1",
     "jose": "^6.2.2",
