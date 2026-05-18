@@ -7,6 +7,7 @@
 import { existsSync, mkdirSync, statSync, readdirSync, readFileSync } from "node:fs";
 import { join, basename } from "node:path";
 import { execSync } from "node:child_process";
+import { nanoid } from "nanoid";
 
 import {
   getActiveTasks,
@@ -22,7 +23,6 @@ import {
   getTodayDate,
   getDatePrefix,
   getYearMonth,
-  slugify,
   FILE_TASK_JSON,
 } from "../../cli/lib/viben-workspace";
 
@@ -517,8 +517,8 @@ export function createTask(
 
   const creator = developer || assignee;
 
-  // Generate slug if not provided
-  const taskSlug = options.slug || slugify(title);
+  // Generate slug if not provided - use nanoid for auto-generated slugs
+  const taskSlug = options.slug || nanoid(8);
   if (!taskSlug) {
     return {
       success: false,

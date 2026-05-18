@@ -76,7 +76,7 @@ describe("CLI account commands", () => {
 
       await program.parseAsync(["node", "test", "account", "list"]);
 
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("My OKX");
       expect(allOutput).toContain("My Binance");
       expect(allOutput).toContain("Total: 2");
@@ -117,7 +117,7 @@ describe("CLI account commands", () => {
         secret: "s",
         passphrase: "p",
       });
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("Account added");
     });
 
@@ -172,7 +172,7 @@ describe("CLI account commands", () => {
 
       await program.parseAsync(["node", "test", "account", "view", "acc-1"]);
 
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("acc-1");
       expect(allOutput).toContain("My OKX");
       expect(allOutput).toContain("abc...xyz");
@@ -208,7 +208,7 @@ describe("CLI account commands", () => {
         secret: undefined,
         passphrase: undefined,
       });
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("Account updated");
     });
 
@@ -230,7 +230,7 @@ describe("CLI account commands", () => {
       await program.parseAsync(["node", "test", "account", "remove", "acc-1"]);
 
       expect(mockRemoveAccount).toHaveBeenCalledWith("acc-1");
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("Account removed");
     });
 
@@ -251,7 +251,7 @@ describe("CLI account commands", () => {
 
       await program.parseAsync(["node", "test", "account", "test", "acc-1"]);
 
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("Connection successful");
       expect(allOutput).toContain("50ms");
     });
@@ -264,7 +264,7 @@ describe("CLI account commands", () => {
       ).rejects.toThrow("process.exit");
 
       expect(exitSpy).toHaveBeenCalledWith(1);
-      const allErrorOutput = consoleErrorSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allErrorOutput = consoleErrorSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allErrorOutput).toContain("Invalid key");
     });
   });
@@ -377,7 +377,7 @@ describe("CLI account commands", () => {
         secret: undefined,
         passphrase: undefined,
       });
-      const allOutput = consoleSpy.mock.calls.map((c) => c[0]).join("\n");
+      const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join("\n");
       expect(allOutput).toContain("Account updated");
     });
   });
