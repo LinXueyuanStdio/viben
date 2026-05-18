@@ -45,6 +45,23 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
+      # React 19 需要整体迁移（新 hooks API、Suspense 变化、移除旧 API）
+      - dependency-name: "react"
+        versions: [">=19.0.0"]
+      - dependency-name: "react-dom"
+        versions: [">=19.0.0"]
+      - dependency-name: "@types/react"
+        versions: [">=19.0.0"]
+      # react-markdown 10 要求 React 19，且有 breaking API 变更
+      - dependency-name: "react-markdown"
+        versions: [">=10.0.0"]
+      # vitest 4 有 breaking changes（配置格式、API 变更）
+      - dependency-name: "vitest"
+        versions: [">=4.0.0"]
 
   - package-ecosystem: npm
     directory: /apps/cli
@@ -56,6 +73,10 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
 
   - package-ecosystem: npm
     directory: /apps/desktop
@@ -67,6 +88,20 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
+      # React 19 需要整体迁移
+      - dependency-name: "react"
+        versions: [">=19.0.0"]
+      - dependency-name: "react-dom"
+        versions: [">=19.0.0"]
+      - dependency-name: "@types/react"
+        versions: [">=19.0.0"]
+      # react-markdown 10 要求 React 19
+      - dependency-name: "react-markdown"
+        versions: [">=10.0.0"]
 
   - package-ecosystem: npm
     directory: /apps/docs
@@ -78,6 +113,17 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
+      # React 19 需要整体迁移
+      - dependency-name: "react"
+        versions: [">=19.0.0"]
+      - dependency-name: "react-dom"
+        versions: [">=19.0.0"]
+      - dependency-name: "@types/react"
+        versions: [">=19.0.0"]
 
   - package-ecosystem: npm
     directory: /apps/web
@@ -89,6 +135,17 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
+      # React 19 需要整体迁移
+      - dependency-name: "react"
+        versions: [">=19.0.0"]
+      - dependency-name: "react-dom"
+        versions: [">=19.0.0"]
+      - dependency-name: "@types/react"
+        versions: [">=19.0.0"]
 
   - package-ecosystem: npm
     directory: /packages/api-client
@@ -100,6 +157,10 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
 
   - package-ecosystem: npm
     directory: /packages/chat
@@ -111,6 +172,10 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
 
   - package-ecosystem: npm
     directory: /packages/core
@@ -122,6 +187,13 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
+      # vitest 4 有 breaking changes（配置格式、API 变更）
+      - dependency-name: "vitest"
+        versions: [">=4.0.0"]
 
   - package-ecosystem: npm
     directory: /packages/kanban
@@ -133,6 +205,10 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
 
   - package-ecosystem: npm
     directory: /packages/ui
@@ -144,6 +220,10 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # TypeScript 6 有大量 breaking changes，需要整体迁移
+      - dependency-name: "typescript"
+        versions: [">=6.0.0"]
 
   # GitHub Actions
   - package-ecosystem: github-actions
@@ -155,4 +235,4 @@ updates:
       - dependencies
       - ci
     commit-message:
-      prefix: "ci(deps)"
+      prefix: "ci(github action deps)"
