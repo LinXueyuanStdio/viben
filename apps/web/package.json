@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@lobehub/icons": "^5.4.0",
+    "@lobehub/icons": "^5.8.0",
     "@neondatabase/serverless": "^1.0.2",
     "dompurify": "^3.3.3",
     "@radix-ui/react-alert-dialog": "^1.1.14",
