@@ -24,9 +24,9 @@ This directory contains specification guides for frontend development. These spe
 |-------|-------------|--------|
 | [Design System](./design-system.md) | Complete design system: colors, fonts, animations, components | ✅ Complete |
 | [Component Guide](./components.md) | React component patterns and best practices | ✅ Complete |
-| [Hook Guide](./hook-guidelines) | Custom hooks and state management | ✅ Complete |
-| [Type Safety](./type-safety) | TypeScript patterns and type definitions | ✅ Complete |
-| [Quality Guide](./quality-guidelines) | Code standards and forbidden patterns | ✅ Complete |
+| [Hook Guide](./hook-guidelines.md) | Custom hooks and state management | ✅ Complete |
+| [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | ✅ Complete |
+| [Quality Guide](./quality-guidelines.md) | Code standards and forbidden patterns | ✅ Complete |
 | [Tailwind v4 Workspace Package Configuration](./tailwind-v4-setup.md) | **Critical** - Tailwind v4 workspace package scanning configuration | ✅ Complete |
 
 ### Feature Guides
