@@ -11,4 +11,5 @@ export { CommitHeatmap } from './commit-heatmap';
 export { CodeFreshnessChart } from './code-freshness-chart';
 export { FileSizeChart } from './file-size-chart';
 export { FileChurnChart } from './file-churn-chart';
+export { ArchitectureChart } from './architecture-chart';
 export type * from './types';

@@ -16,6 +16,7 @@ import {
   CodeFreshnessChart,
   FileSizeChart,
   FileChurnChart,
+  ArchitectureChart,
 } from '../components/code-stats';
 import type { CodeStatsData } from '../components/code-stats';
 
@@ -100,6 +101,13 @@ export default async function CodeStatsPage() {
           {stats.commitActivity && stats.commitActivity.length > 0 && (
             <div className="mb-6">
               <CommitHeatmap data={stats.commitActivity} />
+            </div>
+          )}
+
+          {/* Architecture Dependency Graph (full width) */}
+          {stats.architecture && stats.architecture.nodes.length > 0 && (
+            <div className="mb-6">
+              <ArchitectureChart data={stats.architecture} />
             </div>
           )}
 

@@ -19,6 +19,27 @@ export interface CodeStatsData {
   fileChurn?: FileChurn[];
   codeFreshness?: FreshnessStat[];
   fileSizeDistribution?: SizeDistribution[];
+  architecture?: ArchitectureData;
+}
+
+export interface ArchitectureData {
+  nodes: ArchNode[];
+  edges: ArchEdge[];
+  layers: string[];
+}
+
+export interface ArchNode {
+  id: string;
+  label: string;
+  lines: number;
+  files: number;
+  color: string;
+  layer: string;
+}
+
+export interface ArchEdge {
+  from: string;
+  to: string;
 }
 
 export interface LanguageStat {
