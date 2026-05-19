@@ -14,7 +14,6 @@ export default defineConfig({
   // All other dependencies listed in package.json are auto-externalized by tsup.
   noExternal: ['@viben/core', '@viben/api-client'],
   // Mark Node.js built-in modules as external
+  // All packages in dependencies are auto-externalized by tsup
   platform: 'node',
-  // yaml must be external because yaml@2.8+ uses CJS require("process") which breaks in ESM bundles
-  external: ['yaml'],
 });
