@@ -273,15 +273,29 @@ pub async fn start_region_screenshot<R: Runtime>(
     result
 }
 
-/// Inner logic for region screenshot (capture + store in memory + create overlay).
-/// Separated so that `start_region_screenshot` can recover the main window on failure.
-async fn do_region_screenshot<R: Runtime>(
-    app: &AppHandle<R>,
+/// Data extracted from `xcap::Monitor` (all `Send` types) so the async function
+/// can proceed without holding the non-`Send` monitor value across await points.
+struct MonitorCaptureData {
+    image_id: String,
+    raw_file_path: PathBuf,
+    original_width: u32,
+    original_height: u32,
+    monitor_width: u32,
+    monitor_height: u32,
+    monitor_x: i32,
+    monitor_y: i32,
+    scale_factor: f64,
+}
+
+/// Synchronous helper that captures the screen and stores the RGBA file.
+/// All `xcap::Monitor` usage is confined here so the caller (an async fn)
+/// never holds the non-`Send` value across an `.await` point.
+fn capture_monitor_data(
     monitor_id: Option<u32>,
     trace_id: &str,
     request_started: Instant,
-) -> Result<String, String> {
-    // Find the target monitor
+    store: &ScreenshotStore,
+) -> Result<MonitorCaptureData, String> {
     let monitor = if let Some(id) = monitor_id {
         get_monitor_by_id(id)?
     } else {
@@ -345,9 +359,7 @@ async fn do_region_screenshot<R: Runtime>(
         }),
     );
 
-    // Store metadata for later crop/cleanup.
     let image_id = uuid::Uuid::new_v4().to_string();
-    let store = app.state::<ScreenshotStore>();
     {
         let mut images = store.images.lock().unwrap();
         images.clear();
@@ -375,15 +387,52 @@ async fn do_region_screenshot<R: Runtime>(
         }),
     );
 
-    // Tauri window size/position APIs expect logical pixels.
     let monitor_width = logical_monitor.width;
     let monitor_height = logical_monitor.height;
     let monitor_x = logical_monitor.x;
     let monitor_y = logical_monitor.y;
     let scale_factor = monitor.scale_factor();
-    // Drop `monitor` before any `.await` points — `xcap::Monitor` is not `Send`
-    // and holding it across an await causes a compile error on Windows.
-    drop(monitor);
+    // `monitor` is dropped here at end of this synchronous function.
+
+    Ok(MonitorCaptureData {
+        image_id,
+        raw_file_path,
+        original_width,
+        original_height,
+        monitor_width,
+        monitor_height,
+        monitor_x,
+        monitor_y,
+        scale_factor,
+    })
+}
+
+/// Inner logic for region screenshot (capture + store in memory + create overlay).
+/// Separated so that `start_region_screenshot` can recover the main window on failure.
+async fn do_region_screenshot<R: Runtime>(
+    app: &AppHandle<R>,
+    monitor_id: Option<u32>,
+    trace_id: &str,
+    request_started: Instant,
+) -> Result<String, String> {
+    // Capture the monitor synchronously. `xcap::Monitor` is not `Send`, so all
+    // non-`Send` values must be fully out of scope before the first `.await`.
+    let capture = {
+        let store = app.state::<ScreenshotStore>();
+        capture_monitor_data(monitor_id, trace_id, request_started, &store)?
+    };
+    // `monitor` and `store` are gone; `capture` contains only `Send` types.
+    let MonitorCaptureData {
+        image_id,
+        raw_file_path,
+        original_width,
+        original_height,
+        monitor_width,
+        monitor_height,
+        monitor_x,
+        monitor_y,
+        scale_factor,
+    } = capture;
 
     // Overlay window URL — pass screenshot metadata and temp file path.
     let url = format!(

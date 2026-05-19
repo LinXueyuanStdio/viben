@@ -13,10 +13,6 @@ use tauri::{AppHandle, Manager, Runtime, State};
 use tokio::process::{Child, Command};
 use tokio::sync::RwLock;
 
-// Windows-specific imports for hiding console window
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 // Windows constant to create process without a visible window
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
