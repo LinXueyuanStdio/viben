@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_viben_docs=self.webpackChunk_viben_docs||[]).push([["7745"],{27256(e,c,s){s.d(c,{createArchitectureServices:()=>r.S});var r=s(85796);s(46353)}}]);
