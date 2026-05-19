@@ -381,6 +381,9 @@ async fn do_region_screenshot<R: Runtime>(
     let monitor_x = logical_monitor.x;
     let monitor_y = logical_monitor.y;
     let scale_factor = monitor.scale_factor();
+    // Drop `monitor` before any `.await` points — `xcap::Monitor` is not `Send`
+    // and holding it across an await causes a compile error on Windows.
+    drop(monitor);
 
     // Overlay window URL — pass screenshot metadata and temp file path.
     let url = format!(
