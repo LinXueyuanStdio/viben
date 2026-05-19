@@ -281,51 +281,58 @@ async fn do_region_screenshot<R: Runtime>(
     trace_id: &str,
     request_started: Instant,
 ) -> Result<String, String> {
-    // Find the target monitor
-    let monitor = if let Some(id) = monitor_id {
-        get_monitor_by_id(id)?
-    } else {
-        get_primary_monitor()?
+    // Keep the xcap monitor inside a short-lived scope so the async future
+    // never holds a non-Send monitor across later await points on Windows.
+    let (logical_monitor, scale_factor, original_width, original_height, original_rgba) = {
+        let monitor = if let Some(id) = monitor_id {
+            get_monitor_by_id(id)?
+        } else {
+            get_primary_monitor()?
+        };
+        let logical_monitor = logical_monitor_geometry(&monitor);
+
+        let _ = write_screenshot_trace(
+            trace_id,
+            "rust",
+            "monitor_selected",
+            serde_json::json!({
+                "monitor_id": monitor.id(),
+                "monitor_name": monitor.name(),
+                "monitor_x": monitor.x(),
+                "monitor_y": monitor.y(),
+                "monitor_width": monitor.width(),
+                "monitor_height": monitor.height(),
+                "logical_monitor_x": logical_monitor.x,
+                "logical_monitor_y": logical_monitor.y,
+                "logical_monitor_width": logical_monitor.width,
+                "logical_monitor_height": logical_monitor.height,
+                "scale_factor": monitor.scale_factor(),
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
+
+        let capture_started = Instant::now();
+        let image = monitor
+            .capture_image()
+            .map_err(|e| format!("Failed to capture monitor: {}", e))?;
+        let _ = write_screenshot_trace(
+            trace_id,
+            "rust",
+            "monitor_capture_completed",
+            serde_json::json!({
+                "elapsed_ms": capture_started.elapsed().as_millis(),
+                "total_elapsed_ms": request_started.elapsed().as_millis(),
+            }),
+        );
+
+        (
+            logical_monitor,
+            monitor.scale_factor(),
+            image.width(),
+            image.height(),
+            image.into_raw(),
+        )
     };
-    let logical_monitor = logical_monitor_geometry(&monitor);
-
-    let _ = write_screenshot_trace(
-        trace_id,
-        "rust",
-        "monitor_selected",
-        serde_json::json!({
-            "monitor_id": monitor.id(),
-            "monitor_name": monitor.name(),
-            "monitor_x": monitor.x(),
-            "monitor_y": monitor.y(),
-            "monitor_width": monitor.width(),
-            "monitor_height": monitor.height(),
-            "logical_monitor_x": logical_monitor.x,
-            "logical_monitor_y": logical_monitor.y,
-            "logical_monitor_width": logical_monitor.width,
-            "logical_monitor_height": logical_monitor.height,
-            "scale_factor": monitor.scale_factor(),
-            "total_elapsed_ms": request_started.elapsed().as_millis(),
-        }),
-    );
-
-    let capture_started = Instant::now();
-    let image = monitor
-        .capture_image()
-        .map_err(|e| format!("Failed to capture monitor: {}", e))?;
-    let _ = write_screenshot_trace(
-        trace_id,
-        "rust",
-        "monitor_capture_completed",
-        serde_json::json!({
-            "elapsed_ms": capture_started.elapsed().as_millis(),
-            "total_elapsed_ms": request_started.elapsed().as_millis(),
-        }),
-    );
-
-    let original_width = image.width();
-    let original_height = image.height();
-    let original_rgba = image.into_raw();
     let raw_file_path = std::env::temp_dir().join(format!(
         "viben-screenshot-{}.rgba",
         uuid::Uuid::new_v4()
@@ -380,11 +387,6 @@ async fn do_region_screenshot<R: Runtime>(
     let monitor_height = logical_monitor.height;
     let monitor_x = logical_monitor.x;
     let monitor_y = logical_monitor.y;
-    let scale_factor = monitor.scale_factor();
-    // Drop `monitor` before any `.await` points — `xcap::Monitor` is not `Send`
-    // and holding it across an await causes a compile error on Windows.
-    drop(monitor);
-
     // Overlay window URL — pass screenshot metadata and temp file path.
     let url = format!(
         "/screenshot-overlay.html?id={}&scale={}&trace={}&path={}&pixelWidth={}&pixelHeight={}",

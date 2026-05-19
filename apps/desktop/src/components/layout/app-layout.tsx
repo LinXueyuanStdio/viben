@@ -12,8 +12,8 @@ import { useDesktopDeepLink } from "@/hooks/use-desktop-deep-link";
 import {
   GlobalBreadcrumbShell,
   NavigationShellProvider,
-  TabRouterBridge,
-} from "@/components/navigation";
+} from "@/components/navigation/navigation-shell";
+import { TabRouterBridge } from "@/components/navigation/tab-router-bridge";
 
 export function AppLayout() {
   // Initialize global keyboard shortcuts (Ctrl+Shift+J for create task, etc.)
