@@ -1,0 +1,26 @@
+name: 'Codesign Sidecar Binaries'
+description: 'Ad-hoc codesign sidecar binaries with entitlements (macOS only)'
+
+inputs:
+  binaries-path:
+    description: 'Path to sidecar binaries directory'
+    default: 'apps/desktop/src-tauri/binaries'
+  entitlements-path:
+    description: 'Path to entitlements plist'
+    default: 'apps/desktop/src-tauri/entitlements.plist'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Ad-hoc codesign sidecar binaries
+      shell: bash
+      run: |
+        for bin in ${{ inputs.binaries-path }}/viben-*; do
+          echo "Signing $bin..."
+          codesign --remove-signature "$bin" 2>/dev/null || true
+          codesign --entitlements ${{ inputs.entitlements-path }} --deep --sign - --force "$bin"
+        done
+
+    - name: List sidecar binaries
+      shell: bash
+      run: ls -la ${{ inputs.binaries-path }}/

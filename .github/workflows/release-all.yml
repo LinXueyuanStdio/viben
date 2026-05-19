@@ -31,8 +31,6 @@ concurrency:
 env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
-  # Opt into Node.js 24 for GitHub Actions to avoid deprecation warnings
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # =============================================================================
@@ -109,58 +107,19 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
+          token: ${{ secrets.GH_PAT }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Sync version to package files
         shell: bash
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-
-          # Update root package.json
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-
-          # Update packages/core/package.json (source of __VERSION__ for CLI)
-          cd packages/core
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          cd ../..
-
-          # Update apps/cli/package.json
-          cd apps/cli
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          cd ../..
-
-          echo "Updated version to: ${VERSION}"
+        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
       - name: Build @viben/core
         run: pnpm turbo build --filter=@viben/core
@@ -185,18 +144,9 @@ jobs:
           bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
 
       # Bun-compiled binaries require entitlements for codesign on macOS
-      - name: Ad-hoc codesign sidecar binaries (macOS)
+      - name: Codesign sidecar binaries (macOS)
         if: matrix.platform == 'macos-latest'
-        run: |
-          for bin in apps/desktop/src-tauri/binaries/viben-*; do
-            echo "Signing $bin..."
-            codesign --remove-signature "$bin" 2>/dev/null || true
-            codesign --entitlements apps/desktop/src-tauri/entitlements.plist --deep --sign - --force "$bin"
-          done
-
-      - name: List sidecar binaries
-        shell: bash
-        run: ls -la apps/desktop/src-tauri/binaries/
+        uses: ./.github/actions/codesign-sidecar
 
       # Prepare sidecar artifact directory
       - name: Prepare sidecar artifact
@@ -255,6 +205,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
+          token: ${{ secrets.GH_PAT }}
 
       # Download the sidecar binary built by build-cli
       - name: Download sidecar artifact
@@ -298,15 +249,11 @@ jobs:
           fi
 
       # Ubuntu-only: also run Node.js CLI integration tests
-      - name: Setup Node.js
+      - name: Setup Node.js + pnpm (for integration tests)
         if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/setup-node@v6
+        uses: ./.github/actions/setup-node-pnpm
         with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        if: matrix.platform == 'ubuntu-22.04'
-        uses: pnpm/action-setup@v6
+          install: 'false'
 
       - name: Download CLI build artifact
         if: matrix.platform == 'ubuntu-22.04'
@@ -373,10 +320,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
         with:
-          node-version: '22'
+          install: 'false'
           registry-url: 'https://registry.npmjs.org'
 
       # Reuse CLI build from build-cli job (already version-synced and built)
@@ -499,7 +446,7 @@ jobs:
             sha256 "${SHA256}"
             license "MIT"
 
-            depends_on "node@20"
+            depends_on "node"
 
             def install
               system "npm", "install", *std_npm_args
@@ -560,27 +507,10 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
+          token: ${{ secrets.GH_PAT }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -605,9 +535,6 @@ jobs:
             libxdo-dev \
             libfuse2
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       # Download sidecar binaries from build-cli job
       - name: Download sidecar artifact
         uses: actions/download-artifact@v8
@@ -619,30 +546,16 @@ jobs:
         if: matrix.platform != 'windows-latest'
         run: chmod +x apps/desktop/src-tauri/binaries/viben-*
 
-      - name: Ad-hoc codesign sidecar binaries (macOS)
+      - name: Codesign sidecar binaries (macOS)
         if: matrix.platform == 'macos-latest'
-        run: |
-          for bin in apps/desktop/src-tauri/binaries/viben-*; do
-            echo "Signing $bin..."
-            codesign --remove-signature "$bin" 2>/dev/null || true
-            codesign --entitlements apps/desktop/src-tauri/entitlements.plist --deep --sign - --force "$bin"
-          done
-
-      - name: List sidecar binaries
-        shell: bash
-        run: ls -la apps/desktop/src-tauri/binaries/
+        uses: ./.github/actions/codesign-sidecar
 
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...
 
-      - name: Sync version to tauri.conf.json
+      - name: Sync version
         shell: bash
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          cd apps/desktop/src-tauri
-          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
-          mv tauri.conf.tmp.json tauri.conf.json
-          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
       # macOS: Build both ARM64 and x64 targets
       # Note: DMG bundling is flaky in CI, using retryAttempts to handle intermittent failures

@@ -91,6 +91,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.GH_PAT }}
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -212,6 +215,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.GH_PAT }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
