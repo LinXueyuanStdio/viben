@@ -390,14 +390,14 @@ async fn start_gateway_process(
         }
     }
 
-    // Wait for gateway to start
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    // Wait for gateway to start (Windows needs more time to boot the Node.js bundle)
+    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
 
-    // Check if it's reachable (with retries)
-    for attempt in 1..=10 {
+    // Check if it's reachable (with retries, up to ~12 seconds total)
+    for attempt in 1..=25 {
         if verbose {
             eprintln!(
-                "[gateway] Ping attempt {}/10 to {}:{}",
+                "[gateway] Ping attempt {}/25 to {}:{}",
                 attempt, config.host, config.port
             );
         }
@@ -424,7 +424,7 @@ async fn start_gateway_process(
             });
         }
 
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(400)).await;
     }
 
     // Failed to start - collect stderr for error message
@@ -441,7 +441,7 @@ async fn start_gateway_process(
     } else if !collected_stderr.is_empty() {
         format!("Gateway failed to start:\n{}", collected_stderr)
     } else {
-        format!("Gateway started but not reachable at {}:{} after 10 attempts", config.host, config.port)
+        format!("Gateway started but not reachable at {}:{} after 25 attempts (12s)", config.host, config.port)
     };
 
     // Kill the process
@@ -639,10 +639,38 @@ pub fn get_bundled_viben_path<R: Runtime>(app: AppHandle<R>) -> Result<String, S
         .resource_dir()
         .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
-    // Check in resource directory (for bundled resources)
+    // Check in resource directory with exact SIDECAR_NAME
     let resource_path = resource_dir.join("binaries").join(SIDECAR_NAME);
     if resource_path.exists() {
         return Ok(resource_path.to_string_lossy().to_string());
+    }
+
+    // Dev mode: scan binaries/ for target-triple variants
+    // (e.g., viben-x86_64-pc-windows-msvc.exe). Pick the most recently modified.
+    let binaries_dir = resource_dir.join("binaries");
+    if binaries_dir.is_dir() {
+        let suffix = if cfg!(target_os = "windows") { ".exe" } else { "" };
+        let mut best: Option<(std::path::PathBuf, std::time::SystemTime)> = None;
+        if let Ok(entries) = std::fs::read_dir(&binaries_dir) {
+            for entry in entries.flatten() {
+                let fname = entry.file_name();
+                let fname_lower = fname.to_string_lossy().to_lowercase();
+                if fname_lower.starts_with("viben-") && fname_lower.ends_with(suffix) {
+                    let path = entry.path();
+                    if let Ok(meta) = path.metadata() {
+                        let modified = meta
+                            .modified()
+                            .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+                        if best.as_ref().map_or(true, |(_, t)| modified > *t) {
+                            best = Some((path, modified));
+                        }
+                    }
+                }
+            }
+        }
+        if let Some((path, _)) = best {
+            return Ok(path.to_string_lossy().to_string());
+        }
     }
 
     // Also check directly in resource dir (some bundle configurations)
@@ -651,8 +679,8 @@ pub fn get_bundled_viben_path<R: Runtime>(app: AppHandle<R>) -> Result<String, S
         return Ok(direct_resource_path.to_string_lossy().to_string());
     }
 
-    // Check next to the main executable (Tauri places sidecars here)
-    if let Some(exe_path) = std::env::current_exe().ok() {
+    // Check next to the main executable (Tauri places sidecars here in release builds)
+    if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
             let sidecar_path = exe_dir.join(SIDECAR_NAME);
             if sidecar_path.exists() {

@@ -39,7 +39,8 @@ pub async fn open_workspace_in_new_window<R: Runtime>(
     }
 
     // Create new window with similar settings to main window
-    let window = WebviewWindowBuilder::new(
+    #[allow(unused_mut)]
+    let mut builder = WebviewWindowBuilder::new(
         &app,
         &window_label,
         WebviewUrl::App(url.into()),
@@ -47,9 +48,17 @@ pub async fn open_workspace_in_new_window<R: Runtime>(
     .title(title.as_deref().unwrap_or("Viben"))
     .inner_size(1200.0, 800.0)
     .min_inner_size(900.0, 600.0)
-    .center()
-    .build()
-    .map_err(|e| format!("Failed to create window: {}", e))?;
+    .center();
+
+    // On Windows, remove the native title bar so the custom tab bar is at the top
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.decorations(false);
+    }
+
+    let window = builder
+        .build()
+        .map_err(|e| format!("Failed to create window: {}", e))?;
 
     // Focus the new window
     window.set_focus()

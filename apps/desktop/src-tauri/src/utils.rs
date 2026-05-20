@@ -107,6 +107,16 @@ fn find_executable_uncached(name: &str) -> Option<PathBuf> {
         }
     }
 
+    // Windows: scan version managers (nvm-windows, fnm, volta, scoop)
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(path) = scan_version_managers_windows(name) {
+            if verify_executable(&path) {
+                return Some(path);
+            }
+        }
+    }
+
     // 3. Check known installation paths (Homebrew, system paths, etc.)
     for candidate in known_install_paths(name).into_iter().flatten() {
         if candidate.exists() && verify_executable(&candidate) {
@@ -278,6 +288,48 @@ pub fn find_all_node_installations() -> Vec<PathBuf> {
         }
     }
 
+    // Windows: scan nvm-windows, fnm, volta, scoop paths
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(home) = dirs::home_dir() {
+            // nvm-windows: %APPDATA%\nvm\v*\node.exe
+            let appdata = std::env::var("APPDATA")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| home.join("AppData\\Roaming"));
+            let nvm_dir = appdata.join("nvm");
+            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+                for entry in entries.flatten() {
+                    let node_exe = entry.path().join("node.exe");
+                    add_if_valid(node_exe);
+                }
+            }
+
+            // fnm (Windows): %LOCALAPPDATA%\fnm_multishells is ephemeral;
+            // actual installs live in %LOCALAPPDATA%\fnm\node-versions\*\installation
+            let local_appdata = std::env::var("LOCALAPPDATA")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| home.join("AppData\\Local"));
+            let fnm_dir = local_appdata.join("fnm").join("node-versions");
+            if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
+                for entry in entries.flatten() {
+                    let node_exe = entry.path().join("installation").join("node.exe");
+                    add_if_valid(node_exe);
+                }
+            }
+
+            // Volta (Windows): %LOCALAPPDATA%\Volta\toolchain\bin\node.exe
+            let volta_node = local_appdata.join("Volta").join("toolchain").join("bin").join("node.exe");
+            add_if_valid(volta_node);
+
+            // Scoop: ~/scoop/apps/nodejs/current/node.exe
+            let scoop_node = home.join("scoop").join("apps").join("nodejs").join("current").join("node.exe");
+            add_if_valid(scoop_node);
+            // Some Scoop manifests use "nodejs-lts"
+            let scoop_lts = home.join("scoop").join("apps").join("nodejs-lts").join("current").join("node.exe");
+            add_if_valid(scoop_lts);
+        }
+    }
+
     // 3. Check known installation paths
     for candidate in known_install_paths("node").into_iter().flatten() {
         add_if_valid(candidate);
@@ -308,4 +360,59 @@ pub fn get_node_version(path: &PathBuf) -> Option<String> {
                 .trim_start_matches('v')
                 .to_string()
         })
+}
+
+/// Scan Windows version-manager directories (nvm-windows, fnm, volta, scoop) for an executable.
+/// Windows GUI apps launched from the Start Menu may not inherit full shell PATH.
+#[cfg(target_os = "windows")]
+fn scan_version_managers_windows(name: &str) -> Option<PathBuf> {
+    let home = dirs::home_dir()?;
+
+    let appdata = std::env::var("APPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| home.join("AppData\\Roaming"));
+    let local_appdata = std::env::var("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| home.join("AppData\\Local"));
+
+    // nvm-windows: %APPDATA%\nvm\<version>\<name>.exe
+    // nvm-windows also sets the "current" symlink at %NVM_HOME%\<name>.exe
+    let nvm_dir = appdata.join("nvm");
+    if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
+        for entry in entries.flatten() {
+            let candidate = entry.path().join(format!("{}.exe", name));
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    // fnm (Windows): %LOCALAPPDATA%\fnm\node-versions\*\installation\<name>.exe
+    let fnm_dir = local_appdata.join("fnm").join("node-versions");
+    if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
+        for entry in entries.flatten() {
+            let candidate = entry.path().join("installation").join(format!("{}.exe", name));
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    // Volta (Windows): %LOCALAPPDATA%\Volta\toolchain\bin\<name>.exe
+    let volta_bin = local_appdata.join("Volta").join("toolchain").join("bin").join(format!("{}.exe", name));
+    if volta_bin.exists() {
+        return Some(volta_bin);
+    }
+
+    // Scoop: ~/scoop/apps/<name>/current/<name>.exe  or  ~/scoop/shims/<name>.exe
+    let scoop_shim = home.join("scoop").join("shims").join(format!("{}.exe", name));
+    if scoop_shim.exists() {
+        return Some(scoop_shim);
+    }
+    let scoop_shim_cmd = home.join("scoop").join("shims").join(format!("{}.cmd", name));
+    if scoop_shim_cmd.exists() {
+        return Some(scoop_shim_cmd);
+    }
+
+    None
 }

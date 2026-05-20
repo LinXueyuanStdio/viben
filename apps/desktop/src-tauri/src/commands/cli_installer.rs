@@ -1032,14 +1032,38 @@ async fn install_node_macos(installer_path: &str, window: &Window) -> Result<Ins
 
 #[cfg(target_os = "windows")]
 async fn install_node_windows(installer_path: &str, window: &Window) -> Result<InstallEnvResult, String> {
-    // Run msiexec with silent installation
-    // Use CREATE_NO_WINDOW to prevent CMD window from flashing
-    let mut cmd = Command::new("msiexec");
-    cmd.args(["/i", installer_path, "/qn", "/norestart"]);
+    // Node.js MSI installs to C:\Program Files\nodejs\, which requires elevation.
+    // Use PowerShell Start-Process with -Verb RunAs to trigger UAC prompt,
+    // then wait for the installation to complete.
+    let _ = window.emit(
+        "node-install-progress",
+        DownloadProgress {
+            bytes_downloaded: 0,
+            total_bytes: None,
+            percent: Some(10.0),
+            stage: "installing".to_string(),
+            message: "正在请求管理员权限安装 Node.js...".to_string(),
+        },
+    );
+
+    // Use PowerShell to run msiexec with elevation via Start-Process -Verb RunAs
+    // /passive shows a minimal progress bar so users can see UAC prompt
+    // In PowerShell single-quoted strings, single quotes are escaped by doubling them ('' = literal ').
+    // Double quotes need no escaping inside single-quoted strings.
+    let safe_path = installer_path.replace('\'', "''");
+    let ps_script = format!(
+        r#"$proc = Start-Process msiexec -ArgumentList '/i "{}" /passive /norestart' -Verb RunAs -Wait -PassThru; exit $proc.ExitCode"#,
+        safe_path
+    );
+
+    let mut cmd = Command::new("powershell");
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", &ps_script]);
     cmd.creation_flags(CREATE_NO_WINDOW);
 
     let output = cmd.output()
-        .map_err(|e| format!("Failed to run msiexec: {}", e))?;
+        .map_err(|e| format!("Failed to run PowerShell: {}", e))?;
+
+    let exit_code = output.status.code().unwrap_or(-1);
 
     let _ = window.emit(
         "node-install-progress",
@@ -1048,11 +1072,11 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
             total_bytes: None,
             percent: Some(100.0),
             stage: "installing".to_string(),
-            message: "安装完成".to_string(),
+            message: if exit_code == 0 { "安装完成".to_string() } else { format!("安装退出码: {}", exit_code) },
         },
     );
 
-    if output.status.success() {
+    if output.status.success() || exit_code == 0 {
         // Invalidate cached paths since node was installed
         crate::utils::clear_cache();
         Ok(InstallEnvResult {
@@ -1063,11 +1087,20 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
         })
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        // Exit code 1602 = user cancelled UAC
+        let stage = if exit_code == 1602 {
+            "user-cancelled"
+        } else if exit_code == 1603 {
+            "install-failed"
+        } else {
+            "installer-failed"
+        };
         Ok(InstallEnvResult {
             ok: false,
-            stdout: Some(String::from_utf8_lossy(&output.stdout).to_string()),
-            stderr: Some(stderr),
-            stage: Some("installer-failed".to_string()),
+            stdout: if stdout.is_empty() { None } else { Some(stdout) },
+            stderr: if stderr.is_empty() { Some(format!("msiexec exit code: {}", exit_code)) } else { Some(stderr) },
+            stage: Some(stage.to_string()),
         })
     }
 }

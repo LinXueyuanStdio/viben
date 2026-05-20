@@ -282,6 +282,13 @@ pub fn run() {
                     auto_start_gateway(&gateway_state_clone, exe_dir).await;
                 });
 
+                // On Windows, remove the native title bar so the custom tab bar
+                // sits at the very top of the window.
+                #[cfg(target_os = "windows")]
+                if let Some(main_win) = app.get_webview_window("main") {
+                    let _ = main_win.set_decorations(false);
+                }
+
                 // Set up blur handler for popup window and ensure it starts hidden
                 if let Some(popup) = app.get_webview_window("tray-popup") {
                     // Ensure popup is hidden on startup (safety net)
