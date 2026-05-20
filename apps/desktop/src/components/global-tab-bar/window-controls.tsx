@@ -104,7 +104,7 @@ export function WindowControls() {
   }
 
   return (
-    <div className="flex items-center -mr-2">
+    <div className="flex items-center">
       {/* Minimize */}
       <button
         onClick={handleMinimize}

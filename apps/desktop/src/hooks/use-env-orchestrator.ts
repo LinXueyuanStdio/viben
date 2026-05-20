@@ -554,11 +554,18 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
           case "python": {
             appendLog(nodeId, "$ python3 --version");
             appendLog(nodeId, "Scanning: /usr/bin, /usr/local/bin, ~/.pyenv, ...");
-            await python.detectPython(true);
+            // Use the returned value directly — python.selectedPython would be stale
+            // because React has not re-rendered yet when we check it after detectPython().
+            const freshPythonInfo = await python.detectPython(true);
 
-            if (python.selectedPython) {
-              appendLog(nodeId, `✓ Python ${python.selectedPython.version} found at ${python.selectedPython.path}`);
-              updateNode(nodeId, "success", undefined, python.selectedPython);
+            if (freshPythonInfo?.found && freshPythonInfo.path) {
+              const freshPython = {
+                path: freshPythonInfo.path,
+                version: freshPythonInfo.version ?? null,
+                is_valid: true,
+              };
+              appendLog(nodeId, `✓ Python ${freshPython.version} found at ${freshPython.path}`);
+              updateNode(nodeId, "success", undefined, freshPython);
             } else {
               appendLog(nodeId, "⚠ No Python installation found");
               // Python is optional, so we use warning instead of error

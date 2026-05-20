@@ -87,11 +87,12 @@ export function usePython() {
     return Date.now() - cliToolsCache.timestamp < CACHE_TTL;
   }, [cliToolsCache]);
 
-  // Detect Python using the new CLI tools system
-  const detectPython = useCallback(async (forceRefresh = false) => {
+  // Detect Python using the new CLI tools system.
+  // Returns the fresh CliToolInfo for python so callers don't depend on stale closure state.
+  const detectPython = useCallback(async (forceRefresh = false): Promise<CliToolInfo | null> => {
     // Skip if cache is valid and not forcing refresh
     if (!forceRefresh && isCacheValid()) {
-      return;
+      return cliToolsCache?.data?.python ?? null;
     }
 
     console.log("[usePython] Starting detection...");
@@ -105,14 +106,16 @@ export function usePython() {
       });
       console.log("[usePython] Detection result:", result);
       setCliToolsCache(result);
+      return result.python ?? null;
     } catch (err) {
       console.error("[usePython] Detection error:", err);
       setError(err instanceof Error ? err.message : String(err));
+      return null;
     } finally {
       setLoading(false);
       console.log("[usePython] Detection complete");
     }
-  }, [userSelectedPythonPath, isCacheValid, setCliToolsCache]);
+  }, [userSelectedPythonPath, isCacheValid, setCliToolsCache, cliToolsCache]);
 
   // Check a specific Python path (backward compatibility)
   const checkPythonPath = useCallback(async (path: string): Promise<PythonInfo> => {

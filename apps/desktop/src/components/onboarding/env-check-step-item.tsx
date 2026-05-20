@@ -263,13 +263,11 @@ export function EnvCheckStepItem({
         aria-describedby={description ? descriptionId : undefined}
         aria-live="polite"
         className={cn(
-          "group relative rounded-xl border p-4 transition-all duration-200",
+          "group relative rounded-xl border transition-all duration-200",
           "backdrop-blur-sm",
           statusStyles[status],
-          hasExpandableContent && "cursor-pointer",
           className
         )}
-        onClick={handleHeaderClick}
       >
         {/* Subtle glow effect for active states */}
         {(status === "checking" || status === "success") && (
@@ -282,8 +280,16 @@ export function EnvCheckStepItem({
           />
         )}
 
-        {/* Main content */}
-        <div className="relative flex items-center gap-3">
+        {/* Clickable header area */}
+        <div
+          className={cn(
+            "relative p-4",
+            hasExpandableContent && "cursor-pointer"
+          )}
+          onClick={handleHeaderClick}
+        >
+          {/* Main content */}
+          <div className="flex items-center gap-3">
           {/* Status Icon with background */}
           <div
             className={cn(
@@ -539,12 +545,13 @@ export function EnvCheckStepItem({
             )}
           </div>
         </div>
+        </div>{/* end clickable header area */}
 
-        {/* Expandable Content */}
+        {/* Expandable Content — outside the clickable header to prevent accidental collapse */}
         {hasExpandableContent && (
           <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
-            <div className="mt-4 pt-4 border-t border-border/50">
-              <div className="space-y-3 pl-12">
+            <div className="px-4 pb-4 pt-0 border-t border-border/50 mt-0">
+              <div className="space-y-3 pl-12 pt-4">
                 {/* Path display */}
                 {path && (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">

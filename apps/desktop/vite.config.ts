@@ -74,15 +74,16 @@ export default defineConfig(async () => ({
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
   // 2. tauri expects a fixed port, fail if that port is not available
+  // Note: ports 1249-1548 are excluded by Windows (Hyper-V), so use 1549+
   server: {
-    port: 1420,
+    port: 1549,
     strictPort: true,
     host: host || false,
     hmr: host
       ? {
           protocol: "ws",
           host,
-          port: 1421,
+          port: 1550,
         }
       : undefined,
     watch: {
