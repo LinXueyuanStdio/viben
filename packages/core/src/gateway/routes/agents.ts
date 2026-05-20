@@ -11,6 +11,7 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { agentManager } from "../../agents";
 import type { AppState } from "../state";
@@ -177,7 +178,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   }, async (request) => {
     const { workspace_path, include_global } = request.query;
     const includeGlobal = include_global !== "false"; // Default: true
-    const homeDir = process.env.HOME || "/";
+    const homeDir = homedir();
 
     // Helper to transform agent to API response format
     const transformAgent = (a: Awaited<ReturnType<typeof agentManager.getAgent>>, sourceOverride?: "global" | "workspace", workspacePathOverride?: string) => {
@@ -302,7 +303,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       });
       reply.code(201);
 
-      const homeDir = process.env.HOME || "/";
+      const homeDir = homedir();
       // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
       const isGlobalAgent = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/");
       const agentSource = isGlobalAgent ? "global" : "workspace";
@@ -481,7 +482,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         const agent = await agentManager.createFromTemplate(id, agent_id, { name, base_path }, template_workspace_path);
         reply.code(201);
 
-        const homeDir = process.env.HOME || "/";
+        const homeDir = homedir();
         // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
         const isGlobalAgent = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/");
         const agentSource = isGlobalAgent ? "global" : "workspace";
@@ -862,7 +863,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     "/api/agent/:id/availability",
     async (request, reply) => {
       const { id } = request.params;
-      const homeDir = process.env.HOME || "/";
+      const homeDir = homedir();
 
       // Known executor types that support availability check
       const executorTypes = [
@@ -1047,7 +1048,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   }>("/api/agent/:id", async (request, reply) => {
     const { id } = request.params;
     const { workspace_path } = request.query;
-    const homeDir = process.env.HOME || "/";
+    const homeDir = homedir();
 
     let agent = null;
     let source: "global" | "workspace" = "global";
@@ -1161,7 +1162,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     try {
       const agent = await agentManager.updateAgent(id, updates, workspace_path);
 
-      const homeDir = process.env.HOME || "/";
+      const homeDir = homedir();
       // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
       const isGlobalAgent = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/");
       const agentSource = isGlobalAgent ? "global" : "workspace";

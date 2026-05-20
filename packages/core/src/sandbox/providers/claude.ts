@@ -5,7 +5,7 @@
  * Supports network access.
  */
 import { spawn, execSync, type ChildProcess } from "child_process";
-import { platform } from "os";
+import { platform, homedir } from "os";
 import * as path from "path";
 import type {
   ISandboxProvider,
@@ -28,7 +28,7 @@ async function getSrtPath(): Promise<string | undefined> {
     // Local node_modules
     "./node_modules/.bin/srt",
     // User's npm bin
-    `${process.env.HOME}/.npm-global/bin/srt`,
+    `${homedir()}/.npm-global/bin/srt`,
     // Homebrew on macOS
     "/opt/homebrew/bin/srt",
     "/usr/local/bin/srt",

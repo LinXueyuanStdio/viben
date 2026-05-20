@@ -413,10 +413,17 @@ async function startGateway(
     fs.closeSync(logFd);
     child.unref();
 
-    // Wait a bit and check if it started
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Poll for gateway to become reachable (Windows Node.js startup ~5s)
+    let pid: number | null = null;
+    const pollStart = Date.now();
+    const pollMaxMs = 15_000; // 15 seconds
+    const pollInterval = 500; // check every 500ms
+    while (Date.now() - pollStart < pollMaxMs) {
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+      pid = findProcessOnPort(port);
+      if (pid !== null) break;
+    }
 
-    const pid = findProcessOnPort(port);
     if (pid !== null) {
       output(
         ctx,

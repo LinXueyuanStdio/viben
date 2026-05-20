@@ -9,7 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir, platform, arch, hostname, release, type } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { access, constants, readdir, realpath } from "node:fs/promises";
 import { getConfigPath } from "../../config/paths";
 import { readYaml, writeYaml } from "../../config/yaml";
@@ -161,13 +161,56 @@ function getPythonCandidates(): string[] {
       join(home, ".pyenv/shims/python3"),
     );
   } else if (process.platform === "win32") {
-    // Windows paths
+    // Windows paths — PATH resolution is handled in checkPython via `where`
     const localAppData = process.env.LOCALAPPDATA || join(home, "AppData/Local");
+    // Python Launcher (py.exe) — installed by Python 3.3+ installer, always in System32
+    candidates.push("py", "C:\\Windows\\py.exe");
+    // User-level install (default Python installer)
     candidates.push(
+      join(localAppData, "Programs/Python/Python314/python.exe"),
       join(localAppData, "Programs/Python/Python313/python.exe"),
       join(localAppData, "Programs/Python/Python312/python.exe"),
       join(localAppData, "Programs/Python/Python311/python.exe"),
       join(localAppData, "Programs/Python/Python310/python.exe"),
+      join(localAppData, "Programs/Python/Python39/python.exe"),
+    );
+    // Microsoft Store Python
+    candidates.push(
+      join(localAppData, "Microsoft/WindowsApps/python.exe"),
+      join(localAppData, "Microsoft/WindowsApps/python3.exe"),
+    );
+    // pyenv-win
+    candidates.push(
+      join(home, ".pyenv/pyenv-win/shims/python.exe"),
+      join(home, ".pyenv/pyenv-win/shims/python3.exe"),
+    );
+    // Scoop
+    candidates.push(join(home, "scoop/apps/python/current/python.exe"));
+    // Conda / Miniconda / Anaconda — user-level installs
+    candidates.push(
+      join(home, "miniconda3/python.exe"),
+      join(home, "anaconda3/python.exe"),
+      join(home, "Miniconda3/python.exe"),
+      join(home, "Anaconda3/python.exe"),
+      join(localAppData, "miniconda3/python.exe"),
+      join(localAppData, "anaconda3/python.exe"),
+    );
+    // Conda / Miniconda / Anaconda — machine-wide installs (all-users)
+    candidates.push(
+      "C:\\ProgramData\\miniconda3\\python.exe",
+      "C:\\ProgramData\\anaconda3\\python.exe",
+      "C:\\ProgramData\\Miniconda3\\python.exe",
+      "C:\\ProgramData\\Anaconda3\\python.exe",
+      "C:\\miniconda3\\python.exe",
+      "C:\\anaconda3\\python.exe",
+    );
+    // Machine-wide installs
+    candidates.push(
+      "C:\\Python314\\python.exe",
+      "C:\\Python313\\python.exe",
+      "C:\\Python312\\python.exe",
+      "C:\\Python311\\python.exe",
+      "C:\\Python310\\python.exe",
     );
   } else {
     // Linux paths
@@ -183,11 +226,13 @@ function getPythonCandidates(): string[] {
 }
 
 /**
- * Check if a path exists and is executable
+ * Check if a path exists and is executable.
+ * On Windows, X_OK is not meaningful — use F_OK (existence check) instead.
  */
-async function isExecutable(path: string): Promise<boolean> {
+async function isExecutable(filePath: string): Promise<boolean> {
   try {
-    await access(path, constants.X_OK);
+    const mode = process.platform === "win32" ? constants.F_OK : constants.X_OK;
+    await access(filePath, mode);
     return true;
   } catch {
     return false;
@@ -199,20 +244,30 @@ async function isExecutable(path: string): Promise<boolean> {
  */
 async function checkPython(path: string): Promise<PythonInfo | null> {
   try {
-    // For non-absolute paths, use which to resolve
+    // For non-absolute paths, use which/where to resolve
     let actualPath = path;
-    if (!path.startsWith("/") && !path.includes("\\")) {
+    const isAbsolute = path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path);
+    if (!isAbsolute) {
       try {
-        const { stdout } = await execAsync(`which ${path}`);
-        actualPath = stdout.trim();
+        const whichCmd = process.platform === "win32" ? `where "${path}"` : `which ${path}`;
+        const { stdout } = await execAsync(whichCmd, { windowsHide: true });
+        // `where` on Windows may return multiple lines; take the first non-empty one
+        actualPath = stdout.trim().split(/\r?\n/)[0].trim();
       } catch {
-        // which failed, try the path directly
+        // which/where failed, try the path directly
       }
     }
 
-    // Check if file exists and is executable
-    if (actualPath.startsWith("/") || actualPath.includes("\\")) {
-      if (!await isExecutable(actualPath)) {
+    // Check if file exists
+    // On Windows, X_OK check is unreliable; just check file existence
+    if (actualPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(actualPath)) {
+      if (process.platform === "win32") {
+        try {
+          await access(actualPath, constants.F_OK);
+        } catch {
+          return null;
+        }
+      } else if (!await isExecutable(actualPath)) {
         return null;
       }
     }
@@ -220,6 +275,7 @@ async function checkPython(path: string): Promise<PythonInfo | null> {
     // Get Python version
     const { stdout, stderr } = await execAsync(`"${actualPath}" --version`, {
       timeout: 5000,
+      windowsHide: true,
     });
 
     const versionOutput = stdout.trim() || stderr.trim();
@@ -420,11 +476,58 @@ function getCliToolCandidates(tool: CliToolName): string[] {
     const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
 
     if (tool === "python") {
+      // First try PATH resolution (handled in detectCliTool step 3)
+      candidates.push("python", "python3", "py");
+      // Python Launcher (installed by Python 3.3+ in System32)
+      candidates.push("C:\\Windows\\py.exe");
+      // User-level install (default Python installer)
       candidates.push(
+        join(localAppData, "Programs/Python/Python314/python.exe"),
         join(localAppData, "Programs/Python/Python313/python.exe"),
         join(localAppData, "Programs/Python/Python312/python.exe"),
         join(localAppData, "Programs/Python/Python311/python.exe"),
         join(localAppData, "Programs/Python/Python310/python.exe"),
+        join(localAppData, "Programs/Python/Python39/python.exe"),
+      );
+      // Microsoft Store Python
+      candidates.push(
+        join(localAppData, "Microsoft/WindowsApps/python.exe"),
+        join(localAppData, "Microsoft/WindowsApps/python3.exe"),
+      );
+      // pyenv-win
+      candidates.push(
+        join(home, ".pyenv/pyenv-win/shims/python.exe"),
+        join(home, ".pyenv/pyenv-win/shims/python3.exe"),
+      );
+      // Scoop
+      candidates.push(
+        join(home, "scoop/apps/python/current/python.exe"),
+      );
+      // Conda / Miniconda / Anaconda — user-level installs
+      candidates.push(
+        join(home, "miniconda3/python.exe"),
+        join(home, "anaconda3/python.exe"),
+        join(home, "Miniconda3/python.exe"),
+        join(home, "Anaconda3/python.exe"),
+        join(localAppData, "miniconda3/python.exe"),
+        join(localAppData, "anaconda3/python.exe"),
+      );
+      // Conda / Miniconda / Anaconda — machine-wide installs (all-users)
+      candidates.push(
+        "C:\\ProgramData\\miniconda3\\python.exe",
+        "C:\\ProgramData\\anaconda3\\python.exe",
+        "C:\\ProgramData\\Miniconda3\\python.exe",
+        "C:\\ProgramData\\Anaconda3\\python.exe",
+        "C:\\miniconda3\\python.exe",
+        "C:\\anaconda3\\python.exe",
+      );
+      // Machine-wide installs
+      candidates.push(
+        "C:\\Python314\\python.exe",
+        "C:\\Python313\\python.exe",
+        "C:\\Python312\\python.exe",
+        "C:\\Python311\\python.exe",
+        "C:\\Python310\\python.exe",
       );
     } else if (tool === "git") {
       candidates.push(
@@ -512,6 +615,7 @@ async function detectCliToolVersion(
   try {
     const { stdout, stderr } = await execAsync(`"${toolPath}" ${versionArg}`, {
       timeout: 5000,
+      windowsHide: true,
     });
 
     const output = stdout.trim() || stderr.trim();
@@ -631,13 +735,17 @@ async function detectCliTool(
   }
 
   // 3. Try system PATH using 'which' (Unix) or 'where' (Windows)
-  const toolCmd = tool === "python" ? "python3" : tool;
+  // On Windows use 'python' (primary exe name); on Unix prefer 'python3'
+  const toolCmd = tool === "python"
+    ? (process.platform === "win32" ? "python" : "python3")
+    : tool;
   try {
     const whichCmd = process.platform === "win32" ? "where" : "which";
-    const { stdout } = await execAsync(`${whichCmd} ${toolCmd}`, { timeout: 5000 });
-    const toolPath = stdout.trim().split("\n")[0]; // Take first result
+    const { stdout } = await execAsync(`${whichCmd} ${toolCmd}`, { timeout: 5000, windowsHide: true });
+    // Windows `where` may return multiple CRLF-delimited lines; collect all valid results
+    const toolPaths = stdout.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
-    if (toolPath) {
+    for (const toolPath of toolPaths) {
       const { version, valid } = await detectCliToolVersion(toolPath, tool);
       if (valid) {
         await addPath(toolPath, version || undefined, getToolSource(toolPath));
@@ -645,6 +753,88 @@ async function detectCliTool(
     }
   } catch {
     // which/where failed, continue to other methods
+  }
+
+  // 3b. Windows: derive Python from conda executable path
+  // conda.exe lives in Scripts/, and python.exe is in the parent directory
+  let condaBaseDir: string | null = null;
+  if (tool === "python" && process.platform === "win32") {
+    try {
+      const { stdout: condaStdout } = await execAsync("where conda", { timeout: 3000, windowsHide: true });
+      const condaExe = condaStdout.trim().split(/\r?\n/)[0].trim();
+      if (condaExe) {
+        // conda.exe → ..\python.exe  (conda base env)
+        condaBaseDir = join(dirname(condaExe), "..");
+        const pythonFromConda = join(condaBaseDir, "python.exe");
+        if (await isExecutable(pythonFromConda)) {
+          const { version, valid } = await detectCliToolVersion(pythonFromConda, tool);
+          if (valid) {
+            await addPath(pythonFromConda, version || undefined, "system-path");
+          }
+        }
+      }
+    } catch {
+      // conda not found, skip
+    }
+  }
+
+  // 3c. Scan conda environments (envs/) for additional Python installations
+  if (tool === "python") {
+    const localAppData = process.env.LOCALAPPDATA || join(home, "AppData/Local");
+    const condaBases: string[] = [];
+    if (condaBaseDir) condaBases.push(condaBaseDir);
+    if (process.platform === "win32") {
+      condaBases.push(
+        "C:\\ProgramData\\miniconda3",
+        "C:\\ProgramData\\anaconda3",
+        "C:\\ProgramData\\Miniconda3",
+        "C:\\ProgramData\\Anaconda3",
+        join(home, "miniconda3"),
+        join(home, "anaconda3"),
+        join(home, "Miniconda3"),
+        join(home, "Anaconda3"),
+        join(localAppData, "miniconda3"),
+        join(localAppData, "anaconda3"),
+      );
+    } else {
+      condaBases.push(
+        join(home, "miniconda3"),
+        join(home, "anaconda3"),
+        "/opt/miniconda3",
+        "/opt/anaconda3",
+      );
+    }
+    // Also check parent directories of already-found Python paths as potential conda bases.
+    // This handles non-standard install locations like D:\app\anaconda3 where
+    // `where conda` may fail (e.g. Gateway process started without conda PATH init).
+    for (const existing of allPaths) {
+      const parentDir = dirname(existing.path);
+      if (!condaBases.includes(parentDir)) {
+        condaBases.push(parentDir);
+      }
+    }
+    const pythonInEnvSuffix = process.platform === "win32" ? "python.exe" : join("bin", "python");
+    const seenEnvsDirs = new Set<string>();
+    for (const base of condaBases) {
+      const envsDir = join(base, "envs");
+      if (seenEnvsDirs.has(envsDir)) continue;
+      seenEnvsDirs.add(envsDir);
+      try {
+        const envEntries = await readdir(envsDir, { withFileTypes: true });
+        for (const envEntry of envEntries) {
+          if (!envEntry.isDirectory()) continue;
+          const pythonInEnv = join(envsDir, envEntry.name, pythonInEnvSuffix);
+          if (await isExecutable(pythonInEnv)) {
+            const { version, valid } = await detectCliToolVersion(pythonInEnv, tool);
+            if (valid) {
+              await addPath(pythonInEnv, version || undefined, "system-path");
+            }
+          }
+        }
+      } catch {
+        // envs dir doesn't exist or not readable, skip
+      }
+    }
   }
 
   // 4. Check NVM paths for npm-global tools (Unix only)
@@ -825,7 +1015,7 @@ async function checkPackageInstalled(
   log.debug({ pipCommand }, "Checking package with pip");
 
   try {
-    const { stdout, stderr } = await execAsync(pipCommand, { timeout: 10000 });
+    const { stdout, stderr } = await execAsync(pipCommand, { timeout: 10000, windowsHide: true });
     log.debug({ stdout: stdout.slice(0, 200) }, "pip show stdout");
     if (stderr) {
       log.debug({ stderr: stderr.slice(0, 200) }, "pip show stderr");
@@ -851,7 +1041,7 @@ async function checkPackageInstalled(
     log.debug({ importCommand }, "Trying import");
 
     try {
-      const { stdout: importStdout } = await execAsync(importCommand, { timeout: 10000 });
+      const { stdout: importStdout } = await execAsync(importCommand, { timeout: 10000, windowsHide: true });
       const version = importStdout.trim() || "unknown";
       log.debug({ packageName, version }, "Package found via import");
       return {
@@ -868,7 +1058,7 @@ async function checkPackageInstalled(
       log.debug({ moduleCommand }, "Trying module version");
 
       try {
-        const { stdout: modStdout } = await execAsync(moduleCommand, { timeout: 10000 });
+        const { stdout: modStdout } = await execAsync(moduleCommand, { timeout: 10000, windowsHide: true });
         const versionMatch = modStdout.match(/(\d+\.\d+\.\d+)/);
         const version = versionMatch ? versionMatch[1] : "installed";
         log.debug({ packageName, version }, "Package found via module");

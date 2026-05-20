@@ -6,7 +6,7 @@
  * Network access is disabled for security.
  */
 import { spawn, execSync, type ChildProcess } from "child_process";
-import { platform } from "os";
+import { platform, homedir } from "os";
 import * as path from "path";
 import type {
   ISandboxProvider,
@@ -29,7 +29,7 @@ async function getCodexPath(): Promise<string | undefined> {
     // Local node_modules
     "./node_modules/.bin/codex",
     // User's npm bin
-    `${process.env.HOME}/.npm-global/bin/codex`,
+    `${homedir()}/.npm-global/bin/codex`,
     // Homebrew on macOS
     "/opt/homebrew/bin/codex",
     "/usr/local/bin/codex",

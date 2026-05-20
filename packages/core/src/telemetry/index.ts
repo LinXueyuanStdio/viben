@@ -14,6 +14,7 @@ import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import FastifyOtelInstrumentation from "@fastify/otel";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import { JsonlTraceExporter } from "./exporters/jsonl-trace-exporter";
@@ -266,6 +267,6 @@ export function cleanOldTelemetryFiles(baseDir: string, retentionDays = 7): void
  * 获取默认 telemetry 目录
  */
 export function getDefaultTelemetryDir(): string {
-  const stateDir = process.env.VIBEN_STATE_DIR || path.join(process.env.HOME || "~", ".viben");
+  const stateDir = process.env.VIBEN_STATE_DIR || path.join(os.homedir(), ".viben");
   return path.join(stateDir, "telemetry");
 }

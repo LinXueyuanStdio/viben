@@ -6,6 +6,7 @@
  */
 
 import * as fs from "node:fs";
+import { homedir as nodeHomedir } from "node:os";
 import * as path from "node:path";
 import { EventService, McpConfigChangedData } from "./events";
 import { logger as globalLogger } from "../telemetry";
@@ -187,6 +188,5 @@ export class ConfigWatcherService {
  * Get the default MCP servers config file path
  */
 export function getMcpServersConfigPath(): string {
-  const homedir = process.env.HOME || process.env.USERPROFILE || "";
-  return path.join(homedir, ".viben", "mcp-servers.json");
+  return path.join(nodeHomedir(), ".viben", "mcp-servers.json");
 }
