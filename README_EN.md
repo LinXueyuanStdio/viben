@@ -623,6 +623,8 @@ For full documentation, visit: **[linxueyuan.online/viben](https://linxueyuan.on
 
 > 💡 Desktop app includes bundled Viben CLI — no separate installation required.
 
+> ⚠️ **macOS users**: Before first launch, run `sudo /usr/bin/xattr -cr /Applications/Viben.app` to clear quarantine attributes, otherwise macOS will show "App is damaged and can't be opened".
+
 ### 💻 CLI
 
 ```bash

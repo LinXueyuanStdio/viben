@@ -704,6 +704,24 @@ echo "RUST_LOG=info" >> .env
 
 ## 故障排除
 
+### macOS 提示「应用已损坏，无法打开」
+
+**问题**: 在 macOS 上首次打开 Viben.app 时，系统提示「Viben.app 已损坏，无法打开。您应该将它移到废纸篓。」
+
+**原因**: 从互联网下载的应用程序会被 macOS 添加隔离属性（quarantine attribute）。由于 Viben 未经 Apple 公证（notarization），Gatekeeper 会阻止其运行。
+
+**解决方案**:
+
+在终端运行以下命令清除隔离属性：
+
+```bash
+sudo /usr/bin/xattr -cr /Applications/Viben.app
+```
+
+然后重新打开 Viben.app 即可正常使用。
+
+> **注意**: 此问题仅在首次安装或更新后出现，清除一次隔离属性后无需再次执行。
+
 ### 端口 1420 被占用
 
 **问题**: 启动开发服务器时提示端口 1420 已被占用。

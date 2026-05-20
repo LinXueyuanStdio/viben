@@ -782,8 +782,12 @@ jobs:
           - **Apple Silicon (M1/M2/M3)**: Download the `aarch64` DMG file
           - **Intel**: Download the `x86_64` DMG file
           - Drag Viben to Applications
-          - First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-          - Or run: `sudo /usr/bin/xattr -cr /Applications/Viben.app`
+
+          > ⚠️ **重要 / Important**: 首次运行前，请执行以下命令，否则 macOS 会提示「Viben.app 已损坏，无法打开」：
+          > ```bash
+          > sudo /usr/bin/xattr -cr /Applications/Viben.app
+          > ```
+          > Before first launch, run the command above to clear quarantine attributes. Otherwise macOS will show "Viben.app is damaged and can't be opened".
 
           #### Windows
           Download the `.msi` or `.exe` installer and run it.

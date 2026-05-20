@@ -623,6 +623,8 @@ viben idea promote ci-001 --start --worktree
 
 > 💡 桌面应用已内置 Viben CLI，无需单独安装。
 
+> ⚠️ **macOS 用户注意**: 首次运行前请执行 `sudo /usr/bin/xattr -cr /Applications/Viben.app`，否则系统会提示「应用已损坏」。
+
 ### 💻 CLI
 
 ```bash
