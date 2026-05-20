@@ -5,6 +5,9 @@
   "platforms": ["linux", "macOS", "windows"],
   "windows": ["main", "tray-popup", "screenshot-overlay"],
   "permissions": [
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
     "global-shortcut:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",

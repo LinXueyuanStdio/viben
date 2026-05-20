@@ -359,7 +359,6 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
       <div
-        data-tauri-drag-region
         className={cn(
           "flex items-center border-b bg-muted/30",
           isMacOS ? "h-8" : "h-10",

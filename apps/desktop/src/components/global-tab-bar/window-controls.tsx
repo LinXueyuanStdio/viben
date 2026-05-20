@@ -7,34 +7,23 @@
  * Only renders on Windows platform.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Minus, Square, Copy, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Types for Tauri APIs - these will be dynamically imported
-type TauriWindow = {
-  minimize: () => Promise<void>;
-  toggleMaximize: () => Promise<void>;
-  close: () => Promise<void>;
-  isMaximized: () => Promise<boolean>;
-  onResized: (handler: () => void) => Promise<() => void>;
-};
 
 export function WindowControls() {
   const { t } = useTranslation();
   const [currentPlatform, setCurrentPlatform] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [appWindow, setAppWindow] = useState<TauriWindow | null>(null);
 
-  // Initialize platform detection and window reference
+  // Initialize platform detection and maximized state listener
   useEffect(() => {
     let mounted = true;
     let unlisten: (() => void) | null = null;
 
     const init = async () => {
       try {
-        // Dynamically import Tauri APIs to handle web dev mode gracefully
         const [{ platform }, { getCurrentWindow }] = await Promise.all([
           import("@tauri-apps/plugin-os"),
           import("@tauri-apps/api/window"),
@@ -45,27 +34,20 @@ export function WindowControls() {
         const platformName = platform();
         setCurrentPlatform(platformName);
 
-        // Only set up window controls for Windows
         if (platformName === "windows") {
-          const window = getCurrentWindow();
-          setAppWindow(window as unknown as TauriWindow);
+          const win = getCurrentWindow();
 
-          // Check initial maximized state
-          const maximized = await window.isMaximized();
-          if (mounted) {
-            setIsMaximized(maximized);
-          }
+          const maximized = await win.isMaximized();
+          if (mounted) setIsMaximized(maximized);
 
-          // Listen for resize events to update maximized state
-          unlisten = await window.onResized(async () => {
+          unlisten = await win.onResized(async () => {
             if (mounted) {
-              const isMax = await window.isMaximized();
+              const isMax = await win.isMaximized();
               setIsMaximized(isMax);
             }
           });
         }
       } catch (error) {
-        // Silently fail in web dev mode
         console.debug("[WindowControls] Tauri APIs not available:", error);
       }
     };
@@ -74,29 +56,36 @@ export function WindowControls() {
 
     return () => {
       mounted = false;
-      if (unlisten) {
-        unlisten();
-      }
+      if (unlisten) unlisten();
     };
   }, []);
 
-  const handleMinimize = useCallback(async () => {
-    if (appWindow) {
-      await appWindow.minimize();
+  const handleMinimize = async () => {
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().minimize();
+    } catch (e) {
+      console.error("[WindowControls] minimize failed:", e);
     }
-  }, [appWindow]);
+  };
 
-  const handleMaximize = useCallback(async () => {
-    if (appWindow) {
-      await appWindow.toggleMaximize();
+  const handleMaximize = async () => {
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().toggleMaximize();
+    } catch (e) {
+      console.error("[WindowControls] toggleMaximize failed:", e);
     }
-  }, [appWindow]);
+  };
 
-  const handleClose = useCallback(async () => {
-    if (appWindow) {
-      await appWindow.close();
+  const handleClose = async () => {
+    try {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      await getCurrentWindow().close();
+    } catch (e) {
+      console.error("[WindowControls] close failed:", e);
     }
-  }, [appWindow]);
+  };
 
   // Only render on Windows
   if (currentPlatform !== "windows") {
