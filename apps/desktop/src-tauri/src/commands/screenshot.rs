@@ -81,6 +81,21 @@ struct LogicalMonitorGeometry {
     height: u32,
 }
 
+struct CapturedMonitorScreenshot {
+    monitor_id: u32,
+    monitor_name: String,
+    monitor_x: i32,
+    monitor_y: i32,
+    monitor_width: u32,
+    monitor_height: u32,
+    logical_monitor: LogicalMonitorGeometry,
+    scale_factor: f32,
+    original_width: u32,
+    original_height: u32,
+    original_rgba: Vec<u8>,
+    capture_elapsed_ms: u128,
+}
+
 #[derive(serde::Serialize)]
 struct ScreenshotTraceLogEntry {
     ts: String,
@@ -281,64 +296,44 @@ async fn do_region_screenshot<R: Runtime>(
     trace_id: &str,
     request_started: Instant,
 ) -> Result<String, String> {
-    // Keep the xcap monitor inside a short-lived scope so the async future
-    // never holds a non-Send monitor across later await points on Windows.
-    let (logical_monitor, scale_factor, original_width, original_height, original_rgba) = {
-        let monitor = if let Some(id) = monitor_id {
-            get_monitor_by_id(id)?
-        } else {
-            get_primary_monitor()?
-        };
-        let logical_monitor = logical_monitor_geometry(&monitor);
+    // Find the target monitor
+    let captured = capture_monitor_screenshot(monitor_id)?;
 
-        let _ = write_screenshot_trace(
-            trace_id,
-            "rust",
-            "monitor_selected",
-            serde_json::json!({
-                "monitor_id": monitor.id(),
-                "monitor_name": monitor.name(),
-                "monitor_x": monitor.x(),
-                "monitor_y": monitor.y(),
-                "monitor_width": monitor.width(),
-                "monitor_height": monitor.height(),
-                "logical_monitor_x": logical_monitor.x,
-                "logical_monitor_y": logical_monitor.y,
-                "logical_monitor_width": logical_monitor.width,
-                "logical_monitor_height": logical_monitor.height,
-                "scale_factor": monitor.scale_factor(),
-                "total_elapsed_ms": request_started.elapsed().as_millis(),
-            }),
-        );
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "monitor_selected",
+        serde_json::json!({
+            "monitor_id": captured.monitor_id,
+            "monitor_name": captured.monitor_name,
+            "monitor_x": captured.monitor_x,
+            "monitor_y": captured.monitor_y,
+            "monitor_width": captured.monitor_width,
+            "monitor_height": captured.monitor_height,
+            "logical_monitor_x": captured.logical_monitor.x,
+            "logical_monitor_y": captured.logical_monitor.y,
+            "logical_monitor_width": captured.logical_monitor.width,
+            "logical_monitor_height": captured.logical_monitor.height,
+            "scale_factor": captured.scale_factor,
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
+    let _ = write_screenshot_trace(
+        trace_id,
+        "rust",
+        "monitor_capture_completed",
+        serde_json::json!({
+            "elapsed_ms": captured.capture_elapsed_ms,
+            "total_elapsed_ms": request_started.elapsed().as_millis(),
+        }),
+    );
 
-        let capture_started = Instant::now();
-        let image = monitor
-            .capture_image()
-            .map_err(|e| format!("Failed to capture monitor: {}", e))?;
-        let _ = write_screenshot_trace(
-            trace_id,
-            "rust",
-            "monitor_capture_completed",
-            serde_json::json!({
-                "elapsed_ms": capture_started.elapsed().as_millis(),
-                "total_elapsed_ms": request_started.elapsed().as_millis(),
-            }),
-        );
-
-        (
-            logical_monitor,
-            monitor.scale_factor(),
-            image.width(),
-            image.height(),
-            image.into_raw(),
-        )
-    };
     let raw_file_path = std::env::temp_dir().join(format!(
         "viben-screenshot-{}.rgba",
         uuid::Uuid::new_v4()
     ));
     let write_started = Instant::now();
-    write(&raw_file_path, &original_rgba)
+    write(&raw_file_path, &captured.original_rgba)
         .map_err(|e| format!("Failed to write raw screenshot file: {}", e))?;
     let _ = write_screenshot_trace(
         trace_id,
@@ -346,7 +341,7 @@ async fn do_region_screenshot<R: Runtime>(
         "raw_screenshot_file_written",
         serde_json::json!({
             "path": raw_file_path,
-            "bytes_len": original_rgba.len(),
+            "bytes_len": captured.original_rgba.len(),
             "elapsed_ms": write_started.elapsed().as_millis(),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
@@ -361,8 +356,8 @@ async fn do_region_screenshot<R: Runtime>(
         images.insert(
             image_id.clone(),
             StoredScreenshot {
-                original_width,
-                original_height,
+                original_width: captured.original_width,
+                original_height: captured.original_height,
                 raw_rgba_path: raw_file_path.clone(),
             },
         );
@@ -373,20 +368,22 @@ async fn do_region_screenshot<R: Runtime>(
         "image_stored_in_memory",
         serde_json::json!({
             "image_id": image_id,
-            "original_width": original_width,
-            "original_height": original_height,
-            "raw_bytes_len": (original_width as usize)
-                .saturating_mul(original_height as usize)
+            "original_width": captured.original_width,
+            "original_height": captured.original_height,
+            "raw_bytes_len": (captured.original_width as usize)
+                .saturating_mul(captured.original_height as usize)
                 .saturating_mul(4),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
         }),
     );
 
     // Tauri window size/position APIs expect logical pixels.
-    let monitor_width = logical_monitor.width;
-    let monitor_height = logical_monitor.height;
-    let monitor_x = logical_monitor.x;
-    let monitor_y = logical_monitor.y;
+    let monitor_width = captured.logical_monitor.width;
+    let monitor_height = captured.logical_monitor.height;
+    let monitor_x = captured.logical_monitor.x;
+    let monitor_y = captured.logical_monitor.y;
+    let scale_factor = captured.scale_factor;
+
     // Overlay window URL — pass screenshot metadata and temp file path.
     let url = format!(
         "/screenshot-overlay.html?id={}&scale={}&trace={}&path={}&pixelWidth={}&pixelHeight={}",
@@ -394,8 +391,8 @@ async fn do_region_screenshot<R: Runtime>(
         scale_factor,
         urlencoding::encode(trace_id),
         urlencoding::encode(&raw_file_path.to_string_lossy()),
-        original_width,
-        original_height,
+        captured.original_width,
+        captured.original_height,
     );
     let window_url = url.clone();
 
@@ -443,8 +440,8 @@ async fn do_region_screenshot<R: Runtime>(
             "window_height": monitor_height,
             "window_x": monitor_x,
             "window_y": monitor_y,
-            "pixel_width": original_width,
-            "pixel_height": original_height,
+            "pixel_width": captured.original_width,
+            "pixel_height": captured.original_height,
             "scale_factor": scale_factor,
             "elapsed_ms": window_create_started.elapsed().as_millis(),
             "total_elapsed_ms": request_started.elapsed().as_millis(),
@@ -643,6 +640,48 @@ fn get_monitor_by_id(id: u32) -> Result<Monitor, String> {
         .into_iter()
         .find(|m| m.id() == id)
         .ok_or_else(|| format!("Monitor with id {} not found", id))
+}
+
+fn capture_monitor_screenshot(
+    monitor_id: Option<u32>,
+) -> Result<CapturedMonitorScreenshot, String> {
+    let monitor = if let Some(id) = monitor_id {
+        get_monitor_by_id(id)?
+    } else {
+        get_primary_monitor()?
+    };
+    let logical_monitor = logical_monitor_geometry(&monitor);
+    let monitor_id = monitor.id();
+    let monitor_name = monitor.name().to_string();
+    let monitor_x = monitor.x();
+    let monitor_y = monitor.y();
+    let monitor_width = monitor.width();
+    let monitor_height = monitor.height();
+    let scale_factor = monitor.scale_factor();
+
+    let capture_started = Instant::now();
+    let image = monitor
+        .capture_image()
+        .map_err(|e| format!("Failed to capture monitor: {}", e))?;
+    let capture_elapsed_ms = capture_started.elapsed().as_millis();
+    let original_width = image.width();
+    let original_height = image.height();
+    let original_rgba = image.into_raw();
+
+    Ok(CapturedMonitorScreenshot {
+        monitor_id,
+        monitor_name,
+        monitor_x,
+        monitor_y,
+        monitor_width,
+        monitor_height,
+        logical_monitor,
+        scale_factor,
+        original_width,
+        original_height,
+        original_rgba,
+        capture_elapsed_ms,
+    })
 }
 
 fn logical_monitor_geometry(monitor: &Monitor) -> LogicalMonitorGeometry {
