@@ -169,17 +169,32 @@ pub struct InstallEnvOptions {
 /// falling back to `find_executable("viben")`.
 #[command]
 pub async fn check_viben_cli(node_path: Option<String>) -> Result<CliCheckResult, String> {
+    eprintln!("[check_viben_cli] Starting check with node_path: {:?}", node_path);
+
     // Try to derive viben path from node_path if provided
     let viben_path = if let Some(ref np) = node_path {
-        derive_viben_from_node(np).or_else(|| crate::utils::find_executable("viben"))
+        eprintln!("[check_viben_cli] Trying to derive viben from node_path: {}", np);
+        let derived = derive_viben_from_node(np);
+        eprintln!("[check_viben_cli] derive_viben_from_node result: {:?}", derived);
+        derived.or_else(|| {
+            eprintln!("[check_viben_cli] Falling back to find_executable(\"viben\")");
+            crate::utils::find_executable("viben")
+        })
     } else {
+        eprintln!("[check_viben_cli] No node_path provided, using find_executable(\"viben\")");
         crate::utils::find_executable("viben")
     };
 
+    eprintln!("[check_viben_cli] Final viben_path: {:?}", viben_path);
+
     match &viben_path {
         Some(path) => {
+            eprintln!("[check_viben_cli] Checking viben at: {:?}", path);
             let mut cmd = Command::new(path);
             cmd.arg("--version");
+            cmd.stdin(std::process::Stdio::null());
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
 
             #[cfg(target_os = "windows")]
             cmd.creation_flags(CREATE_NO_WINDOW);
@@ -187,6 +202,7 @@ pub async fn check_viben_cli(node_path: Option<String>) -> Result<CliCheckResult
             match cmd.output() {
                 Ok(output) if output.status.success() => {
                     let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    eprintln!("[check_viben_cli] viben found, version: {}", version);
                     Ok(CliCheckResult {
                         installed: true,
                         version: Some(version),
@@ -220,7 +236,7 @@ pub async fn check_viben_cli(node_path: Option<String>) -> Result<CliCheckResult
             }
         }
         None => {
-            eprintln!("[check_viben_cli] viben not found");
+            eprintln!("[check_viben_cli] viben not found anywhere");
             Ok(CliCheckResult {
                 installed: false,
                 version: None,
@@ -242,15 +258,29 @@ pub async fn check_viben_cli(node_path: Option<String>) -> Result<CliCheckResult
 /// falling back to `find_executable("npm")`.
 #[command]
 pub async fn install_viben_cli(version: String, registry: String, node_path: Option<String>) -> Result<(), String> {
+    eprintln!("[install_viben_cli] Starting installation: version={}, registry={}, node_path={:?}", version, registry, node_path);
+
     // Try to derive npm path from node_path if provided
     let npm_path = if let Some(ref np) = node_path {
-        derive_npm_from_node(np).or_else(|| crate::utils::find_executable("npm"))
+        eprintln!("[install_viben_cli] Trying to derive npm from node_path: {}", np);
+        let derived = derive_npm_from_node(np);
+        eprintln!("[install_viben_cli] derive_npm_from_node result: {:?}", derived);
+        derived.or_else(|| {
+            eprintln!("[install_viben_cli] Falling back to find_executable(\"npm\")");
+            crate::utils::find_executable("npm")
+        })
     } else {
+        eprintln!("[install_viben_cli] No node_path provided, using find_executable(\"npm\")");
         crate::utils::find_executable("npm")
     };
 
+    eprintln!("[install_viben_cli] Final npm_path: {:?}", npm_path);
+
     let npm_path = npm_path
         .ok_or("未找到 npm 命令。请确保已安装 Node.js 并且 npm 在系统 PATH 中。您可以从 https://nodejs.org 下载安装 Node.js。")?;
+
+    let npm_path_str = npm_path.to_string_lossy().to_string();
+    eprintln!("[install_viben_cli] Using npm at: {}", npm_path_str);
 
     let mut cmd = Command::new(&npm_path);
     cmd.args([
@@ -262,19 +292,34 @@ pub async fn install_viben_cli(version: String, registry: String, node_path: Opt
         &registry,
     ]);
 
+    // Ensure npm doesn't wait for user input
+    cmd.stdin(std::process::Stdio::null());
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+
     // On Windows, hide the console window
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
 
+    eprintln!("[install_viben_cli] Executing: {} install -g --force viben@{} --registry {}", npm_path_str, version, registry);
+
     let output = cmd.output()
-        .map_err(|e| format!("运行 npm 命令失败: {}。请检查 npm 是否正确安装并具有执行权限。", e))?;
+        .map_err(|e| {
+            eprintln!("[install_viben_cli] Command execution failed: {}", e);
+            format!("运行 npm 命令失败: {}。请检查 npm 是否正确安装并具有执行权限。", e)
+        })?;
+
+    eprintln!("[install_viben_cli] Command completed with status: {:?}", output.status);
 
     if output.status.success() {
+        eprintln!("[install_viben_cli] Installation successful");
         // Invalidate cached paths since a new binary was installed
         crate::utils::clear_cache();
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        eprintln!("[install_viben_cli] Installation failed. stdout: {}, stderr: {}", stdout, stderr);
         Err(format!("npm 安装失败: {}。可能的原因：网络连接问题、npm 镜像源不可用、或权限不足。请尝试切换镜像源或使用管理员权限重试。", stderr))
     }
 }
@@ -282,6 +327,37 @@ pub async fn install_viben_cli(version: String, registry: String, node_path: Opt
 /// Get CLI path using which/where + known paths + version managers
 fn get_cli_path() -> Option<String> {
     crate::utils::find_executable("viben").map(|p| p.to_string_lossy().to_string())
+}
+
+/// Resolve npm executable path
+///
+/// Returns the npm path that would be used for installation.
+/// If `node_path` is provided, npm will be looked up in the same directory first.
+/// This allows the UI to display the npm path before installation.
+#[command]
+pub async fn resolve_npm_path(node_path: Option<String>) -> Result<String, String> {
+    let npm_path = if let Some(ref np) = node_path {
+        derive_npm_from_node(np).or_else(|| crate::utils::find_executable("npm"))
+    } else {
+        crate::utils::find_executable("npm")
+    };
+
+    npm_path
+        .map(|p| p.to_string_lossy().to_string())
+        .ok_or_else(|| {
+            let search_locations = if let Some(ref np) = node_path {
+                format!(
+                    "已搜索位置:\n  1. Node.js 同目录: {}\n  2. 系统 PATH 和版本管理器 (nvm/fnm/volta)",
+                    std::path::Path::new(np).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default()
+                )
+            } else {
+                "已搜索位置: 系统 PATH 和版本管理器 (nvm/fnm/volta)".to_string()
+            };
+            format!(
+                "未找到 npm 命令。{}\n\n请确保已安装 Node.js 并且 npm 在系统 PATH 中。您可以从 https://nodejs.org 下载安装 Node.js。",
+                search_locations
+            )
+        })
 }
 
 /// Trigger macOS Xcode Command Line Tools installation

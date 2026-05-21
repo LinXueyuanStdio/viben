@@ -234,6 +234,7 @@ pub fn run() {
                 // CLI installer commands (CLI installation and version management)
                 commands::cli_installer::check_viben_cli,
                 commands::cli_installer::install_viben_cli,
+                commands::cli_installer::resolve_npm_path,
                 commands::cli_installer::install_node,
                 commands::cli_installer::trigger_xcode_clt_install,
                 commands::cli_installer::check_xcode_clt,

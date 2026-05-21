@@ -62,6 +62,11 @@ export interface UseCliInstallerReturn {
    * @param nodePath - Optional path to Node.js executable. If provided, viben will be looked up in the same directory.
    */
   checkCli: (nodePath?: string | null) => Promise<CliCheckResult>;
+  /** 获取 npm 路径
+   * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
+   * @returns npm 路径，如果找不到则返回错误信息
+   */
+  resolveNpmPath: (nodePath?: string | null) => Promise<{ path: string } | { error: string }>;
   /** 安装 CLI
    * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
    */
@@ -172,6 +177,24 @@ export function useCliInstaller(): UseCliInstallerReturn {
       setIssue(issue);
       setState("error");
       return { installed: false, version: null, path: null, error: issue.message };
+    }
+  }, []);
+
+  /**
+   * 获取 npm 路径
+   * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
+   * @returns npm 路径，如果找不到则返回错误信息
+   */
+  const resolveNpmPath = useCallback(async (nodePath?: string | null): Promise<{ path: string } | { error: string }> => {
+    log("resolveNpmPath started", nodePath ? `with nodePath: ${nodePath}` : "without nodePath");
+    try {
+      const npmPath = await invoke<string>("resolve_npm_path", { node_path: nodePath ?? null });
+      log("resolveNpmPath result:", npmPath);
+      return { path: npmPath };
+    } catch (error) {
+      const errorStr = error instanceof Error ? error.message : String(error);
+      log("resolveNpmPath error:", errorStr);
+      return { error: errorStr };
     }
   }, []);
 
@@ -301,6 +324,7 @@ export function useCliInstaller(): UseCliInstallerReturn {
     isInstalled,
     currentVersion,
     checkCli,
+    resolveNpmPath,
     installCli,
     upgradeCli,
     reset,

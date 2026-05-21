@@ -96,7 +96,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
   const autoExpandedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    // Auto-expand nodejs-selector or python-selector nodes when check completes
+    // Auto-expand nodes when check completes with errors or for selector types
     // so users can see the logs and selection options
     for (const node of orchestrator.nodes) {
       const isCompletedStatus = node.nodeState.status === "error" ||
@@ -104,9 +104,15 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
                                 node.nodeState.status === "warning";
       const isSelectorType = node.contentType === "nodejs-selector" ||
                              node.contentType === "python-selector";
+      // Also auto-expand nodes with logs when they error
+      const hasLogsOnError = node.nodeState.status === "error" &&
+                             node.nodeState.logs &&
+                             node.nodeState.logs.length > 0;
 
-      if (isSelectorType && isCompletedStatus && !autoExpandedRef.current.has(node.id)) {
-        log(`Auto-expanding ${node.id} due to ${node.nodeState.status} state`);
+      const shouldAutoExpand = (isSelectorType && isCompletedStatus) || hasLogsOnError;
+
+      if (shouldAutoExpand && !autoExpandedRef.current.has(node.id)) {
+        log(`Auto-expanding ${node.id} due to ${node.nodeState.status} state (hasLogs: ${!!hasLogsOnError})`);
         autoExpandedRef.current.add(node.id);
         setExpandedNodes((prev) => ({ ...prev, [node.id]: true }));
       }

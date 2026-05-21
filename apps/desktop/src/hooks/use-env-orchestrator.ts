@@ -5,7 +5,7 @@
  * Composes existing hooks and executes checks in dependency order.
  */
 
-import { useReducer, useCallback, useEffect, useRef, useMemo, useState } from "react";
+import { useReducer, useCallback, useEffect, useRef, useMemo, useState, type MutableRefObject } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ENV_CHECK_NODES,
@@ -217,6 +217,17 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   const [nodejsCheckingCustomPath, setNodejsCheckingCustomPath] = useState(false);
   const [nodejsCustomPathError, setNodejsCustomPathError] = useState<string | null>(null);
 
+  // Use ref to track the selected Node.js path synchronously
+  // This avoids race conditions where CLI check starts before React state updates
+  const nodejsSelectedPathRef = useRef<string | null>(null);
+
+  // Helper to update Node.js selected path (both state and ref)
+  const updateNodejsSelectedPath = useCallback((path: string | null) => {
+    log(`updateNodejsSelectedPath: ${path}`);
+    nodejsSelectedPathRef.current = path;
+    setNodejsSelectedPath(path);
+  }, []);
+
   // Update node status helper
   const updateNode = useCallback(
     (nodeId: string, status: CheckNodeStatus, error?: string, data?: unknown) => {
@@ -310,7 +321,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
 
                 setNodejsNodes(nodes);
                 setNodejsRequiredVersion(scanResult.required_version);
-                setNodejsSelectedPath(result.path || null);
+                updateNodejsSelectedPath(result.path || null);
                 appendLog(
                   nodeId,
                   `✓ ${t("onboarding.orchestrator.foundNodeInstalls", { defaultValue: "发现 {{count}} 个 Node.js 安装", count: nodes.length })}`
@@ -326,7 +337,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
                       source: "current",
                     },
                   ]);
-                  setNodejsSelectedPath(result.path);
+                  updateNodejsSelectedPath(result.path);
                 }
                 appendLog(nodeId, `⚠ ${t("onboarding.orchestrator.scanFailed", "扫描其他安装失败")}: ${scanErr}`);
               }
@@ -468,9 +479,21 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
           }
 
           case "cli": {
+            // Use ref to get the most current Node.js path synchronously
+            // (React state may not have updated yet when this runs)
+            const currentNodePath = nodejsSelectedPathRef.current;
+            log(`CLI check: using nodePath from ref: ${currentNodePath}`);
+
+            // Log the Node.js path being used for debugging
+            if (currentNodePath) {
+              appendLog(nodeId, `Using Node.js: ${currentNodePath}`);
+            } else {
+              appendLog(nodeId, "⚠ Warning: No Node.js path selected, using system PATH");
+            }
+
             appendLog(nodeId, "$ viben --version");
             // Pass the selected Node.js path so viben can be found in the same directory
-            const cliResult = await cliInstaller.checkCli(nodejsSelectedPath);
+            const cliResult = await cliInstaller.checkCli(currentNodePath);
 
             if (cliResult.installed && !cliResult.error) {
               appendLog(nodeId, `✓ viben ${cliResult.version} found at ${cliResult.path}`);
@@ -480,12 +503,21 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
               });
             } else if (!cliResult.installed) {
               appendLog(nodeId, "✗ viben not found");
-              appendLog(nodeId, "$ npm install -g --force viben@latest");
+
+              // Resolve npm path first and display it
+              const npmResult = await cliInstaller.resolveNpmPath(currentNodePath);
+              if ("error" in npmResult) {
+                appendLog(nodeId, `✗ ${npmResult.error}`);
+                updateNode(nodeId, "error", npmResult.error);
+                break;
+              }
+              appendLog(nodeId, `$ ${npmResult.path} install -g --force viben@latest`);
+
               // Pass the selected Node.js path so npm can be found in the same directory
-              await cliInstaller.installCli(nodejsSelectedPath);
+              await cliInstaller.installCli(currentNodePath);
               // Re-check after install
               appendLog(nodeId, "$ viben --version (verify)");
-              const recheckResult = await cliInstaller.checkCli(nodejsSelectedPath);
+              const recheckResult = await cliInstaller.checkCli(currentNodePath);
               if (recheckResult.installed && !recheckResult.error) {
                 appendLog(nodeId, `✓ viben ${recheckResult.version} installed`);
                 updateNode(nodeId, "success", undefined, {
@@ -611,7 +643,9 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
         }
       }
     },
-    [nodeInstaller, cliInstaller, gateway, gatewayStatus, python, executors, updateNode, appendLog, nodejsSelectedPath]
+    // Note: nodejsSelectedPathRef is used instead of nodejsSelectedPath state
+    // to avoid race conditions where CLI check starts before React state updates
+    [nodeInstaller, cliInstaller, gateway, gatewayStatus, python, executors, updateNode, appendLog, updateNodejsSelectedPath]
   );
 
   // Process ready nodes
@@ -689,10 +723,10 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
       setNodejsRequiredVersion(result.required_version);
 
       // Auto-select the first valid node if available and no selection yet
-      if (!nodejsSelectedPath && result.nodes.length > 0) {
+      if (!nodejsSelectedPathRef.current && result.nodes.length > 0) {
         const firstValid = result.nodes.find((n) => n.is_valid);
         if (firstValid) {
-          setNodejsSelectedPath(firstValid.path);
+          updateNodejsSelectedPath(firstValid.path);
         }
       }
     } catch (err) {
@@ -700,7 +734,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
     } finally {
       setNodejsLoading(false);
     }
-  }, [nodeInstaller, nodejsSelectedPath]);
+  }, [nodeInstaller, updateNodejsSelectedPath]);
 
   // Check Node.js at a specific path
   const checkNodeAtPath = useCallback(
@@ -734,7 +768,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
           });
 
           // Auto-select this path
-          setNodejsSelectedPath(path);
+          updateNodejsSelectedPath(path);
 
           // Update the nodejs node status to success
           updateNode("nodejs", "success", undefined, result);
@@ -769,7 +803,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   const selectNodePath = useCallback(
     (path: string) => {
       log("selectNodePath:", path);
-      setNodejsSelectedPath(path);
+      updateNodejsSelectedPath(path);
       setNodejsCustomPathError(null);
 
       // Find the selected node info
@@ -784,7 +818,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
         dispatch({ type: "SET_RUNNING", running: true });
       }
     },
-    [nodejsNodes, updateNode]
+    [nodejsNodes, updateNode, updateNodejsSelectedPath]
   );
 
   // Set custom path error
