@@ -3998,64 +3998,64 @@
     },
     "nodeInstaller": {
       "missingInstaller": {
-        "title": "Node installer package not found",
-        "message": "The downloaded Node.js installer package was not found, installation cannot continue. Please click \"Continue Install\" to try again."
+        "title": "Node.js installer not found",
+        "message": "The downloaded Node.js installer was not found. Click \"Retry\" to download again."
       },
       "downloadFailed": {
-        "title": "Node installer download failed",
-        "message": "Automatic download of Node.js installer failed. Please check network, proxy, or certificate settings; if it still fails, you can download manually from the Node.js website."
+        "title": "Download failed",
+        "message": "Failed to download Node.js installer. Please check your network connection and proxy settings, or download manually from https://nodejs.org"
       },
       "installerFailed": {
-        "title": "Node installer execution failed",
-        "message": "The Node.js installer encountered an error. Please try again later; if it still fails, consider installing manually from the Node.js website."
+        "title": "Node.js installation failed",
+        "message": "Node.js installer execution failed. Click \"Retry\", or download the LTS version from https://nodejs.org to install manually."
       },
       "permissionDenied": {
-        "title": "Insufficient permissions to install Node.js",
-        "message": "Insufficient permissions to install Node.js. Please confirm your account has administrator privileges and allow the system installation prompt."
+        "title": "Permission denied",
+        "message": "Insufficient permissions to install Node.js. Please enter your administrator password in the system dialog, or use nvm (https://github.com/nvm-sh/nvm) to install."
       },
       "userCancelled": {
-        "title": "Node installation cancelled",
-        "message": "You cancelled the administrator authorization or installation process, so Node.js was not installed."
+        "title": "Installation cancelled",
+        "message": "Administrator authorization or installation was cancelled. Click \"Retry\" to continue."
       },
       "versionTooLow": {
         "title": "Node.js version too low",
-        "message": "Current Node.js version is below the minimum requirement (v22.16.0). Please upgrade to the latest LTS version and retry."
+        "message": "Current Node.js version is below minimum requirement (v22.16.0+ required). Download the latest LTS version from https://nodejs.org, or select another installed version from the list below."
       },
       "versionTooHigh": {
         "title": "Node.js version too high",
-        "message": "Current Node.js version is higher than recommended. Some features may be incompatible, consider using an LTS version."
+        "message": "Current Node.js version is higher than recommended. Some features may be incompatible. Consider using the LTS version from https://nodejs.org"
       },
       "xcodeCltPending": {
-        "title": "Waiting for Xcode Command Line Tools installation",
-        "message": "Xcode Command Line Tools system installation dialog has been triggered. If no dialog appears, click the install icon at the bottom right of the screen; after installation completes, click \"Retry Detection\" to refresh status."
+        "title": "Waiting for Xcode Command Line Tools",
+        "message": "Xcode Command Line Tools installation dialog has been triggered. Click \"Install\" in the dialog. If you don't see the dialog, run in terminal: xcode-select --install. Click \"Retry\" when done."
       },
       "gitUnavailable": {
-        "title": "Git command unavailable",
-        "message": "Git is not available on the current system, environment preparation cannot continue. Please fix Git or install Xcode Command Line Tools first, then retry."
+        "title": "Git command not available",
+        "message": "Git command is not available. Run xcode-select --install in terminal to install Xcode Command Line Tools (includes Git), then click \"Retry\"."
       },
       "devToolsFailed": {
-        "title": "macOS developer tools pre-check failed",
-        "message": "An issue was encountered while preparing Git / Xcode Command Line Tools. Please try again later; if it still fails, manually check the system developer tools status."
+        "title": "Developer tools preparation failed",
+        "message": "Failed to prepare Git / Xcode Command Line Tools. Run in terminal: xcode-select --install, or download Node.js manually from https://nodejs.org"
       },
       "corruptedInstaller": {
-        "title": "Node installer package invalid or corrupted",
-        "message": "The downloaded Node.js installer failed signature/integrity check, may be corrupted or replaced by proxy. Please check network environment and retry."
+        "title": "Node.js installer invalid or corrupted",
+        "message": "Downloaded Node.js installer failed signature/integrity check. It may be corrupted or intercepted by a proxy. Please check your network (disable proxy) and retry."
       },
       "unsupportedMacos": {
-        "title": "Current macOS version does not support this Node installer",
-        "message": "Current system version is incompatible with the target Node.js installer, automatic installation cannot continue. Please upgrade the system first, or manually install a compatible Node.js version."
+        "title": "macOS version incompatible",
+        "message": "Current macOS version is incompatible with the Node.js installer. Please upgrade your system, or download a compatible version from https://nodejs.org/download/release/"
       },
       "notAdminUser": {
-        "title": "Current account does not have administrator privileges",
-        "message": "Automatic Node.js installation requires macOS administrator privileges. Please log in with an administrator account, or contact the device administrator."
+        "title": "Administrator privileges required",
+        "message": "Automatic Node.js installation requires administrator privileges. Retry with an admin account, or download the installer from https://nodejs.org to install manually."
       },
       "blockedByPolicy": {
-        "title": "System policy blocked installation",
-        "message": "This computer's security policy prevented Node.js installation. Please contact the administrator, or install Node.js manually."
+        "title": "Installation blocked by system policy",
+        "message": "System security policy blocked Node.js installation. Contact your IT administrator, or use nvm (https://github.com/nvm-sh/nvm) to install Node.js in your home directory."
       },
       "missingSystemCommand": {
-        "title": "System missing pre-check commands",
-        "message": "The current system is missing system commands required for automatic Node.js installation pre-check. Please contact the administrator to fix system tools, or install Node.js manually."
+        "title": "Missing system commands",
+        "message": "Required system commands are missing. Run xcode-select --install in terminal to install command line tools, or download Node.js manually from https://nodejs.org"
       },
       "installComplete": "Installation complete",
       "checkingGitXcode": "Checking Git and Xcode Command Line Tools...",
@@ -4197,60 +4197,60 @@
     },
     "installerIssues": {
       "missingCli": {
-        "title": "Viben CLI not installed",
-        "message": "Viben CLI needs to be installed to continue. The system will attempt automatic installation."
+        "title": "Viben CLI not found",
+        "message": "Viben CLI needs to be installed to continue. The system will attempt automatic installation. Please ensure you have network connectivity."
       },
       "versionTooLow": {
         "title": "Viben CLI version too low",
-        "message": "The installed Viben CLI version does not meet minimum requirements and needs to be upgraded."
+        "message": "The installed Viben CLI version does not meet minimum requirements. The system will attempt automatic upgrade."
       },
       "versionTooHigh": {
         "title": "Viben CLI version too high",
-        "message": "The installed Viben CLI version may not be compatible with this application."
+        "message": "The installed Viben CLI version may not be compatible with this application. Consider downgrading to the recommended version."
       },
       "missingNode": {
-        "title": "Node.js not installed",
-        "message": "Viben CLI requires Node.js runtime. Please install Node.js first."
+        "title": "Node.js not found",
+        "message": "Viben CLI requires Node.js runtime. Please download and install Node.js 22 or higher from https://nodejs.org"
       },
       "nodeVersionMismatch": {
         "title": "Node.js version mismatch",
-        "message": "Current Node.js version does not meet requirements. Recommend using Node.js 18 or higher."
+        "message": "Current Node.js version does not meet requirements (v22.16.0+ required). Please download the latest LTS version from https://nodejs.org"
       },
       "npmNotFound": {
-        "title": "npm not found",
-        "message": "Cannot find npm command. Please ensure Node.js is installed correctly."
+        "title": "npm command not found",
+        "message": "npm is usually installed with Node.js. Please reinstall Node.js, or check if your PATH environment variable is configured correctly."
       },
       "npmRegistryError": {
-        "title": "npm registry error",
-        "message": "Cannot connect to npm registry. Will try using mirror sources."
+        "title": "npm registry connection failed",
+        "message": "Cannot connect to npm registry. The system will automatically retry using mirror sources."
       },
       "downloadFailed": {
         "title": "Download failed",
-        "message": "Failed to download Viben CLI. Please check network connection and retry."
+        "message": "Failed to download Viben CLI. Please check your network connection and proxy settings, then click retry."
       },
       "installFailed": {
-        "title": "Install failed",
-        "message": "Failed to install Viben CLI. Please check detailed error information."
+        "title": "Installation failed",
+        "message": "Failed to install Viben CLI. You can try running manually in terminal: npm install -g viben@latest"
       },
       "permissionDenied": {
         "title": "Permission denied",
-        "message": "Installation requires higher permissions. Please run as administrator or install manually."
+        "message": "Installation requires higher permissions. On macOS/Linux use sudo, on Windows run as administrator. Or use nvm to manage Node.js to avoid permission issues."
       },
       "userCancelled": {
         "title": "Cancelled",
-        "message": "Installation was cancelled."
+        "message": "Installation was cancelled. Click retry to continue."
       },
       "networkError": {
         "title": "Network error",
-        "message": "Network connection failed. Please check network settings and retry."
+        "message": "Network connection failed. Please check your network settings, proxy configuration, or firewall rules, then click retry."
       },
       "xcodeCltPending": {
-        "title": "Waiting for Xcode Command Line Tools installation",
-        "message": "Xcode command line tools installation has been triggered. Please complete the installation in the system dialog, then click retry."
+        "title": "Waiting for Xcode Command Line Tools",
+        "message": "Xcode Command Line Tools installation has been triggered. Please click \"Install\" in the system dialog. If you don't see the dialog, run in terminal: xcode-select --install"
       },
       "unknownError": {
         "title": "Unknown error",
-        "message": "An unknown error occurred. Please check details or contact support."
+        "message": "An unknown error occurred. Please check the details, or try running manually in terminal: npm install -g viben@latest"
       },
       "downloadNodejs": "Download Node.js"
     },

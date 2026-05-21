@@ -69,64 +69,64 @@ export function createNodeInstallerIssue(
 
   const issueMap: Record<NodeInstallerIssueKind, { title: string; message: string }> = {
     "missing-installer": {
-      title: i18next.t("onboarding.nodeInstaller.missingInstaller.title", "Node 安装包不存在"),
-      message: i18next.t("onboarding.nodeInstaller.missingInstaller.message", "已下载的 Node.js 安装包没有找到，安装无法继续。请点击「继续安装」再次尝试。"),
+      title: i18next.t("onboarding.nodeInstaller.missingInstaller.title", "Node.js 安装包不存在"),
+      message: i18next.t("onboarding.nodeInstaller.missingInstaller.message", "已下载的 Node.js 安装包未找到，安装无法继续。请点击「重试」再次下载。"),
     },
     "corrupted-installer": {
-      title: i18next.t("onboarding.nodeInstaller.corruptedInstaller.title", "Node 安装包无效或已损坏"),
-      message: i18next.t("onboarding.nodeInstaller.corruptedInstaller.message", "下载到的 Node.js 安装包未通过签名/完整性检查，可能已损坏或被代理替换。请检查网络环境后重试。"),
+      title: i18next.t("onboarding.nodeInstaller.corruptedInstaller.title", "Node.js 安装包无效或已损坏"),
+      message: i18next.t("onboarding.nodeInstaller.corruptedInstaller.message", "下载的 Node.js 安装包未通过签名/完整性检查，可能已损坏或被代理替换。请检查网络环境（关闭代理）后重试。"),
     },
     "missing-system-command": {
-      title: i18next.t("onboarding.nodeInstaller.missingSystemCommand.title", "系统缺少安装预检命令"),
-      message: i18next.t("onboarding.nodeInstaller.missingSystemCommand.message", "当前系统缺少 Node.js 自动安装所需的系统命令，无法继续自动预检。请联系管理员修复系统工具，或改为手动安装 Node.js。"),
+      title: i18next.t("onboarding.nodeInstaller.missingSystemCommand.title", "系统缺少必要命令"),
+      message: i18next.t("onboarding.nodeInstaller.missingSystemCommand.message", "当前系统缺少自动安装所需的系统命令。请在终端运行 xcode-select --install 安装命令行工具，或从 https://nodejs.org 手动安装 Node.js。"),
     },
     "xcode-clt-pending": {
-      title: i18next.t("onboarding.nodeInstaller.xcodeCltPending.title", "等待 Xcode Command Line Tools 安装完成"),
-      message: i18next.t("onboarding.nodeInstaller.xcodeCltPending.message", "已尝试触发 Xcode 命令行工具系统安装弹窗。如果没有弹窗，请点击屏幕右下角的安装图标继续安装；安装完成后，点击「重试检测」刷新状态。"),
+      title: i18next.t("onboarding.nodeInstaller.xcodeCltPending.title", "等待安装 Xcode 命令行工具"),
+      message: i18next.t("onboarding.nodeInstaller.xcodeCltPending.message", "已触发 Xcode 命令行工具安装弹窗。请在弹窗中点击「安装」。如未看到弹窗，请在终端运行：xcode-select --install。安装完成后点击「重试」。"),
     },
     "git-unavailable": {
       title: i18next.t("onboarding.nodeInstaller.gitUnavailable.title", "Git 命令不可用"),
-      message: i18next.t("onboarding.nodeInstaller.gitUnavailable.message", "当前系统无法使用 Git，无法继续环境准备。请先修复 Git 或安装 Xcode Command Line Tools 后重试。"),
+      message: i18next.t("onboarding.nodeInstaller.gitUnavailable.message", "无法使用 Git 命令。请在终端运行 xcode-select --install 安装 Xcode 命令行工具（包含 Git），安装完成后点击「重试」。"),
     },
     "developer-tools-prepare-failed": {
-      title: i18next.t("onboarding.nodeInstaller.devToolsFailed.title", "macOS 开发者工具预检失败"),
-      message: i18next.t("onboarding.nodeInstaller.devToolsFailed.message", "在准备 Git / Xcode Command Line Tools 时遇到问题。请稍后重试；如果仍失败，请手动检查系统开发者工具状态。"),
+      title: i18next.t("onboarding.nodeInstaller.devToolsFailed.title", "开发者工具准备失败"),
+      message: i18next.t("onboarding.nodeInstaller.devToolsFailed.message", "准备 Git / Xcode 命令行工具时遇到问题。请在终端运行：xcode-select --install，或从 https://nodejs.org 手动安装 Node.js。"),
     },
     "not-admin-user": {
-      title: i18next.t("onboarding.nodeInstaller.notAdminUser.title", "当前账户没有管理员权限"),
-      message: i18next.t("onboarding.nodeInstaller.notAdminUser.message", "自动安装 Node.js 需要 macOS 管理员权限。请使用管理员账户登录，或联系设备管理员处理。"),
+      title: i18next.t("onboarding.nodeInstaller.notAdminUser.title", "需要管理员权限"),
+      message: i18next.t("onboarding.nodeInstaller.notAdminUser.message", "自动安装 Node.js 需要管理员权限。请使用管理员账户重试，或从 https://nodejs.org 下载安装包手动安装。"),
     },
     "blocked-by-policy": {
-      title: i18next.t("onboarding.nodeInstaller.blockedByPolicy.title", "系统策略阻止了安装"),
-      message: i18next.t("onboarding.nodeInstaller.blockedByPolicy.message", "这台电脑的安全策略阻止了 Node.js 安装。请联系管理员处理，或改为手动安装 Node.js。"),
+      title: i18next.t("onboarding.nodeInstaller.blockedByPolicy.title", "安装被系统策略阻止"),
+      message: i18next.t("onboarding.nodeInstaller.blockedByPolicy.message", "系统安全策略阻止了 Node.js 安装。请联系 IT 管理员，或使用 nvm (https://github.com/nvm-sh/nvm) 在用户目录安装 Node.js。"),
     },
     "unsupported-macos": {
-      title: i18next.t("onboarding.nodeInstaller.unsupportedMacos.title", "当前 macOS 版本不支持该 Node 安装包"),
-      message: i18next.t("onboarding.nodeInstaller.unsupportedMacos.message", "当前系统版本与目标 Node.js 安装包不兼容，无法继续自动安装。请先升级系统，或手动安装兼容的 Node.js 版本。"),
+      title: i18next.t("onboarding.nodeInstaller.unsupportedMacos.title", "macOS 版本不兼容"),
+      message: i18next.t("onboarding.nodeInstaller.unsupportedMacos.message", "当前 macOS 版本与 Node.js 安装包不兼容。请升级系统，或从 https://nodejs.org/download/release/ 下载兼容版本。"),
     },
     "user-cancelled": {
-      title: i18next.t("onboarding.nodeInstaller.userCancelled.title", "已取消 Node 安装"),
-      message: i18next.t("onboarding.nodeInstaller.userCancelled.message", "你已取消管理员授权或安装流程，因此 Node.js 未安装。"),
+      title: i18next.t("onboarding.nodeInstaller.userCancelled.title", "安装已取消"),
+      message: i18next.t("onboarding.nodeInstaller.userCancelled.message", "已取消管理员授权或安装流程。如需继续，请点击「重试」。"),
     },
     "permission-denied": {
-      title: i18next.t("onboarding.nodeInstaller.permissionDenied.title", "没有足够权限安装 Node.js"),
-      message: i18next.t("onboarding.nodeInstaller.permissionDenied.message", "安装 Node.js 时权限不足。请确认当前账号具备管理员权限，并允许系统弹出的安装授权。"),
+      title: i18next.t("onboarding.nodeInstaller.permissionDenied.title", "权限不足"),
+      message: i18next.t("onboarding.nodeInstaller.permissionDenied.message", "安装 Node.js 时权限不足。请在系统弹窗中输入管理员密码授权，或使用 nvm (https://github.com/nvm-sh/nvm) 安装。"),
     },
     "installer-failed": {
-      title: i18next.t("onboarding.nodeInstaller.installerFailed.title", "Node 安装器执行失败"),
-      message: i18next.t("onboarding.nodeInstaller.installerFailed.message", "Node.js 安装器执行时报错。请稍后重试；如果仍然失败，建议去 Node.js 官网手动安装。"),
+      title: i18next.t("onboarding.nodeInstaller.installerFailed.title", "Node.js 安装失败"),
+      message: i18next.t("onboarding.nodeInstaller.installerFailed.message", "Node.js 安装器执行失败。请点击「重试」，或从 https://nodejs.org 下载 LTS 版本手动安装。"),
     },
     "download-failed": {
-      title: i18next.t("onboarding.nodeInstaller.downloadFailed.title", "Node 安装包下载失败"),
-      message: i18next.t("onboarding.nodeInstaller.downloadFailed.message", "自动下载 Node.js 安装包失败。请检查网络、代理或证书设置；如果仍然失败，可前往 Node.js 官网手动下载。"),
+      title: i18next.t("onboarding.nodeInstaller.downloadFailed.title", "下载失败"),
+      message: i18next.t("onboarding.nodeInstaller.downloadFailed.message", "下载 Node.js 安装包失败。请检查网络连接和代理设置，或从 https://nodejs.org 手动下载安装。"),
     },
     "version-too-low": {
       title: i18next.t("onboarding.nodeInstaller.versionTooLow.title", "Node.js 版本过低"),
-      message: i18next.t("onboarding.nodeInstaller.versionTooLow.message", "当前 Node.js 版本低于最低要求 (v22.16.0)。请升级到最新 LTS 版本后重试。"),
+      message: i18next.t("onboarding.nodeInstaller.versionTooLow.message", "当前 Node.js 版本低于最低要求（需要 v22.16.0 或更高）。请从 https://nodejs.org 下载最新 LTS 版本，或使用下方列表选择其他已安装版本。"),
     },
     "version-too-high": {
       title: i18next.t("onboarding.nodeInstaller.versionTooHigh.title", "Node.js 版本过高"),
-      message: i18next.t("onboarding.nodeInstaller.versionTooHigh.message", "当前 Node.js 版本高于推荐版本。部分功能可能不兼容，建议使用 LTS 版本。"),
+      message: i18next.t("onboarding.nodeInstaller.versionTooHigh.message", "当前 Node.js 版本高于推荐版本，部分功能可能不兼容。建议使用 LTS 版本（从 https://nodejs.org 下载）。"),
     },
   };
 

@@ -71,74 +71,74 @@ function getIssueContent(kind: CliInstallerIssueKind): { title: string; message:
   switch (kind) {
     case "missing-cli":
       return {
-        title: t("onboarding.installerIssues.missingCli.title", "Viben CLI not installed"),
-        message: t("onboarding.installerIssues.missingCli.message", "Viben CLI needs to be installed to continue. The system will attempt automatic installation."),
+        title: t("onboarding.installerIssues.missingCli.title", "未找到 Viben CLI"),
+        message: t("onboarding.installerIssues.missingCli.message", "需要安装 Viben CLI 才能继续。系统将尝试自动安装，请确保网络连接正常。"),
       };
     case "version-too-low":
       return {
-        title: t("onboarding.installerIssues.versionTooLow.title", "Viben CLI version too low"),
-        message: t("onboarding.installerIssues.versionTooLow.message", "The installed Viben CLI version does not meet minimum requirements and needs to be upgraded."),
+        title: t("onboarding.installerIssues.versionTooLow.title", "Viben CLI 版本过低"),
+        message: t("onboarding.installerIssues.versionTooLow.message", "已安装的 Viben CLI 版本不满足最低要求，需要升级。系统将尝试自动升级。"),
       };
     case "version-too-high":
       return {
-        title: t("onboarding.installerIssues.versionTooHigh.title", "Viben CLI version too high"),
-        message: t("onboarding.installerIssues.versionTooHigh.message", "The installed Viben CLI version may not be compatible with this application."),
+        title: t("onboarding.installerIssues.versionTooHigh.title", "Viben CLI 版本过高"),
+        message: t("onboarding.installerIssues.versionTooHigh.message", "已安装的 Viben CLI 版本可能与本应用不兼容。建议降级到推荐版本。"),
       };
     case "missing-node":
       return {
-        title: t("onboarding.installerIssues.missingNode.title", "Node.js not installed"),
-        message: t("onboarding.installerIssues.missingNode.message", "Viben CLI requires Node.js runtime. Please install Node.js first."),
+        title: t("onboarding.installerIssues.missingNode.title", "未找到 Node.js"),
+        message: t("onboarding.installerIssues.missingNode.message", "Viben CLI 需要 Node.js 运行时环境。请从 https://nodejs.org 下载安装 Node.js 22 或更高版本。"),
       };
     case "node-version-mismatch":
       return {
-        title: t("onboarding.installerIssues.nodeVersionMismatch.title", "Node.js version mismatch"),
-        message: t("onboarding.installerIssues.nodeVersionMismatch.message", "Current Node.js version does not meet requirements. Recommend using Node.js 18 or higher."),
+        title: t("onboarding.installerIssues.nodeVersionMismatch.title", "Node.js 版本不匹配"),
+        message: t("onboarding.installerIssues.nodeVersionMismatch.message", "当前 Node.js 版本不满足要求（需要 v22.16.0 或更高版本）。请从 https://nodejs.org 下载最新 LTS 版本。"),
       };
     case "npm-not-found":
       return {
-        title: t("onboarding.installerIssues.npmNotFound.title", "npm not found"),
-        message: t("onboarding.installerIssues.npmNotFound.message", "Cannot find npm command. Please ensure Node.js is installed correctly."),
+        title: t("onboarding.installerIssues.npmNotFound.title", "未找到 npm 命令"),
+        message: t("onboarding.installerIssues.npmNotFound.message", "npm 通常随 Node.js 一起安装。请重新安装 Node.js，或检查 PATH 环境变量是否正确配置。"),
       };
     case "npm-registry-error":
       return {
-        title: t("onboarding.installerIssues.npmRegistryError.title", "npm registry error"),
-        message: t("onboarding.installerIssues.npmRegistryError.message", "Cannot connect to npm registry. Will try using mirror sources."),
+        title: t("onboarding.installerIssues.npmRegistryError.title", "npm 仓库连接失败"),
+        message: t("onboarding.installerIssues.npmRegistryError.message", "无法连接到 npm 仓库。系统将尝试使用国内镜像源（淘宝、腾讯）自动重试。"),
       };
     case "download-failed":
       return {
-        title: t("onboarding.installerIssues.downloadFailed.title", "Download failed"),
-        message: t("onboarding.installerIssues.downloadFailed.message", "Failed to download Viben CLI. Please check network connection and retry."),
+        title: t("onboarding.installerIssues.downloadFailed.title", "下载失败"),
+        message: t("onboarding.installerIssues.downloadFailed.message", "下载 Viben CLI 失败。请检查网络连接和代理设置，然后点击重试。"),
       };
     case "install-failed":
       return {
-        title: t("onboarding.installerIssues.installFailed.title", "Install failed"),
-        message: t("onboarding.installerIssues.installFailed.message", "Failed to install Viben CLI. Please check detailed error information."),
+        title: t("onboarding.installerIssues.installFailed.title", "安装失败"),
+        message: t("onboarding.installerIssues.installFailed.message", "安装 Viben CLI 失败。可尝试在终端运行：npm install -g viben@latest"),
       };
     case "permission-denied":
       return {
-        title: t("onboarding.installerIssues.permissionDenied.title", "Permission denied"),
-        message: t("onboarding.installerIssues.permissionDenied.message", "Installation requires higher permissions. Please run as administrator or install manually."),
+        title: t("onboarding.installerIssues.permissionDenied.title", "权限不足"),
+        message: t("onboarding.installerIssues.permissionDenied.message", "安装需要更高权限。macOS/Linux 请使用 sudo，Windows 请以管理员身份运行。或使用 nvm 管理 Node.js 以避免权限问题。"),
       };
     case "user-cancelled":
       return {
-        title: t("onboarding.installerIssues.userCancelled.title", "Cancelled"),
-        message: t("onboarding.installerIssues.userCancelled.message", "Installation was cancelled."),
+        title: t("onboarding.installerIssues.userCancelled.title", "已取消"),
+        message: t("onboarding.installerIssues.userCancelled.message", "安装已取消。如需继续，请点击重试。"),
       };
     case "network-error":
       return {
-        title: t("onboarding.installerIssues.networkError.title", "Network error"),
-        message: t("onboarding.installerIssues.networkError.message", "Network connection failed. Please check network settings and retry."),
+        title: t("onboarding.installerIssues.networkError.title", "网络错误"),
+        message: t("onboarding.installerIssues.networkError.message", "网络连接失败。请检查网络设置、代理配置或防火墙规则，然后点击重试。"),
       };
     case "xcode-clt-pending":
       return {
-        title: t("onboarding.installerIssues.xcodeCltPending.title", "Waiting for Xcode Command Line Tools installation"),
-        message: t("onboarding.installerIssues.xcodeCltPending.message", "Xcode command line tools installation has been triggered. Please complete the installation in the system dialog, then click retry."),
+        title: t("onboarding.installerIssues.xcodeCltPending.title", "等待安装 Xcode 命令行工具"),
+        message: t("onboarding.installerIssues.xcodeCltPending.message", "已触发 Xcode 命令行工具安装。请在系统弹窗中点击「安装」，完成后点击重试。如未看到弹窗，请在终端运行：xcode-select --install"),
       };
     case "unknown-error":
     default:
       return {
-        title: t("onboarding.installerIssues.unknownError.title", "Unknown error"),
-        message: t("onboarding.installerIssues.unknownError.message", "An unknown error occurred. Please check details or contact support."),
+        title: t("onboarding.installerIssues.unknownError.title", "未知错误"),
+        message: t("onboarding.installerIssues.unknownError.message", "发生未知错误。请查看详细信息，或在终端手动运行：npm install -g viben@latest"),
       };
   }
 }

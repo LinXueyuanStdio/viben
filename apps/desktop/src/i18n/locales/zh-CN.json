@@ -3998,64 +3998,64 @@
     },
     "nodeInstaller": {
       "missingInstaller": {
-        "title": "Node 安装包不存在",
-        "message": "已下载的 Node.js 安装包没有找到，安装无法继续。请点击「继续安装」再次尝试。"
+        "title": "Node.js 安装包不存在",
+        "message": "已下载的 Node.js 安装包未找到，安装无法继续。请点击「重试」再次下载。"
       },
       "downloadFailed": {
-        "title": "Node 安装包下载失败",
-        "message": "自动下载 Node.js 安装包失败。请检查网络、代理或证书设置；如果仍然失败，可前往 Node.js 官网手动下载。"
+        "title": "下载失败",
+        "message": "下载 Node.js 安装包失败。请检查网络连接和代理设置，或从 https://nodejs.org 手动下载安装。"
       },
       "installerFailed": {
-        "title": "Node 安装器执行失败",
-        "message": "Node.js 安装器执行时报错。请稍后重试；如果仍然失败，建议去 Node.js 官网手动安装。"
+        "title": "Node.js 安装失败",
+        "message": "Node.js 安装器执行失败。请点击「重试」，或从 https://nodejs.org 下载 LTS 版本手动安装。"
       },
       "permissionDenied": {
-        "title": "没有足够权限安装 Node.js",
-        "message": "安装 Node.js 时权限不足。请确认当前账号具备管理员权限，并允许系统弹出的安装授权。"
+        "title": "权限不足",
+        "message": "安装 Node.js 时权限不足。请在系统弹窗中输入管理员密码授权，或使用 nvm (https://github.com/nvm-sh/nvm) 安装。"
       },
       "userCancelled": {
-        "title": "已取消 Node 安装",
-        "message": "你已取消管理员授权或安装流程，因此 Node.js 未安装。"
+        "title": "安装已取消",
+        "message": "已取消管理员授权或安装流程。如需继续，请点击「重试」。"
       },
       "versionTooLow": {
         "title": "Node.js 版本过低",
-        "message": "当前 Node.js 版本低于最低要求 (v22.16.0)。请升级到最新 LTS 版本后重试。"
+        "message": "当前 Node.js 版本低于最低要求（需要 v22.16.0 或更高）。请从 https://nodejs.org 下载最新 LTS 版本，或使用下方列表选择其他已安装版本。"
       },
       "versionTooHigh": {
         "title": "Node.js 版本过高",
-        "message": "当前 Node.js 版本高于推荐版本。部分功能可能不兼容，建议使用 LTS 版本。"
+        "message": "当前 Node.js 版本高于推荐版本，部分功能可能不兼容。建议使用 LTS 版本（从 https://nodejs.org 下载）。"
       },
       "xcodeCltPending": {
-        "title": "等待 Xcode Command Line Tools 安装完成",
-        "message": "已尝试触发 Xcode 命令行工具系统安装弹窗。如果没有弹窗，请点击屏幕右下角的安装图标继续安装；安装完成后，点击「重试检测」刷新状态。"
+        "title": "等待安装 Xcode 命令行工具",
+        "message": "已触发 Xcode 命令行工具安装弹窗。请在弹窗中点击「安装」。如未看到弹窗，请在终端运行：xcode-select --install。安装完成后点击「重试」。"
       },
       "gitUnavailable": {
         "title": "Git 命令不可用",
-        "message": "当前系统无法使用 Git，无法继续环境准备。请先修复 Git 或安装 Xcode Command Line Tools 后重试。"
+        "message": "无法使用 Git 命令。请在终端运行 xcode-select --install 安装 Xcode 命令行工具（包含 Git），安装完成后点击「重试」。"
       },
       "devToolsFailed": {
-        "title": "macOS 开发者工具预检失败",
-        "message": "在准备 Git / Xcode Command Line Tools 时遇到问题。请稍后重试；如果仍失败，请手动检查系统开发者工具状态。"
+        "title": "开发者工具准备失败",
+        "message": "准备 Git / Xcode 命令行工具时遇到问题。请在终端运行：xcode-select --install，或从 https://nodejs.org 手动安装 Node.js。"
       },
       "corruptedInstaller": {
-        "title": "Node 安装包无效或已损坏",
-        "message": "下载到的 Node.js 安装包未通过签名/完整性检查，可能已损坏或被代理替换。请检查网络环境后重试。"
+        "title": "Node.js 安装包无效或已损坏",
+        "message": "下载的 Node.js 安装包未通过签名/完整性检查，可能已损坏或被代理替换。请检查网络环境（关闭代理）后重试。"
       },
       "unsupportedMacos": {
-        "title": "当前 macOS 版本不支持该 Node 安装包",
-        "message": "当前系统版本与目标 Node.js 安装包不兼容，无法继续自动安装。请先升级系统，或手动安装兼容的 Node.js 版本。"
+        "title": "macOS 版本不兼容",
+        "message": "当前 macOS 版本与 Node.js 安装包不兼容。请升级系统，或从 https://nodejs.org/download/release/ 下载兼容版本。"
       },
       "notAdminUser": {
-        "title": "当前账户没有管理员权限",
-        "message": "自动安装 Node.js 需要 macOS 管理员权限。请使用管理员账户登录，或联系设备管理员处理。"
+        "title": "需要管理员权限",
+        "message": "自动安装 Node.js 需要管理员权限。请使用管理员账户重试，或从 https://nodejs.org 下载安装包手动安装。"
       },
       "blockedByPolicy": {
-        "title": "系统策略阻止了安装",
-        "message": "这台电脑的安全策略阻止了 Node.js 安装。请联系管理员处理，或改为手动安装 Node.js。"
+        "title": "安装被系统策略阻止",
+        "message": "系统安全策略阻止了 Node.js 安装。请联系 IT 管理员，或使用 nvm (https://github.com/nvm-sh/nvm) 在用户目录安装 Node.js。"
       },
       "missingSystemCommand": {
-        "title": "系统缺少安装预检命令",
-        "message": "当前系统缺少 Node.js 自动安装所需的系统命令，无法继续自动预检。请联系管理员修复系统工具，或改为手动安装 Node.js。"
+        "title": "系统缺少必要命令",
+        "message": "当前系统缺少自动安装所需的系统命令。请在终端运行 xcode-select --install 安装命令行工具，或从 https://nodejs.org 手动安装 Node.js。"
       },
       "installComplete": "安装完成",
       "checkingGitXcode": "正在检查 Git 与 Xcode Command Line Tools...",
@@ -4197,60 +4197,60 @@
     },
     "installerIssues": {
       "missingCli": {
-        "title": "Viben CLI 未安装",
-        "message": "需要安装 Viben CLI 才能继续。系统将尝试自动安装。"
+        "title": "未找到 Viben CLI",
+        "message": "需要安装 Viben CLI 才能继续。系统将尝试自动安装，请确保网络连接正常。"
       },
       "versionTooLow": {
         "title": "Viben CLI 版本过低",
-        "message": "已安装的 Viben CLI 版本不满足最低要求，需要升级。"
+        "message": "已安装的 Viben CLI 版本不满足最低要求，需要升级。系统将尝试自动升级。"
       },
       "versionTooHigh": {
         "title": "Viben CLI 版本过高",
-        "message": "已安装的 Viben CLI 版本可能与本应用不兼容。"
+        "message": "已安装的 Viben CLI 版本可能与本应用不兼容。建议降级到推荐版本。"
       },
       "missingNode": {
-        "title": "未安装 Node.js",
-        "message": "Viben CLI 需要 Node.js 运行时，请先安装 Node.js。"
+        "title": "未找到 Node.js",
+        "message": "Viben CLI 需要 Node.js 运行时环境。请从 https://nodejs.org 下载安装 Node.js 22 或更高版本。"
       },
       "nodeVersionMismatch": {
         "title": "Node.js 版本不匹配",
-        "message": "当前 Node.js 版本不满足要求，建议使用 Node.js 18 或更高版本。"
+        "message": "当前 Node.js 版本不满足要求（需要 v22.16.0 或更高版本）。请从 https://nodejs.org 下载最新 LTS 版本。"
       },
       "npmNotFound": {
-        "title": "未找到 npm",
-        "message": "无法找到 npm 命令，请确保 Node.js 已正确安装。"
+        "title": "未找到 npm 命令",
+        "message": "npm 通常随 Node.js 一起安装。请重新安装 Node.js，或检查 PATH 环境变量是否正确配置。"
       },
       "npmRegistryError": {
-        "title": "npm 仓库错误",
-        "message": "无法连接到 npm 仓库，将尝试使用镜像源。"
+        "title": "npm 仓库连接失败",
+        "message": "无法连接到 npm 仓库。系统将尝试使用国内镜像源（淘宝、腾讯）自动重试。"
       },
       "downloadFailed": {
         "title": "下载失败",
-        "message": "下载 Viben CLI 失败，请检查网络连接后重试。"
+        "message": "下载 Viben CLI 失败。请检查网络连接和代理设置，然后点击重试。"
       },
       "installFailed": {
         "title": "安装失败",
-        "message": "安装 Viben CLI 失败，请查看详细错误信息。"
+        "message": "安装 Viben CLI 失败。可尝试在终端运行：npm install -g viben@latest"
       },
       "permissionDenied": {
         "title": "权限不足",
-        "message": "安装需要更高权限，请以管理员身份运行或手动安装。"
+        "message": "安装需要更高权限。macOS/Linux 请使用 sudo，Windows 请以管理员身份运行。或使用 nvm 管理 Node.js 以避免权限问题。"
       },
       "userCancelled": {
         "title": "已取消",
-        "message": "安装已取消。"
+        "message": "安装已取消。如需继续，请点击重试。"
       },
       "networkError": {
         "title": "网络错误",
-        "message": "网络连接失败，请检查网络设置后重试。"
+        "message": "网络连接失败。请检查网络设置、代理配置或防火墙规则，然后点击重试。"
       },
       "xcodeCltPending": {
         "title": "等待安装 Xcode 命令行工具",
-        "message": "已触发 Xcode 命令行工具安装，请在系统对话框中完成安装后点击重试。"
+        "message": "已触发 Xcode 命令行工具安装。请在系统弹窗中点击「安装」，完成后点击重试。如未看到弹窗，请在终端运行：xcode-select --install"
       },
       "unknownError": {
         "title": "未知错误",
-        "message": "发生未知错误，请查看详细信息或联系支持。"
+        "message": "发生未知错误。请查看详细信息，或在终端手动运行：npm install -g viben@latest"
       },
       "downloadNodejs": "下载 Node.js"
     },
