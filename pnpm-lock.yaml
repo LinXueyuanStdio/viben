@@ -58,8 +58,8 @@ importers:
         specifier: 0.4.2
         version: 0.4.2(rollup@3.30.0)
       rollup-plugin-typescript2:
-        specifier: ^0.34.1
-        version: 0.34.1(rollup@3.30.0)(typescript@5.9.3)
+        specifier: ^0.37.0
+        version: 0.37.0(rollup@3.30.0)(typescript@5.9.3)
       sass:
         specifier: ^1.99.0
         version: 1.99.0
@@ -15486,8 +15486,8 @@ packages:
     peerDependencies:
       rollup: '>=0.31.2'
 
-  rollup-plugin-typescript2@0.34.1:
-    resolution: {integrity: sha512-P4cHLtGikESmqi1CA+tdMDUv8WbQV48mzPYt77TSTOPJpERyZ9TXdDgjSDix8Fkqce6soYz3+fa4lrC93IEkcw==}
+  rollup-plugin-typescript2@0.37.0:
+    resolution: {integrity: sha512-S1r/4Ufi13Yg/chPlh4iSHWq2Zs/sIAodW5SKUoCQfy/DEQhkS2XRFEtv+NRq3iBO4WHHfqKtDPOC5lJTYm7OQ==}
     peerDependencies:
       rollup: '>=1.26.3'
       typescript: '>=2.4.0'
@@ -36116,7 +36116,7 @@ snapshots:
       rollup-pluginutils: 2.8.2
       source-map-resolve: 0.5.3
 
-  rollup-plugin-typescript2@0.34.1(rollup@3.30.0)(typescript@5.9.3):
+  rollup-plugin-typescript2@0.37.0(rollup@3.30.0)(typescript@5.9.3):
     dependencies:
       '@rollup/pluginutils': 4.2.1
       find-cache-dir: 3.3.2

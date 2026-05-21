@@ -23,7 +23,8 @@
     "cli:native:debug": "./scripts/build-cli-native.sh --debug",
     "viben": "pnpm --filter viben",
     "mcp-server": "pnpm --filter @viben/mcp-server",
-    "docs": "pnpm --filter @viben/docs"
+    "docs": "pnpm --filter @viben/docs",
+    "release": "./scripts/release.sh"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^4.0.4",
@@ -41,7 +42,7 @@
     "rollup-plugin-peer-deps-external": "^2.2.4",
     "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-sourcemaps": "0.4.2",
-    "rollup-plugin-typescript2": "^0.34.1",
+    "rollup-plugin-typescript2": "^0.37.0",
     "sass": "^1.99.0",
     "turbo": "^2.9.14",
     "typescript": "^5.9.3"
