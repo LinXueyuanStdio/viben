@@ -31,7 +31,7 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 const NODE_LTS_VERSION: &str = "22.16.0";
 
 /// Required minimum Node.js version
-const NODE_REQUIRED_VERSION: &str = "22.16.0";
+const NODE_REQUIRED_VERSION: &str = "18.0.0";
 
 /// Node.js distribution base URL
 const NODE_DIST_BASE_URL: &str = "https://nodejs.org/dist";
@@ -232,7 +232,7 @@ pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
 pub async fn install_viben_cli(version: String, registry: String) -> Result<(), String> {
     // Use find_executable to locate npm (handles nvm/fnm/volta, Homebrew, etc.)
     let npm_path = crate::utils::find_executable("npm")
-        .ok_or("npm not found. Please ensure Node.js and npm are installed.")?;
+        .ok_or("未找到 npm 命令。请确保已安装 Node.js 并且 npm 在系统 PATH 中。您可以从 https://nodejs.org 下载安装 Node.js。")?;
 
     let mut cmd = Command::new(&npm_path);
     cmd.args([
@@ -249,7 +249,7 @@ pub async fn install_viben_cli(version: String, registry: String) -> Result<(), 
     cmd.creation_flags(CREATE_NO_WINDOW);
 
     let output = cmd.output()
-        .map_err(|e| format!("Failed to run npm: {}", e))?;
+        .map_err(|e| format!("运行 npm 命令失败: {}。请检查 npm 是否正确安装并具有执行权限。", e))?;
 
     if output.status.success() {
         // Invalidate cached paths since a new binary was installed
@@ -257,7 +257,7 @@ pub async fn install_viben_cli(version: String, registry: String) -> Result<(), 
         Ok(())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("npm install failed: {}", stderr))
+        Err(format!("npm 安装失败: {}。可能的原因：网络连接问题、npm 镜像源不可用、或权限不足。请尝试切换镜像源或使用管理员权限重试。", stderr))
     }
 }
 
@@ -283,7 +283,7 @@ pub async fn trigger_xcode_clt_install() -> Result<(), String> {
     Command::new("xcode-select")
         .arg("--install")
         .spawn()
-        .map_err(|e| format!("Failed to trigger xcode-select: {}", e))?;
+        .map_err(|e| format!("无法启动 Xcode 命令行工具安装程序: {}。请手动运行 'xcode-select --install' 命令进行安装。", e))?;
 
     Ok(())
 }
@@ -333,7 +333,7 @@ pub async fn install_node() -> Result<NodeInstallResult, String> {
         version: None,
         path: None,
         error: Some(
-            "Automatic Node.js installation not yet implemented. Please install Node.js manually from https://nodejs.org/".to_string(),
+            "自动安装 Node.js 功能暂未实现。请访问 https://nodejs.org 手动下载并安装 Node.js。安装完成后重启应用程序。".to_string(),
         ),
         error_code: Some("manual_install_required".to_string()),
     })
@@ -395,7 +395,7 @@ pub async fn prepare_mac_git_tools() -> Result<MacGitToolsPrepareResult, String>
                                 ok: false,
                                 error_code: Some("xcode_clt_pending".to_string()),
                                 stderr: Some(
-                                    "Xcode Command Line Tools installation started. Please complete the installation and retry."
+                                    "Xcode 命令行工具安装已启动。请在弹出的对话框中完成安装，然后点击重试按钮继续。"
                                         .to_string(),
                                 ),
                             });
@@ -404,7 +404,7 @@ pub async fn prepare_mac_git_tools() -> Result<MacGitToolsPrepareResult, String>
                             return Ok(MacGitToolsPrepareResult {
                                 ok: false,
                                 error_code: Some("prepare_failed".to_string()),
-                                stderr: Some(format!("Failed to trigger xcode-select: {}", e)),
+                                stderr: Some(format!("无法启动 Xcode 命令行工具安装程序: {}。请手动在终端运行 'xcode-select --install' 进行安装。", e)),
                             });
                         }
                     }
@@ -429,7 +429,7 @@ pub async fn prepare_mac_git_tools() -> Result<MacGitToolsPrepareResult, String>
                             ok: false,
                             error_code: Some("xcode_clt_pending".to_string()),
                             stderr: Some(
-                                "Xcode Command Line Tools installation started. Please complete the installation and retry."
+                                "Xcode 命令行工具安装已启动。请在弹出的对话框中完成安装，然后点击重试按钮继续。"
                                     .to_string(),
                             ),
                         });
@@ -439,7 +439,7 @@ pub async fn prepare_mac_git_tools() -> Result<MacGitToolsPrepareResult, String>
                             ok: false,
                             error_code: Some("prepare_failed".to_string()),
                             stderr: Some(format!(
-                                "Git not found and failed to trigger xcode-select: {}",
+                                "未找到 Git 命令，且无法启动 Xcode 命令行工具安装程序: {}。请手动在终端运行 'xcode-select --install' 进行安装。",
                                 install_err
                             )),
                         });
@@ -674,7 +674,7 @@ pub async fn check_node_at_path(path: String) -> Result<NodeCheckResult, String>
             required_version: NODE_REQUIRED_VERSION.to_string(),
             target_version: Some(format!("v{}", NODE_LTS_VERSION)),
             install_strategy: "custom".to_string(),
-            error: Some("Path does not exist".to_string()),
+            error: Some("指定的路径不存在。请检查 Node.js 可执行文件的路径是否正确。".to_string()),
         });
     }
 
@@ -719,7 +719,7 @@ pub async fn check_node_at_path(path: String) -> Result<NodeCheckResult, String>
                 required_version: NODE_REQUIRED_VERSION.to_string(),
                 target_version: Some(format!("v{}", NODE_LTS_VERSION)),
                 install_strategy: "custom".to_string(),
-                error: Some(if stderr.is_empty() { "Failed to get version".to_string() } else { stderr }),
+                error: Some(if stderr.is_empty() { "无法获取 Node.js 版本信息。该文件可能不是有效的 Node.js 可执行文件。".to_string() } else { format!("Node.js 版本检查失败: {}", stderr) }),
             })
         }
         Err(e) => Ok(NodeCheckResult {
@@ -730,7 +730,7 @@ pub async fn check_node_at_path(path: String) -> Result<NodeCheckResult, String>
             required_version: NODE_REQUIRED_VERSION.to_string(),
             target_version: Some(format!("v{}", NODE_LTS_VERSION)),
             install_strategy: "custom".to_string(),
-            error: Some(e.to_string()),
+            error: Some(format!("无法执行 Node.js 程序: {}。请检查文件是否存在且具有执行权限。", e)),
         }),
     }
 }
@@ -744,7 +744,7 @@ pub async fn download_node_installer(
     window: Window,
 ) -> Result<String, String> {
     // Create temp directory
-    let temp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {}", e))?;
+    let temp_dir = tempfile::tempdir().map_err(|e| format!("无法创建临时目录: {}。请检查磁盘空间是否充足，以及是否有写入临时目录的权限。", e))?;
     let installer_path = temp_dir.path().join(&plan.filename);
 
     // Emit initial progress
@@ -765,11 +765,11 @@ pub async fn download_node_installer(
         .get(&plan.url)
         .send()
         .await
-        .map_err(|e| format!("Download request failed: {}", e))?;
+        .map_err(|e| format!("下载请求失败: {}。请检查网络连接，或尝试使用代理。", e))?;
 
     if !response.status().is_success() {
         return Err(format!(
-            "Download failed with status: {}",
+            "下载失败，HTTP 状态码: {}。服务器可能暂时不可用，请稍后重试。",
             response.status()
         ));
     }
@@ -778,13 +778,13 @@ pub async fn download_node_installer(
     let mut downloaded: u64 = 0;
 
     let mut file =
-        std::fs::File::create(&installer_path).map_err(|e| format!("Failed to create file: {}", e))?;
+        std::fs::File::create(&installer_path).map_err(|e| format!("无法创建安装文件: {}。请检查磁盘空间是否充足。", e))?;
 
     let mut stream = response.bytes_stream();
     while let Some(chunk_result) = stream.next().await {
-        let chunk = chunk_result.map_err(|e| format!("Download stream error: {}", e))?;
+        let chunk = chunk_result.map_err(|e| format!("下载数据流错误: {}。网络连接可能不稳定，请重试。", e))?;
         file.write_all(&chunk)
-            .map_err(|e| format!("Failed to write chunk: {}", e))?;
+            .map_err(|e| format!("写入文件失败: {}。磁盘空间可能不足。", e))?;
 
         downloaded += chunk.len() as u64;
         let percent = total_bytes.map(|t| (downloaded as f32 / t as f32) * 100.0);
@@ -822,7 +822,7 @@ pub async fn inspect_node_installer(path: String) -> Result<InstallerInspectResu
         return Ok(InstallerInspectResult {
             ok: false,
             issue_kind: Some("missing-installer".to_string()),
-            message: Some("Installer file not found".to_string()),
+            message: Some("未找到安装文件。下载可能已中断或文件已被删除，请重新下载。".to_string()),
             details: None,
         });
     }
@@ -856,7 +856,7 @@ pub async fn inspect_node_installer(path: String) -> Result<InstallerInspectResu
                             Ok(InstallerInspectResult {
                                 ok: false,
                                 issue_kind: Some("blocked-by-policy".to_string()),
-                                message: Some("Installer blocked by system policy".to_string()),
+                                message: Some("安装程序被系统安全策略阻止。请在「系统偏好设置 > 安全性与隐私」中允许此安装程序运行。".to_string()),
                                 details: Some(stderr),
                             })
                         } else {
@@ -886,14 +886,14 @@ pub async fn inspect_node_installer(path: String) -> Result<InstallerInspectResu
                 Ok(InstallerInspectResult {
                     ok: false,
                     issue_kind: Some("corrupted-installer".to_string()),
-                    message: Some("Installer signature verification failed".to_string()),
+                    message: Some("安装程序签名验证失败。文件可能已损坏，请重新下载。".to_string()),
                     details: Some(stderr),
                 })
             }
             Err(e) => Ok(InstallerInspectResult {
                 ok: false,
                 issue_kind: Some("missing-system-command".to_string()),
-                message: Some(format!("pkgutil not available: {}", e)),
+                message: Some(format!("系统命令 pkgutil 不可用: {}。这可能表示 macOS 系统文件损坏。", e)),
                 details: None,
             }),
         }
@@ -928,7 +928,7 @@ pub async fn install_env(options: InstallEnvOptions, window: Window) -> Result<I
     #[allow(unused_variables)]
     let installer_path = options
         .node_installer_path
-        .ok_or("node_installer_path is required when need_node is true")?;
+        .ok_or("需要安装 Node.js 时必须提供安装程序路径 (node_installer_path)。")?;
 
     // Emit progress
     let _ = window.emit(
@@ -957,7 +957,7 @@ pub async fn install_env(options: InstallEnvOptions, window: Window) -> Result<I
         return Ok(InstallEnvResult {
             ok: false,
             stdout: None,
-            stderr: Some("Linux automatic installation not yet supported. Please install Node.js manually.".to_string()),
+            stderr: Some("Linux 系统暂不支持自动安装 Node.js。请使用包管理器手动安装，例如：\n- Ubuntu/Debian: sudo apt install nodejs npm\n- Fedora: sudo dnf install nodejs npm\n- Arch: sudo pacman -S nodejs npm\n或访问 https://nodejs.org 下载安装。".to_string()),
             stage: Some("install".to_string()),
         });
     }
@@ -975,7 +975,7 @@ async fn install_node_macos(installer_path: &str, window: &Window) -> Result<Ins
         return Ok(InstallEnvResult {
             ok: false,
             stdout: None,
-            stderr: Some("Current user is not an admin. Please run as administrator.".to_string()),
+            stderr: Some("当前用户不是管理员。请使用管理员账户登录，或联系系统管理员协助安装。".to_string()),
             stage: Some("permission-check".to_string()),
         });
     }
@@ -989,7 +989,7 @@ async fn install_node_macos(installer_path: &str, window: &Window) -> Result<Ins
     let output = Command::new("osascript")
         .args(["-e", &script])
         .output()
-        .map_err(|e| format!("Failed to run osascript: {}", e))?;
+        .map_err(|e| format!("无法运行 osascript 命令: {}。这可能表示 macOS 系统文件损坏或权限问题。", e))?;
 
     let _ = window.emit(
         "node-install-progress",
@@ -1061,7 +1061,7 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
     cmd.creation_flags(CREATE_NO_WINDOW);
 
     let output = cmd.output()
-        .map_err(|e| format!("Failed to run PowerShell: {}", e))?;
+        .map_err(|e| format!("无法运行 PowerShell: {}。请确保 PowerShell 已正确安装且可用。", e))?;
 
     let exit_code = output.status.code().unwrap_or(-1);
 
@@ -1099,7 +1099,7 @@ async fn install_node_windows(installer_path: &str, window: &Window) -> Result<I
         Ok(InstallEnvResult {
             ok: false,
             stdout: if stdout.is_empty() { None } else { Some(stdout) },
-            stderr: if stderr.is_empty() { Some(format!("msiexec exit code: {}", exit_code)) } else { Some(stderr) },
+            stderr: if stderr.is_empty() { Some(format!("Windows 安装程序退出码: {}。退出码 1602 表示用户取消，1603 表示安装失败。", exit_code)) } else { Some(stderr) },
             stage: Some(stage.to_string()),
         })
     }

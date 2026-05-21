@@ -203,19 +203,47 @@ fn known_install_paths(name: &str) -> Vec<Option<PathBuf>> {
     }
 }
 
+/// Parse a Node.js version string from a directory name (e.g., "v25.0.0" -> (25, 0, 0))
+fn parse_node_version(dir_name: &str) -> Option<(u32, u32, u32)> {
+    let version_str = dir_name.trim_start_matches('v');
+    let parts: Vec<&str> = version_str.split('.').collect();
+    if parts.len() >= 3 {
+        let major = parts[0].parse::<u32>().ok()?;
+        let minor = parts[1].parse::<u32>().ok()?;
+        let patch = parts[2].parse::<u32>().ok()?;
+        Some((major, minor, patch))
+    } else if parts.len() == 2 {
+        let major = parts[0].parse::<u32>().ok()?;
+        let minor = parts[1].parse::<u32>().ok()?;
+        Some((major, minor, 0))
+    } else if parts.len() == 1 {
+        let major = parts[0].parse::<u32>().ok()?;
+        Some((major, 0, 0))
+    } else {
+        None
+    }
+}
+
 /// Scan version-manager directories (nvm, fnm) for an executable.
 /// macOS GUI apps don't source .zshrc so these paths aren't in PATH.
+/// Returns the executable from the highest version installation.
 #[cfg(unix)]
 fn scan_version_managers(name: &str) -> Option<PathBuf> {
     let home = dirs::home_dir()?;
+
+    // Collect all valid installations with their parsed versions
+    let mut candidates: Vec<((u32, u32, u32), PathBuf)> = Vec::new();
 
     // nvm: ~/.nvm/versions/node/*/bin/<name>
     let nvm_dir = home.join(".nvm/versions/node");
     if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
         for entry in entries.flatten() {
+            let dir_name = entry.file_name().to_string_lossy().to_string();
             let bin = entry.path().join("bin").join(name);
             if bin.exists() {
-                return Some(bin);
+                if let Some(version) = parse_node_version(&dir_name) {
+                    candidates.push((version, bin));
+                }
             }
         }
     }
@@ -224,14 +252,25 @@ fn scan_version_managers(name: &str) -> Option<PathBuf> {
     let fnm_dir = home.join(".local/share/fnm/node-versions");
     if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
         for entry in entries.flatten() {
+            let dir_name = entry.file_name().to_string_lossy().to_string();
             let bin = entry.path().join("installation/bin").join(name);
             if bin.exists() {
-                return Some(bin);
+                if let Some(version) = parse_node_version(&dir_name) {
+                    candidates.push((version, bin));
+                }
             }
         }
     }
 
-    // volta: ~/.volta/bin/<name>
+    // Sort by version descending (highest first)
+    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+
+    // Return the highest version if any found
+    if let Some((_, path)) = candidates.into_iter().next() {
+        return Some(path);
+    }
+
+    // volta: ~/.volta/bin/<name> (volta manages versions differently, no sorting needed)
     let volta_bin = home.join(".volta/bin").join(name);
     if volta_bin.exists() {
         return Some(volta_bin);
@@ -364,6 +403,7 @@ pub fn get_node_version(path: &PathBuf) -> Option<String> {
 
 /// Scan Windows version-manager directories (nvm-windows, fnm, volta, scoop) for an executable.
 /// Windows GUI apps launched from the Start Menu may not inherit full shell PATH.
+/// Returns the executable from the highest version installation.
 #[cfg(target_os = "windows")]
 fn scan_version_managers_windows(name: &str) -> Option<PathBuf> {
     let home = dirs::home_dir()?;
@@ -375,14 +415,20 @@ fn scan_version_managers_windows(name: &str) -> Option<PathBuf> {
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| home.join("AppData\\Local"));
 
+    // Collect all valid installations with their parsed versions
+    let mut candidates: Vec<((u32, u32, u32), PathBuf)> = Vec::new();
+
     // nvm-windows: %APPDATA%\nvm\<version>\<name>.exe
     // nvm-windows also sets the "current" symlink at %NVM_HOME%\<name>.exe
     let nvm_dir = appdata.join("nvm");
     if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
         for entry in entries.flatten() {
+            let dir_name = entry.file_name().to_string_lossy().to_string();
             let candidate = entry.path().join(format!("{}.exe", name));
             if candidate.exists() {
-                return Some(candidate);
+                if let Some(version) = parse_node_version(&dir_name) {
+                    candidates.push((version, candidate));
+                }
             }
         }
     }
@@ -391,14 +437,26 @@ fn scan_version_managers_windows(name: &str) -> Option<PathBuf> {
     let fnm_dir = local_appdata.join("fnm").join("node-versions");
     if let Ok(entries) = std::fs::read_dir(&fnm_dir) {
         for entry in entries.flatten() {
+            let dir_name = entry.file_name().to_string_lossy().to_string();
             let candidate = entry.path().join("installation").join(format!("{}.exe", name));
             if candidate.exists() {
-                return Some(candidate);
+                if let Some(version) = parse_node_version(&dir_name) {
+                    candidates.push((version, candidate));
+                }
             }
         }
     }
 
+    // Sort by version descending (highest first)
+    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+
+    // Return the highest version if any found
+    if let Some((_, path)) = candidates.into_iter().next() {
+        return Some(path);
+    }
+
     // Volta (Windows): %LOCALAPPDATA%\Volta\toolchain\bin\<name>.exe
+    // Volta manages versions differently, no sorting needed
     let volta_bin = local_appdata.join("Volta").join("toolchain").join("bin").join(format!("{}.exe", name));
     if volta_bin.exists() {
         return Some(volta_bin);
