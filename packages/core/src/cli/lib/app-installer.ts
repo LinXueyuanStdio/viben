@@ -1,7 +1,7 @@
 /**
  * App installer - download and install Viben desktop app
  */
-import { existsSync } from "node:fs";
+import { createWriteStream, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -300,4 +300,88 @@ export function getAssetForPlatform(
     default:
       throw new Error("PLATFORM_NOT_SUPPORTED");
   }
+}
+
+// ============================================================================
+// Download
+// ============================================================================
+
+/**
+ * Download a file with progress callback
+ */
+export async function downloadAsset(
+  asset: ReleaseAsset,
+  options: DownloadOptions
+): Promise<string> {
+  const { outputDir, force, onProgress } = options;
+
+  // Ensure output directory exists
+  if (!existsSync(outputDir)) {
+    throw new Error("OUTPUT_DIR_ERROR");
+  }
+
+  const outputPath = join(outputDir, asset.name);
+
+  // Check if file already exists
+  if (existsSync(outputPath) && !force) {
+    throw new Error("FILE_EXISTS");
+  }
+
+  // Download the file
+  const response = await fetch(asset.url, {
+    headers: { "User-Agent": "viben-cli" },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("DOWNLOAD_FAILED");
+  }
+
+  const totalSize = parseInt(response.headers.get("content-length") ?? "0", 10) || asset.size || 0;
+  let downloadedSize = 0;
+
+  // Create write stream
+  const fileStream = createWriteStream(outputPath);
+
+  // Process the response body with progress tracking
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("DOWNLOAD_FAILED");
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      fileStream.write(value);
+      downloadedSize += value.length;
+
+      if (onProgress && totalSize > 0) {
+        onProgress(downloadedSize, totalSize);
+      }
+    }
+  } finally {
+    fileStream.end();
+    reader.releaseLock();
+  }
+
+  // Wait for file to be fully written
+  await new Promise<void>((resolve, reject) => {
+    fileStream.on("finish", resolve);
+    fileStream.on("error", reject);
+  });
+
+  return outputPath;
+}
+
+/**
+ * Format bytes to human readable string
+ */
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }
