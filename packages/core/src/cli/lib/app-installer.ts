@@ -1,6 +1,7 @@
 /**
  * App installer - download and install Viben desktop app
  */
+import { execSync } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -384,4 +385,142 @@ export function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+// ============================================================================
+// Installation
+// ============================================================================
+
+/**
+ * Install on macOS (DMG)
+ */
+async function installMacOS(dmgPath: string): Promise<InstallResult> {
+  try {
+    // Mount DMG and get mount point
+    const mountOutput = execSync(`hdiutil attach "${dmgPath}" -nobrowse -readonly`, {
+      encoding: "utf-8",
+    });
+
+    // Parse mount point from output
+    const mountMatch = mountOutput.match(/\/Volumes\/[^\s]+/);
+    if (!mountMatch) {
+      return { success: false, error: "Failed to mount DMG" };
+    }
+    const mountPoint = mountMatch[0];
+
+    try {
+      // Copy app to Applications
+      execSync(`cp -R "${mountPoint}/Viben.app" /Applications/`, { encoding: "utf-8" });
+
+      // Clear quarantine attribute (ignore errors)
+      try {
+        execSync("xattr -cr /Applications/Viben.app", { encoding: "utf-8" });
+      } catch {
+        // Ignore xattr errors
+      }
+
+      return { success: true, installedPath: "/Applications/Viben.app" };
+    } finally {
+      // Always unmount
+      try {
+        execSync(`hdiutil detach "${mountPoint}" -quiet`, { encoding: "utf-8" });
+      } catch {
+        // Ignore unmount errors
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Installation failed",
+    };
+  }
+}
+
+/**
+ * Install on Windows (EXE or MSI)
+ */
+async function installWindows(installerPath: string): Promise<InstallResult> {
+  try {
+    const isExe = installerPath.endsWith(".exe");
+
+    if (isExe) {
+      // NSIS silent install
+      execSync(`"${installerPath}" /S`, { encoding: "utf-8" });
+    } else {
+      // MSI silent install
+      execSync(`msiexec /i "${installerPath}" /quiet /norestart`, { encoding: "utf-8" });
+    }
+
+    return { success: true, installedPath: APP_PATHS.win32 };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Installation failed",
+    };
+  }
+}
+
+/**
+ * Install on Linux (DEB)
+ */
+async function installLinux(debPath: string): Promise<InstallResult> {
+  try {
+    // Try apt install first (handles dependencies)
+    try {
+      execSync(`sudo apt install -y "${debPath}"`, { encoding: "utf-8", stdio: "inherit" });
+      return { success: true, installedPath: "/usr/bin/viben-desktop" };
+    } catch {
+      // Fallback to dpkg + apt-get -f
+      execSync(`sudo dpkg -i "${debPath}"`, { encoding: "utf-8", stdio: "inherit" });
+      execSync("sudo apt-get install -f -y", { encoding: "utf-8", stdio: "inherit" });
+      return { success: true, installedPath: "/usr/bin/viben-desktop" };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Installation failed. Try: sudo dpkg -i " + debPath,
+    };
+  }
+}
+
+/**
+ * Install the downloaded package
+ */
+export async function installPackage(packagePath: string): Promise<InstallResult> {
+  const platform = process.platform;
+
+  if (platform === "darwin") {
+    return installMacOS(packagePath);
+  }
+
+  if (platform === "win32") {
+    return installWindows(packagePath);
+  }
+
+  if (platform === "linux") {
+    return installLinux(packagePath);
+  }
+
+  return { success: false, error: "PLATFORM_NOT_SUPPORTED" };
+}
+
+/**
+ * Get manual install command for user
+ */
+export function getManualInstallCommand(packagePath: string): string {
+  const platform = process.platform;
+
+  if (platform === "darwin") {
+    return `open "${packagePath}"`;
+  }
+
+  if (platform === "win32") {
+    return `"${packagePath}"`;
+  }
+
+  if (platform === "linux") {
+    return `sudo apt install "${packagePath}"`;
+  }
+
+  return packagePath;
 }
