@@ -3,14 +3,19 @@
 /**
  * Window Controls Component
  *
- * Windows-style window controls (minimize, maximize, close).
- * Only renders on Windows platform.
+ * Windows 11 style window controls (minimize, maximize, close).
+ * Renders on Windows and Linux platforms.
  */
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Minus, Square, Copy, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { MinimizeIcon, MaximizeIcon, RestoreIcon, CloseIcon } from "./window-control-icons";
 
 export function WindowControls() {
   const { t } = useTranslation();
@@ -34,7 +39,8 @@ export function WindowControls() {
         const platformName = platform();
         setCurrentPlatform(platformName);
 
-        if (platformName === "windows") {
+        // Initialize for Windows and Linux
+        if (platformName === "windows" || platformName === "linux") {
           const win = getCurrentWindow();
 
           const maximized = await win.isMaximized();
@@ -87,52 +93,85 @@ export function WindowControls() {
     }
   };
 
-  // Only render on Windows
-  if (currentPlatform !== "windows") {
+  // Only render on Windows and Linux
+  if (currentPlatform !== "windows" && currentPlatform !== "linux") {
     return null;
   }
+
+  // Common button styles - Windows 11 proportions
+  const buttonBase = cn(
+    "h-10 w-[46px] flex items-center justify-center",
+    "transition-colors duration-100"
+  );
+
+  // Minimize/Maximize button styles
+  const standardButtonStyles = cn(
+    buttonBase,
+    "hover:bg-foreground/10 active:bg-foreground/15"
+  );
+
+  // Close button styles - Windows 11 red
+  const closeButtonStyles = cn(
+    buttonBase,
+    "hover:bg-[#c42b1c] hover:text-white",
+    "active:bg-[#b4271a] active:text-white"
+  );
 
   return (
     <div className="flex items-center">
       {/* Minimize */}
-      <button
-        onClick={handleMinimize}
-        className={cn(
-          "h-9 w-11 flex items-center justify-center",
-          "hover:bg-muted/80 transition-colors"
-        )}
-        aria-label={t("windowControls.minimize", "Minimize")}
-      >
-        <Minus className="h-4 w-4" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleMinimize}
+            className={standardButtonStyles}
+            aria-label={t("windowControls.minimize", "Minimize")}
+          >
+            <MinimizeIcon size={10} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4} className="text-xs">
+          {t("windowControls.minimize", "Minimize")}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Maximize/Restore */}
-      <button
-        onClick={handleMaximize}
-        className={cn(
-          "h-9 w-11 flex items-center justify-center",
-          "hover:bg-muted/80 transition-colors"
-        )}
-        aria-label={isMaximized ? t("windowControls.restore", "Restore") : t("windowControls.maximize", "Maximize")}
-      >
-        {isMaximized ? (
-          <Copy className="h-3.5 w-3.5" />
-        ) : (
-          <Square className="h-3.5 w-3.5" />
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleMaximize}
+            className={standardButtonStyles}
+            aria-label={
+              isMaximized
+                ? t("windowControls.restore", "Restore")
+                : t("windowControls.maximize", "Maximize")
+            }
+          >
+            {isMaximized ? <RestoreIcon size={10} /> : <MaximizeIcon size={10} />}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4} className="text-xs">
+          {isMaximized
+            ? t("windowControls.restore", "Restore")
+            : t("windowControls.maximize", "Maximize")}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Close */}
-      <button
-        onClick={handleClose}
-        className={cn(
-          "h-9 w-11 flex items-center justify-center",
-          "hover:bg-red-500 hover:text-white transition-colors"
-        )}
-        aria-label={t("windowControls.close", "Close")}
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={handleClose}
+            className={closeButtonStyles}
+            aria-label={t("windowControls.close", "Close")}
+          >
+            <CloseIcon size={10} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4} className="text-xs">
+          {t("windowControls.close", "Close")}
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }
