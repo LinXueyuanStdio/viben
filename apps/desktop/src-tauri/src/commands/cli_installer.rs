@@ -163,10 +163,18 @@ pub struct InstallEnvOptions {
 ///
 /// Attempts to run `viben --version` and returns installation status.
 /// Uses find_executable to locate viben in PATH, version managers, and known paths.
+///
+/// If `node_path` is provided (e.g., from user-selected Node.js installation),
+/// the viben executable will be looked up in the same directory first before
+/// falling back to `find_executable("viben")`.
 #[command]
-pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
-    // Use find_executable to locate viben (handles nvm/fnm/volta, Homebrew, etc.)
-    let viben_path = crate::utils::find_executable("viben");
+pub async fn check_viben_cli(node_path: Option<String>) -> Result<CliCheckResult, String> {
+    // Try to derive viben path from node_path if provided
+    let viben_path = if let Some(ref np) = node_path {
+        derive_viben_from_node(np).or_else(|| crate::utils::find_executable("viben"))
+    } else {
+        crate::utils::find_executable("viben")
+    };
 
     match &viben_path {
         Some(path) => {
@@ -228,10 +236,20 @@ pub async fn check_viben_cli() -> Result<CliCheckResult, String> {
 /// Installs the specified version of Viben CLI using npm with the given registry.
 /// Supports npm mirror fallback by accepting a registry URL.
 /// Uses --force to overwrite existing installations.
+///
+/// If `node_path` is provided (e.g., from user-selected Node.js installation),
+/// the npm executable will be looked up in the same directory first before
+/// falling back to `find_executable("npm")`.
 #[command]
-pub async fn install_viben_cli(version: String, registry: String) -> Result<(), String> {
-    // Use find_executable to locate npm (handles nvm/fnm/volta, Homebrew, etc.)
-    let npm_path = crate::utils::find_executable("npm")
+pub async fn install_viben_cli(version: String, registry: String, node_path: Option<String>) -> Result<(), String> {
+    // Try to derive npm path from node_path if provided
+    let npm_path = if let Some(ref np) = node_path {
+        derive_npm_from_node(np).or_else(|| crate::utils::find_executable("npm"))
+    } else {
+        crate::utils::find_executable("npm")
+    };
+
+    let npm_path = npm_path
         .ok_or("未找到 npm 命令。请确保已安装 Node.js 并且 npm 在系统 PATH 中。您可以从 https://nodejs.org 下载安装 Node.js。")?;
 
     let mut cmd = Command::new(&npm_path);
@@ -1173,6 +1191,64 @@ pub async fn refresh_environment() -> Result<(), String> {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/// Derive npm executable path from a given node executable path.
+///
+/// If node is at `/path/to/bin/node`, npm should be at `/path/to/bin/npm`.
+/// On Windows, if node is at `C:\path\node.exe`, npm should be at `C:\path\npm.cmd` or `npm.exe`.
+///
+/// Returns `Some(PathBuf)` if the derived npm path exists, `None` otherwise.
+fn derive_npm_from_node(node_path: &str) -> Option<std::path::PathBuf> {
+    let node_path = std::path::Path::new(node_path);
+    let parent = node_path.parent()?;
+
+    // Try different npm executable names based on platform
+    #[cfg(target_os = "windows")]
+    let npm_candidates = ["npm.cmd", "npm.exe", "npm"];
+
+    #[cfg(not(target_os = "windows"))]
+    let npm_candidates = ["npm"];
+
+    for npm_name in npm_candidates {
+        let npm_path = parent.join(npm_name);
+        if npm_path.exists() {
+            eprintln!("[derive_npm_from_node] Found npm at {:?} (derived from node at {:?})", npm_path, node_path);
+            return Some(npm_path);
+        }
+    }
+
+    eprintln!("[derive_npm_from_node] Could not find npm in {:?} (derived from node at {:?})", parent, node_path);
+    None
+}
+
+/// Derive viben executable path from a given node executable path.
+///
+/// If node is at `/path/to/bin/node`, viben (installed via `npm install -g`) should be at `/path/to/bin/viben`.
+/// On Windows, if node is at `C:\path\node.exe`, viben should be at `C:\path\viben.cmd`, `viben.exe`, or `viben`.
+///
+/// Returns `Some(PathBuf)` if the derived viben path exists, `None` otherwise.
+fn derive_viben_from_node(node_path: &str) -> Option<std::path::PathBuf> {
+    let node_path = std::path::Path::new(node_path);
+    let parent = node_path.parent()?;
+
+    // Try different viben executable names based on platform
+    #[cfg(target_os = "windows")]
+    let viben_candidates = ["viben.cmd", "viben.exe", "viben"];
+
+    #[cfg(not(target_os = "windows"))]
+    let viben_candidates = ["viben"];
+
+    for viben_name in viben_candidates {
+        let viben_path = parent.join(viben_name);
+        if viben_path.exists() {
+            eprintln!("[derive_viben_from_node] Found viben at {:?} (derived from node at {:?})", viben_path, node_path);
+            return Some(viben_path);
+        }
+    }
+
+    eprintln!("[derive_viben_from_node] Could not find viben in {:?} (derived from node at {:?})", parent, node_path);
+    None
+}
 
 /// Compare two version strings (semver-like)
 /// Returns: -1 if a < b, 0 if a == b, 1 if a > b

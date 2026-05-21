@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WindowControls } from "@/components/global-tab-bar/window-controls";
 
 export function OnboardingWizard() {
   const { t } = useTranslation();
@@ -73,7 +74,12 @@ export function OnboardingWizard() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background">
+      {/* Window controls for Windows/Linux - positioned at top right */}
+      <div className="absolute top-0 right-0 z-50">
+        <WindowControls />
+      </div>
+
       {/* Header with logo and language switcher */}
       <header className="flex items-center justify-between border-b px-4 py-4">
         <div className="w-[140px]" /> {/* Spacer for centering logo */}

@@ -469,7 +469,8 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
 
           case "cli": {
             appendLog(nodeId, "$ viben --version");
-            const cliResult = await cliInstaller.checkCli();
+            // Pass the selected Node.js path so viben can be found in the same directory
+            const cliResult = await cliInstaller.checkCli(nodejsSelectedPath);
 
             if (cliResult.installed && !cliResult.error) {
               appendLog(nodeId, `✓ viben ${cliResult.version} found at ${cliResult.path}`);
@@ -480,10 +481,11 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
             } else if (!cliResult.installed) {
               appendLog(nodeId, "✗ viben not found");
               appendLog(nodeId, "$ npm install -g --force viben@latest");
-              await cliInstaller.installCli();
+              // Pass the selected Node.js path so npm can be found in the same directory
+              await cliInstaller.installCli(nodejsSelectedPath);
               // Re-check after install
               appendLog(nodeId, "$ viben --version (verify)");
-              const recheckResult = await cliInstaller.checkCli();
+              const recheckResult = await cliInstaller.checkCli(nodejsSelectedPath);
               if (recheckResult.installed && !recheckResult.error) {
                 appendLog(nodeId, `✓ viben ${recheckResult.version} installed`);
                 updateNode(nodeId, "success", undefined, {
@@ -609,7 +611,7 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
         }
       }
     },
-    [nodeInstaller, cliInstaller, gateway, gatewayStatus, python, executors, updateNode, appendLog]
+    [nodeInstaller, cliInstaller, gateway, gatewayStatus, python, executors, updateNode, appendLog, nodejsSelectedPath]
   );
 
   // Process ready nodes

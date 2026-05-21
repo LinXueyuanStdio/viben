@@ -58,12 +58,18 @@ export interface UseCliInstallerReturn {
   isInstalled: boolean;
   /** 当前版本 */
   currentVersion: string | null;
-  /** 检查 CLI，返回检查结果 */
-  checkCli: () => Promise<CliCheckResult>;
-  /** 安装 CLI */
-  installCli: () => Promise<void>;
-  /** 升级 CLI */
-  upgradeCli: () => Promise<void>;
+  /** 检查 CLI，返回检查结果
+   * @param nodePath - Optional path to Node.js executable. If provided, viben will be looked up in the same directory.
+   */
+  checkCli: (nodePath?: string | null) => Promise<CliCheckResult>;
+  /** 安装 CLI
+   * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
+   */
+  installCli: (nodePath?: string | null) => Promise<void>;
+  /** 升级 CLI
+   * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
+   */
+  upgradeCli: (nodePath?: string | null) => Promise<void>;
   /** 重置状态 */
   reset: () => void;
 }
@@ -104,21 +110,22 @@ export function useCliInstaller(): UseCliInstallerReturn {
   /**
    * 检查 CLI 是否已安装及版本
    * 返回检查结果，同时更新 hook 状态
+   * @param nodePath - Optional path to Node.js executable. If provided, viben will be looked up in the same directory.
    */
-  const checkCli = useCallback(async (): Promise<CliCheckResult> => {
-    log("checkCli started");
+  const checkCli = useCallback(async (nodePath?: string | null): Promise<CliCheckResult> => {
+    log("checkCli started", nodePath ? `with nodePath: ${nodePath}` : "without nodePath");
     setState("checking");
     setIssue(null);
 
     try {
       // 调用 Tauri 命令检查 CLI
-      log("Invoking check_viben_cli...");
+      log("Invoking check_viben_cli with node_path:", nodePath);
       const result = await invoke<{
         installed: boolean;
         version: string | null;
         path: string | null;
         source: string | null;
-      }>("check_viben_cli");
+      }>("check_viben_cli", { node_path: nodePath ?? null });
       log("check_viben_cli result:", result);
 
       setIsInstalled(result.installed);
@@ -170,10 +177,11 @@ export function useCliInstaller(): UseCliInstallerReturn {
 
   /**
    * 安装 CLI (带镜像回退)
+   * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
    * @throws Error 如果所有镜像都失败
    */
-  const installCli = useCallback(async () => {
-    log("installCli started");
+  const installCli = useCallback(async (nodePath?: string | null) => {
+    log("installCli started", nodePath ? `with nodePath: ${nodePath}` : "without nodePath");
     setState("installing");
     setIssue(null);
     setProgress({ stage: "download", percent: 0, message: t("onboarding.cliInstaller.preparingInstall", "准备安装...") });
@@ -193,10 +201,11 @@ export function useCliInstaller(): UseCliInstallerReturn {
         });
 
         // 调用 Tauri 命令安装
-        log("Invoking install_viben_cli with version:", PINNED_VERSION, "registry:", mirror.url);
+        log("Invoking install_viben_cli with version:", PINNED_VERSION, "registry:", mirror.url, "node_path:", nodePath);
         await invoke("install_viben_cli", {
           version: PINNED_VERSION,
           registry: mirror.url,
+          node_path: nodePath ?? null,
         });
         log("install_viben_cli completed successfully");
 
@@ -241,19 +250,21 @@ export function useCliInstaller(): UseCliInstallerReturn {
 
   /**
    * 升级 CLI
+   * @param nodePath - Optional path to Node.js executable. If provided, npm will be looked up in the same directory.
    */
-  const upgradeCli = useCallback(async () => {
-    log("upgradeCli started");
+  const upgradeCli = useCallback(async (nodePath?: string | null) => {
+    log("upgradeCli started", nodePath ? `with nodePath: ${nodePath}` : "without nodePath");
     setState("upgrading");
     setIssue(null);
     setProgress({ stage: "download", percent: 0, message: t("onboarding.cliInstaller.preparingUpgrade", "准备升级...") });
 
     try {
       // 使用 installCli 逻辑，但状态不同
-      log("Invoking install_viben_cli for upgrade, version:", PINNED_VERSION);
+      log("Invoking install_viben_cli for upgrade, version:", PINNED_VERSION, "node_path:", nodePath);
       await invoke("install_viben_cli", {
         version: PINNED_VERSION,
         registry: NPM_MIRRORS[0].url,
+        node_path: nodePath ?? null,
       });
       log("Upgrade install completed");
 
