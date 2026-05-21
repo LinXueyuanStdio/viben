@@ -31,6 +31,7 @@ import { registerIndexCommand } from "./index-cmd";
 import { registerLoginCommand } from "./login";
 import { registerPageCommand } from "./page";
 import { registerAccountCommand } from "./account";
+import { registerAppCommand } from "./app";
 
 /**
  * Register all commands on the program
@@ -64,4 +65,5 @@ export function registerCommands(program: Command): void {
   registerLoginCommand(program);
   registerPageCommand(program);
   registerAccountCommand(program);
+  registerAppCommand(program);
 }
