@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
+import { useTabStore } from "@/stores/tab-store";
 import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
 import { WelcomePage } from "./welcome-page";
 import { EnvCheckPage } from "./env-check-page";
@@ -19,11 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { WindowControls } from "@/components/global-tab-bar/window-controls";
+import { createTabNavigationState } from "@/navigation/tab-navigation";
+import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 
 export function OnboardingWizard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { setOnboardingCompleted, setLanguage } = useAppStore();
+  const openTab = useTabStore((state) => state.openTab);
   const currentLanguage = getCurrentLanguage();
 
   const handleLanguageChange = async (langCode: string) => {
@@ -66,7 +70,13 @@ export function OnboardingWizard() {
   const handleAgentSetupComplete = () => {
     completeStep("agentSetup");
     setOnboardingCompleted(true);
-    navigate("/workspace/global", { replace: true });
+    // Create an initial tab for the workspace
+    const url = "/workspace/global";
+    openTab({
+      navigationState: createTabNavigationState(url, buildColdStartBreadcrumb(url)),
+      pinned: false,
+    });
+    navigate(url, { replace: true });
   };
 
   const handleAgentSetupBack = () => {
