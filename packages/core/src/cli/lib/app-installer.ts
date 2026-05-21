@@ -1,7 +1,7 @@
 /**
  * App installer - download and install Viben desktop app
  */
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -523,4 +523,33 @@ export function getManualInstallCommand(packagePath: string): string {
   }
 
   return packagePath;
+}
+
+// ============================================================================
+// Launch
+// ============================================================================
+
+/**
+ * Launch the desktop app
+ */
+export function launchApp(): boolean {
+  const appPath = getInstalledAppPath();
+  if (!appPath) return false;
+
+  const platform = process.platform;
+
+  try {
+    if (platform === "darwin") {
+      spawn("open", [appPath], { detached: true, stdio: "ignore" }).unref();
+    } else if (platform === "win32") {
+      spawn("cmd", ["/c", "start", "", appPath], { detached: true, stdio: "ignore" }).unref();
+    } else if (platform === "linux") {
+      spawn(appPath, [], { detached: true, stdio: "ignore" }).unref();
+    } else {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
