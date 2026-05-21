@@ -162,3 +162,142 @@ export function getInstalledAppPath(): string | null {
 export function getDefaultDownloadDir(): string {
   return join(homedir(), "Downloads");
 }
+
+// ============================================================================
+// Release Info Fetching
+// ============================================================================
+
+/**
+ * Fetch release info from releases.json
+ */
+async function fetchFromReleasesJson(version?: string): Promise<ReleaseInfo | null> {
+  const url = version
+    ? `https://github.com/${GITHUB_REPO}/releases/download/v${version.replace(/^v/, "")}/releases.json`
+    : RELEASES_JSON_URL;
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "viben-cli" },
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json() as ReleaseInfo;
+
+    // Validate required fields
+    if (!data.version || !data.desktop?.assets) return null;
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch release info from GitHub API (fallback)
+ */
+async function fetchFromGitHubApi(version?: string): Promise<ReleaseInfo | null> {
+  const url = version
+    ? `${GITHUB_API_URL}/tags/v${version.replace(/^v/, "")}`
+    : `${GITHUB_API_URL}/latest`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "viben-cli",
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
+
+    if (!response.ok) {
+      // Check for rate limiting
+      if (response.status === 403) {
+        const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
+        if (rateLimitRemaining === "0") {
+          throw new Error("RATE_LIMITED");
+        }
+      }
+      return null;
+    }
+
+    const release = await response.json() as {
+      tag_name: string;
+      published_at: string;
+      assets: Array<{ name: string; browser_download_url: string; size: number }>;
+    };
+
+    // Parse assets into our format
+    const assets = release.assets;
+    const findAsset = (pattern: RegExp) => {
+      const asset = assets.find((a) => pattern.test(a.name));
+      return asset
+        ? { url: asset.browser_download_url, name: asset.name, size: asset.size }
+        : { url: "", name: "" };
+    };
+
+    return {
+      version: release.tag_name.replace(/^v/, ""),
+      tag: release.tag_name,
+      date: release.published_at,
+      desktop: {
+        assets: {
+          macos: {
+            arm64: findAsset(/Viben_.*_aarch64\.dmg$/),
+            x64: findAsset(/Viben_.*_(x64|x86_64)\.dmg$/),
+          },
+          windows: {
+            exe: findAsset(/Viben_.*_x64-setup\.exe$/),
+            msi: findAsset(/Viben_.*_x64.*\.msi$/),
+          },
+          linux: {
+            deb: findAsset(/Viben_.*_amd64\.deb$/),
+          },
+        },
+      },
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === "RATE_LIMITED") {
+      throw error;
+    }
+    return null;
+  }
+}
+
+/**
+ * Fetch release info with fallback
+ */
+export async function fetchReleaseInfo(version?: string): Promise<ReleaseInfo> {
+  // Try releases.json first
+  const fromJson = await fetchFromReleasesJson(version);
+  if (fromJson) return fromJson;
+
+  // Fallback to GitHub API
+  const fromApi = await fetchFromGitHubApi(version);
+  if (fromApi) return fromApi;
+
+  throw new Error(version ? "VERSION_NOT_FOUND" : "NETWORK_ERROR");
+}
+
+/**
+ * Get asset URL for current platform
+ */
+export function getAssetForPlatform(
+  release: ReleaseInfo,
+  platform: SupportedPlatform,
+  format: WindowsFormat = "exe"
+): ReleaseAsset {
+  const assets = release.desktop.assets;
+
+  switch (platform) {
+    case "darwin-arm64":
+      return assets.macos.arm64;
+    case "darwin-x64":
+      return assets.macos.x64;
+    case "win32-x64":
+      return format === "msi" ? assets.windows.msi : assets.windows.exe;
+    case "linux-x64":
+      return assets.linux.deb;
+    default:
+      throw new Error("PLATFORM_NOT_SUPPORTED");
+  }
+}
