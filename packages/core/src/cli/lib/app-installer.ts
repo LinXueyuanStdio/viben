@@ -68,7 +68,7 @@ const APP_PATHS = {
 /**
  * Detect current platform and architecture
  */
-export function detectPlatform(): SupportedPlatform | UnsupportedPlatform {
+export function detectAppPlatform(): SupportedPlatform | UnsupportedPlatform {
   const platform = process.platform;
   const arch = process.arch;
 

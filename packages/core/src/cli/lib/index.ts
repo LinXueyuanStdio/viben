@@ -9,3 +9,4 @@ export * from "./idea-store";
 export * from "./idea-generator";
 export * from "./utils";
 export * as swarm from "./swarm";
+export * from "./app-installer";
