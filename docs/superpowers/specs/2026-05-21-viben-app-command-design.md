@@ -8,6 +8,7 @@
 
 ```bash
 viben app install [version]   # 下载桌面端安装包
+  -c, --check                 # 仅检查版本，不下载
   -i, --install               # 下载后自动安装
   -o, --output <dir>          # 指定下载目录（默认：~/Downloads）
   -f, --force                 # 覆盖已存在的下载文件
@@ -16,7 +17,7 @@ viben app install [version]   # 下载桌面端安装包
 viben app check               # 检查桌面端最新版本（等同于 install --check）
 ```
 
-> **注意**：`check` 是 `install --check` 的简写，不再单独提供 `info` 子命令以避免冗余。
+> **注意**：`viben app check` 是 `viben app install --check` 的简写。
 
 ### 版本参数格式
 
