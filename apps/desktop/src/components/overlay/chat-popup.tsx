@@ -848,7 +848,6 @@ export function ChatPopupLayer(): ReactElement | null {
 
   // Hide chat capsule/popup during onboarding
   const onboardingCompleted = useAppStore((s) => s.onboardingCompleted);
-  if (!onboardingCompleted) return null;
 
   const [lastUserQuery, setLastUserQuery] = useState('');
   const [capsuleVisible, setCapsuleVisible] = useState(false);
@@ -955,6 +954,9 @@ export function ChatPopupLayer(): ReactElement | null {
   const handleCapsuleTriggerEnter = useCallback(() => {
     setCapsuleVisible(true);
   }, []);
+
+  // Early return AFTER all hooks to comply with Rules of Hooks
+  if (!onboardingCompleted) return null;
 
   return (
     <>
