@@ -21,6 +21,7 @@ $LogDir      = Join-Path $env:USERPROFILE ".viben\logs"
 $RuntimeLog  = Join-Path $LogDir "gateway.log"
 $RestartLog  = Join-Path $LogDir "gateway-restart.log"
 $Port        = 18790
+$MaxLogSize  = 10 * 1024 * 1024  # 10MB
 
 # Ensure log directory exists
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
@@ -38,18 +39,63 @@ function Write-Log {
     Add-Content -Path $RestartLog -Value $line -Encoding UTF8
 }
 
+# Log rotation function
+function Rotate-LogIfNeeded {
+    param([string]$LogFile)
+    if (Test-Path $LogFile) {
+        $fileSize = (Get-Item $LogFile).Length
+        if ($fileSize -gt $MaxLogSize) {
+            $backupFile = "$LogFile.old"
+            Move-Item -Path $LogFile -Destination $backupFile -Force
+            Write-Log "INFO" "Rotated log file: $LogFile -> $backupFile"
+        }
+    }
+}
+
+# Rotate logs if needed
+Rotate-LogIfNeeded $RestartLog
+Rotate-LogIfNeeded $RuntimeLog
+
 Add-Content -Path $RestartLog -Value "" -Encoding UTF8
 Write-Log "INFO" "=========================================="
 Write-Log "INFO" "=== Viben Gateway Restart Started ==="
 Write-Log "INFO" "=========================================="
+Write-Log "DEBUG" "System: Windows $([System.Environment]::OSVersion.Version)"
 Write-Log "DEBUG" "Node version: $(node --version 2>$null)"
 Write-Log "DEBUG" "Working directory: $ProjectRoot"
 
 # -------------------------------------------------------
-# Build @viben/core
+# Build @viben/core dependencies (recursive)
 # -------------------------------------------------------
-Write-Log "INFO" "Building @viben/core..."
+Write-Log "INFO" "Building @viben/core workspace dependencies..."
 Set-Location $ProjectRoot
+
+# Build dependencies for core package
+$packagesDir = Join-Path $ProjectRoot "packages"
+$corePkgJson = Get-Content (Join-Path $CoreDir "package.json") | ConvertFrom-Json
+$allDeps = @{}
+if ($corePkgJson.dependencies) { $corePkgJson.dependencies.PSObject.Properties | ForEach-Object { $allDeps[$_.Name] = $_.Value } }
+if ($corePkgJson.devDependencies) { $corePkgJson.devDependencies.PSObject.Properties | ForEach-Object { $allDeps[$_.Name] = $_.Value } }
+
+# Build @viben/* workspace deps
+$vibenDeps = $allDeps.Keys | Where-Object { $_ -like "@viben/*" -and $allDeps[$_] -like "workspace:*" }
+foreach ($dep in $vibenDeps) {
+    $depName = $dep -replace "@viben/", ""
+    $depDir = Join-Path $packagesDir $depName
+    if (Test-Path $depDir) {
+        $distDir = Join-Path $depDir "dist"
+        if (-not (Test-Path $distDir)) {
+            Write-Log "INFO" "  Building $dep..."
+            $buildOutput = & pnpm --filter $dep build 2>&1
+            $buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
+        } else {
+            Write-Log "INFO" "  $dep (dist/ exists)"
+        }
+    }
+}
+
+# Always rebuild core itself (gateway needs latest code)
+Write-Log "INFO" "Rebuilding @viben/core..."
 $buildOutput = & pnpm --filter "@viben/core" build 2>&1
 $buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
 $buildOutput | Where-Object { $_ -match "(✓|📦|error|Error|warning|Warning)" } | Write-Host
@@ -76,12 +122,17 @@ if ($LASTEXITCODE -ne 0) { Write-Log "WARN" "npm link failed (non-fatal)" }
 # -------------------------------------------------------
 Write-Log "INFO" "Stopping existing gateway processes..."
 
-# Kill by process name (node gateway, viben sidecar)
-@("node", "viben") | ForEach-Object {
-    Get-Process -Name $_ -ErrorAction SilentlyContinue | ForEach-Object {
-        Write-Log "INFO" "Killing $($_.Name) (PID $($_.Id))"
-        Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-    }
+# Pattern-scoped kill (only gateway-related, not all node processes)
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -like "*gateway*start*" -or $_.CommandLine -like "*gateway*restart*"
+} | ForEach-Object {
+    Write-Log "INFO" "Killing gateway node process (PID $($_.Id))"
+    Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+}
+
+Get-Process -Name "viben" -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Log "INFO" "Killing viben sidecar (PID $($_.Id))"
+    Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
 }
 
 # Kill any remaining processes that own the port (handles SYSTEM/service processes)
@@ -146,18 +197,54 @@ while ($retryCount -lt $maxRetries) {
 }
 
 if ($started) {
+    # Get gateway PID
+    $gatewayPid = (Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess
+
     Write-Log "INFO" "=========================================="
     Write-Log "INFO" "Gateway started successfully!"
     Write-Log "INFO" "=========================================="
+    Write-Log "INFO" "PID: $gatewayPid"
     Write-Log "INFO" "Health:      http://127.0.0.1:$Port/health"
     Write-Log "INFO" "API:         http://127.0.0.1:$Port/api"
     Write-Log "INFO" "Runtime Log: $RuntimeLog"
     Write-Log "INFO" "Restart Log: $RestartLog"
+
+    # Log health check response
+    try {
+        $healthResp = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+        Write-Log "DEBUG" "Health response: $($healthResp.Content)"
+    } catch { }
+
     exit 0
 } else {
     Write-Log "ERROR" "=========================================="
     Write-Log "ERROR" "Gateway failed to start after $maxRetries retries"
     Write-Log "ERROR" "=========================================="
-    Write-Log "ERROR" "Check runtime log: $RuntimeLog"
+
+    # Diagnostics
+    Write-Log "ERROR" "Diagnostics:"
+
+    # Check port status
+    $portCheck = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+    if ($portCheck) {
+        Write-Log "DEBUG" "Something is listening on port $Port but not responding to health check"
+    } else {
+        Write-Log "ERROR" "Nothing is listening on port $Port"
+    }
+
+    # Show last log lines (equivalent to tail -50)
+    Write-Log "ERROR" "Last 50 lines of runtime log:"
+    Add-Content -Path $RestartLog -Value "--- Runtime Log Start ---" -Encoding UTF8
+    if (Test-Path $RuntimeLog) {
+        $logLines = Get-Content $RuntimeLog -Tail 50 -ErrorAction SilentlyContinue
+        $logLines | ForEach-Object {
+            Write-Host $_
+            Add-Content -Path $RestartLog -Value $_ -Encoding UTF8
+        }
+    } else {
+        Write-Host "(no log output)"
+    }
+    Add-Content -Path $RestartLog -Value "--- Runtime Log End ---" -Encoding UTF8
+
     exit 1
 }

@@ -60,8 +60,8 @@ fi
 echo ""
 echo "🔄 Restarting Viben Desktop..."
 
-echo "  Killing processes on port 1420..."
-lsof -ti:1420 | xargs kill -9 2>/dev/null || true
+echo "  Killing processes on port 1549..."
+lsof -ti:1549 | xargs kill -9 2>/dev/null || true
 
 echo "  Killing viben-desktop Tauri processes..."
 pkill -9 -f "viben-desktop" 2>/dev/null || true
@@ -73,12 +73,12 @@ pkill -9 -f "cargo.*viben-desktop" 2>/dev/null || true
 
 sleep 1
 
-if lsof -i:1420 > /dev/null 2>&1; then
-  echo "❌ Error: Port 1420 is still in use"
+if lsof -i:1549 > /dev/null 2>&1; then
+  echo "❌ Error: Port 1549 is still in use"
   exit 1
 fi
 
-echo "✅ All processes killed, port 1420 is free"
+echo "✅ All processes killed, port 1549 is free"
 
 # --- Start Tauri dev ---
 echo "🚀 Starting Tauri desktop..."

@@ -198,13 +198,13 @@ if $FLAG_FORCE; then
 fi
 
 log "INFO" "Starting Node.js gateway on port $PORT... ${FORCE_FLAG:+(force mode)}"
-log "DEBUG" "Command: node ./dist/cli/bin.js gateway start --daemon --port $PORT $FORCE_FLAG"
+log "DEBUG" "Command: node ./dist/cli/bin.js gateway restart --port $PORT $FORCE_FLAG"
 
 # Clear previous runtime log and start gateway
 echo "" > "$RUNTIME_LOG"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway starting..." >> "$RUNTIME_LOG"
 
-node ./dist/cli/bin.js gateway start --daemon --port $PORT $FORCE_FLAG >> "$RUNTIME_LOG" 2>&1 &
+node ./dist/cli/bin.js gateway restart --port $PORT $FORCE_FLAG >> "$RUNTIME_LOG" 2>&1 &
 START_CMD_PID=$!
 log "DEBUG" "Start command PID: $START_CMD_PID"
 
