@@ -736,10 +736,22 @@ jobs:
           CLI_RELEASED: ${{ steps.components.outputs.cli_released }}
           DESKTOP_RELEASED: ${{ steps.components.outputs.desktop_released }}
         run: |
-          cat > release-body.md << EOFBODY
-          ## Viben v${VERSION}
+          CHANGELOG_PATH="docs/changelogs/${VERSION}.md"
 
-          EOFBODY
+          # Start with version header
+          echo "## Viben v${VERSION}" > release-body.md
+          echo "" >> release-body.md
+
+          # If changelog exists, include it first
+          if [[ -f "$CHANGELOG_PATH" ]]; then
+            echo "Found changelog at $CHANGELOG_PATH"
+            cat "$CHANGELOG_PATH" >> release-body.md
+            echo "" >> release-body.md
+            echo "---" >> release-body.md
+            echo "" >> release-body.md
+          else
+            echo "No changelog found at $CHANGELOG_PATH, using default release notes"
+          fi
 
           if [[ "$CLI_RELEASED" == "true" ]]; then
             cat >> release-body.md << 'EOFCLI'
@@ -767,7 +779,7 @@ jobs:
           brew install viben
           ```
 
-          > 💡 **Windows users**: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
+          > Windows users: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
 
           EOFCLI
           fi
@@ -783,11 +795,10 @@ jobs:
           - **Intel**: Download the `x86_64` DMG file
           - Drag Viben to Applications
 
-          > ⚠️ **重要 / Important**: 首次运行前，请执行以下命令，否则 macOS 会提示「Viben.app 已损坏，无法打开」：
+          > **Important**: Before first launch, run the command below to clear quarantine attributes. Otherwise macOS will show "Viben.app is damaged and can't be opened":
           > ```bash
           > sudo /usr/bin/xattr -cr /Applications/Viben.app
           > ```
-          > Before first launch, run the command above to clear quarantine attributes. Otherwise macOS will show "Viben.app is damaged and can't be opened".
 
           #### Windows
           Download the `.msi` or `.exe` installer and run it.
