@@ -41,6 +41,7 @@ import { EmojiTab } from '@/components/ui/icon-picker/tabs/emoji-tab';
 import { ScreenshotDropdown } from '@/components/chat/screenshot-dropdown';
 import { useUiStore } from '@/stores/ui-store';
 import { useWorkspaceStore } from '@/stores';
+import { useAppStore } from '@/stores/app-store';
 import { useChatConfigStore } from '@/stores/chat-config-store';
 import { useAgentConversation, useChatConfig, useModels } from '@/hooks';
 import { useSlashCommands as useSlashCommandsDefs } from '@/features/slash-commands';
@@ -841,9 +842,13 @@ function ChatPopup({
 // ChatPopupLayer — 编排层，管理共享聊天状态
 // ============================================================================
 
-export function ChatPopupLayer(): ReactElement {
+export function ChatPopupLayer(): ReactElement | null {
   const activeWorkspace = useWorkspaceStore((s) => s.getActiveWorkspace());
   const workspacePath = activeWorkspace?.path || '';
+
+  // Hide chat capsule/popup during onboarding
+  const onboardingCompleted = useAppStore((s) => s.onboardingCompleted);
+  if (!onboardingCompleted) return null;
 
   const [lastUserQuery, setLastUserQuery] = useState('');
   const [capsuleVisible, setCapsuleVisible] = useState(false);

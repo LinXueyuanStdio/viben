@@ -778,6 +778,8 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
           version: nodeInfo.version,
           path: nodeInfo.path,
         });
+        // Set isRunning to true to trigger the effect that processes ready nodes
+        dispatch({ type: "SET_RUNNING", running: true });
       }
     },
     [nodejsNodes, updateNode]

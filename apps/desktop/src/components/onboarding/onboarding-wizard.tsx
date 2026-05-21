@@ -103,7 +103,7 @@ export function OnboardingWizard() {
       </div>
 
       {/* Step content */}
-      <main className="flex flex-1 items-start justify-center overflow-auto py-8">
+      <main className="flex min-h-0 flex-1 items-start justify-center overflow-auto py-8">
         <div className="w-full max-w-lg px-4">
           {currentStep === "welcome" && (
             <WelcomePage onAccept={handleWelcomeAccept} />
