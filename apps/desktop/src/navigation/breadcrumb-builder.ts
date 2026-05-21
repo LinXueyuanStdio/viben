@@ -130,11 +130,12 @@ export function buildBreadcrumbItem(
   const href = registry.build(entry.pattern, params);
   const icon = headers?.icon ?? (typeof entry.icon === "function" ? entry.icon(params) : entry.icon);
   const title = typeof entry.title === "function" ? entry.title(params) : entry.title;
+  const titleKey = typeof entry.titleKey === "function" ? entry.titleKey(params) : entry.titleKey;
 
   return {
     id: headers?.id ?? href,
     label: headers?.label ?? title,
-    titleKey: entry.titleKey,
+    titleKey,
     icon,
     pattern: entry.pattern,
     href,

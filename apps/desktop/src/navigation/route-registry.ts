@@ -26,7 +26,7 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
   { pattern: "/settings/:section", icon: (p) => getSettingsIcon(p.section), title: (p) => getSettingsTitle(p.section), dropdownCategory: "settings" },
 
   // ─── Workspace ───
-  { pattern: "/workspace/:workspaceId", icon: { type: "lucide", value: "home" }, title: (p) => p.workspaceId, dropdownCategory: "workspace" },
+  { pattern: "/workspace/:workspaceId", icon: { type: "lucide", value: "home" }, title: (p) => p.workspaceId, titleKey: (p) => p.workspaceId === "global" ? "workspace.global" : undefined, dropdownCategory: "workspace" },
 
   // ─── Workspace Sections ───
   { pattern: "/workspace/:workspaceId/pages", icon: { type: "lucide", value: "layout-grid" }, title: "Pages", titleKey: "workspace.sections.pages", dropdownCategory: "workspace-section" },
