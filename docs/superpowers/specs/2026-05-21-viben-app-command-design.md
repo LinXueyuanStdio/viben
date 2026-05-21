@@ -2,12 +2,15 @@
 
 ## 概述
 
-实现 `viben app` 命令，用于从 GitHub releases 下载并安装 Viben 桌面端应用。支持自动检测平台、指定版本下载、可选自动安装。
+实现 `viben app` 命令，用于启动或安装 Viben 桌面端应用。优先尝试启动已安装的桌面端，未安装时自动引导下载安装。
 
 ## 命令结构
 
 ```bash
-viben app install [version]   # 下载桌面端安装包
+viben app                     # 启动桌面端（未安装时提示下载）
+  -y, --yes                   # 跳过确认，直接下载安装
+
+viben app install [version]   # 仅下载桌面端安装包（不启动）
   -c, --check                 # 仅检查版本，不下载
   -i, --install               # 下载后自动安装
   -o, --output <dir>          # 指定下载目录（默认：~/Downloads）
@@ -17,7 +20,38 @@ viben app install [version]   # 下载桌面端安装包
 viben app check               # 检查桌面端最新版本（等同于 install --check）
 ```
 
-> **注意**：`viben app check` 是 `viben app install --check` 的简写。
+## 默认行为流程（viben app）
+
+```
+用户执行 viben app
+    ↓
+检测桌面端是否已安装
+├── macOS: 检查 /Applications/Viben.app 是否存在
+├── Windows: 检查注册表或默认安装路径
+└── Linux: 检查 /usr/bin/viben-desktop 或 dpkg -l viben
+    ↓
+已安装？
+├── 是 → 启动桌面端应用，CLI 退出
+└── 否 → 提示用户确认下载
+         ↓
+         Viben desktop app is not installed.
+         Latest version: v1.2.0 (56.5 MB)
+         
+         Download and install? [Y/n]
+         ↓
+         用户确认(Y) → 下载 → 安装 → 启动
+         用户取消(n) → 显示手动安装命令，退出
+```
+
+> **设计理念**：用户只需记住 `viben app` 一个命令。未安装时需用户确认才会下载，避免意外消耗流量。
+
+### 启动命令
+
+| 平台 | 启动方式 |
+|------|----------|
+| macOS | `open /Applications/Viben.app` |
+| Windows | `start "" "C:\Program Files\Viben\Viben.exe"` |
+| Linux | `viben-desktop` 或 `/opt/Viben/viben-desktop` |
 
 ### 版本参数格式
 
