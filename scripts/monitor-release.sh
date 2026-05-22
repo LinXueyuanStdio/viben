@@ -1,15 +1,14 @@
 #!/bin/bash
-# Monitor release workflow - for use with Claude Code's loop/cron functionality
+# Monitor release workflow - waits until completion or failure
 #
 # Usage: ./scripts/monitor-release.sh <run-id>
 #
-# This script checks the status of a release workflow run and outputs
-# structured information that Claude Code can use to determine next actions.
+# This script polls the workflow status and waits until it completes.
+# It adjusts polling interval based on the current phase.
 #
 # Exit codes:
 #   0 - Workflow completed successfully
 #   1 - Workflow failed or was cancelled
-#   2 - Workflow still in progress (check again later)
 
 set -e
 
@@ -29,154 +28,216 @@ if [[ -z "$RUN_ID" ]]; then
   exit 1
 fi
 
-# Get workflow run status
-RUN_INFO=$(gh run view "$RUN_ID" --json status,conclusion,jobs,createdAt,updatedAt,url)
+# Workflow timeline estimates (in seconds)
+# Based on analysis of successful runs:
+#   prepare: ~10s
+#   build-cli: ~8min (parallel)
+#   test-cli: ~2min (parallel)
+#   release-cli: ~1min
+#   build-desktop: ~20min (parallel)
+#   create-release: ~1min
+#   Total: ~30-35min
 
-STATUS=$(echo "$RUN_INFO" | jq -r '.status')
-CONCLUSION=$(echo "$RUN_INFO" | jq -r '.conclusion')
-URL=$(echo "$RUN_INFO" | jq -r '.url')
-CREATED_AT=$(echo "$RUN_INFO" | jq -r '.createdAt')
+get_wait_time() {
+  local phase="$1"
+  local elapsed_minutes="$2"
 
-# Calculate elapsed time
-CREATED_EPOCH=$(date -d "$CREATED_AT" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CREATED_AT" +%s 2>/dev/null || echo "0")
-NOW_EPOCH=$(date +%s)
-ELAPSED_SECONDS=$((NOW_EPOCH - CREATED_EPOCH))
-ELAPSED_MINUTES=$((ELAPSED_SECONDS / 60))
+  case "$phase" in
+    "prepare")
+      echo 30
+      ;;
+    "build-cli")
+      echo 180  # 3 minutes
+      ;;
+    "test-cli")
+      echo 90   # 1.5 minutes
+      ;;
+    "release-cli"|"update-homebrew")
+      echo 60
+      ;;
+    "build-desktop")
+      # Desktop build is longest, adjust based on elapsed time
+      if [[ $elapsed_minutes -lt 20 ]]; then
+        echo 300  # 5 minutes early on
+      else
+        echo 120  # 2 minutes near the end
+      fi
+      ;;
+    "create-release")
+      echo 60
+      ;;
+    *)
+      echo 120  # Default 2 minutes
+      ;;
+  esac
+}
 
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Release Workflow Monitor${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
-echo -e "Run ID: ${CYAN}$RUN_ID${NC}"
-echo -e "URL: $URL"
-echo -e "Elapsed: ${ELAPSED_MINUTES}min ${ELAPSED_SECONDS}s"
-echo ""
+print_status() {
+  local run_info="$1"
+  local elapsed_minutes="$2"
 
-# Job status summary
-echo -e "${YELLOW}Job Status:${NC}"
-echo ""
+  echo ""
+  echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${BLUE}  Release Workflow Monitor${NC}"
+  echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  echo -e "Run ID: ${CYAN}$RUN_ID${NC}"
+  echo -e "Elapsed: ${elapsed_minutes} minutes"
+  echo ""
+  echo -e "${YELLOW}Jobs:${NC}"
 
-# Parse jobs and display status
-echo "$RUN_INFO" | jq -r '.jobs[] | "\(.name)|\(.status)|\(.conclusion)"' | while IFS='|' read -r name status conclusion; do
-  # Truncate long job names
-  short_name=$(echo "$name" | cut -c1-50)
-  if [[ ${#name} -gt 50 ]]; then
-    short_name="${short_name}..."
-  fi
-
-  if [[ "$status" == "completed" ]]; then
-    if [[ "$conclusion" == "success" ]]; then
-      echo -e "  ${GREEN}✓${NC} $short_name"
-    elif [[ "$conclusion" == "failure" ]]; then
-      echo -e "  ${RED}✗${NC} $short_name"
-    elif [[ "$conclusion" == "skipped" ]]; then
-      echo -e "  ${YELLOW}○${NC} $short_name (skipped)"
-    else
-      echo -e "  ${YELLOW}?${NC} $short_name ($conclusion)"
+  # Parse and display job status
+  echo "$run_info" | jq -r '.jobs[] | "\(.name)|\(.status)|\(.conclusion)"' | while IFS='|' read -r name status conclusion; do
+    # Truncate long job names
+    short_name=$(echo "$name" | cut -c1-55)
+    if [[ ${#name} -gt 55 ]]; then
+      short_name="${short_name}..."
     fi
-  elif [[ "$status" == "in_progress" ]]; then
-    echo -e "  ${CYAN}▶${NC} $short_name (running)"
-  elif [[ "$status" == "queued" ]]; then
-    echo -e "  ${YELLOW}◷${NC} $short_name (queued)"
-  else
-    echo -e "  ${YELLOW}…${NC} $short_name ($status)"
-  fi
-done
 
+    if [[ "$status" == "completed" ]]; then
+      if [[ "$conclusion" == "success" ]]; then
+        printf "  ${GREEN}✓${NC} %-60s\n" "$short_name"
+      elif [[ "$conclusion" == "failure" ]]; then
+        printf "  ${RED}✗${NC} %-60s\n" "$short_name"
+      elif [[ "$conclusion" == "skipped" ]]; then
+        printf "  ${YELLOW}○${NC} %-60s ${YELLOW}(skipped)${NC}\n" "$short_name"
+      else
+        printf "  ${YELLOW}?${NC} %-60s ${YELLOW}(%s)${NC}\n" "$short_name" "$conclusion"
+      fi
+    elif [[ "$status" == "in_progress" ]]; then
+      printf "  ${CYAN}▶${NC} %-60s ${CYAN}(running)${NC}\n" "$short_name"
+    elif [[ "$status" == "queued" ]]; then
+      printf "  ${YELLOW}◷${NC} %-60s ${YELLOW}(queued)${NC}\n" "$short_name"
+    else
+      printf "  ${YELLOW}…${NC} %-60s ${YELLOW}(%s)${NC}\n" "$short_name" "$status"
+    fi
+  done
+}
+
+detect_phase() {
+  local run_info="$1"
+
+  if echo "$run_info" | jq -e '.jobs[] | select(.name == "prepare" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "prepare"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name | startswith("build-cli")) | select(.status == "in_progress")' > /dev/null 2>&1; then
+    echo "build-cli"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name | startswith("test-cli")) | select(.status == "in_progress")' > /dev/null 2>&1; then
+    echo "test-cli"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "release-cli" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "release-cli"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "update-homebrew" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "update-homebrew"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name | startswith("build-desktop")) | select(.status == "in_progress")' > /dev/null 2>&1; then
+    echo "build-desktop"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "create-unified-release" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "create-release"
+  else
+    echo "unknown"
+  fi
+}
+
+echo -e "${BLUE}Starting release workflow monitor for run ${CYAN}$RUN_ID${NC}"
+echo -e "URL: https://github.com/LinXueyuanStdio/viben/actions/runs/$RUN_ID"
+echo ""
+echo -e "${YELLOW}Expected timeline:${NC}"
+echo "  prepare       ~10s"
+echo "  build-cli     ~8min"
+echo "  test-cli      ~2min"
+echo "  release-cli   ~1min"
+echo "  build-desktop ~20min"
+echo "  create-release ~1min"
+echo "  ────────────────────"
+echo "  Total         ~30-35min"
 echo ""
 
-# Determine overall status and next action
-if [[ "$STATUS" == "completed" ]]; then
-  if [[ "$CONCLUSION" == "success" ]]; then
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  ✓ Release completed successfully!${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo "Check the release at:"
-    echo "  https://github.com/LinXueyuanStdio/viben/releases"
-    echo ""
-    echo "MONITOR_STATUS=success"
-    exit 0
-  elif [[ "$CONCLUSION" == "failure" ]]; then
-    echo -e "${RED}========================================${NC}"
-    echo -e "${RED}  ✗ Release workflow failed${NC}"
-    echo -e "${RED}========================================${NC}"
+START_TIME=$(date +%s)
+CHECK_COUNT=0
+
+while true; do
+  CHECK_COUNT=$((CHECK_COUNT + 1))
+
+  # Get workflow run status
+  RUN_INFO=$(gh run view "$RUN_ID" --json status,conclusion,jobs,createdAt,updatedAt,url 2>&1) || {
+    echo -e "${RED}Error fetching workflow status: $RUN_INFO${NC}"
+    sleep 30
+    continue
+  }
+
+  STATUS=$(echo "$RUN_INFO" | jq -r '.status')
+  CONCLUSION=$(echo "$RUN_INFO" | jq -r '.conclusion')
+
+  # Calculate elapsed time
+  NOW=$(date +%s)
+  ELAPSED_SECONDS=$((NOW - START_TIME))
+  ELAPSED_MINUTES=$((ELAPSED_SECONDS / 60))
+
+  # Print current status
+  print_status "$RUN_INFO" "$ELAPSED_MINUTES"
+
+  # Check if completed
+  if [[ "$STATUS" == "completed" ]]; then
     echo ""
 
-    # Find failed jobs
-    echo -e "${YELLOW}Failed jobs:${NC}"
-    echo "$RUN_INFO" | jq -r '.jobs[] | select(.conclusion == "failure") | .name' | while read -r job_name; do
-      echo "  - $job_name"
-    done
-    echo ""
+    if [[ "$CONCLUSION" == "success" ]]; then
+      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${GREEN}  ✓ Release completed successfully!${NC}"
+      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo ""
+      echo "Total time: ${ELAPSED_MINUTES} minutes"
+      echo ""
+      echo "Check the release at:"
+      echo "  https://github.com/LinXueyuanStdio/viben/releases"
+      echo ""
+      exit 0
 
-    echo "To view failed job logs:"
-    echo "  gh run view $RUN_ID --log-failed"
-    echo ""
-    echo "To rerun failed jobs:"
-    echo "  gh run rerun $RUN_ID --failed"
-    echo ""
-    echo "MONITOR_STATUS=failure"
-    exit 1
-  elif [[ "$CONCLUSION" == "cancelled" ]]; then
-    echo -e "${YELLOW}========================================${NC}"
-    echo -e "${YELLOW}  ○ Release workflow was cancelled${NC}"
-    echo -e "${YELLOW}========================================${NC}"
-    echo ""
-    echo "MONITOR_STATUS=cancelled"
-    exit 1
+    elif [[ "$CONCLUSION" == "failure" ]]; then
+      echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${RED}  ✗ Release workflow FAILED${NC}"
+      echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo ""
+
+      # Find and display failed jobs
+      echo -e "${YELLOW}Failed jobs:${NC}"
+      FAILED_JOBS=$(echo "$RUN_INFO" | jq -r '.jobs[] | select(.conclusion == "failure") | .name')
+      echo "$FAILED_JOBS" | while read -r job_name; do
+        echo "  - $job_name"
+      done
+      echo ""
+
+      # Get error logs
+      echo -e "${YELLOW}Error details:${NC}"
+      echo "────────────────────────────────────────"
+      gh run view "$RUN_ID" --log-failed 2>&1 | tail -50
+      echo "────────────────────────────────────────"
+      echo ""
+
+      echo "To view full logs:"
+      echo "  gh run view $RUN_ID --log-failed"
+      echo ""
+      echo "To rerun failed jobs:"
+      echo "  gh run rerun $RUN_ID --failed"
+      echo ""
+      exit 1
+
+    elif [[ "$CONCLUSION" == "cancelled" ]]; then
+      echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${YELLOW}  ○ Release workflow was cancelled${NC}"
+      echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo ""
+      exit 1
+    fi
   fi
-elif [[ "$STATUS" == "in_progress" ]] || [[ "$STATUS" == "queued" ]]; then
-  # Determine which phase we're in and suggest next check time
-  RUNNING_JOBS=$(echo "$RUN_INFO" | jq -r '[.jobs[] | select(.status == "in_progress")] | length')
+
+  # Still in progress - determine wait time based on phase
+  CURRENT_PHASE=$(detect_phase "$RUN_INFO")
+  WAIT_TIME=$(get_wait_time "$CURRENT_PHASE" "$ELAPSED_MINUTES")
+
   COMPLETED_JOBS=$(echo "$RUN_INFO" | jq -r '[.jobs[] | select(.status == "completed")] | length')
   TOTAL_JOBS=$(echo "$RUN_INFO" | jq -r '.jobs | length')
 
-  # Check what's currently running
-  CURRENT_PHASE=""
-  SUGGESTED_WAIT=60
-
-  if echo "$RUN_INFO" | jq -e '.jobs[] | select(.name == "prepare" and .status == "in_progress")' > /dev/null 2>&1; then
-    CURRENT_PHASE="prepare"
-    SUGGESTED_WAIT=30
-  elif echo "$RUN_INFO" | jq -e '.jobs[] | select(.name | startswith("build-cli")) | select(.status == "in_progress")' > /dev/null 2>&1; then
-    CURRENT_PHASE="build-cli"
-    SUGGESTED_WAIT=180  # 3 minutes
-  elif echo "$RUN_INFO" | jq -e '.jobs[] | select(.name | startswith("test-cli")) | select(.status == "in_progress")' > /dev/null 2>&1; then
-    CURRENT_PHASE="test-cli"
-    SUGGESTED_WAIT=90  # 1.5 minutes
-  elif echo "$RUN_INFO" | jq -e '.jobs[] | select(.name == "release-cli" and .status == "in_progress")' > /dev/null 2>&1; then
-    CURRENT_PHASE="release-cli"
-    SUGGESTED_WAIT=60
-  elif echo "$RUN_INFO" | jq -e '.jobs[] | select(.name | startswith("build-desktop")) | select(.status == "in_progress")' > /dev/null 2>&1; then
-    CURRENT_PHASE="build-desktop"
-    # Desktop build is the longest, check less frequently
-    if [[ $ELAPSED_MINUTES -lt 15 ]]; then
-      SUGGESTED_WAIT=300  # 5 minutes
-    else
-      SUGGESTED_WAIT=180  # 3 minutes near the end
-    fi
-  elif echo "$RUN_INFO" | jq -e '.jobs[] | select(.name == "create-unified-release" and .status == "in_progress")' > /dev/null 2>&1; then
-    CURRENT_PHASE="create-release"
-    SUGGESTED_WAIT=60
-  fi
-
-  echo -e "${CYAN}========================================${NC}"
-  echo -e "${CYAN}  ▶ Workflow in progress${NC}"
-  echo -e "${CYAN}========================================${NC}"
   echo ""
-  echo "Progress: $COMPLETED_JOBS/$TOTAL_JOBS jobs completed"
-  echo "Running: $RUNNING_JOBS jobs"
-  [[ -n "$CURRENT_PHASE" ]] && echo "Current phase: $CURRENT_PHASE"
-  echo ""
-  echo "MONITOR_STATUS=in_progress"
-  echo "MONITOR_PHASE=$CURRENT_PHASE"
-  echo "MONITOR_PROGRESS=$COMPLETED_JOBS/$TOTAL_JOBS"
-  echo "MONITOR_SUGGESTED_WAIT=${SUGGESTED_WAIT}s"
-  echo ""
-  echo -e "${YELLOW}Suggested next check: in ${SUGGESTED_WAIT} seconds${NC}"
-  exit 2
-fi
+  echo -e "Progress: ${CYAN}$COMPLETED_JOBS/$TOTAL_JOBS${NC} jobs | Phase: ${CYAN}$CURRENT_PHASE${NC}"
+  echo -e "Next check in ${WAIT_TIME}s (check #$CHECK_COUNT)"
 
-echo "MONITOR_STATUS=unknown"
-exit 1
+  sleep "$WAIT_TIME"
+done
