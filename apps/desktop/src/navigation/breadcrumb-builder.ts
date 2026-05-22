@@ -58,6 +58,10 @@ export function buildColdStartBreadcrumb(url: string, headers?: NavigateHeaders)
     if (ancestorPattern === "/workspace/:workspaceId" && ancestorParams.workspaceId) {
       item.descriptorId = "workspace";
       item.meta = { ...item.meta, workspaceId: ancestorParams.workspaceId };
+      // Set titleKey for global workspace so tab label gets translated
+      if (ancestorParams.workspaceId === "global") {
+        item.titleKey = "workspace.global";
+      }
     }
 
     chain.push(item);
@@ -85,6 +89,10 @@ export function buildColdStartBreadcrumb(url: string, headers?: NavigateHeaders)
   if (match.pattern === "/workspace/:workspaceId" && match.params.workspaceId) {
     currentItem.descriptorId = currentItem.descriptorId ?? "workspace";
     currentItem.meta = { ...currentItem.meta, workspaceId: match.params.workspaceId };
+    // Set titleKey for global workspace so tab label gets translated
+    if (match.params.workspaceId === "global") {
+      currentItem.titleKey = "workspace.global";
+    }
   }
 
   chain.push(currentItem);

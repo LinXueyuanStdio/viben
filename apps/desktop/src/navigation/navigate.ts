@@ -13,10 +13,16 @@ export function buildNavigateLeaf(url: string, headers?: NavigateHeaders): Bread
   const match = registry.match(url);
   const fallbackLabel = url.split("/").filter(Boolean).pop() ?? url;
 
+  // Determine titleKey - use route entry's titleKey, but override for global workspace
+  let titleKey = match?.entry.titleKey;
+  if (match?.pattern === "/workspace/:workspaceId" && match.params.workspaceId === "global") {
+    titleKey = "workspace.global";
+  }
+
   return {
     id: headers?.id ?? url,
     label: headers?.label ?? match?.title ?? fallbackLabel,
-    titleKey: match?.entry.titleKey,
+    titleKey,
     icon: headers?.icon ?? match?.icon,
     pattern: match?.pattern,
     href: url,
