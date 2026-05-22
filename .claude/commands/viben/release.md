@@ -253,6 +253,66 @@ gh release view v1.2.0
 
 ---
 
+## 自动监控发布 `[AI]`
+
+发布脚本会输出 run ID，AI 应使用监控脚本跟踪发布进度：
+
+```bash
+# 运行监控脚本
+./scripts/monitor-release.sh <run-id>
+```
+
+### 监控脚本退出码
+
+| 退出码 | 含义 | AI 行为 |
+|--------|------|---------|
+| 0 | 发布成功 | 报告成功，结束监控 |
+| 1 | 发布失败/取消 | 分析错误，尝试修复或报告 |
+| 2 | 进行中 | 根据建议等待时间后再次检查 |
+
+### 工作流阶段和预计时间
+
+| 阶段 | 预计时间 | 建议检查间隔 |
+|------|----------|--------------|
+| prepare | ~10s | 30s |
+| build-cli | ~8min | 3min |
+| test-cli | ~2min | 1.5min |
+| release-cli | ~1min | 1min |
+| build-desktop | ~20min | 5min（前15min）/ 3min（后期）|
+| create-release | ~1min | 1min |
+
+**总预计时间**: 30-35 分钟
+
+### 监控流程
+
+```mermaid
+graph TD
+    A[触发发布] --> B[获取 run-id]
+    B --> C[等待 3 分钟]
+    C --> D[运行 monitor-release.sh]
+    D --> E{退出码?}
+    E -->|0 成功| F[报告发布成功]
+    E -->|1 失败| G[分析错误日志]
+    E -->|2 进行中| H[根据建议时间等待]
+    H --> D
+    G --> I{可自动修复?}
+    I -->|是| J[修复并重新发布]
+    I -->|否| K[报告错误给用户]
+```
+
+### 错误处理
+
+如果发布失败：
+
+1. 查看失败日志: `gh run view <run-id> --log-failed`
+2. 分析常见错误:
+   - **npm publish 失败**: 检查 NPM_TOKEN
+   - **Tauri build 失败**: 检查 Rust 依赖或签名密钥
+   - **测试失败**: 检查 CLI gateway 测试
+3. 修复后可重新运行失败的 jobs: `gh run rerun <run-id> --failed`
+
+---
+
 ## 故障排除
 
 ### Changelog 未找到

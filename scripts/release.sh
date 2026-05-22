@@ -218,11 +218,16 @@ echo -e "${BLUE}Triggering release workflow...${NC}"
 
 gh workflow run release-all.yml $WORKFLOW_ARGS
 
+# Wait a moment for the run to be created, then get the run ID
+sleep 3
+RUN_ID=$(gh run list --workflow=release-all.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+
+echo "$RUN_ID"
+
 echo ""
 echo -e "${GREEN}Release workflow triggered successfully!${NC}"
 echo ""
-echo "Monitor the release at:"
-echo "  https://github.com/LinXueyuanStdio/viben/actions/workflows/release-all.yml"
+echo "Workflow run: https://github.com/LinXueyuanStdio/viben/actions/runs/$RUN_ID"
 echo ""
 echo "The workflow will:"
 echo "  1. Sync version across all packages"
@@ -230,3 +235,24 @@ echo "  2. Build and test CLI on all platforms"
 echo "  3. Publish CLI to npm"
 echo "  4. Build Desktop apps for macOS, Windows, and Linux"
 echo "  5. Create GitHub Release with changelog"
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  Workflow Timeline (estimated)${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo "  Phase 1: prepare              ~10s"
+echo "  Phase 2: build-cli            ~8min  (parallel: macOS, Windows, Linux)"
+echo "  Phase 3: test-cli             ~2min  (parallel: macOS, Windows, Linux)"
+echo "  Phase 4: release-cli          ~1min"
+echo "  Phase 5: build-desktop        ~20min (parallel: macOS, Windows, Linux)"
+echo "  Phase 6: create-release       ~1min"
+echo "  ─────────────────────────────────────"
+echo "  Total estimated time:         ~30-35min"
+echo ""
+echo -e "${YELLOW}Monitor command for Claude Code:${NC}"
+echo ""
+echo "  gh run view $RUN_ID --json status,conclusion,jobs"
+echo ""
+echo -e "${YELLOW}Or use the monitoring script:${NC}"
+echo ""
+echo "  ./scripts/monitor-release.sh $RUN_ID"
