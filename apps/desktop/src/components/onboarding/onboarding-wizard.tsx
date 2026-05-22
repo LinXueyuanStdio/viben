@@ -6,7 +6,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useTabStore } from "@/stores/tab-store";
 import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
 import { WelcomePage } from "./welcome-page";
-import { EnvCheckPage } from "./env-check-page";
+import { GatewaySetupPage } from "./gateway-setup-page";
 import { StepLogin } from "./step-login";
 import { StepAgentSetup } from "./step-agent-setup";
 import { VibenLogo } from "@/components/ui/viben-logo";
@@ -128,7 +128,7 @@ export function OnboardingWizard() {
             <WelcomePage onAccept={handleWelcomeAccept} />
           )}
           {currentStep === "envCheck" && (
-            <EnvCheckPage
+            <GatewaySetupPage
               onComplete={handleEnvCheckComplete}
               onBack={handleEnvCheckBack}
             />
