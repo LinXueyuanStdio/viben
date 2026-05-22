@@ -45,6 +45,16 @@ export interface CliCheckResult {
   error?: string;
 }
 
+/**
+ * Bundled CLI 检查结果类型
+ */
+export interface BundledCliResult {
+  available: boolean;
+  path: string | null;
+  version: string | null;
+  error?: string;
+}
+
 export interface UseCliInstallerReturn {
   /** 当前状态 */
   state: CliInstallState;

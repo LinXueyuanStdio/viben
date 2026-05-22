@@ -24,6 +24,10 @@ import {
   CancellationRegistry,
   isCancellationError,
 } from "@/lib/onboarding/cancellation";
+import {
+  checkBundledCli,
+  type BundledCliResult,
+} from "@/lib/onboarding/bundled-cli";
 import { useNodeInstaller, type NodeInfo, type NodeCheckResult } from "./use-node-installer";
 import { useCliInstaller } from "./use-cli-installer";
 import { useGateway } from "./use-gateway";
@@ -208,6 +212,10 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   const gatewayStatus = useGatewayStatus();
   const python = usePython();
   const executors = useExecutors({ includeGlobal: true });
+
+  // Bundled CLI state
+  const [bundledCli, setBundledCli] = useState<BundledCliResult | null>(null);
+  const bundledCliCheckedRef = useRef(false);
 
   // Node.js data state
   const [nodejsNodes, setNodejsNodes] = useState<NodeInfo[]>([]);
@@ -661,14 +669,80 @@ export function useEnvOrchestrator(): UseEnvOrchestratorReturn {
   }, [state.dagState, executeNode]);
 
   // Start all checks
-  const startChecks = useCallback(() => {
+  const startChecks = useCallback(async () => {
     log("startChecks: starting");
     dispatch({ type: "RESET" });
-    dispatch({ type: "START" });
     runningNodesRef.current.clear();
     cancellationRef.current.dispose();
     cancellationRef.current = new CancellationRegistry();
-  }, []);
+
+    // Check for bundled CLI first (only once per session)
+    if (!bundledCliCheckedRef.current) {
+      bundledCliCheckedRef.current = true;
+      log("startChecks: checking for bundled CLI...");
+
+      try {
+        const bundledResult = await checkBundledCli();
+        setBundledCli(bundledResult);
+
+        if (bundledResult.available) {
+          log("startChecks: bundled CLI available, skipping nodejs and cli checks");
+          // Mark nodejs and cli as success (skipped because bundled CLI is available)
+          dispatch({
+            type: "UPDATE_NODE",
+            nodeId: "nodejs",
+            status: "success",
+            data: {
+              version: "N/A (bundled CLI)",
+              path: "bundled",
+              skipped: true,
+              reason: "Bundled CLI available",
+            },
+          });
+          dispatch({
+            type: "UPDATE_NODE",
+            nodeId: "cli",
+            status: "success",
+            data: {
+              version: bundledResult.version,
+              path: bundledResult.path,
+              bundled: true,
+            },
+          });
+        } else {
+          log("startChecks: no bundled CLI available, will check nodejs and cli");
+        }
+      } catch (err) {
+        log("startChecks: bundled CLI check failed, continuing with normal flow", err);
+      }
+    } else if (bundledCli?.available) {
+      // Already checked and bundled CLI is available
+      log("startChecks: using cached bundled CLI result, skipping nodejs and cli checks");
+      dispatch({
+        type: "UPDATE_NODE",
+        nodeId: "nodejs",
+        status: "success",
+        data: {
+          version: "N/A (bundled CLI)",
+          path: "bundled",
+          skipped: true,
+          reason: "Bundled CLI available",
+        },
+      });
+      dispatch({
+        type: "UPDATE_NODE",
+        nodeId: "cli",
+        status: "success",
+        data: {
+          version: bundledCli.version,
+          path: bundledCli.path,
+          bundled: true,
+        },
+      });
+    }
+
+    dispatch({ type: "START" });
+  }, [bundledCli]);
 
   // Retry a specific node
   const retryNode = useCallback(

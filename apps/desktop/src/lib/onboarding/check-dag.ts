@@ -3,11 +3,18 @@
  *
  * 统一环境检查页面的 DAG 引擎，管理检查项之间的依赖关系。
  *
- * DAG 结构:
+ * DAG 结构 (without bundled CLI):
  * ```
  * Node.js  ──→  CLI  ──→  Gateway  ──→  Connection  ──→  AI Clients
  *                                            ↑
  * Python (独立，可并行) ─────────────────────┘ (可选)
+ * ```
+ *
+ * DAG 结构 (with bundled CLI - Node.js and CLI checks are skipped):
+ * ```
+ * Gateway  ──→  Connection  ──→  AI Clients
+ *                    ↑
+ * Python (独立) ─────┘ (可选)
  * ```
  */
 

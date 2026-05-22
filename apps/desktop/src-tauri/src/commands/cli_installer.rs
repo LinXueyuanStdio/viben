@@ -159,6 +159,98 @@ pub struct InstallEnvOptions {
     pub node_installer_path: Option<String>,
 }
 
+/// Result for bundled CLI check
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BundledCliResult {
+    pub available: bool,
+    pub path: Option<String>,
+    pub version: Option<String>,
+    pub error: Option<String>,
+}
+
+/// Check if bundled Viben CLI sidecar is available
+///
+/// Checks if the bundled viben sidecar binary exists and is executable.
+/// The sidecar is expected to be in the same directory as the main executable
+/// (placed there by Tauri during the build process).
+///
+/// Returns the path and version if available, allowing the onboarding flow
+/// to skip Node.js and npm-based CLI installation entirely.
+#[command]
+pub async fn check_bundled_cli(app_handle: tauri::AppHandle) -> Result<BundledCliResult, String> {
+    eprintln!("[check_bundled_cli] Checking for bundled sidecar...");
+
+    // Get bundled viben path using the gateway module's logic
+    let bundled_path = crate::commands::gateway::get_bundled_viben_path(app_handle);
+
+    match bundled_path {
+        Ok(path) if !path.is_empty() => {
+            eprintln!("[check_bundled_cli] Found bundled binary at: {}", path);
+
+            // Verify it's executable by running --version
+            let path_buf = std::path::PathBuf::from(&path);
+            let mut cmd = Command::new(&path_buf);
+            cmd.arg("--version");
+            cmd.stdin(std::process::Stdio::null());
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(CREATE_NO_WINDOW);
+
+            match cmd.output() {
+                Ok(output) if output.status.success() => {
+                    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    eprintln!("[check_bundled_cli] Bundled CLI version: {}", version);
+                    Ok(BundledCliResult {
+                        available: true,
+                        path: Some(path),
+                        version: Some(version),
+                        error: None,
+                    })
+                }
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                    eprintln!("[check_bundled_cli] Bundled binary exists but --version failed: {}", stderr);
+                    Ok(BundledCliResult {
+                        available: false,
+                        path: Some(path),
+                        version: None,
+                        error: Some(format!("Bundled binary exists but failed to execute: {}", stderr)),
+                    })
+                }
+                Err(e) => {
+                    eprintln!("[check_bundled_cli] Failed to execute bundled binary: {}", e);
+                    Ok(BundledCliResult {
+                        available: false,
+                        path: Some(path),
+                        version: None,
+                        error: Some(format!("Failed to execute bundled binary: {}", e)),
+                    })
+                }
+            }
+        }
+        Ok(_) => {
+            eprintln!("[check_bundled_cli] No bundled binary found (empty path)");
+            Ok(BundledCliResult {
+                available: false,
+                path: None,
+                version: None,
+                error: None,
+            })
+        }
+        Err(e) => {
+            eprintln!("[check_bundled_cli] Error checking bundled binary: {}", e);
+            Ok(BundledCliResult {
+                available: false,
+                path: None,
+                version: None,
+                error: Some(e),
+            })
+        }
+    }
+}
+
 /// Check if Viben CLI is installed
 ///
 /// Attempts to run `viben --version` and returns installation status.
