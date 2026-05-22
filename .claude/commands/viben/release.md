@@ -149,12 +149,16 @@ pnpm release --version <version>
 | `--draft` | 创建草稿发布 | 否 |
 | `--skip-cli` | 跳过 CLI 发布 | 否 |
 | `--skip-desktop` | 跳过 Desktop 发布 | 否 |
+| `--yes, -y` | 跳过确认提示 | 否 |
 
 **示例:**
 
 ```bash
 # 正式发布
 pnpm release --version 1.2.0
+
+# 跳过确认直接发布（适合 AI/CI 使用）
+pnpm release --version 1.2.0 --yes
 
 # 草稿发布（用于预览）
 pnpm release --version 1.2.0 --draft

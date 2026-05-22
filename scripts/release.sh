@@ -18,6 +18,7 @@ VERSION=""
 DRAFT=false
 SKIP_CLI=false
 SKIP_DESKTOP=false
+YES=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -37,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_DESKTOP=true
       shift
       ;;
+    --yes|-y)
+      YES=true
+      shift
+      ;;
     --help|-h)
       echo "Usage: pnpm release --version <version> [options]"
       echo ""
@@ -45,6 +50,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --draft                  Create as draft release"
       echo "  --skip-cli               Skip CLI release"
       echo "  --skip-desktop           Skip Desktop release"
+      echo "  --yes, -y                Skip confirmation prompt"
       echo "  --help, -h               Show this help message"
       echo ""
       echo "Prerequisites:"
@@ -183,12 +189,14 @@ echo "  Release CLI: $([[ "$SKIP_CLI" == "true" ]] && echo "false" || echo "true
 echo "  Release Desktop: $([[ "$SKIP_DESKTOP" == "true" ]] && echo "false" || echo "true")"
 echo ""
 
-read -p "Proceed with release? (y/N) " -n 1 -r
-echo ""
+if [[ "$YES" != "true" ]]; then
+  read -p "Proceed with release? (y/N) " -n 1 -r
+  echo ""
 
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-  echo -e "${YELLOW}Release cancelled.${NC}"
-  exit 0
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo -e "${YELLOW}Release cancelled.${NC}"
+    exit 0
+  fi
 fi
 
 # Trigger GitHub Actions workflow
