@@ -58,6 +58,8 @@ export interface UseGatewayReturn {
   stopGateway: () => Promise<void>;
   /** Restart the gateway */
   restartGateway: () => Promise<void>;
+  /** Restart gateway with force kill (handles port conflicts) */
+  restartGatewayForce: (vibenPath?: string) => Promise<GatewayStatus | null>;
   /** Refresh status */
   refreshStatus: () => Promise<void>;
   /** Update configuration */
@@ -254,6 +256,34 @@ export function useGateway(): UseGatewayReturn {
     }
   }, []);
 
+  // Restart gateway with force kill
+  const restartGatewayForce = useCallback(async (vibenPath?: string): Promise<GatewayStatus | null> => {
+    console.log("[useGateway] restartGatewayForce called with path:", vibenPath);
+    setIsActioning(true);
+    setError(null);
+    try {
+      const pathToUse = vibenPath || vibenPathRef.current;
+      const result = await invoke<GatewayStatus>("restart_gateway_with_path", {
+        vibenPath: pathToUse,
+        port: config?.port,
+        host: config?.host,
+        force: true,
+      });
+      setStatus(result);
+      if (result.error) {
+        setError(result.error);
+      }
+      return result;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("[useGateway] restartGatewayForce error:", errorMsg);
+      setError(errorMsg);
+      return null;
+    } finally {
+      setIsActioning(false);
+    }
+  }, [config?.port, config?.host]);
+
   // Update config
   const updateConfig = useCallback(
     async (newConfig: Partial<GatewayConfig>) => {
@@ -284,6 +314,7 @@ export function useGateway(): UseGatewayReturn {
     startGateway,
     stopGateway,
     restartGateway,
+    restartGatewayForce,
     refreshStatus,
     updateConfig,
     discoverGateway,
