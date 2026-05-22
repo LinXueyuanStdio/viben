@@ -83,29 +83,43 @@ async function discoverClaudeCodeSessions(workspacePath: string): Promise<Execut
     return [];
   }
 
-  const sessions: ExecutorSession[] = [];
   const entries = await fs.promises.readdir(sessionDir, { withFileTypes: true });
 
-  for (const entry of entries) {
-    if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-      const sessionId = entry.name.replace(".jsonl", "");
-      const filePath = path.join(sessionDir, entry.name);
-      const stats = await fs.promises.stat(filePath);
+  // Filter to .jsonl files only
+  const jsonlEntries = entries.filter(
+    (entry) => entry.isFile() && entry.name.endsWith(".jsonl")
+  );
 
-      // Read first user message for preview/name
-      const name = await readFirstUserMessage(filePath);
+  // Process all files in parallel
+  const sessionPromises = jsonlEntries.map(async (entry) => {
+    const sessionId = entry.name.replace(".jsonl", "");
+    const filePath = path.join(sessionDir, entry.name);
 
-      sessions.push({
+    try {
+      // Parallel stat + first message read for each file
+      const [stats, name] = await Promise.all([
+        fs.promises.stat(filePath),
+        readFirstUserMessage(filePath),
+      ]);
+
+      return {
         id: sessionId,
         executor_type: "CLAUDE_CODE",
         workspace_path: workspacePath,
         created_at: stats.birthtime.toISOString(),
         updated_at: stats.mtime.toISOString(),
         name,
-        message_count: Math.floor(stats.size / 1024), // Rough estimate
-      });
+        message_count: Math.floor(stats.size / 1024),
+      } as ExecutorSession;
+    } catch {
+      // File may have been deleted between readdir and stat, skip it
+      return null;
     }
-  }
+  });
+
+  const sessions = (await Promise.all(sessionPromises)).filter(
+    (s): s is ExecutorSession => s !== null
+  );
 
   // Sort by updated_at (newest first)
   sessions.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
