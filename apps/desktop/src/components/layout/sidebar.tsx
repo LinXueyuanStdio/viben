@@ -294,7 +294,7 @@ export function Sidebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {activeWorkspace?.type === "global"
+                {activeWorkspace?.id === "global"
                   ? t("workspace.global")
                   : (activeWorkspace?.name || t("sidebar.expand"))}
               </TooltipContent>
@@ -311,7 +311,7 @@ export function Sidebar() {
                     <span className="flex items-center gap-2 truncate">
                       <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
                       <span className="truncate text-sm font-medium">
-                        {activeWorkspace?.type === "global"
+                        {activeWorkspace?.id === "global"
                           ? t("workspace.global")
                           : (activeWorkspace?.name || t("workspace.noWorkspaces"))}
                       </span>
@@ -333,7 +333,7 @@ export function Sidebar() {
                       >
                         <span className="flex items-center gap-2 truncate flex-1">
                           <span className="truncate">
-                            {ws.type === "global" ? t("workspace.global") : ws.name}
+                            {ws.id === "global" ? t("workspace.global") : ws.name}
                           </span>
                           {ws.id === activeWorkspaceId && (
                             <Check className="h-3 w-3 text-primary shrink-0" />
@@ -353,7 +353,7 @@ export function Sidebar() {
                           <ExternalLink className="h-4 w-4 mr-2" />
                           {t("workspace.openInNewWindow")}
                         </DropdownMenuItem>
-                        {ws.type !== "global" && (
+                        {ws.id !== "global" && (
                           <DropdownMenuItem
                             onClick={() => setWorkspaceToDelete({ id: ws.id, name: ws.name })}
                             className="text-destructive focus:text-destructive"

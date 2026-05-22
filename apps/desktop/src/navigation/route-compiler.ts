@@ -26,7 +26,7 @@ export interface RouteEntry<TParams extends Record<string, string> = Record<stri
   pattern: string;
   icon: IconData | ((params: TParams) => IconData);
   title: string | ((params: TParams) => string);
-  titleKey?: string | ((params: TParams) => string | undefined);
+  titleKey?: string;
   isContainer?: boolean;
   queryParams?: string[];
   dropdownCategory?: string;

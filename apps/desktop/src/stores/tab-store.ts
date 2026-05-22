@@ -408,8 +408,34 @@ export const useTabStore = create<TabState & TabActions>()(
           }
 
           const tabs = [...state.tabs];
+          const movedTab = tabs[fromIndex];
+          const lastPinned = findLastPinnedIndex(tabs);
+
+          // Enforce pinned/unpinned boundary:
+          // Pinned tabs can only move within [0, lastPinned]
+          // Unpinned tabs can only move within [lastPinned+1, tabs.length-1]
+          let clampedTo = toIndex;
+          if (movedTab.pinned) {
+            // Pinned tab cannot move past the last pinned position
+            // (after splice-out, boundary shifts by 1 if fromIndex <= lastPinned)
+            const boundaryAfterRemove = fromIndex <= lastPinned ? lastPinned - 1 : lastPinned;
+            clampedTo = Math.min(toIndex, boundaryAfterRemove);
+            clampedTo = Math.max(clampedTo, 0);
+          } else {
+            // Unpinned tab cannot move before the first unpinned position
+            const firstUnpinned = lastPinned + 1;
+            // After removing the unpinned tab, if it was after the boundary, boundary stays the same
+            const boundaryAfterRemove = fromIndex > lastPinned ? firstUnpinned : firstUnpinned - 1;
+            clampedTo = Math.max(toIndex, boundaryAfterRemove);
+            clampedTo = Math.min(clampedTo, tabs.length - 1);
+          }
+
+          if (fromIndex === clampedTo) {
+            return state;
+          }
+
           const [moved] = tabs.splice(fromIndex, 1);
-          tabs.splice(toIndex, 0, moved);
+          tabs.splice(clampedTo, 0, moved);
           return { tabs };
         });
       },

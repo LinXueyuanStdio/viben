@@ -171,7 +171,6 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
         id: workspace.id,
         path: workspace.path,
         name: workspace.name,
-        type: workspace.type || "custom",
         created_at: workspace.created_at || new Date().toISOString(),
         last_accessed: workspace.updated_at || new Date().toISOString(),
       });

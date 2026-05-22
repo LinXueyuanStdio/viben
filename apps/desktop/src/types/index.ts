@@ -288,15 +288,11 @@ export interface ApiLogSummary {
 
 // Workspace Management types
 
-/** Workspace type - global (non-deletable) or custom (user-added) */
-export type WorkspaceType = "global" | "custom";
-
 /** Workspace represents a folder that can contain agent configurations */
 export interface Workspace {
   id: string;
   name: string;
   path: string;
-  type: WorkspaceType;
   created_at: string;
   last_accessed: string;
 }

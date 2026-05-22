@@ -74,7 +74,7 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
               <SidebarIconButton
                 href={`/workspace/${ws.id}`}
                 onClick={() => selectWorkspace(ws.id)}
-                icon={ws.type === "global" ? <Globe className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+                icon={ws.id === "global" ? <Globe className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
                 tooltip={ws.name}
               />
             </div>
@@ -145,7 +145,7 @@ interface WorkspaceItemProps {
 
 function WorkspaceItem({ workspace, isActive, onSelect }: WorkspaceItemProps) {
   const { t } = useTranslation();
-  const isGlobal = workspace.type === "global";
+  const isGlobal = workspace.id === "global";
 
   return (
     <NavLink

@@ -195,7 +195,12 @@ export interface WorkspaceAgentsResponse {
 // Workspace CRUD Types
 // ============================================================================
 
-/** Workspace response from gateway */
+/**
+ * Workspace response from gateway
+ *
+ * Note: Global workspace is identified by `id === "global"`.
+ * Custom workspaces have base64url-encoded path as their ID.
+ */
 export interface WorkspaceResponse {
   id: string;
   path: string;
@@ -203,7 +208,6 @@ export interface WorkspaceResponse {
   config_path: string;
   /** Git repo path (path + "/.git") for kanban compatibility */
   git_repo_path: string;
-  type?: "global" | "custom";
   mcp?: {
     enabled: string[];
     disabled?: string[];

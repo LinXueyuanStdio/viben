@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 export function SettingsAgentsPage() {
   const { t } = useTranslation();
   const { workspaces, isLoading } = useLocalWorkspaces();
-  const globalWorkspace = workspaces.find((w) => w.type === "global");
+  const globalWorkspace = workspaces.find((w) => w.id === "global");
 
   // Show loading while workspaces are loading
   if (isLoading) {

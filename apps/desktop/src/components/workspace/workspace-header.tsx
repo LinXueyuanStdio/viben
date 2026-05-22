@@ -59,7 +59,7 @@ export function WorkspaceHeader({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isGlobal = workspace.type === "global";
+  const isGlobal = workspace.id === "global";
 
   const handleDelete = async () => {
     if (!onRemove || isGlobal) return;

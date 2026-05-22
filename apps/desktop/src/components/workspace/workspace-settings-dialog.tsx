@@ -326,11 +326,11 @@ function GeneralSection({ workspace }: SectionProps) {
         >
           <span className={cn(
             "text-xs px-2 py-1 rounded-full",
-            workspace.type === "global"
+            workspace.id === "global"
               ? "bg-primary/10 text-primary"
               : "bg-muted text-muted-foreground"
           )}>
-            {workspace.type === "global"
+            {workspace.id === "global"
               ? t("workspace.global")
               : t("workspace.custom")}
           </span>
@@ -649,7 +649,7 @@ function AboutSection({ workspace }: SectionProps) {
           <div>
             <h3 className="text-lg font-semibold">{workspace.name}</h3>
             <p className="text-sm text-muted-foreground">
-              {workspace.type === "global"
+              {workspace.id === "global"
                 ? t("workspace.global")
                 : t("workspace.custom")}
             </p>

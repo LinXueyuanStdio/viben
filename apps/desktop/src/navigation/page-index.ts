@@ -312,12 +312,12 @@ export function buildRootDropdownItems({
     : "";
 
   const workspaceItems = buildDropdownItems(workspaces, (workspace) => {
-    const workspaceLabel =
-      workspace.type === "global"
-        ? labelGlobalWorkspace ??
-          buildLabel?.("workspace.global", "Global Workspace") ??
-          "Global Workspace"
-        : workspace.name;
+    const isGlobal = workspace.id === "global";
+    const workspaceLabel = isGlobal
+      ? labelGlobalWorkspace ??
+        buildLabel?.("workspace.global", "Global Workspace") ??
+        "Global Workspace"
+      : workspace.name;
     const href =
       currentArea === "pages"
         ? `/workspace/${encodeURIComponent(workspace.id)}/pages`
@@ -332,7 +332,7 @@ export function buildRootDropdownItems({
       description: workspace.path,
       icon: {
         type: "lucide",
-        value: workspace.type === "global" ? "globe" : "folder-open",
+        value: isGlobal ? "globe" : "folder-open",
       } as IconData,
       isActive: workspace.id === activeWorkspaceId,
       descriptorId: "workspace",

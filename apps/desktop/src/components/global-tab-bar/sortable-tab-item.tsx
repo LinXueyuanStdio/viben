@@ -6,7 +6,7 @@
  * Individual tab wrapped with @dnd-kit sortable functionality.
  */
 
-import { useCallback, useState, useEffect, useRef, MouseEvent } from "react";
+import { memo, useCallback, useState, useEffect, useRef, MouseEvent } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -66,7 +66,7 @@ export interface SortableTabItemProps {
   canMoveToEnd?: boolean;
 }
 
-export function SortableTabItem({
+export const SortableTabItem = memo(function SortableTabItem({
   tab,
   isActive,
   isOnlyTab = false,
@@ -120,7 +120,7 @@ export function SortableTabItem({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || (isAnimating ? "all 0.3s ease-out" : undefined),
+    transition,
   };
 
   const handleClick = useCallback(
@@ -155,19 +155,20 @@ export function SortableTabItem({
     return (
       <div
         ref={setNodeRef}
-        style={{
-          ...style,
-          opacity: isAnimating ? 0 : 1,
-          transform: isAnimating
-            ? "translateX(20px) scale(0.8)"
-            : CSS.Transform.toString(transform),
-        }}
-        className="transition-all duration-300 ease-out"
+        style={style}
         {...attributes}
         {...listeners}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
+        {/* Wrapper for entrance animation - keeps dnd-kit transform separate */}
+        <div
+          className={cn(
+            isAnimating && "opacity-0 translate-x-5 scale-[0.8]",
+            !isAnimating && "opacity-100",
+            isNew && "transition-[opacity,transform] duration-300 ease-out"
+          )}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
         <ContextMenu>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -184,7 +185,7 @@ export function SortableTabItem({
                       "bg-background text-foreground",
                       "shadow-sm ring-1 ring-border/50",
                     ],
-                    dragging && "opacity-60 scale-105 shadow-lg z-50"
+                    dragging && "opacity-40 z-50"
                   )}
                 >
                   {/* Icon or drag handle based on hover state */}
@@ -243,6 +244,7 @@ export function SortableTabItem({
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
+        </div>
       </div>
     );
   }
@@ -251,19 +253,20 @@ export function SortableTabItem({
   return (
     <div
       ref={setNodeRef}
-      style={{
-        ...style,
-        opacity: isAnimating ? 0 : 1,
-        transform: isAnimating
-          ? "translateX(20px) scale(0.8)"
-          : CSS.Transform.toString(transform),
-      }}
-      className="transition-all duration-300 ease-out"
+      style={style}
       {...attributes}
       {...listeners}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Wrapper for entrance animation - keeps dnd-kit transform separate */}
+      <div
+        className={cn(
+          isAnimating && "opacity-0 translate-x-5 scale-[0.8]",
+          !isAnimating && "opacity-100",
+          isNew && "transition-[opacity,transform] duration-300 ease-out"
+        )}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <button
@@ -278,7 +281,7 @@ export function SortableTabItem({
                 "bg-background text-foreground",
                 "shadow-sm ring-1 ring-border/50",
               ],
-              dragging && "opacity-60 scale-105 shadow-lg z-50"
+              dragging && "opacity-40 z-50"
             )}
           >
             {/* Icon or drag handle based on hover state */}
@@ -367,6 +370,7 @@ export function SortableTabItem({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      </div>
     </div>
   );
-}
+});

@@ -71,7 +71,7 @@ export function useWorkspaceParam(options?: UseWorkspaceParamOptions): UseWorksp
     const workspacePathParam = searchParams.get("workspace_path");
 
     // Find global workspace
-    const globalWorkspace = workspaces.find((w) => w.type === "global");
+    const globalWorkspace = workspaces.find((w) => w.id === "global");
 
     // Priority 1: workspace_path query param
     if (workspacePathParam) {
@@ -79,7 +79,7 @@ export function useWorkspaceParam(options?: UseWorkspaceParamOptions): UseWorksp
       return {
         workspacePath: workspacePathParam,
         workspace,
-        isGlobal: workspace?.type === "global",
+        isGlobal: workspace?.id === "global",
       };
     }
 
@@ -90,7 +90,7 @@ export function useWorkspaceParam(options?: UseWorkspaceParamOptions): UseWorksp
         return {
           workspacePath: workspace.path,
           workspace,
-          isGlobal: workspace.type === "global",
+          isGlobal: workspace.id === "global",
         };
       }
     }

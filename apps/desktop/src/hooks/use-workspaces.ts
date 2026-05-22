@@ -17,7 +17,6 @@ function transformWorkspaceResponse(response: WorkspaceResponse): Workspace {
     id: response.id,
     path: response.path,
     name: response.name,
-    type: response.type || "custom",
     created_at: response.created_at || new Date().toISOString(),
     last_accessed: response.updated_at || new Date().toISOString(),
   };

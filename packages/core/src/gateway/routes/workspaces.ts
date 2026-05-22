@@ -33,12 +33,10 @@ const log = globalLogger.child({ module: "workspaces" });
 // ============================================================================
 
 /**
- * Workspace type - global (non-deletable) or custom (user-added)
- */
-type WorkspaceType = "global" | "custom";
-
-/**
  * Workspace response (snake_case to match API conventions)
+ *
+ * Note: Global workspace is identified by `id === "global"`.
+ * Custom workspaces have base64url-encoded path as their ID.
  */
 interface WorkspaceResponse {
   id: string;
@@ -47,7 +45,6 @@ interface WorkspaceResponse {
   config_path: string;
   /** Git repo path (path + "/.git") for kanban compatibility */
   git_repo_path: string;
-  type: WorkspaceType;
   mcp?: {
     enabled: string[];
     disabled?: string[];
@@ -68,7 +65,7 @@ interface WorkspaceResponse {
 /**
  * Transform workspace to API response format (snake_case)
  */
-function toSnakeCaseWorkspace(workspace: Workspace, type: WorkspaceType = "custom"): WorkspaceResponse {
+function toSnakeCaseWorkspace(workspace: Workspace): WorkspaceResponse {
   // Generate ID from path (base64 encoding of path)
   const id = Buffer.from(workspace.path).toString("base64url");
   return {
@@ -77,7 +74,6 @@ function toSnakeCaseWorkspace(workspace: Workspace, type: WorkspaceType = "custo
     name: workspace.name,
     config_path: workspace.configPath,
     git_repo_path: join(workspace.path, ".git"),
-    type,
     mcp: workspace.mcp,
     skills: workspace.skills,
     agents: workspace.agents,
@@ -88,6 +84,8 @@ function toSnakeCaseWorkspace(workspace: Workspace, type: WorkspaceType = "custo
 
 /**
  * Create a global workspace pointing to user's home directory
+ *
+ * Note: Global workspace is identified by `id === "global"`.
  */
 function createGlobalWorkspaceResponse(): WorkspaceResponse {
   const home = homedir();
@@ -97,7 +95,6 @@ function createGlobalWorkspaceResponse(): WorkspaceResponse {
     name: "Global",
     config_path: join(home, ".viben"),
     git_repo_path: join(home, ".git"),
-    type: "global",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -182,7 +179,6 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
                   name: { type: "string" },
                   config_path: { type: "string" },
                   git_repo_path: { type: "string" },
-                  type: { type: "string", enum: ["global", "custom"] },
                   mcp: { type: "object" },
                   skills: { type: "object" },
                   agents: { type: "array", items: { type: "string" } },
@@ -202,7 +198,7 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
 
     // Always include a global workspace pointing to home directory
     const globalWorkspace = createGlobalWorkspaceResponse();
-    const customWorkspaces = workspaces.map((w) => toSnakeCaseWorkspace(w, "custom"));
+    const customWorkspaces = workspaces.map((w) => toSnakeCaseWorkspace(w));
 
     return {
       workspaces: [globalWorkspace, ...customWorkspaces],
@@ -375,7 +371,6 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
           name,
           config_path: join(workspacePath, ".viben"),
           git_repo_path: join(workspacePath, ".git"),
-          type: "custom",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -390,7 +385,7 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
         return response;
       }
 
-      const workspaceResponse = toSnakeCaseWorkspace(workspace, "custom");
+      const workspaceResponse = toSnakeCaseWorkspace(workspace);
 
       const response: CreateWorkspaceResponse = {
         workspace: workspaceResponse,

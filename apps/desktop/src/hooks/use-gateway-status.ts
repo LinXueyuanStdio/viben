@@ -63,12 +63,11 @@ async function loadWorkspacesOnConnect() {
     const response = await client.listWorkspaces();
 
     // Transform gateway workspaces to local format
-    // Gateway now includes global workspace with type: "global"
+    // Global workspace is identified by id === "global"
     const workspaces: Workspace[] = response.workspaces.map((w) => ({
       id: w.id,
       path: w.path,
       name: w.name,
-      type: w.type || "custom",
       created_at: w.created_at || new Date().toISOString(),
       last_accessed: w.updated_at || new Date().toISOString(),
     }));

@@ -7,7 +7,6 @@ const workspace: Workspace = {
   id: "ws-1",
   name: "Workspace",
   path: "/tmp/workspace",
-  type: "custom",
   created_at: "2026-05-16T00:00:00.000Z",
   last_accessed: "2026-05-16T00:00:00.000Z",
 };

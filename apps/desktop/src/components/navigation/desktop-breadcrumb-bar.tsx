@@ -166,18 +166,18 @@ export function DesktopBreadcrumbBar({
       return null;
     }
 
+    const isGlobal = workspace.id === "global";
     return {
       id: `workspace:${workspace.id}`,
-      label:
-        workspace.type === "global"
-          ? t("workspace.global", "Global Workspace")
-          : workspace.name,
+      label: isGlobal
+        ? t("workspace.global", "Global Workspace")
+        : workspace.name,
       href: `/workspace/${encodeURIComponent(workspace.id)}`,
       path: workspace.path,
       descriptorId: "workspace",
       icon: {
         type: "lucide",
-        value: workspace.type === "global" ? "globe" : "folder-open",
+        value: isGlobal ? "globe" : "folder-open",
       },
       meta: {
         workspaceId: workspace.id,

@@ -255,7 +255,7 @@ export function WorkspaceDetailPage() {
               <div className="flex items-center justify-center h-full">
                 <div className="text-center" style={{ color: "rgba(255, 255, 255, 0.6)" }}>
                   <div className="text-lg font-medium mb-2">
-                    {workspace?.type === "global" ? t("workspace.global") : workspace?.name || "Viben"}
+                    {workspace?.id === "global" ? t("workspace.global") : workspace?.name || "Viben"}
                   </div>
                 </div>
               </div>

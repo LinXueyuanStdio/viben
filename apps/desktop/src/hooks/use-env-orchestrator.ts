@@ -5,7 +5,7 @@
  * Composes existing hooks and executes checks in dependency order.
  */
 
-import { useReducer, useCallback, useEffect, useRef, useMemo, useState, type MutableRefObject } from "react";
+import { useReducer, useCallback, useEffect, useRef, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ENV_CHECK_NODES,

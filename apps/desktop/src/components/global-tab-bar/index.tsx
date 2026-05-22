@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
@@ -190,14 +191,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       setActiveId(null);
 
       if (over && active.id !== over.id) {
-        const oldIndex = tabs.findIndex((t) => t.id === active.id);
-        const newIndex = tabs.findIndex((t) => t.id === over.id);
+        // Read latest tabs from store to avoid stale closure
+        const currentTabs = useTabStore.getState().tabs;
+        const oldIndex = currentTabs.findIndex((t) => t.id === active.id);
+        const newIndex = currentTabs.findIndex((t) => t.id === over.id);
         if (oldIndex !== -1 && newIndex !== -1) {
           moveTab(oldIndex, newIndex);
         }
       }
     },
-    [tabs, moveTab]
+    [moveTab]
   );
 
   // Handlers for tab actions
@@ -504,6 +507,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
           >
             <SortableContext items={tabIds} strategy={horizontalListSortingStrategy}>
               {tabs.map((tab) => (
@@ -532,6 +536,20 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                 />
               ))}
             </SortableContext>
+            <DragOverlay dropAnimation={null}>
+              {activeId ? (() => {
+                const dragTab = tabs.find((t) => t.id === activeId);
+                if (!dragTab) return null;
+                return (
+                  <div className="flex items-center gap-1.5 px-2 h-7 rounded-md bg-background text-foreground shadow-lg ring-1 ring-border/50 text-[13px] max-w-[180px]">
+                    {dragTab.icon && <IconDisplay icon={dragTab.icon} size="sm" className="shrink-0" />}
+                    {!dragTab.pinned && (
+                      <span className="truncate">{dragTab.titleKey ? t(dragTab.titleKey, dragTab.label) : dragTab.label}</span>
+                    )}
+                  </div>
+                );
+              })() : null}
+            </DragOverlay>
           </DndContext>
 
           {/* New Tab button */}
