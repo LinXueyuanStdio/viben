@@ -7,7 +7,7 @@
  * - Agents
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { existsSync, readdirSync } from "node:fs";
+import { readdir, access, constants } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { agentManager } from "../../agents";
@@ -109,11 +109,23 @@ function getDefaultWorkspacePath(): string {
 }
 
 /**
+ * Check if a path exists (async)
+ */
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check if an executor has config in the workspace
  */
-function hasExecutorConfig(workspacePath: string, folders: string[]): boolean {
+async function hasExecutorConfig(workspacePath: string, folders: string[]): Promise<boolean> {
   for (const folder of folders) {
-    if (existsSync(join(workspacePath, folder))) {
+    if (await pathExists(join(workspacePath, folder))) {
       return true;
     }
   }
@@ -123,16 +135,12 @@ function hasExecutorConfig(workspacePath: string, folders: string[]): boolean {
 /**
  * Count sessions for Claude Code in a workspace
  */
-function countClaudeCodeSessions(workspacePath: string): number {
+async function countClaudeCodeSessions(workspacePath: string): Promise<number> {
   const encodedPath = workspacePath.replace(/\//g, "-");
   const sessionsDir = join(homedir(), ".claude", "projects", encodedPath);
 
-  if (!existsSync(sessionsDir)) {
-    return 0;
-  }
-
   try {
-    const entries = readdirSync(sessionsDir);
+    const entries = await readdir(sessionsDir);
     return entries.filter((e) => e.endsWith(".jsonl")).length;
   } catch {
     return 0;
@@ -167,7 +175,7 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
       // Global group chats (from ~/.viben/group-chats)
       if (includeGlobal) {
         const globalVibenPath = join(globalPath, ".viben", "group-chats");
-        if (existsSync(globalVibenPath)) {
+        if (await pathExists(globalVibenPath)) {
           try {
             const globalService = new GroupChatService(globalVibenPath);
             const globalChats = await globalService.listGroupChats();
@@ -198,7 +206,7 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
       // Workspace group chats (from <workspace>/.viben/group-chats)
       if (workspacePath !== globalPath) {
         const workspaceVibenPath = join(workspacePath, ".viben", "group-chats");
-        if (existsSync(workspaceVibenPath)) {
+        if (await pathExists(workspaceVibenPath)) {
           try {
             const workspaceService = new GroupChatService(workspaceVibenPath);
             const workspaceChats = await workspaceService.listGroupChats();
@@ -231,12 +239,12 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
 
       // 2. Load executors with workspace config
       for (const executor of EXECUTOR_CONFIGS) {
-        const hasWorkspaceConfig = hasExecutorConfig(workspacePath, executor.folders);
-        const hasGlobalConfig = includeGlobal && hasExecutorConfig(globalPath, executor.folders);
+        const hasWorkspaceConfig = await hasExecutorConfig(workspacePath, executor.folders);
+        const hasGlobalConfig = includeGlobal && await hasExecutorConfig(globalPath, executor.folders);
 
         if (hasWorkspaceConfig || hasGlobalConfig) {
           const sessionCount =
-            executor.id === "CLAUDE_CODE" ? countClaudeCodeSessions(workspacePath) : 0;
+            executor.id === "CLAUDE_CODE" ? await countClaudeCodeSessions(workspacePath) : 0;
 
           items.push({
             id: executor.id,
@@ -285,32 +293,30 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
 
       // 4. Load workspace agents (.viben/agents)
       const vibenAgentsDir = join(workspacePath, ".viben", "agents");
-      if (existsSync(vibenAgentsDir)) {
-        try {
-          const entries = readdirSync(vibenAgentsDir, { withFileTypes: true });
-          for (const entry of entries) {
-            if (entry.isDirectory()) {
-              const agentId = entry.name;
-              // Skip if already in global agents
-              if (!items.some((i) => i.id === agentId)) {
-                items.push({
-                  id: agentId,
-                  item_type: "agent",
-                  name: entry.name,
-                  source: "workspace",
-                  workspace_path: workspacePath,
-                  icon_type: "viben",
-                  is_global: false,
-                  metadata: {
-                    agent_type: "viben",
-                  },
-                });
-              }
+      try {
+        const entries = await readdir(vibenAgentsDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            const agentId = entry.name;
+            // Skip if already in global agents
+            if (!items.some((i) => i.id === agentId)) {
+              items.push({
+                id: agentId,
+                item_type: "agent",
+                name: entry.name,
+                source: "workspace",
+                workspace_path: workspacePath,
+                icon_type: "viben",
+                is_global: false,
+                metadata: {
+                  agent_type: "viben",
+                },
+              });
             }
           }
-        } catch {
-          // Directory read failed
         }
+      } catch {
+        // Directory read failed or does not exist
       }
 
       // Sort by last_active (newest first), with items without last_active at the end
