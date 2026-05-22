@@ -718,3 +718,100 @@ pub async fn start_gateway_with_path<R: Runtime>(
     )
     .await
 }
+
+/// Restart gateway with a specific viben path and force option
+///
+/// This command:
+/// 1. Stops any tracked gateway process via stop_gateway
+/// 2. Kills any external process on the target port (force)
+/// 3. Starts the gateway with the specified viben binary
+/// 4. Waits for health check
+#[tauri::command]
+pub async fn restart_gateway_with_path<R: Runtime>(
+    _app: AppHandle<R>,
+    state: State<'_, GatewayState>,
+    viben_path: String,
+    port: Option<u16>,
+    host: Option<String>,
+    force: Option<bool>,
+) -> Result<GatewayStatus, String> {
+    // Validate input - empty path is not allowed
+    if viben_path.is_empty() {
+        return Err("viben_path must not be empty".to_string());
+    }
+
+    let config = state.config.read().await.clone();
+    let target_port = port.unwrap_or(config.port);
+    let target_host = host.clone().unwrap_or_else(|| config.host.clone());
+
+    // If force is true, kill any process on the target port first
+    if force.unwrap_or(false) {
+        eprintln!(
+            "[gateway] Force restart: killing processes on port {}",
+            target_port
+        );
+
+        // Use existing stop_gateway to cleanly stop tracked process
+        let _ = stop_gateway(state.clone()).await;
+
+        // Also try to kill any external process on the port
+        #[cfg(target_os = "windows")]
+        {
+            if let Ok(output) = tokio::process::Command::new("netstat")
+                .args(["-aon"])
+                .output()
+                .await
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    if line.contains(&format!(":{}", target_port)) && line.contains("LISTENING") {
+                        if let Some(pid_str) = line.split_whitespace().last() {
+                            if let Ok(pid) = pid_str.parse::<u32>() {
+                                let _ = tokio::process::Command::new("taskkill")
+                                    .args(["/F", "/PID", &pid.to_string()])
+                                    .output()
+                                    .await;
+                                eprintln!("[gateway] Killed external process PID: {}", pid);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            if let Ok(output) = tokio::process::Command::new("lsof")
+                .args(["-ti", &format!(":{}", target_port)])
+                .output()
+                .await
+            {
+                let pids = String::from_utf8_lossy(&output.stdout);
+                for pid_str in pids.split_whitespace() {
+                    if let Ok(pid) = pid_str.parse::<u32>() {
+                        let _ = tokio::process::Command::new("kill")
+                            .args(["-9", &pid.to_string()])
+                            .output()
+                            .await;
+                        eprintln!("[gateway] Killed external process PID: {}", pid);
+                    }
+                }
+            }
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    }
+
+    // Now start with the specified path
+    ensure_gateway_running(
+        &state,
+        StartGatewayOptions {
+            viben_path: Some(std::path::PathBuf::from(viben_path)),
+            port: Some(target_port),
+            host: Some(target_host),
+            verbose: true,
+            ..Default::default()
+        },
+    )
+    .await
+}

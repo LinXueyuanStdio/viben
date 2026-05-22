@@ -231,6 +231,7 @@ pub fn run() {
                 commands::gateway::discover_gateway,
                 commands::gateway::get_bundled_viben_path,
                 commands::gateway::start_gateway_with_path,
+                commands::gateway::restart_gateway_with_path,
                 // CLI installer commands (CLI installation and version management)
                 commands::cli_installer::check_bundled_cli,
                 commands::cli_installer::check_viben_cli,
