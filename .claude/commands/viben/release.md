@@ -10,6 +10,7 @@
 2. **Changelog 文件必须存在**: `docs/changelogs/<version>.md`
 3. **GitHub CLI 已认证**: `gh auth status`
 4. **在 main 分支**: 确保代码已合并到 main
+5. **代码已推送到远程**: `git push origin main` — 发布脚本触发的是远程 GitHub Actions，本地未推送的代码不会被包含在发布中
 
 ---
 
@@ -152,9 +153,12 @@ pnpm check:release
 | pnpm lockfile | 确保 lockfile 与 package.json 同步 |
 | TypeScript | 类型检查无错误 |
 | ESLint | 代码规范检查无错误 |
+| @viben/core build | 核心包编译检查（CLI 和 Desktop 的依赖） |
+| viben CLI build | CLI 包编译检查 |
 | Cargo check | Rust/Tauri 代码编译检查 |
 | Git status | 检查是否有未提交的更改 |
 | Git branch | 检查是否在 main 分支 |
+| Git push | 检查本地 commit 是否已推送到远程 |
 
 **所有检查必须通过才能继续发布流程。**
 

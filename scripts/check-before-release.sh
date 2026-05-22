@@ -41,7 +41,7 @@ check_warn() {
 }
 
 # 1. Check pnpm lockfile is up to date
-echo -e "${BLUE}[1/6] Checking pnpm lockfile...${NC}"
+echo -e "${BLUE}[1/9] Checking pnpm lockfile...${NC}"
 if pnpm install --frozen-lockfile --ignore-scripts 2>/dev/null; then
   check_pass "pnpm lockfile is up to date"
 else
@@ -50,7 +50,7 @@ fi
 echo ""
 
 # 2. TypeScript type checking
-echo -e "${BLUE}[2/6] Running TypeScript type check...${NC}"
+echo -e "${BLUE}[2/9] Running TypeScript type check...${NC}"
 if pnpm typecheck 2>&1 | tee /tmp/typecheck-output.txt | tail -5; then
   # Check for actual TypeScript errors (error TS), not rollup/bundler warnings
   if grep -qE "error TS[0-9]+" /tmp/typecheck-output.txt; then
@@ -69,7 +69,7 @@ fi
 echo ""
 
 # 3. ESLint check
-echo -e "${BLUE}[3/6] Running ESLint...${NC}"
+echo -e "${BLUE}[3/9] Running ESLint...${NC}"
 if pnpm lint 2>&1 | tee /tmp/lint-output.txt | tail -5; then
   if grep -qE "[0-9]+ error" /tmp/lint-output.txt; then
     check_fail "ESLint errors found"
@@ -86,8 +86,31 @@ else
 fi
 echo ""
 
-# 4. Rust cargo check (for Tauri)
-echo -e "${BLUE}[4/6] Running Cargo check (Tauri)...${NC}"
+# 4. Build @viben/core (required for CLI and Desktop)
+echo -e "${BLUE}[4/9] Building @viben/core...${NC}"
+if pnpm turbo build --filter=@viben/core 2>&1 | tee /tmp/core-build-output.txt | tail -5; then
+  # Check for actual build errors, excluding bundler warnings about eval
+  if grep -E "Build (failed|error)" /tmp/core-build-output.txt | grep -qv "Use of eval"; then
+    check_fail "@viben/core build failed"
+  else
+    check_pass "@viben/core build passed"
+  fi
+else
+  check_fail "@viben/core build failed"
+fi
+echo ""
+
+# 5. Build viben CLI
+echo -e "${BLUE}[5/9] Building viben CLI...${NC}"
+if pnpm turbo build --filter=viben 2>&1 | tee /tmp/cli-build-output.txt | tail -5; then
+  check_pass "viben CLI build passed"
+else
+  check_fail "viben CLI build failed"
+fi
+echo ""
+
+# 6. Rust cargo check (for Tauri)
+echo -e "${BLUE}[6/9] Running Cargo check (Tauri)...${NC}"
 if (cd apps/desktop/src-tauri && cargo check 2>&1) | tail -5; then
   check_pass "Cargo check passed"
 else
@@ -95,8 +118,8 @@ else
 fi
 echo ""
 
-# 5. Check for uncommitted changes
-echo -e "${BLUE}[5/6] Checking for uncommitted changes...${NC}"
+# 7. Check for uncommitted changes
+echo -e "${BLUE}[7/9] Checking for uncommitted changes...${NC}"
 if [[ -z "$(git status --porcelain)" ]]; then
   check_pass "Working directory is clean"
 else
@@ -105,13 +128,28 @@ else
 fi
 echo ""
 
-# 6. Check we're on main branch
-echo -e "${BLUE}[6/6] Checking current branch...${NC}"
+# 8. Check we're on main branch
+echo -e "${BLUE}[8/9] Checking current branch...${NC}"
 CURRENT_BRANCH=$(git branch --show-current)
 if [[ "$CURRENT_BRANCH" == "main" ]]; then
   check_pass "On main branch"
 else
   check_warn "Not on main branch (current: $CURRENT_BRANCH)"
+fi
+echo ""
+
+# 9. Check local commits are pushed to remote
+echo -e "${BLUE}[9/9] Checking if local commits are pushed...${NC}"
+git fetch origin main --quiet 2>/dev/null || true
+LOCAL_COMMIT=$(git rev-parse HEAD 2>/dev/null)
+REMOTE_COMMIT=$(git rev-parse origin/main 2>/dev/null || echo "")
+if [[ -z "$REMOTE_COMMIT" ]]; then
+  check_warn "Could not fetch remote branch status"
+elif [[ "$LOCAL_COMMIT" == "$REMOTE_COMMIT" ]]; then
+  check_pass "Local commits are pushed to remote"
+else
+  AHEAD_COUNT=$(git rev-list origin/main..HEAD --count 2>/dev/null || echo "?")
+  check_fail "Local branch is ${AHEAD_COUNT} commit(s) ahead of origin/main. Run 'git push origin main' before releasing"
 fi
 echo ""
 
