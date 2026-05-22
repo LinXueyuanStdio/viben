@@ -6,9 +6,10 @@
 
 ## 前置条件
 
-1. **Changelog 文件必须存在**: `docs/changelogs/<version>.md`
-2. **GitHub CLI 已认证**: `gh auth status`
-3. **在 main 分支**: 确保代码已合并到 main
+1. **代码质量检查通过**: `pnpm check:release`
+2. **Changelog 文件必须存在**: `docs/changelogs/<version>.md`
+3. **GitHub CLI 已认证**: `gh auth status`
+4. **在 main 分支**: 确保代码已合并到 main
 
 ---
 
@@ -136,7 +137,28 @@ xychart-beta
 **完整变更日志**: https://github.com/LinXueyuanStdio/viben/compare/v<prev>...v<version>
 ```
 
-### 2. 执行发布 `[Human]`
+### 2. 运行预发布检查 `[AI]`
+
+发布脚本会自动运行预发布检查，也可以手动运行：
+
+```bash
+pnpm check:release
+```
+
+**检查项目:**
+
+| 检查项 | 说明 |
+|--------|------|
+| pnpm lockfile | 确保 lockfile 与 package.json 同步 |
+| TypeScript | 类型检查无错误 |
+| ESLint | 代码规范检查无错误 |
+| Cargo check | Rust/Tauri 代码编译检查 |
+| Git status | 检查是否有未提交的更改 |
+| Git branch | 检查是否在 main 分支 |
+
+**所有检查必须通过才能继续发布流程。**
+
+### 3. 执行发布 `[AI]`
 
 ```bash
 pnpm release --version <version>

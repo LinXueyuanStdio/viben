@@ -88,6 +88,19 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Run pre-release checks
+echo -e "${BLUE}Running pre-release checks...${NC}"
+echo ""
+
+if ! "$SCRIPT_DIR/check-before-release.sh"; then
+  echo ""
+  echo -e "${RED}Error: Pre-release checks failed${NC}"
+  echo -e "${YELLOW}Please fix the issues above before releasing.${NC}"
+  exit 1
+fi
+
+echo ""
+
 # Check changelog exists
 CHANGELOG_PATH="$PROJECT_ROOT/docs/changelogs/$VERSION.md"
 if [[ ! -f "$CHANGELOG_PATH" ]]; then

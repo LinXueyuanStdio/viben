@@ -24,7 +24,8 @@
     "viben": "pnpm --filter viben",
     "mcp-server": "pnpm --filter @viben/mcp-server",
     "docs": "pnpm --filter @viben/docs",
-    "release": "./scripts/release.sh"
+    "release": "./scripts/release.sh",
+    "check:release": "./scripts/check-before-release.sh"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^4.0.4",
