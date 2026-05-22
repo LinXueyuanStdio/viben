@@ -52,13 +52,19 @@ echo ""
 # 2. TypeScript type checking
 echo -e "${BLUE}[2/6] Running TypeScript type check...${NC}"
 if pnpm typecheck 2>&1 | tee /tmp/typecheck-output.txt | tail -5; then
-  if grep -q "error" /tmp/typecheck-output.txt; then
+  # Check for actual TypeScript errors (error TS), not rollup/bundler warnings
+  if grep -qE "error TS[0-9]+" /tmp/typecheck-output.txt; then
     check_fail "TypeScript type errors found"
   else
     check_pass "TypeScript type check passed"
   fi
 else
-  check_fail "TypeScript type check failed"
+  # Command failed - check if it's a real TS error or just turbo task failure
+  if grep -qE "error TS[0-9]+" /tmp/typecheck-output.txt; then
+    check_fail "TypeScript type errors found"
+  else
+    check_fail "TypeScript type check failed"
+  fi
 fi
 echo ""
 
