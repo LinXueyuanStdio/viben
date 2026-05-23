@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,7 @@ export function WindowControls() {
   );
 
   return (
+    <TooltipProvider>
     <div className="flex items-center">
       {/* Minimize */}
       <Tooltip>
@@ -173,5 +175,6 @@ export function WindowControls() {
         </TooltipContent>
       </Tooltip>
     </div>
+    </TooltipProvider>
   );
 }
