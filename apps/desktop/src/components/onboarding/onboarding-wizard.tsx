@@ -85,31 +85,34 @@ export function OnboardingWizard() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      {/* Window controls for Windows/Linux - positioned at top right */}
-      <div className="absolute top-0 right-0 z-50">
-        <WindowControls />
-      </div>
+      <header className="border-b">
+        {/* Top strip: drag region + window controls (Windows/Linux) */}
+        <div className="flex items-center" data-tauri-drag-region>
+          <div className="h-10 flex-1" data-tauri-drag-region />
+          <WindowControls />
+        </div>
 
-      {/* Header with logo and language switcher */}
-      <header className="flex items-center justify-between border-b px-4 py-4">
-        <div className="w-[140px]" /> {/* Spacer for centering logo */}
-        <VibenLogo size="md" showText />
-        <div className="w-[140px] flex justify-end">
-          <Select value={currentLanguage} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-[140px] h-8 text-sm">
-              <Globe className="h-4 w-4 mr-2 shrink-0" />
-              <SelectValue>
-                {LANGUAGES.find((l) => l.code === currentLanguage)?.nativeName || currentLanguage}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (
-                <SelectItem key={lang.code} value={lang.code}>
-                  {lang.nativeName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Logo and language selector row */}
+        <div className="flex items-center justify-between px-4 pb-4">
+          <div className="w-[140px]" /> {/* Spacer for centering logo */}
+          <VibenLogo size="md" showText />
+          <div className="w-[140px] flex justify-end">
+            <Select value={currentLanguage} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-[140px] h-8 text-sm">
+                <Globe className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue>
+                  {LANGUAGES.find((l) => l.code === currentLanguage)?.nativeName || currentLanguage}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang.code} value={lang.code}>
+                    {lang.nativeName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </header>
 
@@ -140,7 +143,10 @@ export function OnboardingWizard() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-4 text-center text-sm text-muted-foreground">
+      <footer
+        className="border-t py-4 text-center text-sm text-muted-foreground"
+        data-tauri-drag-region
+      >
         {t("onboarding.footer")}
       </footer>
     </div>
