@@ -46,6 +46,17 @@ foreach ($dep in $vibenDeps) {
     $depName = $dep -replace "@viben/", ""
     $depDir = Join-Path $packagesDir $depName
     if (Test-Path $depDir) {
+        # Check if package has a build script
+        $pkgJsonPath = Join-Path $depDir "package.json"
+        $hasBuildScript = $false
+        if (Test-Path $pkgJsonPath) {
+            $pkgJson = Get-Content $pkgJsonPath | ConvertFrom-Json
+            $hasBuildScript = $pkgJson.scripts -and $pkgJson.scripts.build
+        }
+        if (-not $hasBuildScript) {
+            Write-Host "  $dep (source-only, skipping build)"
+            continue
+        }
         $distDir = Join-Path $depDir "dist"
         if (-not (Test-Path $distDir)) {
             Write-Host "  Building $dep..."
@@ -71,6 +82,17 @@ foreach ($dep in $yooptaDeps) {
 
     foreach ($depDir in $possiblePaths) {
         if (Test-Path $depDir) {
+            # Check if package has a build script
+            $pkgJsonPath = Join-Path $depDir "package.json"
+            $hasBuildScript = $false
+            if (Test-Path $pkgJsonPath) {
+                $pkgJson = Get-Content $pkgJsonPath | ConvertFrom-Json
+                $hasBuildScript = $pkgJson.scripts -and $pkgJson.scripts.build
+            }
+            if (-not $hasBuildScript) {
+                Write-Host "  $dep (source-only, skipping build)"
+                break
+            }
             $distDir = Join-Path $depDir "dist"
             if (-not (Test-Path $distDir)) {
                 Write-Host "  Building $dep..."
@@ -110,11 +132,15 @@ Write-Host "  Killing viben-desktop processes..."
 Get-Process -Name "viben-desktop" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Get-Process -Name "viben" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
-# Pattern-based killing (similar to pkill -f)
+# Pattern-based killing via CimInstance (Get-Process has no CommandLine property)
 Write-Host "  Killing desktop-related Vite/Tauri processes..."
-Get-Process | Where-Object { $_.CommandLine -like "*apps/desktop*vite*" -or $_.CommandLine -like "*apps\desktop*vite*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-Get-Process | Where-Object { $_.CommandLine -like "*tauri*apps/desktop*" -or $_.CommandLine -like "*tauri*apps\desktop*" } | Stop-Process -Force -ErrorAction SilentlyContinue
-Get-Process | Where-Object { $_.CommandLine -like "*cargo*viben-desktop*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $_.CommandLine -like "*apps/desktop*vite*"  -or
+    $_.CommandLine -like "*apps\desktop*vite*"  -or
+    $_.CommandLine -like "*tauri*apps/desktop*" -or
+    $_.CommandLine -like "*tauri*apps\desktop*" -or
+    $_.CommandLine -like "*cargo*viben-desktop*"
+} | ForEach-Object { & taskkill /PID $_.ProcessId /F 2>&1 | Out-Null }
 
 Write-Host "  Killing processes on dev ports (1549, 1550)..."
 @(1549, 1550) | ForEach-Object {
@@ -126,16 +152,20 @@ Write-Host "  Killing processes on dev ports (1549, 1550)..."
     }
 }
 
-Start-Sleep -Seconds 1
-
 # -------------------------------------------------------
-# Verify ports are free
+# Verify ports are free (retry up to 5 times)
 # -------------------------------------------------------
 $portsInUse = @()
-@(1549, 1550) | ForEach-Object {
-    if (Get-NetTCPConnection -LocalPort $_ -ErrorAction SilentlyContinue) {
-        $portsInUse += $_
+for ($i = 0; $i -lt 5; $i++) {
+    Start-Sleep -Seconds 1
+    $portsInUse = @()
+    @(1549, 1550) | ForEach-Object {
+        if (Get-NetTCPConnection -LocalPort $_ -State Listen,Established -ErrorAction SilentlyContinue) {
+            $portsInUse += $_
+        }
     }
+    if ($portsInUse.Count -eq 0) { break }
+    Write-Host "  Waiting for ports to be released ($i/5)..."
 }
 
 if ($portsInUse.Count -gt 0) {
