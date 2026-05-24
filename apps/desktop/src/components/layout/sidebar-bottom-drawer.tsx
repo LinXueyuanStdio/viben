@@ -17,6 +17,7 @@ import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
 interface SidebarBottomDrawerProps {
   collapsed: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface NavItem {
@@ -43,13 +44,19 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
+export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDrawerProps) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { openPath, openSettings } = useDesktopRouting();
   const { status, error } = useGatewayStatus();
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Notify parent of open state changes
+  const handleOpenChange = useCallback((open: boolean) => {
+    setIsOpen(open);
+    onOpenChange?.(open);
+  }, [onOpenChange]);
 
   useEffect(() => {
     return () => {
@@ -66,15 +73,15 @@ export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
 
   const handleMouseEnter = useCallback(() => {
     clearCloseTimeout();
-    setIsOpen(true);
-  }, [clearCloseTimeout]);
+    handleOpenChange(true);
+  }, [clearCloseTimeout, handleOpenChange]);
 
   const handleMouseLeave = useCallback(() => {
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
-      setIsOpen(false);
+      handleOpenChange(false);
     }, 300);
-  }, [clearCloseTimeout]);
+  }, [clearCloseTimeout, handleOpenChange]);
 
   const handleNavigate = useCallback(
     (href: string, titleKey: string, iconValue: string, settingsSection?: string) => {
@@ -116,7 +123,7 @@ export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
   if (collapsed) {
     return (
       <>
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <Popover open={isOpen} onOpenChange={handleOpenChange}>
           <div
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -185,7 +192,7 @@ export function SidebarBottomDrawer({ collapsed }: SidebarBottomDrawerProps) {
   // Expanded sidebar
   return (
     <>
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <div
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

@@ -545,6 +545,8 @@ export function PageSection({
   const { t } = useTranslation();
   const { openWorkspacePage } = useDesktopRouting();
   const { data: pages, isLoading, error } = usePages(workspacePath);
+  // Only show loading spinner on initial load, not on refetch or when we have cached data
+  const showLoading = isLoading && !pages;
   const { data: serverPageOrder } = usePageOrder(workspacePath);
   const deletePageMutation = useDeletePage();
   const duplicatePageMutation = useDuplicatePage();
@@ -803,7 +805,7 @@ export function PageSection({
   // Collapsed state: show icon buttons only
   if (collapsed) {
     // Loading - show spinner icon
-    if (isLoading) {
+    if (showLoading) {
       return (
         <div className="grid place-items-center w-full">
           <SidebarIconButton
@@ -873,7 +875,7 @@ export function PageSection({
   }
 
   // Expanded state: Loading
-  if (isLoading) {
+  if (showLoading) {
     return (
       <SidebarSection
         title={t("page.pages")}

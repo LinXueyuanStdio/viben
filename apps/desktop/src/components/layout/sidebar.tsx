@@ -142,8 +142,10 @@ export function Sidebar() {
 
   // Hover state for auto-expand when collapsed
   const [isHovered, setIsHovered] = useState(false);
+  const [hasOpenMenu, setHasOpenMenu] = useState(false);
   const enterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Handle mouse enter - expand after a short delay to avoid accidental triggers
   const handleMouseEnter = useCallback(() => {
@@ -159,15 +161,44 @@ export function Sidebar() {
   }, [collapsed]);
 
   // Handle mouse leave - collapse after a small delay to avoid flicker
+  // Don't collapse if a menu is open (menus render via Portal outside sidebar)
   const handleMouseLeave = useCallback(() => {
     if (enterTimeoutRef.current) {
       clearTimeout(enterTimeoutRef.current);
       enterTimeoutRef.current = null;
     }
+    if (hasOpenMenu) return; // Don't collapse while menu is open
     leaveTimeoutRef.current = setTimeout(() => {
       setIsHovered(false);
     }, 100);
-  }, []);
+  }, [hasOpenMenu]);
+
+  // Track menu open state changes
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    setHasOpenMenu(open);
+    // When menu closes, check if mouse is still over sidebar
+    if (!open && collapsed) {
+      // Add a one-time mousemove listener to check position after menu closes
+      const checkMousePosition = (e: MouseEvent) => {
+        const rect = sidebarRef.current?.getBoundingClientRect();
+        if (rect) {
+          const isOverSidebar =
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom;
+          if (!isOverSidebar) {
+            setIsHovered(false);
+          }
+        }
+        document.removeEventListener("mousemove", checkMousePosition);
+      };
+      // Small delay to let the menu close animation complete
+      setTimeout(() => {
+        document.addEventListener("mousemove", checkMousePosition, { once: true });
+      }, 50);
+    }
+  }, [collapsed]);
 
   // Cleanup timeouts on unmount to prevent memory leaks
   React.useEffect(() => {
@@ -311,7 +342,7 @@ export function Sidebar() {
     <>
       {/* Workspace Selector & Settings - Expanded */}
       <div className="flex h-14 items-center border-b border-sidebar-border justify-between px-2">
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={handleMenuOpenChange}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -489,7 +520,7 @@ export function Sidebar() {
 
       {/* Bottom Navigation - Expanded */}
       <div className="pb-2 px-2">
-        <SidebarBottomDrawer collapsed={false} />
+        <SidebarBottomDrawer collapsed={false} onOpenChange={handleMenuOpenChange} />
         <WakeWordTaskButton
           collapsed={false}
           onCreateTask={openChatPopup}
@@ -566,7 +597,7 @@ export function Sidebar() {
 
       {/* Bottom Navigation - Collapsed */}
       <div className="pb-2 flex flex-col">
-        <SidebarBottomDrawer collapsed />
+        <SidebarBottomDrawer collapsed onOpenChange={handleMenuOpenChange} />
         <WakeWordTaskButton
           collapsed
           onCreateTask={openChatPopup}
@@ -580,6 +611,7 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       {/* Container that reserves space - width changes with animation */}
       <div
+        ref={sidebarRef}
         className={cn(
           "relative h-full shrink-0 transition-[width] duration-200 ease-out",
           collapsed ? "w-16" : "w-56"
@@ -599,7 +631,7 @@ export function Sidebar() {
               : "w-56"
           )}
         >
-          {showExpanded ? ExpandedContent : CollapsedContent}
+            {showExpanded ? ExpandedContent : CollapsedContent}
         </aside>
       </div>
 
