@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
+
 /**
  * Global UI state for dialogs, modals, and other UI elements
  * that need to be controlled from multiple places in the app.
@@ -15,6 +17,11 @@ interface UiState {
   isChatPopupOpen: boolean;
   openChatPopup: () => void;
   closeChatPopup: () => void;
+
+  // Sidebar collapsed state
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -28,4 +35,17 @@ export const useUiStore = create<UiState>()((set) => ({
   isChatPopupOpen: false,
   openChatPopup: () => set({ isChatPopupOpen: true }),
   closeChatPopup: () => set({ isChatPopupOpen: false }),
+
+  // Sidebar collapsed state (initialized from localStorage)
+  sidebarCollapsed: localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",
+  toggleSidebar: () =>
+    set((state) => {
+      const newValue = !state.sidebarCollapsed;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(newValue));
+      return { sidebarCollapsed: newValue };
+    }),
+  setSidebarCollapsed: (collapsed) => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    set({ sidebarCollapsed: collapsed });
+  },
 }));

@@ -12,7 +12,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, PanelLeftClose, PanelLeft } from "lucide-react";
+import { useUiStore } from "@/stores";
 import { toast } from "@/hooks/use-toast";
 import {
   DndContext,
@@ -298,6 +299,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
 
+  // Sidebar toggle from global UI store
+  const { sidebarCollapsed, toggleSidebar } = useUiStore();
+
   // Build current page item for context display in history menus
   const currentPageItem = activeTab
     ? (() => {
@@ -368,7 +372,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           className
         )}
       >
-        {/* Left side: macOS traffic light space + Navigation buttons */}
+        {/* Left side: macOS traffic light space + Sidebar toggle + Navigation buttons */}
         <div
           data-tauri-drag-region
           className={cn(
@@ -376,6 +380,27 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
             shouldReserveMacOSControlsSpace && "pl-20"
           )}
         >
+          {/* Sidebar toggle button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                onClick={toggleSidebar}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                ) : (
+                  <PanelLeftClose className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {sidebarCollapsed ? t("sidebar.expand", "Expand sidebar") : t("sidebar.collapse", "Collapse sidebar")}
+            </TooltipContent>
+          </Tooltip>
+
           {/* Back button */}
           <ContextMenu>
             <Tooltip>

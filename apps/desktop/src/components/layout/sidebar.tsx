@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Settings,
-  PanelLeftClose,
   Upload,
   PackageSearch,
   BarChart3,
@@ -113,8 +112,6 @@ const githubNavItem: WorkspaceNavItem = {
   icon: Github,
 };
 
-const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
-
 export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
@@ -140,18 +137,52 @@ export function Sidebar() {
   // Get active workspace
   const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
 
-  // Load collapsed state from localStorage
-  const [collapsed, setCollapsed] = useState(() => {
-    const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-    return saved === "true";
-  });
+  // Use global UI store for sidebar collapsed state
+  const { sidebarCollapsed: collapsed } = useUiStore();
 
-  // Persist collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  // Hover state for auto-expand when collapsed
+  const [isHovered, setIsHovered] = useState(false);
+  const enterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Handle mouse enter - expand after a short delay to avoid accidental triggers
+  const handleMouseEnter = useCallback(() => {
+    if (!collapsed) return;
+    // Clear any pending leave timeout
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    enterTimeoutRef.current = setTimeout(() => {
+      setIsHovered(true);
+    }, 100);
   }, [collapsed]);
 
-  const toggleCollapsed = () => setCollapsed((prev) => !prev);
+  // Handle mouse leave - collapse after a small delay to avoid flicker
+  const handleMouseLeave = useCallback(() => {
+    if (enterTimeoutRef.current) {
+      clearTimeout(enterTimeoutRef.current);
+      enterTimeoutRef.current = null;
+    }
+    leaveTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 100);
+  }, []);
+
+  // Cleanup timeouts on unmount to prevent memory leaks
+  React.useEffect(() => {
+    return () => {
+      if (enterTimeoutRef.current) {
+        clearTimeout(enterTimeoutRef.current);
+      }
+      if (leaveTimeoutRef.current) {
+        clearTimeout(leaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Whether to show expanded content (either not collapsed, or hovered while collapsed)
+  const showExpanded = !collapsed || isHovered;
 
   // Create Task Dialog state (from global UI store for keyboard shortcut support)
   const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen, openChatPopup } = useUiStore();
@@ -268,289 +299,304 @@ export function Sidebar() {
     }
   };
 
-  return (
-    <TooltipProvider delayDuration={0}>
-      <aside
-        className={cn(
-          "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300",
-          collapsed ? "w-16" : "w-56"
-        )}
-      >
-        {/* Workspace Selector & Collapse Toggle */}
-        <div className={cn(
-          "flex h-14 items-center border-b border-sidebar-border",
-          collapsed ? "justify-center px-2" : "justify-between px-2"
-        )}>
-          {collapsed ? (
-            // Collapsed: clickable workspace icon to expand
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={toggleCollapsed}
-                  className="transition-transform duration-200 hover:scale-105 p-2"
+  // Expanded content component (reused in both modes)
+  const ExpandedContent = (
+    <>
+      {/* Workspace Selector & Settings - Expanded */}
+      <div className="flex h-14 items-center border-b border-sidebar-border justify-between px-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-9 flex-1 justify-between px-2 text-sidebar-foreground hover:bg-sidebar-accent mr-1"
+            >
+              <span className="flex items-center gap-2 truncate">
+                <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+                <span className="truncate text-sm font-medium">
+                  {activeWorkspace?.id === "global"
+                    ? t("workspace.global")
+                    : (activeWorkspace?.name || t("workspace.noWorkspaces"))}
+                </span>
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56 max-h-[60vh] overflow-y-auto">
+            {workspaces.map((ws) => (
+              <DropdownMenuSub key={ws.id}>
+                <DropdownMenuSubTrigger
+                  className="flex items-center justify-between"
+                  onClick={(e) => {
+                    if (e.detail > 0) {
+                      handleSelectWorkspace(ws.id);
+                    }
+                  }}
                 >
-                  <FolderOpen className="h-5 w-5 text-primary" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {activeWorkspace?.id === "global"
-                  ? t("workspace.global")
-                  : (activeWorkspace?.name || t("sidebar.expand"))}
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            // Expanded: show workspace dropdown and collapse button
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-9 flex-1 justify-between px-2 text-sidebar-foreground hover:bg-sidebar-accent mr-1"
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="truncate text-sm font-medium">
-                        {activeWorkspace?.id === "global"
-                          ? t("workspace.global")
-                          : (activeWorkspace?.name || t("workspace.noWorkspaces"))}
-                      </span>
+                  <span className="flex items-center gap-2 truncate flex-1">
+                    <span className="truncate">
+                      {ws.id === "global" ? t("workspace.global") : ws.name}
                     </span>
-                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56 max-h-[60vh] overflow-y-auto">
-                  {workspaces.map((ws) => (
-                    <DropdownMenuSub key={ws.id}>
-                      <DropdownMenuSubTrigger
-                        className="flex items-center justify-between"
-                        onClick={(e) => {
-                          // Only switch workspace on direct click, not on hover
-                          if (e.detail > 0) {
-                            handleSelectWorkspace(ws.id);
-                          }
+                    {ws.id === activeWorkspaceId && (
+                      <Check className="h-3 w-3 text-primary shrink-0" />
+                    )}
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => handleConfigureWorkspace(ws.id)}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    {t("workspace.configure")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleOpenInNewWindow(ws.id)}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    {t("workspace.openInNewWindow")}
+                  </DropdownMenuItem>
+                  {ws.id !== "global" && (
+                    <DropdownMenuItem
+                      onClick={() => setWorkspaceToDelete({ id: ws.id, name: ws.name })}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {t("workspace.delete")}
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ))}
+            {workspaces.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem
+              onClick={handleAddWorkspace}
+              className="text-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {t("workspace.addWorkspace")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {activeWorkspaceId && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                onClick={() => handleConfigureWorkspace(activeWorkspaceId)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {t("workspace.configure")}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Main Navigation - Expanded */}
+      <ScrollArea className="flex-1 pt-2 px-2">
+        <div className="space-y-4">
+          {activeWorkspaceId && activeWorkspace && (
+            <PageSection
+              workspaceId={activeWorkspaceId}
+              workspacePath={activeWorkspace.path}
+              collapsed={false}
+            />
+          )}
+
+          {activeWorkspaceId && (
+            <SidebarSection
+              title={t("sidebar.workspacePages")}
+              collapsible
+              defaultOpen
+              headerAction={
+                <div className="flex items-center gap-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                        onClick={() => {
+                          handleConfigureWorkspace(activeWorkspaceId);
                         }}
                       >
-                        <span className="flex items-center gap-2 truncate flex-1">
-                          <span className="truncate">
-                            {ws.id === "global" ? t("workspace.global") : ws.name}
-                          </span>
-                          {ws.id === activeWorkspaceId && (
-                            <Check className="h-3 w-3 text-primary shrink-0" />
-                          )}
-                        </span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-48">
-                        <DropdownMenuItem
-                          onClick={() => handleConfigureWorkspace(ws.id)}
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          {t("workspace.configure")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleOpenInNewWindow(ws.id)}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          {t("workspace.openInNewWindow")}
-                        </DropdownMenuItem>
-                        {ws.id !== "global" && (
-                          <DropdownMenuItem
-                            onClick={() => setWorkspaceToDelete({ id: ws.id, name: ws.name })}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {t("workspace.delete")}
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  ))}
-                  {workspaces.length > 0 && <DropdownMenuSeparator />}
-                  <DropdownMenuItem
-                    onClick={handleAddWorkspace}
-                    className="text-primary"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t("workspace.addWorkspace")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                    onClick={toggleCollapsed}
-                  >
-                    <PanelLeftClose className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {t("sidebar.collapse")}
-                </TooltipContent>
-              </Tooltip>
+                        <Settings className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {t("workspace.configure")}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                        onClick={() => {
+                          openWorkspaceHome(activeWorkspaceId);
+                        }}
+                      >
+                        <Home className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {t("sidebar.workspaceHome")}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              }
+            >
+              <nav className="flex flex-col gap-1">
+                {workspaceNavItems.map((item) => (
+                  <WorkspaceNavItemComponent
+                    key={item.path}
+                    item={item}
+                    workspaceId={activeWorkspaceId}
+                    collapsed={false}
+                    onNavigate={handleWorkspaceNavClick}
+                  />
+                ))}
+              </nav>
+            </SidebarSection>
+          )}
+
+          {isAuthenticated && (
+            <SidebarSection
+              title={t("creator.title")}
+              collapsible
+              defaultOpen
+            >
+              <nav className="flex flex-col gap-1">
+                {creatorNav.map((item) => (
+                  <NavItemComponent key={item.href} item={item} collapsed={false} onNavigate={handleGlobalNavClick} />
+                ))}
+              </nav>
+            </SidebarSection>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Bottom Navigation - Expanded */}
+      <div className="pb-2 px-2">
+        <SidebarBottomDrawer collapsed={false} />
+        <WakeWordTaskButton
+          collapsed={false}
+          onCreateTask={openChatPopup}
+          disabled={!activeWorkspace}
+        />
+      </div>
+    </>
+  );
+
+  // Collapsed content component
+  const CollapsedContent = (
+    <>
+      {/* Workspace icon - Collapsed */}
+      <div className="flex h-14 items-center border-b border-sidebar-border justify-center px-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="transition-transform duration-200 hover:scale-105 p-2"
+            >
+              <FolderOpen className="h-5 w-5 text-primary" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {activeWorkspace?.id === "global"
+              ? t("workspace.global")
+              : (activeWorkspace?.name || t("workspace.selectWorkspace"))}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* Main Navigation - Collapsed */}
+      <ScrollArea className="flex-1 pt-2 px-2">
+        <div className="flex flex-col gap-1">
+          {activeWorkspaceId && activeWorkspace && (
+            <>
+              <PageSection
+                workspaceId={activeWorkspaceId}
+                workspacePath={activeWorkspace.path}
+                collapsed={true}
+              />
+              <div className="grid place-items-center w-full py-2">
+                <Separator className="w-10 bg-sidebar-border" />
+              </div>
+            </>
+          )}
+
+          {activeWorkspaceId && (
+            <>
+              {workspaceNavItems.map((item) => (
+                <WorkspaceNavItemComponent
+                  key={item.path}
+                  item={item}
+                  workspaceId={activeWorkspaceId}
+                  collapsed={true}
+                  onNavigate={handleWorkspaceNavClick}
+                />
+              ))}
+            </>
+          )}
+
+          {isAuthenticated && (
+            <>
+              <div className="grid place-items-center w-full py-2">
+                <Separator className="w-10 bg-sidebar-border" />
+              </div>
+              {creatorNav.map((item) => (
+                <NavItemComponent key={item.href} item={item} collapsed={true} onNavigate={handleGlobalNavClick} />
+              ))}
             </>
           )}
         </div>
+      </ScrollArea>
 
-        {/* Main Navigation with Sections */}
-        <ScrollArea className="flex-1 pt-2 px-2">
-          {collapsed ? (
-            // Collapsed: all items use SidebarIconButton with unified centering
-            <div className="flex flex-col gap-1">
-              {/* Pages Section - Before Workspace navigation */}
-              {activeWorkspaceId && activeWorkspace && (
-                <>
-                  <PageSection
-                    workspaceId={activeWorkspaceId}
-                    workspacePath={activeWorkspace.path}
-                    collapsed={collapsed}
-                  />
-                  <div className="grid place-items-center w-full py-2">
-                    <Separator className="w-10 bg-sidebar-border" />
-                  </div>
-                </>
-              )}
+      {/* Bottom Navigation - Collapsed */}
+      <div className="pb-2 flex flex-col">
+        <SidebarBottomDrawer collapsed />
+        <WakeWordTaskButton
+          collapsed
+          onCreateTask={openChatPopup}
+          disabled={!activeWorkspace}
+        />
+      </div>
+    </>
+  );
 
-              {/* Workspace Pages Section (only when workspace is selected) */}
-              {activeWorkspaceId && (
-                <>
-                  {workspaceNavItems.map((item) => (
-                    <WorkspaceNavItemComponent
-                      key={item.path}
-                      item={item}
-                      workspaceId={activeWorkspaceId}
-                      collapsed={collapsed}
-                      onNavigate={handleWorkspaceNavClick}
-                    />
-                  ))}
-                </>
-              )}
-
-              {/* Creator Section (only when authenticated) */}
-              {isAuthenticated && (
-                <>
-                  <div className="grid place-items-center w-full py-2">
-                    <Separator className="w-10 bg-sidebar-border" />
-                  </div>
-                  {creatorNav.map((item) => (
-                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} onNavigate={handleGlobalNavClick} />
-                  ))}
-                </>
-              )}
-            </div>
-          ) : (
-            // Expanded: full layout with sections
-            <div className="space-y-4">
-              {/* Pages Section - Before Workspace navigation */}
-              {activeWorkspaceId && activeWorkspace && (
-                <PageSection
-                  workspaceId={activeWorkspaceId}
-                  workspacePath={activeWorkspace.path}
-                  collapsed={collapsed}
-                />
-              )}
-
-              {/* Workspace Pages Section (only when workspace is selected) */}
-              {activeWorkspaceId && (
-                <SidebarSection
-                  title={t("sidebar.workspacePages")}
-                  collapsible
-                  defaultOpen
-                  headerAction={
-                    <div className="flex items-center gap-0.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
-                            onClick={() => {
-                              handleConfigureWorkspace(activeWorkspaceId);
-                            }}
-                          >
-                            <Settings className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          {t("workspace.configure")}
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
-                            onClick={() => {
-                              openWorkspaceHome(activeWorkspaceId);
-                            }}
-                          >
-                            <Home className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          {t("sidebar.workspaceHome")}
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                  }
-                >
-                  <nav className="flex flex-col gap-1">
-                    {workspaceNavItems.map((item) => (
-                      <WorkspaceNavItemComponent
-                        key={item.path}
-                        item={item}
-                        workspaceId={activeWorkspaceId}
-                        collapsed={collapsed}
-                        onNavigate={handleWorkspaceNavClick}
-                      />
-                    ))}
-                  </nav>
-                </SidebarSection>
-              )}
-
-              {/* Creator Section (only when authenticated) */}
-              {isAuthenticated && (
-                <SidebarSection
-                  title={t("creator.title")}
-                  collapsible
-                  defaultOpen
-                >
-                  <nav className="flex flex-col gap-1">
-                    {creatorNav.map((item) => (
-                      <NavItemComponent key={item.href} item={item} collapsed={collapsed} onNavigate={handleGlobalNavClick} />
-                    ))}
-                  </nav>
-                </SidebarSection>
-              )}
-            </div>
-          )}
-        </ScrollArea>
-
-        {/* Bottom Navigation & New Task */}
-        {collapsed ? (
-          <div className="pb-2 flex flex-col">
-            <SidebarBottomDrawer collapsed />
-            <WakeWordTaskButton
-              collapsed
-              onCreateTask={openChatPopup}
-              disabled={!activeWorkspace}
-            />
-          </div>
-        ) : (
-          <div className="pb-2 px-2">
-            <SidebarBottomDrawer collapsed={false} />
-            <WakeWordTaskButton
-              collapsed={false}
-              onCreateTask={openChatPopup}
-              disabled={!activeWorkspace}
-            />
-          </div>
+  return (
+    <TooltipProvider delayDuration={0}>
+      {/* Container that reserves space - width changes with animation */}
+      <div
+        className={cn(
+          "relative h-full shrink-0 transition-[width] duration-300 ease-in-out",
+          collapsed ? "w-16" : "w-56"
         )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Actual sidebar - when collapsed+hovered, overlays as absolute positioned */}
+        <aside
+          className={cn(
+            "flex h-full flex-col border-r border-sidebar-border bg-sidebar",
+            "transition-[width,box-shadow,transform] duration-200 ease-out",
+            collapsed
+              ? isHovered
+                ? "absolute inset-y-0 left-0 w-56 z-50 shadow-2xl shadow-black/20"
+                : "w-16"
+              : "w-56"
+          )}
+        >
+          {showExpanded ? ExpandedContent : CollapsedContent}
+        </aside>
+      </div>
 
-        {/* Create Task Dialog */}
+      {/* Create Task Dialog */}
         <CreateTaskDialog
           open={isCreateTaskOpen}
           onOpenChange={setIsCreateTaskOpen}
@@ -615,7 +661,6 @@ export function Sidebar() {
           onOpenChange={(open) => !open && setWorkspaceToConfig(null)}
           workspaceId={workspaceToConfig}
         />
-      </aside>
     </TooltipProvider>
   );
 }
