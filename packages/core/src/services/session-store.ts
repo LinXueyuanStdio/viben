@@ -464,17 +464,20 @@ export class SessionStoreService {
     }
 
     const entries = await readdir(sessionsDir, { withFileTypes: true });
-    const sessions: SessionConfig[] = [];
 
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        try {
-          // Pass agentDir to getSession to read from the correct location
-          const config = await this.getSession(agentId, entry.name, agentDir);
-          sessions.push(config);
-        } catch {
-          // Skip invalid sessions
-        }
+    // Filter to directories only
+    const dirEntries = entries.filter((entry) => entry.isDirectory());
+
+    // Read all session configs in parallel
+    const results = await Promise.allSettled(
+      dirEntries.map((entry) => this.getSession(agentId, entry.name, agentDir))
+    );
+
+    // Collect successful results, skip failures
+    const sessions: SessionConfig[] = [];
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        sessions.push(result.value);
       }
     }
 
