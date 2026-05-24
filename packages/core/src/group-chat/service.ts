@@ -186,14 +186,20 @@ export class GroupChatService {
     }
 
     const entries = await readdir(this.baseDir, { withFileTypes: true });
-    const configs: GroupChatConfig[] = [];
 
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const config = await this.getGroupChat(entry.name);
-        if (config) {
-          configs.push(config);
-        }
+    // Filter to directories only
+    const dirEntries = entries.filter((entry) => entry.isDirectory());
+
+    // Read all configs in parallel
+    const results = await Promise.allSettled(
+      dirEntries.map((entry) => this.getGroupChat(entry.name))
+    );
+
+    // Collect successful non-null results
+    const configs: GroupChatConfig[] = [];
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value !== null) {
+        configs.push(result.value);
       }
     }
 
@@ -364,7 +370,7 @@ export class GroupChatService {
   }
 
   /**
-   * List sessions for a group chat
+   * List all sessions for a group chat
    */
   async listSessions(groupChatId: string): Promise<GroupChatSessionConfig[]> {
     const sessionsDir = this.sessionsDir(groupChatId);
@@ -373,14 +379,20 @@ export class GroupChatService {
     }
 
     const entries = await readdir(sessionsDir, { withFileTypes: true });
-    const sessions: GroupChatSessionConfig[] = [];
 
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const session = await this.getSession(groupChatId, entry.name);
-        if (session) {
-          sessions.push(session);
-        }
+    // Filter to directories only
+    const dirEntries = entries.filter((entry) => entry.isDirectory());
+
+    // Read all sessions in parallel
+    const results = await Promise.allSettled(
+      dirEntries.map((entry) => this.getSession(groupChatId, entry.name))
+    );
+
+    // Collect successful non-null results
+    const sessions: GroupChatSessionConfig[] = [];
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value !== null) {
+        sessions.push(result.value);
       }
     }
 
