@@ -1,17 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
-import { Settings, PanelLeftClose } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { syncChannels } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useLocation } from "react-router-dom";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import type { SettingsSection } from "./types";
 import {
@@ -19,7 +11,6 @@ import {
   SECTIONS,
   VALID_SECTIONS,
   easeOutExpo,
-  SETTINGS_SIDEBAR_COLLAPSED_KEY,
 } from "./constants";
 import { GeneralSection } from "./general-section";
 import { AccountSection } from "./account-section";
@@ -59,19 +50,6 @@ export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(
     getSectionFromPath
   );
-
-  // Collapsed state for settings sidebar
-  const [collapsed, setCollapsed] = useState(() => {
-    const saved = localStorage.getItem(SETTINGS_SIDEBAR_COLLAPSED_KEY);
-    return saved === "true";
-  });
-
-  // Persist collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem(SETTINGS_SIDEBAR_COLLAPSED_KEY, String(collapsed));
-  }, [collapsed]);
-
-  const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
   // Sync URL with active section (used in sidebar navigation)
   // Pre-load data when navigating to certain sections
@@ -191,8 +169,7 @@ export function SettingsPage() {
   };
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <motion.div
+    <motion.div
         className="h-full flex flex-col md:flex-row"
         variants={containerVariants}
         initial="hidden"
@@ -200,133 +177,48 @@ export function SettingsPage() {
       >
         {/* Left Navigation Sidebar */}
         <motion.nav
-          className={cn(
-            "shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 transition-all duration-300 overflow-hidden whitespace-nowrap flex flex-col",
-            collapsed ? "w-16" : "w-56"
-          )}
+          className="w-56 shrink-0 border-b md:border-b-0 md:border-r bg-muted/30 overflow-hidden whitespace-nowrap flex flex-col"
           variants={itemVariants}
           initial="visible"
         >
-          {/* Header with collapse toggle - matches main sidebar h-14 */}
-          <div className={cn(
-            "flex h-14 items-center border-b border-border",
-            collapsed ? "justify-center px-2" : "justify-between px-3"
-          )}>
-            {collapsed ? (
-              // Collapsed: clickable settings icon to expand
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={toggleCollapsed}
-                    className="transition-transform duration-200 hover:scale-105 p-2"
-                  >
-                    <Settings className="h-5 w-5 text-primary" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {t("settings.title")}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              // Expanded: show title and collapse button
-              <>
-                <h1 className="text-lg font-semibold font-serif">
-                  {t("settings.title")}
-                </h1>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                      onClick={toggleCollapsed}
-                    >
-                      <PanelLeftClose className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    {t("sidebar.collapse")}
-                  </TooltipContent>
-                </Tooltip>
-              </>
-            )}
-          </div>
-
           {/* Navigation items */}
-          {collapsed ? (
-            // Collapsed view - icons only with tooltips
-            <div className="flex flex-col gap-1 py-4 overflow-y-auto flex-1 min-h-0">
-              {SECTIONS.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
+          <ul className="space-y-1 py-4 px-2 overflow-y-auto flex-1 min-h-0">
+            {SECTIONS.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
 
-                return (
-                  <div key={section.id} className="grid place-items-center w-full">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => handleSectionChange(section.id)}
-                          className={cn(
-                            "flex items-center justify-center h-10 w-10 rounded-lg",
-                            "transition-all duration-200",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                            isActive
-                              ? "bg-primary text-primary-foreground shadow-sm"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4", isActive && "scale-110")} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {t(section.labelKey)}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            // Expanded view - full items
-            <ul className="space-y-1 py-4 px-2 overflow-y-auto flex-1 min-h-0">
-              {SECTIONS.map((section) => {
-                const Icon = section.icon;
-                const isActive = activeSection === section.id;
-
-                return (
-                  <li key={section.id}>
-                    <button
-                      onClick={() => handleSectionChange(section.id)}
+              return (
+                <li key={section.id}>
+                  <button
+                    onClick={() => handleSectionChange(section.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
+                      "transition-all duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      isActive
+                        ? [
+                            "bg-primary text-primary-foreground font-medium",
+                            "shadow-sm",
+                          ]
+                        : [
+                            "text-muted-foreground",
+                            "hover:bg-muted hover:text-foreground",
+                          ]
+                    )}
+                  >
+                    <Icon
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
-                        "transition-all duration-200",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                        isActive
-                          ? [
-                              "bg-primary text-primary-foreground font-medium",
-                              "shadow-sm",
-                            ]
-                          : [
-                              "text-muted-foreground",
-                              "hover:bg-muted hover:text-foreground",
-                            ]
+                        "h-4 w-4 shrink-0",
+                        "transition-transform duration-200",
+                        isActive && "scale-110"
                       )}
-                    >
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0",
-                          "transition-transform duration-200",
-                          isActive && "scale-110"
-                        )}
-                      />
-                      <span>{t(section.labelKey)}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                    />
+                    <span>{t(section.labelKey)}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </motion.nav>
 
       {/* Right Content Area */}
@@ -351,7 +243,6 @@ export function SettingsPage() {
           </motion.div>
         </AnimatePresence>
       </div>
-      </motion.div>
-    </TooltipProvider>
+    </motion.div>
   );
 }

@@ -145,6 +145,7 @@ export function Sidebar() {
   const [hasOpenMenu, setHasOpenMenu] = useState(false);
   const enterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const menuCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Handle mouse enter - expand after a short delay to avoid accidental triggers
@@ -176,6 +177,11 @@ export function Sidebar() {
   // Track menu open state changes
   const handleMenuOpenChange = useCallback((open: boolean) => {
     setHasOpenMenu(open);
+    // Clear any pending menu close timeout
+    if (menuCloseTimeoutRef.current) {
+      clearTimeout(menuCloseTimeoutRef.current);
+      menuCloseTimeoutRef.current = null;
+    }
     // When menu closes, check if mouse is still over sidebar
     if (!open && collapsed) {
       // Add a one-time mousemove listener to check position after menu closes
@@ -191,11 +197,11 @@ export function Sidebar() {
             setIsHovered(false);
           }
         }
-        document.removeEventListener("mousemove", checkMousePosition);
       };
       // Small delay to let the menu close animation complete
-      setTimeout(() => {
+      menuCloseTimeoutRef.current = setTimeout(() => {
         document.addEventListener("mousemove", checkMousePosition, { once: true });
+        menuCloseTimeoutRef.current = null;
       }, 50);
     }
   }, [collapsed]);
@@ -208,6 +214,9 @@ export function Sidebar() {
       }
       if (leaveTimeoutRef.current) {
         clearTimeout(leaveTimeoutRef.current);
+      }
+      if (menuCloseTimeoutRef.current) {
+        clearTimeout(menuCloseTimeoutRef.current);
       }
     };
   }, []);
