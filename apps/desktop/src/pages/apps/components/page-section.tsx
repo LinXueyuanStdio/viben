@@ -800,60 +800,44 @@ export function PageSection({
     </Tooltip>
   );
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <SidebarSection
-        title={t("page.pages")}
-        collapsible
-        defaultOpen
-        collapsed={collapsed}
-      >
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      </SidebarSection>
-    );
-  }
-
-  // Error state - show empty state with create button instead of error message
-  // This handles the case when workspace has no pages directory yet
-  if (error) {
-    return (
-      <>
-        <SidebarSection
-          title={t("page.pages")}
-          collapsible
-          defaultOpen
-          collapsed={collapsed}
-          headerAction={headerAction}
-        >
-          <div className="px-2 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-              onClick={handleCreatePage}
-            >
-              <Plus className="h-4 w-4" />
-              {t("page.createPage")}
-            </Button>
-          </div>
-        </SidebarSection>
-        {/* Create Page Dialog */}
-        <CreatePageDialog
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
-          workspacePath={workspacePath}
-          parentSlug={createParentSlug}
-          onSuccess={handleCreateSuccess}
-        />
-      </>
-    );
-  }
-
-  // Collapsed state: show "Create Page" button + first-level page icons
+  // Collapsed state: show icon buttons only
   if (collapsed) {
+    // Loading - show spinner icon
+    if (isLoading) {
+      return (
+        <div className="grid place-items-center w-full">
+          <SidebarIconButton
+            icon={<Loader2 className="h-4 w-4 animate-spin" />}
+            tooltip={t("common.loading")}
+            onClick={() => {}}
+          />
+        </div>
+      );
+    }
+
+    // Error - just show create button (errors are less critical in collapsed mode)
+    if (error) {
+      return (
+        <>
+          <div className="grid place-items-center w-full">
+            <SidebarIconButton
+              icon={<Plus className="h-4 w-4" />}
+              tooltip={t("page.createPage")}
+              onClick={handleCreatePage}
+            />
+          </div>
+          <CreatePageDialog
+            open={createDialogOpen}
+            onOpenChange={setCreateDialogOpen}
+            workspacePath={workspacePath}
+            parentSlug={createParentSlug}
+            onSuccess={handleCreateSuccess}
+          />
+        </>
+      );
+    }
+
+    // Normal collapsed state: create button + page icons
     return (
       <>
         {/* Create Page Button */}
@@ -874,8 +858,8 @@ export function PageSection({
                 handlePageClick(node.page);
               }}
             />
-        </div>
-      ))}
+          </div>
+        ))}
         {/* Create Page Dialog - must be rendered even in collapsed state */}
         <CreatePageDialog
           open={createDialogOpen}
@@ -885,6 +869,40 @@ export function PageSection({
           onSuccess={handleCreateSuccess}
         />
       </>
+    );
+  }
+
+  // Expanded state: Loading
+  if (isLoading) {
+    return (
+      <SidebarSection
+        title={t("page.pages")}
+        collapsible
+        defaultOpen
+        collapsed={collapsed}
+      >
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      </SidebarSection>
+    );
+  }
+
+  // Expanded state: Error - show error message for real errors
+  if (error) {
+    const errorMessage = error instanceof Error ? error.message : t("common.error");
+    return (
+      <SidebarSection
+        title={t("page.pages")}
+        collapsible
+        defaultOpen
+        collapsed={collapsed}
+        headerAction={headerAction}
+      >
+        <div className="px-2 py-2 text-xs text-destructive">
+          {errorMessage}
+        </div>
+      </SidebarSection>
     );
   }
 
@@ -898,8 +916,16 @@ export function PageSection({
         headerAction={headerAction}
       >
         {pageTree.length === 0 ? (
-          <div className="px-2 py-2 text-xs text-muted-foreground">
-            {t("page.noPages")}
+          <div className="px-2 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+              onClick={handleCreatePage}
+            >
+              <Plus className="h-4 w-4" />
+              {t("page.createPage")}
+            </Button>
           </div>
         ) : (
           <DndContext

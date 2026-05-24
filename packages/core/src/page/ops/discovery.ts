@@ -103,7 +103,8 @@ export async function parseSkillMd(
 }
 
 /**
- * Recursively discover all pages in a directory
+ * Recursively discover all pages in a directory.
+ * Returns empty array if directory doesn't exist (not an error).
  */
 export async function discoverPages(
   dir: string,
@@ -111,6 +112,7 @@ export async function discoverPages(
 ): Promise<PageConfig[]> {
   const pages: PageConfig[] = [];
 
+  // Return empty array if pages directory doesn't exist - this is expected for new workspaces
   if (!existsSync(dir)) {
     return pages;
   }
