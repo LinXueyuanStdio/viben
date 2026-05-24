@@ -10,6 +10,7 @@
  * - Copy trace/span ID functionality
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useDebounceFn } from "ahooks";
 import {
   RefreshCw,
   Loader2,
@@ -86,6 +87,19 @@ export function ChatMonitorPage() {
   const [activeTab, setActiveTab] = useState<"tree" | "timeline" | "stats">("tree");
   const [selectedSpan, setSelectedSpan] = useState<TraceSpanNode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search query updates (300ms)
+  const { run: updateDebouncedSearch } = useDebounceFn(
+    (query: string) => setDebouncedSearchQuery(query),
+    { wait: 300 }
+  );
+
+  // Sync debounced query when searchQuery changes
+  useEffect(() => {
+    updateDebouncedSearch(searchQuery);
+  }, [searchQuery, updateDebouncedSearch]);
+
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [routeFilter, setRouteFilter] = useState<string>("/api/agent/run");
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -242,18 +256,36 @@ export function ChatMonitorPage() {
     return spans;
   }, [traceTree]);
 
-  // Filter spans by search query
+  // Pre-compute searchable attribute strings (excluding large bodies)
+  const spansWithSearchableAttrs = useMemo(() => {
+    return flattenedSpans.map((span) => {
+      // Create a shallow copy without large body fields for search
+      const searchableAttrs = { ...span.attributes };
+      delete searchableAttrs["http.request.body"];
+      delete searchableAttrs["http.response.body"];
+      delete searchableAttrs["tool.input"];
+      delete searchableAttrs["tool_result.output"];
+      return {
+        span,
+        searchText: JSON.stringify(searchableAttrs).toLowerCase(),
+      };
+    });
+  }, [flattenedSpans]);
+
+  // Filter spans by debounced search query
   const filteredSpans = useMemo(() => {
-    if (!searchQuery.trim()) return flattenedSpans;
-    const query = searchQuery.toLowerCase();
-    return flattenedSpans.filter(
-      (span) =>
-        span.displayName.toLowerCase().includes(query) ||
-        span.name.toLowerCase().includes(query) ||
-        span.spanId.toLowerCase().includes(query) ||
-        JSON.stringify(span.attributes).toLowerCase().includes(query)
-    );
-  }, [flattenedSpans, searchQuery]);
+    if (!debouncedSearchQuery.trim()) return flattenedSpans;
+    const query = debouncedSearchQuery.toLowerCase();
+    return spansWithSearchableAttrs
+      .filter(
+        ({ span, searchText }) =>
+          span.displayName.toLowerCase().includes(query) ||
+          span.name.toLowerCase().includes(query) ||
+          span.spanId.toLowerCase().includes(query) ||
+          searchText.includes(query)
+      )
+      .map(({ span }) => span);
+  }, [spansWithSearchableAttrs, debouncedSearchQuery]);
 
   return (
     <div className="p-6 h-full flex flex-col">
@@ -486,7 +518,7 @@ export function ChatMonitorPage() {
                               selectedSpan={selectedSpan}
                               onSelectSpan={setSelectedSpan}
                               onOpenDetail={handleOpenDetail}
-                              searchQuery={searchQuery}
+                              searchQuery={debouncedSearchQuery}
                             />
                           </div>
                         </ScrollArea>
