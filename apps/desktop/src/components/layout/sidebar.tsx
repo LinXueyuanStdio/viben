@@ -181,6 +181,13 @@ export function Sidebar() {
     };
   }, []);
 
+  // Reset isHovered when collapsed state changes to avoid stale hover state
+  React.useEffect(() => {
+    if (!collapsed) {
+      setIsHovered(false);
+    }
+  }, [collapsed]);
+
   // Whether to show expanded content (either not collapsed, or hovered while collapsed)
   const showExpanded = !collapsed || isHovered;
 
@@ -574,7 +581,7 @@ export function Sidebar() {
       {/* Container that reserves space - width changes with animation */}
       <div
         className={cn(
-          "relative h-full shrink-0 transition-[width] duration-300 ease-in-out",
+          "relative h-full shrink-0 transition-[width] duration-200 ease-out",
           collapsed ? "w-16" : "w-56"
         )}
         onMouseEnter={handleMouseEnter}
@@ -584,10 +591,10 @@ export function Sidebar() {
         <aside
           className={cn(
             "flex h-full flex-col border-r border-sidebar-border bg-sidebar",
-            "transition-[width,box-shadow,transform] duration-200 ease-out",
+            "transition-[width,box-shadow] duration-200 ease-out",
             collapsed
               ? isHovered
-                ? "absolute inset-y-0 left-0 w-56 z-50 shadow-2xl shadow-black/20"
+                ? "absolute inset-y-0 left-0 w-56 z-50 shadow-2xl"
                 : "w-16"
               : "w-56"
           )}
