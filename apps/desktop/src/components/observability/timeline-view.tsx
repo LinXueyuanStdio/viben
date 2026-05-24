@@ -4,8 +4,12 @@
  * Displays spans in a waterfall/timeline visualization
  */
 import { Activity, CheckCircle2, XCircle } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import type { TraceSpanNode } from "./types";
+
+const ROW_HEIGHT = 32;
 
 export interface TimelineViewProps {
   spans: TraceSpanNode[];
@@ -25,6 +29,15 @@ export function TimelineView({
   onSelectSpan,
 }: TimelineViewProps) {
   const { t } = useTranslation();
+
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: spans.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 5,
+  });
 
   if (spans.length === 0) {
     return (
@@ -50,53 +63,79 @@ export function TimelineView({
         <div className="w-20 text-right">{t("observability.duration")}</div>
       </div>
 
-      {/* Span rows */}
-      {spans.map((span) => {
-        const offsetPercent = ((span.startTime - traceStartTime) / totalDuration) * 100;
-        const widthPercent = (span.duration / totalDuration) * 100;
-        const isSelected = selectedSpan?.spanId === span.spanId;
+      {/* Virtualized span rows */}
+      <div
+        ref={parentRef}
+        className="overflow-auto"
+        style={{ height: Math.min(spans.length * ROW_HEIGHT, 400) }}
+      >
+        <div
+          style={{
+            height: virtualizer.getTotalSize(),
+            width: "100%",
+            position: "relative",
+          }}
+        >
+          {virtualizer.getVirtualItems().map((virtualItem) => {
+            const span = spans[virtualItem.index];
+            const offsetPercent = ((span.startTime - traceStartTime) / totalDuration) * 100;
+            const widthPercent = (span.duration / totalDuration) * 100;
+            const isSelected = selectedSpan?.spanId === span.spanId;
 
-        return (
-          <div
-            key={span.spanId}
-            className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${
-              isSelected ? "bg-primary/10 ring-1 ring-primary/50" : ""
-            }`}
-            onClick={() => onSelectSpan(span)}
-          >
-            <div className="w-48 flex-shrink-0 flex items-center gap-1.5">
-              {span.status.code === 1 ? (
-                <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
-              ) : span.status.code === 2 ? (
-                <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
-              ) : (
-                <div className="h-3 w-3 rounded-full bg-yellow-500 flex-shrink-0" />
-              )}
-              <span className="truncate text-sm">{span.displayName}</span>
-            </div>
-
-            <div className="flex-1 h-6 bg-muted rounded relative">
+            return (
               <div
-                className={`absolute top-1 bottom-1 rounded ${
-                  span.status.code === 2
-                    ? "bg-red-500"
-                    : span.status.code === 1
-                    ? "bg-green-500"
-                    : "bg-yellow-500"
-                }`}
+                key={virtualItem.key}
                 style={{
-                  left: `${offsetPercent}%`,
-                  width: `${Math.max(widthPercent, 0.5)}%`,
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: virtualItem.size,
+                  transform: `translateY(${virtualItem.start}px)`,
                 }}
-              />
-            </div>
+              >
+                <div
+                  className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer hover:bg-muted/50 ${
+                    isSelected ? "bg-primary/10 ring-1 ring-primary/50" : ""
+                  }`}
+                  onClick={() => onSelectSpan(span)}
+                >
+                  <div className="w-48 flex-shrink-0 flex items-center gap-1.5">
+                    {span.status.code === 1 ? (
+                      <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />
+                    ) : span.status.code === 2 ? (
+                      <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                    ) : (
+                      <div className="h-3 w-3 rounded-full bg-yellow-500 flex-shrink-0" />
+                    )}
+                    <span className="truncate text-sm">{span.displayName}</span>
+                  </div>
 
-            <div className="w-20 text-right text-sm text-muted-foreground">
-              {formatDuration(span.duration)}
-            </div>
-          </div>
-        );
-      })}
+                  <div className="flex-1 h-6 bg-muted rounded relative">
+                    <div
+                      className={`absolute top-1 bottom-1 rounded ${
+                        span.status.code === 2
+                          ? "bg-red-500"
+                          : span.status.code === 1
+                          ? "bg-green-500"
+                          : "bg-yellow-500"
+                      }`}
+                      style={{
+                        left: `${offsetPercent}%`,
+                        width: `${Math.max(widthPercent, 0.5)}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="w-20 text-right text-sm text-muted-foreground">
+                    {formatDuration(span.duration)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
