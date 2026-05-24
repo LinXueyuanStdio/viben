@@ -816,21 +816,39 @@ export function PageSection({
     );
   }
 
-  // Error state
+  // Error state - show empty state with create button instead of error message
+  // This handles the case when workspace has no pages directory yet
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : t("common.error");
     return (
-      <SidebarSection
-        title={t("page.pages")}
-        collapsible
-        defaultOpen
-        collapsed={collapsed}
-        headerAction={headerAction}
-      >
-        <div className="px-2 py-2 text-xs text-destructive">
-          {errorMessage}
-        </div>
-      </SidebarSection>
+      <>
+        <SidebarSection
+          title={t("page.pages")}
+          collapsible
+          defaultOpen
+          collapsed={collapsed}
+          headerAction={headerAction}
+        >
+          <div className="px-2 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+              onClick={handleCreatePage}
+            >
+              <Plus className="h-4 w-4" />
+              {t("page.createPage")}
+            </Button>
+          </div>
+        </SidebarSection>
+        {/* Create Page Dialog */}
+        <CreatePageDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          workspacePath={workspacePath}
+          parentSlug={createParentSlug}
+          onSuccess={handleCreateSuccess}
+        />
+      </>
     );
   }
 

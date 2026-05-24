@@ -173,18 +173,45 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     );
   }
 
-  // Error
+  // Error - show empty state with create button instead of error message
+  // This handles the case when workspace has no pages directory yet
   if (error) {
-    const errorMessage = error instanceof Error ? error.message : t("common.error");
     return (
-      <div className="flex items-center justify-center h-full">
-        <p
-          className="text-sm"
-          style={{ color: "rgba(255, 255, 255, 0.5)" }}
-        >
-          {errorMessage}
-        </p>
-      </div>
+      <>
+        <div className="h-full overflow-y-auto px-8 py-6">
+          <div className="flex flex-col items-center justify-center h-full gap-4">
+            <button
+              type="button"
+              onClick={handleCreatePage}
+              className={cn(
+                "w-[60px] h-[60px] rounded-[14px] flex items-center justify-center",
+                "transition-transform duration-150 ease-out",
+                "hover:scale-105 active:scale-95"
+              )}
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                border: "2px dashed rgba(255, 255, 255, 0.3)",
+              }}
+            >
+              <Plus className="h-6 w-6" style={{ color: "rgba(255, 255, 255, 0.6)" }} />
+            </button>
+            <p
+              className="text-sm"
+              style={{ color: "rgba(255, 255, 255, 0.5)" }}
+            >
+              {t("page.noPages")}
+            </p>
+          </div>
+        </div>
+        {/* Create dialog */}
+        <CreatePageDialog
+          open={createDialogOpen}
+          onOpenChange={(open) => !open && closeCreateDialog()}
+          workspacePath={workspacePath}
+          parentSlug={createParentSlug}
+          onSuccess={handleCreateSuccess}
+        />
+      </>
     );
   }
 

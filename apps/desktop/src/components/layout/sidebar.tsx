@@ -617,15 +617,15 @@ export function Sidebar() {
               provider_id: m.provider_id,
             }))}
           isLoadingOptions={isLoadingAgents || isLoadingModels}
-        />
+      />
 
-        {/* Add Workspace Modal */}
+      {/* Add Workspace Modal */}
         <AddWorkspaceModal
           open={isAddWorkspaceModalOpen}
           onOpenChange={setIsAddWorkspaceModalOpen}
-        />
+      />
 
-        {/* Delete Workspace Confirmation Dialog */}
+      {/* Delete Workspace Confirmation Dialog */}
         <AlertDialog
           open={!!workspaceToDelete}
           onOpenChange={(open) => !open && setWorkspaceToDelete(null)}
@@ -653,14 +653,14 @@ export function Sidebar() {
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>
+      </AlertDialog>
 
-        {/* Workspace Settings Dialog */}
+      {/* Workspace Settings Dialog */}
         <WorkspaceSettingsDialog
           open={!!workspaceToConfig}
           onOpenChange={(open) => !open && setWorkspaceToConfig(null)}
           workspaceId={workspaceToConfig}
-        />
+      />
     </TooltipProvider>
   );
 }
