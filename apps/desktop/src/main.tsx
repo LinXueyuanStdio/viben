@@ -8,9 +8,10 @@ import "./index.css";
 // Initialize i18n before rendering
 import "./i18n";
 
-// Disable browser's default context menu in Tauri environment
+// Disable browser's default context menu in Tauri environment (production only)
+// In dev mode, allow browser context menu for debugging (Inspect Element, etc.)
 // Custom context menus (ContextMenu component) still work as they use onContextMenu + preventDefault
-if (window.__TAURI_INTERNALS__) {
+if (window.__TAURI_INTERNALS__ && !import.meta.env.DEV) {
   document.addEventListener("contextmenu", (e) => {
     // Allow context menu on editable elements (input, textarea, contenteditable)
     const target = e.target as HTMLElement;
