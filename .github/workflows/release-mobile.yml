@@ -31,12 +31,15 @@ concurrency:
 env:
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: short
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_OPTIONS: --max-old-space-size=6144
 
 jobs:
-  # Determine the version to release
+  # =============================================================================
+  # PREPARE: Determine the version to release
+  # =============================================================================
   prepare:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       tag: ${{ steps.get-version.outputs.tag }}
@@ -79,13 +82,23 @@ jobs:
           echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
           echo "build_android=${BUILD_ANDROID}" >> $GITHUB_OUTPUT
           echo "build_ios=${BUILD_IOS}" >> $GITHUB_OUTPUT
-          echo "Building mobile version: ${VERSION} (android=${BUILD_ANDROID}, ios=${BUILD_IOS})"
+          echo "=========================================="
+          echo "Release Configuration:"
+          echo "  Version: ${VERSION}"
+          echo "  Tag: mobile-v${VERSION}"
+          echo "  Build Android: ${BUILD_ANDROID}"
+          echo "  Build iOS: ${BUILD_IOS}"
+          echo "  Draft: ${IS_DRAFT}"
+          echo "=========================================="
 
-  # Build Android APK/AAB
+  # =============================================================================
+  # BUILD ANDROID: Build Android APK/AAB
+  # =============================================================================
   build-android:
     needs: prepare
     if: needs.prepare.outputs.build_android == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
@@ -104,31 +117,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Set Android environment variables
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+
       - name: Install Android NDK
         run: |
           sdkmanager --install "ndk;27.0.12077973"
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -141,28 +140,20 @@ jobs:
           workspaces: './apps/desktop/src-tauri -> target'
           shared-key: android
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...
 
-      - name: Update version in tauri.conf.json
+      - name: Sync version
         shell: bash
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          cd apps/desktop/src-tauri
-          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
-          mv tauri.conf.tmp.json tauri.conf.json
-          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
       - name: Initialize Android project
         working-directory: apps/desktop
-        run: pnpm tauri android init
+        run: pnpm tauri android init --ci
 
       - name: Build Android APK (unsigned)
         working-directory: apps/desktop
-        run: pnpm tauri android build --apk true
+        run: pnpm tauri android build --apk --ci
 
       - name: Collect Android artifacts
         run: |
@@ -205,11 +196,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Build iOS IPA
+  # =============================================================================
+  # BUILD IOS: Build iOS IPA
+  # =============================================================================
   build-ios:
     needs: prepare
     if: needs.prepare.outputs.build_ios == 'true'
     runs-on: macos-latest
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:
@@ -219,26 +213,11 @@ jobs:
           submodules: true
           token: ${{ secrets.GH_PAT }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+      - name: Install Cocoapods
+        run: brew install cocoapods
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -251,20 +230,12 @@ jobs:
           workspaces: './apps/desktop/src-tauri -> target'
           shared-key: ios
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...
 
-      - name: Update version in tauri.conf.json
+      - name: Sync version
         shell: bash
-        run: |
-          VERSION="${{ needs.prepare.outputs.version }}"
-          cd apps/desktop/src-tauri
-          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
-          mv tauri.conf.tmp.json tauri.conf.json
-          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
       - name: Set iOS development team
         run: |
@@ -280,11 +251,11 @@ jobs:
 
       - name: Initialize iOS project
         working-directory: apps/desktop
-        run: pnpm tauri ios init
+        run: pnpm tauri ios init --ci
 
       - name: Build iOS (unsigned)
         working-directory: apps/desktop
-        run: pnpm tauri ios build --export-method debugging
+        run: pnpm tauri ios build --export-method development --ci
 
       - name: Collect iOS artifacts
         run: |
@@ -305,11 +276,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Generate checksums after all builds complete
+  # =============================================================================
+  # CHECKSUMS: Generate checksums after all builds complete
+  # =============================================================================
   checksums:
     needs: [prepare, build-android, build-ios]
     if: always() && needs.prepare.result == 'success' && (needs.build-android.result == 'success' || needs.build-ios.result == 'success')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
