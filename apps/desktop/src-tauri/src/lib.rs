@@ -171,17 +171,17 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .plugin(
-            tauri_plugin_window_state::Builder::new()
-                .with_denylist(&["tray-popup", "screenshot-overlay"])
-                .build(),
-        )
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build());
 
     #[cfg(desktop)]
     {
         builder = builder
+            .plugin(
+                tauri_plugin_window_state::Builder::new()
+                    .with_denylist(&["tray-popup", "screenshot-overlay"])
+                    .build(),
+            )
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
             .plugin(tauri_plugin_opener::init())
             .plugin(tauri_plugin_shell::init())
             .plugin(tauri_plugin_dialog::init())
