@@ -20,6 +20,7 @@ import {
   handleCommandError,
 } from "../lib";
 import { updateIdeaTypes, updateRewardTypes } from "../../workspace/update";
+import { proxyFetch } from "../../http";
 
 const execAsync = promisify(exec);
 
@@ -78,7 +79,7 @@ function compareSemver(a: string, b: string): number {
  */
 async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
   try {
-    const response = await fetch(
+    const response = await proxyFetch(
       `https://api.github.com/repos/${GITHUB_REPO}/releases`,
       {
         headers: {

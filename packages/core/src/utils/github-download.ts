@@ -21,6 +21,7 @@ import { writeFile, rm, mkdir, rename, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import AdmZip from "adm-zip";
 import { ensureDir, fileExists } from "../config/yaml";
+import { proxyFetch } from "../http";
 
 /**
  * Options for downloading from GitHub
@@ -75,7 +76,7 @@ export async function downloadFromGitHub(
 
   try {
     // Fetch the zipball from GitHub
-    const response = await fetch(zipballUrl, {
+    const response = await proxyFetch(zipballUrl, {
       headers: {
         Accept: "application/vnd.github+json",
         "User-Agent": "viben-cli",

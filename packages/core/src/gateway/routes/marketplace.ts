@@ -9,6 +9,7 @@ import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { proxyFetch } from "../../http";
 
 // ============================================================================
 // Types - Raw API response from GitHub
@@ -176,7 +177,7 @@ async function saveToCache(index: ProviderIndex): Promise<void> {
  * Fetch marketplace index from remote and normalize it
  */
 async function fetchMarketplaceIndex(): Promise<ProviderIndex> {
-  const response = await fetch(MARKETPLACE_INDEX_URL, {
+  const response = await proxyFetch(MARKETPLACE_INDEX_URL, {
     headers: {
       Accept: "application/json",
     },

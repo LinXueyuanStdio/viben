@@ -5,6 +5,7 @@ import { execSync, spawn } from "node:child_process";
 import { createWriteStream, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { proxyFetch } from "../../http";
 
 // ============================================================================
 // Types
@@ -177,7 +178,7 @@ async function fetchFromReleasesJson(version?: string): Promise<ReleaseInfo | nu
     : RELEASES_JSON_URL;
 
   try {
-    const response = await fetch(url, {
+    const response = await proxyFetch(url, {
       headers: { "User-Agent": "viben-cli" },
     });
 
@@ -203,7 +204,7 @@ async function fetchFromGitHubApi(version?: string): Promise<ReleaseInfo | null>
     : `${GITHUB_API_URL}/latest`;
 
   try {
-    const response = await fetch(url, {
+    const response = await proxyFetch(url, {
       headers: {
         "User-Agent": "viben-cli",
         Accept: "application/vnd.github.v3+json",
@@ -329,7 +330,7 @@ export async function downloadAsset(
   }
 
   // Download the file
-  const response = await fetch(asset.url, {
+  const response = await proxyFetch(asset.url, {
     headers: { "User-Agent": "viben-cli" },
     redirect: "follow",
   });

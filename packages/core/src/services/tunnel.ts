@@ -8,6 +8,7 @@ import { EventEmitter } from "node:events";
 import type { Tunnel as CloudflaredTunnel, Connection } from "cloudflared";
 import type * as CloudflaredTypes from "cloudflared";
 import { logger as globalLogger } from "../telemetry";
+import { proxyFetch } from "../http";
 
 // Module-level logger
 const log = globalLogger.child({ module: "tunnel" });
@@ -297,7 +298,7 @@ export class TunnelService extends EventEmitter {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 5000);
 
-          const response = await fetch(this.state.url, {
+          const response = await proxyFetch(this.state.url, {
             method: "HEAD",
             signal: controller.signal,
           }).catch(() => null);

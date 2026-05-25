@@ -9,6 +9,7 @@ import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { proxyFetch } from "../../http";
 
 // ============================================================================
 // Types - Raw API response from official registry
@@ -214,7 +215,7 @@ async function fetchAllServers(): Promise<OfficialServerDisplay[]> {
       url.searchParams.set("cursor", cursor);
     }
 
-    const response = await fetch(url.toString(), {
+    const response = await proxyFetch(url.toString(), {
       headers: { Accept: "application/json" },
     });
 

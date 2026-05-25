@@ -7,6 +7,7 @@ import type { Model } from "../types";
 import type { ProviderType } from "../types";
 import { providerManager } from "../providers";
 import { KNOWN_MODELS, getKnownModel } from "./known-models";
+import { proxyFetch } from "../http";
 
 /**
  * Discovered model from an API
@@ -58,7 +59,7 @@ async function discoverOpenAI(
   apiKey: string,
   baseUrl = "https://api.openai.com/v1"
 ): Promise<DiscoveredModel[]> {
-  const response = await fetch(`${baseUrl}/models`, {
+  const response = await proxyFetch(`${baseUrl}/models`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
@@ -114,7 +115,7 @@ interface OllamaModelsResponse {
  * Discover models from Ollama
  */
 async function discoverOllama(baseUrl = "http://localhost:11434"): Promise<DiscoveredModel[]> {
-  const response = await fetch(`${baseUrl}/api/tags`);
+  const response = await proxyFetch(`${baseUrl}/api/tags`);
 
   if (!response.ok) {
     throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
@@ -155,7 +156,7 @@ interface OpenRouterModelsResponse {
  * Discover models from OpenRouter
  */
 async function discoverOpenRouter(apiKey: string): Promise<DiscoveredModel[]> {
-  const response = await fetch("https://openrouter.ai/api/v1/models", {
+  const response = await proxyFetch("https://openrouter.ai/api/v1/models", {
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
@@ -204,7 +205,7 @@ interface GoogleAIModelsResponse {
  * Discover models from Google AI (Gemini)
  */
 async function discoverGoogle(apiKey: string): Promise<DiscoveredModel[]> {
-  const response = await fetch(
+  const response = await proxyFetch(
     `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
   );
 

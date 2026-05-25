@@ -11,6 +11,7 @@ import { parse as shellParseArgs } from "shell-quote";
 import { randomUUID, randomBytes, timingSafeEqual } from "node:crypto";
 import { spawn } from "node:child_process";
 import { logger as globalLogger } from "../../telemetry";
+import { proxyFetch } from "../../http";
 
 // Module-level logger
 const log = globalLogger.child({ module: "mcp-inspector" });
@@ -304,7 +305,7 @@ function createCustomFetch(headerHolder: { headers: Record<string, string> }) {
       headersObject[key] = value;
     });
 
-    const response = await fetch(input, { ...init, headers: headersObject });
+    const response = await proxyFetch(input, { ...init, headers: headersObject });
     return response;
   };
 }

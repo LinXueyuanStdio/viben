@@ -12,6 +12,7 @@ import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { readYaml, writeYaml } from "../../config/yaml";
 import { getStateDir } from "../../config/paths";
+import { proxyFetch } from "../../http";
 import type {
   GitHubConfig,
   GitHubAuth,
@@ -261,7 +262,7 @@ export async function githubRequest<T>(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, {
+    const response = await proxyFetch(url, {
       method,
       headers: {
         "Accept": "application/vnd.github+json",
