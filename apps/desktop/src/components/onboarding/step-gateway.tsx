@@ -334,7 +334,7 @@ export function StepGateway({ onComplete, onBack }: StepGatewayProps) {
           {vibenPath && (phase === "gateway-start" || phase === "connection-check") && (
             <CommandDetails
               binaryPath={vibenPath}
-              command={`${vibenPath} gateway serve --port 18790 --host 127.0.0.1`}
+              command={`${vibenPath} gateway restart --force --port 18790 --host 127.0.0.1`}
             />
           )}
         </div>

@@ -210,10 +210,11 @@ export async function diagnose(
     }
 
     // Test WebSocket endpoints
+    // Note: These paths must match the actual gateway routes
     const wsEndpoints = [
-      "/ws",           // Main event WebSocket
-      "/api/agent/ws", // Agent interaction WebSocket
-      "/api/terminal", // Terminal PTY WebSocket
+      "/ws",             // Main event WebSocket
+      "/ws/agent/run",   // Agent interaction WebSocket (not /api/agent/ws)
+      "/ws/terminal",    // Terminal PTY WebSocket (not /api/terminal)
     ];
 
     for (const path of wsEndpoints) {
@@ -227,6 +228,11 @@ export async function diagnose(
 
 /**
  * Test if a WebSocket endpoint is available
+ *
+ * Note: We must resolve the promise BEFORE calling ws.close() to avoid
+ * the "WebSocket is closed before the connection is established" error.
+ * Calling ws.close() synchronously inside onopen can trigger this error
+ * in some browser/Electron WebSocket implementations.
  */
 async function testWebSocketEndpoint(baseUrl: string, path: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -235,28 +241,32 @@ async function testWebSocketEndpoint(baseUrl: string, path: string): Promise<boo
       const ws = new WebSocket(wsUrl);
       let resolved = false;
 
-      const cleanup = () => {
+      const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
           ws.close();
+          resolve(false);
         }
-      };
-
-      const timeout = setTimeout(() => {
-        cleanup();
-        resolve(false);
       }, 3000);
 
       ws.onopen = () => {
         clearTimeout(timeout);
-        cleanup();
-        resolve(true);
+        if (!resolved) {
+          resolved = true;
+          resolve(true);
+          // Close after resolving to avoid race condition
+          // Use close code 1000 (normal closure) to be explicit
+          ws.close(1000);
+        }
       };
 
       ws.onerror = () => {
         clearTimeout(timeout);
-        cleanup();
-        resolve(false);
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+          resolve(false);
+        }
       };
 
       ws.onclose = () => {

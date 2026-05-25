@@ -90,7 +90,13 @@ pub struct StartGatewayOptions {
 /// Supports TypeScript gateway via `viben gateway` CLI command
 /// Priority: which/where viben > known paths > nvm/fnm/volta > local node_modules > npx viben
 fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
-    let gateway_args = vec!["gateway".to_string(), "serve".to_string()];
+    // Use "gateway restart --force" instead of "gateway serve" to ensure
+    // any stale processes are killed before starting
+    let gateway_args = vec![
+        "gateway".to_string(),
+        "restart".to_string(),
+        "--force".to_string(),
+    ];
 
     // 1. Find viben via PATH + known paths + version managers
     if let Some(path) = crate::utils::find_executable("viben") {
@@ -105,7 +111,8 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
             vec![
                 "viben".to_string(),
                 "gateway".to_string(),
-                "serve".to_string(),
+                "restart".to_string(),
+                "--force".to_string(),
             ],
         ));
     }
@@ -141,7 +148,13 @@ pub const SIDECAR_NAME: &str = "viben";
 /// 3. System viben (PATH + known paths)
 /// 4. npx viben (fallback)
 fn find_gateway_binary_with_options(options: &StartGatewayOptions) -> Option<(PathBuf, Vec<String>)> {
-    let gateway_args = vec!["gateway".to_string(), "serve".to_string()];
+    // Use "gateway restart --force" instead of "gateway serve" to ensure
+    // any stale processes are killed before starting
+    let gateway_args = vec![
+        "gateway".to_string(),
+        "restart".to_string(),
+        "--force".to_string(),
+    ];
 
     // 1. Use explicitly provided path if valid
     if let Some(ref path) = options.viben_path {
