@@ -35,7 +35,9 @@ export {
   getTraceStats,
   listTraces,
   listTraceDates,
+  readFirstSpan,
 } from "./trace-viewer";
+export type { TraceInfo, ListTracesOptions } from "./trace-viewer";
 export { createLogger, createDualLogger, createConsoleLogger, createChildLogger } from "./logger";
 export type { Logger } from "./logger";
 

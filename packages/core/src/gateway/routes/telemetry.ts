@@ -17,12 +17,14 @@ import {
   getTraceStats,
   cleanOldTelemetryFiles,
   getDefaultTelemetryDir,
+  readFirstSpan,
 } from "../../telemetry";
-import type { TraceTree, TraceSpan } from "../../telemetry";
+import type { TraceTree, TraceSpan, TraceInfo } from "../../telemetry";
 
 interface DateQuery {
   date?: string;
   route?: string;
+  limit?: string;
 }
 
 interface TraceParams {
@@ -42,20 +44,14 @@ export function registerTelemetryRoutes(fastify: FastifyInstance): void {
   /**
    * GET /api/telemetry/dates
    * List available trace dates
+   *
+   * 性能优化：不再计算每个日期的 count/totalSize，直接返回日期列表
    */
   fastify.get("/api/telemetry/dates", async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const dates = listTraceDates(baseDir);
-      const result = await Promise.all(
-        dates.map(async (date) => {
-          const traces = await listTraces(baseDir, date);
-          return {
-            date,
-            count: traces.length,
-            totalSize: traces.reduce((sum, t) => sum + t.size, 0),
-          };
-        })
-      );
+      // 直接返回日期列表，不再遍历每个日期目录计算统计
+      const result = dates.map((date) => ({ date }));
       return reply.send(result);
     } catch (error) {
       return reply.status(500).send({
@@ -68,42 +64,47 @@ export function registerTelemetryRoutes(fastify: FastifyInstance): void {
   /**
    * GET /api/telemetry/traces
    * List traces for a specific date, optionally filtered by route
+   *
+   * 性能优化：
+   * - 添加 limit 参数（默认 100）
+   * - route 过滤只读取首行（根 span），不加载完整文件
    */
   fastify.get<{ Querystring: DateQuery }>(
     "/api/telemetry/traces",
     async (request: FastifyRequest<{ Querystring: DateQuery }>, reply: FastifyReply) => {
       try {
-        const { date = new Date().toISOString().split("T")[0], route } = request.query;
+        const { date = new Date().toISOString().split("T")[0], route, limit: limitStr } = request.query;
+        const limit = limitStr ? parseInt(limitStr, 10) : 100;
+
+        // 先获取所有 traces（已按时间倒序）
         const traces = await listTraces(baseDir, date);
 
-        // If route filter is specified, filter traces that contain matching spans
-        let filteredTraces = traces;
+        let filteredTraces: TraceInfo[];
+
         if (route) {
+          // 高效过滤：只读取首行判断路由匹配
           filteredTraces = [];
           for (const t of traces) {
-            const filePath = path.join(baseDir, "traces", date, `${t.traceId}.jsonl`);
-            try {
-              const spans = await loadTrace(filePath);
-              // Check if any span has matching http.target or http.route
-              const matches = spans.some((span: TraceSpan) => {
-                const httpTarget = span.attributes["http.target"] as string | undefined;
-                const httpRoute = span.attributes["http.route"] as string | undefined;
-                const httpUrl = span.attributes["http.url"] as string | undefined;
+            if (filteredTraces.length >= limit) break;
 
-                // Match if target/route/url contains the filter route
-                return (
-                  httpTarget?.includes(route) ||
-                  httpRoute?.includes(route) ||
-                  httpUrl?.includes(route)
-                );
-              });
-              if (matches) {
-                filteredTraces.push(t);
-              }
-            } catch {
-              // Skip traces that can't be loaded
+            const firstSpan = await readFirstSpan(t.filePath);
+            if (!firstSpan) continue;
+
+            const httpTarget = firstSpan.attributes["http.target"] as string | undefined;
+            const httpRoute = firstSpan.attributes["http.route"] as string | undefined;
+            const httpUrl = firstSpan.attributes["http.url"] as string | undefined;
+
+            if (
+              httpTarget?.includes(route) ||
+              httpRoute?.includes(route) ||
+              httpUrl?.includes(route)
+            ) {
+              filteredTraces.push(t);
             }
           }
+        } else {
+          // 无过滤，直接截取
+          filteredTraces = traces.slice(0, limit);
         }
 
         const result = filteredTraces.map((t) => ({

@@ -4,6 +4,7 @@
  * 从 JSONL 文件加载 trace 数据并构建树形结构
  */
 import * as fs from "fs";
+import * as fsp from "fs/promises";
 import * as readline from "readline";
 import * as path from "path";
 import type { TraceSpan, TraceSpanNode, TraceTree } from "./types";
@@ -221,40 +222,66 @@ export function getTraceStats(tree: TraceTree): {
   return { totalSpans, successSpans, errorSpans, maxDepth, operations };
 }
 
+export interface TraceInfo {
+  traceId: string;
+  filePath: string;
+  size: number;
+  mtime: Date;
+}
+
+export interface ListTracesOptions {
+  /** 最大返回数量，默认无限制 */
+  limit?: number;
+}
+
 /**
- * 列出指定日期的所有 traces
+ * 列出指定日期的所有 traces (异步版本)
  */
 export async function listTraces(
   baseDir: string,
-  date?: string
-): Promise<{ traceId: string; filePath: string; size: number; mtime: Date }[]> {
+  date?: string,
+  options?: ListTracesOptions
+): Promise<TraceInfo[]> {
   const tracesDir = path.join(baseDir, "traces");
   const targetDate = date || new Date().toISOString().split("T")[0];
   const dateDir = path.join(tracesDir, targetDate);
 
-  if (!fs.existsSync(dateDir)) {
+  try {
+    await fsp.access(dateDir);
+  } catch {
     return [];
   }
 
-  const files = fs.readdirSync(dateDir);
-  const traces: { traceId: string; filePath: string; size: number; mtime: Date }[] = [];
+  const files = await fsp.readdir(dateDir);
+  const jsonlFiles = files.filter((f) => f.endsWith(".jsonl"));
 
-  for (const file of files) {
-    if (!file.endsWith(".jsonl")) continue;
+  // 并行获取所有文件的 stat
+  const statResults = await Promise.all(
+    jsonlFiles.map(async (file) => {
+      const filePath = path.join(dateDir, file);
+      try {
+        const stat = await fsp.stat(filePath);
+        return {
+          traceId: file.replace(".jsonl", ""),
+          filePath,
+          size: stat.size,
+          mtime: stat.mtime,
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
 
-    const filePath = path.join(dateDir, file);
-    const stat = fs.statSync(filePath);
-
-    traces.push({
-      traceId: file.replace(".jsonl", ""),
-      filePath,
-      size: stat.size,
-      mtime: stat.mtime,
-    });
-  }
+  const traces = statResults.filter((t): t is TraceInfo => t !== null);
 
   // 按修改时间倒序
   traces.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+  // 应用 limit
+  if (options?.limit && options.limit > 0) {
+    return traces.slice(0, options.limit);
+  }
 
   return traces;
 }
@@ -274,4 +301,33 @@ export function listTraceDates(baseDir: string): string[] {
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort()
     .reverse();
+}
+
+/**
+ * 读取 trace 文件的首行（根 span）
+ * 用于高效的路由过滤，避免加载完整文件
+ */
+export async function readFirstSpan(filePath: string): Promise<TraceSpan | null> {
+  try {
+    const fileStream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
+
+    for await (const line of rl) {
+      if (line.trim()) {
+        rl.close();
+        fileStream.destroy();
+        try {
+          return JSON.parse(line) as TraceSpan;
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }

@@ -11,12 +11,19 @@ import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { getVersion } from "@tauri-apps/api/app";
+import { useEffect, useState } from "react";
 import { LinkButton } from "./components";
 
 export function AboutSection() {
   const { t } = useTranslation();
-  const appVersion = "0.1.0";
+  const [appVersion, setAppVersion] = useState("0.1.0");
   const updateAvailable = false;
+
+  // Get actual app version on mount
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(console.error);
+  }, []);
 
   // Handle external link click using Tauri opener
   const handleExternalLink = async (url: string) => {
