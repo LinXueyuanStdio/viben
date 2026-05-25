@@ -308,8 +308,7 @@ export function ChatMonitorPage() {
                 <SelectItem key={d.date} value={d.date}>
                   {d.date === new Date().toISOString().split("T")[0]
                     ? `${d.date} (${t("observability.today")})`
-                    : d.date}{" "}
-                  ({d.count})
+                    : d.date}
                 </SelectItem>
               ))}
             </SelectContent>

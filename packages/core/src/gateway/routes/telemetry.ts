@@ -74,15 +74,14 @@ export function registerTelemetryRoutes(fastify: FastifyInstance): void {
     async (request: FastifyRequest<{ Querystring: DateQuery }>, reply: FastifyReply) => {
       try {
         const { date = new Date().toISOString().split("T")[0], route, limit: limitStr } = request.query;
-        const limit = limitStr ? parseInt(limitStr, 10) : 100;
-
-        // 先获取所有 traces（已按时间倒序）
-        const traces = await listTraces(baseDir, date);
+        const parsedLimit = limitStr ? parseInt(limitStr, 10) : 100;
+        const limit = isNaN(parsedLimit) || parsedLimit <= 0 ? 100 : parsedLimit;
 
         let filteredTraces: TraceInfo[];
 
         if (route) {
-          // 高效过滤：只读取首行判断路由匹配
+          // 有过滤条件时，需要遍历检查每个 trace
+          const traces = await listTraces(baseDir, date);
           filteredTraces = [];
           for (const t of traces) {
             if (filteredTraces.length >= limit) break;
@@ -103,8 +102,8 @@ export function registerTelemetryRoutes(fastify: FastifyInstance): void {
             }
           }
         } else {
-          // 无过滤，直接截取
-          filteredTraces = traces.slice(0, limit);
+          // 无过滤，直接传 limit 给 listTraces 减少内存占用
+          filteredTraces = await listTraces(baseDir, date, { limit });
         }
 
         const result = filteredTraces.map((t) => ({

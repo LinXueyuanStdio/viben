@@ -63,8 +63,8 @@ export interface TraceSummary {
  */
 export interface DateSummary {
   date: string;
-  count: number;
-  totalSize: number;
+  count?: number;
+  totalSize?: number;
 }
 
 /**

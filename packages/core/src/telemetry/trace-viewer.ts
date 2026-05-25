@@ -308,8 +308,8 @@ export function listTraceDates(baseDir: string): string[] {
  * 用于高效的路由过滤，避免加载完整文件
  */
 export async function readFirstSpan(filePath: string): Promise<TraceSpan | null> {
+  const fileStream = fs.createReadStream(filePath, { encoding: "utf-8" });
   try {
-    const fileStream = fs.createReadStream(filePath, { encoding: "utf-8" });
     const rl = readline.createInterface({
       input: fileStream,
       crlfDelay: Infinity,
@@ -317,8 +317,6 @@ export async function readFirstSpan(filePath: string): Promise<TraceSpan | null>
 
     for await (const line of rl) {
       if (line.trim()) {
-        rl.close();
-        fileStream.destroy();
         try {
           return JSON.parse(line) as TraceSpan;
         } catch {
@@ -329,5 +327,7 @@ export async function readFirstSpan(filePath: string): Promise<TraceSpan | null>
     return null;
   } catch {
     return null;
+  } finally {
+    fileStream.destroy();
   }
 }
