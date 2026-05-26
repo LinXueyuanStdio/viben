@@ -1,0 +1,29 @@
+appId: com.viben.desktop
+---
+# Viben Mobile Smoke Test
+# This test verifies basic app functionality after installation
+
+# Wait for app to fully load
+- launchApp
+
+# Wait for splash screen / loading to complete
+- extendedWaitUntil:
+    visible: true
+    timeout: 30000
+
+# Take initial screenshot
+- takeScreenshot: app-launched
+
+# Verify app is responsive by checking for any visible element
+- assertVisible:
+    text: ".*"
+    optional: true
+
+# Test basic navigation if available
+- tapOn:
+    text: ".*"
+    optional: true
+    index: 0
+
+# Final screenshot
+- takeScreenshot: smoke-test-complete

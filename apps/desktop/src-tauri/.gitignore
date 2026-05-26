@@ -9,3 +9,12 @@
 # Sidecar binaries (built separately)
 /binaries/*
 !/binaries/.gitkeep
+
+# Android signing keys (DO NOT COMMIT)
+/keys/
+*.keystore
+*.jks
+
+# Generated Android/iOS projects
+/gen/android/
+/gen/apple/

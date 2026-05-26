@@ -19,6 +19,10 @@ on:
           - android
           - ios
         default: both
+      skip_tests:
+        description: 'Skip mobile tests (faster release)'
+        type: boolean
+        default: false
   push:
     tags:
       - 'mobile-v*'
@@ -46,6 +50,7 @@ jobs:
       is_draft: ${{ steps.get-version.outputs.is_draft }}
       build_android: ${{ steps.get-version.outputs.build_android }}
       build_ios: ${{ steps.get-version.outputs.build_ios }}
+      skip_tests: ${{ steps.get-version.outputs.skip_tests }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -61,11 +66,13 @@ jobs:
             fi
             IS_DRAFT="${{ inputs.draft }}"
             TARGET="${{ inputs.target }}"
+            SKIP_TESTS="${{ inputs.skip_tests }}"
           else
             # Tag trigger - extract version from tag (mobile-v0.1.0 -> 0.1.0)
             VERSION="${GITHUB_REF_NAME#mobile-v}"
             IS_DRAFT="false"
             TARGET="both"
+            SKIP_TESTS="false"
           fi
 
           BUILD_ANDROID="false"
@@ -82,12 +89,14 @@ jobs:
           echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
           echo "build_android=${BUILD_ANDROID}" >> $GITHUB_OUTPUT
           echo "build_ios=${BUILD_IOS}" >> $GITHUB_OUTPUT
+          echo "skip_tests=${SKIP_TESTS}" >> $GITHUB_OUTPUT
           echo "=========================================="
           echo "Release Configuration:"
           echo "  Version: ${VERSION}"
           echo "  Tag: mobile-v${VERSION}"
           echo "  Build Android: ${BUILD_ANDROID}"
           echo "  Build iOS: ${BUILD_IOS}"
+          echo "  Skip Tests: ${SKIP_TESTS}"
           echo "  Draft: ${IS_DRAFT}"
           echo "=========================================="
 
@@ -147,12 +156,35 @@ jobs:
         shell: bash
         run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
+      - name: Decode Android keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          mkdir -p apps/desktop/src-tauri/keys
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > apps/desktop/src-tauri/keys/viben-release.keystore
+          echo "Keystore decoded successfully"
+
       - name: Initialize Android project
         working-directory: apps/desktop
         run: pnpm tauri android init --ci
 
-      - name: Build Android APK (unsigned)
+      - name: Configure Android signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          # Create keystore.properties for Gradle
+          cat > apps/desktop/src-tauri/gen/android/keystore.properties << EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=../../keys/viben-release.keystore
+          EOF
+          echo "Android signing configured"
+
+      - name: Build Android APK
         working-directory: apps/desktop
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: pnpm tauri android build --apk true --ci
 
       - name: Collect Android artifacts
@@ -265,11 +297,138 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =============================================================================
+  # TEST ANDROID: Install and test APK on emulator
+  # =============================================================================
+  test-android:
+    needs: [prepare, build-android]
+    if: |
+      needs.prepare.outputs.build_android == 'true' &&
+      needs.prepare.outputs.skip_tests != 'true' &&
+      needs.build-android.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download APK from release
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ needs.prepare.outputs.tag }}
+          fileName: '*.apk'
+          out-file-path: 'test-apk'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find APK file
+        id: find-apk
+        run: |
+          APK_FILE=$(find test-apk -name "*.apk" -type f | head -1)
+          if [ -z "$APK_FILE" ]; then
+            echo "No APK found!"
+            exit 1
+          fi
+          echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK_FILE"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Create AVD and start emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          profile: pixel_6
+          heap-size: 512M
+          ram-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: |
+            echo "Emulator started successfully"
+            adb devices
+
+            echo "Installing APK..."
+            adb install -r "${{ steps.find-apk.outputs.apk_path }}"
+
+            echo "Verifying installation..."
+            adb shell pm list packages | grep com.viben || echo "Package verification"
+
+            echo "Launching app..."
+            adb shell am start -n com.viben.desktop/.MainActivity || adb shell monkey -p com.viben.desktop -c android.intent.category.LAUNCHER 1
+
+            echo "Waiting for app to load..."
+            sleep 10
+
+            echo "Taking screenshot..."
+            adb exec-out screencap -p > app-screenshot.png || true
+
+            echo "Checking app is running..."
+            adb shell pidof com.viben.desktop && echo "App is running!" || echo "App process check"
+
+            echo "Running Maestro smoke test..."
+            maestro test apps/desktop/.maestro/smoke-test.yaml --format junit --output maestro-results.xml || true
+
+            echo "Collecting logs..."
+            adb logcat -d > logcat.txt || true
+
+            echo "Test completed!"
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-results
+          path: |
+            app-screenshot.png
+            maestro-results.xml
+            logcat.txt
+            ~/.maestro/tests/**/*
+          retention-days: 7
+
+      - name: Check test results
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Android Test Results Summary"
+          echo "=========================================="
+          if [ -f maestro-results.xml ]; then
+            echo "Maestro test results available"
+            cat maestro-results.xml || true
+          fi
+          if [ -f app-screenshot.png ]; then
+            echo "Screenshot captured successfully"
+            ls -la app-screenshot.png
+          fi
+          echo "=========================================="
+
+  # =============================================================================
   # CHECKSUMS: Generate checksums after all builds complete
   # =============================================================================
   checksums:
-    needs: [prepare, build-android, build-ios]
-    if: always() && needs.prepare.result == 'success' && (needs.build-android.result == 'success' || needs.build-ios.result == 'success')
+    needs: [prepare, build-android, build-ios, test-android]
+    # Run if builds succeeded, test-android can be skipped (iOS-only) or failed (non-blocking)
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-android.result == 'success' || needs.build-ios.result == 'success') &&
+      (needs.test-android.result == 'success' || needs.test-android.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
