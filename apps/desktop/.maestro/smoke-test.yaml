@@ -1,29 +1,168 @@
 appId: com.viben.desktop
 ---
 # Viben Mobile Smoke Test
-# This test verifies basic app functionality after installation
+# This test verifies the mobile app launches correctly and key UI elements are present
 
-# Wait for app to fully load
-- launchApp
+# Launch the app fresh
+- launchApp:
+    clearState: true
 
-# Wait for splash screen / loading to complete
+# Wait for app to fully load (mobile layout should render)
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Viben"
     timeout: 30000
 
-# Take initial screenshot
-- takeScreenshot: app-launched
+# Screenshot: Initial app state
+- takeScreenshot: 01-app-launched
 
-# Verify app is responsive by checking for any visible element
+# =============================================================================
+# Test 1: Verify header and branding
+# =============================================================================
 - assertVisible:
-    text: ".*"
+    text: "Viben"
+
+# Verify connection status indicator is present (should show "Disconnected" initially)
+- assertVisible:
+    text: "Disconnected"
     optional: true
 
-# Test basic navigation if available
+# Screenshot: Header verified
+- takeScreenshot: 02-header-verified
+
+# =============================================================================
+# Test 2: Verify bottom tab navigation exists
+# =============================================================================
+
+# Check for Devices tab
+- assertVisible:
+    text: "Devices"
+
+# Check for Connect tab
+- assertVisible:
+    text: "Connect"
+
+# Check for Chat tab
+- assertVisible:
+    text: "Chat"
+
+# Screenshot: Navigation tabs verified
+- takeScreenshot: 03-tabs-verified
+
+# =============================================================================
+# Test 3: Verify Connect page content
+# =============================================================================
+
+# Tap on Connect tab to ensure we're on the connect page
 - tapOn:
-    text: ".*"
-    optional: true
-    index: 0
+    text: "Connect"
 
-# Final screenshot
-- takeScreenshot: smoke-test-complete
+- extendedWaitUntil:
+    visible:
+      text: "Connect to Desktop"
+    timeout: 10000
+
+# Verify connect page title
+- assertVisible:
+    text: "Connect to Desktop"
+
+# Verify QR code instruction text
+- assertVisible:
+    text: "Scan the QR code"
+    optional: true
+
+# Verify manual URL entry button exists
+- assertVisible:
+    text: "Enter URL manually"
+
+# Screenshot: Connect page content
+- takeScreenshot: 04-connect-page
+
+# =============================================================================
+# Test 4: Test manual URL dialog
+# =============================================================================
+
+# Open manual URL dialog
+- tapOn:
+    text: "Enter URL manually"
+
+# Wait for dialog to appear
+- extendedWaitUntil:
+    visible:
+      text: "Enter Gateway URL"
+    timeout: 5000
+
+# Verify dialog title
+- assertVisible:
+    text: "Enter Gateway URL"
+
+# Verify input placeholder or connect button exists
+- assertVisible:
+    text: "Connect"
+
+# Screenshot: Manual URL dialog
+- takeScreenshot: 05-manual-url-dialog
+
+# Close dialog (tap outside or press back)
+- back
+
+# =============================================================================
+# Test 5: Navigate to Devices tab
+# =============================================================================
+
+# Tap on Devices tab
+- tapOn:
+    text: "Devices"
+
+# Wait for navigation
+- extendedWaitUntil:
+    visible: true
+    timeout: 5000
+
+# Screenshot: Devices page
+- takeScreenshot: 06-devices-page
+
+# =============================================================================
+# Test 6: Navigate to Chat tab
+# =============================================================================
+
+# Tap on Chat tab
+- tapOn:
+    text: "Chat"
+
+# Wait for navigation
+- extendedWaitUntil:
+    visible: true
+    timeout: 5000
+
+# Screenshot: Chat page
+- takeScreenshot: 07-chat-page
+
+# =============================================================================
+# Test 7: Verify app stability - cycle through tabs
+# =============================================================================
+
+# Navigate back to Connect
+- tapOn:
+    text: "Connect"
+
+- extendedWaitUntil:
+    visible:
+      text: "Connect to Desktop"
+    timeout: 5000
+
+# Navigate to Devices again
+- tapOn:
+    text: "Devices"
+
+# Wait briefly for stability
+- extendedWaitUntil:
+    visible: true
+    timeout: 3000
+
+# Screenshot: Final stability check
+- takeScreenshot: 08-stability-verified
+
+# =============================================================================
+# Test Complete
+# =============================================================================

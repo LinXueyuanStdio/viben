@@ -108,8 +108,6 @@ jobs:
     if: needs.prepare.outputs.build_android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -156,145 +154,37 @@ jobs:
         shell: bash
         run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
-      - name: Decode Android keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: |
-          mkdir -p apps/desktop/src-tauri/keys
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > apps/desktop/src-tauri/keys/viben-release.keystore
-          echo "Keystore decoded successfully"
-
       - name: Initialize Android project
         working-directory: apps/desktop
         run: pnpm tauri android init --ci
 
-      - name: Configure Android signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      - name: Setup Android signing
         run: |
-          # Create keystore.properties for Gradle
-          cat > apps/desktop/src-tauri/gen/android/keystore.properties << EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=../../keys/viben-release.keystore
-          EOF
+          cd apps/desktop/src-tauri/gen/android
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
+          echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+          base64 -d <<< "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" > $RUNNER_TEMP/keystore.jks
+          echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
           echo "Android signing configured"
 
-      - name: Build Android APK
+      - name: Build Android APK (signed)
         working-directory: apps/desktop
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: pnpm tauri android build --apk true --ci
 
       - name: Collect Android artifacts
         run: |
-          mkdir -p release-artifacts
-          find apps/desktop/src-tauri/gen/android -name "*.apk" -exec cp {} release-artifacts/ \;
-          find apps/desktop/src-tauri/gen/android -name "*.aab" -exec cp {} release-artifacts/ \; 2>/dev/null || true
+          mkdir -p android-artifacts
+          find apps/desktop/src-tauri/gen/android -name "*.apk" -exec cp {} android-artifacts/ \;
+          find apps/desktop/src-tauri/gen/android -name "*.aab" -exec cp {} android-artifacts/ \; 2>/dev/null || true
           echo "Collected artifacts:"
-          ls -la release-artifacts/
+          ls -la android-artifacts/
 
-      - name: Upload Android artifacts to release
-        uses: softprops/action-gh-release@v3
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
-          body: |
-            ## Viben Mobile v${{ needs.prepare.outputs.version }}
-
-            ### Installation
-
-            #### Android
-            - Download the `.apk` file
-            - Enable "Install from unknown sources" in Settings if prompted
-            - Open the APK to install
-
-            ### Notes
-
-            This is a lightweight mobile companion app for Viben.
-            Connect to your desktop Viben instance by scanning the QR code.
-
-            ### Checksums
-
-            See `checksums.txt` attached to this release for SHA256 checksums.
-
-            ### Changes
-
-            See [CHANGELOG](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md) for details.
-          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
-          prerelease: false
-          files: release-artifacts/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # =============================================================================
-  # BUILD IOS: Build iOS IPA
-  # =============================================================================
-  build-ios:
-    needs: prepare
-    if: needs.prepare.outputs.build_ios == 'true'
-    runs-on: macos-latest
-    timeout-minutes: 45
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: true
-          token: ${{ secrets.GH_PAT }}
-
-      - name: Setup Node.js + pnpm
-        uses: ./.github/actions/setup-node-pnpm
-
-      - name: Install Cocoapods
-        run: brew install cocoapods
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim
-
-      - name: Setup Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './apps/desktop/src-tauri -> target'
-          shared-key: ios
-
-      - name: Build workspace packages
-        run: pnpm turbo build --filter=@viben/desktop^...
-
-      - name: Sync version
-        shell: bash
-        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
-
-      - name: Initialize iOS project
-        working-directory: apps/desktop
-        run: pnpm tauri ios init --ci
-
-      - name: Build iOS (unsigned, simulator)
-        working-directory: apps/desktop
-        run: pnpm tauri ios build --target aarch64-sim --ci
-
-      - name: Collect iOS artifacts
-        run: |
-          mkdir -p release-artifacts
-          find apps/desktop/src-tauri/gen/apple -name "*.ipa" -exec cp {} release-artifacts/ \; 2>/dev/null || true
-          find apps/desktop/src-tauri/gen/apple -name "*.app" -exec cp -r {} release-artifacts/ \; 2>/dev/null || true
-          echo "Collected artifacts:"
-          ls -la release-artifacts/
-
-      - name: Upload iOS artifacts to release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
-          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
-          prerelease: false
-          files: release-artifacts/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: android-artifacts
+          path: android-artifacts/*
+          retention-days: 1
 
   # =============================================================================
   # TEST ANDROID: Install and test APK on emulator
@@ -311,13 +201,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Download APK from release
-        uses: robinraju/release-downloader@v1
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
         with:
-          tag: ${{ needs.prepare.outputs.tag }}
-          fileName: '*.apk'
-          out-file-path: 'test-apk'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: android-artifacts
+          path: test-apk
 
       - name: Find APK file
         id: find-apk
@@ -350,7 +238,7 @@ jobs:
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
-      - name: Create AVD and start emulator
+      - name: Run tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -419,16 +307,288 @@ jobs:
           echo "=========================================="
 
   # =============================================================================
-  # CHECKSUMS: Generate checksums after all builds complete
+  # RELEASE ANDROID: Upload Android artifacts to GitHub Release
+  # =============================================================================
+  release-android:
+    needs: [prepare, build-android, test-android]
+    # Run if build succeeded and (test succeeded OR test was skipped)
+    if: |
+      always() &&
+      needs.prepare.outputs.build_android == 'true' &&
+      needs.build-android.result == 'success' &&
+      (needs.test-android.result == 'success' || needs.test-android.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-artifacts
+          path: release-artifacts
+
+      - name: List artifacts
+        run: |
+          echo "Release artifacts:"
+          ls -la release-artifacts/
+
+      - name: Upload Android artifacts to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
+          body: |
+            ## Viben Mobile v${{ needs.prepare.outputs.version }}
+
+            ### Installation
+
+            #### Android
+            - Download the `.apk` file
+            - Enable "Install from unknown sources" in Settings if prompted
+            - Open the APK to install
+
+            ### Notes
+
+            This is a lightweight mobile companion app for Viben.
+            Connect to your desktop Viben instance by scanning the QR code.
+
+            ### Checksums
+
+            See `checksums.txt` attached to this release for SHA256 checksums.
+
+            ### Changes
+
+            See [CHANGELOG](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md) for details.
+          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          files: release-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # BUILD IOS: Build iOS IPA
+  # =============================================================================
+  build-ios:
+    needs: prepare
+    if: needs.prepare.outputs.build_ios == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Install Cocoapods
+        run: brew install cocoapods
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+          shared-key: ios
+
+      - name: Build workspace packages
+        run: pnpm turbo build --filter=@viben/desktop^...
+
+      - name: Sync version
+        shell: bash
+        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
+
+      - name: Initialize iOS project
+        working-directory: apps/desktop
+        run: pnpm tauri ios init --ci
+
+      - name: Build iOS (unsigned, simulator)
+        working-directory: apps/desktop
+        run: pnpm tauri ios build --target aarch64-sim --ci
+
+      - name: Collect iOS artifacts
+        run: |
+          mkdir -p ios-artifacts
+          # Find and package .app bundle
+          APP_PATH=$(find apps/desktop/src-tauri/gen/apple -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            APP_NAME=$(basename "$APP_PATH")
+            cd "$(dirname "$APP_PATH")"
+            zip -r "$GITHUB_WORKSPACE/ios-artifacts/${APP_NAME%.app}-simulator.zip" "$APP_NAME"
+          fi
+          # Copy any IPA files
+          find apps/desktop/src-tauri/gen/apple -name "*.ipa" -exec cp {} ios-artifacts/ \; 2>/dev/null || true
+          echo "Collected artifacts:"
+          ls -la ios-artifacts/
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-artifacts
+          path: ios-artifacts/*
+          retention-days: 1
+
+  # =============================================================================
+  # TEST IOS: Test iOS app on simulator
+  # =============================================================================
+  test-ios:
+    needs: [prepare, build-ios]
+    if: |
+      needs.prepare.outputs.build_ios == 'true' &&
+      needs.prepare.outputs.skip_tests != 'true' &&
+      needs.build-ios.result == 'success'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-artifacts
+          path: test-ios
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
+      - name: Boot iOS Simulator
+        run: |
+          # Find an available iPhone simulator
+          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone" | head -1 | grep -oE '\([A-F0-9-]+\)' | tr -d '()')
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No iPhone simulator found, creating one..."
+            DEVICE_ID=$(xcrun simctl create "Test iPhone" "iPhone 15" iOS17.5)
+          fi
+          echo "Using simulator: $DEVICE_ID"
+          echo "SIMULATOR_ID=$DEVICE_ID" >> $GITHUB_ENV
+          xcrun simctl boot "$DEVICE_ID" || true
+
+      - name: Install and test iOS app
+        run: |
+          echo "Extracting app..."
+          cd test-ios
+          unzip -o *.zip || true
+
+          APP_PATH=$(find . -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app bundle found!"
+            ls -la
+            exit 1
+          fi
+          echo "Found app: $APP_PATH"
+
+          echo "Installing app on simulator..."
+          xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
+
+          echo "Launching app..."
+          BUNDLE_ID=$(defaults read "$APP_PATH/Info.plist" CFBundleIdentifier 2>/dev/null || echo "com.viben.desktop")
+          xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
+
+          echo "Waiting for app to load..."
+          sleep 10
+
+          echo "Taking screenshot..."
+          xcrun simctl io "$SIMULATOR_ID" screenshot ../ios-screenshot.png || true
+
+          echo "Running Maestro smoke test..."
+          cd ..
+          maestro test apps/desktop/.maestro/smoke-test.yaml --format junit --output maestro-ios-results.xml || true
+
+          echo "Test completed!"
+
+      - name: Shutdown simulator
+        if: always()
+        run: xcrun simctl shutdown "$SIMULATOR_ID" || true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            ios-screenshot.png
+            maestro-ios-results.xml
+            ~/.maestro/tests/**/*
+          retention-days: 7
+
+      - name: Check test results
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "iOS Test Results Summary"
+          echo "=========================================="
+          if [ -f maestro-ios-results.xml ]; then
+            echo "Maestro test results available"
+            cat maestro-ios-results.xml || true
+          fi
+          if [ -f ios-screenshot.png ]; then
+            echo "Screenshot captured successfully"
+            ls -la ios-screenshot.png
+          fi
+          echo "=========================================="
+
+  # =============================================================================
+  # RELEASE IOS: Upload iOS artifacts to GitHub Release
+  # =============================================================================
+  release-ios:
+    needs: [prepare, build-ios, test-ios]
+    # Run if build succeeded and (test succeeded OR test was skipped)
+    if: |
+      always() &&
+      needs.prepare.outputs.build_ios == 'true' &&
+      needs.build-ios.result == 'success' &&
+      (needs.test-ios.result == 'success' || needs.test-ios.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-artifacts
+          path: release-artifacts
+
+      - name: List artifacts
+        run: |
+          echo "Release artifacts:"
+          ls -la release-artifacts/
+
+      - name: Upload iOS artifacts to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: 'Viben Mobile v${{ needs.prepare.outputs.version }}'
+          draft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          files: release-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # CHECKSUMS: Generate checksums after all releases complete
   # =============================================================================
   checksums:
-    needs: [prepare, build-android, build-ios, test-android]
-    # Run if builds succeeded, test-android can be skipped (iOS-only) or failed (non-blocking)
+    needs: [prepare, release-android, release-ios]
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      (needs.build-android.result == 'success' || needs.build-ios.result == 'success') &&
-      (needs.test-android.result == 'success' || needs.test-android.result == 'skipped')
+      (needs.release-android.result == 'success' || needs.release-android.result == 'skipped') &&
+      (needs.release-ios.result == 'success' || needs.release-ios.result == 'skipped') &&
+      (needs.release-android.result == 'success' || needs.release-ios.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

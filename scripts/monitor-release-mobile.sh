@@ -54,9 +54,13 @@ fi
 # Based on release-mobile.yml workflow structure:
 #   prepare: ~10s
 #   build-android: ~20min (Android SDK setup, Rust compile, APK build)
+#   test-android: ~10min (emulator setup, install, maestro test)
+#   release-android: ~2min (upload to release)
 #   build-ios: ~20min (macOS, Xcode tools, Rust compile, IPA build)
+#   test-ios: ~10min (simulator setup, install, maestro test)
+#   release-ios: ~2min (upload to release)
 #   checksums: ~2min (download assets, generate checksums)
-#   Total: ~25-30min (builds run in parallel)
+#   Total: ~35-45min (builds run in parallel)
 
 get_wait_time() {
   local phase="$1"
@@ -75,6 +79,13 @@ get_wait_time() {
       else
         echo 90   # 1.5 minutes near the end
       fi
+      ;;
+    "test-android"|"test-ios")
+      # Test phases take ~10 min
+      echo 120  # 2 minutes
+      ;;
+    "release-android"|"release-ios")
+      echo 60   # 1 minute
       ;;
     "checksums")
       echo 60
@@ -136,6 +147,14 @@ detect_phase() {
     echo "build-android"
   elif echo "$run_info" | jq -e '.jobs[] | select(.name == "build-ios" and .status == "in_progress")' > /dev/null 2>&1; then
     echo "build-ios"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "test-android" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "test-android"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "test-ios" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "test-ios"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "release-android" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "release-android"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "release-ios" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "release-ios"
   elif echo "$run_info" | jq -e '.jobs[] | select(.name == "checksums" and .status == "in_progress")' > /dev/null 2>&1; then
     echo "checksums"
   else
@@ -147,12 +166,16 @@ echo -e "${BLUE}Starting mobile release workflow monitor for run ${CYAN}$RUN_ID$
 echo -e "URL: https://github.com/LinXueyuanStdio/viben/actions/runs/$RUN_ID"
 echo ""
 echo -e "${YELLOW}Expected timeline:${NC}"
-echo "  prepare       ~10s"
-echo "  build-android ~20min (parallel)"
-echo "  build-ios     ~20min (parallel)"
-echo "  checksums     ~2min"
-echo "  ────────────────────────"
-echo "  Total         ~25-30min"
+echo "  prepare         ~10s"
+echo "  build-android   ~20min ─┐"
+echo "  test-android    ~10min  ├─ parallel"
+echo "  release-android ~2min  ─┘"
+echo "  build-ios       ~20min ─┐"
+echo "  test-ios        ~10min  ├─ parallel"
+echo "  release-ios     ~2min  ─┘"
+echo "  checksums       ~2min"
+echo "  ────────────────────────────"
+echo "  Total           ~35-45min"
 echo ""
 
 START_TIME=$(date +%s)
