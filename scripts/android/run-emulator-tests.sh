@@ -31,22 +31,61 @@ adb shell dumpsys package com.viben.desktop | grep -E "(versionName|activity)" |
 echo "=========================================="
 echo "Step 3: App Launch"
 echo "=========================================="
-# Use monkey to launch - more reliable than specifying activity name
-adb shell monkey -p com.viben.desktop -c android.intent.category.LAUNCHER 1
-echo "Waiting for app to load..."
-sleep 15
+# Use am start with wait flag for better feedback
+adb shell am start -W -n com.viben.desktop/.MainActivity 2>&1 || {
+  echo "Failed to start via am, trying monkey..."
+  adb shell monkey -p com.viben.desktop -c android.intent.category.LAUNCHER 1
+}
 
-# Take screenshot regardless of pidof result
+echo "Waiting for app to load..."
+sleep 20  # Increased wait time for WebView initialization
+
+# Take screenshot
 adb exec-out screencap -p > test-screenshots/01-app-launched.png
-adb shell pidof com.viben.desktop && echo "App PID found" || echo "App PID not found (may still be running)"
+
+# Check if app is running
+APP_PID=$(adb shell pidof com.viben.desktop || echo "")
+if [ -n "$APP_PID" ]; then
+  echo "App PID: $APP_PID"
+else
+  echo "WARNING: App process not found - may have crashed"
+  # Capture crash logs
+  adb logcat -d | grep -E "(FATAL|crash|panic|Error)" | tail -30 > test-logs/crash-check.txt || true
+fi
 
 echo "=========================================="
-echo "Step 4: UI Verification"
+echo "Step 4: UI Verification (Critical)"
 echo "=========================================="
 # Save UI dump to file for inspection
 adb shell uiautomator dump /sdcard/ui_dump.xml 2>/dev/null || true
 adb pull /sdcard/ui_dump.xml test-logs/ui_dump.xml 2>/dev/null || true
-cat test-logs/ui_dump.xml 2>/dev/null | head -200 || echo "Could not get UI dump"
+
+# Check if app UI is actually rendered (not just a white screen)
+if [ -f test-logs/ui_dump.xml ]; then
+  # Check for key UI elements that should be present
+  if grep -q "Viben" test-logs/ui_dump.xml; then
+    echo "PASS: Found 'Viben' in UI"
+  else
+    echo "FAIL: 'Viben' not found in UI"
+  fi
+
+  # Check for bottom navigation tabs
+  if grep -q "Devices\|Connect\|Chat" test-logs/ui_dump.xml; then
+    echo "PASS: Found navigation tabs in UI"
+  else
+    echo "WARN: Navigation tabs not found - UI may not be fully rendered"
+  fi
+
+  # Check for non-zero bounds (critical for detecting white screen issue)
+  ROOT_BOUNDS=$(grep -o 'resource-id="root".*bounds="[^"]*"' test-logs/ui_dump.xml | head -1 || echo "")
+  echo "Root element bounds: $ROOT_BOUNDS"
+
+  # Display first 500 chars of UI dump for debugging
+  echo "UI Dump preview:"
+  cat test-logs/ui_dump.xml | head -c 1000
+else
+  echo "FAIL: Could not get UI dump"
+fi
 
 echo "=========================================="
 echo "Step 5: Tab Navigation Testing"
