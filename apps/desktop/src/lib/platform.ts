@@ -4,7 +4,26 @@ let _platformType: string | null = null;
 
 export function getPlatformType(): string {
   if (!_platformType) {
-    _platformType = osType();
+    try {
+      _platformType = osType();
+    } catch (e) {
+      // Fallback: detect from user agent if Tauri plugin fails
+      console.warn("[platform] osType() failed, using fallback:", e);
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes("android")) {
+        _platformType = "android";
+      } else if (ua.includes("iphone") || ua.includes("ipad")) {
+        _platformType = "ios";
+      } else if (ua.includes("mac")) {
+        _platformType = "macos";
+      } else if (ua.includes("win")) {
+        _platformType = "windows";
+      } else if (ua.includes("linux")) {
+        _platformType = "linux";
+      } else {
+        _platformType = "unknown";
+      }
+    }
   }
   return _platformType;
 }

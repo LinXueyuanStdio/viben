@@ -4,6 +4,7 @@
   "description": "Mobile-only capabilities",
   "platforms": ["android", "iOS"],
   "permissions": [
+    "os:default",
     "barcode-scanner:allow-scan",
     "barcode-scanner:allow-cancel",
     "barcode-scanner:allow-vibrate"
