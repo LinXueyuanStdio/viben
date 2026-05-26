@@ -168,6 +168,9 @@ jobs:
           base64 -d <<< "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" > $RUNNER_TEMP/keystore.jks
           echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
 
+          # Add imports at the top of app/build.gradle.kts
+          sed -i '1s/^/import java.util.Properties\nimport java.io.FileInputStream\n\n/' app/build.gradle.kts
+
           # Patch app/build.gradle.kts to use signing config
           cat >> app/build.gradle.kts << 'GRADLE_PATCH'
 
@@ -175,9 +178,9 @@ jobs:
           android.signingConfigs {
               create("release") {
                   val keystorePropertiesFile = rootProject.file("keystore.properties")
-                  val keystoreProperties = java.util.Properties()
+                  val keystoreProperties = Properties()
                   if (keystorePropertiesFile.exists()) {
-                      keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+                      keystoreProperties.load(FileInputStream(keystorePropertiesFile))
                   }
                   keyAlias = keystoreProperties["keyAlias"] as String?
                   keyPassword = keystoreProperties["password"] as String?
@@ -194,8 +197,10 @@ jobs:
           echo "Android signing configured"
           echo "=== keystore.properties ==="
           cat keystore.properties | sed 's/password=.*/password=***/'
+          echo "=== build.gradle.kts head ==="
+          head -10 app/build.gradle.kts
           echo "=== build.gradle.kts tail ==="
-          tail -30 app/build.gradle.kts
+          tail -20 app/build.gradle.kts
 
       - name: Build Android APK (signed)
         working-directory: apps/desktop
