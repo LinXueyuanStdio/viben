@@ -168,8 +168,13 @@ jobs:
           base64 -d <<< "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" > $RUNNER_TEMP/keystore.jks
           echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
 
-          # Add imports at the top of app/build.gradle.kts
-          sed -i '1s/^/import java.util.Properties\nimport java.io.FileInputStream\n\n/' app/build.gradle.kts
+          # Add imports at the top of app/build.gradle.kts only if not present
+          if ! grep -q "import java.util.Properties" app/build.gradle.kts; then
+            sed -i '1s/^/import java.util.Properties\n/' app/build.gradle.kts
+          fi
+          if ! grep -q "import java.io.FileInputStream" app/build.gradle.kts; then
+            sed -i '1s/^/import java.io.FileInputStream\n/' app/build.gradle.kts
+          fi
 
           # Patch app/build.gradle.kts to use signing config
           cat >> app/build.gradle.kts << 'GRADLE_PATCH'
