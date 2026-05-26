@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>蒙特卡洛搜索与代码库自我进化策略研究</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8f5;
+      --ink: #17201c;
+      --muted: #63706a;
+      --line: #d9dfd7;
+      --panel: #ffffff;
+      --panel-2: #eef4ef;
+      --green: #19735d;
+      --blue: #315f9e;
+      --red: #a04444;
+      --gold: #916b18;
+      --violet: #6850a3;
+      --code: #10201a;
+      --shadow: 0 12px 32px rgba(29, 42, 36, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.62;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(49, 95, 158, 0.28);
+    }
+
+    a:hover {
+      border-bottom-color: var(--blue);
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 40px 24px 72px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 28px;
+      align-items: stretch;
+      padding: 36px 0 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 820px;
+      font-size: 42px;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 20px 0 0;
+      max-width: 820px;
+      color: #334039;
+      font-size: 18px;
+    }
+
+    .meta {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .meta-row {
+      display: grid;
+      gap: 2px;
+    }
+
+    .meta-row span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .meta-row strong {
+      font-size: 14px;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 22px 0 8px;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 10px;
+      color: #24332d;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    section {
+      padding: 36px 0 6px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-of-type {
+      border-bottom: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 18px 0;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .panel {
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel.compact {
+      padding: 14px;
+      box-shadow: none;
+    }
+
+    .method-detail {
+      margin: 18px 0;
+      padding: 20px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .method-detail h3 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .method-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .method-grid > div {
+      min-width: 0;
+    }
+
+    .compact-list {
+      margin-bottom: 0;
+    }
+
+    .panel p:last-child,
+    .panel ul:last-child,
+    .panel ol:last-child {
+      margin-bottom: 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      margin: 0 6px 8px 0;
+      border-radius: 999px;
+      background: var(--panel-2);
+      color: #26362f;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .tag.green { color: var(--green); }
+    .tag.blue { color: var(--blue); }
+    .tag.gold { color: var(--gold); }
+    .tag.red { color: var(--red); }
+    .tag.violet { color: var(--violet); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    th,
+    td {
+      padding: 12px 13px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #edf2ee;
+      color: #22322b;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    code,
+    pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    code {
+      padding: 2px 5px;
+      background: #e9eee9;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow: auto;
+      margin: 16px 0;
+      padding: 16px;
+      background: var(--code);
+      color: #e7f2eb;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.54;
+      tab-size: 2;
+      white-space: pre;
+    }
+
+    pre code {
+      display: block;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      border-radius: 0;
+      font-size: inherit;
+      line-height: inherit;
+      white-space: inherit;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+      align-items: stretch;
+    }
+
+    .flow .step {
+      position: relative;
+      min-height: 92px;
+      padding: 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .flow .step::after {
+      content: ">";
+      position: absolute;
+      right: -10px;
+      top: 32px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .flow .step:last-child::after {
+      display: none;
+    }
+
+    .step b {
+      display: block;
+      margin-bottom: 6px;
+      color: #18231f;
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .callout {
+      margin: 18px 0;
+      padding: 16px 18px;
+      background: #fff8e8;
+      border: 1px solid #e2ca89;
+      border-left: 4px solid var(--gold);
+      border-radius: 8px;
+    }
+
+    .good {
+      border-left: 4px solid var(--green);
+      background: #eef7f2;
+    }
+
+    .warn {
+      border-left: 4px solid var(--red);
+      background: #fff1f1;
+    }
+
+    .formula {
+      padding: 14px 16px;
+      background: #eef4f7;
+      border: 1px solid #cddce6;
+      border-radius: 8px;
+      color: #163047;
+      font-weight: 700;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    ul,
+    ol {
+      margin-top: 0;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 7px 0;
+    }
+
+    .source-list {
+      columns: 2;
+      column-gap: 28px;
+    }
+
+    .source-list li {
+      break-inside: avoid;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        padding: 24px 16px 52px;
+      }
+
+      .hero,
+      .grid,
+      .grid.two,
+      .flow,
+      .method-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .flow .step::after {
+        content: "v";
+        right: 16px;
+        top: auto;
+        bottom: -18px;
+      }
+
+      .source-list {
+        columns: 1;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Research memo · Viben Evo</p>
+        <h1>用蒙特卡洛式搜索、记忆归因和多智能体评估驱动代码库自我进化</h1>
+        <p class="lead">
+          目标是把代码库版本 <code>(c, s)</code> 当作可搜索状态，把 idea 当作边，把 agent 实现与评测当作 rollout，
+          通过最少的昂贵评估步数找到最高分代码版本。结论：应在现有 <code>viben evo</code> 的 FileEvo/PPO 闭环上增加
+          BOHB/Hyperband 预算调度、MCTS 路径选择、MAP-Elites archive 与 idea 级记忆归因。
+        </p>
+      </div>
+      <aside class="meta" aria-label="report metadata">
+        <div class="meta-row"><span>生成日期</span><strong>2026-05-20</strong></div>
+        <div class="meta-row"><span>研究方式</span><strong>多 agent 并行 research + 本仓库代码阅读</strong></div>
+        <div class="meta-row"><span>本地对比对象</span><strong><code>packages/core/src/cli/commands/evo.ts</code></strong></div>
+        <div class="meta-row"><span>核心落地点</span><strong><code>.viben/evo/&lt;run&gt;/</code> file-native archive</strong></div>
+      </aside>
+    </header>
+
+    <nav aria-label="table of contents">
+      <a href="#model">问题建模</a>
+      <a href="#algorithms">算法地图</a>
+      <a href="#algorithm-details">算法细节</a>
+      <a href="#systems">系统对比</a>
+      <a href="#viben">viben evo 对比</a>
+      <a href="#strategy">推荐策略</a>
+      <a href="#memory">记忆设计</a>
+      <a href="#roadmap">落地路线</a>
+      <a href="#sources">来源</a>
+    </nav>
+
+    <section id="model">
+      <h2>1. 问题建模</h2>
+      <p>
+        代码库自我进化可以被建成一个带噪声、评估昂贵、可并行、可早停的黑盒优化问题。
+        状态是代码库版本和分数 <code>(c_t, s_t)</code>，动作是 idea 或编辑策略 <code>i_t</code>，
+        转移由 agent 在 worktree/fork 中实现，评估器给出新分数 <code>s_{t+1}</code>。
+      </p>
+
+      <div class="flow" aria-label="evolution loop">
+        <div class="step"><b>状态</b><span><code>(c0, s0)</code><br />当前代码库、基线分数、历史上下文</span></div>
+        <div class="step"><b>展开</b><span>生成多个 idea，形成横向候选</span></div>
+        <div class="step"><b>rollout</b><span>每个 idea fork 多份，多个 agent 独立实现</span></div>
+        <div class="step"><b>评估</b><span>分层 evaluator 计算 <code>s1</code> 与风险</span></div>
+        <div class="step"><b>记忆</b><span>归因分数增量，更新 archive 并决定下一步</span></div>
+      </div>
+
+      <div class="grid two">
+        <div class="panel">
+          <h3>横向搜索</h3>
+          <p><code>c0 -> c1, c0 -> c2, c0 -> c3</code></p>
+          <p>同一代码库版本生成多个 idea，适合冷启动、探索不同模块、评估多个 prompt/operator。优点是并行效率高；风险是对每个方向的深挖不足。</p>
+        </div>
+        <div class="panel">
+          <h3>纵向搜索</h3>
+          <p><code>c0 -> c1 -> c2 -> c3</code></p>
+          <p>沿着高潜力版本连续迭代，适合多步重构、性能优化、测试补强。优点是能发现组合收益；风险是过早进入局部最优。</p>
+        </div>
+      </div>
+
+      <div class="formula">
+        搜索目标：在预算 <code>B</code> 内最大化 <code>E[max s(c)]</code>，同时最小化失败率、回滚成本和不可审计修改。
+      </div>
+    </section>
+
+    <section id="algorithms">
+      <h2>2. 算法地图</h2>
+      <p>
+        单一算法不足以覆盖代码库进化。更稳的结构是把不同算法放在不同层：MCTS 规划路径，
+        Bandit/Hyperband 分配预算，Bayesian Optimization 学习候选价值，Evolutionary Archive 维持多样性。
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>方法</th>
+            <th>在本问题中的角色</th>
+            <th>适合控制的对象</th>
+            <th>主要风险</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Monte Carlo / Random Search</strong></td>
+            <td>冷启动 baseline，大量采样 idea 或 patch。</td>
+            <td>初始 idea 池、prompt 变体、轻量改动。</td>
+            <td>样本效率低，高分候选稀疏时浪费预算。</td>
+          </tr>
+          <tr>
+            <td><strong>MCTS / UCT</strong></td>
+            <td>把多轮 edit path 建成搜索树，用 UCB 在探索和利用间平衡。</td>
+            <td>从哪个 codebase 版本继续、展开哪个 idea lineage。</td>
+            <td>rollout 昂贵，价值估计受 evaluator 噪声影响。</td>
+          </tr>
+          <tr>
+            <td><strong>Multi-Armed Bandit</strong></td>
+            <td>在线选择最有效的 agent、模型、prompt、mutation operator。</td>
+            <td>生成器、执行器、测试层级、模块类别。</td>
+            <td>难以直接利用候选之间的结构相似性。</td>
+          </tr>
+          <tr>
+            <td><strong>Successive Halving / Hyperband</strong></td>
+            <td>先用低成本评估筛掉差候选，把完整预算给强候选。</td>
+            <td>lint -> typecheck -> targeted tests -> full tests -> benchmark。</td>
+            <td>早期指标若弱相关，会误杀慢热候选。</td>
+          </tr>
+          <tr>
+            <td><strong>Bayesian Optimization / BOHB</strong></td>
+            <td>用 surrogate model 预测候选收益与不确定性，提高样本效率。</td>
+            <td>idea 特征、模块、diff 大小、agent 参数、reward 权重。</td>
+            <td>代码空间高维离散，需要好的特征化和冷启动数据。</td>
+          </tr>
+          <tr>
+            <td><strong>Evolutionary / MAP-Elites</strong></td>
+            <td>保留质量和多样性，避免只追逐全局当前第一名。</td>
+            <td>archive、islands、novelty、patch recombination。</td>
+            <td>评估次数多；若 evaluator 弱，会积累投机 patch。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout good">
+        <strong>推荐组合：</strong>
+        BOHB-style controller + Hyperband evaluation ladder + MCTS lineage planning + MAP-Elites archive。
+        这比“每轮生成 B 个 idea，跑完后选最高分”更适合昂贵评估和长期自我进化。
+      </div>
+    </section>
+
+    <section id="algorithm-details">
+      <h2>3. 具体方法的算法细节</h2>
+      <p>
+        下面把每种方法展开成可落地的控制器逻辑。统一记号：<code>c</code> 是代码库版本，
+        <code>i</code> 是 idea 或编辑动作，<code>s</code> 是评估分数，<code>r</code> 是评估预算，
+        <code>x</code> 是候选 patch、prompt、模型或 operator 组合。
+      </p>
+
+      <article class="method-detail">
+        <h3><span class="tag green">Monte Carlo</span> 随机采样评估</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              Monte Carlo 的作用是建立 baseline：对同一个 idea 生成多个 patch 样本，运行评估，
+              用均值、方差和 best score 判断这个方向是否值得继续投入。
+            </p>
+            <ul class="compact-list">
+              <li><code>N</code>：采样次数，对应某个 idea 的 rollout 数。</li>
+              <li><code>R</code>：单次回报，对应 <code>score(candidate) - score(parent)</code>。</li>
+              <li><code>Q</code>：平均收益，用来估计 idea family 的稳定价值。</li>
+              <li><code>B</code>：预算，可以是 token、CI 分钟、并发任务数。</li>
+            </ul>
+          </div>
+          <div>
+            <pre><code>function monte_carlo_evaluate(codebase, idea, budget):
+    scores = []
+
+    repeat budget times:
+        patch = generate_patch(codebase, idea)
+        candidate = apply_patch_copy(codebase, patch)
+        score = evaluate(candidate)
+        scores.append(score)
+
+    return {
+        mean_score: mean(scores),
+        variance: variance(scores),
+        best_score: max(scores),
+        best_patch: argmax_patch(scores)
+    }</code></pre>
+          </div>
+        </div>
+        <p>
+          在 <code>viben evo</code> 中，它对应 <code>rollout.n</code>：同一个 idea 可以被多个 agent 实现。
+          工程上应固定随机种子、隔离 worktree、缓存相同 patch 的评估结果，并把失败原因作为结构化字段保存。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag blue">Bandit</span> UCB 与 Thompson Sampling</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              Multi-Armed Bandit 把 idea family、模型、prompt、mutation operator 或 evaluator ladder 看作 arm。
+              目标是在有限预算内最大化累计收益，同时保留对新方向的探索。
+            </p>
+            <p>UCB1 选择公式：</p>
+            <pre><code>UCB_i = Q_i + c * sqrt(ln(t) / n_i)</code></pre>
+            <p>
+              Thompson Sampling 为每个 arm 维护后验分布，二值成功率场景可用 <code>Beta(alpha, beta)</code>：
+              成功则 <code>alpha += 1</code>，失败则 <code>beta += 1</code>。
+            </p>
+          </div>
+          <div>
+            <pre><code>function bandit_search(codebase, arms, total_budget):
+    initialize n[i] = 0, Q[i] = 0
+
+    for t in 1..total_budget:
+        if any n[i] == 0:
+            arm = first_untried_arm()
+        else:
+            arm = argmax_i Q[i] + c * sqrt(log(t) / n[i])
+
+        idea = sample_idea_from_arm(arm)
+        reward = rollout_and_evaluate(codebase, idea)
+
+        n[arm] += 1
+        Q[arm] += (reward - Q[arm]) / n[arm]
+
+    return best_observed_candidate()</code></pre>
+          </div>
+        </div>
+        <p>
+          对代码库演化，reward 是非平稳的：代码变了，某类 idea 的收益分布也会变。
+          因此统计量要支持滑动窗口、时间衰减，或按 codebase node 分开记录。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag blue">MCTS / UCT</span> 多步 idea 路径规划</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              MCTS 把多轮演化建成搜索树：节点是 <code>codebase snapshot</code>，边是 idea/patch。
+              标准循环是 selection、expansion、simulation、backpropagation。
+            </p>
+            <p>UCT 选择公式：</p>
+            <pre><code>UCT(c, i) = Q(c, i) + k * sqrt(ln N(c) / N(c, i))</code></pre>
+            <ul class="compact-list">
+              <li><code>Q(c,i)</code>：idea 在该代码版本上的平均收益。</li>
+              <li><code>N(c)</code>：该代码版本被访问次数。</li>
+              <li><code>N(c,i)</code>：该 idea 被尝试次数。</li>
+              <li><code>k</code>：探索强度。</li>
+            </ul>
+          </div>
+          <div>
+            <pre><code>function mcts(root_codebase, budget):
+    root = Node(root_codebase)
+
+    repeat budget times:
+        path = []
+        node = root
+
+        while node.fully_expanded and not terminal(node):
+            idea = select_uct(node)
+            path.append((node, idea))
+            node = child(node, idea)
+
+        if not terminal(node):
+            idea = propose_new_idea(node.codebase)
+            child = apply_and_score(node.codebase, idea)
+            node = add_child(node, idea, child)
+
+        reward = rollout(node.codebase)
+
+        for (visited, idea) in path:
+            update_stats(visited, idea, reward)
+
+    return best_child(root)</code></pre>
+          </div>
+        </div>
+        <p>
+          工程关键是不要复制完整仓库作为节点。更合理的节点表示是
+          <code>base_commit + patch_stack + metadata</code>，并用 transposition table 合并等价状态。
+          对分支极多的节点使用 progressive widening，避免一次展开太多 idea。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag gold">Successive Halving</span> 分层淘汰</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              Successive Halving 先用极低预算评估大量候选，每轮保留前 <code>1 / eta</code>，
+              并把幸存候选的预算乘以 <code>eta</code>。它适合完整 CI 很贵、但低成本信号有用的场景。
+            </p>
+            <ul class="compact-list">
+              <li><code>r0</code>：最小有意义预算，例如 parse + affected typecheck。</li>
+              <li><code>R</code>：最大预算，例如 full build + full tests。</li>
+              <li><code>eta</code>：淘汰倍率，常用 3 或 4。</li>
+            </ul>
+          </div>
+          <div>
+            <pre><code>function successive_halving(candidates, r0, R, eta):
+    S = candidates
+    r = r0
+
+    while r &lt;= R and size(S) &gt; 1:
+        results = []
+        for x in S:
+            y = evaluate_patch(x, budget = r)
+            results.append((x, y))
+
+        S = top ceil(size(S) / eta) by score
+        r = r * eta
+
+    return best_full_evaluation(S)</code></pre>
+          </div>
+        </div>
+        <p>
+          早停不是证明 patch 差，而是在足够高置信度下判断“继续评估不划算”。
+          编译失败、关键测试失败、安全回归可以立即停止；flaky test、benchmark 抖动则应复评或延迟淘汰。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag gold">Hyperband</span> 多 bracket 预算分配</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              Hyperband 解决 Successive Halving 的核心超参问题：到底应该多试候选、少给预算，
+              还是少试候选、深度验证。它运行多个 bracket，覆盖不同探索深度。
+            </p>
+            <pre><code>s_max = floor(log_eta(R))
+B = (s_max + 1) * R
+n = ceil((B / R) * eta^s / (s + 1))
+r = R * eta^(-s)</code></pre>
+          </div>
+          <div>
+            <pre><code>function hyperband(R, eta):
+    s_max = floor(log(R) / log(eta))
+    B = (s_max + 1) * R
+
+    for s in range(s_max, -1, -1):
+        n = ceil((B / R) * eta^s / (s + 1))
+        r = R * eta^(-s)
+        S = sample_patches(n)
+
+        for j in 0..s:
+            budget = r * eta^j
+            score_all(S, budget)
+            S = top floor(size(S) / eta)
+
+    return best_patch_observed()</code></pre>
+          </div>
+        </div>
+        <p>
+          对 <code>viben evo</code>，bracket 可以直接映射为 queue 中的一组 task：
+          一个 bracket 负责“海量 idea 快速粗筛”，另一个 bracket 负责“少量 idea 深度验证”。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag gold">Bayesian Optimization / BOHB</span> 用历史结果指导采样</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              Bayesian Optimization 用代理模型预测候选 patch 的分数和不确定性，再用 acquisition function 选下一步。
+              BOHB 把 BO 与 Hyperband 结合：Hyperband 管预算，BO 管采样。
+            </p>
+            <pre><code>UCB(x) = mu(x) + kappa * sigma(x)
+EI(x) = E[max(f(x) - f(best), 0)]</code></pre>
+            <p>BOHB 的 TPE/KDE 风格候选选择：</p>
+            <pre><code>D_good = top q% observations
+D_bad  = remaining observations
+choose x that maximizes l(x) / g(x)</code></pre>
+          </div>
+          <div>
+            <pre><code>function bohb(R, eta):
+    history = []
+
+    while budget_remains:
+        bracket = choose_hyperband_bracket()
+        r, n = bracket_schedule(bracket, R, eta)
+
+        S = []
+        for k in 1..n:
+            if enough_data(history, budget = r):
+                x = sample_by_surrogate(history, budget = r)
+            else:
+                x = sample_random_patch()
+            S.append(x)
+
+        successive_halving_with_history(S, r, R, eta, history)
+
+    return best_high_budget_patch(history)</code></pre>
+          </div>
+        </div>
+        <p>
+          Patch 特征应结构化保存：diff 行数、修改文件类型、触达核心路径、失败测试类别、
+          静态分析结果、embedding、prompt、模型、temperature、repair strategy。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag violet">Evolutionary Algorithms / Genetic Programming</span> 代码作为可进化个体</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              进化式方法把候选代码表示为个体。genotype 是 patch、AST edit 或 function rewrite；
+              phenotype 是应用 patch 后的完整 repo。LLM 可以作为 mutation operator，evaluator 是 selection pressure。
+            </p>
+            <pre><code>Individual = {
+  base_commit,
+  patch,
+  touched_files,
+  parent_ids,
+  prompt,
+  model,
+  mutation_type,
+  metrics
+}</code></pre>
+          </div>
+          <div>
+            <pre><code>function evolutionary_loop(population):
+    while budget_remains:
+        parents = select(population, archive)
+
+        if random() &lt; crossover_rate:
+            child = crossover(parents)
+        else:
+            child = mutate(parents[0])
+
+        result = evaluate(child)
+
+        if result.hard_constraints_pass:
+            archive.update(child, result.metrics)
+            population = environmental_selection(
+                population + [child],
+                method = pareto_or_fitness
+            )
+
+    return archive.best()</code></pre>
+          </div>
+        </div>
+        <p>
+          Mutation 包括 localized fix、performance rewrite、simplify、parameter tune、defensive patch。
+          Crossover 在代码库中要保守，优先做互不冲突 diff 合并，或让 LLM 基于两个父代 diff 生成语义重组版本。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag violet">MAP-Elites / Islands</span> 质量多样性 archive</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              MAP-Elites 不只保留全局第一名，而是按行为特征分桶，每个桶保留一个 elite。
+              这能保留“高性能但复杂”“小 diff 但收益中等”“覆盖边界条件好”等不同 stepping stones。
+            </p>
+            <ul class="compact-list">
+              <li><code>diff_size_bucket</code>：tiny / small / medium / large。</li>
+              <li><code>touched_area</code>：parser / scheduler / cache / UI / tests。</li>
+              <li><code>risk_level</code>：low / medium / high。</li>
+              <li><code>performance_profile</code>：latency / memory / throughput。</li>
+            </ul>
+          </div>
+          <div>
+            <pre><code>function map_elites_update(candidate):
+    cell = feature_map(candidate)
+    current = archive[cell]
+
+    if current is empty:
+        archive[cell] = candidate
+    else if fitness(candidate) > fitness(current):
+        archive[cell] = candidate
+
+function island_migration(islands):
+    every K generations:
+        migrants = export_top_pareto_and_novelty(islands)
+        for island in islands:
+            island.import_and_reevaluate(migrants)</code></pre>
+          </div>
+        </div>
+        <p>
+          Islands 可以按目标拆分：performance、correctness、simplicity、security、exploration。
+          每个 island 用自己的 mutation policy 和 evaluator profile，周期性迁移 elites。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag violet">NSGA-II / Pareto</span> 多目标选择</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              代码 patch 往往无法被一个分数完整表达。NSGA-II 用非支配排序和 crowding distance
+              保留 Pareto front，让不同 trade-off 区域都有候选。
+            </p>
+            <pre><code>x dominates y if:
+    x is no worse than y on all objectives
+    and better than y on at least one objective</code></pre>
+          </div>
+          <div>
+            <pre><code>function nsga2_select(candidates, population_size):
+    fronts = fast_non_dominated_sort(candidates)
+    next_population = []
+
+    for front in fronts:
+        compute_crowding_distance(front)
+        if size(next_population) + size(front) &lt;= population_size:
+            next_population += front
+        else:
+            sort front by crowding_distance desc
+            fill remaining slots from front
+            break
+
+    return next_population</code></pre>
+          </div>
+        </div>
+        <p>
+          对 <code>viben evo</code>，Pareto 目标可以是 correctness、performance、maintainability、diff risk、cost。
+          最终合并仍可由人工或 policy 从 Pareto archive 中选择。
+        </p>
+      </article>
+
+      <article class="method-detail">
+        <h3><span class="tag red">Memory / Reflexion / Voyager / DGM</span> 记忆、技能库与自改进</h3>
+        <div class="method-grid">
+          <div>
+            <p>
+              Reflexion 把测试结果、错误和外部反馈转成 reflection，进入 episodic memory；
+              Voyager 把成功行为沉淀为可执行 skill library；DGM 维护 agent archive，
+              让 agent 版本在 sandbox 和 benchmark 中自我改进。
+            </p>
+            <ol class="compact-list">
+              <li>记录 trajectory：prompt、工具调用、diff、测试、score。</li>
+              <li>抽取 memory candidate：失败模式、成功策略、可复用 skill。</li>
+              <li>验证候选：回放、A/B eval、跨任务验证。</li>
+              <li>归因 credit：idea、skill、memory、trajectory step。</li>
+              <li>写入 archive：active / quarantined / deprecated。</li>
+              <li>检索注入：按任务、错误签名、repo、成功率选择记忆。</li>
+            </ol>
+          </div>
+          <div>
+            <pre><code>async function evo_memory_loop(task):
+    memories = retrieve_active_memories(task)
+    skills = retrieve_verified_skills(task)
+
+    trajectory = run_agent(task, { memories, skills })
+    eval_result = evaluate_trajectory(trajectory)
+
+    candidates = extract_memory_candidates(
+        task, trajectory, eval_result
+    )
+
+    for memory in candidates:
+        validation = validate_memory(memory)
+        save_memory({
+            ...memory,
+            status: validation.passed ? "active" : "quarantined",
+            confidence: validation.confidence,
+            evidence_ids: [trajectory.id, validation.id]
+        })
+
+    credits = assign_credit(trajectory, eval_result, memories, skills)
+    save_credit_records(credits)</code></pre>
+          </div>
+        </div>
+        <p>
+          防污染规则：新记忆先进入 candidate；无证据不注入 prompt；长期未复用或近期导致失败的记忆降权；
+          repo-specific memory 不默认提升为 global；每次 prompt 注入哪些 memory 都写入 trajectory，失败后可回滚污染源。
+        </p>
+      </article>
+    </section>
+
+    <section id="systems">
+      <h2>4. 代码自我进化系统对比</h2>
+      <p>
+        现有系统的共同点是 evaluator-first：LLM 负责产生候选代码，确定性或半确定性评估器负责筛选，
+        archive/database 负责保存高分与多样性样本，再把这些样本喂回下一轮 prompt。
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>系统</th>
+            <th>核心闭环</th>
+            <th>Memory / Archive</th>
+            <th>给 viben evo 的启发</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>FunSearch</strong></td>
+            <td>LLM 生成程序变体，systematic evaluator 打分，搜索“能产生好答案的程序”。</td>
+            <td>program database、islands、历史高分程序采样。</td>
+            <td>先定义 seed、evaluator、score、archive，再追求复杂并发。</td>
+          </tr>
+          <tr>
+            <td><strong>AlphaEvolve</strong></td>
+            <td>LLM ensemble 直接修改算法/代码，自动 evaluator 验证，进化式保留强候选。</td>
+            <td>program database + prompt sampler + evaluator feedback。</td>
+            <td>把产品代码目标转成可量化 score，避免只有主观 LLM review。</td>
+          </tr>
+          <tr>
+            <td><strong>OpenEvolve</strong></td>
+            <td>开源 AlphaEvolve 风格实现，包含 controller、LLM ensemble、evaluator、program database。</td>
+            <td>MAP-Elites + islands + artifacts feedback。</td>
+            <td>最值得直接对标：checkpoint、并行 worker、多目标 metrics、可视化、resume。</td>
+          </tr>
+          <tr>
+            <td><strong>SWE-agent</strong></td>
+            <td>通过 agent-computer interface 让模型在真实仓库中搜索、编辑、运行测试。</td>
+            <td>trajectory/logs 为主，不是进化 archive。</td>
+            <td>适合作为执行层参考：限制工具、压缩反馈、提高编辑可恢复性。</td>
+          </tr>
+          <tr>
+            <td><strong>Darwin Gödel Machine</strong></td>
+            <td>从 archive 采样 agent，让 agent 修改自身代码并通过 benchmark 验证。</td>
+            <td>agent lineage tree，保留多个 self-improving path。</td>
+            <td>长期方向；短期不要直接自改 planner，先让 evo 策略可配置、可审计。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="viben">
+      <h2>5. 与本仓库 <code>viben evo</code> 的对比</h2>
+      <p>
+        本仓库已有 FileEvo 主干：CLI 注册 <code>viben evo</code>，runner 编排 idea 生成、task 创建、worktree 执行、reward 计算、PPO 选择和 merge cleanup。
+        状态存储遵循项目 file-native 方向，位于 <code>.viben/evo/&lt;name&gt;/state.json</code>。
+      </p>
+
+      <div class="grid">
+        <div class="panel compact">
+          <span class="tag green">已有</span>
+          <h3>运行状态与配置</h3>
+          <p><code>EvoConfig</code> 包含 <code>idea</code>、<code>rollout</code>、<code>ppo</code>、<code>reward</code>、<code>convergence</code>、<code>task</code>；默认 rollout 支持 worktree。</p>
+        </div>
+        <div class="panel compact">
+          <span class="tag green">已有</span>
+          <h3>Idea 到 Task</h3>
+          <p>runner 会取 draft ideas，按 effort 排序，promote 为 task，并维护 <code>task_idea_map</code>。</p>
+        </div>
+        <div class="panel compact">
+          <span class="tag green">已有</span>
+          <h3>两阶段选择</h3>
+          <p><code>selectBestTask</code> 支持先选每个 idea 的最佳 rollout，再从 idea winners 中选全局最佳。</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th>当前 viben evo</th>
+            <th>目标策略需要补齐</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>搜索图</td>
+            <td>主要是按 run/iteration 顺序推进，当前迭代中处理 batch ideas。</td>
+            <td>支持从任意历史 codebase 版本继续，形成多条 Markov chain / lineage。</td>
+          </tr>
+          <tr>
+            <td>预算调度</td>
+            <td>batch_size 与 rollout.n 是静态配置。</td>
+            <td>用 Hyperband/BOHB 动态决定候选保留、早停、追加 rollout。</td>
+          </tr>
+          <tr>
+            <td>记忆归因</td>
+            <td>有 <code>task_idea_map</code> 和 reward 记录，但缺 idea-level credit assignment 汇总。</td>
+            <td>维护 idea/operator/module 的增量收益、失败原因、适用上下文和置信度。</td>
+          </tr>
+          <tr>
+            <td>多样性</td>
+            <td>选择逻辑偏向当前最高 finalScore。</td>
+            <td>增加 MAP-Elites/islands，保留不同模块、风险档位、改动类型的 elites。</td>
+          </tr>
+          <tr>
+            <td>评估层级</td>
+            <td>reward 可配置，task reward 集成已有。</td>
+            <td>明确分层 evaluator：cheap gate、targeted tests、full build、benchmark、LLM review。</td>
+          </tr>
+          <tr>
+            <td>安全边界</td>
+            <td>worktree 与 task 系统提供隔离基础。</td>
+            <td>对命令、依赖安装、外部网络、主分支写入建立 policy 和审计日志。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="small">
+        本地代码依据：<code>packages/core/src/cli/commands/evo.ts</code> 注册命令；
+        <code>packages/core/src/evo/ops/runner.ts</code> 描述 7 阶段 Evo loop；
+        <code>packages/core/src/reward/ops/select.ts</code> 实现两阶段 PPO-style selection；
+        <code>packages/core/src/evo/ops/state.ts</code> 将状态持久化到 <code>.viben/evo/&lt;name&gt;/state.json</code>。
+      </div>
+    </section>
+
+    <section id="strategy">
+      <h2>6. 推荐的搜索管理策略</h2>
+      <p>
+        关键不是让模型“更努力地生成 idea”，而是让 controller 学会把预算投给预期收益最高、但仍保留不确定性探索价值的分支。
+      </p>
+
+      <div class="grid two">
+        <div class="panel">
+          <span class="tag blue">Controller</span>
+          <h3>候选选择分数</h3>
+          <pre><code>value(node, idea) =
+  predicted_delta_score
+  + exploration_bonus
+  + novelty_bonus
+  + memory_match_bonus
+  - risk_penalty
+  - eval_cost_penalty</code></pre>
+          <p>这相当于把 UCB、BO acquisition、MAP-Elites novelty 和工程风险合成一个调度分数。</p>
+        </div>
+        <div class="panel">
+          <span class="tag gold">Evaluation</span>
+          <h3>分层预算</h3>
+          <ol>
+            <li>Level 0：静态检查、diff 风险、格式与 AST parse。</li>
+            <li>Level 1：typecheck、受影响测试、核心 CLI smoke test。</li>
+            <li>Level 2：package tests、targeted benchmark、LLM reviewer。</li>
+            <li>Level 3：全量 build、E2E、性能回归、人工审批。</li>
+          </ol>
+        </div>
+      </div>
+
+      <h3>一次迭代的建议流程</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>动作</th>
+            <th>算法</th>
+            <th>输出</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Expand</td>
+            <td>从多个 codebase node 生成 idea，不只从最新 winner 生成。</td>
+            <td>MCTS + memory retrieval</td>
+            <td><code>candidate_plan[]</code></td>
+          </tr>
+          <tr>
+            <td>Rollout</td>
+            <td>为高价值 idea fork 多份，由不同 agent/model/prompt 实现。</td>
+            <td>Bandit 分配 agent arms</td>
+            <td><code>candidate_patch[]</code></td>
+          </tr>
+          <tr>
+            <td>Early Stop</td>
+            <td>低成本评估失败即停止，强候选进入下一层。</td>
+            <td>Successive Halving</td>
+            <td><code>survivors[]</code></td>
+          </tr>
+          <tr>
+            <td>Select</td>
+            <td>先按 idea 聚合 rollout，再做全局选择；保留非 winner elites。</td>
+            <td>PPO-style + MAP-Elites</td>
+            <td><code>winner</code> 与 <code>archive</code></td>
+          </tr>
+          <tr>
+            <td>Learn</td>
+            <td>把 score delta 归因到 idea、operator、模块、agent。</td>
+            <td>Credit assignment</td>
+            <td><code>memory.md/jsonl</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="memory">
+      <h2>7. 记忆与 DP 表设计</h2>
+      <p>
+        记忆不应只是“把高分 idea 写进 prompt”。它应该像动态规划表一样保存子问题求解结果，支持剪枝、复用和归因。
+        对代码库进化来说，记忆至少需要三层：candidate archive、idea credit table、retrieval summary。
+      </p>
+
+      <div class="grid">
+        <div class="panel compact">
+          <span class="tag violet">Archive</span>
+          <h3>候选版本记忆</h3>
+          <p>保存每个 codebase node 的 parent、patch、score、评估日志、artifacts 和 lineage。</p>
+        </div>
+        <div class="panel compact">
+          <span class="tag violet">Credit</span>
+          <h3>Idea 归因记忆</h3>
+          <p>按 idea/operator/module 统计 <code>delta_score</code>、成功率、风险、适用条件。</p>
+        </div>
+        <div class="panel compact">
+          <span class="tag violet">Prompt</span>
+          <h3>检索摘要记忆</h3>
+          <p>展开 idea 和实现 patch 时，只注入当前上下文最相关的短摘要，避免污染上下文。</p>
+        </div>
+      </div>
+
+      <h3>建议的 file-native 结构</h3>
+      <pre><code>.viben/evo/&lt;run&gt;/
+  state.json
+  graph.jsonl                 # codebase node / edge / score
+  memory/
+    idea-credit.jsonl          # idea 级收益归因
+    operator-credit.jsonl      # prompt/model/mutation operator 收益
+    module-credit.jsonl        # 文件/模块/测试域收益
+    summaries.md               # 给 agent 检索注入的中文摘要
+  archive/
+    elites.jsonl               # MAP-Elites 非支配候选
+    rejected.jsonl             # 被剪枝候选及原因
+  iter1/
+    &lt;idea_id&gt;/&lt;task&gt;/reward.json</code></pre>
+
+      <h3>记忆条目草案</h3>
+      <pre><code>{
+  "idea_id": "2026-05-20-cache-typecheck-hotpath",
+  "parent_node": "c0",
+  "child_node": "c17",
+  "idea_summary": "缓存受影响 package 的 typecheck 结果",
+  "operators": ["performance_optimization", "test_guard"],
+  "modules": ["packages/core/src/task", "packages/core/src/queue"],
+  "score_before": 0.62,
+  "score_after": 0.74,
+  "delta_score": 0.12,
+  "eval_cost_seconds": 480,
+  "risk": {"diff_lines": 214, "failed_tests": 0, "flaky": false},
+  "credit": {
+    "idea": 0.10,
+    "implementation_agent": 0.02,
+    "module_context": 0.04
+  },
+  "reuse_hint": "当目标包含 queue/task 集成性能时优先尝试；需要保留 CLI golden tests。",
+  "prune_hint": "如果 diff 超过 500 行或触碰 gateway route，先拆小。"
+}</code></pre>
+
+      <div class="callout">
+        <strong>剪枝规则：</strong>
+        如果某类 idea 在相似模块、相似 evaluator、相似 diff budget 下连续低收益，就降低展开概率；
+        如果 idea 分数高但风险也高，不删除，而是放入高风险 island，等待更合适的 parent 或更强 evaluator。
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>8. 对 viben evo 的落地路线</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>范围</th>
+            <th>验收标准</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>MVP</strong></td>
+            <td>保留当前 <code>viben evo</code> 流程，新增 <code>graph.jsonl</code>、<code>idea-credit.jsonl</code> 和 summaries。</td>
+            <td>每个 task reward 能归因到 idea；下一轮 idea prompt 能引用 top positive/negative memories。</td>
+          </tr>
+          <tr>
+            <td><strong>预算调度</strong></td>
+            <td>实现 evaluation ladder 与 early-stop 状态，不同候选可停在不同评估层级。</td>
+            <td>同样 wall-clock 下，评估更多 idea，完整评估集中在高潜力候选。</td>
+          </tr>
+          <tr>
+            <td><strong>搜索图</strong></td>
+            <td>允许从任意 archive node 展开，而不是只能从最新 merged winner 展开。</td>
+            <td>报告中能展示多条 lineage，并解释为什么选择某个 parent 继续。</td>
+          </tr>
+          <tr>
+            <td><strong>MAP-Elites</strong></td>
+            <td>按模块、改动类型、风险等级、目标指标建立 elites cells。</td>
+            <td>archive 不只保存一个 best_task，而是保存多个有代表性的 stepping stones。</td>
+          </tr>
+          <tr>
+            <td><strong>策略自进化</strong></td>
+            <td>让 evo 策略参数、prompt、operator 可被受限修改和评估。</td>
+            <td>只允许在 sandbox/worktree 内修改策略；人工审批后才进入默认策略。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout warn">
+        <strong>不要过早做的事：</strong>
+        不要在 evaluator 还弱时允许系统自动修改自己的 planner 或 reward 权重。
+        否则最容易进化出“骗分”的 patch，而不是更好的代码库。
+      </div>
+    </section>
+
+    <section id="sources">
+      <h2>9. 主要来源</h2>
+      <p class="small">以下来源用于大批量 research 的交叉参考；本报告正文已做面向 Viben 的综合归纳。</p>
+      <ol class="source-list">
+        <li><a href="https://ggp.stanford.edu/readings/uct.pdf">Bandit based Monte-Carlo Planning / UCT</a></li>
+        <li><a href="https://repository.essex.ac.uk/4117/1/MCTS-Survey.pdf">A Survey of Monte Carlo Tree Search Methods</a></li>
+        <li><a href="https://people.eecs.berkeley.edu/~russell/classes/cs294/s11/readings/Auer%2Bal%3A2002.pdf">Finite-time Analysis of the Multiarmed Bandit Problem</a></li>
+        <li><a href="https://web.stanford.edu/~bvr/pubs/TS_Tutorial.pdf">A Tutorial on Thompson Sampling</a></li>
+        <li><a href="https://jmlr.org/papers/volume18/16-558/16-558.pdf">Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization</a></li>
+        <li><a href="https://proceedings.mlr.press/v80/falkner18a.html">BOHB: Robust and Efficient Hyperparameter Optimization at Scale</a></li>
+        <li><a href="https://papers.nips.cc/paper/2012/hash/05311655a15b75fab86956663e1819cd-Abstract.html">Practical Bayesian Optimization of Machine Learning Algorithms</a></li>
+        <li><a href="https://icml.cc/Conferences/2010/papers/422.pdf">Gaussian Process Optimization in the Bandit Setting</a></li>
+        <li><a href="https://link.springer.com/article/10.1023/A:1008306431147">Efficient Global Optimization of Expensive Black-Box Functions</a></li>
+        <li><a href="https://arxiv.org/abs/1504.04909">Illuminating search spaces by mapping elites</a></li>
+        <li><a href="https://www.nature.com/articles/s41586-023-06924-6">FunSearch: Mathematical discoveries from program search with large language models</a></li>
+        <li><a href="https://github.com/google-deepmind/funsearch">Google DeepMind FunSearch repository</a></li>
+        <li><a href="https://deepmind.google/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/">AlphaEvolve DeepMind blog</a></li>
+        <li><a href="https://arxiv.org/abs/2506.13131">AlphaEvolve white paper</a></li>
+        <li><a href="https://github.com/algorithmicsuperintelligence/openevolve">OpenEvolve GitHub repository</a></li>
+        <li><a href="https://deepwiki.com/algorithmicsuperintelligence/openevolve">OpenEvolve architecture notes</a></li>
+        <li><a href="https://swe-agent.com/0.7/background/aci/">SWE-agent Agent-Computer Interface documentation</a></li>
+        <li><a href="https://huggingface.co/datasets/nebius/SWE-agent-trajectories">SWE-agent trajectories dataset</a></li>
+        <li><a href="https://arxiv.org/abs/2303.11366">Reflexion: Language Agents with Verbal Reinforcement Learning</a></li>
+        <li><a href="https://arxiv.org/abs/2305.16291">Voyager: An Open-Ended Embodied Agent with Large Language Models</a></li>
+        <li><a href="https://arxiv.org/abs/2310.06770">SWE-bench: Can Language Models Resolve Real-World GitHub Issues?</a></li>
+        <li><a href="https://arxiv.org/abs/2505.22954">Darwin Gödel Machine: Open-Ended Evolution of Self-Improving Agents</a></li>
+        <li><a href="https://github.com/jennyzzt/dgm">Darwin Gödel Machine GitHub repository</a></li>
+        <li><a href="https://squareslab.github.io/genprog-code/">GenProg automated program repair</a></li>
+        <li><a href="https://ieeexplore.ieee.org/document/996017">NSGA-II multi-objective evolutionary algorithm</a></li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>
