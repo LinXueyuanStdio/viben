@@ -270,9 +270,14 @@ function App() {
           )}
         </Routes>
       </BrowserRouter>
-      <OverlayRoot />
-      <ActionApprovalDialog />
-      <PresentationActionProvider />
+      {/* Desktop-only components - these use Tauri plugins not available on mobile */}
+      {!mobile && (
+        <>
+          <OverlayRoot />
+          <ActionApprovalDialog />
+          <PresentationActionProvider />
+        </>
+      )}
     </AppErrorBoundary>
   );
 }

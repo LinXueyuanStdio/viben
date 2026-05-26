@@ -129,8 +129,9 @@ export default defineConfig(async () => ({
         },
       },
     },
-    // Target modern browsers for smaller bundle size
-    target: "esnext",
+    // Target browsers that support Android WebView (API 30 = Chrome ~86)
+    // "esnext" causes issues on older WebViews
+    target: ["es2020", "chrome86", "safari14"],
     // Chunk size warning threshold (500KB)
     chunkSizeWarningLimit: 500,
   },

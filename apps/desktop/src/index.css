@@ -4,6 +4,131 @@
 @source "../node_modules/@viben/kanban/src/**/*.tsx";
 @source "../node_modules/@viben/ui/src/**/*.tsx";
 
+/* ===== Fallback for browsers without oklch support (Android WebView < Chrome 111) ===== */
+/* These HEX colors approximate the oklch values used in the :root section */
+@supports not (color: oklch(0.5 0.1 180)) {
+  :root {
+    /* Brand Amber (primary) */
+    --brand-amber-50: #fffbeb;
+    --brand-amber-100: #fef3c7;
+    --brand-amber-200: #fde68a;
+    --brand-amber-300: #fcd34d;
+    --brand-amber-400: #fbbf24;
+    --brand-amber-500: #f59e0b;
+    --brand-amber-600: #d97706;
+    --brand-amber-700: #b45309;
+    --brand-amber-800: #92400e;
+    --brand-amber-900: #78350f;
+
+    /* Brand Peach */
+    --brand-peach-400: #fdba74;
+    --brand-peach-500: #fb923c;
+    --brand-peach-600: #f97316;
+
+    /* Brand Teal */
+    --brand-teal-400: #2dd4bf;
+    --brand-teal-500: #14b8a6;
+    --brand-teal-600: #0d9488;
+
+    /* Warm Neutral Scale (light mode) */
+    --neutral-50: #fafaf9;
+    --neutral-100: #f5f5f4;
+    --neutral-200: #e7e5e4;
+    --neutral-300: #d6d3d1;
+    --neutral-400: #a8a29e;
+    --neutral-500: #78716c;
+    --neutral-600: #57534e;
+    --neutral-700: #44403c;
+    --neutral-800: #292524;
+    --neutral-900: #1c1917;
+    --neutral-950: #0c0a09;
+
+    /* Semantic colors */
+    --background: #fafaf9;
+    --foreground: #1c1917;
+    --card: #ffffff;
+    --card-foreground: #1c1917;
+    --popover: #ffffff;
+    --popover-foreground: #1c1917;
+    --primary: #d97706;
+    --primary-foreground: #ffffff;
+    --primary-hover: #b45309;
+    --secondary: #f5f5f4;
+    --secondary-foreground: #1c1917;
+    --muted: #f5f5f4;
+    --muted-foreground: #78716c;
+    --accent: #f5f5f4;
+    --accent-foreground: #1c1917;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --border: #e7e5e4;
+    --input: #e7e5e4;
+    --ring: #d97706;
+
+    /* Surface colors */
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --foreground-secondary: #78716c;
+    --foreground-tertiary: #a8a29e;
+    --border-strong: #d6d3d1;
+
+    /* Sidebar */
+    --sidebar: #fafaf9;
+    --sidebar-foreground: #1c1917;
+    --sidebar-primary: #d97706;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f5f5f4;
+    --sidebar-accent-foreground: #1c1917;
+    --sidebar-border: #e7e5e4;
+    --sidebar-ring: #d97706;
+
+    /* Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+  }
+
+  .dark {
+    --background: #1c1917;
+    --foreground: #fafaf9;
+    --card: #292524;
+    --card-foreground: #fafaf9;
+    --popover: #292524;
+    --popover-foreground: #fafaf9;
+    --primary: #f59e0b;
+    --primary-foreground: #1c1917;
+    --primary-hover: #fbbf24;
+    --secondary: #292524;
+    --secondary-foreground: #fafaf9;
+    --muted: #292524;
+    --muted-foreground: #a8a29e;
+    --accent: #292524;
+    --accent-foreground: #fafaf9;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #44403c;
+    --input: #44403c;
+    --ring: #f59e0b;
+
+    --surface: #292524;
+    --surface-elevated: #44403c;
+    --foreground-secondary: #a8a29e;
+    --foreground-tertiary: #78716c;
+    --border-strong: #57534e;
+
+    --sidebar: #1c1917;
+    --sidebar-foreground: #fafaf9;
+    --sidebar-primary: #f59e0b;
+    --sidebar-primary-foreground: #1c1917;
+    --sidebar-accent: #292524;
+    --sidebar-accent-foreground: #fafaf9;
+    --sidebar-border: #44403c;
+    --sidebar-ring: #f59e0b;
+  }
+}
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
