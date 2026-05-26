@@ -161,11 +161,41 @@ jobs:
       - name: Setup Android signing
         run: |
           cd apps/desktop/src-tauri/gen/android
+
+          # Create keystore.properties
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
           echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
           base64 -d <<< "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" > $RUNNER_TEMP/keystore.jks
           echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+
+          # Patch app/build.gradle.kts to use signing config
+          cat >> app/build.gradle.kts << 'GRADLE_PATCH'
+
+          // Release signing configuration
+          android.signingConfigs {
+              create("release") {
+                  val keystorePropertiesFile = rootProject.file("keystore.properties")
+                  val keystoreProperties = java.util.Properties()
+                  if (keystorePropertiesFile.exists()) {
+                      keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+                  }
+                  keyAlias = keystoreProperties["keyAlias"] as String?
+                  keyPassword = keystoreProperties["password"] as String?
+                  storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+                  storePassword = keystoreProperties["password"] as String?
+              }
+          }
+
+          android.buildTypes.getByName("release") {
+              signingConfig = android.signingConfigs.getByName("release")
+          }
+          GRADLE_PATCH
+
           echo "Android signing configured"
+          echo "=== keystore.properties ==="
+          cat keystore.properties | sed 's/password=.*/password=***/'
+          echo "=== build.gradle.kts tail ==="
+          tail -30 app/build.gradle.kts
 
       - name: Build Android APK (signed)
         working-directory: apps/desktop
