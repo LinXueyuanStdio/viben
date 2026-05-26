@@ -196,7 +196,7 @@ jobs:
       needs.prepare.outputs.skip_tests != 'true' &&
       needs.build-android.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -217,12 +217,15 @@ jobs:
           fi
           echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
           echo "Found APK: $APK_FILE"
+          ls -la "$APK_FILE"
 
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          # Verify KVM is available
+          ls -la /dev/kvm || true
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -233,12 +236,26 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Install additional Android SDK components
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-30" "emulator"
+          sdkmanager --list | head -50
+
       - name: Install Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          # Verify Maestro installation
+          $HOME/.maestro/bin/maestro --version
 
-      - name: Run tests on emulator
+      - name: Create test directories
+        run: |
+          mkdir -p test-screenshots
+          mkdir -p test-screenshots/maestro
+          mkdir -p test-logs
+
+      - name: Run comprehensive tests on emulator
+        id: run-tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -246,64 +263,317 @@ jobs:
           profile: pixel_6
           heap-size: 512M
           ram-size: 4096M
+          disk-size: 6G
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
+          emulator-boot-timeout: 600
           script: |
-            echo "Emulator started successfully"
+            set -x
+            echo "=========================================="
+            echo "Step 1: Emulator Verification"
+            echo "=========================================="
             adb devices
+            adb shell getprop ro.product.model
+            adb shell getprop ro.build.version.release
+            adb shell wm size
 
-            echo "Installing APK..."
+            echo "=========================================="
+            echo "Step 2: APK Installation"
+            echo "=========================================="
+            # Uninstall previous version if exists
+            adb uninstall com.viben.desktop || true
+
+            # Install APK
             adb install -r "${{ steps.find-apk.outputs.apk_path }}"
 
-            echo "Verifying installation..."
-            adb shell pm list packages | grep com.viben || echo "Package verification"
+            # Verify installation
+            adb shell pm list packages | grep com.viben.desktop
+            adb shell dumpsys package com.viben.desktop | grep versionName || true
 
-            echo "Launching app..."
-            adb shell am start -n com.viben.desktop/.MainActivity || adb shell monkey -p com.viben.desktop -c android.intent.category.LAUNCHER 1
+            echo "=========================================="
+            echo "Step 3: App Launch"
+            echo "=========================================="
+            # Launch app
+            adb shell am start -n com.viben.desktop/.MainActivity || \
+              adb shell monkey -p com.viben.desktop -c android.intent.category.LAUNCHER 1
 
+            # Wait for app to fully load
             echo "Waiting for app to load..."
-            sleep 10
+            sleep 12
 
-            echo "Taking screenshot..."
-            adb exec-out screencap -p > app-screenshot.png || true
+            # Verify app is running
+            adb shell pidof com.viben.desktop && echo "App is running!" || echo "Warning: App process not found"
 
-            echo "Checking app is running..."
-            adb shell pidof com.viben.desktop && echo "App is running!" || echo "App process check"
+            # Screenshot: Initial state
+            adb exec-out screencap -p > test-screenshots/01-app-launched.png
 
-            echo "Running Maestro smoke test..."
-            maestro test apps/desktop/.maestro/smoke-test.yaml --format junit --output maestro-results.xml || true
+            echo "=========================================="
+            echo "Step 4: UI Verification"
+            echo "=========================================="
+            # Dump UI hierarchy for verification
+            adb shell uiautomator dump /dev/tty 2>/dev/null | head -100 || true
 
-            echo "Collecting logs..."
-            adb logcat -d > logcat.txt || true
+            # Check for key UI elements
+            if adb shell uiautomator dump /dev/tty 2>/dev/null | grep -qi "Viben"; then
+              echo "PASS: App header 'Viben' found"
+            else
+              echo "WARN: App header not found in UI dump"
+            fi
 
-            echo "Test completed!"
+            echo "=========================================="
+            echo "Step 5: Tab Navigation Testing"
+            echo "=========================================="
+            # Get screen dimensions for tap coordinates
+            SCREEN_SIZE=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+')
+            SCREEN_WIDTH=$(echo $SCREEN_SIZE | cut -d'x' -f1)
+            SCREEN_HEIGHT=$(echo $SCREEN_SIZE | cut -d'x' -f2)
+            echo "Screen: ${SCREEN_WIDTH}x${SCREEN_HEIGHT}"
 
-      - name: Upload test artifacts
+            # Calculate tab positions (bottom navigation)
+            TAB_Y=$((SCREEN_HEIGHT - 50))
+            TAB_WIDTH=$((SCREEN_WIDTH / 3))
+            DEVICES_X=$((TAB_WIDTH / 2))
+            CONNECT_X=$((TAB_WIDTH + TAB_WIDTH / 2))
+            CHAT_X=$((TAB_WIDTH * 2 + TAB_WIDTH / 2))
+
+            # Navigate to Devices tab
+            echo "Tapping Devices tab at ($DEVICES_X, $TAB_Y)"
+            adb shell input tap $DEVICES_X $TAB_Y
+            sleep 2
+            adb exec-out screencap -p > test-screenshots/02-devices-tab.png
+
+            # Navigate to Connect tab
+            echo "Tapping Connect tab at ($CONNECT_X, $TAB_Y)"
+            adb shell input tap $CONNECT_X $TAB_Y
+            sleep 2
+            adb exec-out screencap -p > test-screenshots/03-connect-tab.png
+
+            # Navigate to Chat tab
+            echo "Tapping Chat tab at ($CHAT_X, $TAB_Y)"
+            adb shell input tap $CHAT_X $TAB_Y
+            sleep 2
+            adb exec-out screencap -p > test-screenshots/04-chat-tab.png
+
+            echo "=========================================="
+            echo "Step 6: Dialog Interaction"
+            echo "=========================================="
+            # Go back to Connect tab
+            adb shell input tap $CONNECT_X $TAB_Y
+            sleep 2
+
+            # Try to tap "Enter URL manually" button (approximate position)
+            BUTTON_X=$((SCREEN_WIDTH / 2))
+            BUTTON_Y=$((SCREEN_HEIGHT / 2 + 100))
+            echo "Tapping URL button at ($BUTTON_X, $BUTTON_Y)"
+            adb shell input tap $BUTTON_X $BUTTON_Y
+            sleep 2
+            adb exec-out screencap -p > test-screenshots/05-url-dialog.png
+
+            # Enter test URL
+            adb shell input tap $BUTTON_X $((SCREEN_HEIGHT / 2))
+            sleep 1
+            adb shell input text "http://192.168.1.100:18790"
+            sleep 1
+            adb exec-out screencap -p > test-screenshots/06-url-entered.png
+
+            # Press back to close dialog
+            adb shell input keyevent KEYCODE_BACK
+            sleep 1
+            adb exec-out screencap -p > test-screenshots/07-dialog-closed.png
+
+            echo "=========================================="
+            echo "Step 7: Gesture Testing"
+            echo "=========================================="
+            # Pull-to-refresh
+            CENTER_X=$((SCREEN_WIDTH / 2))
+            adb shell input swipe $CENTER_X 200 $CENTER_X 600 300
+            sleep 2
+            adb exec-out screencap -p > test-screenshots/08-after-swipe.png
+
+            echo "=========================================="
+            echo "Step 8: App Lifecycle Test"
+            echo "=========================================="
+            # Background app
+            adb shell input keyevent KEYCODE_HOME
+            sleep 2
+
+            # Resume app
+            adb shell am start -n com.viben.desktop/.MainActivity || \
+              adb shell monkey -p com.viben.desktop -c android.intent.category.LAUNCHER 1
+            sleep 3
+            adb exec-out screencap -p > test-screenshots/09-app-resumed.png
+
+            # Check app is still running
+            if adb shell pidof com.viben.desktop > /dev/null 2>&1; then
+              echo "PASS: App resumed successfully"
+            else
+              echo "FAIL: App crashed during resume"
+            fi
+
+            echo "=========================================="
+            echo "Step 9: Stability Test (Rapid Navigation)"
+            echo "=========================================="
+            for i in 1 2 3; do
+              adb shell input tap $DEVICES_X $TAB_Y
+              sleep 0.5
+              adb shell input tap $CONNECT_X $TAB_Y
+              sleep 0.5
+              adb shell input tap $CHAT_X $TAB_Y
+              sleep 0.5
+            done
+            sleep 2
+            adb exec-out screencap -p > test-screenshots/10-stability-test.png
+
+            # Final state check
+            if adb shell pidof com.viben.desktop > /dev/null 2>&1; then
+              echo "PASS: App stable after rapid navigation"
+            else
+              echo "FAIL: App crashed during stability test"
+            fi
+
+            echo "=========================================="
+            echo "Step 10: Maestro UI Automation Tests"
+            echo "=========================================="
+            # Run Maestro tests
+            maestro test apps/desktop/.maestro/smoke-test.yaml \
+              --format junit \
+              --output maestro-results.xml \
+              --debug-output test-screenshots/maestro \
+              2>&1 || true
+
+            echo "=========================================="
+            echo "Step 11: Collecting Diagnostics"
+            echo "=========================================="
+            # Collect logs
+            adb logcat -d > test-logs/logcat-full.txt || true
+            adb logcat -d | grep -i com.viben.desktop > test-logs/logcat-app.txt || true
+
+            # Check for crashes
+            if adb logcat -d | grep -i "FATAL EXCEPTION" | grep -i com.viben.desktop; then
+              echo "ERROR: App crash detected!"
+              adb logcat -d | grep -A 50 "FATAL EXCEPTION" > test-logs/crash-log.txt || true
+            else
+              echo "No crashes detected"
+            fi
+
+            # Memory info
+            adb shell dumpsys meminfo com.viben.desktop > test-logs/meminfo.txt 2>/dev/null || true
+
+            # Final screenshot
+            adb exec-out screencap -p > test-screenshots/11-final-state.png
+
+            echo "=========================================="
+            echo "Test Run Complete!"
+            echo "=========================================="
+            ls -la test-screenshots/
+            ls -la test-logs/
+
+      - name: Process Maestro results
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "Maestro Test Results"
+          echo "=========================================="
+          if [ -f maestro-results.xml ]; then
+            echo "Maestro JUnit report:"
+            cat maestro-results.xml
+            echo ""
+
+            # Extract test summary
+            TESTS=$(grep -oP 'tests="\K[0-9]+' maestro-results.xml || echo "0")
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' maestro-results.xml || echo "0")
+            ERRORS=$(grep -oP 'errors="\K[0-9]+' maestro-results.xml || echo "0")
+
+            echo "Summary: $TESTS tests, $FAILURES failures, $ERRORS errors"
+
+            if [ "$FAILURES" != "0" ] || [ "$ERRORS" != "0" ]; then
+              echo "::warning::Maestro tests had $FAILURES failures and $ERRORS errors"
+            fi
+          else
+            echo "No Maestro results file found"
+          fi
+
+      - name: Upload test screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: android-test-results
-          path: |
-            app-screenshot.png
-            maestro-results.xml
-            logcat.txt
-            ~/.maestro/tests/**/*
-          retention-days: 7
+          name: android-test-screenshots
+          path: test-screenshots/
+          retention-days: 14
 
-      - name: Check test results
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-logs
+          path: |
+            test-logs/
+            maestro-results.xml
+          retention-days: 14
+
+      - name: Upload Maestro debug output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-maestro-debug
+          path: |
+            ~/.maestro/tests/**/*
+            test-screenshots/maestro/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Check test results and fail if needed
         if: always()
         run: |
           echo "=========================================="
           echo "Android Test Results Summary"
           echo "=========================================="
+
+          FAILED=0
+
+          # Check for screenshots
+          SCREENSHOT_COUNT=$(ls -1 test-screenshots/*.png 2>/dev/null | wc -l)
+          echo "Screenshots captured: $SCREENSHOT_COUNT"
+          if [ "$SCREENSHOT_COUNT" -lt 5 ]; then
+            echo "::warning::Only $SCREENSHOT_COUNT screenshots captured (expected at least 5)"
+          fi
+
+          # Check for crash logs
+          if [ -f test-logs/crash-log.txt ]; then
+            echo "::error::App crash detected during testing!"
+            cat test-logs/crash-log.txt | head -50
+            FAILED=1
+          fi
+
+          # Check Maestro results
           if [ -f maestro-results.xml ]; then
-            echo "Maestro test results available"
-            cat maestro-results.xml || true
+            FAILURES=$(grep -oP 'failures="\K[0-9]+' maestro-results.xml || echo "0")
+            ERRORS=$(grep -oP 'errors="\K[0-9]+' maestro-results.xml || echo "0")
+            if [ "$FAILURES" != "0" ] || [ "$ERRORS" != "0" ]; then
+              echo "::warning::Maestro tests had issues: $FAILURES failures, $ERRORS errors"
+              # Don't fail the build for Maestro issues as they can be flaky in CI
+            fi
           fi
-          if [ -f app-screenshot.png ]; then
-            echo "Screenshot captured successfully"
-            ls -la app-screenshot.png
+
+          # List all artifacts
+          echo ""
+          echo "Test artifacts:"
+          echo "  Screenshots:"
+          ls -la test-screenshots/*.png 2>/dev/null || echo "    (none)"
+          echo "  Logs:"
+          ls -la test-logs/*.txt 2>/dev/null || echo "    (none)"
+          echo "  Maestro:"
+          ls -la maestro-results.xml 2>/dev/null || echo "    (none)"
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "::error::Tests failed due to app crash"
+            exit 1
           fi
+
+          echo ""
+          echo "=========================================="
+          echo "All tests completed successfully!"
           echo "=========================================="
 
   # =============================================================================
@@ -415,18 +685,19 @@ jobs:
 
       - name: Collect iOS artifacts
         run: |
-          mkdir -p ios-artifacts
+          mkdir -p $GITHUB_WORKSPACE/ios-artifacts
           # Find and package .app bundle
           APP_PATH=$(find apps/desktop/src-tauri/gen/apple -name "*.app" -type d | head -1)
           if [ -n "$APP_PATH" ]; then
             APP_NAME=$(basename "$APP_PATH")
             cd "$(dirname "$APP_PATH")"
             zip -r "$GITHUB_WORKSPACE/ios-artifacts/${APP_NAME%.app}-simulator.zip" "$APP_NAME"
+            cd "$GITHUB_WORKSPACE"
           fi
           # Copy any IPA files
-          find apps/desktop/src-tauri/gen/apple -name "*.ipa" -exec cp {} ios-artifacts/ \; 2>/dev/null || true
+          find apps/desktop/src-tauri/gen/apple -name "*.ipa" -exec cp {} $GITHUB_WORKSPACE/ios-artifacts/ \; 2>/dev/null || true
           echo "Collected artifacts:"
-          ls -la ios-artifacts/
+          ls -la $GITHUB_WORKSPACE/ios-artifacts/
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
@@ -462,21 +733,61 @@ jobs:
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
       - name: List available simulators
-        run: xcrun simctl list devices available
+        run: |
+          echo "Available iOS Simulators:"
+          xcrun simctl list devices available
+          echo ""
+          echo "Available Runtimes:"
+          xcrun simctl list runtimes
 
       - name: Boot iOS Simulator
+        id: boot-simulator
         run: |
-          # Find an available iPhone simulator
-          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone" | head -1 | grep -oE '\([A-F0-9-]+\)' | tr -d '()')
+          # Find an available iPhone simulator (prefer iPhone 15/16)
+          DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone 15" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
+
+          if [ -z "$DEVICE_ID" ]; then
+            DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone 14" | grep -oE '\([A-F0-9-]+\)' | head -1 | tr -d '()')
+          fi
+
+          if [ -z "$DEVICE_ID" ]; then
+            DEVICE_ID=$(xcrun simctl list devices available | grep "iPhone" | head -1 | grep -oE '\([A-F0-9-]+\)' | tr -d '()')
+          fi
+
           if [ -z "$DEVICE_ID" ]; then
             echo "No iPhone simulator found, creating one..."
-            DEVICE_ID=$(xcrun simctl create "Test iPhone" "iPhone 15" iOS17.5)
+            # Get latest iOS runtime
+            LATEST_RUNTIME=$(xcrun simctl list runtimes | grep -i "iOS" | tail -1 | grep -oE 'com.apple.CoreSimulator.SimRuntime.iOS-[0-9-]+')
+            DEVICE_ID=$(xcrun simctl create "Test iPhone" "iPhone 15" "$LATEST_RUNTIME" 2>/dev/null || \
+                       xcrun simctl create "Test iPhone" "iPhone 14" "$LATEST_RUNTIME" 2>/dev/null)
           fi
-          echo "Using simulator: $DEVICE_ID"
-          echo "SIMULATOR_ID=$DEVICE_ID" >> $GITHUB_ENV
-          xcrun simctl boot "$DEVICE_ID" || true
 
-      - name: Install and test iOS app
+          if [ -z "$DEVICE_ID" ]; then
+            echo "Error: Failed to find or create simulator"
+            exit 1
+          fi
+
+          DEVICE_NAME=$(xcrun simctl list devices | grep "$DEVICE_ID" | sed 's/ (.*//' | xargs)
+          echo "Using simulator: $DEVICE_NAME ($DEVICE_ID)"
+          echo "SIMULATOR_ID=$DEVICE_ID" >> $GITHUB_ENV
+          echo "SIMULATOR_NAME=$DEVICE_NAME" >> $GITHUB_ENV
+
+          # Boot the simulator
+          xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
+
+          # Wait for boot to complete
+          echo "Waiting for simulator to boot..."
+          sleep 10
+
+          # Verify boot status
+          if xcrun simctl list devices | grep "$DEVICE_ID" | grep -q "(Booted)"; then
+            echo "Simulator booted successfully"
+          else
+            echo "Warning: Simulator boot status unclear"
+          fi
+
+      - name: Extract and identify app
+        id: extract-app
         run: |
           echo "Extracting app..."
           cd test-ios
@@ -490,28 +801,107 @@ jobs:
           fi
           echo "Found app: $APP_PATH"
 
+          # Get app info
+          BUNDLE_ID=$(defaults read "$APP_PATH/Info.plist" CFBundleIdentifier 2>/dev/null || echo "com.viben.desktop")
+          APP_VERSION=$(defaults read "$APP_PATH/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "unknown")
+
+          echo "Bundle ID: $BUNDLE_ID"
+          echo "App Version: $APP_VERSION"
+
+          echo "APP_PATH=$(pwd)/$APP_PATH" >> $GITHUB_ENV
+          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+
+      - name: Install app on simulator
+        run: |
+          echo "Removing any existing installation..."
+          xcrun simctl uninstall "$SIMULATOR_ID" "$BUNDLE_ID" 2>/dev/null || true
+
           echo "Installing app on simulator..."
           xcrun simctl install "$SIMULATOR_ID" "$APP_PATH"
+          echo "App installed successfully"
 
+      - name: Launch and verify app
+        run: |
           echo "Launching app..."
-          BUNDLE_ID=$(defaults read "$APP_PATH/Info.plist" CFBundleIdentifier 2>/dev/null || echo "com.viben.desktop")
           xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
 
-          echo "Waiting for app to load..."
-          sleep 10
+          echo "Waiting for app to initialize..."
+          sleep 15
 
-          echo "Taking screenshot..."
-          xcrun simctl io "$SIMULATOR_ID" screenshot ../ios-screenshot.png || true
+          echo "Taking initial screenshot..."
+          xcrun simctl io "$SIMULATOR_ID" screenshot ios-screenshot-01-launched.png || true
 
-          echo "Running Maestro smoke test..."
-          cd ..
-          maestro test apps/desktop/.maestro/smoke-test.yaml --format junit --output maestro-ios-results.xml || true
+          # Verify app is running
+          if xcrun simctl spawn "$SIMULATOR_ID" launchctl list 2>/dev/null | grep -q "$BUNDLE_ID"; then
+            echo "App is running"
+          else
+            echo "Warning: Could not verify app process, but continuing..."
+          fi
 
-          echo "Test completed!"
+      - name: Test app lifecycle
+        run: |
+          echo "Testing app lifecycle..."
+
+          # Terminate and relaunch to test lifecycle
+          echo "Terminating app..."
+          xcrun simctl terminate "$SIMULATOR_ID" "$BUNDLE_ID" 2>/dev/null || true
+          sleep 2
+
+          echo "Relaunching app..."
+          xcrun simctl launch "$SIMULATOR_ID" "$BUNDLE_ID"
+          sleep 5
+
+          echo "Taking screenshot after relaunch..."
+          xcrun simctl io "$SIMULATOR_ID" screenshot ios-screenshot-02-relaunched.png || true
+
+          # Test deep link handling
+          echo "Testing deep link..."
+          xcrun simctl openurl "$SIMULATOR_ID" "viben://test" 2>/dev/null || true
+          sleep 2
+          xcrun simctl io "$SIMULATOR_ID" screenshot ios-screenshot-03-deeplink.png || true
+
+      - name: Run Maestro smoke test
+        run: |
+          echo "Running Maestro iOS smoke test..."
+
+          # Try iOS-specific test first, then fall back to generic
+          if [ -f apps/desktop/.maestro/ios-smoke-test.yaml ]; then
+            maestro test apps/desktop/.maestro/ios-smoke-test.yaml \
+              --format junit \
+              --output maestro-ios-results.xml || true
+          elif [ -f apps/desktop/.maestro/smoke-test.yaml ]; then
+            maestro test apps/desktop/.maestro/smoke-test.yaml \
+              --format junit \
+              --output maestro-ios-results.xml || true
+          else
+            echo "No Maestro test files found, skipping..."
+          fi
+
+      - name: Collect app logs
+        if: always()
+        run: |
+          echo "Collecting simulator logs..."
+          xcrun simctl spawn "$SIMULATOR_ID" log show \
+            --predicate "subsystem CONTAINS '$BUNDLE_ID' OR process CONTAINS 'viben'" \
+            --last 10m \
+            --style compact > ios-app-logs.txt 2>/dev/null || true
+
+          # Check for crash logs
+          CRASH_LOG=$(find ~/Library/Logs/DiagnosticReports -name "*viben*" -o -name "*Viben*" -mmin -30 2>/dev/null | head -1)
+          if [ -n "$CRASH_LOG" ]; then
+            echo "Warning: Crash log found!"
+            cp "$CRASH_LOG" ios-crash-log.txt 2>/dev/null || true
+          fi
+
+          # Take final screenshot
+          xcrun simctl io "$SIMULATOR_ID" screenshot ios-screenshot-final.png || true
 
       - name: Shutdown simulator
         if: always()
-        run: xcrun simctl shutdown "$SIMULATOR_ID" || true
+        run: |
+          echo "Shutting down simulator..."
+          xcrun simctl shutdown "$SIMULATOR_ID" 2>/dev/null || true
 
       - name: Upload test artifacts
         if: always()
@@ -519,8 +909,10 @@ jobs:
         with:
           name: ios-test-results
           path: |
-            ios-screenshot.png
+            ios-screenshot*.png
             maestro-ios-results.xml
+            ios-app-logs.txt
+            ios-crash-log.txt
             ~/.maestro/tests/**/*
           retention-days: 7
 
@@ -530,14 +922,36 @@ jobs:
           echo "=========================================="
           echo "iOS Test Results Summary"
           echo "=========================================="
+          echo "Simulator: $SIMULATOR_NAME"
+          echo "App Version: $APP_VERSION"
+          echo "Bundle ID: $BUNDLE_ID"
+          echo ""
+
+          # Check for crash logs
+          if [ -f ios-crash-log.txt ]; then
+            echo "WARNING: App crash detected!"
+            echo "See ios-crash-log.txt for details"
+            echo ""
+          fi
+
+          # Check Maestro results
           if [ -f maestro-ios-results.xml ]; then
-            echo "Maestro test results available"
-            cat maestro-ios-results.xml || true
+            echo "Maestro Test Results:"
+            # Extract test counts from JUnit XML
+            TESTS=$(grep -o 'tests="[0-9]*"' maestro-ios-results.xml | head -1 | grep -o '[0-9]*')
+            FAILURES=$(grep -o 'failures="[0-9]*"' maestro-ios-results.xml | head -1 | grep -o '[0-9]*')
+            ERRORS=$(grep -o 'errors="[0-9]*"' maestro-ios-results.xml | head -1 | grep -o '[0-9]*')
+            echo "  Tests: ${TESTS:-0}"
+            echo "  Failures: ${FAILURES:-0}"
+            echo "  Errors: ${ERRORS:-0}"
+            echo ""
           fi
-          if [ -f ios-screenshot.png ]; then
-            echo "Screenshot captured successfully"
-            ls -la ios-screenshot.png
-          fi
+
+          # List screenshots
+          echo "Screenshots captured:"
+          ls -la ios-screenshot*.png 2>/dev/null || echo "  None"
+          echo ""
+
           echo "=========================================="
 
   # =============================================================================

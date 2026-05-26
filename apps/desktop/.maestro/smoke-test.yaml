@@ -2,71 +2,74 @@ appId: com.viben.desktop
 ---
 # Viben Mobile Smoke Test
 # This test verifies the mobile app launches correctly and key UI elements are present
+#
+# UI Structure:
+# - Header: "Viben" branding + connection status (Connected/Disconnected)
+# - Bottom Tab Navigation: Devices | Connect | Chat
+# - Pages:
+#   - Connect: QR scanner, "Connect to Desktop" title, "Enter URL manually" button
+#   - Devices: Device list (shows "Not connected to any Gateway" when disconnected)
+#   - Chat: Chat interface (shows "Connect to a Gateway to start chatting" when disconnected)
 
-# Launch the app fresh
+# =============================================================================
+# App Launch & Initial State
+# =============================================================================
+
+# Launch the app fresh with cleared state
 - launchApp:
     clearState: true
 
-# Wait for app to fully load (mobile layout should render)
+# Wait for app to fully load - the header with "Viben" branding should be visible
 - extendedWaitUntil:
     visible:
       text: "Viben"
     timeout: 30000
 
-# Screenshot: Initial app state
+# Screenshot: Initial app state after launch
 - takeScreenshot: 01-app-launched
 
 # =============================================================================
-# Test 1: Verify header and branding
+# Test 1: Header & Branding Verification
 # =============================================================================
+
+# Verify the main app branding is present
 - assertVisible:
     text: "Viben"
 
-# Verify connection status indicator is present (should show "Disconnected" initially)
+# Verify connection status indicator shows "Disconnected" (initial state)
 - assertVisible:
     text: "Disconnected"
-    optional: true
 
-# Screenshot: Header verified
+# Screenshot: Header with branding and status
 - takeScreenshot: 02-header-verified
 
 # =============================================================================
-# Test 2: Verify bottom tab navigation exists
+# Test 2: Bottom Tab Navigation Presence
 # =============================================================================
 
-# Check for Devices tab
+# Verify all three navigation tabs are visible
 - assertVisible:
     text: "Devices"
 
-# Check for Connect tab
 - assertVisible:
     text: "Connect"
 
-# Check for Chat tab
 - assertVisible:
     text: "Chat"
 
-# Screenshot: Navigation tabs verified
+# Screenshot: Bottom navigation tabs verified
 - takeScreenshot: 03-tabs-verified
 
 # =============================================================================
-# Test 3: Verify Connect page content
+# Test 3: Connect Page - Default Landing
 # =============================================================================
 
-# Tap on Connect tab to ensure we're on the connect page
-- tapOn:
-    text: "Connect"
-
-- extendedWaitUntil:
-    visible:
-      text: "Connect to Desktop"
-    timeout: 10000
-
+# The app should start on the Connect page by default
 # Verify connect page title
 - assertVisible:
     text: "Connect to Desktop"
 
-# Verify QR code instruction text
+# Verify the subtitle explaining what to do
 - assertVisible:
     text: "Scan the QR code"
     optional: true
@@ -79,90 +82,209 @@ appId: com.viben.desktop
 - takeScreenshot: 04-connect-page
 
 # =============================================================================
-# Test 4: Test manual URL dialog
+# Test 4: Manual URL Entry Dialog
 # =============================================================================
 
-# Open manual URL dialog
+# Open manual URL dialog by tapping the button
 - tapOn:
     text: "Enter URL manually"
 
-# Wait for dialog to appear
+# Wait for dialog animation and content to appear
 - extendedWaitUntil:
     visible:
       text: "Enter Gateway URL"
     timeout: 5000
 
-# Verify dialog title
+# Verify dialog title is displayed
 - assertVisible:
     text: "Enter Gateway URL"
 
-# Verify input placeholder or connect button exists
+# Verify the Connect button is present in the dialog
 - assertVisible:
     text: "Connect"
 
-# Screenshot: Manual URL dialog
+# Screenshot: Manual URL entry dialog
 - takeScreenshot: 05-manual-url-dialog
 
-# Close dialog (tap outside or press back)
+# Test input field by entering a test URL
+- tapOn:
+    id: ".*input.*"
+    optional: true
+
+# Type a test URL (this tests keyboard interaction)
+- inputText: "http://192.168.1.100:18790"
+
+# Screenshot: Dialog with entered URL
+- takeScreenshot: 06-dialog-with-input
+
+# Close dialog using back button
 - back
 
+# Wait for dialog to close
+- extendedWaitUntil:
+    visible:
+      text: "Connect to Desktop"
+    timeout: 3000
+
+# Screenshot: After closing dialog
+- takeScreenshot: 07-dialog-closed
+
 # =============================================================================
-# Test 5: Navigate to Devices tab
+# Test 5: Navigate to Devices Tab
 # =============================================================================
 
 # Tap on Devices tab
 - tapOn:
     text: "Devices"
 
-# Wait for navigation
+# Wait for devices page content
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Not connected to any Gateway"
     timeout: 5000
 
-# Screenshot: Devices page
-- takeScreenshot: 06-devices-page
+# Verify the disconnected state message on devices page
+- assertVisible:
+    text: "Not connected to any Gateway"
+
+# Verify the hint to connect
+- assertVisible:
+    text: "Go to Connect to pair with your desktop"
+
+# Screenshot: Devices page (disconnected state)
+- takeScreenshot: 08-devices-page-disconnected
 
 # =============================================================================
-# Test 6: Navigate to Chat tab
+# Test 6: Navigate to Chat Tab
 # =============================================================================
 
 # Tap on Chat tab
 - tapOn:
     text: "Chat"
 
-# Wait for navigation
+# Wait for chat page content
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Connect to a Gateway to start chatting"
     timeout: 5000
 
-# Screenshot: Chat page
-- takeScreenshot: 07-chat-page
+# Verify the disconnected state message on chat page
+- assertVisible:
+    text: "Connect to a Gateway to start chatting"
+
+# Screenshot: Chat page (disconnected state)
+- takeScreenshot: 09-chat-page-disconnected
 
 # =============================================================================
-# Test 7: Verify app stability - cycle through tabs
+# Test 7: Tab Navigation Stability
 # =============================================================================
 
-# Navigate back to Connect
+# Rapidly cycle through tabs to test stability
+
+# Go to Connect
 - tapOn:
     text: "Connect"
 
 - extendedWaitUntil:
     visible:
       text: "Connect to Desktop"
-    timeout: 5000
+    timeout: 3000
 
-# Navigate to Devices again
+# Screenshot: Back to Connect
+- takeScreenshot: 10-back-to-connect
+
+# Go to Devices
 - tapOn:
     text: "Devices"
 
-# Wait briefly for stability
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Not connected to any Gateway"
+    timeout: 3000
+
+# Go to Chat
+- tapOn:
+    text: "Chat"
+
+- extendedWaitUntil:
+    visible:
+      text: "Connect to a Gateway to start chatting"
+    timeout: 3000
+
+# Go back to Connect for final state
+- tapOn:
+    text: "Connect"
+
+- extendedWaitUntil:
+    visible:
+      text: "Connect to Desktop"
     timeout: 3000
 
 # Screenshot: Final stability check
-- takeScreenshot: 08-stability-verified
+- takeScreenshot: 11-final-state
 
 # =============================================================================
-# Test Complete
+# Test 8: Swipe Gestures (if applicable)
 # =============================================================================
+
+# Test pull-to-refresh or swipe gestures on the connect page
+- swipe:
+    direction: DOWN
+    duration: 500
+
+# Wait for any refresh to complete
+- extendedWaitUntil:
+    visible:
+      text: "Connect to Desktop"
+    timeout: 3000
+
+# Screenshot: After swipe gesture
+- takeScreenshot: 12-after-swipe
+
+# =============================================================================
+# Test 9: App Backgrounding & Resume
+# =============================================================================
+
+# Press home to background the app
+- pressKey: Home
+
+# Wait briefly
+- extendedWaitUntil:
+    visible: false
+    timeout: 2000
+    optional: true
+
+# Relaunch the app (should resume, not restart since we didn't clear state)
+- launchApp
+
+# Wait for app to resume
+- extendedWaitUntil:
+    visible:
+      text: "Viben"
+    timeout: 10000
+
+# Verify app state is preserved
+- assertVisible:
+    text: "Connect to Desktop"
+
+# Screenshot: App resumed from background
+- takeScreenshot: 13-app-resumed
+
+# =============================================================================
+# Test Complete - Summary
+# =============================================================================
+#
+# Tests performed:
+# 1. App launch and initial rendering
+# 2. Header branding ("Viben") and connection status display
+# 3. Bottom tab navigation (Devices, Connect, Chat)
+# 4. Connect page content verification
+# 5. Manual URL entry dialog interaction
+# 6. Keyboard input in dialog
+# 7. Devices page (disconnected state)
+# 8. Chat page (disconnected state)
+# 9. Tab navigation stability (rapid switching)
+# 10. Swipe gesture handling
+# 11. App backgrounding and resume
+#
+# Screenshots captured at each major step for visual verification
