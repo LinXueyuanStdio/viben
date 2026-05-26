@@ -386,14 +386,19 @@ jobs:
             FAILED=1
           fi
 
-          # Check Maestro results
+          # Check Maestro results - STRICT: failures should fail the build
           if [ -f maestro-results.xml ]; then
             FAILURES=$(grep -oP 'failures="\K[0-9]+' maestro-results.xml || echo "0")
             ERRORS=$(grep -oP 'errors="\K[0-9]+' maestro-results.xml || echo "0")
             if [ "$FAILURES" != "0" ] || [ "$ERRORS" != "0" ]; then
-              echo "::warning::Maestro tests had issues: $FAILURES failures, $ERRORS errors"
-              # Don't fail the build for Maestro issues as they can be flaky in CI
+              echo "::error::Maestro tests failed: $FAILURES failures, $ERRORS errors"
+              cat maestro-results.xml
+              FAILED=1
+            else
+              echo "Maestro tests passed"
             fi
+          else
+            echo "::warning::No Maestro results found - tests may have been skipped"
           fi
 
           # List all artifacts
