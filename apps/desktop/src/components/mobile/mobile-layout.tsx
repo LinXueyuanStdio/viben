@@ -53,14 +53,15 @@ export function MobileLayout() {
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
-      <nav className="flex border-t bg-background">
+      {/* Bottom navigation with safe area padding for Android/iOS system navigation */}
+      <nav className="flex border-t bg-background pb-[env(safe-area-inset-bottom,0px)]">
         {tabKeys.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
               cn(
-                "flex-1 flex flex-col items-center gap-1 py-2 text-xs",
+                "flex-1 flex flex-col items-center gap-1 py-3 text-xs",
                 isActive ? "text-primary" : "text-muted-foreground",
               )
             }
