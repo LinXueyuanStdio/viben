@@ -32,8 +32,9 @@ appId: com.viben.desktop
     text: "Viben"
 
 # Verify connection status indicator shows "Disconnected" (initial state)
+# Note: WebView may render "Viben" and "Disconnected" as one concatenated text "VibenDisconnected"
 - assertVisible:
-    text: "Disconnected"
+    text: ".*Disconnected.*"
 
 # The app should start on the Connect page by default
 - assertVisible:
