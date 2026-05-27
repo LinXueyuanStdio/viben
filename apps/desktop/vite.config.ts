@@ -1,11 +1,25 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import postcssCascadeLayers from "@csstools/postcss-cascade-layers";
 import path from "path";
 import { fileURLToPath } from "url";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+
+// Check if building for mobile (Android/iOS)
+// Mobile builds need CSS @layer polyfill because Android WebView (Chrome 86) doesn't support @layer (requires Chrome 99+)
+// TAURI_ENV_PLATFORM is set by `tauri android build` or `tauri ios build`
+// VITE_MOBILE_BUILD can be set manually for testing
+// @ts-expect-error process is a nodejs global
+const platform = process.env.TAURI_ENV_PLATFORM || "";
+// @ts-expect-error process is a nodejs global
+const isMobileBuild = platform === "android" || platform === "ios" || process.env.VITE_MOBILE_BUILD === "true";
+
+if (isMobileBuild) {
+  console.log(`[vite.config] Mobile build detected (platform=${platform}), enabling CSS @layer polyfill`);
+}
 
 // Node.js-only packages that should be externalized for browser builds
 const nodeOnlyPackages = [
@@ -59,6 +73,18 @@ const nodeOnlyPackages = [
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  // PostCSS config for Android WebView (Chrome 86) compatibility
+  // CSS Cascade Layers (@layer) requires Chrome 99+, but Android WebView API 30
+  // uses Chrome ~86. The @csstools/postcss-cascade-layers plugin transforms
+  // @layer rules into flat CSS that works in older browsers.
+  // Only enabled for mobile builds to avoid unnecessary CSS bloat on desktop.
+  css: isMobileBuild
+    ? {
+        postcss: {
+          plugins: [postcssCascadeLayers()],
+        },
+      }
+    : undefined,
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
