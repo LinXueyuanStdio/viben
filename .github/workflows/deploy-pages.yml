@@ -7,8 +7,8 @@ on:
     paths:
       - 'apps/docs/**'
       - 'packages/*/example/**'
-      - 'packages/presentation/src/**'
-      - 'packages/chat/src/**'
+      - 'packages/*/src/**'
+      - 'scripts/build-examples.sh'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -56,19 +56,13 @@ jobs:
       - name: Build documentation
         run: pnpm --filter @viben/docs build
 
-      - name: Build examples
-        run: |
-          VITE_BASE_PATH=/viben/examples/presentation/ pnpm --filter @viben/presentation-example build
-          VITE_BASE_PATH=/viben/examples/chat/ pnpm --filter @viben/chat-example build
-
       - name: Prepare deployment directory
         run: |
           mv apps/docs/build ./build
           cp provider.index.json ./build/assets/
-          mkdir -p ./build/examples/presentation
-          mkdir -p ./build/examples/chat
-          cp -r packages/presentation/example/dist/* ./build/examples/presentation/
-          cp -r packages/chat/example/dist/* ./build/examples/chat/
+
+      - name: Build examples
+        run: ./scripts/build-examples.sh --out ./build/examples
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
