@@ -8,7 +8,7 @@ on:
       - 'apps/docs/**'
       - 'packages/*/example/**'
       - 'packages/*/src/**'
-      - 'scripts/build-examples.sh'
+      - 'scripts/deploy-pages/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -62,7 +62,7 @@ jobs:
           cp provider.index.json ./build/assets/
 
       - name: Build examples
-        run: ./scripts/build-examples.sh --out ./build/examples
+        run: ./scripts/deploy-pages/build-examples.sh --out ./build/examples
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
