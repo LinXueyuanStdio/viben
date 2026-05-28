@@ -4,20 +4,247 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Viben Examples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 600px; margin: 4rem auto; padding: 0 1rem; }
-  h1 { font-size: 1.5rem; margin-bottom: 2rem; }
-  ul { list-style: none; padding: 0; }
-  li { margin: 0.75rem 0; }
-  a { color: #2563eb; text-decoration: none; font-size: 1.1rem; }
-  a:hover { text-decoration: underline; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --surface-hover: #334155;
+    --text: #F8FAFC;
+    --text-muted: #94A3B8;
+    --accent: #22C55E;
+    --accent-hover: #16A34A;
+    --border: #334155;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --surface-hover: #F1F5F9;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --accent: #16A34A;
+      --accent-hover: #15803D;
+      --border: #E2E8F0;
+    }
+  }
+
+  body {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 4rem 1.5rem;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .logo svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    margin-bottom: 0.75rem;
+  }
+
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    cursor: pointer;
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent);
+  }
+
+  .card:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--accent), #10B981);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .card-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .card-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-transform: capitalize;
+  }
+
+  .card-desc {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    flex-grow: 1;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+  }
+
+  .card-footer svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 200ms ease;
+  }
+
+  .card:hover .card-footer svg {
+    transform: translateX(4px);
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+  }
+
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 2rem 1rem; }
+    h1 { font-size: 2rem; }
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card-footer svg { transition: none; }
+    .card:hover { transform: none; }
+  }
 </style>
 </head>
 <body>
-<h1>Viben Examples</h1>
-<ul>
-  <li><a href="./chat/">chat</a></li>
-  <li><a href="./presentation/">presentation</a></li>
-</ul>
+<div class="container">
+  <header>
+    <div class="logo">
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="48" height="48" rx="12" fill="url(#grad)"/>
+        <path d="M14 32L24 16L34 32H14Z" fill="white" fill-opacity="0.9"/>
+        <defs>
+          <linearGradient id="grad" x1="0" y1="0" x2="48" y2="48">
+            <stop stop-color="#22C55E"/>
+            <stop offset="1" stop-color="#10B981"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <h1>Viben Examples</h1>
+    <p class="subtitle">Interactive demos showcasing Viben's component libraries and capabilities</p>
+  </header>
+  <div class="grid">
+
+    <a href="./chat/" class="card">
+      <div class="card-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
+      </div>
+      <h2 class="card-title">chat</h2>
+      <p class="card-desc">Real-time chat interface with streaming support and message components</p>
+      <div class="card-footer">
+        <span>View Demo</span>
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </div>
+    </a>
+
+    <a href="./presentation/" class="card">
+      <div class="card-icon">
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm14 12v4m-6 0h12"/>
+        </svg>
+      </div>
+      <h2 class="card-title">presentation</h2>
+      <p class="card-desc">Step-based presentation engine with animations and cinematic effects</p>
+      <div class="card-footer">
+        <span>View Demo</span>
+        <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </div>
+    </a>
+
+  </div>
+  <footer>
+    <p>Built with <a href="https://github.com/LinXueyuanStdio/viben" target="_blank" rel="noopener">Viben</a></p>
+  </footer>
+</div>
 </body>
 </html>
