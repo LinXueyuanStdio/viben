@@ -1,7 +1,8 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import postcssCascadeLayers from "@csstools/postcss-cascade-layers";
+import postcss from "postcss";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -19,6 +20,49 @@ const isMobileBuild = platform === "android" || platform === "ios" || process.en
 
 if (isMobileBuild) {
   console.log(`[vite.config] Mobile build detected (platform=${platform}), enabling CSS @layer polyfill`);
+}
+
+/**
+ * Custom Vite plugin to run postcss-cascade-layers AFTER @tailwindcss/vite processes CSS.
+ *
+ * IMPORTANT: @tailwindcss/vite bypasses Vite's PostCSS pipeline entirely, so adding
+ * postcss-cascade-layers to css.postcss.plugins does NOT work. This plugin uses
+ * generateBundle hook to transform the final CSS bundle after all processing is done.
+ *
+ * This polyfills CSS @layer for Android WebView (Chrome 86) which doesn't support
+ * cascade layers (requires Chrome 99+).
+ */
+function cascadeLayersPolyfill(): Plugin {
+  return {
+    name: "cascade-layers-polyfill",
+    enforce: "post",
+    async generateBundle(_options, bundle) {
+      const cascadeLayersPlugin = postcssCascadeLayers();
+
+      for (const fileName of Object.keys(bundle)) {
+        const chunk = bundle[fileName];
+        // Only process CSS assets
+        if (chunk.type !== "asset" || !fileName.endsWith(".css")) continue;
+
+        const source = typeof chunk.source === "string" ? chunk.source : chunk.source.toString();
+
+        // Only process if @layer is present
+        if (!source.includes("@layer")) continue;
+
+        console.log(`[cascade-layers-polyfill] Processing ${fileName}...`);
+
+        try {
+          const result = await postcss([cascadeLayersPlugin]).process(source, {
+            from: fileName,
+          });
+          chunk.source = result.css;
+          console.log(`[cascade-layers-polyfill] Successfully transformed ${fileName}`);
+        } catch (error) {
+          console.error(`[cascade-layers-polyfill] Error processing ${fileName}:`, error);
+        }
+      }
+    },
+  };
 }
 
 // Node.js-only packages that should be externalized for browser builds
@@ -72,19 +116,13 @@ const nodeOnlyPackages = [
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
-  // PostCSS config for Android WebView (Chrome 86) compatibility
-  // CSS Cascade Layers (@layer) requires Chrome 99+, but Android WebView API 30
-  // uses Chrome ~86. The @csstools/postcss-cascade-layers plugin transforms
-  // @layer rules into flat CSS that works in older browsers.
-  // Only enabled for mobile builds to avoid unnecessary CSS bloat on desktop.
-  css: isMobileBuild
-    ? {
-        postcss: {
-          plugins: [postcssCascadeLayers()],
-        },
-      }
-    : undefined,
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Only apply cascade-layers polyfill for mobile builds
+    // This MUST run after tailwindcss() to transform the @layer rules it generates
+    ...(isMobileBuild ? [cascadeLayersPolyfill()] : []),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
