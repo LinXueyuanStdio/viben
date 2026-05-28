@@ -1,4 +1,4 @@
-name: Deploy Documentation
+name: Deploy Documentation & Examples
 
 on:
   push:
@@ -6,7 +6,10 @@ on:
       - main
     paths:
       - 'apps/docs/**'
-      - '.github/workflows/deploy-docs.yml'
+      - 'packages/*/example/**'
+      - 'packages/presentation/src/**'
+      - 'packages/chat/src/**'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -53,10 +56,19 @@ jobs:
       - name: Build documentation
         run: pnpm --filter @viben/docs build
 
+      - name: Build examples
+        run: |
+          pnpm --filter @viben/presentation-example build -- --base=/viben/examples/presentation/
+          pnpm --filter @viben/chat-example build -- --base=/viben/examples/chat/
+
       - name: Prepare deployment directory
         run: |
           mv apps/docs/build ./build
           cp provider.index.json ./build/assets/
+          mkdir -p ./build/examples/presentation
+          mkdir -p ./build/examples/chat
+          cp -r packages/presentation/example/dist/* ./build/examples/presentation/
+          cp -r packages/chat/example/dist/* ./build/examples/chat/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
