@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* Scan workspace packages for Tailwind classes */
+/* Scan all source files for Tailwind classes */
+@source "./**/*.tsx";
+@source "./**/*.ts";
 @source "../node_modules/@viben/kanban/src/**/*.tsx";
 @source "../node_modules/@viben/ui/src/**/*.tsx";
 
