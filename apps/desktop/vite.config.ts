@@ -129,6 +129,11 @@ export default defineConfig(async () => ({
   },
   // Build optimizations for production
   build: {
+    // Disable CSS code splitting to ensure all CSS (including Tailwind) ends up in one file
+    // With multiple HTML entry points, Vite's default CSS code splitting can cause Tailwind
+    // CSS to not be properly linked to the main index.html. Setting this to false ensures
+    // a single CSS bundle that all entry points can use.
+    cssCodeSplit: false,
     // Enable code splitting for dynamic imports
     rollupOptions: {
       input: {

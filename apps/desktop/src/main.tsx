@@ -1,9 +1,12 @@
+// CSS must be imported FIRST for @tailwindcss/vite to properly detect all utility classes
+// during production build (before any components that use Tailwind classes are imported)
+import "./index.css";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 import { Toaster } from "@/components/ui/toaster";
-import "./index.css";
 
 // Initialize i18n before rendering
 import "./i18n";
