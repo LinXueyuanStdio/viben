@@ -1,10 +1,17 @@
 @import "tailwindcss";
 
+/* Use .dark class for dark mode instead of prefers-color-scheme media query */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Scan all source files for Tailwind classes */
 @source "./**/*.tsx";
 @source "./**/*.ts";
 @source "../node_modules/@viben/kanban/src/**/*.tsx";
 @source "../node_modules/@viben/ui/src/**/*.tsx";
+
+/* Safelist HEX color classes for Android WebView (Chrome 86) compatibility
+ * These bypass CSS variable resolution which can fail on older browsers */
+@source inline("border-[#d97706] text-[#d97706] border-[#f59e0b] text-[#f59e0b] border-[#d6d3d1] border-[#57534e]");
 
 /* ===== Tailwind v4 Theme Configuration =====
  * IMPORTANT: @theme is processed at BUILD TIME, not runtime.

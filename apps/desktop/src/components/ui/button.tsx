@@ -68,11 +68,17 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, style, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
+    // For outline variant, add inline style fallback for Android WebView (Chrome 86)
+    // CSS class-based colors may not resolve correctly on older browsers
+    const outlineStyleFallback = variant === "outline"
+      ? { borderColor: '#d97706', color: '#d97706' }
+      : undefined;
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
+        style={{ ...outlineStyleFallback, ...style }}
         ref={ref}
         {...props}
       />
