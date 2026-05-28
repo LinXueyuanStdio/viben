@@ -4,6 +4,7 @@ import fs from "node:fs"
 import path from "node:path"
 
 export default defineConfig({
+  base: process.env.VITE_BASE_PATH || "/",
   plugins: [
     react(),
     {
@@ -27,6 +28,11 @@ export default defineConfig({
       },
     },
   ],
+  resolve: {
+    alias: {
+      "node:zlib": path.resolve(__dirname, "src/polyfills/empty.ts"),
+    },
+  },
   server: {
     port: 5188,
   },

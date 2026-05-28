@@ -58,8 +58,8 @@ jobs:
 
       - name: Build examples
         run: |
-          pnpm --filter @viben/presentation-example build -- --base=/viben/examples/presentation/
-          pnpm --filter @viben/chat-example build -- --base=/viben/examples/chat/
+          VITE_BASE_PATH=/viben/examples/presentation/ pnpm --filter @viben/presentation-example build
+          VITE_BASE_PATH=/viben/examples/chat/ pnpm --filter @viben/chat-example build
 
       - name: Prepare deployment directory
         run: |
