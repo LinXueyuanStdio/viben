@@ -18,17 +18,21 @@ const buttonVariants = cva(
         default: [
           "bg-primary text-primary-foreground shadow-md",
           "hover:bg-primary/90",
-          "hover:shadow-[0_8px_16px_-4px_oklch(0.70_0.18_75_/_0.3)]",
+          // Use rgba for Android WebView (Chrome 86) compatibility - oklch requires Chrome 111+
+          "hover:shadow-[0_8px_16px_-4px_rgba(210,159,48,0.3)]",
           "active:translate-y-0 active:shadow-sm",
         ],
         destructive: [
           "bg-destructive text-destructive-foreground shadow-sm",
           "hover:bg-destructive/90",
-          "hover:shadow-[0_8px_16px_-4px_oklch(0.58_0.22_25_/_0.3)]",
+          // Use rgba for Android WebView (Chrome 86) compatibility - oklch requires Chrome 111+
+          "hover:shadow-[0_8px_16px_-4px_rgba(189,63,63,0.3)]",
           "active:translate-y-0 active:shadow-sm",
         ],
         outline: [
-          "border-2 border-primary bg-transparent text-primary",
+          // Use explicit HEX color for Android WebView (Chrome 86) - CSS variable resolution can fail
+          "border-2 border-[#d97706] bg-transparent text-[#d97706]",
+          "dark:border-[#f59e0b] dark:text-[#f59e0b]",
           "hover:bg-primary/10",
           "active:translate-y-0",
         ],

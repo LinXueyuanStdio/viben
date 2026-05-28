@@ -12,7 +12,7 @@ function MobileHeader() {
   const status: ConnectionStatus = (active ? "connected" : "disconnected") as ConnectionStatus;
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b bg-background">
+    <header className="flex items-center justify-between px-4 py-3 border-b border-[#d6d3d1] dark:border-[#57534e] bg-background">
       <span className="text-lg font-semibold">Viben</span>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         {status === "connected" && (
@@ -54,7 +54,7 @@ export function MobileLayout() {
         <Outlet />
       </main>
       {/* Bottom navigation with safe area padding for Android/iOS system navigation */}
-      <nav className="flex border-t bg-background pb-[env(safe-area-inset-bottom,0px)]">
+      <nav className="flex border-t border-[#d6d3d1] dark:border-[#57534e] bg-background pb-[env(safe-area-inset-bottom,0px)]">
         {tabKeys.map((tab) => (
           <NavLink
             key={tab.to}

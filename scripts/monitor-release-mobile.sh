@@ -1,8 +1,14 @@
 #!/bin/bash
-# Monitor mobile release workflow and report results
+# Monitor mobile release workflow - waits until completion or failure
 #
-# Usage: ./scripts/monitor-release-mobile.sh [run-id]
-# If run-id is not provided, monitors the most recent release-mobile.yml run
+# Usage: ./scripts/monitor-release-mobile.sh <run-id>
+#
+# This script polls the workflow status and waits until it completes.
+# It adjusts polling interval based on the current phase.
+#
+# Exit codes:
+#   0 - Workflow completed successfully
+#   1 - Workflow failed or was cancelled
 
 set -e
 
@@ -14,128 +20,227 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Get run ID from argument or find the most recent run
-RUN_ID="${1:-}"
+RUN_ID="$1"
 
 if [[ -z "$RUN_ID" ]]; then
-  echo -e "${BLUE}Finding most recent release-mobile.yml run...${NC}"
-  RUN_ID=$(gh run list --workflow=release-mobile.yml --limit=1 --json databaseId --jq '.[0].databaseId')
-
-  if [[ -z "$RUN_ID" ]]; then
-    echo -e "${RED}Error: No release-mobile.yml runs found${NC}"
-    exit 1
-  fi
+  echo -e "${RED}Error: Run ID is required${NC}"
+  echo "Usage: ./scripts/monitor-release-mobile.sh <run-id>"
+  exit 1
 fi
 
-echo -e "${CYAN}Monitoring workflow run: ${RUN_ID}${NC}"
-echo -e "${CYAN}URL: https://github.com/LinXueyuanStdio/viben/actions/runs/${RUN_ID}${NC}"
-echo ""
+# Workflow timeline estimates (in seconds)
+# Based on analysis of mobile workflow:
+#   prepare: ~30s
+#   build-android: ~15min
+#   build-ios: ~20min
+#   test-android: ~5min
+#   test-ios: ~5min
+#   release-android: ~2min
+#   release-ios: ~2min
+#   checksums: ~1min
+#   Total: ~25-30min (parallel builds)
 
-# Function to get job status with color
-get_status_color() {
-  local status="$1"
-  local conclusion="$2"
+get_wait_time() {
+  local phase="$1"
+  local elapsed_minutes="$2"
 
-  if [[ "$status" == "completed" ]]; then
-    case "$conclusion" in
-      success) echo -e "${GREEN}✓ success${NC}" ;;
-      failure) echo -e "${RED}✗ failure${NC}" ;;
-      skipped) echo -e "${YELLOW}⊘ skipped${NC}" ;;
-      *) echo -e "${YELLOW}? $conclusion${NC}" ;;
-    esac
-  elif [[ "$status" == "in_progress" ]]; then
-    echo -e "${BLUE}⟳ running${NC}"
-  elif [[ "$status" == "queued" ]]; then
-    echo -e "${CYAN}◯ queued${NC}"
+  case "$phase" in
+    "prepare")
+      echo 30
+      ;;
+    "build-android"|"build-ios")
+      # Build phase is longest, adjust based on elapsed time
+      if [[ $elapsed_minutes -lt 15 ]]; then
+        echo 180  # 3 minutes early on
+      else
+        echo 120  # 2 minutes near the end
+      fi
+      ;;
+    "test-android"|"test-ios")
+      echo 90   # 1.5 minutes
+      ;;
+    "release-android"|"release-ios")
+      echo 60
+      ;;
+    "checksums")
+      echo 30
+      ;;
+    *)
+      echo 120  # Default 2 minutes
+      ;;
+  esac
+}
+
+print_status() {
+  local run_info="$1"
+  local elapsed_minutes="$2"
+
+  echo ""
+  echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "${BLUE}  Mobile Release Workflow Monitor${NC}"
+  echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  echo -e "Run ID: ${CYAN}$RUN_ID${NC}"
+  echo -e "Elapsed: ${elapsed_minutes} minutes"
+  echo ""
+  echo -e "${YELLOW}Jobs:${NC}"
+
+  # Parse and display job status
+  echo "$run_info" | jq -r '.jobs[] | "\(.name)|\(.status)|\(.conclusion)"' | while IFS='|' read -r name status conclusion; do
+    # Truncate long job names
+    short_name=$(echo "$name" | cut -c1-55)
+    if [[ ${#name} -gt 55 ]]; then
+      short_name="${short_name}..."
+    fi
+
+    if [[ "$status" == "completed" ]]; then
+      if [[ "$conclusion" == "success" ]]; then
+        printf "  ${GREEN}✓${NC} %-60s\n" "$short_name"
+      elif [[ "$conclusion" == "failure" ]]; then
+        printf "  ${RED}✗${NC} %-60s\n" "$short_name"
+      elif [[ "$conclusion" == "skipped" ]]; then
+        printf "  ${YELLOW}○${NC} %-60s ${YELLOW}(skipped)${NC}\n" "$short_name"
+      else
+        printf "  ${YELLOW}?${NC} %-60s ${YELLOW}(%s)${NC}\n" "$short_name" "$conclusion"
+      fi
+    elif [[ "$status" == "in_progress" ]]; then
+      printf "  ${CYAN}▶${NC} %-60s ${CYAN}(running)${NC}\n" "$short_name"
+    elif [[ "$status" == "queued" ]]; then
+      printf "  ${YELLOW}◷${NC} %-60s ${YELLOW}(queued)${NC}\n" "$short_name"
+    else
+      printf "  ${YELLOW}…${NC} %-60s ${YELLOW}(%s)${NC}\n" "$short_name" "$status"
+    fi
+  done
+}
+
+detect_phase() {
+  local run_info="$1"
+
+  if echo "$run_info" | jq -e '.jobs[] | select(.name == "prepare" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "prepare"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "build-android" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "build-android"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "build-ios" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "build-ios"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "test-android" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "test-android"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "test-ios" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "test-ios"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "release-android" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "release-android"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "release-ios" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "release-ios"
+  elif echo "$run_info" | jq -e '.jobs[] | select(.name == "checksums" and .status == "in_progress")' > /dev/null 2>&1; then
+    echo "checksums"
   else
-    echo -e "${YELLOW}? $status${NC}"
+    echo "unknown"
   fi
 }
 
-# Poll interval in seconds
-POLL_INTERVAL=30
-MAX_WAIT=3600  # 1 hour max wait
-ELAPSED=0
+echo -e "${BLUE}Starting mobile release workflow monitor for run ${CYAN}$RUN_ID${NC}"
+echo -e "URL: https://github.com/LinXueyuanStdio/viben/actions/runs/$RUN_ID"
+echo ""
+echo -e "${YELLOW}Expected timeline:${NC}"
+echo "  prepare        ~30s"
+echo "  build-android  ~15min (parallel with build-ios)"
+echo "  build-ios      ~20min (parallel with build-android)"
+echo "  test-android   ~5min"
+echo "  test-ios       ~5min"
+echo "  release-android ~2min"
+echo "  release-ios    ~2min"
+echo "  checksums      ~1min"
+echo "  ────────────────────"
+echo "  Total          ~25-30min (parallel builds)"
+echo ""
+
+START_TIME=$(date +%s)
+CHECK_COUNT=0
 
 while true; do
-  # Get workflow status
-  WORKFLOW_JSON=$(gh run view "$RUN_ID" --json status,conclusion,jobs)
-  WORKFLOW_STATUS=$(echo "$WORKFLOW_JSON" | jq -r '.status')
-  WORKFLOW_CONCLUSION=$(echo "$WORKFLOW_JSON" | jq -r '.conclusion')
+  CHECK_COUNT=$((CHECK_COUNT + 1))
 
-  # Show status header
-  echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-  echo -e "${CYAN}  Mobile Release Workflow Monitor${NC}"
-  echo -e "${CYAN}  Run ID: ${RUN_ID}${NC}"
-  echo -e "${CYAN}  Elapsed: $((ELAPSED / 60))m $((ELAPSED % 60))s${NC}"
-  echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-  echo ""
+  # Get workflow run status
+  RUN_INFO=$(gh run view "$RUN_ID" --json status,conclusion,jobs,createdAt,updatedAt,url 2>&1) || {
+    echo -e "${RED}Error fetching workflow status: $RUN_INFO${NC}"
+    sleep 30
+    continue
+  }
 
-  # Show job statuses
-  echo -e "${BLUE}Job Status:${NC}"
-  echo ""
+  STATUS=$(echo "$RUN_INFO" | jq -r '.status')
+  CONCLUSION=$(echo "$RUN_INFO" | jq -r '.conclusion')
 
-  # Define job order for display
-  JOBS=(
-    "prepare"
-    "build-android"
-    "build-ios"
-    "test-android"
-    "test-ios"
-    "release-android"
-    "release-ios"
-    "checksums"
-  )
+  # Calculate elapsed time
+  NOW=$(date +%s)
+  ELAPSED_SECONDS=$((NOW - START_TIME))
+  ELAPSED_MINUTES=$((ELAPSED_SECONDS / 60))
 
-  for JOB_NAME in "${JOBS[@]}"; do
-    JOB_INFO=$(echo "$WORKFLOW_JSON" | jq -r --arg name "$JOB_NAME" '.jobs[] | select(.name == $name) | "\(.status)|\(.conclusion)"')
-    if [[ -n "$JOB_INFO" ]]; then
-      JOB_STATUS=$(echo "$JOB_INFO" | cut -d'|' -f1)
-      JOB_CONCLUSION=$(echo "$JOB_INFO" | cut -d'|' -f2)
-      STATUS_STR=$(get_status_color "$JOB_STATUS" "$JOB_CONCLUSION")
-      printf "  %-20s %s\n" "$JOB_NAME" "$STATUS_STR"
-    fi
-  done
+  # Print current status
+  print_status "$RUN_INFO" "$ELAPSED_MINUTES"
 
-  echo ""
+  # Check if completed
+  if [[ "$STATUS" == "completed" ]]; then
+    echo ""
 
-  # Check if workflow is complete
-  if [[ "$WORKFLOW_STATUS" == "completed" ]]; then
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-
-    if [[ "$WORKFLOW_CONCLUSION" == "success" ]]; then
-      echo -e "${GREEN}✓ Workflow completed successfully!${NC}"
+    if [[ "$CONCLUSION" == "success" ]]; then
+      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${GREEN}  ✓ Mobile release completed successfully!${NC}"
+      echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
       echo ""
-
-      # Get release info
-      echo -e "${BLUE}Release artifacts:${NC}"
-      gh release list --limit 2
-
+      echo "Total time: ${ELAPSED_MINUTES} minutes"
+      echo ""
+      echo "Check the release at:"
+      echo "  https://github.com/LinXueyuanStdio/viben/releases"
+      echo ""
       exit 0
-    else
-      echo -e "${RED}✗ Workflow failed with conclusion: $WORKFLOW_CONCLUSION${NC}"
+
+    elif [[ "$CONCLUSION" == "failure" ]]; then
+      echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${RED}  ✗ Mobile release workflow FAILED${NC}"
+      echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
       echo ""
 
-      # Show failed jobs
-      echo -e "${RED}Failed jobs:${NC}"
-      echo "$WORKFLOW_JSON" | jq -r '.jobs[] | select(.conclusion == "failure") | "  - \(.name)"'
+      # Find and display failed jobs
+      echo -e "${YELLOW}Failed jobs:${NC}"
+      FAILED_JOBS=$(echo "$RUN_INFO" | jq -r '.jobs[] | select(.conclusion == "failure") | .name')
+      echo "$FAILED_JOBS" | while read -r job_name; do
+        echo "  - $job_name"
+      done
       echo ""
 
-      # Show error summary
-      echo -e "${YELLOW}Check the workflow logs for details:${NC}"
-      echo "  https://github.com/LinXueyuanStdio/viben/actions/runs/${RUN_ID}"
+      # Get error logs
+      echo -e "${YELLOW}Error details:${NC}"
+      echo "────────────────────────────────────────"
+      gh run view "$RUN_ID" --log-failed 2>&1 | tail -100
+      echo "────────────────────────────────────────"
+      echo ""
 
+      echo "To view full logs:"
+      echo "  gh run view $RUN_ID --log-failed"
+      echo ""
+      echo "To rerun failed jobs:"
+      echo "  gh run rerun $RUN_ID --failed"
+      echo ""
+      exit 1
+
+    elif [[ "$CONCLUSION" == "cancelled" ]]; then
+      echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo -e "${YELLOW}  ○ Mobile release workflow was cancelled${NC}"
+      echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+      echo ""
       exit 1
     fi
   fi
 
-  # Check timeout
-  if [[ $ELAPSED -ge $MAX_WAIT ]]; then
-    echo -e "${RED}Error: Timeout waiting for workflow to complete${NC}"
-    exit 1
-  fi
+  # Still in progress - determine wait time based on phase
+  CURRENT_PHASE=$(detect_phase "$RUN_INFO")
+  WAIT_TIME=$(get_wait_time "$CURRENT_PHASE" "$ELAPSED_MINUTES")
 
-  # Wait before next poll
-  sleep $POLL_INTERVAL
-  ELAPSED=$((ELAPSED + POLL_INTERVAL))
+  COMPLETED_JOBS=$(echo "$RUN_INFO" | jq -r '[.jobs[] | select(.status == "completed")] | length')
+  TOTAL_JOBS=$(echo "$RUN_INFO" | jq -r '.jobs | length')
+
+  echo ""
+  echo -e "Progress: ${CYAN}$COMPLETED_JOBS/$TOTAL_JOBS${NC} jobs | Phase: ${CYAN}$CURRENT_PHASE${NC}"
+  echo -e "Next check in ${WAIT_TIME}s (check #$CHECK_COUNT)"
+
+  sleep "$WAIT_TIME"
 done

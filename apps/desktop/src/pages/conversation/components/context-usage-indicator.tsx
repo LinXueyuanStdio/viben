@@ -29,7 +29,8 @@ export function ContextUsageIndicator({
 
   const color = useMemo(() => {
     if (percentage >= 90) return "var(--destructive)";
-    if (percentage >= 70) return "oklch(0.75 0.15 85)"; // amber/warning
+    // Use HEX for Android WebView (Chrome 86) compatibility - oklch requires Chrome 111+
+    if (percentage >= 70) return "#d9a22c"; // amber/warning
     return "var(--primary)";
   }, [percentage]);
 

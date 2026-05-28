@@ -55,8 +55,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
+              // Use rgba for Android WebView (Chrome 86) compatibility - oklch requires Chrome 111+
               background:
-                "radial-gradient(circle at 10% 20%, oklch(0.70 0.18 75 / 0.05), transparent 60%)",
+                "radial-gradient(circle at 10% 20%, rgba(210, 159, 48, 0.05), transparent 60%)",
             }}
           />
         )}
