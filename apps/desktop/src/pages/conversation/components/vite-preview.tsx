@@ -19,6 +19,7 @@ import {
   Square,
   X,
 } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
 
 interface VitePreviewProps {
@@ -68,7 +69,6 @@ export function VitePreview({
     if (previewUrl) {
       try {
         // Try to use Tauri opener plugin if available
-        const { openUrl } = await import("@tauri-apps/plugin-opener");
         await openUrl(previewUrl);
       } catch {
         // Fallback to window.open if Tauri plugin fails or not available

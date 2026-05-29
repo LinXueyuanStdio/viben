@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { readFile } from "@tauri-apps/plugin-fs";
 import { generateIconFilename, getIconStoragePath } from "../utils";
 
 export interface UseImageUploadOptions {
@@ -31,7 +32,6 @@ export interface UseImageUploadResult {
  * Read a file using Tauri FS API
  */
 async function readLocalFile(path: string): Promise<Uint8Array> {
-  const { readFile } = await import("@tauri-apps/plugin-fs");
   return readFile(path);
 }
 

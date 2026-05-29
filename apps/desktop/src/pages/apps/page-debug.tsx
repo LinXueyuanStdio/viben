@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { exists } from "@tauri-apps/plugin-fs";
 import {
   Camera,
   Keyboard,
@@ -72,7 +73,6 @@ export function PageDebugPage() {
 
     try {
       // Fallback: check if the socket file exists using Tauri's fs plugin
-      const { exists } = await import("@tauri-apps/plugin-fs");
       const socketExists = await exists(SOCKET_PATH);
       setSocketStatus(socketExists ? "connected" : "disconnected");
     } catch {

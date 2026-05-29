@@ -11,6 +11,7 @@ import * as React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Upload, Link, Loader2, AlertCircle } from "lucide-react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useImageUpload } from "../hooks/use-image-upload";
@@ -45,8 +46,6 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
    */
   const handleFileSelect = useCallback(async () => {
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-
       const selected = await open({
         multiple: false,
         filters: [

@@ -18,6 +18,7 @@
 
 import React, { useCallback } from "react";
 import { MessageList, type MessageListProps, type MessageListHandle } from "@viben/chat";
+import { open } from "@tauri-apps/plugin-shell";
 
 // ============================================================================
 // Types
@@ -54,7 +55,6 @@ export const DesktopMessageList = React.forwardRef<MessageListHandle, DesktopMes
      */
     const handleLinkClick = useCallback(async (href: string) => {
       try {
-        const { open } = await import("@tauri-apps/plugin-shell");
         await open(href);
       } catch (err) {
         // Fallback to window.open if Tauri shell is not available

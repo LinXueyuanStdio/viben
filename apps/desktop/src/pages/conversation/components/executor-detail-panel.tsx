@@ -10,6 +10,7 @@
  */
 
 import { useTranslation } from "react-i18next";
+import { open } from "@tauri-apps/plugin-shell";
 import {
   Terminal,
   Settings2,
@@ -94,7 +95,6 @@ export function ExecutorDetailPanel({
   // Helper to open path in system file explorer
   const openInExplorer = async (path: string) => {
     try {
-      const { open } = await import("@tauri-apps/plugin-shell");
       // Get directory from file path
       const dir = path.replace(/\/[^/]+$/, "");
       await open(dir);

@@ -1,3 +1,5 @@
+import { open } from "@tauri-apps/plugin-shell";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   Activity,
   AlertTriangle,
@@ -322,12 +324,10 @@ export function DetailsTab({
                         const url = task.pr_url!;
                         console.log("[TaskDetailPanel] Opening PR URL:", url);
                         try {
-                          const { openUrl } = await import("@tauri-apps/plugin-opener");
                           await openUrl(url);
                         } catch (err) {
                           console.warn("[TaskDetailPanel] Tauri opener failed, trying shell:", err);
                           try {
-                            const { open } = await import("@tauri-apps/plugin-shell");
                             await open(url);
                           } catch (err2) {
                             console.warn("[TaskDetailPanel] Shell failed, using window.open:", err2);

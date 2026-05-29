@@ -15,6 +15,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { open } from "@tauri-apps/plugin-shell";
 import {
   Settings2,
   Loader2,
@@ -167,7 +168,6 @@ export function AgentDetailPanel({
   // Helper to open path in system file explorer
   const openInExplorer = async (path: string) => {
     try {
-      const { open } = await import("@tauri-apps/plugin-shell");
       const dir = path.replace(/\/[^/]+$/, "");
       await open(dir);
     } catch (err) {

@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { open } from "@tauri-apps/plugin-shell";
 import { formatRelativeTime } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -81,7 +82,6 @@ const markdownComponents = {
         e.preventDefault();
         if (href) {
           try {
-            const { open } = await import("@tauri-apps/plugin-shell");
             await open(href);
           } catch {
             window.open(href, "_blank");

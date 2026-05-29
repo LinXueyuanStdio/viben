@@ -1,3 +1,4 @@
+import { toPng } from "html-to-image";
 import type { ClientToolResult } from "../client-side-tool/types";
 import type { ExecutionContext } from "./types";
 import { useActionStore } from "@/stores/action-store";
@@ -71,8 +72,6 @@ async function handleReadWindow(ctx: ExecutionContext): Promise<ClientToolResult
       };
     }
 
-    // Dynamic import is acceptable here - html-to-image is a genuinely optional dependency for performance
-    const { toPng } = await import("html-to-image");
     const dataUrl = await toPng(appRoot, {
       quality: 0.8,
       pixelRatio: 1,

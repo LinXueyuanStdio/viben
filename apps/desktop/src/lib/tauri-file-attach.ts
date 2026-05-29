@@ -6,6 +6,7 @@
  */
 
 import { open } from "@tauri-apps/plugin-dialog";
+import { readFile } from "@tauri-apps/plugin-fs";
 import type { MessageAttachment } from "@viben/chat";
 import { getMimeType } from "@viben/chat";
 
@@ -45,7 +46,6 @@ export async function openAndReadFiles(
 
     for (const path of paths) {
       try {
-        const { readFile } = await import("@tauri-apps/plugin-fs");
         const fileData = await readFile(path);
 
         const base64 = btoa(

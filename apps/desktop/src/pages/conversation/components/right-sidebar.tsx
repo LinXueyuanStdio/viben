@@ -3,6 +3,7 @@
  * Displays workspace files, artifacts, tools, skills, and detail tabs
  */
 import { useState, useRef, useEffect } from "react";
+import { readDir } from "@tauri-apps/plugin-fs";
 import { useTranslation } from "react-i18next";
 import {
   Layers,
@@ -281,7 +282,6 @@ export function RightSidebar({
       setIsLoadingFiles(true);
       try {
         // Use Tauri fs plugin to read directory
-        const { readDir } = await import("@tauri-apps/plugin-fs");
         const entries = await readDir(workingDir);
 
         // Convert to WorkingFile format

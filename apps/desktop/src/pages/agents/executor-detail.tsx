@@ -9,6 +9,7 @@
  * Route: /executor/:executorType?workspace_path=...
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -129,7 +130,6 @@ export function ExecutorDetailPage() {
         let content = "";
         for (const path of possiblePaths) {
           try {
-            const { readTextFile } = await import("@tauri-apps/plugin-fs");
             content = await readTextFile(path);
             if (content) break;
           } catch {

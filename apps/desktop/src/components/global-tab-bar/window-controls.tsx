@@ -9,6 +9,8 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { platform } from "@tauri-apps/plugin-os";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   Tooltip,
   TooltipContent,
@@ -30,11 +32,6 @@ export function WindowControls() {
 
     const init = async () => {
       try {
-        const [{ platform }, { getCurrentWindow }] = await Promise.all([
-          import("@tauri-apps/plugin-os"),
-          import("@tauri-apps/api/window"),
-        ]);
-
         if (!mounted) return;
 
         const platformName = platform();
@@ -69,7 +66,6 @@ export function WindowControls() {
 
   const handleMinimize = async () => {
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().minimize();
     } catch (e) {
       console.error("[WindowControls] minimize failed:", e);
@@ -78,7 +74,6 @@ export function WindowControls() {
 
   const handleMaximize = async () => {
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().toggleMaximize();
     } catch (e) {
       console.error("[WindowControls] toggleMaximize failed:", e);
@@ -87,7 +82,6 @@ export function WindowControls() {
 
   const handleClose = async () => {
     try {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       await getCurrentWindow().close();
     } catch (e) {
       console.error("[WindowControls] close failed:", e);

@@ -23,6 +23,7 @@ import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
+import { homeDir } from "@tauri-apps/api/path";
 import { SettingsItem, SectionHeader } from "../components";
 import type { DebugInfo } from "./constants";
 import { getIDEIcon, IDE_OPTIONS, getTerminalIcon, TERMINAL_OPTIONS } from "./constants";
@@ -100,8 +101,8 @@ export function DeveloperSection() {
   // Open logs folder
   const handleOpenLogsFolder = async () => {
     try {
-      const homeDir = await import("@tauri-apps/api/path").then((m) => m.homeDir());
-      const logsPath = `${homeDir}.viben/logs`;
+      const homeDirPath = await homeDir();
+      const logsPath = `${homeDirPath}.viben/logs`;
       await openUrl(logsPath);
     } catch (error) {
       console.error("Failed to open logs folder:", error);
@@ -111,8 +112,8 @@ export function DeveloperSection() {
   // Open config folder
   const handleOpenConfigFolder = async () => {
     try {
-      const homeDir = await import("@tauri-apps/api/path").then((m) => m.homeDir());
-      const configPath = `${homeDir}.viben`;
+      const homeDirPath = await homeDir();
+      const configPath = `${homeDirPath}.viben`;
       await openUrl(configPath);
     } catch (error) {
       console.error("Failed to open config folder:", error);
