@@ -1,18 +1,19 @@
 import { useEffect } from "react";
 
+// Typical Android system bar sizes in dp (will be used as fallback)
+const ANDROID_STATUS_BAR_HEIGHT = 24; // Standard Android status bar
+const ANDROID_NAV_BAR_HEIGHT = 48; // Standard 3-button navigation bar
+
 /**
  * Hook to apply safe area insets on mobile platforms.
- * Uses tauri-plugin-safe-area-insets-css to get the actual inset values
- * and sets them as CSS custom properties on the document root.
- *
- * Retries a few times since WindowInsets may not be available immediately
- * after app launch.
+ * Uses tauri-plugin-safe-area-insets-css when available, with fallbacks
+ * for typical Android system bar sizes.
  */
 export function useSafeArea() {
   useEffect(() => {
     let attempts = 0;
     const maxAttempts = 5;
-    const retryDelay = 200; // ms
+    const retryDelay = 300; // ms
 
     async function applySafeArea(): Promise<boolean> {
       try {
@@ -23,14 +24,25 @@ export function useSafeArea() {
         const topResult = await getTopInset();
         const bottomResult = await getBottomInset();
 
-        const top = topResult?.inset ?? 0;
-        const bottom = bottomResult?.inset ?? 0;
+        let top = topResult?.inset ?? 0;
+        let bottom = bottomResult?.inset ?? 0;
 
-        console.log("[SafeArea] Got insets:", { top, bottom, attempt: attempts + 1 });
+        console.log("[SafeArea] Plugin returned:", { top, bottom, attempt: attempts + 1 });
 
-        // If both are 0, the insets might not be available yet
-        if (top === 0 && bottom === 0 && attempts < maxAttempts - 1) {
-          return false; // Signal to retry
+        // If plugin returns 0, use fallback values on Android
+        // The plugin's rootWindowInsets can be null in some cases
+        if (top === 0 && bottom === 0) {
+          // Check if we're on Android by looking at user agent
+          const isAndroid = /android/i.test(navigator.userAgent);
+          if (isAndroid) {
+            // Use standard Android system bar sizes as fallback
+            top = ANDROID_STATUS_BAR_HEIGHT;
+            bottom = ANDROID_NAV_BAR_HEIGHT;
+            console.log("[SafeArea] Using Android fallback values:", { top, bottom });
+          } else if (attempts < maxAttempts - 1) {
+            // On other platforms, retry in case insets aren't ready
+            return false;
+          }
         }
 
         document.documentElement.style.setProperty(
@@ -51,10 +63,24 @@ export function useSafeArea() {
         );
 
         console.log("[SafeArea] Applied insets:", { top, bottom });
-        return true; // Success
+        return true;
       } catch (e) {
-        console.debug("[SafeArea] Plugin not available, using CSS env() fallback", e);
-        return true; // Don't retry on error
+        // Plugin not available - check if on mobile and use fallbacks
+        const isAndroid = /android/i.test(navigator.userAgent);
+        if (isAndroid) {
+          document.documentElement.style.setProperty(
+            "--safe-area-inset-top",
+            `${ANDROID_STATUS_BAR_HEIGHT}px`
+          );
+          document.documentElement.style.setProperty(
+            "--safe-area-inset-bottom",
+            `${ANDROID_NAV_BAR_HEIGHT}px`
+          );
+          console.log("[SafeArea] Plugin error, using Android fallback:", e);
+        } else {
+          console.debug("[SafeArea] Plugin not available:", e);
+        }
+        return true;
       }
     }
 
@@ -66,7 +92,7 @@ export function useSafeArea() {
       }
     }
 
-    // Start after a small delay to let the window settle
+    // Start after a delay to let the window settle
     setTimeout(tryApplySafeArea, 100);
   }, []);
 }
