@@ -35,11 +35,11 @@ import { WorkspaceHeader } from "@/components/workspace";
 import {
   useAgents,
   useModels,
-  useAgentConversation,
   useLocalWorkspaces,
   useExecutors,
   useWorkspaceParam,
 } from "@/hooks";
+import { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   resolveHeaderSegments,

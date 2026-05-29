@@ -35,10 +35,10 @@ import {
   useDeleteKanbanComment,
   useToggleCommentReaction,
   useKanbanActivities,
-  useAgentConversation,
   useTaskSpecsData,
 } from "@/hooks";
-import { type SlashCommand } from "@/components/chat";
+import { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
+import type { SlashCommand } from "@viben/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";

@@ -190,11 +190,7 @@ export type {
 export { useUnifiedAgents, useVibenAgentsOnly } from "./use-unified-agents";
 export type { UseUnifiedAgentsOptions, UseUnifiedAgentsReturn } from "./use-unified-agents";
 
-// Workspace Chat - Agent Conversation
-export { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
-export type { AgentConfig, UseAgentConversationOptions } from "@/pages/conversation/hooks/use-agent-conversation";
-export { useConversation } from "@/pages/conversation/hooks/use-conversation";
-export type { UseConversationOptions, UseConversationReturn } from "@/pages/conversation/hooks/use-conversation";
+// Task Agent
 export { useTaskAgent } from "./use-task-agent";
 export type { TaskContext } from "./use-task-agent";
 export { useVitePreview } from "./use-vite-preview";
@@ -250,9 +246,7 @@ export type {
   UseScreenshotReturn,
 } from "./use-screenshot";
 
-// Chat Config
-export { useChatConfig, useRouteChatContext } from "@/pages/conversation/hooks/use-chat-config";
-export type { UseChatConfigOptions, UseChatConfigReturn } from "@/pages/conversation/hooks/use-chat-config";
+// Model Auto-Correct
 export { useModelAutoCorrect } from "./use-model-auto-correct";
 
 // Cron Job Management
@@ -270,31 +264,9 @@ export { useCronNotifications } from "./use-cron-notifications";
 export type { CronJobStatus, UseCronNotificationsReturn } from "./use-cron-notifications";
 export { useCronNotificationAdapter } from "./use-cron-notification-adapter";
 
-// Chat Notifications
-export { useChatNotifications } from "@/pages/conversation/hooks/use-chat-notifications";
-export type {
-  ChatNotificationType,
-  UseChatNotificationsReturn,
-} from "@/pages/conversation/hooks/use-chat-notifications";
-
-// Group Chat
-export { useGroupChat } from "@/pages/conversation/hooks/use-group-chat";
-export type { UseGroupChatOptions, UseGroupChatReturn, GroupChatNotificationCallbacks, GroupChatViewMode } from "@/pages/conversation/hooks/use-group-chat";
-
-// Group Chat Notifications
-export { useGroupNotifications } from "@/pages/conversation/hooks/use-group-notifications";
-export type { UseGroupNotificationsReturn } from "@/pages/conversation/hooks/use-group-notifications";
-
 // File Browser
 export { useFileBrowser } from "./use-file-browser";
 export type { ViewMode } from "./use-file-browser";
-
-// Executor Sessions
-export { useExecutorSessions, useExecutorSessionMessages } from "@/pages/conversation/hooks/use-executor-sessions";
-export type {
-  UseExecutorSessionsReturn,
-  UseExecutorSessionMessagesReturn,
-} from "@/pages/conversation/hooks/use-executor-sessions";
 
 // Toast Notifications
 export { useToast, toast } from "./use-toast";

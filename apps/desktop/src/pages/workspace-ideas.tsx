@@ -76,7 +76,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import {
   getGradientByName,
-} from "@/pages/conversation/components/list-item";
+} from "@/components/conversation/list-item";
 import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 
 // =============================================================================

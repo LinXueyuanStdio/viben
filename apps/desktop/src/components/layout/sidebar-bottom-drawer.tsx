@@ -12,7 +12,7 @@ import { useGatewayStatus } from "@/hooks/use-gateway-status";
 import {
   DEFAULT_SETTINGS_SECTION,
   getSettingsSectionConfig,
-} from "@/pages/settings/constants";
+} from "@/navigation/settings-sections";
 import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
 
 interface SidebarBottomDrawerProps {

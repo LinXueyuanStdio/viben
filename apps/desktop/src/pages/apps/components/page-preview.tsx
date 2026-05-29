@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { updatePageConfig } from "@/lib/gateway/modules/pages";
-import { VitePreview } from "@/pages/conversation/components/vite-preview";
+import { VitePreview } from "@/components/conversation/vite-preview";
 import { YooptaMarkdownRenderer } from "./yoopta-markdown-renderer";
 import { StaticPagePreview } from "./static-page-preview";
 import type { PageConfig } from "@/hooks/use-pages";

@@ -9,7 +9,7 @@ import { SubagentSheet } from '@viben/chat';
 import type { AgentMessage as ChatAgentMessage } from '@viben/chat';
 import i18n from '@/i18n';
 import { cn } from '@/lib/utils';
-import { DesktopMessageList } from '@/pages/conversation/components/desktop-message-list';
+import { DesktopMessageList } from '@/components/conversation/desktop-message-list';
 import type { AgentMessage, AgentPhase } from '@/types';
 
 // ============================================================================

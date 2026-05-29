@@ -32,7 +32,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ChatInput, type ChatInputProps, type MessageAttachment, type ExecutorOption } from "@viben/chat";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { saveScreenshotToTempFile } from "@/hooks/use-screenshot";
-import { useChatConfig } from "@/hooks";
+import { useChatConfig } from "../hooks/use-chat-config";
 import { SandboxToggle } from "./sandbox-toggle";
 import type { ExecutorType } from "@viben/core/shared";
 

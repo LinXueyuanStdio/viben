@@ -5,13 +5,13 @@ export { TaskDetailDialog, type TaskDetailDialogProps } from "./task-detail-dial
 
 // Executor components
 export { ExecutorList, type ExecutorListProps } from "./executor-list";
-// Re-export from chat for convenience
+// Re-export from conversation components for convenience
 export {
   ExecutorListItem,
   getExecutorDisplayName,
   getExecutorGradient,
   type ExecutorListItemProps,
-} from "@/components/chat";
+} from "@/components/conversation";
 
 // Kanban components
 export {

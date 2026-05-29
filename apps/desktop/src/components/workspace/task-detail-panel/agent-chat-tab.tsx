@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  DesktopChatInput,
-  DesktopMessageList,
-  type SlashCommand,
-} from "@/components/chat";
+import { DesktopMessageList } from "@/components/conversation";
+import { DesktopChatInput } from "@/pages/conversation/components";
+import type { SlashCommand } from "@viben/chat";
 import {
   SubagentSheet,
   PlanApproval,

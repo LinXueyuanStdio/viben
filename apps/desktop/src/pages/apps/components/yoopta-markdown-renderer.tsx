@@ -38,7 +38,7 @@ import { YooptaEditorHeader } from "./yoopta-editor-header";
 import { YooptaErrorBoundary } from "./yoopta-error-boundary";
 import { IconPicker, IconDisplay } from "@/components/ui/icon-picker";
 import { CoverPicker } from "@/components/ui/cover-picker";
-import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
+import { GRADIENT_COLORS } from "@/lib/gradient-colors";
 import { YooptaTocSidebar } from "./yoopta-toc-sidebar";
 import { ensureBlockFocus } from "./yoopta-focus-utils";
 import {

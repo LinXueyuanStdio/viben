@@ -15,8 +15,8 @@ import {
   getExecutorDisplayName,
   getExecutorGradient,
   type ExecutorItemData,
-} from "@/pages/conversation/components/executor-list-item";
-import type { ListItemSource } from "@/pages/conversation/components/list-item";
+} from "@/components/conversation/executor-list-item";
+import type { ListItemSource } from "@/components/conversation/list-item";
 
 // ============================================================================
 // Types

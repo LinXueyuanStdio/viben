@@ -30,7 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { VitePreview } from "@/pages/conversation/components/vite-preview";
+import { VitePreview } from "@/components/conversation/vite-preview";
 import { checkNodeAvailable } from "@/lib/gateway/modules/preview";
 import { getGatewayUrl } from "@/lib/gateway/config";
 

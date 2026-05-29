@@ -6,20 +6,19 @@ import { homeDir } from "@tauri-apps/api/path";
 import { getGatewayClient, type ExecutorUIMessage, type MemberType, type MemberRole, type AgentResponse } from "@/lib/gateway";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import {
-  useAgentConversation,
   useAgents,
   useAgentDetail,
   useModels,
   useLocalWorkspaces,
-  useChatConfig,
-  useGroupChat,
-  useChatNotifications,
-  useGroupNotifications,
-  useExecutorSessions,
-  useExecutorSessionMessages,
   useChatList,
   isExecutorType,
 } from "@/hooks";
+import { useAgentConversation } from "./use-agent-conversation";
+import { useChatConfig } from "./use-chat-config";
+import { useGroupChat } from "./use-group-chat";
+import { useChatNotifications } from "./use-chat-notifications";
+import { useGroupNotifications } from "./use-group-notifications";
+import { useExecutorSessions, useExecutorSessionMessages } from "./use-executor-sessions";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useTasks } from "@/hooks/use-kanban";
 import { useVitePreview } from "@/hooks/use-vite-preview";

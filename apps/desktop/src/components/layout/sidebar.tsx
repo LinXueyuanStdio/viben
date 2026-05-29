@@ -69,7 +69,7 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { toast } from "@/hooks/use-toast";
 import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 import { invoke } from "@tauri-apps/api/core";
-import { PageSection } from "@/pages/apps/components/page-section";
+import { PageSection } from "@/components/layout/page-section";
 import { useUiStore } from "@/stores";
 import type { IconData } from "@/components/ui/icon-picker";
 import { normalizeWorkspaceSection } from "@/navigation/navigation-meta";

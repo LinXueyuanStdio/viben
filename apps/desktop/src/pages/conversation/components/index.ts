@@ -1,14 +1,35 @@
 // ============================================================================
+// Re-exports from @/components/conversation (moved for proper dependency flow)
+// ============================================================================
+
+// Desktop MessageList - provides Tauri shell link handling
+export { DesktopMessageList } from "@/components/conversation/desktop-message-list";
+export type { DesktopMessageListProps } from "@/components/conversation/desktop-message-list";
+
+// VitePreview - live preview component
+export { VitePreview } from "@/components/conversation/vite-preview";
+
+// Resize Handle
+export { ResizeHandle } from "@/components/conversation/resize-handle";
+export type { ResizeHandleProps } from "@/components/conversation/resize-handle";
+
+// List Item components
+export { ListItem, getGradientByName, gradients } from "@/components/conversation/list-item";
+export type { ListItemProps, ListItemAction, ListItemBadge, ListItemSource } from "@/components/conversation/list-item";
+export { ExecutorListItem, getExecutorDisplayName, getExecutorGradient } from "@/components/conversation/executor-list-item";
+export type { ExecutorListItemProps, ExecutorItemData } from "@/components/conversation/executor-list-item";
+
+// Source Tooltip
+export { SourceTooltip, SourceBadge } from "@/components/conversation/source-tooltip";
+export type { SourceTooltipProps, SourceBadgeProps, SourceType } from "@/components/conversation/source-tooltip";
+
+// ============================================================================
 // Desktop-specific wrappers (recommended for new code)
 // ============================================================================
 
 // Desktop ChatInput - provides Tauri screenshot and file dialog
 export { DesktopChatInput } from "./desktop-chat-input";
 export type { DesktopChatInputProps } from "./desktop-chat-input";
-
-// Desktop MessageList - provides Tauri shell link handling
-export { DesktopMessageList } from "./desktop-message-list";
-export type { DesktopMessageListProps } from "./desktop-message-list";
 
 // Re-export types from @viben/chat for convenience
 export type { SlashCommand, ChatInputProps, MessageListProps } from "@viben/chat";
@@ -18,7 +39,6 @@ export type { SlashCommand, ChatInputProps, MessageListProps } from "@viben/chat
 // ============================================================================
 
 export { RightSidebar } from "./right-sidebar";
-export { VitePreview } from "./vite-preview";
 export { DebugChatPanel } from "./debug-chat-panel";
 export {
   ContextDetailsPopover,
@@ -33,17 +53,9 @@ export { GroupChatListItem } from "./group-chat-list-item";
 export { GroupChatMembersDialog } from "./group-chat-members-dialog";
 export { GroupChatSidebar } from "./group-chat-sidebar";
 
-// List Item components
-export { ListItem, getGradientByName, gradients } from "./list-item";
-export type { ListItemProps, ListItemAction, ListItemBadge, ListItemSource } from "./list-item";
+// Agent List Item (still in pages/conversation/components as it doesn't have inverted deps)
 export { AgentListItem } from "./agent-list-item";
 export type { AgentListItemProps } from "./agent-list-item";
-export { ExecutorListItem, getExecutorDisplayName, getExecutorGradient } from "./executor-list-item";
-export type { ExecutorListItemProps } from "./executor-list-item";
-
-// Source Tooltip
-export { SourceTooltip, SourceBadge } from "./source-tooltip";
-export type { SourceTooltipProps, SourceBadgeProps, SourceType } from "./source-tooltip";
 
 // Collapsible Section
 export { CollapsibleSection } from "./collapsible-section";

@@ -1,88 +1,20 @@
-import {
-  Settings,
-  User,
-  Keyboard,
-  Bell,
-  Network,
-  MessageSquare,
-  Play,
-  Cpu,
-  Bot,
-  Box,
-  Sparkles,
-  Bug,
-  Terminal,
-  HardDrive,
-  Info,
-  Type,
-  Layers,
-  Mic,
-} from "lucide-react";
-import { Boxes } from "lucide-react";
-import type { SettingsSection, SectionConfig } from "./types";
-import {
-  SETTINGS_SECTIONS,
-  VALID_SETTINGS_SECTIONS,
-  getSettingsSectionDescriptor,
-} from "@/navigation/navigation-meta";
-import type { SettingsSectionInfo } from "@/navigation/navigation-meta";
+/**
+ * Settings page constants.
+ *
+ * Note: Settings section config and icon mappings have moved to
+ * @/navigation/settings-sections.ts for better module organization.
+ */
 
-const SETTINGS_ICON_COMPONENTS = {
-  settings: Settings,
-  user: User,
-  keyboard: Keyboard,
-  bell: Bell,
-  network: Network,
-  "message-square": MessageSquare,
-  play: Play,
-  cpu: Cpu,
-  bot: Bot,
-  boxes: Boxes,
-  sparkles: Sparkles,
-  box: Box,
-  terminal: Terminal,
-  type: Type,
-  layers: Layers,
-  mic: Mic,
-  "hard-drive": HardDrive,
-  bug: Bug,
-  info: Info,
-} as const;
-
-export const DEFAULT_SETTINGS_SECTION: SettingsSection = "general";
-
-export function getSettingsIconComponent(
-  iconValue?: string
-): SectionConfig["icon"] {
-  return (
-    SETTINGS_ICON_COMPONENTS[
-      (iconValue ?? "settings") as keyof typeof SETTINGS_ICON_COMPONENTS
-    ] ?? Settings
-  );
-}
-
-export function toSectionConfig(
-  section: SettingsSectionInfo
-): SectionConfig {
-  return {
-    id: section.section,
-    labelKey: section.titleKey,
-    icon: getSettingsIconComponent(section.icon.value),
-  };
-}
-
-export const SECTIONS: SectionConfig[] =
-  SETTINGS_SECTIONS.map(toSectionConfig);
-
-export function getSettingsSectionConfig(
-  section?: SettingsSection
-): SectionConfig | undefined {
-  const descriptor = getSettingsSectionDescriptor(section);
-  return descriptor ? toSectionConfig(descriptor) : undefined;
-}
-
-// Valid sections for nested routes
-export const VALID_SECTIONS: SettingsSection[] = VALID_SETTINGS_SECTIONS;
+// Re-export from navigation module
+export {
+  DEFAULT_SETTINGS_SECTION,
+  getSettingsIconComponent,
+  toSectionConfig,
+  SECTIONS,
+  getSettingsSectionConfig,
+  VALID_SECTIONS,
+} from "@/navigation/settings-sections";
+export type { SectionConfig } from "@/navigation/settings-sections";
 
 // Common timezones with i18n keys for display names
 export const TIMEZONES = [

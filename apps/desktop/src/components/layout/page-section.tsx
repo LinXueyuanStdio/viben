@@ -76,16 +76,16 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { usePages, usePageOrder, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
-import { CreatePageDialog } from "./create-page-dialog";
-import { EditPageDialog } from "./edit-page-dialog";
-import { PagePermissionsDialog } from "./page-permissions-dialog";
+import { CreatePageDialog } from "@/pages/apps/components/create-page-dialog";
+import { EditPageDialog } from "@/pages/apps/components/edit-page-dialog";
+import { PagePermissionsDialog } from "@/pages/apps/components/page-permissions-dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { PageConfig } from "@/hooks/use-pages";
 import {
   buildPageTree,
   getPageHref,
-} from "../utils";
-import type { PageTreeNode, PageOrderMap } from "../utils";
+} from "@/pages/apps/utils";
+import type { PageTreeNode, PageOrderMap } from "@/pages/apps/utils";
 import { registry } from "@/navigation/route-registry";
 
 // =============================================================================

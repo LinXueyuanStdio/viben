@@ -48,7 +48,7 @@ import {
   ExecutorListItem,
   ExecutorDetailPanel,
   AgentDetailPanel,
-} from "@/components/chat";
+} from "@/pages/conversation/components";
 import { Separator } from "@/components/ui/separator";
 import { useLocalWorkspaces, useModels, useAgentList } from "@/hooks";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";

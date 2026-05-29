@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { GRADIENT_COLORS } from "@/pages/apps/utils/gradient-colors";
+import { GRADIENT_COLORS } from "@/lib/gradient-colors";
 
 const SOLID_COLORS = [
   { key: "warm-gray", color: "#d6d3d1" },

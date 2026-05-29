@@ -37,8 +37,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { ResizeHandle } from "@/pages/conversation/components/resize-handle";
-import { DesktopMessageList, DesktopChatInput, SessionSelector, type Session } from "@/components/chat";
+import { ResizeHandle } from "@/components/conversation/resize-handle";
+import { DesktopMessageList, DesktopChatInput, SessionSelector, type Session } from "@/pages/conversation/components";
 import {
   SpanNode,
   TimelineView,

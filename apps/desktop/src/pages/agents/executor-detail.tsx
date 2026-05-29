@@ -38,8 +38,8 @@ import { WorkspaceHeader } from "@/components/workspace";
 import {
   useWorkspaceParam,
   useExecutors,
-  useAgentConversation,
 } from "@/hooks";
+import { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import {
   resolveHeaderSegments,
@@ -47,7 +47,7 @@ import {
 import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 import { getGatewayClient } from "@/lib/gateway";
 import { getExecutorIcon } from "@/lib/model-icons";
-import { DesktopMessageList, DesktopChatInput, ExecutorCapabilities } from "@/components/chat";
+import { DesktopMessageList, DesktopChatInput, ExecutorCapabilities } from "@/pages/conversation/components";
 import { SubagentSheet } from "@viben/chat";
 import type { SlashCommand, AgentMessage as ChatAgentMessage } from "@viben/chat";
 import { OpenClawConfigSection } from "@/components/agent/openclaw-config-section";
