@@ -44,7 +44,8 @@ cat "$THEME_FILE"
 
 # Add fitsSystemWindows attribute to existing theme
 # This tells Android to automatically add padding for system bars
-sed -i 's|<style name="Theme.App"[^>]*>|&\n        <item name="android:fitsSystemWindows">true</item>\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>|' "$THEME_FILE"
+# Match any theme name pattern (Theme.App, Theme.Viben_desktop, etc.)
+sed -i 's|<style name="Theme\.[^"]*" parent="[^"]*">|&\n        <item name="android:fitsSystemWindows">true</item>\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>|' "$THEME_FILE"
 
 echo "=== After modification ==="
 cat "$THEME_FILE"
