@@ -9,7 +9,7 @@ This guide covers how to set up code signing for Android and iOS builds.
 Run the keystore generation script:
 
 ```bash
-./scripts/generate-android-keystore.sh
+./scripts/android/generate-android-keystore.sh
 ```
 
 This creates `apps/desktop/src-tauri/keys/viben-release.keystore`.

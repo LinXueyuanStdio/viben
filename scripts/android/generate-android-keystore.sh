@@ -1,7 +1,7 @@
 #!/bin/bash
 # Generate Android release keystore for app signing
 #
-# Usage: ./scripts/generate-android-keystore.sh
+# Usage: ./scripts/android/generate-android-keystore.sh
 #
 # This script generates a keystore file for signing Android APKs/AABs.
 # The keystore should be kept secure and NOT committed to git.
