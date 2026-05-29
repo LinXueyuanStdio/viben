@@ -16,6 +16,9 @@ CRASH_LOG="${3:-test-logs/crash-log.txt}"
 # Output file (GitHub Actions sets this automatically)
 SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
+# Max image size in bytes (512KB)
+MAX_SIZE=524288
+
 echo "## 🤖 Android Test Results" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
@@ -23,7 +26,6 @@ echo "" >> "$SUMMARY_FILE"
 # Maestro Test Results
 # =============================================================================
 if [ -f "$MAESTRO_RESULTS" ]; then
-  # Use grep -oE for compatibility (works on both Linux and macOS)
   TESTS=$(grep -oE 'tests="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   FAILURES=$(grep -oE 'failures="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   ERRORS=$(grep -oE 'errors="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
@@ -58,10 +60,45 @@ if [ -f "$CRASH_LOG" ]; then
 fi
 
 # =============================================================================
-# Screenshots (list with file names - images available in artifacts)
+# Screenshots (3-column table with compressed base64 images)
 # =============================================================================
 echo "### 📸 Screenshots" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
+
+# Function to compress image to target size
+compress_image() {
+  local input="$1"
+  local output="$2"
+  local max_size="$3"
+
+  # Start with width 400, reduce if needed
+  local width=400
+  local quality=80
+
+  while [ $width -ge 100 ]; do
+    if command -v convert &>/dev/null; then
+      convert "$input" -resize "${width}x>" -quality $quality "$output" 2>/dev/null
+    else
+      cp "$input" "$output"
+      return
+    fi
+
+    local size
+    size=$(stat -c%s "$output" 2>/dev/null || stat -f%z "$output" 2>/dev/null || echo "999999")
+
+    if [ "$size" -le "$max_size" ]; then
+      return
+    fi
+
+    # Reduce quality first, then width
+    if [ $quality -gt 40 ]; then
+      quality=$((quality - 20))
+    else
+      width=$((width - 100))
+      quality=80
+    fi
+  done
+}
 
 # Collect screenshots
 if [ -d "$SCREENSHOTS_DIR" ]; then
@@ -71,16 +108,36 @@ else
 fi
 
 if [ ${#SCREENSHOTS[@]} -gt 0 ]; then
-  echo "> 📥 Download the **android-test-screenshots** artifact to view images" >> "$SUMMARY_FILE"
-  echo "" >> "$SUMMARY_FILE"
-  echo "| # | Screenshot | Size |" >> "$SUMMARY_FILE"
-  echo "|---|------------|------|" >> "$SUMMARY_FILE"
+  echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
+  echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
 
-  for i in "${!SCREENSHOTS[@]}"; do
-    IMG="${SCREENSHOTS[$i]}"
-    NAME=$(basename "$IMG")
-    SIZE=$(du -h "$IMG" 2>/dev/null | cut -f1 || echo "N/A")
-    echo "| $((i+1)) | \`${NAME}\` | ${SIZE} |" >> "$SUMMARY_FILE"
+  TEMP_DIR=$(mktemp -d)
+  trap "rm -rf '$TEMP_DIR'" EXIT
+
+  for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
+    ROW="|"
+    for ((j=0; j<3; j++)); do
+      IDX=$((i+j))
+      if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
+        IMG="${SCREENSHOTS[$IDX]}"
+        NAME=$(basename "$IMG")
+        TEMP_IMG="$TEMP_DIR/compressed_${IDX}.jpg"
+
+        # Compress image
+        compress_image "$IMG" "$TEMP_IMG" "$MAX_SIZE"
+
+        # Base64 encode
+        if [ -f "$TEMP_IMG" ]; then
+          B64=$(base64 -w 0 "$TEMP_IMG" 2>/dev/null || base64 "$TEMP_IMG" | tr -d '\n\r')
+          ROW="${ROW} <img src=\"data:image/jpeg;base64,${B64}\" alt=\"${NAME}\" width=\"250\"/> |"
+        else
+          ROW="${ROW} ${NAME} |"
+        fi
+      else
+        ROW="${ROW} |"
+      fi
+    done
+    echo "$ROW" >> "$SUMMARY_FILE"
   done
 
   echo "" >> "$SUMMARY_FILE"

@@ -19,6 +19,9 @@ SCREENSHOTS_PATTERN="ios-screenshot*.png"
 MAESTRO_RESULTS="maestro-ios-results.xml"
 CRASH_LOG="ios-crash-log.txt"
 
+# Max image size in bytes (512KB)
+MAX_SIZE=524288
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -62,7 +65,6 @@ echo "" >> "$SUMMARY_FILE"
 # Maestro Test Results
 # =============================================================================
 if [ -f "$MAESTRO_RESULTS" ]; then
-  # Use grep -oE for compatibility (works on both Linux and macOS)
   TESTS=$(grep -oE 'tests="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   FAILURES=$(grep -oE 'failures="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   ERRORS=$(grep -oE 'errors="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
@@ -97,10 +99,43 @@ if [ -f "$CRASH_LOG" ]; then
 fi
 
 # =============================================================================
-# Screenshots (list with file names - images available in artifacts)
+# Screenshots (3-column table with compressed base64 images)
 # =============================================================================
 echo "### 📸 Screenshots" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
+
+# Function to compress image to target size (macOS version using sips)
+compress_image() {
+  local input="$1"
+  local output="$2"
+  local max_size="$3"
+
+  # Start with width 400, reduce if needed
+  local width=400
+
+  while [ $width -ge 100 ]; do
+    if command -v sips &>/dev/null; then
+      # sips for macOS - resize and convert to JPEG
+      sips -Z $width "$input" --out "$output" -s format jpeg -s formatOptions 80 &>/dev/null 2>&1 || \
+      sips -Z $width "$input" --out "$output" &>/dev/null 2>&1 || \
+      cp "$input" "$output"
+    elif command -v convert &>/dev/null; then
+      convert "$input" -resize "${width}x>" -quality 80 "$output" 2>/dev/null
+    else
+      cp "$input" "$output"
+      return
+    fi
+
+    local size
+    size=$(stat -f%z "$output" 2>/dev/null || stat -c%s "$output" 2>/dev/null || echo "999999")
+
+    if [ "$size" -le "$max_size" ]; then
+      return
+    fi
+
+    width=$((width - 100))
+  done
+}
 
 # Collect screenshots using glob pattern
 # shellcheck disable=SC2206
@@ -108,21 +143,36 @@ SCREENSHOTS=($SCREENSHOTS_PATTERN)
 
 # Check if glob expanded (file exists)
 if [ -e "${SCREENSHOTS[0]:-}" ]; then
-  echo "> 📥 Download the **ios-test-results** artifact to view images" >> "$SUMMARY_FILE"
-  echo "" >> "$SUMMARY_FILE"
-  echo "| # | Screenshot | Size |" >> "$SUMMARY_FILE"
-  echo "|---|------------|------|" >> "$SUMMARY_FILE"
+  echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
+  echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
 
-  for i in "${!SCREENSHOTS[@]}"; do
-    IMG="${SCREENSHOTS[$i]}"
-    NAME=$(basename "$IMG")
-    # macOS du uses -h differently, use stat for more reliable size
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-      SIZE=$(stat -f%z "$IMG" 2>/dev/null | awk '{printf "%.1fK", $1/1024}' || echo "N/A")
-    else
-      SIZE=$(du -h "$IMG" 2>/dev/null | cut -f1 || echo "N/A")
-    fi
-    echo "| $((i+1)) | \`${NAME}\` | ${SIZE} |" >> "$SUMMARY_FILE"
+  TEMP_DIR=$(mktemp -d)
+  trap "rm -rf '$TEMP_DIR'" EXIT
+
+  for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
+    ROW="|"
+    for ((j=0; j<3; j++)); do
+      IDX=$((i+j))
+      if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
+        IMG="${SCREENSHOTS[$IDX]}"
+        NAME=$(basename "$IMG")
+        TEMP_IMG="$TEMP_DIR/compressed_${IDX}.jpg"
+
+        # Compress image
+        compress_image "$IMG" "$TEMP_IMG" "$MAX_SIZE"
+
+        # Base64 encode (macOS uses -i flag)
+        if [ -f "$TEMP_IMG" ]; then
+          B64=$(base64 -i "$TEMP_IMG" 2>/dev/null | tr -d '\n\r' || base64 "$TEMP_IMG" | tr -d '\n\r')
+          ROW="${ROW} <img src=\"data:image/jpeg;base64,${B64}\" alt=\"${NAME}\" width=\"250\"/> |"
+        else
+          ROW="${ROW} ${NAME} |"
+        fi
+      else
+        ROW="${ROW} |"
+      fi
+    done
+    echo "$ROW" >> "$SUMMARY_FILE"
   done
 
   echo "" >> "$SUMMARY_FILE"
