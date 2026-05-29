@@ -43,7 +43,7 @@ done
 # Output file (GitHub Actions sets this automatically)
 SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
-echo "## iOS Test Results" >> "$SUMMARY_FILE"
+echo "## 🍎 iOS Test Results" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
 # =============================================================================
@@ -62,7 +62,7 @@ echo "" >> "$SUMMARY_FILE"
 # Maestro Test Results
 # =============================================================================
 if [ -f "$MAESTRO_RESULTS" ]; then
-  # Use grep -o with sed as fallback for systems without -P flag
+  # Use grep -oE for compatibility (works on both Linux and macOS)
   TESTS=$(grep -oE 'tests="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   FAILURES=$(grep -oE 'failures="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   ERRORS=$(grep -oE 'errors="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
@@ -97,7 +97,7 @@ if [ -f "$CRASH_LOG" ]; then
 fi
 
 # =============================================================================
-# Screenshots (3-column table with base64 encoded images)
+# Screenshots (list with file names - images available in artifacts)
 # =============================================================================
 echo "### 📸 Screenshots" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
@@ -108,48 +108,21 @@ SCREENSHOTS=($SCREENSHOTS_PATTERN)
 
 # Check if glob expanded (file exists)
 if [ -e "${SCREENSHOTS[0]:-}" ]; then
-  echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
-  echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
+  echo "> 📥 Download the **ios-test-results** artifact to view images" >> "$SUMMARY_FILE"
+  echo "" >> "$SUMMARY_FILE"
+  echo "| # | Screenshot | Size |" >> "$SUMMARY_FILE"
+  echo "|---|------------|------|" >> "$SUMMARY_FILE"
 
-  for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
-    ROW="|"
-    for ((j=0; j<3; j++)); do
-      IDX=$((i+j))
-      if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
-        IMG="${SCREENSHOTS[$IDX]}"
-        NAME=$(basename "$IMG")
-
-        # Create temp file for resized image
-        TEMP_IMG=$(mktemp).png
-
-        # macOS: use sips for resizing
-        if command -v sips &>/dev/null; then
-          sips -Z 300 "$IMG" --out "$TEMP_IMG" &>/dev/null || cp "$IMG" "$TEMP_IMG"
-        elif command -v convert &>/dev/null; then
-          convert "$IMG" -resize '300x>' -quality 85 "$TEMP_IMG" 2>/dev/null || cp "$IMG" "$TEMP_IMG"
-        else
-          cp "$IMG" "$TEMP_IMG"
-        fi
-
-        # Base64 encode (macOS uses -i flag)
-        if [ -f "$TEMP_IMG" ]; then
-          B64=$(base64 -i "$TEMP_IMG" 2>/dev/null | tr -d '\n' || base64 "$TEMP_IMG" | tr -d '\n')
-        else
-          B64=""
-        fi
-
-        rm -f "$TEMP_IMG"
-
-        if [ -n "$B64" ]; then
-          ROW="$ROW <img src=\"data:image/png;base64,${B64}\" alt=\"${NAME}\" width=\"300\"/> |"
-        else
-          ROW="$ROW ${NAME} |"
-        fi
-      else
-        ROW="$ROW |"
-      fi
-    done
-    echo "$ROW" >> "$SUMMARY_FILE"
+  for i in "${!SCREENSHOTS[@]}"; do
+    IMG="${SCREENSHOTS[$i]}"
+    NAME=$(basename "$IMG")
+    # macOS du uses -h differently, use stat for more reliable size
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      SIZE=$(stat -f%z "$IMG" 2>/dev/null | awk '{printf "%.1fK", $1/1024}' || echo "N/A")
+    else
+      SIZE=$(du -h "$IMG" 2>/dev/null | cut -f1 || echo "N/A")
+    fi
+    echo "| $((i+1)) | \`${NAME}\` | ${SIZE} |" >> "$SUMMARY_FILE"
   done
 
   echo "" >> "$SUMMARY_FILE"

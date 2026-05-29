@@ -16,14 +16,14 @@ CRASH_LOG="${3:-test-logs/crash-log.txt}"
 # Output file (GitHub Actions sets this automatically)
 SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
 
-echo "## Android Test Results" >> "$SUMMARY_FILE"
+echo "## 🤖 Android Test Results" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
 # =============================================================================
 # Maestro Test Results
 # =============================================================================
 if [ -f "$MAESTRO_RESULTS" ]; then
-  # Use grep -o with sed as fallback for systems without -P flag
+  # Use grep -oE for compatibility (works on both Linux and macOS)
   TESTS=$(grep -oE 'tests="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   FAILURES=$(grep -oE 'failures="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
   ERRORS=$(grep -oE 'errors="[0-9]+"' "$MAESTRO_RESULTS" | head -1 | grep -oE '[0-9]+' || echo "0")
@@ -58,62 +58,29 @@ if [ -f "$CRASH_LOG" ]; then
 fi
 
 # =============================================================================
-# Screenshots (3-column table with base64 encoded images)
+# Screenshots (list with file names - images available in artifacts)
 # =============================================================================
 echo "### 📸 Screenshots" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
 # Collect screenshots
-mapfile -t SCREENSHOTS < <(find "$SCREENSHOTS_DIR" -name "*.png" -type f 2>/dev/null | sort)
+if [ -d "$SCREENSHOTS_DIR" ]; then
+  mapfile -t SCREENSHOTS < <(find "$SCREENSHOTS_DIR" -name "*.png" -type f 2>/dev/null | sort)
+else
+  SCREENSHOTS=()
+fi
 
 if [ ${#SCREENSHOTS[@]} -gt 0 ]; then
-  echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
-  echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
+  echo "> 📥 Download the **android-test-screenshots** artifact to view images" >> "$SUMMARY_FILE"
+  echo "" >> "$SUMMARY_FILE"
+  echo "| # | Screenshot | Size |" >> "$SUMMARY_FILE"
+  echo "|---|------------|------|" >> "$SUMMARY_FILE"
 
-  for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
-    ROW="|"
-    for ((j=0; j<3; j++)); do
-      IDX=$((i+j))
-      if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
-        IMG="${SCREENSHOTS[$IDX]}"
-        NAME=$(basename "$IMG")
-
-        # Create temp file for resized image
-        TEMP_IMG=$(mktemp --suffix=.png)
-        trap "rm -f '$TEMP_IMG'" EXIT
-
-        # Try to resize image (ImageMagick or fallback to original)
-        if command -v convert &>/dev/null; then
-          # ImageMagick: resize to max 300px width, preserve aspect ratio
-          convert "$IMG" -resize '300x>' -quality 85 "$TEMP_IMG" 2>/dev/null || cp "$IMG" "$TEMP_IMG"
-        elif command -v ffmpeg &>/dev/null; then
-          # ffmpeg fallback
-          ffmpeg -i "$IMG" -vf "scale='min(300,iw)':-1" -y "$TEMP_IMG" 2>/dev/null || cp "$IMG" "$TEMP_IMG"
-        else
-          cp "$IMG" "$TEMP_IMG"
-        fi
-
-        # Base64 encode (works on both Linux and macOS)
-        if command -v base64 &>/dev/null; then
-          # Linux base64 uses -w 0, macOS uses -b 0 or no flag
-          B64=$(base64 -w 0 "$TEMP_IMG" 2>/dev/null || base64 "$TEMP_IMG" | tr -d '\n')
-        else
-          echo "Warning: base64 command not found" >&2
-          B64=""
-        fi
-
-        rm -f "$TEMP_IMG"
-
-        if [ -n "$B64" ]; then
-          ROW="$ROW <img src=\"data:image/png;base64,${B64}\" alt=\"${NAME}\" width=\"300\"/> |"
-        else
-          ROW="$ROW ${NAME} |"
-        fi
-      else
-        ROW="$ROW |"
-      fi
-    done
-    echo "$ROW" >> "$SUMMARY_FILE"
+  for i in "${!SCREENSHOTS[@]}"; do
+    IMG="${SCREENSHOTS[$i]}"
+    NAME=$(basename "$IMG")
+    SIZE=$(du -h "$IMG" 2>/dev/null | cut -f1 || echo "N/A")
+    echo "| $((i+1)) | \`${NAME}\` | ${SIZE} |" >> "$SUMMARY_FILE"
   done
 
   echo "" >> "$SUMMARY_FILE"
