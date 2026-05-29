@@ -2,6 +2,7 @@ import { Outlet, NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Smartphone, Link, MessageSquare, Wifi, WifiOff } from "lucide-react";
 import { useConnectionStore } from "@/stores/connection-store";
+import { useSafeArea } from "@/hooks/use-safe-area";
 import { cn } from "@/lib/utils";
 
 function MobileHeader() {
@@ -37,14 +38,17 @@ const tabKeys = [
 export function MobileLayout() {
   const { t } = useTranslation();
 
+  // Apply safe area insets from native plugin
+  useSafeArea();
+
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background pt-[var(--safe-area-inset-top,0px)]">
       <MobileHeader />
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
-      {/* Bottom navigation - Android uses fitsSystemWindows=true for automatic safe area handling */}
-      <nav className="flex border-t border-border-strong bg-background">
+      {/* Bottom navigation with safe area padding */}
+      <nav className="flex border-t border-border-strong bg-background pb-[var(--safe-area-inset-bottom,0px)]">
         {tabKeys.map((tab) => (
           <NavLink
             key={tab.to}

@@ -7,6 +7,7 @@
     "os:default",
     "barcode-scanner:allow-scan",
     "barcode-scanner:allow-cancel",
-    "barcode-scanner:allow-vibrate"
+    "barcode-scanner:allow-vibrate",
+    "safe-area-insets:default"
   ]
 }

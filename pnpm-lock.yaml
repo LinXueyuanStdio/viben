@@ -503,6 +503,9 @@ importers:
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.4.0
+      tauri-plugin-safe-area-insets:
+        specifier: ^0.1.0
+        version: 0.1.0
       tauri-plugin-screenshots-api:
         specifier: ^2.2.0
         version: 2.2.0
@@ -16388,6 +16391,9 @@ packages:
   tauri-plugin-mcp-server@0.1.0:
     resolution: {integrity: sha512-3vqyNi8TfhQ59aFgMUV9387P5rH3mZFDbRjclRcYAFnVsMhsHQuH/YASqn8BlZ/4uW7NfNG47rhL2abzgWQOzQ==}
     hasBin: true
+
+  tauri-plugin-safe-area-insets@0.1.0:
+    resolution: {integrity: sha512-NhtxSQdU7+laTJiO4WZFlTB1CBzRlNE5EuHflGAGXS55fiwOkkaWztfNishFQO+eZtb9i5jLHX3Yho48lnqcRQ==}
 
   tauri-plugin-screenshots-api@2.2.0:
     resolution: {integrity: sha512-xNG5yH6kl+Mk/969tFimIxZa6y6eVgarbsEVAJIpERYBlYoNfWCDdI3nW111UOQjWi6zG/RkGjUMLlVy12a3Sg==}
@@ -37265,6 +37271,10 @@ snapshots:
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
+
+  tauri-plugin-safe-area-insets@0.1.0:
+    dependencies:
+      '@tauri-apps/api': 2.11.0
 
   tauri-plugin-screenshots-api@2.2.0:
     dependencies:
