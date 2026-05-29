@@ -65,3 +65,32 @@ if [ -f "$LAYOUT_FILE" ]; then
   echo "=== After ==="
   cat "$LAYOUT_FILE"
 fi
+
+# Find and modify WryActivity.kt to set fitsSystemWindows on the WebView
+echo ""
+echo "=== Looking for WryActivity.kt ==="
+WRY_ACTIVITY=$(find . -name "WryActivity.kt" 2>/dev/null | head -1)
+if [ -n "$WRY_ACTIVITY" ] && [ -f "$WRY_ACTIVITY" ]; then
+  echo "Found: $WRY_ACTIVITY"
+  echo "=== Before ==="
+  cat "$WRY_ACTIVITY"
+
+  # Add fitsSystemWindows=true after the WebView is created
+  # Look for the onCreate method and add window insets handling
+  if grep -q "WindowCompat" "$WRY_ACTIVITY"; then
+    echo "WindowCompat already present, skipping"
+  else
+    # Add import for WindowCompat at the top of the file
+    sed -i '/^package /a import androidx.core.view.WindowCompat' "$WRY_ACTIVITY"
+
+    # Add WindowCompat.setDecorFitsSystemWindows(window, true) in onCreate
+    # This ensures the content fits within the system windows
+    sed -i 's|super.onCreate(savedInstanceState)|super.onCreate(savedInstanceState)\n        WindowCompat.setDecorFitsSystemWindows(window, true)|' "$WRY_ACTIVITY"
+
+    echo "=== After ==="
+    cat "$WRY_ACTIVITY"
+  fi
+else
+  echo "WryActivity.kt not found"
+  find . -name "*.kt" 2>/dev/null | head -10
+fi
