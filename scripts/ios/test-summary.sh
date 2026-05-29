@@ -111,8 +111,7 @@ upload_to_github() {
 
   # Check if we have required env vars
   if [ -z "${GITHUB_REPOSITORY:-}" ] || [ -z "${GITHUB_RUN_ID:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
-    echo ""
-    return
+    return 1
   fi
 
   # Compress image first
@@ -133,26 +132,24 @@ upload_to_github() {
   local content
   content=$(base64 -i "$temp_file" 2>/dev/null | tr -d '\n' || base64 "$temp_file" | tr -d '\n')
 
-  local path="ios/${GITHUB_RUN_ID}/${filename}"
+  local path="ios/${GITHUB_RUN_ID}/${filename}.jpg"
   local api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/${path}"
 
   # Try to create/update file in ci-assets branch
-  local response
-  response=$(curl -s -X PUT "$api_url" \
+  local http_code
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$api_url" \
     -H "Authorization: token ${GITHUB_TOKEN}" \
     -H "Accept: application/vnd.github.v3+json" \
-    -d "{\"message\":\"Add screenshot ${filename}\",\"content\":\"${content}\",\"branch\":\"ci-assets\"}" 2>/dev/null || echo "")
+    -d "{\"message\":\"Add screenshot ${filename}\",\"content\":\"${content}\",\"branch\":\"ci-assets\"}" 2>/dev/null || echo "000")
 
   rm -f "$temp_file"
 
-  # Extract download URL from response
-  local download_url
-  download_url=$(echo "$response" | grep -oE '"download_url":\s*"[^"]+"' | head -1 | cut -d'"' -f4 || echo "")
-
-  if [ -n "$download_url" ]; then
-    echo "$download_url"
+  if [ "$http_code" = "201" ] || [ "$http_code" = "200" ]; then
+    # Return the raw URL directly
+    echo "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/ci-assets/${path}"
+    return 0
   else
-    echo ""
+    return 1
   fi
 }
 
@@ -168,6 +165,8 @@ if [ -e "${SCREENSHOTS[0]:-}" ]; then
     CAN_UPLOAD="true"
   fi
 
+  UPLOAD_SUCCESS="false"
+
   echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
   echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
 
@@ -177,17 +176,17 @@ if [ -e "${SCREENSHOTS[0]:-}" ]; then
       IDX=$((i+j))
       if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
         IMG="${SCREENSHOTS[$IDX]}"
-        NAME=$(basename "$IMG")
+        NAME=$(basename "$IMG" .png)
 
         if [ "$CAN_UPLOAD" = "true" ]; then
-          URL=$(upload_to_github "$IMG" "$NAME")
-          if [ -n "$URL" ]; then
+          if URL=$(upload_to_github "$IMG" "$NAME"); then
             ROW="${ROW} ![${NAME}](${URL}) |"
+            UPLOAD_SUCCESS="true"
           else
-            ROW="${ROW} \`${NAME}\` |"
+            ROW="${ROW} \`${NAME}.png\` |"
           fi
         else
-          ROW="${ROW} \`${NAME}\` |"
+          ROW="${ROW} \`${NAME}.png\` |"
         fi
       else
         ROW="${ROW} |"
@@ -199,7 +198,7 @@ if [ -e "${SCREENSHOTS[0]:-}" ]; then
   echo "" >> "$SUMMARY_FILE"
   echo "_${#SCREENSHOTS[@]} screenshot(s) captured_" >> "$SUMMARY_FILE"
 
-  if [ "$CAN_UPLOAD" != "true" ]; then
+  if [ "$UPLOAD_SUCCESS" != "true" ]; then
     echo "" >> "$SUMMARY_FILE"
     echo "> 📥 Download **ios-test-results** artifact to view images" >> "$SUMMARY_FILE"
   fi
