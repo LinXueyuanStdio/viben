@@ -278,7 +278,9 @@ jobs:
 
       - name: Install additional Android SDK components
         run: |
-          sdkmanager --install "platform-tools" "platforms;android-30" "emulator"
+          # Use Android 34 (Chrome 119+) for Tailwind v4 CSS compatibility
+          # Android 30 uses Chrome ~86 which doesn't support oklch colors or @layer
+          sdkmanager --install "platform-tools" "platforms;android-34" "emulator"
           sdkmanager --list | head -50
 
       - name: Install Maestro
@@ -298,7 +300,9 @@ jobs:
         id: run-tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          # Use API 34 (Android 14, Chrome 119+) for Tailwind v4 CSS compatibility
+          # Tailwind v4 requires Chrome 111+ for oklch colors and @layer support
+          api-level: 34
           arch: x86_64
           profile: pixel_6
           heap-size: 512M

@@ -73,6 +73,9 @@
     },
     "iOS": {
       "developmentTeam": ""
+    },
+    "android": {
+      "minSdkVersion": 34
     }
   }
 }
