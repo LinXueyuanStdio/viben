@@ -4,10 +4,17 @@ import { useEffect } from "react";
  * Hook to apply safe area insets on mobile platforms.
  * Uses tauri-plugin-safe-area-insets-css to get the actual inset values
  * and sets them as CSS custom properties on the document root.
+ *
+ * Retries a few times since WindowInsets may not be available immediately
+ * after app launch.
  */
 export function useSafeArea() {
   useEffect(() => {
-    async function applySafeArea() {
+    let attempts = 0;
+    const maxAttempts = 5;
+    const retryDelay = 200; // ms
+
+    async function applySafeArea(): Promise<boolean> {
       try {
         const { getTopInset, getBottomInset } = await import(
           "@saurl/tauri-plugin-safe-area-insets-css-api"
@@ -19,6 +26,13 @@ export function useSafeArea() {
         const top = topResult?.inset ?? 0;
         const bottom = bottomResult?.inset ?? 0;
 
+        console.log("[SafeArea] Got insets:", { top, bottom, attempt: attempts + 1 });
+
+        // If both are 0, the insets might not be available yet
+        if (top === 0 && bottom === 0 && attempts < maxAttempts - 1) {
+          return false; // Signal to retry
+        }
+
         document.documentElement.style.setProperty(
           "--safe-area-inset-top",
           `${top}px`
@@ -27,7 +41,6 @@ export function useSafeArea() {
           "--safe-area-inset-bottom",
           `${bottom}px`
         );
-        // Left and right are typically 0 on phones (no side notches)
         document.documentElement.style.setProperty(
           "--safe-area-inset-left",
           "0px"
@@ -38,12 +51,22 @@ export function useSafeArea() {
         );
 
         console.log("[SafeArea] Applied insets:", { top, bottom });
+        return true; // Success
       } catch (e) {
-        // Not on mobile or plugin not available - use CSS env() fallback
         console.debug("[SafeArea] Plugin not available, using CSS env() fallback", e);
+        return true; // Don't retry on error
       }
     }
 
-    applySafeArea();
+    async function tryApplySafeArea() {
+      const success = await applySafeArea();
+      if (!success && attempts < maxAttempts) {
+        attempts++;
+        setTimeout(tryApplySafeArea, retryDelay);
+      }
+    }
+
+    // Start after a small delay to let the window settle
+    setTimeout(tryApplySafeArea, 100);
   }, []);
 }

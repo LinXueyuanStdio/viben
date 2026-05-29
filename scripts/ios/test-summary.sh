@@ -191,12 +191,15 @@ upload_screenshots() {
     # Base64 encode (macOS uses -i flag)
     CONTENT=$(base64 -i "$TEMP_FILE" 2>/dev/null | tr -d '\n' || base64 "$TEMP_FILE" | tr -d '\n')
 
-    # Create blob
+    # Create blob (use temp file to avoid "Argument list too long")
+    local blob_payload_file="$TEMP_DIR/blob_${NAME}.json"
+    printf '{"content":"%s","encoding":"base64"}' "$CONTENT" > "$blob_payload_file"
+
     local blob_response
     blob_response=$(curl -s -X POST "${API_BASE}/git/blobs" \
       -H "$AUTH_HEADER" \
       -H "Content-Type: application/json" \
-      -d "{\"content\":\"${CONTENT}\",\"encoding\":\"base64\"}")
+      -d @"$blob_payload_file")
 
     BLOB_SHA=$(json_get "$blob_response" "sha")
 
