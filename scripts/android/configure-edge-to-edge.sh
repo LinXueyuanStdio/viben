@@ -26,15 +26,17 @@ if grep -q "setDecorFitsSystemWindows" "$MAIN_ACTIVITY"; then
   exit 0
 fi
 
-# Add import for WindowCompat
-if ! grep -q "import androidx.core.view.WindowCompat" "$MAIN_ACTIVITY"; then
-  sed -i '/^import /a import androidx.core.view.WindowCompat' "$MAIN_ACTIVITY"
+# Check if WindowCompat is already imported (might be imported by Tauri)
+if ! grep -q "androidx.core.view.WindowCompat" "$MAIN_ACTIVITY"; then
+  # Add import after the package declaration
+  sed -i '/^package /a import androidx.core.view.WindowCompat' "$MAIN_ACTIVITY"
 fi
 
-# Find the onCreate method and add the edge-to-edge setup
-# Look for "super.onCreate" and add our code after it
+# Find the onCreate method and add the edge-to-edge setup after super.onCreate
+# Use a marker to avoid double insertion
 if grep -q "super.onCreate" "$MAIN_ACTIVITY"; then
-  sed -i '/super.onCreate/a\        // Enable edge-to-edge mode for proper safe area inset reporting\n        WindowCompat.setDecorFitsSystemWindows(window, false)' "$MAIN_ACTIVITY"
+  # Add on a new line after super.onCreate(savedInstanceState)
+  sed -i 's/super\.onCreate(savedInstanceState)/&\n        \/\/ Enable edge-to-edge mode for proper safe area inset reporting\n        WindowCompat.setDecorFitsSystemWindows(window, false)/' "$MAIN_ACTIVITY"
   echo "=== After modification ==="
   cat "$MAIN_ACTIVITY"
 else
