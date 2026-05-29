@@ -9,8 +9,8 @@ export function useSafeArea() {
   useEffect(() => {
     async function applySafeArea() {
       try {
-        const { getSafeAreaInsets } = await import("tauri-plugin-safe-area-insets");
-        const insets = await getSafeAreaInsets();
+        const { getInsets } = await import("tauri-plugin-safe-area-insets");
+        const insets = await getInsets();
 
         document.documentElement.style.setProperty(
           "--safe-area-inset-top",
