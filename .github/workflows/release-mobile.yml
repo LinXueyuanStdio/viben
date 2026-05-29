@@ -158,17 +158,16 @@ jobs:
         working-directory: apps/desktop
         run: pnpm tauri android init --ci
 
-      - name: Configure Android edge-to-edge display
+      - name: Configure Android system bars
         run: |
           cd apps/desktop/src-tauri/gen/android
 
-          # Update styles.xml to disable edge-to-edge mode (let app control safe areas)
-          # This prevents the WebView from extending behind system bars
+          # Configure Android to NOT use edge-to-edge mode
+          # fitsSystemWindows=true lets Android automatically add padding for system bars
+          # This is more reliable than CSS env(safe-area-inset-*) which may not work on all WebViews
           STYLES_FILE="app/src/main/res/values/styles.xml"
           if [ -f "$STYLES_FILE" ]; then
-            # Add windowLayoutInDisplayCutoutMode to handle notches properly
-            # Set fitsSystemWindows to true so the app content doesn't overlap with system UI
-            sed -i 's|<style name="Theme.App" parent="Theme.MaterialComponents.DayNight.NoActionBar">|<style name="Theme.App" parent="Theme.MaterialComponents.DayNight.NoActionBar">\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>\n        <item name="android:fitsSystemWindows">false</item>\n        <item name="android:statusBarColor">@android:color/transparent</item>\n        <item name="android:navigationBarColor">@android:color/transparent</item>|' "$STYLES_FILE"
+            sed -i 's|<style name="Theme.App" parent="Theme.MaterialComponents.DayNight.NoActionBar">|<style name="Theme.App" parent="Theme.MaterialComponents.DayNight.NoActionBar">\n        <item name="android:fitsSystemWindows">true</item>\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>|' "$STYLES_FILE"
             echo "=== Updated styles.xml ==="
             cat "$STYLES_FILE"
           else
