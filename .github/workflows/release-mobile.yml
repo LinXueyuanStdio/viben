@@ -175,6 +175,9 @@ jobs:
       - name: Configure Android system bars
         run: ./scripts/android/configure-android-theme.sh apps/desktop/src-tauri/gen/android
 
+      - name: Configure edge-to-edge mode
+        run: ./scripts/android/configure-edge-to-edge.sh apps/desktop/src-tauri/gen/android
+
       - name: Setup Android signing
         run: |
           cd apps/desktop/src-tauri/gen/android
