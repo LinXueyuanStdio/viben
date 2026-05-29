@@ -9,10 +9,6 @@
 @source "../node_modules/@viben/kanban/src/**/*.tsx";
 @source "../node_modules/@viben/ui/src/**/*.tsx";
 
-/* Safelist HEX color classes for Android WebView (Chrome 86) compatibility
- * These bypass CSS variable resolution which can fail on older browsers */
-@source inline("border-[#d97706] text-[#d97706] border-[#f59e0b] text-[#f59e0b] border-[#d6d3d1] border-[#57534e]");
-
 /* ===== Tailwind v4 Theme Configuration =====
  * IMPORTANT: @theme is processed at BUILD TIME, not runtime.
  * CSS variables like var(--background) that reference oklch colors will NOT work
@@ -501,16 +497,6 @@
   }
 }
 
-/* Card entrance animation - simple opacity only */
-@keyframes card-pop-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 /* Task card running pulse animation */
 @keyframes task-pulse {
   0%, 100% {
@@ -531,17 +517,7 @@
   }
 }
 
-/* Progress shimmer animation */
-@keyframes progress-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Chat Popup send button pulse animation - uses rgba fallback for Android WebView */
+/* Chat Popup send button pulse animation */
 @keyframes sendPulse {
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.5); }
   50% { transform: scale(1.15); box-shadow: 0 0 0 8px transparent; }
@@ -630,18 +606,12 @@
 
   /* Card entrance animation */
   .animate-card-enter {
-    animation: card-pop-in var(--duration-normal) var(--ease-out-back);
+    animation: fade-in var(--duration-normal) var(--ease-out-back);
     animation-fill-mode: both;
   }
 
   /* Fade in animation - uses page animation timing */
   .animate-fade-in {
-    animation: fade-in var(--animation-duration-page) var(--animation-easing-page);
-    animation-fill-mode: both;
-  }
-
-  /* Page entrance animation - for manual use when needed */
-  .animate-page-enter {
     animation: fade-in var(--animation-duration-page) var(--animation-easing-page);
     animation-fill-mode: both;
   }
@@ -676,7 +646,7 @@
 
   /* Progress shimmer animation utility */
   .animate-progress-shimmer {
-    animation: progress-shimmer 1.5s infinite;
+    animation: shimmer 1.5s infinite;
     background-size: 200% 100%;
   }
 
@@ -760,25 +730,6 @@
 
   .bento-card-hero {
     min-height: 600px;
-  }
-
-  /* Tablet breakpoint (641px - 1024px) */
-  @media (min-width: 641px) and (max-width: 1024px) {
-    .bento-card-small {
-      grid-column: span 3; /* 4 cards per row on tablet */
-    }
-
-    .bento-card-medium {
-      grid-column: span 6;
-    }
-
-    .bento-card-large {
-      grid-column: span 9; /* 3/4 width on tablet */
-    }
-
-    .bento-card-full {
-      grid-column: span 12;
-    }
   }
 
   /* Mobile breakpoint (<640px) */

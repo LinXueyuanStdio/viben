@@ -1,36 +1,26 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Smartphone, Link, MessageSquare, Wifi, WifiOff, Loader2 } from "lucide-react";
+import { Smartphone, Link, MessageSquare, Wifi, WifiOff } from "lucide-react";
 import { useConnectionStore } from "@/stores/connection-store";
 import { cn } from "@/lib/utils";
-
-type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
 function MobileHeader() {
   const { t } = useTranslation();
   const active = useConnectionStore((s) => s.getActive());
-  const status: ConnectionStatus = (active ? "connected" : "disconnected") as ConnectionStatus;
 
   return (
     <header
-      className="flex items-center justify-between px-4 py-3 border-b border-[#d6d3d1] dark:border-[#57534e] bg-background"
-      style={{ borderBottomColor: '#d6d3d1' }}
+      className="flex items-center justify-between px-4 pb-3 border-b border-border-strong bg-background"
+      style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))' }}
     >
       <span className="text-lg font-semibold">Viben</span>
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {status === "connected" && (
+        {active ? (
           <>
             <Wifi className="h-4 w-4 text-green-500" />
-            <span className="text-green-500">{active?.name ?? t("mobile.status.connected", "Connected")}</span>
+            <span className="text-green-500">{active.name ?? t("mobile.status.connected", "Connected")}</span>
           </>
-        )}
-        {status === "connecting" && (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>{t("mobile.status.connecting", "Connecting...")}</span>
-          </>
-        )}
-        {status === "disconnected" && (
+        ) : (
           <>
             <WifiOff className="h-4 w-4 text-destructive" />
             <span className="text-destructive">{t("mobile.status.disconnected", "Disconnected")}</span>
@@ -58,8 +48,8 @@ export function MobileLayout() {
       </main>
       {/* Bottom navigation with safe area padding for Android/iOS system navigation */}
       <nav
-        className="flex border-t border-[#d6d3d1] dark:border-[#57534e] bg-background pb-[env(safe-area-inset-bottom,0px)]"
-        style={{ borderTopColor: '#d6d3d1' }}
+        className="flex border-t border-border-strong bg-background"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {tabKeys.map((tab) => (
           <NavLink

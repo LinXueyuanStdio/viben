@@ -1,69 +1,11 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import postcssCascadeLayers from "@csstools/postcss-cascade-layers";
-import postcss from "postcss";
 import path from "path";
 import { fileURLToPath } from "url";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
-
-// Check if building for mobile (Android/iOS)
-// Mobile builds need CSS @layer polyfill because Android WebView (Chrome 86) doesn't support @layer (requires Chrome 99+)
-// TAURI_ENV_PLATFORM is set by `tauri android build` or `tauri ios build`
-// VITE_MOBILE_BUILD can be set manually for testing
-// @ts-expect-error process is a nodejs global
-const platform = process.env.TAURI_ENV_PLATFORM || "";
-// @ts-expect-error process is a nodejs global
-const isMobileBuild = platform === "android" || platform === "ios" || process.env.VITE_MOBILE_BUILD === "true";
-
-if (isMobileBuild) {
-  console.log(`[vite.config] Mobile build detected (platform=${platform}), enabling CSS @layer polyfill`);
-}
-
-/**
- * Custom Vite plugin to run postcss-cascade-layers AFTER @tailwindcss/vite processes CSS.
- *
- * IMPORTANT: @tailwindcss/vite bypasses Vite's PostCSS pipeline entirely, so adding
- * postcss-cascade-layers to css.postcss.plugins does NOT work. This plugin uses
- * generateBundle hook to transform the final CSS bundle after all processing is done.
- *
- * This polyfills CSS @layer for Android WebView (Chrome 86) which doesn't support
- * cascade layers (requires Chrome 99+).
- */
-function cascadeLayersPolyfill(): Plugin {
-  return {
-    name: "cascade-layers-polyfill",
-    enforce: "post",
-    async generateBundle(_options, bundle) {
-      const cascadeLayersPlugin = postcssCascadeLayers();
-
-      for (const fileName of Object.keys(bundle)) {
-        const chunk = bundle[fileName];
-        // Only process CSS assets
-        if (chunk.type !== "asset" || !fileName.endsWith(".css")) continue;
-
-        const source = typeof chunk.source === "string" ? chunk.source : chunk.source.toString();
-
-        // Only process if @layer is present
-        if (!source.includes("@layer")) continue;
-
-        console.log(`[cascade-layers-polyfill] Processing ${fileName}...`);
-
-        try {
-          const result = await postcss([cascadeLayersPlugin]).process(source, {
-            from: fileName,
-          });
-          chunk.source = result.css;
-          console.log(`[cascade-layers-polyfill] Successfully transformed ${fileName}`);
-        } catch (error) {
-          console.error(`[cascade-layers-polyfill] Error processing ${fileName}:`, error);
-        }
-      }
-    },
-  };
-}
 
 // Node.js-only packages that should be externalized for browser builds
 const nodeOnlyPackages = [
@@ -115,23 +57,12 @@ const nodeOnlyPackages = [
 ];
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [
-    react(),
-    tailwindcss(),
-    // Only apply cascade-layers polyfill for mobile builds
-    // This MUST run after tailwindcss() to transform the @layer rules it generates
-    ...(isMobileBuild ? [cascadeLayersPolyfill()] : []),
-  ],
+export default defineConfig(() => ({
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-  },
-  // Externalize server-side only packages from @viben/core
-  // These are optional dependencies that use dynamic import with fallback
-  ssr: {
-    external: nodeOnlyPackages,
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -198,9 +129,8 @@ export default defineConfig(async () => ({
         },
       },
     },
-    // Target browsers that support Android WebView (API 30 = Chrome ~86)
-    // "esnext" causes issues on older WebViews
-    target: ["es2020", "chrome86", "safari14"],
+    // Target Android API 34+ (Chrome 120+), macOS Safari 16+, modern desktop browsers
+    target: ["es2022", "chrome120", "safari16"],
     // Chunk size warning threshold (500KB)
     chunkSizeWarningLimit: 500,
   },
