@@ -445,6 +445,8 @@ jobs:
 
       - name: Generate job summary
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/android/test-summary.sh test-screenshots maestro-results.xml test-logs/crash-log.txt
 
   # =============================================================================
@@ -828,6 +830,8 @@ jobs:
 
       - name: Generate job summary
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/ios/test-summary.sh --screenshots-pattern "ios-screenshot*.png" --maestro-results maestro-ios-results.xml --crash-log ios-crash-log.txt
 
   # =============================================================================

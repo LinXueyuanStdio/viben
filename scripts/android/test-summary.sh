@@ -2,6 +2,11 @@
 # Generate GitHub Job Summary for Android test results
 # Usage: ./test-summary.sh [screenshots_dir] [maestro_results] [crash_log]
 #
+# Environment variables:
+#   GITHUB_REPOSITORY  - Repository in format owner/repo
+#   GITHUB_RUN_ID      - Workflow run ID
+#   GITHUB_TOKEN       - GitHub token for uploading assets
+#
 # Arguments:
 #   screenshots_dir  - Directory containing PNG screenshots (default: test-screenshots)
 #   maestro_results  - Path to Maestro JUnit XML results (default: maestro-results.xml)
@@ -15,9 +20,6 @@ CRASH_LOG="${3:-test-logs/crash-log.txt}"
 
 # Output file (GitHub Actions sets this automatically)
 SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
-
-# Max image size in bytes (512KB)
-MAX_SIZE=524288
 
 echo "## 🤖 Android Test Results" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
@@ -60,44 +62,57 @@ if [ -f "$CRASH_LOG" ]; then
 fi
 
 # =============================================================================
-# Screenshots (3-column table with compressed base64 images)
+# Screenshots
 # =============================================================================
 echo "### 📸 Screenshots" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
-# Function to compress image to target size
-compress_image() {
-  local input="$1"
-  local output="$2"
-  local max_size="$3"
+# Function to upload image to GitHub and get URL
+upload_to_github() {
+  local file="$1"
+  local filename="$2"
 
-  # Start with width 400, reduce if needed
-  local width=400
-  local quality=80
+  # Check if we have required env vars
+  if [ -z "${GITHUB_REPOSITORY:-}" ] || [ -z "${GITHUB_RUN_ID:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
+    echo ""
+    return
+  fi
 
-  while [ $width -ge 100 ]; do
-    if command -v convert &>/dev/null; then
-      convert "$input" -resize "${width}x>" -quality $quality "$output" 2>/dev/null
-    else
-      cp "$input" "$output"
-      return
-    fi
+  # Compress image first
+  local temp_file
+  temp_file=$(mktemp --suffix=.jpg)
 
-    local size
-    size=$(stat -c%s "$output" 2>/dev/null || stat -f%z "$output" 2>/dev/null || echo "999999")
+  if command -v convert &>/dev/null; then
+    convert "$file" -resize "600x>" -quality 85 "$temp_file" 2>/dev/null || cp "$file" "$temp_file"
+  else
+    cp "$file" "$temp_file"
+  fi
 
-    if [ "$size" -le "$max_size" ]; then
-      return
-    fi
+  # Upload to ci-assets branch using GitHub API
+  local content
+  content=$(base64 -w 0 "$temp_file" 2>/dev/null || base64 "$temp_file" | tr -d '\n')
 
-    # Reduce quality first, then width
-    if [ $quality -gt 40 ]; then
-      quality=$((quality - 20))
-    else
-      width=$((width - 100))
-      quality=80
-    fi
-  done
+  local path="android/${GITHUB_RUN_ID}/${filename}"
+  local api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/${path}"
+
+  # Try to create/update file in ci-assets branch
+  local response
+  response=$(curl -s -X PUT "$api_url" \
+    -H "Authorization: token ${GITHUB_TOKEN}" \
+    -H "Accept: application/vnd.github.v3+json" \
+    -d "{\"message\":\"Add screenshot ${filename}\",\"content\":\"${content}\",\"branch\":\"ci-assets\"}" 2>/dev/null || echo "")
+
+  rm -f "$temp_file"
+
+  # Extract download URL from response
+  local download_url
+  download_url=$(echo "$response" | grep -oE '"download_url":\s*"[^"]+"' | head -1 | cut -d'"' -f4 || echo "")
+
+  if [ -n "$download_url" ]; then
+    echo "$download_url"
+  else
+    echo ""
+  fi
 }
 
 # Collect screenshots
@@ -108,11 +123,14 @@ else
 fi
 
 if [ ${#SCREENSHOTS[@]} -gt 0 ]; then
+  # Check if we can upload to GitHub
+  CAN_UPLOAD="false"
+  if [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "${GITHUB_RUN_ID:-}" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
+    CAN_UPLOAD="true"
+  fi
+
   echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
   echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
-
-  TEMP_DIR=$(mktemp -d)
-  trap "rm -rf '$TEMP_DIR'" EXIT
 
   for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
     ROW="|"
@@ -121,17 +139,16 @@ if [ ${#SCREENSHOTS[@]} -gt 0 ]; then
       if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
         IMG="${SCREENSHOTS[$IDX]}"
         NAME=$(basename "$IMG")
-        TEMP_IMG="$TEMP_DIR/compressed_${IDX}.jpg"
 
-        # Compress image
-        compress_image "$IMG" "$TEMP_IMG" "$MAX_SIZE"
-
-        # Base64 encode
-        if [ -f "$TEMP_IMG" ]; then
-          B64=$(base64 -w 0 "$TEMP_IMG" 2>/dev/null || base64 "$TEMP_IMG" | tr -d '\n\r')
-          ROW="${ROW} <img src=\"data:image/jpeg;base64,${B64}\" alt=\"${NAME}\" width=\"250\"/> |"
+        if [ "$CAN_UPLOAD" = "true" ]; then
+          URL=$(upload_to_github "$IMG" "$NAME")
+          if [ -n "$URL" ]; then
+            ROW="${ROW} ![${NAME}](${URL}) |"
+          else
+            ROW="${ROW} \`${NAME}\` |"
+          fi
         else
-          ROW="${ROW} ${NAME} |"
+          ROW="${ROW} \`${NAME}\` |"
         fi
       else
         ROW="${ROW} |"
@@ -142,6 +159,11 @@ if [ ${#SCREENSHOTS[@]} -gt 0 ]; then
 
   echo "" >> "$SUMMARY_FILE"
   echo "_${#SCREENSHOTS[@]} screenshot(s) captured_" >> "$SUMMARY_FILE"
+
+  if [ "$CAN_UPLOAD" != "true" ]; then
+    echo "" >> "$SUMMARY_FILE"
+    echo "> 📥 Download **android-test-screenshots** artifact to view images" >> "$SUMMARY_FILE"
+  fi
 else
   echo "_No screenshots captured_" >> "$SUMMARY_FILE"
 fi
