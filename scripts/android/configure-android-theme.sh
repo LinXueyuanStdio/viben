@@ -69,7 +69,10 @@ fi
 # Find and modify WryActivity.kt to set fitsSystemWindows on the WebView
 echo ""
 echo "=== Looking for WryActivity.kt ==="
-WRY_ACTIVITY=$(find . -name "WryActivity.kt" 2>/dev/null | head -1)
+# WryActivity.kt is in the generated directory, search recursively
+WRY_ACTIVITY=$(find app -name "WryActivity.kt" -type f 2>/dev/null | head -1)
+echo "Search result: $WRY_ACTIVITY"
+find app -name "*.kt" -path "*/generated/*" 2>/dev/null | head -5
 if [ -n "$WRY_ACTIVITY" ] && [ -f "$WRY_ACTIVITY" ]; then
   echo "Found: $WRY_ACTIVITY"
   echo "=== Before ==="
