@@ -1,6 +1,6 @@
 #!/bin/bash
 # Configure Android theme settings
-# Note: Safe area insets are now handled by tauri-plugin-safe-area-insets
+# Note: Safe area insets are handled by tauri-plugin-safe-area-insets-css
 # This script only configures display cutout mode for notches
 
 set -e
@@ -30,7 +30,7 @@ echo "=== Current content ==="
 cat "$THEME_FILE"
 
 # Add windowLayoutInDisplayCutoutMode for notch handling
-# Safe area insets are handled by tauri-plugin-safe-area-insets on the frontend
+# Safe area insets are handled by tauri-plugin-safe-area-insets-css on the frontend
 if grep -q "windowLayoutInDisplayCutoutMode" "$THEME_FILE"; then
   echo "windowLayoutInDisplayCutoutMode already configured"
 else

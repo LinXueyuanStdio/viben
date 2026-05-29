@@ -194,7 +194,7 @@ pub fn run() {
     {
         builder = builder
             .plugin(tauri_plugin_barcode_scanner::init())
-            .plugin(tauri_plugin_safe_area_insets::init());
+            .plugin(tauri_plugin_safe_area_insets_css::init());
     }
 
     // MCP plugin for AI debugging - only in desktop development builds

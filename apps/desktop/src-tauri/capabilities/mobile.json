@@ -8,6 +8,6 @@
     "barcode-scanner:allow-scan",
     "barcode-scanner:allow-cancel",
     "barcode-scanner:allow-vibrate",
-    "safe-area-insets:default"
+    "safe-area-insets-css:default"
   ]
 }
