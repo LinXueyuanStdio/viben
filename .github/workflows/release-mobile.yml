@@ -236,7 +236,7 @@ jobs:
           ls -la android-artifacts/
 
       - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-artifacts
           path: android-artifacts/*
@@ -258,7 +258,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download Android artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: android-artifacts
           path: test-apk
@@ -356,7 +356,7 @@ jobs:
 
       - name: Upload test screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-test-screenshots
           path: test-screenshots/
@@ -364,7 +364,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-test-logs
           path: |
@@ -374,7 +374,7 @@ jobs:
 
       - name: Upload Maestro debug output
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-maestro-debug
           path: |
@@ -459,7 +459,7 @@ jobs:
       contents: write
     steps:
       - name: Download Android artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: android-artifacts
           path: release-artifacts
@@ -566,7 +566,7 @@ jobs:
           ls -la $GITHUB_WORKSPACE/ios-artifacts/
 
       - name: Upload iOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-artifacts
           path: ios-artifacts/*
@@ -588,7 +588,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download iOS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ios-artifacts
           path: test-ios
@@ -771,7 +771,7 @@ jobs:
 
       - name: Upload test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-results
           path: |
@@ -837,7 +837,7 @@ jobs:
       contents: write
     steps:
       - name: Download iOS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ios-artifacts
           path: release-artifacts
