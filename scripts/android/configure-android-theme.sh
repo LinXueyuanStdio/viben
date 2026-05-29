@@ -49,3 +49,19 @@ sed -i 's|<style name="Theme\.[^"]*" parent="[^"]*">|&\n        <item name="andr
 
 echo "=== After modification ==="
 cat "$THEME_FILE"
+
+# Also modify the activity layout to add fitsSystemWindows
+LAYOUT_FILE="app/src/main/res/layout/activity_main.xml"
+if [ -f "$LAYOUT_FILE" ]; then
+  echo ""
+  echo "=== Modifying activity_main.xml ==="
+  echo "=== Before ==="
+  cat "$LAYOUT_FILE"
+
+  # Add android:fitsSystemWindows="true" to the root element
+  # This ensures the WebView content doesn't overlap with system bars
+  sed -i 's|xmlns:android="http://schemas.android.com/apk/res/android"|xmlns:android="http://schemas.android.com/apk/res/android"\n    android:fitsSystemWindows="true"|' "$LAYOUT_FILE"
+
+  echo "=== After ==="
+  cat "$LAYOUT_FILE"
+fi
