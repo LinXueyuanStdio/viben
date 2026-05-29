@@ -43,25 +43,25 @@ import { getGatewayClient, type UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";
 import { useWorktreeExists } from "@/hooks/use-worktree-exists";
-import { EditableTitle } from "./task-detail-panel/editable-title";
-import { ActivityTab } from "./task-detail-panel/activity-tab";
-import { AgentChatTab } from "./task-detail-panel/agent-chat-tab";
-import { CommentsTab } from "./task-detail-panel/comments-tab";
-import { DetailsTab } from "./task-detail-panel/details-tab";
+import { EditableTitle } from "./editable-title";
+import { ActivityTab } from "./activity-tab";
+import { AgentChatTab } from "./agent-chat-tab";
+import { CommentsTab } from "./comments-tab";
+import { DetailsTab } from "./details-tab";
 import {
   TaskDirectoryTab,
   WorkingDirectoryTab,
-} from "./task-detail-panel/directory-tabs";
-import { EventsTab } from "./task-detail-panel/events-tab";
+} from "./directory-tabs";
+import { EventsTab } from "./events-tab";
 import {
   SpecsLogsTab,
   SpecsPrdTab,
   SpecsSubtasksTab,
-} from "./task-detail-panel/specs-tabs";
-import { uiMessageToAgentMessage } from "./task-detail-panel/utils";
-import type { TaskDetailPanelProps } from "./task-detail-panel/types";
+} from "./specs-tabs";
+import { uiMessageToAgentMessage } from "./utils";
+import type { TaskDetailPanelProps } from "./types";
 
-export type { TaskForPanel, AvailableTask, AvailableAgent, TaskDetailPanelProps } from "./task-detail-panel/types";
+export type { TaskForPanel, AvailableTask, AvailableAgent, TaskDetailPanelProps } from "./types";
 
 export function TaskDetailPanel({
   task,

@@ -46,10 +46,26 @@ I'm here to help you discuss and implement this task. Feel free to ask questions
 }
 
 /**
- * In-memory storage for task conversations
+ * In-memory storage for task conversations with size limit
  * Key: taskId, Value: messages array
+ * Oldest entries are removed when limit is exceeded
  */
+const MAX_TASK_CONVERSATIONS = 100;
 const taskConversations = new Map<string, AgentMessage[]>();
+
+/**
+ * Add or update a task conversation, enforcing size limit
+ */
+function setTaskConversation(taskId: string, messages: AgentMessage[]) {
+  // If at limit and this is a new task, remove oldest entry
+  if (!taskConversations.has(taskId) && taskConversations.size >= MAX_TASK_CONVERSATIONS) {
+    const oldestKey = taskConversations.keys().next().value;
+    if (oldestKey) {
+      taskConversations.delete(oldestKey);
+    }
+  }
+  setTaskConversation(taskId, messages);
+}
 
 /**
  * Task-specific agent hook for kanban task detail panel
@@ -97,7 +113,7 @@ export function useTaskAgent(taskId: string, taskContext: TaskContext | null) {
   // Save conversation when messages change
   useEffect(() => {
     if (taskId && messages.length > 0) {
-      taskConversations.set(taskId, messages);
+      setTaskConversation(taskId, messages);
     }
   }, [taskId, messages]);
 

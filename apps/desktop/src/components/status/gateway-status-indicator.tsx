@@ -11,8 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { getSettingsSectionDescriptor } from "@/navigation/navigation-meta";
-
-type StatusVariant = "success" | "warning" | "error" | "neutral";
+import type { StatusVariant } from "./index";
 
 interface GatewayStatusIndicatorProps {
   collapsed?: boolean;

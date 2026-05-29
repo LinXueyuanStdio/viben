@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Workspace, WorkspaceAgent } from "@/types";
+import type { Workspace, Executor } from "@/types";
 
 /**
  * Discovery task for a workspace - tracks auto-discovery progress
@@ -11,7 +11,7 @@ export interface DiscoveryTask {
   startedAt: number;
   completedAt?: number;
   error?: string;
-  agents?: WorkspaceAgent[];
+  agents?: Executor[];
 }
 
 interface WorkspaceState {
@@ -41,7 +41,7 @@ interface WorkspaceState {
 
   // Actions - Discovery tasks
   startDiscovery: (workspaceId: string) => void;
-  completeDiscovery: (workspaceId: string, agents: WorkspaceAgent[]) => void;
+  completeDiscovery: (workspaceId: string, agents: Executor[]) => void;
   failDiscovery: (workspaceId: string, error: string) => void;
   clearDiscovery: (workspaceId: string) => void;
 

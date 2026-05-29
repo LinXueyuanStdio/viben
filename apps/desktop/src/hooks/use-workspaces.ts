@@ -9,6 +9,7 @@ import type {
   WorkspaceAgent,
   WorkspaceMcpServer,
   WorkspaceSkill,
+  ExecutorType,
 } from "@/types";
 
 // Helper to transform gateway response to hook format
@@ -88,7 +89,7 @@ export function useLocalWorkspaces() {
           id: a.id,
           workspace_id: workspaceId,
           name: a.name,
-          type: (a.type as any) || "UNKNOWN",
+          type: (a.type as ExecutorType) || "UNKNOWN",
           config_path: a.config_path || "",
           mcp_config_file: null,
           skills_config_file: null,
@@ -231,7 +232,7 @@ export function useWorkspaceAgents(workspaceId: string | null) {
         id: a.id,
         workspace_id: workspaceId,
         name: a.name,
-        type: (a.type as any) || "UNKNOWN",
+        type: (a.type as ExecutorType) || "UNKNOWN",
         config_path: a.config_path || "",
         mcp_config_file: null,
         skills_config_file: null,

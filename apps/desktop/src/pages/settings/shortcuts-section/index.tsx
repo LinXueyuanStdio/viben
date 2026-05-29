@@ -10,7 +10,7 @@ import {
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import { SettingsItem, SectionHeader } from "../components";
-import { usePlatform } from "./use-platform";
+import { usePlatform } from "@/hooks/use-platform";
 import { ShortcutRecorder } from "./shortcut-recorder";
 
 export function ShortcutsSection() {

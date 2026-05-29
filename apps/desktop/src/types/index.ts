@@ -416,8 +416,17 @@ export * from "./chat-config";
 // Re-export unified agent types
 export * from "./unified-agent";
 
-// Re-export group chat types
-export * from "./group-chat";
+// Group chat types are now in lib/gateway/types/group-chat.ts
+// Re-export from gateway for backward compatibility
+export type {
+  GroupChat,
+  GroupChatMember,
+  GroupChatMessage,
+  GroupChatSession,
+  GroupChatUIMessage,
+  MemberType,
+  MemberRole,
+} from "@/lib/gateway";
 
 // Re-export notification types
 export * from "./notification";

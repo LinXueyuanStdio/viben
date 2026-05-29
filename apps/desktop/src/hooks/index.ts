@@ -425,3 +425,10 @@ export { useOverlayShortcuts } from "./use-overlay-shortcuts";
 // Action System
 export { useActionProvider } from "./use-action-provider";
 export type { ActionProviderEntry } from "./use-action-provider";
+
+// Page Dialogs
+export { usePageDialogs } from "./use-page-dialogs";
+export type { PageDialogsState } from "./use-page-dialogs";
+
+// Platform Detection
+export { usePlatform } from "./use-platform";

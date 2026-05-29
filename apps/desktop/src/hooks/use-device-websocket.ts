@@ -7,7 +7,7 @@
 
 import { useCallback, useRef } from "react";
 import { useGatewayWebSocket, type GatewayEventPayload } from "./use-gateway-websocket";
-import { useDeviceStore } from "../stores/device-store";
+import { useDeviceStore, type DeviceInfo } from "../stores/device-store";
 
 type DeviceEventType =
   | "DeviceConnected"
@@ -45,14 +45,14 @@ export function useDeviceWebSocket(options: UseDeviceWebSocketOptions = {}) {
 
     switch (eventType) {
       case "DeviceConnected":
-        if (data.device) addDeviceRef.current(data.device as any);
+        if (data.device) addDeviceRef.current(data.device as DeviceInfo);
         break;
       case "DeviceDisconnected":
         if (data.device_id) removeDeviceRef.current(data.device_id as string);
         break;
       case "DeviceUpdated":
         if (data.device) {
-          const device = data.device as any;
+          const device = data.device as DeviceInfo;
           updateDeviceRef.current(device.id, device);
         }
         break;

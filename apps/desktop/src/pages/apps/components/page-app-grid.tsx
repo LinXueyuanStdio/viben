@@ -28,7 +28,7 @@ import { EditPageDialog } from "./edit-page-dialog";
 import { PagePermissionsDialog } from "./page-permissions-dialog";
 import { PageIcon } from "./page-app-icon";
 import { FolderOverlay } from "./folder-overlay";
-import { usePageDialogs } from "./use-page-dialogs";
+import { usePageDialogs } from "@/hooks/use-page-dialogs";
 import { buildPageTree } from "../utils";
 import type { PageTreeNode } from "../utils";
 import type { PageConfig } from "@/hooks/use-pages";
