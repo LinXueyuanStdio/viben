@@ -41,7 +41,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@saurl/tauri-plugin-safe-area-insets-css-api": "^0.1.0",
     "@tanstack/react-query": "^5.90.21",
-    "@tanstack/react-virtual": "^3.13.24",
+    "@tanstack/react-virtual": "^3.13.26",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-barcode-scanner": "^2.4.4",
     "@tauri-apps/plugin-dialog": "^2.7.0",
