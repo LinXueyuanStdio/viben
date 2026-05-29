@@ -23,6 +23,10 @@ on:
         description: 'Skip mobile tests (faster release)'
         type: boolean
         default: false
+      dry_run:
+        description: 'Dry run (build and test only, skip publishing)'
+        type: boolean
+        default: true
   push:
     tags:
       - 'mobile-v*'
@@ -51,6 +55,7 @@ jobs:
       build_android: ${{ steps.get-version.outputs.build_android }}
       build_ios: ${{ steps.get-version.outputs.build_ios }}
       skip_tests: ${{ steps.get-version.outputs.skip_tests }}
+      dry_run: ${{ steps.get-version.outputs.dry_run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -67,12 +72,14 @@ jobs:
             IS_DRAFT="${{ inputs.draft }}"
             TARGET="${{ inputs.target }}"
             SKIP_TESTS="${{ inputs.skip_tests }}"
+            DRY_RUN="${{ inputs.dry_run }}"
           else
             # Tag trigger - extract version from tag (mobile-v0.1.0 -> 0.1.0)
             VERSION="${GITHUB_REF_NAME#mobile-v}"
             IS_DRAFT="false"
             TARGET="both"
             SKIP_TESTS="false"
+            DRY_RUN="false"
           fi
 
           BUILD_ANDROID="false"
@@ -90,6 +97,7 @@ jobs:
           echo "build_android=${BUILD_ANDROID}" >> $GITHUB_OUTPUT
           echo "build_ios=${BUILD_IOS}" >> $GITHUB_OUTPUT
           echo "skip_tests=${SKIP_TESTS}" >> $GITHUB_OUTPUT
+          echo "dry_run=${DRY_RUN}" >> $GITHUB_OUTPUT
           echo "=========================================="
           echo "Release Configuration:"
           echo "  Version: ${VERSION}"
@@ -98,6 +106,7 @@ jobs:
           echo "  Build iOS: ${BUILD_IOS}"
           echo "  Skip Tests: ${SKIP_TESTS}"
           echo "  Draft: ${IS_DRAFT}"
+          echo "  Dry Run: ${DRY_RUN}"
           echo "=========================================="
 
   # =============================================================================
@@ -439,10 +448,11 @@ jobs:
   # =============================================================================
   release-android:
     needs: [prepare, build-android, test-android]
-    # Run if build succeeded and (test succeeded OR test was skipped)
+    # Run if build succeeded and (test succeeded OR test was skipped) and not dry run
     if: |
       always() &&
       needs.prepare.outputs.build_android == 'true' &&
+      needs.prepare.outputs.dry_run != 'true' &&
       needs.build-android.result == 'success' &&
       (needs.test-android.result == 'success' || needs.test-android.result == 'skipped')
     runs-on: ubuntu-latest
@@ -817,10 +827,11 @@ jobs:
   # =============================================================================
   release-ios:
     needs: [prepare, build-ios, test-ios]
-    # Run if build succeeded and (test succeeded OR test was skipped)
+    # Run if build succeeded and (test succeeded OR test was skipped) and not dry run
     if: |
       always() &&
       needs.prepare.outputs.build_ios == 'true' &&
+      needs.prepare.outputs.dry_run != 'true' &&
       needs.build-ios.result == 'success' &&
       (needs.test-ios.result == 'success' || needs.test-ios.result == 'skipped')
     runs-on: ubuntu-latest
@@ -857,6 +868,7 @@ jobs:
     needs: [prepare, release-android, release-ios]
     if: |
       always() &&
+      needs.prepare.outputs.dry_run != 'true' &&
       needs.prepare.result == 'success' &&
       (needs.release-android.result == 'success' || needs.release-android.result == 'skipped') &&
       (needs.release-ios.result == 'success' || needs.release-ios.result == 'skipped') &&

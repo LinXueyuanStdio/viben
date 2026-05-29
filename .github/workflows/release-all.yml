@@ -22,6 +22,10 @@ on:
         description: 'Create as draft release'
         type: boolean
         default: false
+      dry_run:
+        description: 'Dry run (build and test only, skip publishing)'
+        type: boolean
+        default: true
 
 # Ensure only one release workflow runs at a time
 concurrency:
@@ -45,6 +49,7 @@ jobs:
       release_cli: ${{ steps.get-version.outputs.release_cli }}
       release_desktop: ${{ steps.get-version.outputs.release_desktop }}
       is_draft: ${{ steps.get-version.outputs.is_draft }}
+      dry_run: ${{ steps.get-version.outputs.dry_run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -62,12 +67,14 @@ jobs:
             RELEASE_CLI="${{ inputs.release_cli }}"
             RELEASE_DESKTOP="${{ inputs.release_desktop }}"
             IS_DRAFT="${{ inputs.draft }}"
+            DRY_RUN="${{ inputs.dry_run }}"
           else
             # Tag trigger (v0.2.0 -> 0.2.0)
             VERSION="${GITHUB_REF_NAME#v}"
             RELEASE_CLI="true"
             RELEASE_DESKTOP="true"
             IS_DRAFT="false"
+            DRY_RUN="false"
           fi
 
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
@@ -75,6 +82,7 @@ jobs:
           echo "release_cli=${RELEASE_CLI}" >> $GITHUB_OUTPUT
           echo "release_desktop=${RELEASE_DESKTOP}" >> $GITHUB_OUTPUT
           echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
+          echo "dry_run=${DRY_RUN}" >> $GITHUB_OUTPUT
 
           echo "=========================================="
           echo "Release Configuration:"
@@ -83,6 +91,7 @@ jobs:
           echo "  Release CLI: ${RELEASE_CLI}"
           echo "  Release Desktop: ${RELEASE_DESKTOP}"
           echo "  Draft: ${IS_DRAFT}"
+          echo "  Dry Run: ${DRY_RUN}"
           echo "=========================================="
 
   # =============================================================================
@@ -310,7 +319,10 @@ jobs:
   # =============================================================================
   release-cli:
     needs: [prepare, build-cli, test-cli]
-    if: needs.prepare.outputs.release_cli == 'true' && needs.test-cli.result == 'success'
+    if: |
+      needs.prepare.outputs.release_cli == 'true' &&
+      needs.prepare.outputs.dry_run != 'true' &&
+      needs.test-cli.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -410,7 +422,10 @@ jobs:
   update-homebrew:
     needs: [prepare, release-cli]
     runs-on: ubuntu-latest
-    if: needs.prepare.outputs.release_cli == 'true' && needs.release-cli.outputs.sha256 != ''
+    if: |
+      needs.prepare.outputs.release_cli == 'true' &&
+      needs.prepare.outputs.dry_run != 'true' &&
+      needs.release-cli.outputs.sha256 != ''
     steps:
       - name: Checkout homebrew-viben
         uses: actions/checkout@v6
@@ -647,6 +662,7 @@ jobs:
     needs: [prepare, release-cli, build-desktop]
     if: |
       always() &&
+      needs.prepare.outputs.dry_run != 'true' &&
       (needs.release-cli.result == 'success' || needs.build-desktop.result == 'success') &&
       needs.prepare.result == 'success'
     runs-on: ubuntu-latest
