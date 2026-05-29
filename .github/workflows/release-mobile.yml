@@ -159,7 +159,7 @@ jobs:
         run: pnpm tauri android init --ci
 
       - name: Configure Android system bars
-        run: ./scripts/configure-android-theme.sh apps/desktop/src-tauri/gen/android
+        run: ./scripts/android/configure-android-theme.sh apps/desktop/src-tauri/gen/android
 
       - name: Setup Android signing
         run: |
