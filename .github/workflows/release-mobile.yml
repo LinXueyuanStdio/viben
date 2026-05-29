@@ -147,6 +147,11 @@ jobs:
           workspaces: './apps/desktop/src-tauri -> target'
           shared-key: android
 
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...
 
