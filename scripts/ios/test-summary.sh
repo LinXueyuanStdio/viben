@@ -104,104 +104,89 @@ fi
 echo "### 📸 Screenshots" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
-# Function to upload image to GitHub and get URL
-upload_to_github() {
-  local file="$1"
-  local filename="$2"
-
-  # Check if we have required env vars
-  if [ -z "${GITHUB_REPOSITORY:-}" ] || [ -z "${GITHUB_RUN_ID:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
-    return 1
-  fi
-
-  # Compress image first
-  local temp_file
-  temp_file=$(mktemp).jpg
-
-  if command -v sips &>/dev/null; then
-    sips -Z 600 "$file" --out "$temp_file" -s format jpeg -s formatOptions 85 &>/dev/null 2>&1 || \
-    sips -Z 600 "$file" --out "$temp_file" &>/dev/null 2>&1 || \
-    cp "$file" "$temp_file"
-  elif command -v convert &>/dev/null; then
-    convert "$file" -resize "600x>" -quality 85 "$temp_file" 2>/dev/null || cp "$file" "$temp_file"
-  else
-    cp "$file" "$temp_file"
-  fi
-
-  # Upload to ci-assets branch using GitHub API
-  local content
-  content=$(base64 -i "$temp_file" 2>/dev/null | tr -d '\n' || base64 "$temp_file" | tr -d '\n')
-
-  local path="ios/${GITHUB_RUN_ID}/${filename}.jpg"
-  local api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/${path}"
-
-  # Try to create/update file in ci-assets branch
-  local http_code
-  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$api_url" \
-    -H "Authorization: token ${GITHUB_TOKEN}" \
-    -H "Accept: application/vnd.github.v3+json" \
-    -d "{\"message\":\"Add screenshot ${filename}\",\"content\":\"${content}\",\"branch\":\"ci-assets\"}" 2>/dev/null || echo "000")
-
-  rm -f "$temp_file"
-
-  if [ "$http_code" = "201" ] || [ "$http_code" = "200" ]; then
-    # Return the raw URL directly
-    echo "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/ci-assets/${path}"
-    return 0
-  else
-    return 1
-  fi
-}
-
 # Collect screenshots using glob pattern
 # shellcheck disable=SC2206
 SCREENSHOTS=($SCREENSHOTS_PATTERN)
 
 # Check if glob expanded (file exists)
-if [ -e "${SCREENSHOTS[0]:-}" ]; then
-  # Check if we can upload to GitHub
-  CAN_UPLOAD="false"
-  if [ -n "${GITHUB_REPOSITORY:-}" ] && [ -n "${GITHUB_RUN_ID:-}" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
-    CAN_UPLOAD="true"
-  fi
-
-  UPLOAD_SUCCESS="false"
-
-  echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
-  echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
-
-  for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
-    ROW="|"
-    for ((j=0; j<3; j++)); do
-      IDX=$((i+j))
-      if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
-        IMG="${SCREENSHOTS[$IDX]}"
-        NAME=$(basename "$IMG" .png)
-
-        if [ "$CAN_UPLOAD" = "true" ]; then
-          if URL=$(upload_to_github "$IMG" "$NAME"); then
-            ROW="${ROW} ![${NAME}](${URL}) |"
-            UPLOAD_SUCCESS="true"
-          else
-            ROW="${ROW} \`${NAME}.png\` |"
-          fi
-        else
-          ROW="${ROW} \`${NAME}.png\` |"
-        fi
-      else
-        ROW="${ROW} |"
-      fi
-    done
-    echo "$ROW" >> "$SUMMARY_FILE"
-  done
-
-  echo "" >> "$SUMMARY_FILE"
-  echo "_${#SCREENSHOTS[@]} screenshot(s) captured_" >> "$SUMMARY_FILE"
-
-  if [ "$UPLOAD_SUCCESS" != "true" ]; then
-    echo "" >> "$SUMMARY_FILE"
-    echo "> 📥 Download **ios-test-results** artifact to view images" >> "$SUMMARY_FILE"
-  fi
-else
+if [ ! -e "${SCREENSHOTS[0]:-}" ]; then
   echo "_No screenshots captured_" >> "$SUMMARY_FILE"
+  exit 0
 fi
+
+# Check if we can upload to GitHub
+if [ -z "${GITHUB_REPOSITORY:-}" ] || [ -z "${GITHUB_RUN_ID:-}" ] || [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "_Screenshots available in artifacts (upload not configured)_" >> "$SUMMARY_FILE"
+  exit 0
+fi
+
+# Create temp directory for compressed images
+TEMP_DIR=$(mktemp -d)
+trap "rm -rf '$TEMP_DIR'" EXIT
+
+echo "| Screenshot 1 | Screenshot 2 | Screenshot 3 |" >> "$SUMMARY_FILE"
+echo "|:------------:|:------------:|:------------:|" >> "$SUMMARY_FILE"
+
+for ((i=0; i<${#SCREENSHOTS[@]}; i+=3)); do
+  ROW="|"
+  for ((j=0; j<3; j++)); do
+    IDX=$((i+j))
+    if [ $IDX -lt ${#SCREENSHOTS[@]} ]; then
+      IMG="${SCREENSHOTS[$IDX]}"
+      NAME=$(basename "$IMG" .png)
+      TEMP_FILE="$TEMP_DIR/${NAME}.jpg"
+
+      # Compress image (macOS uses sips)
+      if command -v sips &>/dev/null; then
+        sips -Z 600 "$IMG" --out "$TEMP_FILE" -s format jpeg -s formatOptions 85 &>/dev/null 2>&1 || \
+        sips -Z 600 "$IMG" --out "$TEMP_FILE" &>/dev/null 2>&1 || \
+        cp "$IMG" "$TEMP_FILE"
+      elif command -v convert &>/dev/null; then
+        convert "$IMG" -resize "600x>" -quality 85 "$TEMP_FILE" 2>/dev/null || cp "$IMG" "$TEMP_FILE"
+      else
+        cp "$IMG" "$TEMP_FILE"
+      fi
+
+      # Base64 encode (macOS uses -i flag)
+      CONTENT=$(base64 -i "$TEMP_FILE" 2>/dev/null | tr -d '\n' || base64 "$TEMP_FILE" | tr -d '\n')
+
+      # Upload path
+      UPLOAD_PATH="ios/${GITHUB_RUN_ID}/${NAME}.jpg"
+      API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/contents/${UPLOAD_PATH}"
+
+      # Create JSON payload file to avoid shell escaping issues
+      PAYLOAD_FILE="$TEMP_DIR/payload_${IDX}.json"
+      cat > "$PAYLOAD_FILE" << EOJSON
+{
+  "message": "Add screenshot ${NAME}",
+  "content": "${CONTENT}",
+  "branch": "ci-assets"
+}
+EOJSON
+
+      # Upload to GitHub
+      RESPONSE=$(curl -s -w "\n%{http_code}" -X PUT "$API_URL" \
+        -H "Authorization: token ${GITHUB_TOKEN}" \
+        -H "Accept: application/vnd.github.v3+json" \
+        -H "Content-Type: application/json" \
+        -d @"$PAYLOAD_FILE" 2>&1)
+
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      BODY=$(echo "$RESPONSE" | sed '$d')
+
+      if [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "200" ]; then
+        URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/ci-assets/${UPLOAD_PATH}"
+        ROW="${ROW} ![${NAME}](${URL}) |"
+      else
+        echo "::warning::Failed to upload ${NAME}.jpg (HTTP $HTTP_CODE): $BODY" >&2
+        ROW="${ROW} \`${NAME}.png\` |"
+      fi
+    else
+      ROW="${ROW} |"
+    fi
+  done
+  echo "$ROW" >> "$SUMMARY_FILE"
+done
+
+echo "" >> "$SUMMARY_FILE"
+echo "_${#SCREENSHOTS[@]} screenshot(s) captured_" >> "$SUMMARY_FILE"
