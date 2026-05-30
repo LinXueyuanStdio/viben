@@ -42,12 +42,13 @@ import androidx.core.view.WindowInsetsCompat
 import kotlin.math.roundToInt
 
 class MainActivity : TauriActivity() {
-    private var webView: WebView? = null
+    private var cachedWebView: WebView? = null
+    private var pendingInsets: IntArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Enable edge-to-edge mode - this is required to receive inset values
+        // Enable edge-to-edge mode - required to receive inset values
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Set up inset listener on the root view
@@ -63,8 +64,14 @@ class MainActivity : TauriActivity() {
             val leftDp = (systemBars.left / density).roundToInt()
             val rightDp = (systemBars.right / density).roundToInt()
 
-            // Inject CSS variables into WebView
-            injectSafeAreaInsets(topDp, bottomDp, leftDp, rightDp)
+            android.util.Log.d("SafeArea", "Insets received: top=$topDp, bottom=$bottomDp, left=$leftDp, right=$rightDp")
+
+            // Try to inject immediately, or cache for later
+            if (cachedWebView != null) {
+                injectSafeAreaInsets(topDp, bottomDp, leftDp, rightDp)
+            } else {
+                pendingInsets = intArrayOf(topDp, bottomDp, leftDp, rightDp)
+            }
 
             insets
         }
@@ -72,26 +79,38 @@ class MainActivity : TauriActivity() {
 
     override fun onWebViewCreate(webView: WebView) {
         super.onWebViewCreate(webView)
-        this.webView = webView
+        cachedWebView = webView
 
-        // Request insets to be applied after WebView is ready
+        android.util.Log.d("SafeArea", "WebView created, checking for pending insets")
+
+        // If we have pending insets, inject them now
+        pendingInsets?.let { insets ->
+            android.util.Log.d("SafeArea", "Injecting pending insets")
+            injectSafeAreaInsets(insets[0], insets[1], insets[2], insets[3])
+            pendingInsets = null
+        }
+
+        // Also request a fresh inset dispatch
         webView.post {
             window.decorView.requestApplyInsets()
         }
     }
 
     private fun injectSafeAreaInsets(top: Int, bottom: Int, left: Int, right: Int) {
-        webView?.post {
-            val script = """
-                (function() {
-                    document.documentElement.style.setProperty('--safe-area-inset-top', '${top}px');
-                    document.documentElement.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
-                    document.documentElement.style.setProperty('--safe-area-inset-left', '${left}px');
-                    document.documentElement.style.setProperty('--safe-area-inset-right', '${right}px');
-                    console.log('[SafeArea] Native insets applied:', {top: $top, bottom: $bottom, left: $left, right: $right});
-                })();
-            """.trimIndent()
-            webView?.evaluateJavascript(script, null)
+        cachedWebView?.let { webView ->
+            webView.post {
+                val script = """
+                    (function() {
+                        document.documentElement.style.setProperty('--safe-area-inset-top', '${top}px');
+                        document.documentElement.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
+                        document.documentElement.style.setProperty('--safe-area-inset-left', '${left}px');
+                        document.documentElement.style.setProperty('--safe-area-inset-right', '${right}px');
+                        console.log('[SafeArea] Native insets applied:', {top: $top, bottom: $bottom, left: $left, right: $right});
+                    })();
+                """.trimIndent()
+                webView.evaluateJavascript(script, null)
+                android.util.Log.d("SafeArea", "Injected CSS variables: top=$top, bottom=$bottom")
+            }
         }
     }
 }
