@@ -217,7 +217,7 @@ for ((i=0; i<${#UPLOADED_FILES[@]}; i++)); do
   NAME="${UPLOADED_FILES[$i]}"
   URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${BRANCH}/${UPLOAD_DIR}/${NAME}.jpg"
   DESC=$(get_screenshot_desc "$NAME")
-  echo "| $((i+1)) | ![${DESC}](${URL}) | ${DESC} |" >> "$SUMMARY_FILE"
+  echo "| $((i+1)) | <img src=\"${URL}\" width=\"200\" alt=\"${DESC}\"> | ${DESC} |" >> "$SUMMARY_FILE"
 done
 
 echo "" >> "$SUMMARY_FILE"

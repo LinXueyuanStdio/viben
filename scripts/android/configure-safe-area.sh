@@ -1,7 +1,8 @@
 #!/bin/bash
 # Configure Android safe area handling
 # - Enable edge-to-edge mode with transparent system bars
-# - Inject CSS variables after page loads so the app can apply padding with its own background color
+# - Use addJavascriptInterface to expose insets to JavaScript
+# - Retry injection with handler to ensure it works after page loads
 
 set -e
 
@@ -35,8 +36,10 @@ package PACKAGE_PLACEHOLDER
 
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.webkit.JavascriptInterface
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -44,8 +47,25 @@ import kotlin.math.roundToInt
 
 class MainActivity : TauriActivity() {
     private var webViewRef: WebView? = null
-    private var currentInsets: IntArray? = null
-    private var pageLoaded = false
+    private var currentInsets: IntArray = intArrayOf(0, 0, 0, 0)
+    private val handler = Handler(Looper.getMainLooper())
+    private var injectionAttempts = 0
+    private val maxAttempts = 10
+
+    // JavaScript interface to expose insets
+    inner class SafeAreaInterface {
+        @JavascriptInterface
+        fun getTop(): Int = currentInsets[0]
+
+        @JavascriptInterface
+        fun getBottom(): Int = currentInsets[1]
+
+        @JavascriptInterface
+        fun getLeft(): Int = currentInsets[2]
+
+        @JavascriptInterface
+        fun getRight(): Int = currentInsets[3]
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,11 +91,10 @@ class MainActivity : TauriActivity() {
             val rightDp = (systemBars.right / density).roundToInt()
 
             currentInsets = intArrayOf(topDp, bottomDp, leftDp, rightDp)
+            android.util.Log.d("SafeArea", "Insets received: top=$topDp, bottom=$bottomDp, left=$leftDp, right=$rightDp")
 
-            // Only inject if page has loaded
-            if (pageLoaded && webViewRef != null) {
-                injectSafeAreaInsets(topDp, bottomDp, leftDp, rightDp)
-            }
+            // Inject immediately if webview is ready
+            webViewRef?.let { injectSafeAreaInsets() }
 
             insets
         }
@@ -85,18 +104,12 @@ class MainActivity : TauriActivity() {
         super.onWebViewCreate(webView)
         webViewRef = webView
 
-        // Set up WebViewClient to detect when page loads
-        webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                pageLoaded = true
+        // Add JavaScript interface
+        webView.addJavascriptInterface(SafeAreaInterface(), "AndroidSafeArea")
 
-                // Inject insets now that page is loaded
-                currentInsets?.let { insets ->
-                    injectSafeAreaInsets(insets[0], insets[1], insets[2], insets[3])
-                }
-            }
-        }
+        // Start injection attempts with retry
+        injectionAttempts = 0
+        scheduleInjection()
 
         // Request fresh insets
         webView.post {
@@ -104,16 +117,37 @@ class MainActivity : TauriActivity() {
         }
     }
 
-    private fun injectSafeAreaInsets(top: Int, bottom: Int, left: Int, right: Int) {
+    private fun scheduleInjection() {
+        handler.postDelayed({
+            injectSafeAreaInsets()
+            injectionAttempts++
+            // Keep retrying for first few seconds to catch page load
+            if (injectionAttempts < maxAttempts) {
+                scheduleInjection()
+            }
+        }, if (injectionAttempts == 0) 500 else 1000)
+    }
+
+    private fun injectSafeAreaInsets() {
+        val top = currentInsets[0]
+        val bottom = currentInsets[1]
+        val left = currentInsets[2]
+        val right = currentInsets[3]
+
         webViewRef?.post {
             val script = """
                 (function() {
-                    var root = document.documentElement;
-                    root.style.setProperty('--safe-area-inset-top', '${top}px');
-                    root.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
-                    root.style.setProperty('--safe-area-inset-left', '${left}px');
-                    root.style.setProperty('--safe-area-inset-right', '${right}px');
-                    console.log('[SafeArea] Android insets set:', {top: $top, bottom: $bottom, left: $left, right: $right});
+                    if (typeof window.__safeAreaSet === 'undefined' || !window.__safeAreaSet) {
+                        var root = document.documentElement;
+                        if (root) {
+                            root.style.setProperty('--safe-area-inset-top', '${top}px');
+                            root.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
+                            root.style.setProperty('--safe-area-inset-left', '${left}px');
+                            root.style.setProperty('--safe-area-inset-right', '${right}px');
+                            window.__safeAreaSet = true;
+                            console.log('[SafeArea] Android insets applied:', {top: $top, bottom: $bottom, left: $left, right: $right});
+                        }
+                    }
                 })();
             """.trimIndent()
             webViewRef?.evaluateJavascript(script, null)

@@ -75,22 +75,46 @@ export function useSafeArea() {
       }
 
       if (isAndroid) {
-        // On Android, insets are injected by native MainActivity.kt via onPageFinished
-        // Just log that we're waiting for native injection
+        // On Android, insets are injected by native MainActivity.kt
+        // The native code retries injection multiple times, so we just need to wait
         console.log("[SafeArea] Android mode - waiting for native injection");
 
-        // Check if insets were already injected (in case React mounted after native injection)
-        const checkExisting = () => {
-          const root = document.documentElement;
-          const existingTop = root.style.getPropertyValue('--safe-area-inset-top');
-          if (existingTop && existingTop !== '0px') {
-            console.log("[SafeArea] Android insets already present:", existingTop);
+        // Also try to get insets from JavaScript interface as fallback
+        const tryGetFromInterface = () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const androidSafeArea = (window as any).AndroidSafeArea;
+          if (androidSafeArea) {
+            try {
+              const top = androidSafeArea.getTop();
+              const bottom = androidSafeArea.getBottom();
+              const left = androidSafeArea.getLeft();
+              const right = androidSafeArea.getRight();
+
+              if (top > 0 || bottom > 0) {
+                document.documentElement.style.setProperty('--safe-area-inset-top', `${top}px`);
+                document.documentElement.style.setProperty('--safe-area-inset-bottom', `${bottom}px`);
+                document.documentElement.style.setProperty('--safe-area-inset-left', `${left}px`);
+                document.documentElement.style.setProperty('--safe-area-inset-right', `${right}px`);
+                console.log("[SafeArea] Android insets from interface:", { top, bottom, left, right });
+                return true;
+              }
+            } catch (e) {
+              console.debug("[SafeArea] Android interface error:", e);
+            }
           }
+          return false;
         };
 
-        // Check immediately and after a short delay
-        checkExisting();
-        setTimeout(checkExisting, 500);
+        // Try immediately and retry a few times
+        if (!tryGetFromInterface()) {
+          let attempts = 0;
+          const interval = setInterval(() => {
+            attempts++;
+            if (tryGetFromInterface() || attempts >= 5) {
+              clearInterval(interval);
+            }
+          }, 500);
+        }
       }
     }
 
