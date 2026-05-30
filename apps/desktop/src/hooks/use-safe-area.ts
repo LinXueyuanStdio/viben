@@ -4,7 +4,8 @@ import { useEffect } from "react";
  * Hook to initialize safe area insets on mobile platforms.
  *
  * On Android: Insets are injected by native MainActivity.kt via evaluateJavascript.
- * On iOS: Uses tauri-plugin-safe-area-insets-css if available.
+ * On iOS: Uses CSS env(safe-area-inset-*) which works natively with viewport-fit=cover,
+ *         or falls back to the Tauri plugin if env() doesn't work.
  *
  * CSS variables set: --safe-area-inset-top, --safe-area-inset-bottom,
  * --safe-area-inset-left, --safe-area-inset-right
@@ -12,10 +13,12 @@ import { useEffect } from "react";
 export function useSafeArea() {
   useEffect(() => {
     async function initSafeArea() {
-      // Check if we're on iOS and try to use the plugin
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /android/i.test(navigator.userAgent);
 
       if (isIOS) {
+        // On iOS, CSS env() should work natively with viewport-fit=cover
+        // Try plugin first, then fall back to CSS env() mapping
         try {
           const { getTopInset, getBottomInset } = await import(
             "@saurl/tauri-plugin-safe-area-insets-css-api"
@@ -27,34 +30,53 @@ export function useSafeArea() {
           const top = topResult?.inset ?? 0;
           const bottom = bottomResult?.inset ?? 0;
 
-          document.documentElement.style.setProperty(
-            "--safe-area-inset-top",
-            `${top}px`
-          );
-          document.documentElement.style.setProperty(
-            "--safe-area-inset-bottom",
-            `${bottom}px`
-          );
-          document.documentElement.style.setProperty(
-            "--safe-area-inset-left",
-            "0px"
-          );
-          document.documentElement.style.setProperty(
-            "--safe-area-inset-right",
-            "0px"
-          );
-
-          console.log("[SafeArea] iOS insets applied:", { top, bottom });
+          if (top > 0 || bottom > 0) {
+            document.documentElement.style.setProperty(
+              "--safe-area-inset-top",
+              `${top}px`
+            );
+            document.documentElement.style.setProperty(
+              "--safe-area-inset-bottom",
+              `${bottom}px`
+            );
+            document.documentElement.style.setProperty(
+              "--safe-area-inset-left",
+              "0px"
+            );
+            document.documentElement.style.setProperty(
+              "--safe-area-inset-right",
+              "0px"
+            );
+            console.log("[SafeArea] iOS plugin insets applied:", { top, bottom });
+            return;
+          }
         } catch (e) {
           console.debug("[SafeArea] iOS plugin not available:", e);
         }
+
+        // Fall back to CSS env() values
+        document.documentElement.style.setProperty(
+          "--safe-area-inset-top",
+          "env(safe-area-inset-top, 0px)"
+        );
+        document.documentElement.style.setProperty(
+          "--safe-area-inset-bottom",
+          "env(safe-area-inset-bottom, 0px)"
+        );
+        document.documentElement.style.setProperty(
+          "--safe-area-inset-left",
+          "env(safe-area-inset-left, 0px)"
+        );
+        document.documentElement.style.setProperty(
+          "--safe-area-inset-right",
+          "env(safe-area-inset-right, 0px)"
+        );
+        console.log("[SafeArea] iOS using CSS env() fallback");
       }
 
-      // On Android, insets are injected by native MainActivity.kt
-      // No JavaScript action needed - just log for debugging
-      const isAndroid = /android/i.test(navigator.userAgent);
       if (isAndroid) {
-        console.log("[SafeArea] Android mode - waiting for native insets injection");
+        // On Android, insets are injected by native MainActivity.kt
+        console.log("[SafeArea] Android mode - native injection");
       }
     }
 

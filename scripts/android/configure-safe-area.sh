@@ -1,6 +1,7 @@
 #!/bin/bash
-# Configure Android safe area handling via native WindowInsets API
-# This patches MainActivity.kt to apply padding to the WebView container
+# Configure Android safe area handling
+# - Enable edge-to-edge mode with transparent system bars
+# - Inject CSS variables so the app can apply padding with its own background color
 
 set -e
 
@@ -17,11 +18,9 @@ if [ -z "$MAIN_ACTIVITY" ]; then
 fi
 
 echo "Found MainActivity at: $MAIN_ACTIVITY"
-echo "=== Current content ==="
-cat "$MAIN_ACTIVITY"
 
 # Check if already patched
-if grep -q "setOnApplyWindowInsetsListener" "$MAIN_ACTIVITY"; then
+if grep -q "injectSafeAreaInsets" "$MAIN_ACTIVITY"; then
   echo "Safe area already configured"
   exit 0
 fi
@@ -30,45 +29,94 @@ fi
 PACKAGE_NAME=$(grep "^package " "$MAIN_ACTIVITY" | sed 's/package //' | tr -d '\r')
 echo "Package: $PACKAGE_NAME"
 
-# Create the new MainActivity.kt - apply padding directly to content view
+# Create the new MainActivity.kt
 cat > "$MAIN_ACTIVITY" << 'KOTLIN_CODE'
 package PACKAGE_PLACEHOLDER
 
+import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
-import android.view.View
+import android.webkit.WebView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import kotlin.math.roundToInt
 
 class MainActivity : TauriActivity() {
+    private var webViewRef: WebView? = null
+    private var pendingInsets: IntArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Enable edge-to-edge BEFORE super.onCreate
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
         super.onCreate(savedInstanceState)
 
-        // Apply padding to the content view to avoid system bars
-        val contentView = findViewById<View>(android.R.id.content)
-        ViewCompat.setOnApplyWindowInsetsListener(contentView) { view, insets ->
+        // Enable edge-to-edge - content extends behind system bars
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // Make system bars transparent so app background shows through
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+
+        // Set up inset listener
+        val contentView = findViewById<android.view.View>(android.R.id.content)
+        ViewCompat.setOnApplyWindowInsetsListener(contentView) { _, insets ->
             val systemBars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
 
-            view.setPadding(
-                systemBars.left,
-                systemBars.top,
-                systemBars.right,
-                systemBars.bottom
-            )
+            val density = resources.displayMetrics.density
+            val topDp = (systemBars.top / density).roundToInt()
+            val bottomDp = (systemBars.bottom / density).roundToInt()
+            val leftDp = (systemBars.left / density).roundToInt()
+            val rightDp = (systemBars.right / density).roundToInt()
 
-            WindowInsetsCompat.CONSUMED
+            // Inject as CSS variables - app handles its own padding/background
+            if (webViewRef != null) {
+                injectSafeAreaInsets(topDp, bottomDp, leftDp, rightDp)
+            } else {
+                pendingInsets = intArrayOf(topDp, bottomDp, leftDp, rightDp)
+            }
+
+            // Don't consume - let the system handle default behavior
+            insets
+        }
+    }
+
+    override fun onWebViewCreate(webView: WebView) {
+        super.onWebViewCreate(webView)
+        webViewRef = webView
+
+        // Inject pending insets if available
+        pendingInsets?.let { insets ->
+            injectSafeAreaInsets(insets[0], insets[1], insets[2], insets[3])
+            pendingInsets = null
+        }
+
+        // Request fresh insets
+        webView.post {
+            window.decorView.requestApplyInsets()
+        }
+    }
+
+    private fun injectSafeAreaInsets(top: Int, bottom: Int, left: Int, right: Int) {
+        webViewRef?.post {
+            val script = """
+                (function() {
+                    var root = document.documentElement;
+                    root.style.setProperty('--safe-area-inset-top', '${top}px');
+                    root.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
+                    root.style.setProperty('--safe-area-inset-left', '${left}px');
+                    root.style.setProperty('--safe-area-inset-right', '${right}px');
+                    console.log('[SafeArea] Insets set:', {top: $top, bottom: $bottom, left: $left, right: $right});
+                })();
+            """.trimIndent()
+            webViewRef?.evaluateJavascript(script, null)
         }
     }
 }
 KOTLIN_CODE
 
-# Replace package placeholder with actual package
+# Replace package placeholder
 sed -i "s/package PACKAGE_PLACEHOLDER/package $PACKAGE_NAME/" "$MAIN_ACTIVITY"
 
 echo "=== After modification ==="
