@@ -1,6 +1,6 @@
 #!/bin/bash
 # Configure Android safe area handling via native WindowInsets API
-# This patches MainActivity.kt to properly handle system bar insets
+# This patches MainActivity.kt to apply padding to the WebView container
 
 set -e
 
@@ -30,87 +30,39 @@ fi
 PACKAGE_NAME=$(grep "^package " "$MAIN_ACTIVITY" | sed 's/package //' | tr -d '\r')
 echo "Package: $PACKAGE_NAME"
 
-# Create the new MainActivity.kt with proper safe area handling
+# Create the new MainActivity.kt - apply padding directly to content view
 cat > "$MAIN_ACTIVITY" << 'KOTLIN_CODE'
 package PACKAGE_PLACEHOLDER
 
 import android.os.Bundle
-import android.webkit.WebView
+import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import kotlin.math.roundToInt
 
 class MainActivity : TauriActivity() {
-    private var cachedWebView: WebView? = null
-    private var pendingInsets: IntArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        // Enable edge-to-edge mode - required to receive inset values
+        // Enable edge-to-edge BEFORE super.onCreate
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Set up inset listener on the root view
-        val rootView = window.decorView
-        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
+        super.onCreate(savedInstanceState)
+
+        // Apply padding to the content view to avoid system bars
+        val contentView = findViewById<View>(android.R.id.content)
+        ViewCompat.setOnApplyWindowInsetsListener(contentView) { view, insets ->
             val systemBars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
             )
 
-            val density = resources.displayMetrics.density
-            val topDp = (systemBars.top / density).roundToInt()
-            val bottomDp = (systemBars.bottom / density).roundToInt()
-            val leftDp = (systemBars.left / density).roundToInt()
-            val rightDp = (systemBars.right / density).roundToInt()
+            view.setPadding(
+                systemBars.left,
+                systemBars.top,
+                systemBars.right,
+                systemBars.bottom
+            )
 
-            android.util.Log.d("SafeArea", "Insets received: top=$topDp, bottom=$bottomDp, left=$leftDp, right=$rightDp")
-
-            // Try to inject immediately, or cache for later
-            if (cachedWebView != null) {
-                injectSafeAreaInsets(topDp, bottomDp, leftDp, rightDp)
-            } else {
-                pendingInsets = intArrayOf(topDp, bottomDp, leftDp, rightDp)
-            }
-
-            insets
-        }
-    }
-
-    override fun onWebViewCreate(webView: WebView) {
-        super.onWebViewCreate(webView)
-        cachedWebView = webView
-
-        android.util.Log.d("SafeArea", "WebView created, checking for pending insets")
-
-        // If we have pending insets, inject them now
-        pendingInsets?.let { insets ->
-            android.util.Log.d("SafeArea", "Injecting pending insets")
-            injectSafeAreaInsets(insets[0], insets[1], insets[2], insets[3])
-            pendingInsets = null
-        }
-
-        // Also request a fresh inset dispatch
-        webView.post {
-            window.decorView.requestApplyInsets()
-        }
-    }
-
-    private fun injectSafeAreaInsets(top: Int, bottom: Int, left: Int, right: Int) {
-        cachedWebView?.let { webView ->
-            webView.post {
-                val script = """
-                    (function() {
-                        document.documentElement.style.setProperty('--safe-area-inset-top', '${top}px');
-                        document.documentElement.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
-                        document.documentElement.style.setProperty('--safe-area-inset-left', '${left}px');
-                        document.documentElement.style.setProperty('--safe-area-inset-right', '${right}px');
-                        console.log('[SafeArea] Native insets applied:', {top: $top, bottom: $bottom, left: $left, right: $right});
-                    })();
-                """.trimIndent()
-                webView.evaluateJavascript(script, null)
-                android.util.Log.d("SafeArea", "Injected CSS variables: top=$top, bottom=$bottom")
-            }
+            WindowInsetsCompat.CONSUMED
         }
     }
 }
