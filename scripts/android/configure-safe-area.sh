@@ -1,7 +1,7 @@
 #!/bin/bash
 # Configure Android safe area handling
 # - Enable edge-to-edge mode with transparent system bars
-# - Inject CSS variables so the app can apply padding with its own background color
+# - Inject CSS variables after page loads so the app can apply padding with its own background color
 
 set -e
 
@@ -34,18 +34,18 @@ cat > "$MAIN_ACTIVITY" << 'KOTLIN_CODE'
 package PACKAGE_PLACEHOLDER
 
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import kotlin.math.roundToInt
 
 class MainActivity : TauriActivity() {
     private var webViewRef: WebView? = null
-    private var pendingInsets: IntArray? = null
+    private var currentInsets: IntArray? = null
+    private var pageLoaded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,14 +70,13 @@ class MainActivity : TauriActivity() {
             val leftDp = (systemBars.left / density).roundToInt()
             val rightDp = (systemBars.right / density).roundToInt()
 
-            // Inject as CSS variables - app handles its own padding/background
-            if (webViewRef != null) {
+            currentInsets = intArrayOf(topDp, bottomDp, leftDp, rightDp)
+
+            // Only inject if page has loaded
+            if (pageLoaded && webViewRef != null) {
                 injectSafeAreaInsets(topDp, bottomDp, leftDp, rightDp)
-            } else {
-                pendingInsets = intArrayOf(topDp, bottomDp, leftDp, rightDp)
             }
 
-            // Don't consume - let the system handle default behavior
             insets
         }
     }
@@ -86,10 +85,17 @@ class MainActivity : TauriActivity() {
         super.onWebViewCreate(webView)
         webViewRef = webView
 
-        // Inject pending insets if available
-        pendingInsets?.let { insets ->
-            injectSafeAreaInsets(insets[0], insets[1], insets[2], insets[3])
-            pendingInsets = null
+        // Set up WebViewClient to detect when page loads
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                pageLoaded = true
+
+                // Inject insets now that page is loaded
+                currentInsets?.let { insets ->
+                    injectSafeAreaInsets(insets[0], insets[1], insets[2], insets[3])
+                }
+            }
         }
 
         // Request fresh insets
@@ -107,7 +113,7 @@ class MainActivity : TauriActivity() {
                     root.style.setProperty('--safe-area-inset-bottom', '${bottom}px');
                     root.style.setProperty('--safe-area-inset-left', '${left}px');
                     root.style.setProperty('--safe-area-inset-right', '${right}px');
-                    console.log('[SafeArea] Insets set:', {top: $top, bottom: $bottom, left: $left, right: $right});
+                    console.log('[SafeArea] Android insets set:', {top: $top, bottom: $bottom, left: $left, right: $right});
                 })();
             """.trimIndent()
             webViewRef?.evaluateJavascript(script, null)

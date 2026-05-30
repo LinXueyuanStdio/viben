@@ -75,8 +75,22 @@ export function useSafeArea() {
       }
 
       if (isAndroid) {
-        // On Android, insets are injected by native MainActivity.kt
-        console.log("[SafeArea] Android mode - native injection");
+        // On Android, insets are injected by native MainActivity.kt via onPageFinished
+        // Just log that we're waiting for native injection
+        console.log("[SafeArea] Android mode - waiting for native injection");
+
+        // Check if insets were already injected (in case React mounted after native injection)
+        const checkExisting = () => {
+          const root = document.documentElement;
+          const existingTop = root.style.getPropertyValue('--safe-area-inset-top');
+          if (existingTop && existingTop !== '0px') {
+            console.log("[SafeArea] Android insets already present:", existingTop);
+          }
+        };
+
+        // Check immediately and after a short delay
+        checkExisting();
+        setTimeout(checkExisting, 500);
       }
     }
 
