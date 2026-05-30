@@ -1,7 +1,6 @@
 #!/bin/bash
-# Configure Android theme settings
-# Note: Safe area insets are handled by tauri-plugin-safe-area-insets-css
-# This script only configures display cutout mode for notches
+# Configure Android theme to disable edge-to-edge mode
+# This lets the system handle safe area insets automatically
 
 set -e
 
@@ -29,12 +28,18 @@ echo "Using theme file: $THEME_FILE"
 echo "=== Current content ==="
 cat "$THEME_FILE"
 
-# Add windowLayoutInDisplayCutoutMode for notch handling
-# Safe area insets are handled by tauri-plugin-safe-area-insets-css on the frontend
-if grep -q "windowLayoutInDisplayCutoutMode" "$THEME_FILE"; then
-  echo "windowLayoutInDisplayCutoutMode already configured"
+# Add fitsSystemWindows=true to disable edge-to-edge mode
+# This makes the system handle safe areas automatically - no JS needed
+if grep -q "fitsSystemWindows" "$THEME_FILE"; then
+  echo "fitsSystemWindows already configured"
 else
-  sed -i 's|<style name="Theme\.[^"]*" parent="[^"]*">|&\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>|' "$THEME_FILE"
-  echo "=== After modification ==="
-  cat "$THEME_FILE"
+  sed -i 's|<style name="Theme\.[^"]*" parent="[^"]*">|&\n        <item name="android:fitsSystemWindows">true</item>|' "$THEME_FILE"
 fi
+
+# Ensure status bar and navigation bar are visible (not translucent/transparent)
+if ! grep -q "windowTranslucentStatus" "$THEME_FILE"; then
+  sed -i 's|<style name="Theme\.[^"]*" parent="[^"]*">|&\n        <item name="android:windowTranslucentStatus">false</item>\n        <item name="android:windowTranslucentNavigation">false</item>|' "$THEME_FILE"
+fi
+
+echo "=== After modification ==="
+cat "$THEME_FILE"

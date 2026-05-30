@@ -172,11 +172,8 @@ jobs:
         working-directory: apps/desktop
         run: pnpm tauri android init --ci
 
-      - name: Configure Android system bars
-        run: ./scripts/android/configure-android-theme.sh apps/desktop/src-tauri/gen/android
-
-      - name: Configure edge-to-edge mode
-        run: ./scripts/android/configure-edge-to-edge.sh apps/desktop/src-tauri/gen/android
+      - name: Configure Android safe area handling
+        run: ./scripts/android/configure-safe-area.sh apps/desktop/src-tauri/gen/android
 
       - name: Setup Android signing
         run: |
