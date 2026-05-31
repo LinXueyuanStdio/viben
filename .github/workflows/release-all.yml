@@ -582,6 +582,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_WEBVIEW_AUTOMATION: true
         with:
           projectPath: apps/desktop
           tagName: ''
@@ -596,6 +597,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_WEBVIEW_AUTOMATION: true
         with:
           projectPath: apps/desktop
           tagName: ''
@@ -611,6 +613,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_WEBVIEW_AUTOMATION: true
         with:
           projectPath: apps/desktop
           tagName: ''
@@ -625,6 +628,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_WEBVIEW_AUTOMATION: true
         with:
           projectPath: apps/desktop
           tagName: ''
@@ -656,14 +660,139 @@ jobs:
           retention-days: 1
 
   # =============================================================================
+  # TEST DESKTOP: E2E UI tests on built artifacts (multi-platform)
+  # =============================================================================
+  test-desktop:
+    needs: [prepare, build-desktop]
+    if: |
+      needs.prepare.outputs.release_desktop == 'true' &&
+      needs.build-desktop.result == 'success'
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            artifact: desktop-ubuntu-22.04
+            test_script: scripts/linux/test-desktop-ui.sh
+            summary_script: scripts/linux/test-desktop-summary.sh
+          - platform: macos-latest
+            artifact: desktop-macos-latest
+            test_script: scripts/macos/test-desktop-ui.sh
+            summary_script: scripts/macos/test-desktop-summary.sh
+          - platform: windows-latest
+            artifact: desktop-windows-latest
+            test_script: scripts/windows/test-desktop-ui.bat
+            summary_script: scripts/windows/test-desktop-summary.bat
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Download desktop artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.artifact }}
+          path: desktop-artifact
+
+      - name: List downloaded artifacts
+        shell: bash
+        run: |
+          echo "Downloaded artifacts:"
+          ls -la desktop-artifact/
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+          shared-key: ${{ matrix.platform }}-test
+
+      - name: Install tauri-driver
+        run: cargo install tauri-driver
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb at-spi2-core imagemagick
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Unix (Linux/macOS)
+      - name: Run E2E tests (Unix)
+        if: matrix.platform != 'windows-latest'
+        shell: bash
+        run: |
+          chmod +x "${{ matrix.test_script }}"
+          "${{ matrix.test_script }}"
+
+      # Windows
+      - name: Run E2E tests (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: cmd
+        run: ${{ matrix.test_script }}
+
+      - name: Upload test screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-test-screenshots-${{ matrix.platform }}
+          path: test-screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-test-logs-${{ matrix.platform }}
+          path: |
+            wdio-results.xml
+            apps/desktop/wdio-results.xml
+            *.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Unix (Linux/macOS)
+      - name: Generate job summary (Unix)
+        if: always() && matrix.platform != 'windows-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          chmod +x "${{ matrix.summary_script }}"
+          "${{ matrix.summary_script }}" test-screenshots wdio-results.xml
+
+      # Windows
+      - name: Generate job summary (Windows)
+        if: always() && matrix.platform == 'windows-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: cmd
+        run: ${{ matrix.summary_script }} test-screenshots wdio-results.xml
+
+  # =============================================================================
   # CREATE UNIFIED RELEASE
   # =============================================================================
   create-unified-release:
-    needs: [prepare, release-cli, build-desktop]
+    needs: [prepare, release-cli, build-desktop, test-desktop]
     if: |
       always() &&
       needs.prepare.outputs.dry_run != 'true' &&
       (needs.release-cli.result == 'success' || needs.build-desktop.result == 'success') &&
+      (needs.test-desktop.result == 'success' || needs.test-desktop.result == 'skipped') &&
       needs.prepare.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
