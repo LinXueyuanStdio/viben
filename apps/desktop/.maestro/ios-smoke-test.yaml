@@ -129,12 +129,9 @@ appId: com.viben.desktop
 
 # Wait for navigation animation to complete (iOS transition)
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Devices"
     timeout: 5000
-
-# Verify we're on Devices page (look for expected content)
-- assertVisible:
-    text: "Devices"
 
 # Screenshot: Devices page
 - takeScreenshot: ios-06-devices-page
@@ -149,7 +146,8 @@ appId: com.viben.desktop
 
 # Wait for navigation
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Chat"
     timeout: 5000
 
 # Screenshot: Chat page
@@ -164,9 +162,10 @@ appId: com.viben.desktop
     direction: DOWN
     duration: 500
 
-# Wait for potential refresh
+# Wait for potential refresh (just wait a bit)
 - extendedWaitUntil:
-    visible: true
+    visible:
+      text: "Chat"
     timeout: 3000
 
 # Screenshot: After pull gesture
