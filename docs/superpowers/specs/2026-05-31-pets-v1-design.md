@@ -1,7 +1,7 @@
 # Viben Pets V1 设计文档
 
-> **状态**: 已批准  
-> **日期**: 2026-05-31  
+> **状态**: 已批准
+> **日期**: 2026-05-31
 > **作者**: Claude + User
 
 ## 概述
@@ -207,7 +207,7 @@ export interface PetUserPrefs {
 ### 预设清单
 
 ```typescript
-// packages/core/templates/viben/pets/registry.ts
+// packages/core/src/pet/index.ts
 
 export interface PetPreset {
   id: string;
@@ -355,7 +355,7 @@ interface PetState {
   interaction: PetInteraction;
   ambientRowId: string | null;
   bubbleOpen: boolean;
-  
+
   // Actions
   setPet: (pet: PetConfig | null) => void;
   setPosition: (pos: PetPosition) => void;
@@ -364,7 +364,7 @@ interface PetState {
   setBubbleOpen: (open: boolean) => void;
 }
 
-export const createPetStore = (storageKey = 'viben:pet') => 
+export const createPetStore = (storageKey = 'viben:pet') =>
   create<PetState>()(
     persist(
       (set) => ({
@@ -373,7 +373,7 @@ export const createPetStore = (storageKey = 'viben:pet') =>
         interaction: 'idle',
         ambientRowId: null,
         bubbleOpen: false,
-        
+
         setPet: (pet) => set({ pet }),
         setPosition: (position) => set({ position }),
         setInteraction: (interaction) => set({ interaction }),
@@ -463,7 +463,7 @@ export const usePetStore = createPetStore();
 
 ## 参考资料
 
-- [open-design/apps/web/src/components/pet/](https://github.com/nexu-io/open-design) - 参考实现
+- [~/github/others/open-design/apps/web/src/components/pet/](https://github.com/nexu-io/open-design) - 参考实现
 - [hatch-pet skill](../../../packages/core/templates/viben/skills/hatch-pet/SKILL.md) - 精灵图生成规范
 - [Codex Pet Atlas 规范](https://github.com/openai/skills/tree/main/skills/.curated/hatch-pet/references) - 8×9 atlas 格式
 
