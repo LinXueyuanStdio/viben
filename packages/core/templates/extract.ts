@@ -27,14 +27,6 @@ export function getVibenTemplatePath(): string {
 }
 
 /**
- * @deprecated Use getVibenTemplatePath() instead.
- * This function is kept for backwards compatibility but now returns the template path.
- */
-export function getVibenSourcePath(): string {
-  return getVibenTemplatePath();
-}
-
-/**
  * Get the path to the cursor templates directory.
  *
  * This reads from src/templates/cursor/ (development) or dist/templates/cursor/ (production).
@@ -49,13 +41,6 @@ export function getCursorTemplatePath(): string {
   throw new Error(
     "Could not find cursor templates directory. Expected at templates/cursor/",
   );
-}
-
-/**
- * @deprecated Use getCursorTemplatePath() instead.
- */
-export function getCursorSourcePath(): string {
-  return getCursorTemplatePath();
 }
 
 /**
@@ -93,13 +78,6 @@ export function getOpenCodeTemplatePath(): string {
 }
 
 /**
- * @deprecated Use getClaudeTemplatePath() instead.
- */
-export function getClaudeSourcePath(): string {
-  return getClaudeTemplatePath();
-}
-
-/**
  * Get the path to the iflow templates directory.
  *
  * This reads from src/templates/iflow/ (development) or dist/templates/iflow/ (production).
@@ -114,13 +92,6 @@ export function getIflowTemplatePath(): string {
   throw new Error(
     "Could not find iflow templates directory. Expected at templates/iflow/",
   );
-}
-
-/**
- * @deprecated Use getIflowTemplatePath() instead.
- */
-export function getIflowSourcePath(): string {
-  return getIflowTemplatePath();
 }
 
 /**
@@ -158,13 +129,6 @@ export function getKiroTemplatePath(): string {
 }
 
 /**
- * @deprecated Use getKiroTemplatePath() instead.
- */
-export function getKiroSourcePath(): string {
-  return getKiroTemplatePath();
-}
-
-/**
  * Get the path to the antigravity templates directory.
  *
  * This reads from src/templates/antigravity/ (development) or dist/templates/antigravity/ (production).
@@ -182,19 +146,12 @@ export function getAntigravityTemplatePath(): string {
 }
 
 /**
- * @deprecated Use getAntigravityTemplatePath() instead.
- */
-export function getAntigravitySourcePath(): string {
-  return getAntigravityTemplatePath();
-}
-
-/**
  * Read a file from the viben templates directory
  * @param relativePath - Path relative to templates/viben/ (e.g., 'workflow.md')
  * @returns File content as string
  */
 export function readVibenFile(relativePath: string): string {
-  const vibenPath = getVibenSourcePath();
+  const vibenPath = getVibenTemplatePath();
   const filePath = path.join(vibenPath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
@@ -234,7 +191,7 @@ export function readCommand(filename: string): string {
  * @returns File content as string
  */
 export function readCursorFile(relativePath: string): string {
-  const cursorPath = getCursorSourcePath();
+  const cursorPath = getCursorTemplatePath();
   const filePath = path.join(cursorPath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
@@ -245,16 +202,9 @@ export function readCursorFile(relativePath: string): string {
  * @returns File content as string
  */
 export function readClaudeFile(relativePath: string): string {
-  const claudePath = getClaudeSourcePath();
+  const claudePath = getClaudeTemplatePath();
   const filePath = path.join(claudePath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
-}
-
-/**
- * @deprecated Use getOpenCodeTemplatePath() instead.
- */
-export function getOpenCodeSourcePath(): string {
-  return getOpenCodeTemplatePath();
 }
 
 /**
@@ -263,7 +213,7 @@ export function getOpenCodeSourcePath(): string {
  * @returns File content as string
  */
 export function readOpenCodeFile(relativePath: string): string {
-  const opencodePath = getOpenCodeSourcePath();
+  const opencodePath = getOpenCodeTemplatePath();
   const filePath = path.join(opencodePath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
 }
@@ -297,13 +247,6 @@ export function getGeminiTemplatePath(): string {
 }
 
 /**
- * @deprecated Use getGeminiTemplatePath() instead.
- */
-export function getGeminiSourcePath(): string {
-  return getGeminiTemplatePath();
-}
-
-/**
  * Read a file from the .gemini directory (dogfooding)
  * @param relativePath - Path relative to .gemini/ (e.g., 'commands/viben/start.toml')
  * @returns File content as string
@@ -326,7 +269,7 @@ export async function copyVibenDir(
   destPath: string,
   options?: { executable?: boolean },
 ): Promise<void> {
-  const vibenPath = getVibenSourcePath();
+  const vibenPath = getVibenTemplatePath();
   const srcPath = path.join(vibenPath, srcRelativePath);
   await copyDirRecursive(srcPath, destPath, options);
 }
