@@ -180,7 +180,7 @@ echo "---"
 echo ""
 
 # Build workflow dispatch arguments
-WORKFLOW_ARGS="--ref main -f version=$VERSION"
+WORKFLOW_ARGS="--ref main -f version=$VERSION -f dry_run=false"
 
 if [[ "$DRAFT" == "true" ]]; then
   WORKFLOW_ARGS="$WORKFLOW_ARGS -f draft=true"
