@@ -237,7 +237,7 @@ for NAME in "${UPLOADED_FILES[@]}"; do
     ((STEP_NUM++))
   fi
 
-  echo "| $STEP | ![${DESC}](${URL}) | ${DESC} |" >> "$SUMMARY_FILE"
+  echo "| $STEP | <img src=\"${URL}\" width=\"200\" alt=\"${DESC}\"> | ${DESC} |" >> "$SUMMARY_FILE"
 done
 
 echo "" >> "$SUMMARY_FILE"
