@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "download:wakeword-models": "bash scripts/download-wakeword-models.sh",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "wdio run wdio.conf.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

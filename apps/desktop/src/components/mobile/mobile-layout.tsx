@@ -49,21 +49,24 @@ export function MobileLayout() {
       </main>
       {/* Bottom navigation with safe area padding */}
       <nav className="flex border-t border-border-strong bg-background pb-[var(--safe-area-inset-bottom,0px)]">
-        {tabKeys.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            className={({ isActive }) =>
-              cn(
-                "flex-1 flex flex-col items-center gap-1 py-3 text-xs",
-                isActive ? "text-primary" : "text-muted-foreground",
-              )
-            }
-          >
-            <tab.icon className="h-5 w-5" />
-            <span>{t(tab.labelKey, tab.label)}</span>
-          </NavLink>
-        ))}
+        {tabKeys.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              className={({ isActive }) =>
+                cn(
+                  "flex-1 flex flex-col items-center justify-center gap-1 py-3 text-xs min-h-[60px]",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )
+              }
+            >
+              <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="leading-none">{t(tab.labelKey, tab.label)}</span>
+            </NavLink>
+          );
+        })}
       </nav>
     </div>
   );

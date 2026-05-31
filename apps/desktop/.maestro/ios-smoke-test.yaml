@@ -160,9 +160,9 @@ appId: com.viben.desktop
 # =============================================================================
 
 # Attempt pull-to-refresh gesture on chat page
-- scroll:
-    direction: UP
-    distance: 100
+- swipe:
+    direction: DOWN
+    duration: 500
 
 # Wait for potential refresh
 - extendedWaitUntil:
