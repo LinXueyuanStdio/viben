@@ -21,7 +21,7 @@ on:
       skip_desktop_tests:
         description: 'Skip Desktop E2E tests before release'
         type: boolean
-        default: false
+        default: true
       draft:
         description: 'Create as draft release'
         type: boolean
