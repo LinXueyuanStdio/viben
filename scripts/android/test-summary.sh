@@ -4,21 +4,14 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/../lib/upload-ci-assets.sh"
+
 SCREENSHOTS_DIR="${1:-test-screenshots}"
 MAESTRO_RESULTS="${2:-maestro-results.xml}"
 CRASH_LOG="${3:-test-logs/crash-log.txt}"
 
 SUMMARY_FILE="${GITHUB_STEP_SUMMARY:-/dev/stdout}"
-
-# JSON parsing helper
-json_get() {
-  local json="$1" key="$2"
-  if command -v jq &>/dev/null; then
-    echo "$json" | jq -r ".$key // empty"
-  else
-    echo "$json" | grep -oE "\"$key\":\s*\"[^\"]+\"" | head -1 | cut -d'"' -f4
-  fi
-}
 
 # Screenshot name to Chinese description mapping
 get_screenshot_desc() {
@@ -120,105 +113,38 @@ if [ -z "${GITHUB_REPOSITORY:-}" ] || [ -z "${GITHUB_RUN_ID:-}" ] || [ -z "${GIT
   exit 0
 fi
 
+# Compress and prepare files for upload
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf '$TEMP_DIR'" EXIT
 
-API_BASE="https://api.github.com/repos/${GITHUB_REPOSITORY}"
-AUTH_HEADER="Authorization: token ${GITHUB_TOKEN}"
-BRANCH="ci-assets"
-UPLOAD_DIR="android/${GITHUB_RUN_ID}"
+COMPRESSED_FILES=()
+for IMG in "${SCREENSHOTS[@]}"; do
+  NAME=$(basename "$IMG" .png)
+  TEMP_FILE="$TEMP_DIR/${NAME}.jpg"
 
-upload_screenshots() {
-  local ref_response
-  ref_response=$(curl -s -H "$AUTH_HEADER" "${API_BASE}/git/ref/heads/${BRANCH}")
-  BASE_SHA=$(json_get "$ref_response" "object.sha")
-  [ -z "$BASE_SHA" ] && BASE_SHA=$(echo "$ref_response" | grep -oE '"sha":\s*"[a-f0-9]+"' | head -1 | cut -d'"' -f4)
-  [ -z "$BASE_SHA" ] && { echo "::error::Failed to get base SHA" >&2; return 1; }
-
-  local commit_response
-  commit_response=$(curl -s -H "$AUTH_HEADER" "${API_BASE}/git/commits/${BASE_SHA}")
-  if command -v jq &>/dev/null; then
-    BASE_TREE=$(echo "$commit_response" | jq -r '.tree.sha // empty')
+  if command -v convert &>/dev/null; then
+    convert "$IMG" -resize "600x>" -quality 85 "$TEMP_FILE" 2>/dev/null || cp "$IMG" "$TEMP_FILE"
   else
-    BASE_TREE=$(echo "$commit_response" | grep -oE '"tree":\s*\{[^}]*"sha":\s*"[a-f0-9]+"' | grep -oE '"sha":\s*"[a-f0-9]+"' | cut -d'"' -f4)
+    cp "$IMG" "$TEMP_FILE"
   fi
-  [ -z "$BASE_TREE" ] && { echo "::error::Failed to get base tree" >&2; return 1; }
+  COMPRESSED_FILES+=("$TEMP_FILE")
+done
 
-  TREE_ENTRIES="["
-  UPLOADED_FILES=()
+# Upload to ci-assets
+UPLOAD_DIR="android/${GITHUB_RUN_ID}"
+if upload_to_ci_assets_with_retry "$UPLOAD_DIR" "${COMPRESSED_FILES[@]}"; then
+  echo "| 步骤 | 截图 | 说明 |" >> "$SUMMARY_FILE"
+  echo "|:----:|:----:|:-----|" >> "$SUMMARY_FILE"
 
-  for IMG in "${SCREENSHOTS[@]}"; do
-    NAME=$(basename "$IMG" .png)
-    TEMP_FILE="$TEMP_DIR/${NAME}.jpg"
-
-    if command -v convert &>/dev/null; then
-      convert "$IMG" -resize "600x>" -quality 85 "$TEMP_FILE" 2>/dev/null || cp "$IMG" "$TEMP_FILE"
-    else
-      cp "$IMG" "$TEMP_FILE"
-    fi
-
-    CONTENT=$(base64 -w 0 "$TEMP_FILE" 2>/dev/null || base64 "$TEMP_FILE" | tr -d '\n')
-
-    local blob_payload="$TEMP_DIR/blob_${NAME}.json"
-    printf '{"content":"%s","encoding":"base64"}' "$CONTENT" > "$blob_payload"
-
-    local blob_response
-    blob_response=$(curl -s -X POST "${API_BASE}/git/blobs" -H "$AUTH_HEADER" -H "Content-Type: application/json" -d @"$blob_payload")
-    BLOB_SHA=$(json_get "$blob_response" "sha")
-
-    if [ -n "$BLOB_SHA" ]; then
-      [ ${#UPLOADED_FILES[@]} -gt 0 ] && TREE_ENTRIES="${TREE_ENTRIES},"
-      TREE_ENTRIES="${TREE_ENTRIES}{\"path\":\"${UPLOAD_DIR}/${NAME}.jpg\",\"mode\":\"100644\",\"type\":\"blob\",\"sha\":\"${BLOB_SHA}\"}"
-      UPLOADED_FILES+=("${NAME}")
-    fi
+  for ((i=0; i<${#UPLOADED_URLS[@]}; i++)); do
+    URL="${UPLOADED_URLS[$i]}"
+    NAME=$(basename "${COMPRESSED_FILES[$i]}" .jpg)
+    DESC=$(get_screenshot_desc "$NAME")
+    echo "| $((i+1)) | <img src=\"${URL}\" width=\"200\" alt=\"${DESC}\"> | ${DESC} |" >> "$SUMMARY_FILE"
   done
 
-  TREE_ENTRIES="${TREE_ENTRIES}]"
-  [ ${#UPLOADED_FILES[@]} -eq 0 ] && { echo "::error::No blobs created" >&2; return 1; }
-
-  local tree_response
-  tree_response=$(curl -s -X POST "${API_BASE}/git/trees" -H "$AUTH_HEADER" -H "Content-Type: application/json" -d "{\"base_tree\":\"${BASE_TREE}\",\"tree\":${TREE_ENTRIES}}")
-  TREE_SHA=$(json_get "$tree_response" "sha")
-  [ -z "$TREE_SHA" ] && { echo "::error::Failed to create tree" >&2; return 1; }
-
-  local commit_response
-  commit_response=$(curl -s -X POST "${API_BASE}/git/commits" -H "$AUTH_HEADER" -H "Content-Type: application/json" -d "{\"message\":\"Add ${#UPLOADED_FILES[@]} Android screenshots (run ${GITHUB_RUN_ID})\",\"tree\":\"${TREE_SHA}\",\"parents\":[\"${BASE_SHA}\"]}")
-  COMMIT_SHA=$(json_get "$commit_response" "sha")
-  [ -z "$COMMIT_SHA" ] && { echo "::error::Failed to create commit" >&2; return 1; }
-
-  local update_response http_code
-  update_response=$(curl -s -w "\n%{http_code}" -X PATCH "${API_BASE}/git/refs/heads/${BRANCH}" -H "$AUTH_HEADER" -H "Content-Type: application/json" -d "{\"sha\":\"${COMMIT_SHA}\",\"force\":false}")
-  http_code=$(echo "$update_response" | tail -1)
-  [ "$http_code" != "200" ] && { echo "::warning::Ref update HTTP $http_code" >&2; return 2; }
-
-  return 0
-}
-
-MAX_RETRIES=3
-UPLOAD_SUCCESS=false
-for attempt in $(seq 1 $MAX_RETRIES); do
-  if upload_screenshots; then
-    UPLOAD_SUCCESS=true
-    break
-  elif [ $? -eq 2 ] && [ $attempt -lt $MAX_RETRIES ]; then
-    sleep "$attempt"
-  fi
-done
-
-if [ "$UPLOAD_SUCCESS" != "true" ]; then
+  echo "" >> "$SUMMARY_FILE"
+  echo "_共 ${#UPLOADED_URLS[@]} 张截图_" >> "$SUMMARY_FILE"
+else
   echo "_上传失败_" >> "$SUMMARY_FILE"
-  exit 0
 fi
-
-echo "| 步骤 | 截图 | 说明 |" >> "$SUMMARY_FILE"
-echo "|:----:|:----:|:-----|" >> "$SUMMARY_FILE"
-
-for ((i=0; i<${#UPLOADED_FILES[@]}; i++)); do
-  NAME="${UPLOADED_FILES[$i]}"
-  URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${BRANCH}/${UPLOAD_DIR}/${NAME}.jpg"
-  DESC=$(get_screenshot_desc "$NAME")
-  echo "| $((i+1)) | <img src=\"${URL}\" width=\"200\" alt=\"${DESC}\"> | ${DESC} |" >> "$SUMMARY_FILE"
-done
-
-echo "" >> "$SUMMARY_FILE"
-echo "_共 ${#UPLOADED_FILES[@]} 张截图_" >> "$SUMMARY_FILE"
