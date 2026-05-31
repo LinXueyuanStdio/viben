@@ -70,19 +70,53 @@ pub async fn show_tray_popup<R: Runtime>(app: AppHandle<R>) -> Result<(), String
     // Get the tray icon position if available
     if let Some(tray) = app.tray_by_id("main-tray") {
         if let Ok(Some(rect)) = tray.rect() {
-            // Position the popup near the tray icon
-            // On macOS, the tray is at the top, so we position below it
             // Convert Position/Size enums to physical values
             let (pos_x, pos_y) = match rect.position {
                 tauri::Position::Physical(p) => (p.x, p.y),
                 tauri::Position::Logical(l) => (l.x as i32, l.y as i32),
             };
-            let height = match rect.size {
+            let tray_height = match rect.size {
                 tauri::Size::Physical(s) => s.height as i32,
                 tauri::Size::Logical(s) => s.height as i32,
             };
-            let x = pos_x.saturating_sub(150); // Center the 400px window
-            let y = pos_y + height + 5;
+
+            // Get popup window size for positioning calculations
+            let popup_height = popup
+                .outer_size()
+                .map(|s| s.height as i32)
+                .unwrap_or(500);
+            let popup_width = popup
+                .outer_size()
+                .map(|s| s.width as i32)
+                .unwrap_or(400);
+
+            // Get the monitor where the tray icon is located
+            let monitor = popup.current_monitor().ok().flatten();
+            let screen_height = monitor
+                .as_ref()
+                .map(|m| m.size().height as i32)
+                .unwrap_or(1080);
+            let screen_y = monitor
+                .as_ref()
+                .map(|m| m.position().y)
+                .unwrap_or(0);
+
+            // Calculate horizontal position: center popup on tray icon
+            let x = pos_x.saturating_sub(popup_width / 2);
+
+            // Auto-detect tray position:
+            // If tray is in the top half of the screen, show popup below
+            // If tray is in the bottom half, show popup above
+            let tray_center_y = pos_y + tray_height / 2;
+            let screen_center_y = screen_y + screen_height / 2;
+
+            let y = if tray_center_y < screen_center_y {
+                // Tray is at top (e.g., macOS menu bar, GNOME top bar) - show popup below
+                pos_y + tray_height + 5
+            } else {
+                // Tray is at bottom (e.g., Windows taskbar, KDE panel) - show popup above
+                pos_y.saturating_sub(popup_height + 5)
+            };
 
             let _ = popup.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
         }

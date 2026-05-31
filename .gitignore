@@ -95,7 +95,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 !apps/**/lib/
 !packages/**/src/lib/
 !packages/**/src/**/lib/

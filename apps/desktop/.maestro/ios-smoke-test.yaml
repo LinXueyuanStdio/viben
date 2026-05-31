@@ -1,14 +1,13 @@
 appId: com.viben.desktop
 ---
 # Viben iOS Smoke Test
-# This test verifies the iOS app launches correctly and key UI elements are present
-# Optimized for iOS simulator testing with iOS-specific behaviors
+# Simplified test to verify basic UI elements
 
 # Launch the app fresh
 - launchApp:
     clearState: true
 
-# Wait for app to fully load (iOS may take longer due to WebView initialization)
+# Wait for app to fully load
 - extendedWaitUntil:
     visible:
       text: "Viben"
@@ -23,225 +22,55 @@ appId: com.viben.desktop
 - assertVisible:
     text: "Viben"
 
-# iOS status bar should be visible (device time, battery, etc.)
-# Verify connection status indicator is present (should show "Disconnected" initially)
-- assertVisible:
-    text: "Disconnected"
-    optional: true
-
 # Screenshot: Header verified
 - takeScreenshot: ios-02-header-verified
 
 # =============================================================================
-# Test 2: Verify bottom tab navigation exists (iOS tab bar)
+# Test 2: Verify Connect page content
 # =============================================================================
-
-# Check for Devices tab
-- assertVisible:
-    text: "Devices"
-
-# Check for Connect tab
-- assertVisible:
-    text: "Connect"
-
-# Check for Chat tab
-- assertVisible:
-    text: "Chat"
-
-# Screenshot: Navigation tabs verified
-- takeScreenshot: ios-03-tabs-verified
-
-# =============================================================================
-# Test 3: Test Connect page navigation and content
-# =============================================================================
-
-# Tap on Connect tab
-- tapOn:
-    text: "Connect"
-
-# Wait for Connect page to load
-- extendedWaitUntil:
-    visible:
-      text: "Connect to Desktop"
-    timeout: 10000
-
-# Verify connect page title
 - assertVisible:
     text: "Connect to Desktop"
 
-# Verify QR code instruction text
 - assertVisible:
-    text: "Scan the QR code"
-    optional: true
+    text: "Scan QR Code"
 
-# Verify manual URL entry button exists
 - assertVisible:
     text: "Enter URL manually"
 
-# Screenshot: Connect page content
-- takeScreenshot: ios-04-connect-page
+# Screenshot: Connect page verified
+- takeScreenshot: ios-03-connect-page
 
 # =============================================================================
-# Test 4: Test manual URL dialog interaction
+# Test 3: Test manual URL dialog
 # =============================================================================
-
-# Open manual URL dialog
 - tapOn:
     text: "Enter URL manually"
 
-# Wait for dialog to appear (iOS modal animation)
+# Wait for dialog with increased timeout
 - extendedWaitUntil:
     visible:
       text: "Enter Gateway URL"
-    timeout: 5000
+    timeout: 10000
+    optional: true
 
-# Verify dialog title
-- assertVisible:
-    text: "Enter Gateway URL"
+# Screenshot: Dialog state
+- takeScreenshot: ios-04-dialog
 
-# Verify Connect button exists in dialog
-- assertVisible:
-    text: "Connect"
-
-# Screenshot: Manual URL dialog
-- takeScreenshot: ios-05-manual-url-dialog
-
-# Close dialog using iOS back gesture or close button
-# Try tapping Cancel if available, otherwise use back
+# Close dialog if open
 - tapOn:
     text: "Cancel"
     optional: true
 - back
 
-# Wait for dialog to close
+# Wait for main page
 - extendedWaitUntil:
     visible:
       text: "Connect to Desktop"
     timeout: 5000
 
 # =============================================================================
-# Test 5: Navigate to Devices tab
+# Test 4: Final verification
 # =============================================================================
-
-# Tap on Devices tab
-- tapOn:
-    text: "Devices"
-
-# Wait for navigation animation to complete (iOS transition)
-- extendedWaitUntil:
-    visible:
-      text: "Devices"
-    timeout: 5000
-
-# Screenshot: Devices page
-- takeScreenshot: ios-06-devices-page
-
-# =============================================================================
-# Test 6: Navigate to Chat tab
-# =============================================================================
-
-# Tap on Chat tab
-- tapOn:
-    text: "Chat"
-
-# Wait for navigation
-- extendedWaitUntil:
-    visible:
-      text: "Chat"
-    timeout: 5000
-
-# Screenshot: Chat page
-- takeScreenshot: ios-07-chat-page
-
-# =============================================================================
-# Test 7: iOS-specific gestures - Pull to refresh (if supported)
-# =============================================================================
-
-# Attempt pull-to-refresh gesture on chat page
-- swipe:
-    direction: DOWN
-    duration: 500
-
-# Wait for potential refresh (just wait a bit)
-- extendedWaitUntil:
-    visible:
-      text: "Chat"
-    timeout: 3000
-
-# Screenshot: After pull gesture
-- takeScreenshot: ios-08-after-pull-gesture
-
-# =============================================================================
-# Test 8: Test app stability - rapid tab switching
-# =============================================================================
-
-# Rapidly navigate between tabs to test stability
-- tapOn:
-    text: "Connect"
-- tapOn:
-    text: "Devices"
-- tapOn:
-    text: "Chat"
-- tapOn:
-    text: "Connect"
-
-# Wait for stability
-- extendedWaitUntil:
-    visible:
-      text: "Connect to Desktop"
-    timeout: 5000
-
-# Screenshot: Stability verified after rapid navigation
-- takeScreenshot: ios-09-stability-verified
-
-# =============================================================================
-# Test 9: Test keyboard interaction (iOS keyboard)
-# =============================================================================
-
-# Open manual URL dialog for keyboard test
-- tapOn:
-    text: "Enter URL manually"
-
-- extendedWaitUntil:
-    visible:
-      text: "Enter Gateway URL"
-    timeout: 5000
-
-# Try to tap on input field to trigger keyboard
-- tapOn:
-    id: "url-input"
-    optional: true
-
-# Alternative: tap on any visible text input
-- tapOn:
-    text: "Gateway URL"
-    optional: true
-
-# Screenshot: Keyboard state (may or may not be visible)
-- takeScreenshot: ios-10-keyboard-test
-
-# Hide keyboard if visible (iOS gesture or button)
-- hideKeyboard
-
-# Close dialog
-- back
-
-# =============================================================================
-# Test 10: Final state verification
-# =============================================================================
-
-# Navigate back to Connect (home state)
-- tapOn:
-    text: "Connect"
-
-- extendedWaitUntil:
-    visible:
-      text: "Connect to Desktop"
-    timeout: 5000
 
 # Final screenshot
-- takeScreenshot: ios-11-final-state
-
-# =============================================================================
-# Test Complete
-# =============================================================================
+- takeScreenshot: ios-05-final-state

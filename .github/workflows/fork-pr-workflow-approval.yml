@@ -1,0 +1,158 @@
+name: fork-pr-workflow-approval
+
+# This workflow runs in the trusted base-repository context. It never checks out
+# or executes the fork head; it only reads PR metadata through the GitHub API
+# and approves pending pull_request runs when the touched paths are inside the
+# low-risk allowlist. It only approves low-privilege pull_request workflows;
+# privileged workflow_run / release / deploy workflows stay on manual gates.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to evaluate.
+        required: true
+        type: string
+      dry_run:
+        description: Log decisions without approving workflow runs.
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: fork-pr-workflow-approval-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    if: github.repository == 'nicepkg/viben' && (github.event_name != 'pull_request_target' || github.event.action != 'edited' || github.event.changes.base != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Evaluate and approve low-risk fork PR workflows
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        with:
+          script: |
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
+            const dryRun = process.env.DRY_RUN === 'true';
+
+            if (!prNumber || isNaN(prNumber)) {
+              core.setFailed('Invalid or missing PR number');
+              return;
+            }
+
+            console.log(`Evaluating PR #${prNumber}${dryRun ? ' (dry run)' : ''}`);
+
+            // Get PR details
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            // Only process fork PRs
+            if (!pr.head.repo || pr.head.repo.full_name === `${context.repo.owner}/${context.repo.repo}`) {
+              console.log('Not a fork PR, skipping');
+              return;
+            }
+
+            console.log(`Fork PR from: ${pr.head.repo.full_name}`);
+
+            // Low-risk path allowlist patterns
+            const allowlistPatterns = [
+              /^docs\//,
+              /^\.github\/ISSUE_TEMPLATE\//,
+              /^\.github\/PULL_REQUEST_TEMPLATE/,
+              /^[^/]+\.md$/,
+              /README\.md$/,
+              /CHANGELOG\.md$/,
+              /LICENSE$/,
+              /^\.vscode\//,
+              /^\.editorconfig$/,
+              /^\.gitattributes$/,
+              /^packages\/[^/]+\/README\.md$/,
+              /^apps\/[^/]+\/README\.md$/,
+              /^\.github\/labeler\.yml$/,
+              /^\.github\/CODEOWNERS$/,
+            ];
+
+            // Get changed files
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              per_page: 100
+            });
+
+            console.log(`Changed files (${files.length}):`);
+            files.forEach(f => console.log(`  - ${f.filename}`));
+
+            // Check if all files are in allowlist
+            const isLowRisk = files.every(file => {
+              const matches = allowlistPatterns.some(pattern => pattern.test(file.filename));
+              if (!matches) {
+                console.log(`File not in allowlist: ${file.filename}`);
+              }
+              return matches;
+            });
+
+            if (!isLowRisk) {
+              console.log('PR contains files outside the low-risk allowlist, manual approval required');
+              return;
+            }
+
+            console.log('All files are in the low-risk allowlist');
+
+            // Get pending workflow runs for this PR
+            const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event: 'pull_request',
+              status: 'action_required',
+              head_sha: pr.head.sha
+            });
+
+            // Filter to only approve safe CI workflows
+            const safeWorkflows = ['ci.yml', 'ci'];
+            const pendingRuns = runs.workflow_runs.filter(run => {
+              const workflowName = run.path?.split('/').pop() || run.name;
+              return safeWorkflows.some(safe =>
+                workflowName === safe || run.name?.toLowerCase().includes('ci')
+              );
+            });
+
+            if (pendingRuns.length === 0) {
+              console.log('No pending workflow runs to approve');
+              return;
+            }
+
+            console.log(`Found ${pendingRuns.length} pending workflow run(s) to approve`);
+
+            for (const run of pendingRuns) {
+              console.log(`${dryRun ? '[DRY RUN] Would approve' : 'Approving'} workflow run: ${run.name} (${run.id})`);
+
+              if (!dryRun) {
+                try {
+                  await github.rest.actions.approveWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.id
+                  });
+                  console.log(`Approved workflow run ${run.id}`);
+                } catch (error) {
+                  console.log(`Failed to approve workflow run ${run.id}: ${error.message}`);
+                }
+              }
+            }
+
+            console.log('Done');
