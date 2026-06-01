@@ -59,7 +59,7 @@ export function MobileLayout() {
                 cn(
                   "flex-1 flex flex-col items-center justify-center gap-1 py-3 text-xs min-h-[60px]",
                   // Use standard Tailwind colors (not arbitrary values) for better compatibility
-                  isActive ? "text-primary" : "text-stone-500",
+                  isActive ? "text-primary" : "text-muted-foreground",
                 )
               }
             >
