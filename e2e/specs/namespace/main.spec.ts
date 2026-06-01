@@ -128,7 +128,7 @@ async function writeLocalPluginFixture(root: string): Promise<string> {
     JSON.stringify(
       {
         name: 'e2e-namespace-plugin',
-        od: {
+        viben: {
           inputs: [{ name: 'topic', required: true, type: 'string' }],
           kind: 'skill',
           taskKind: 'new-generation',

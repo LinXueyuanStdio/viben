@@ -261,7 +261,7 @@ test('plugin authoring produces a generated-plugin scaffold with action cards', 
 
   await page.getByTestId('home-hero-shortcuts-trigger').click();
   await page.getByTestId('home-hero-rail-create-plugin').click();
-  await expect(page.getByTestId('home-hero-input')).toHaveValue(/Create an Open Design plugin for:/);
+  await expect(page.getByTestId('home-hero-input')).toHaveValue(/Create an Viben plugin for:/);
 
   const projectRequestPromise = page.waitForRequest(isCreateProjectRequest);
   const runRequestPromise = page.waitForRequest(isCreateRunRequest);
@@ -361,7 +361,7 @@ async function createProjectViaApi(page: Page, projectId: string, name: string) 
 async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForLoadingToClear(page);
-  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
+  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Viben' });
   if (await privacyDialog.isVisible()) {
     await privacyDialog.getByRole('button', { name: /not now/i }).click();
     await expect(privacyDialog).toHaveCount(0);
@@ -441,7 +441,7 @@ async function openNewProjectModal(page: Page) {
 }
 
 async function dismissPrivacyDialog(page: Page) {
-  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
+  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Viben' });
   if (await privacyDialog.isVisible()) {
     await privacyDialog.getByRole('button', { name: /not now/i }).click();
     await expect(privacyDialog).toHaveCount(0);
@@ -449,7 +449,7 @@ async function dismissPrivacyDialog(page: Page) {
 }
 
 async function waitForLoadingToClear(page: Page) {
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.medium });
+  await page.getByText('Loading Viben…').waitFor({ state: 'hidden', timeout: T.medium });
 }
 
 async function configureFakeAgent(page: Page, agentId: FakeAgentId) {

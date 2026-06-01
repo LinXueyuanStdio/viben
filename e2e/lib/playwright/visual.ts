@@ -347,7 +347,7 @@ function makeVisualPlugin(input: {
       version: '1.0.0',
       description: input.description,
       tags: input.tags ?? [],
-      od: {
+      viben: {
         kind: 'scenario',
         taskKind: input.taskKind,
         mode: input.mode,

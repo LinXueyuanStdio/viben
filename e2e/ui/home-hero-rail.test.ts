@@ -37,7 +37,7 @@ const HOME_PLUGINS = [
       title: 'Web Prototype',
       version: '0.1.0',
       description: 'General-purpose desktop web prototype.',
-      od: {
+      viben: {
         kind: 'scenario',
         taskKind: 'new-generation',
         useCase: {
@@ -70,7 +70,7 @@ const HOME_PLUGINS = [
       title: 'Simple Deck',
       version: '0.1.0',
       description: 'Single-file horizontal-swipe HTML deck.',
-      od: {
+      viben: {
         kind: 'scenario',
         taskKind: 'new-generation',
         useCase: {
@@ -103,15 +103,15 @@ const HOME_PLUGINS = [
       name: 'example-live-artifact',
       title: 'Live Artifact',
       version: '0.1.0',
-      description: 'Create refreshable, auditable Open Design artifacts.',
-      od: {
+      description: 'Create refreshable, auditable Viben artifacts.',
+      viben: {
         kind: 'scenario',
         taskKind: 'new-generation',
         mode: 'prototype',
         scenario: 'live',
         useCase: {
           query:
-            'Create refreshable, auditable Open Design artifacts backed by connector or local data.',
+            'Create refreshable, auditable Viben artifacts backed by connector or local data.',
         },
       },
     },
@@ -132,7 +132,7 @@ const HOME_PLUGINS = [
       title: 'Media generation',
       version: '0.1.0',
       description: 'Create image, video, and audio assets.',
-      od: {
+      viben: {
         kind: 'scenario',
         taskKind: 'new-generation',
         useCase: {
@@ -158,7 +158,7 @@ const HOME_PLUGINS = [
       title: 'HyperFrames',
       version: '0.1.0',
       description: 'Create HyperFrames motion content.',
-      od: {
+      viben: {
         kind: 'scenario',
         taskKind: 'new-generation',
         useCase: {
@@ -184,7 +184,7 @@ const HOME_PLUGINS = [
       title: 'Notion live artifact',
       version: '0.1.0',
       description: 'Create a live Notion dashboard artifact.',
-      od: {
+      viben: {
         kind: 'scenario',
         taskKind: 'new-generation',
         mode: 'image',
@@ -262,7 +262,7 @@ const PROMPT_TEMPLATES = [
 ];
 
 async function waitForLoadingToClear(page: Page) {
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText('Loading Viben…')).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function seedBrowserConfig(page: Page, config: Record<string, unknown>) {
@@ -277,7 +277,7 @@ async function seedBrowserConfig(page: Page, config: Record<string, unknown>) {
 async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForLoadingToClear(page);
-  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
+  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Viben' });
   if (await privacyDialog.isVisible().catch(() => false)) {
     await privacyDialog.getByRole('button', { name: /not now/i }).click();
   }
@@ -568,7 +568,7 @@ test('after closing one example chip, selecting another example updates the comp
     .locator('[data-testid="home-hero-plugin-preset"][data-plugin-id="example-live-artifact"]')
     .click();
   await expect(page.getByTestId('home-hero-active-example')).toBeVisible();
-  await expect(input).toHaveValue('Create refreshable, auditable Open Design artifacts backed by connector or local data.');
+  await expect(input).toHaveValue('Create refreshable, auditable Viben artifacts backed by connector or local data.');
 });
 
 async function expectChipSelection(page: Page, chipId: string, _label: string) {

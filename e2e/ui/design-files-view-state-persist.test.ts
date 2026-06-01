@@ -98,7 +98,7 @@ test.beforeEach(async ({ page }) => {
 
 async function waitForLoadingToClear(page: Page): Promise<void> {
   await page
-    .getByText('Loading Open Design…')
+    .getByText('Loading Viben…')
     .waitFor({ state: 'detached', timeout: 15_000 })
     .catch(() => {});
 }
@@ -108,7 +108,7 @@ async function gotoEntryHome(page: Page): Promise<void> {
   await waitForLoadingToClear(page);
   const privacyDialog = page
     .getByRole('dialog')
-    .filter({ hasText: 'Help us improve Open Design' });
+    .filter({ hasText: 'Help us improve Viben' });
   if (await privacyDialog.isVisible().catch(() => false)) {
     await privacyDialog.getByRole('button', { name: /not now/i }).click();
     await expect(privacyDialog).toHaveCount(0);

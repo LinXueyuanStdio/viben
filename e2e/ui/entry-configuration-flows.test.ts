@@ -51,7 +51,7 @@ const IMAGE_TEMPLATE = {
   source: {
     repo: 'viben/test-prompts',
     license: 'MIT',
-    author: 'Open Design QA',
+    author: 'Viben QA',
   },
 };
 

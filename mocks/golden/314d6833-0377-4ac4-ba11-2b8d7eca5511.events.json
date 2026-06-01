@@ -13,7 +13,7 @@
       "id": "314d6833-0377-4ac4-ba11-2b8d7eca5511-tool-toolu_bdrk_01W4ChHzyM5SX3pnfNPzvvQe",
       "name": "Read",
       "input": {
-        "file_path": "${HOME}/Library/Application Support/Open Design/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
+        "file_path": "${HOME}/Library/Application Support/Viben/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
         "offset": 100,
         "limit": 40
       }
@@ -34,7 +34,7 @@
       "name": "Grep",
       "input": {
         "pattern": "kpi-cell::before|kpi-cell\\s*\\{|\\.kpi-strip|\\.kpi-cell",
-        "path": "${HOME}/Library/Application Support/Open Design/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
+        "path": "${HOME}/Library/Application Support/Viben/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
         "output_mode": "content",
         "-n": true
       }
@@ -54,7 +54,7 @@
       "id": "314d6833-0377-4ac4-ba11-2b8d7eca5511-tool-toolu_bdrk_0163uAuJyfBhuHWtxXoSwi3N",
       "name": "Edit",
       "input": {
-        "file_path": "${HOME}/Library/Application Support/Open Design/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
+        "file_path": "${HOME}/Library/Application Support/Viben/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
         "old_string": "  .kpi-cell::before { content:''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; }",
         "new_string": "  .kpi-cell::before { content:''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; }"
       }
@@ -66,7 +66,7 @@
     {
       "type": "tool_result",
       "toolUseId": "314d6833-0377-4ac4-ba11-2b8d7eca5511-tool-toolu_bdrk_0163uAuJyfBhuHWtxXoSwi3N",
-      "content": "The file ${HOME}/Library/Application Support/Open Design/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html has been updated successfully. (file state is current in your context — no need to Read it back)",
+      "content": "The file ${HOME}/Library/Application Support/Viben/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html has been updated successfully. (file state is current in your context — no need to Read it back)",
       "isError": false
     },
     {
@@ -76,7 +76,7 @@
       "input": {
         "-n": true,
         "output_mode": "content",
-        "path": "${HOME}/Library/Application Support/Open Design/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
+        "path": "${HOME}/Library/Application Support/Viben/namespaces/release-stable/data/projects/proj-001/ref-b-tickets-v3.html",
         "pattern": "topbar|\\.bar\\s"
       }
     },

@@ -8,13 +8,13 @@ const OPEN_SETTINGS_LABEL = /Open settings|打开设置|開啟設定/i;
 test.describe.configure({ timeout: 30_000 });
 
 async function waitForLoadingToClear(page: Page) {
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText('Loading Viben…')).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForLoadingToClear(page);
-  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
+  const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Viben' });
   if (await privacyDialog.isVisible().catch(() => false)) {
     await privacyDialog.getByRole('button', { name: /not now/i }).click();
   }
@@ -152,8 +152,8 @@ test('home topbar star and discord badges expose the current external-link contr
 
   const discord = page.getByTestId('entry-discord-badge');
   await expect(discord).toHaveAttribute('href', 'https://discord.gg/mHAjSMV6gz');
-  await expect(discord).toHaveAttribute('title', /Join the Open Design Discord/i);
-  await expect(discord).toHaveAttribute('aria-label', /Join the Open Design Discord/i);
+  await expect(discord).toHaveAttribute('title', /Join the Viben Discord/i);
+  await expect(discord).toHaveAttribute('aria-label', /Join the Viben Discord/i);
 });
 
 test('home topbar Use everywhere navigates to Integrations with the tab selected', async ({ page }) => {
