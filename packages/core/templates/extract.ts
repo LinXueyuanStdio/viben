@@ -146,6 +146,23 @@ export function getAntigravityTemplatePath(): string {
 }
 
 /**
+ * Get the path to the gemini templates directory.
+ *
+ * This reads from src/templates/gemini/ (development) or dist/templates/gemini/ (production).
+ * These are GENERIC templates, not the Viben project's own .gemini/ configuration.
+ */
+export function getGeminiTemplatePath(): string {
+  const templatePath = path.join(__dirname, "gemini");
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+
+  throw new Error(
+    "Could not find gemini templates directory. Expected at templates/gemini/",
+  );
+}
+
+/**
  * Read a file from the viben templates directory
  * @param relativePath - Path relative to templates/viben/ (e.g., 'workflow.md')
  * @returns File content as string
@@ -227,23 +244,6 @@ export function readKiloFile(relativePath: string): string {
   const kiloPath = getKiloTemplatePath();
   const filePath = path.join(kiloPath, relativePath);
   return fs.readFileSync(filePath, "utf-8");
-}
-
-/**
- * Get the path to the gemini templates directory.
- *
- * This reads from src/templates/gemini/ (development) or dist/templates/gemini/ (production).
- * These are GENERIC templates, not the Viben project's own .gemini/ configuration.
- */
-export function getGeminiTemplatePath(): string {
-  const templatePath = path.join(__dirname, "gemini");
-  if (fs.existsSync(templatePath)) {
-    return templatePath;
-  }
-
-  throw new Error(
-    "Could not find gemini templates directory. Expected at templates/gemini/",
-  );
 }
 
 /**
