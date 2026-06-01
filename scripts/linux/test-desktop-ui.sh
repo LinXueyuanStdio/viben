@@ -90,7 +90,50 @@ info "Found app at: $APP_PATH"
 export TAURI_APP_PATH="$APP_PATH"
 
 # =============================================================================
-# Step 3: Start tauri-driver
+# Step 3: Ensure WebKitWebDriver is available
+# =============================================================================
+section "Checking WebKitWebDriver"
+
+# tauri-driver requires WebKitWebDriver in PATH
+find_webdriver() {
+    if command -v WebKitWebDriver &>/dev/null; then
+        command -v WebKitWebDriver
+    elif [ -f "/usr/bin/WebKitWebDriver" ]; then
+        echo "/usr/bin/WebKitWebDriver"
+    elif [ -f "/usr/lib/webkit2gtk-4.1/WebKitWebDriver" ]; then
+        echo "/usr/lib/webkit2gtk-4.1/WebKitWebDriver"
+    elif [ -f "/usr/lib/webkit2gtk-4.0/WebKitWebDriver" ]; then
+        echo "/usr/lib/webkit2gtk-4.0/WebKitWebDriver"
+    fi
+}
+
+WEBDRIVER_PATH=$(find_webdriver)
+
+if [ -z "$WEBDRIVER_PATH" ]; then
+    warn "WebKitWebDriver not found. Installing webkit2gtk-driver..."
+    sudo apt-get update -qq
+    sudo apt-get install -y webkit2gtk-driver
+    WEBDRIVER_PATH=$(find_webdriver)
+fi
+
+if [ -z "$WEBDRIVER_PATH" ]; then
+    fail "WebKitWebDriver not found even after installation attempt."
+    info "Please manually install: sudo apt-get install webkit2gtk-driver"
+    exit 1
+fi
+
+info "Found WebKitWebDriver at: $WEBDRIVER_PATH"
+
+# Ensure it's in PATH for tauri-driver
+if ! command -v WebKitWebDriver &>/dev/null; then
+    info "Adding WebKitWebDriver to PATH..."
+    export PATH="$(dirname "$WEBDRIVER_PATH"):$PATH"
+fi
+
+success "WebKitWebDriver is available"
+
+# =============================================================================
+# Step 4: Start tauri-driver
 # =============================================================================
 section "Starting tauri-driver"
 
@@ -109,7 +152,7 @@ fi
 success "tauri-driver started (PID $TAURI_DRIVER_PID)"
 
 # =============================================================================
-# Step 4: Run E2E tests with xvfb
+# Step 5: Run E2E tests with xvfb
 # =============================================================================
 section "Running E2E Tests"
 

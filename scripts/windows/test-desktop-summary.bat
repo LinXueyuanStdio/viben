@@ -90,7 +90,7 @@ if exist "%SCREENSHOTS_DIR%" (
     for %%f in ("%SCREENSHOTS_DIR%\*.png") do set /a SCREENSHOT_COUNT+=1
 )
 
-if %SCREENSHOT_COUNT%==0 (
+if "!SCREENSHOT_COUNT!"=="0" (
     echo _无截图_ >> "%SUMMARY_FILE%"
     goto :done
 )
