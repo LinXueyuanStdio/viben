@@ -69,8 +69,23 @@ appId: com.viben.desktop
     timeout: 5000
 
 # =============================================================================
-# Test 4: Final verification
+# Test 4: Verify bottom navigation bar
+# =============================================================================
+- assertVisible:
+    text: "Devices"
+
+- assertVisible:
+    text: "Connect"
+
+- assertVisible:
+    text: "Chat"
+
+# Screenshot: Bottom nav verified
+- takeScreenshot: ios-05-bottom-nav
+
+# =============================================================================
+# Test 5: Final verification
 # =============================================================================
 
 # Final screenshot
-- takeScreenshot: ios-05-final-state
+- takeScreenshot: ios-06-final-state
