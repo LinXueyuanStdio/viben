@@ -66,19 +66,23 @@ success "Desktop app installed"
 section "Locating Installed App"
 
 APP_PATH=""
-if command -v viben &>/dev/null; then
-    APP_PATH=$(which viben)
-elif [ -f "/usr/bin/viben" ]; then
-    APP_PATH="/usr/bin/viben"
-elif [ -f "/usr/bin/viben-desktop" ]; then
+# Prefer the system-installed desktop binary (not npm CLI)
+if [ -f "/usr/bin/viben-desktop" ]; then
     APP_PATH="/usr/bin/viben-desktop"
-else
-    # Search in common locations
-    APP_PATH=$(find /usr -name "viben*" -type f -executable 2>/dev/null | head -1)
+elif [ -f "/usr/bin/viben" ]; then
+    # Check if /usr/bin/viben is an ELF binary (desktop app) not a script (CLI)
+    if file /usr/bin/viben | grep -q "ELF"; then
+        APP_PATH="/usr/bin/viben"
+    fi
+fi
+
+# Fallback: search in common locations
+if [ -z "$APP_PATH" ]; then
+    APP_PATH=$(find /usr -name "viben*" -type f -executable 2>/dev/null | xargs -I{} sh -c 'file "{}" | grep -q ELF && echo "{}"' | head -1)
 fi
 
 if [ -z "$APP_PATH" ] || [ ! -f "$APP_PATH" ]; then
-    fail "Could not find installed Viben app"
+    fail "Could not find installed Viben desktop app"
     exit 1
 fi
 
