@@ -22,6 +22,7 @@ packages/pet/src/
 │   ├── PetSprite.tsx         # Sprite renderer with CSS animation
 │   ├── PetContainer.tsx      # Draggable container with interaction handling
 │   ├── PetBubble.tsx         # Speech bubble component
+│   ├── PetSettings.tsx       # Settings panel for pet selection (P1)
 │   └── index.ts              # Component exports
 ├── hooks/
 │   ├── usePetAnimation.ts    # Animation row selection and timing
@@ -32,6 +33,8 @@ packages/pet/src/
 │   └── pet.css               # Base styles and keyframes
 └── index.ts                  # Updated exports
 ```
+
+**Note:** `PetContainer` implements the complete interaction logic internally by composing the three focused hooks (`usePetDrag`, `usePetAnimation`, `usePetAmbient`). No separate `usePetInteraction` hook is needed.
 
 ---
 
@@ -642,7 +645,87 @@ export function usePetAnimation({
 }
 ```
 
-- [ ] **Step 2: Update hooks index**
+- [ ] **Step 2: Write failing tests for usePetAnimation**
+
+```typescript
+// packages/pet/tests/hooks/usePetAnimation.test.ts
+import { describe, it, expect } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import { usePetAnimation } from '../../src/hooks/usePetAnimation';
+import { STANDARD_ANIMATIONS, CODEX_ATLAS } from '../../src/types';
+import type { PetConfig } from '../../src/types';
+
+const mockPet: PetConfig = {
+  id: 'test',
+  name: 'Test',
+  description: 'Test pet',
+  accent: '#000',
+  greeting: 'Hello',
+  spritesheet: 'test.png',
+  atlas: {
+    cols: CODEX_ATLAS.cols,
+    rows: CODEX_ATLAS.rows,
+    cellWidth: CODEX_ATLAS.cellWidth,
+    cellHeight: CODEX_ATLAS.cellHeight,
+    animations: STANDARD_ANIMATIONS,
+  },
+};
+
+describe('usePetAnimation', () => {
+  it('returns null when pet is null', () => {
+    const { result } = renderHook(() =>
+      usePetAnimation({ pet: null, interaction: 'idle' })
+    );
+    expect(result.current.animation).toBeNull();
+    expect(result.current.style).toBeNull();
+  });
+
+  it('selects correct animation for idle interaction', () => {
+    const { result } = renderHook(() =>
+      usePetAnimation({ pet: mockPet, interaction: 'idle' })
+    );
+    expect(result.current.animation?.id).toBe('idle');
+  });
+
+  it('selects correct animation for hover interaction', () => {
+    const { result } = renderHook(() =>
+      usePetAnimation({ pet: mockPet, interaction: 'hover' })
+    );
+    expect(result.current.animation?.id).toBe('waving');
+  });
+
+  it('respects overrideAnimationId', () => {
+    const { result } = renderHook(() =>
+      usePetAnimation({
+        pet: mockPet,
+        interaction: 'idle',
+        overrideAnimationId: 'jumping',
+      })
+    );
+    expect(result.current.animation?.id).toBe('jumping');
+  });
+
+  it('generates correct CSS custom properties', () => {
+    const { result } = renderHook(() =>
+      usePetAnimation({ pet: mockPet, interaction: 'idle' })
+    );
+    expect(result.current.cssVars).toHaveProperty('--pet-cell-width');
+    expect(result.current.cssVars).toHaveProperty('--pet-cell-height');
+    expect(result.current.cssVars['--pet-cell-width']).toBe('192px');
+  });
+});
+```
+
+- [ ] **Step 3: Run tests to verify they fail**
+
+Run:
+```bash
+cd packages/pet && pnpm test
+```
+
+Expected: FAIL - usePetAnimation tests fail
+
+- [ ] **Step 4: Update hooks index**
 
 ```typescript
 // packages/pet/src/hooks/index.ts
@@ -650,7 +733,16 @@ export * from './usePetDrag';
 export * from './usePetAnimation';
 ```
 
-- [ ] **Step 3: Verify types compile**
+- [ ] **Step 5: Run tests to verify they pass**
+
+Run:
+```bash
+cd packages/pet && pnpm test
+```
+
+Expected: All tests PASS
+
+- [ ] **Step 6: Verify types compile**
 
 Run:
 ```bash
@@ -659,11 +751,11 @@ cd packages/pet && pnpm typecheck
 
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/pet/src/hooks/usePetAnimation.ts packages/pet/src/hooks/index.ts
-git commit -m "feat(pet): add usePetAnimation hook for animation row selection"
+git add packages/pet/src/hooks/usePetAnimation.ts packages/pet/tests/hooks/usePetAnimation.test.ts packages/pet/src/hooks/index.ts
+git commit -m "feat(pet): add usePetAnimation hook with tests for animation row selection"
 ```
 
 ---
@@ -674,7 +766,110 @@ git commit -m "feat(pet): add usePetAnimation hook for animation row selection"
 - Create: `packages/pet/src/hooks/usePetAmbient.ts`
 - Modify: `packages/pet/src/hooks/index.ts`
 
-- [ ] **Step 1: Implement usePetAmbient**
+- [ ] **Step 1: Write failing tests for usePetAmbient**
+
+```typescript
+// packages/pet/tests/hooks/usePetAmbient.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
+import { usePetAmbient } from '../../src/hooks/usePetAmbient';
+import { STANDARD_ANIMATIONS } from '../../src/types';
+import type { PetConfig } from '../../src/types';
+
+const mockPet: PetConfig = {
+  id: 'test',
+  name: 'Test',
+  description: 'Test pet',
+  accent: '#000',
+  greeting: 'Hello',
+  spritesheet: 'test.png',
+  atlas: {
+    cols: 8,
+    rows: 9,
+    cellWidth: 192,
+    cellHeight: 208,
+    animations: STANDARD_ANIMATIONS,
+  },
+  ambient: {
+    pool: ['waving', 'jumping'],
+    playMs: { min: 100, variance: 0 },
+    restMs: { min: 100, variance: 0 },
+    initialDelayMs: { min: 50, variance: 0 },
+  },
+};
+
+describe('usePetAmbient', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('starts with no ambient animation', () => {
+    const { result } = renderHook(() =>
+      usePetAmbient({ pet: mockPet, interaction: 'idle' })
+    );
+    expect(result.current.ambientRowId).toBeNull();
+  });
+
+  it('plays ambient animation after initial delay', async () => {
+    const { result } = renderHook(() =>
+      usePetAmbient({ pet: mockPet, interaction: 'idle' })
+    );
+
+    // Fast-forward past initial delay
+    vi.advanceTimersByTime(50);
+    await waitFor(() => {
+      expect(result.current.ambientRowId).not.toBeNull();
+    });
+  });
+
+  it('disables ambient when not idle', () => {
+    const { result } = renderHook(() =>
+      usePetAmbient({ pet: mockPet, interaction: 'hover' })
+    );
+
+    vi.advanceTimersByTime(1000);
+    expect(result.current.ambientRowId).toBeNull();
+  });
+
+  it('disables ambient when disabled flag is true', () => {
+    const { result } = renderHook(() =>
+      usePetAmbient({ pet: mockPet, interaction: 'idle', disabled: true })
+    );
+
+    vi.advanceTimersByTime(1000);
+    expect(result.current.ambientRowId).toBeNull();
+  });
+
+  it('resets ambient on reset call', async () => {
+    const { result } = renderHook(() =>
+      usePetAmbient({ pet: mockPet, interaction: 'idle' })
+    );
+
+    vi.advanceTimersByTime(50);
+    await waitFor(() => {
+      expect(result.current.ambientRowId).not.toBeNull();
+    });
+
+    result.current.reset();
+    expect(result.current.ambientRowId).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run:
+```bash
+cd packages/pet && pnpm test
+```
+
+Expected: FAIL - usePetAmbient tests fail
+
+- [ ] **Step 3: Implement usePetAmbient**
 
 ```typescript
 // packages/pet/src/hooks/usePetAmbient.ts
@@ -767,7 +962,7 @@ export function usePetAmbient({
 }
 ```
 
-- [ ] **Step 2: Update hooks index**
+- [ ] **Step 4: Update hooks index**
 
 ```typescript
 // packages/pet/src/hooks/index.ts
@@ -776,7 +971,16 @@ export * from './usePetAnimation';
 export * from './usePetAmbient';
 ```
 
-- [ ] **Step 3: Verify types compile**
+- [ ] **Step 5: Run tests to verify they pass**
+
+Run:
+```bash
+cd packages/pet && pnpm test
+```
+
+Expected: All tests PASS
+
+- [ ] **Step 6: Verify types compile**
 
 Run:
 ```bash
@@ -785,11 +989,11 @@ cd packages/pet && pnpm typecheck
 
 Expected: No errors
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/pet/src/hooks/usePetAmbient.ts packages/pet/src/hooks/index.ts
-git commit -m "feat(pet): add usePetAmbient hook for ambient animation cycling"
+git add packages/pet/src/hooks/usePetAmbient.ts packages/pet/tests/hooks/usePetAmbient.test.ts packages/pet/src/hooks/index.ts
+git commit -m "feat(pet): add usePetAmbient hook with tests for ambient animation cycling"
 ```
 
 ---
@@ -1144,10 +1348,11 @@ git commit -m "feat(pet): add PetContainer component with drag, hover, and ambie
 
 ---
 
-## Task 8: Update Main Exports
+## Task 8: Update Package Exports
 
 **Files:**
 - Modify: `packages/pet/src/index.ts`
+- Modify: `packages/pet/package.json`
 
 - [ ] **Step 1: Update index.ts with all exports**
 
@@ -1173,6 +1378,46 @@ export * from './components';
 
 // CSS (consumers need to import this)
 // import '@viben/pet/styles/pet.css';
+```
+
+- [ ] **Step 1.5: Update package.json to export CSS**
+
+```json
+{
+  "name": "@viben/pet",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./styles/pet.css": "./src/styles/pet.css"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.0.0",
+    "@types/react": "^18.3.0",
+    "jsdom": "^23.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}
 ```
 
 - [ ] **Step 2: Run full type check**
@@ -1205,8 +1450,8 @@ Expected: Build succeeds
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/pet/src/index.ts
-git commit -m "feat(pet): export all components and hooks from package index"
+git add packages/pet/src/index.ts packages/pet/package.json
+git commit -m "feat(pet): export all components, hooks, and CSS from package"
 ```
 
 ---
