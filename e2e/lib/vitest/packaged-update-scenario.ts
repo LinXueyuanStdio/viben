@@ -24,7 +24,7 @@ export function resolvePackagedUpdateScenario(input: {
   }
 
   if (releaseChannel == null || releaseChannel === '' || releaseVersion == null || releaseVersion === '') {
-    throw new Error('OD_PACKAGED_E2E_RELEASE_CHANNEL and OD_PACKAGED_E2E_RELEASE_VERSION must be set together');
+    throw new Error('VIBEN_PACKAGED_E2E_RELEASE_CHANNEL and VIBEN_PACKAGED_E2E_RELEASE_VERSION must be set together');
   }
 
   const channel = parseChannel(releaseChannel);
@@ -41,14 +41,14 @@ export function applyPackagedUpdateEnv(
   scenario: PackagedUpdateScenario,
   metadataUrl: string,
 ): void {
-  env.OD_UPDATE_ENABLED = '1';
-  env.OD_UPDATE_METADATA_URL = metadataUrl;
-  env.OD_UPDATE_OPEN_DRY_RUN = '1';
-  env.OD_UPDATE_AUTO_CHECK = '1';
+  env.VIBEN_UPDATE_ENABLED = '1';
+  env.VIBEN_UPDATE_METADATA_URL = metadataUrl;
+  env.VIBEN_UPDATE_OPEN_DRY_RUN = '1';
+  env.VIBEN_UPDATE_AUTO_CHECK = '1';
   if (scenario.currentVersionOverride == null) {
-    delete env.OD_UPDATE_CURRENT_VERSION;
+    delete env.VIBEN_UPDATE_CURRENT_VERSION;
   } else {
-    env.OD_UPDATE_CURRENT_VERSION = scenario.currentVersionOverride;
+    env.VIBEN_UPDATE_CURRENT_VERSION = scenario.currentVersionOverride;
   }
 }
 

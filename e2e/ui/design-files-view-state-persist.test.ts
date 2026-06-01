@@ -22,7 +22,7 @@ import type { Page } from '@playwright/test';
 const VIEW_STATE_KEY_PREFIX = 'od:design-files:view-state:v1:';
 
 // Config key expected by the web app to skip onboarding
-const CONFIG_STORAGE_KEY = 'open-design:config';
+const CONFIG_STORAGE_KEY = 'viben:config';
 
 // Minimal 1x1 PNG, base64-encoded
 const TINY_PNG_B64 =

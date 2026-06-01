@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 const LOCAL_CLI_LABEL = /Local CLI|本机 CLI|本地 CLI/i;
 const OPEN_SETTINGS_LABEL = /Open settings|打开设置|開啟設定/i;
 
@@ -43,7 +43,7 @@ test.beforeEach(async ({ page }) => {
     );
   }, STORAGE_KEY);
 
-  await page.route('**/api/github/open-design', async (route) => {
+  await page.route('**/api/github/viben', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -107,7 +107,7 @@ test('home topbar shows the new entry chips and links', async ({ page }) => {
 
   const star = page.getByTestId('entry-star-badge');
   await expect(star).toBeVisible();
-  await expect(star).toHaveAttribute('href', 'https://github.com/nexu-io/open-design');
+  await expect(star).toHaveAttribute('href', 'https://github.com/nexu-io/viben');
   await expect(star).toContainText('Star');
   await expect(star).toContainText('51.6K');
 

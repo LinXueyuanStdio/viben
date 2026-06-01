@@ -815,14 +815,19 @@ jobs:
           # Check Maestro results
           if [ -f maestro-ios-results.xml ]; then
             echo "Maestro Test Results:"
-            # Extract test counts from JUnit XML
-            TESTS=$(grep -o 'tests="[0-9]*"' maestro-ios-results.xml | head -1 | grep -o '[0-9]*')
-            FAILURES=$(grep -o 'failures="[0-9]*"' maestro-ios-results.xml | head -1 | grep -o '[0-9]*')
-            ERRORS=$(grep -o 'errors="[0-9]*"' maestro-ios-results.xml | head -1 | grep -o '[0-9]*')
+            # Extract test counts from JUnit XML (use || true to handle missing matches)
+            TESTS=$(grep -o 'tests="[0-9]*"' maestro-ios-results.xml 2>/dev/null | head -1 | grep -o '[0-9]*' || echo "0")
+            FAILURES=$(grep -o 'failures="[0-9]*"' maestro-ios-results.xml 2>/dev/null | head -1 | grep -o '[0-9]*' || echo "0")
+            ERRORS=$(grep -o 'errors="[0-9]*"' maestro-ios-results.xml 2>/dev/null | head -1 | grep -o '[0-9]*' || echo "0")
             echo "  Tests: ${TESTS:-0}"
             echo "  Failures: ${FAILURES:-0}"
             echo "  Errors: ${ERRORS:-0}"
             echo ""
+            # Only fail if there are actual failures or errors
+            if [ "${FAILURES:-0}" != "0" ] || [ "${ERRORS:-0}" != "0" ]; then
+              echo "::error::Maestro tests failed: $FAILURES failures, $ERRORS errors"
+              exit 1
+            fi
           fi
 
           # List screenshots

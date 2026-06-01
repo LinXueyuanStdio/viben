@@ -15,7 +15,7 @@ import {
 } from '@/playwright/amr';
 
 test('after local Sign out, AMR runs require re-login and Settings keeps AMR selected', async ({ page }) => {
-  const root = join(tmpdir(), `open-design-amr-logout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const root = join(tmpdir(), `viben-amr-logout-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const successVelaBin = await writeFakeVelaBin(join(root, 'bin-success'), {
     assistantText: 'Hello from the e2e fake vela.',
     requireLoginConfig: false,

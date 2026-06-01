@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 
 test.describe.configure({ timeout: 30_000 });
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 const OPEN_SETTINGS_LABEL = /Open settings|打开设置|開啟設定/i;
 
 const HOME_CONFIG = {
@@ -237,7 +237,7 @@ const PROMPT_TEMPLATES = [
     category: 'product',
     model: 'gpt-image-2',
     aspect: '16:9',
-    source: { repo: 'open-design/image-prompts', license: 'MIT' },
+    source: { repo: 'viben/image-prompts', license: 'MIT' },
   },
   {
     id: 'video-reveal',
@@ -247,7 +247,7 @@ const PROMPT_TEMPLATES = [
     category: 'product',
     model: 'doubao-seedance-2-0-260128',
     aspect: '16:9',
-    source: { repo: 'open-design/video-prompts', license: 'MIT' },
+    source: { repo: 'viben/video-prompts', license: 'MIT' },
   },
   {
     id: 'hyperframes-caption',
@@ -291,7 +291,7 @@ test.beforeEach(async ({ page }) => {
     window.localStorage.setItem(key, JSON.stringify(value));
   }, { key: STORAGE_KEY, value: HOME_CONFIG });
 
-  await page.route('**/api/github/open-design', async (route) => {
+  await page.route('**/api/github/viben', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

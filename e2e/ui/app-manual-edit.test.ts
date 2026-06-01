@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { T } from '@/timeouts';
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 
 test.describe.configure({ timeout: 30_000 });
 
@@ -57,7 +57,7 @@ test('manual edit inspector previews and persists page and selected element styl
   await expect(page.getByTestId('artifact-preview-frame')).toBeVisible();
   const frame = page.frameLocator('[data-testid="artifact-preview-frame"]');
   await expect(frame.getByRole('heading', { name: 'Original Hero' })).toBeVisible();
-  const responsivePair = frame.locator('[data-od-id="responsive-pair"]');
+  const responsivePair = frame.locator('[data-viben-id="responsive-pair"]');
   await expect.poll(async () => responsivePair.evaluate((el) => getComputedStyle(el).flexDirection)).toBe('row');
 
   await page.getByTestId('manual-edit-mode-toggle').click();
@@ -85,7 +85,7 @@ test('manual edit inspector previews and persists page and selected element styl
   await expect(page.locator('.manual-edit-modal')).toContainText('SIZE');
   await expect(page.locator('.manual-edit-modal')).toContainText('LAYOUT');
   await expect(page.locator('.manual-edit-modal')).toContainText('BOX');
-  const selectedTitleMarker = frame.locator('[data-od-id="hero-title"][data-od-edit-selected="true"]');
+  const selectedTitleMarker = frame.locator('[data-viben-id="hero-title"][data-viben-edit-selected="true"]');
   await expect(selectedTitleMarker).toHaveCount(1);
   const fontSizeInput = inspectorSection(page, 'TYPOGRAPHY').locator('.cc-row').filter({ hasText: 'Size' }).locator('input');
   await fontSizeInput.click();
@@ -135,7 +135,7 @@ test('manual edit inspector previews and persists page and selected element styl
     'padding-top: 12px',
     'border-radius: 8px',
   ]);
-  await expectFileSourceExcludes(page, projectId, 'manual-edit.html', ['data-od-edit-selected']);
+  await expectFileSourceExcludes(page, projectId, 'manual-edit.html', ['data-viben-edit-selected']);
   await expect(page.locator('.manual-edit-modal')).toContainText('TYPOGRAPHY');
   await expect(page.locator('.manual-edit-modal')).not.toContainText('PAGE');
   await expect(selectedTitleMarker).toHaveCount(1);
@@ -160,7 +160,7 @@ test('manual edit mode preserves preview actions after style edits', async ({ pa
   await expect(frame.getByRole('heading', { name: 'Original Hero' })).toBeVisible();
 
   await page.getByTestId('manual-edit-mode-toggle').click();
-  const fontSizeInput = await selectStyleRowInput(page, frame, '[data-od-id="hero-title"]', 'TYPOGRAPHY', 'Size');
+  const fontSizeInput = await selectStyleRowInput(page, frame, '[data-viben-id="hero-title"]', 'TYPOGRAPHY', 'Size');
   await fontSizeInput.fill('48');
   await expectFileSource(page, projectId, 'manual-edit.html', ['font-size: 48px']);
 
@@ -315,7 +315,7 @@ async function seedDeckArtifact(
   slides: string[],
 ) {
   const slideHtml = slides
-    .map((slide, index) => `<section class="slide" data-od-id="slide-${index + 1}"${index === 0 ? '' : ' hidden'}><h1>${slide}</h1></section>`)
+    .map((slide, index) => `<section class="slide" data-viben-id="slide-${index + 1}"${index === 0 ? '' : ' hidden'}><h1>${slide}</h1></section>`)
     .join('\n');
   const resp = await page.request.post(
     `/api/projects/${projectId}/files`,
@@ -420,14 +420,14 @@ function manualEditHtml(): string {
   </head>
   <body style="font-family: Inter, system-ui, sans-serif; font-size: 16px; letter-spacing: 0.01em;">
     <main>
-      <section data-od-id="responsive-pair" data-od-label="Responsive pair" class="responsive-pair">
-        <div data-od-id="pair-a">Left panel</div>
-        <div data-od-id="pair-b">Right panel</div>
+      <section data-viben-id="responsive-pair" data-viben-label="Responsive pair" class="responsive-pair">
+        <div data-viben-id="pair-a">Left panel</div>
+        <div data-viben-id="pair-b">Right panel</div>
       </section>
-      <section data-od-id="hero" data-od-label="Hero section" style="display:flex;gap:8px;align-items:center;">
-        <h1 data-od-id="hero-title" data-od-label="Hero title">Original Hero</h1>
-        <a data-od-id="cta" data-od-label="Primary CTA" href="/start">Start now</a>
-        <img data-od-id="hero-image" data-od-label="Hero image" src="/hero.png" alt="Hero" style="width:64px;height:64px;">
+      <section data-viben-id="hero" data-viben-label="Hero section" style="display:flex;gap:8px;align-items:center;">
+        <h1 data-viben-id="hero-title" data-viben-label="Hero title">Original Hero</h1>
+        <a data-viben-id="cta" data-viben-label="Primary CTA" href="/start">Start now</a>
+        <img data-viben-id="hero-image" data-viben-label="Hero image" src="/hero.png" alt="Hero" style="width:64px;height:64px;">
       </section>
     </main>
   </body>
@@ -438,8 +438,8 @@ function deckHtml(): string {
   return `<!doctype html>
 <html>
   <body>
-    <section class="slide" data-od-id="slide-1"><h1>Slide One</h1></section>
-    <section class="slide" data-od-id="slide-2" hidden><h1>Slide Two</h1></section>
+    <section class="slide" data-viben-id="slide-1"><h1>Slide One</h1></section>
+    <section class="slide" data-viben-id="slide-2" hidden><h1>Slide Two</h1></section>
     <script>
       let active = 0;
       const slides = Array.from(document.querySelectorAll('.slide'));

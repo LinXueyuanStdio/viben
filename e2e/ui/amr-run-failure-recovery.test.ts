@@ -73,7 +73,7 @@ async function setupAmrWorkspace(
     selectedAgentId: 'amr' | 'codex';
   },
 ) {
-  const root = join(tmpdir(), `open-design-amr-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const root = join(tmpdir(), `viben-amr-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const homeDir = join(root, 'home');
   const velaBin = await writeFakeVelaBin(join(root, 'bin'), {
     failAuthAtPrompt: options.failAuthAtPrompt,

@@ -7,7 +7,7 @@ import {
 import type { FakeAgentId } from '@/playwright/fake-agents';
 import { T } from '@/timeouts';
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 const GENERATED_FILE = 'real-daemon-smoke.html';
 const GENERATED_HEADING = 'Real Daemon Smoke';
 const CHUNKED_FILE = 'chunked-daemon-smoke.html';
@@ -283,11 +283,11 @@ test('plugin authoring produces a generated-plugin scaffold with action cards', 
   await expectWorkspaceReady(page);
   const { projectId } = await currentProjectContext(page);
   await expectProjectFilesToContain(page, projectId, [
-    'generated-plugin/open-design.json',
+    'generated-plugin/viben.json',
     'generated-plugin/SKILL.md',
     'generated-plugin/examples/demo.md',
   ]);
-  await expectProjectFileToContain(page, projectId, 'generated-plugin/open-design.json', '"name": "generated-plugin"');
+  await expectProjectFileToContain(page, projectId, 'generated-plugin/viben.json', '"name": "generated-plugin"');
   await expectProjectFileToContain(page, projectId, 'generated-plugin/SKILL.md', '# Generated Plugin');
 
   await expect(page.getByText('Files from this turn')).toBeVisible();

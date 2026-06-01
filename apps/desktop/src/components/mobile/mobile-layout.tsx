@@ -58,8 +58,8 @@ export function MobileLayout() {
               className={({ isActive }) =>
                 cn(
                   "flex-1 flex flex-col items-center justify-center gap-1 py-3 text-xs min-h-[60px]",
-                  // Use explicit colors instead of CSS variables for iOS WebView compatibility
-                  isActive ? "text-[#d97706]" : "text-[#78716c]",
+                  // Use standard Tailwind colors (not arbitrary values) for better compatibility
+                  isActive ? "text-primary" : "text-stone-500",
                 )
               }
             >

@@ -11,7 +11,7 @@ import type { Page } from '@playwright/test';
 // the pinned-todo element is observed; this spec confirms that the resulting
 // scroll behaviour is correct end-to-end.
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 
 // Reusable app-config seed: skip onboarding, mock agent, no real model calls.
 async function seedAppConfig(page: Page) {

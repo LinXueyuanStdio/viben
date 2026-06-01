@@ -646,7 +646,7 @@ test('home starters html details modal shows metadata links, supports copy query
     previewEntry: './example.html',
     tags: ['deck', 'marketing'],
     authorName: 'Open Design',
-    authorUrl: 'https://github.com/nexu-io/open-design',
+    authorUrl: 'https://github.com/nexu-io/viben',
     homepage: 'https://example.com/html-metadata-plugin',
     context: {
       skills: [{ path: './SKILL.md' }],
@@ -697,11 +697,11 @@ test('home starters html details modal shows metadata links, supports copy query
   await expect(page.getByTestId('plugin-details-author')).toContainText('Open Design');
   await expect(page.getByTestId('plugin-details-author-profile')).toHaveAttribute(
     'href',
-    'https://github.com/nexu-io/open-design',
+    'https://github.com/nexu-io/viben',
   );
   await expect(page.getByTestId('plugin-details-author-homepage')).toHaveAttribute(
     'href',
-    'https://github.com/nexu-io/open-design',
+    'https://github.com/nexu-io/viben',
   );
   await expect(dialog).toContainText('Context bundles');
   await expect(dialog).toContainText('./SKILL.md');
@@ -721,7 +721,7 @@ test('home starters html details modal shows metadata links, supports copy query
   await expect(shareMenu).toBeVisible();
   await expect(shareMenu.getByRole('menuitem', { name: /Copy install command/i })).toBeVisible();
   await expect(shareMenu.getByRole('menuitem', { name: /Copy plugin ID/i })).toBeVisible();
-  // Bundled plugins now have a public open-design.ai detail page, so the
+  // Bundled plugins now have a public viben.ai detail page, so the
   // README badge (which links to it) is offered.
   await expect(shareMenu.getByRole('menuitem', { name: /Copy README badge/i })).toBeVisible();
   await expect(shareMenu.getByRole('menuitem', { name: /Open source on GitHub/i })).toBeVisible();

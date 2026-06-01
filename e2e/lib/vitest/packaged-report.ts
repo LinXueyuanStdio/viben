@@ -15,10 +15,10 @@ export type PackagedSmokeReport = {
 
 export async function createPackagedSmokeReport(platform: PackagedReportPlatform): Promise<PackagedSmokeReport> {
   const root = resolveFromWorkspace(
-    process.env.OD_PACKAGED_E2E_REPORT_DIR ?? join('.tmp', 'e2e-release-report', platform),
+    process.env.VIBEN_PACKAGED_E2E_REPORT_DIR ?? join('.tmp', 'e2e-release-report', platform),
   );
   const report = await createReport(root);
-  const screenshotRelpath = `screenshots/open-design-${platform}-smoke.png`;
+  const screenshotRelpath = `screenshots/viben-${platform}-smoke.png`;
 
   return {
     report,

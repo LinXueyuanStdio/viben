@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 const OPEN_SETTINGS_LABEL = /Open settings|打开设置|開啟設定/i;
 const SETTINGS_MENU_LABEL = /^Settings$|^设置$|^設定$/i;
 
@@ -146,7 +146,7 @@ test.describe('Settings Memory and Automations flows', () => {
             {
               id: 'feedback_ui_density',
               parentId: 'folder-feedback',
-              path: '/FEEDBACK/open-design-plugin-authoring-flow',
+              path: '/FEEDBACK/viben-plugin-authoring-flow',
               name: 'Open Design plugin authoring flow',
               description: 'Keep plugin setup terse and reproducible.',
               kind: 'entry',
@@ -682,7 +682,7 @@ test.describe('Settings Memory and Automations flows', () => {
               name: 'Memory context',
               description: 'Connector-derived context',
               type: 'project',
-              body: 'OpenDesign connector memory should focus on design preferences, UI decisions, and visual references from Notion.',
+              body: 'Viben connector memory should focus on design preferences, UI decisions, and visual references from Notion.',
               source: {
                 kind: 'connector',
                 connectorId: 'notion',
@@ -1042,7 +1042,7 @@ test.describe('Settings Memory and Automations flows', () => {
 
     await page.evaluate(() => {
       window.dispatchEvent(new MessageEvent('message', {
-        data: { type: 'open-design:connector-connected' },
+        data: { type: 'viben:connector-connected' },
         origin: window.location.origin,
       }));
     });
@@ -1286,7 +1286,7 @@ test.describe('Settings Memory and Automations flows', () => {
 
     await page.evaluate(() => {
       window.dispatchEvent(new MessageEvent('message', {
-        data: { type: 'open-design:connector-connected' },
+        data: { type: 'viben:connector-connected' },
         origin: window.location.origin,
       }));
     });
@@ -1481,7 +1481,7 @@ test.describe('Settings Memory and Automations flows', () => {
     statusPhase = 'disconnected';
     await page.evaluate(() => {
       window.dispatchEvent(new MessageEvent('message', {
-        data: { type: 'open-design:connector-connected' },
+        data: { type: 'viben:connector-connected' },
         origin: window.location.origin,
       }));
     });
@@ -1495,7 +1495,7 @@ test.describe('Settings Memory and Automations flows', () => {
     statusPhase = 'reconnected';
     await page.evaluate(() => {
       window.dispatchEvent(new MessageEvent('message', {
-        data: { type: 'open-design:connector-connected' },
+        data: { type: 'viben:connector-connected' },
         origin: window.location.origin,
       }));
     });
@@ -1614,7 +1614,7 @@ test.describe('Settings Memory and Automations flows', () => {
               name: 'Memory context',
               description: 'Connector-derived context',
               type: 'project',
-              body: 'OpenDesign connector memory should focus on design preferences, UI decisions, and visual references from Notion.',
+              body: 'Viben connector memory should focus on design preferences, UI decisions, and visual references from Notion.',
               source: {
                 kind: 'connector',
                 connectorId: 'notion',

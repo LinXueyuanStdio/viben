@@ -7,7 +7,7 @@ import { T } from '@/timeouts';
 import { automatedUiScenarios } from '@/playwright/resources';
 import type { UiScenario } from '@/playwright/resources';
 
-const STORAGE_KEY = 'open-design:config';
+const STORAGE_KEY = 'viben:config';
 const APP_OWNED_SCENARIO_FLOWS = new Set([
   'design-files-upload',
   'design-files-delete',
@@ -398,9 +398,9 @@ test('sending preview comments keeps the preview live and refreshes it with the 
   });
   await page.route('**/api/runs/*/events', async (route) => {
     const revisedHtml =
-      '<!doctype html><html><body><main data-od-id="hero-section">' +
-      '<h1 data-od-id="hero-title" data-screen-label="Hero title">Revised headline</h1>' +
-      '<p data-od-id="hero-copy">Preview copy refreshed after comment send.</p>' +
+      '<!doctype html><html><body><main data-viben-id="hero-section">' +
+      '<h1 data-viben-id="hero-title" data-screen-label="Hero title">Revised headline</h1>' +
+      '<p data-viben-id="hero-copy">Preview copy refreshed after comment send.</p>' +
       '</main></body></html>';
     const artifactTitle = requestCount === 1 ? entry.mockArtifact!.title : 'Commentable Artifact Revised';
     const artifactHtml = requestCount === 1 ? entry.mockArtifact!.html : revisedHtml;
@@ -442,7 +442,7 @@ test('sending preview comments keeps the preview live and refreshes it with the 
   await page.getByTestId('board-mode-toggle').click();
   await page.getByTestId('comment-panel-toggle').click();
   const frame = page.frameLocator('[data-testid="artifact-preview-frame"]');
-  await frame.locator('[data-od-id="hero-title"]').click();
+  await frame.locator('[data-viben-id="hero-title"]').click();
   await expect(page.getByTestId('comment-popover')).toBeVisible();
   await page.getByTestId('comment-popover-input').fill('Make the headline more specific.');
   await page.getByTestId('comment-popover-save').click();
@@ -587,10 +587,10 @@ function manualEditHtml(): string {
   <head><meta charset="utf-8"><title>Manual Edit</title></head>
   <body>
     <main>
-      <section data-od-id="hero" data-od-label="Hero section">
-        <h1 data-od-id="hero-title" data-od-label="Hero title">Original Hero</h1>
-        <a data-od-id="cta" data-od-label="Primary CTA" href="/start">Start now</a>
-        <img data-od-id="hero-image" data-od-label="Hero image" src="/hero.png" alt="Hero" style="width:64px;height:64px;">
+      <section data-viben-id="hero" data-viben-label="Hero section">
+        <h1 data-viben-id="hero-title" data-viben-label="Hero title">Original Hero</h1>
+        <a data-viben-id="cta" data-viben-label="Primary CTA" href="/start">Start now</a>
+        <img data-viben-id="hero-image" data-viben-label="Hero image" src="/hero.png" alt="Hero" style="width:64px;height:64px;">
       </section>
     </main>
   </body>
@@ -601,8 +601,8 @@ function deckHtml(): string {
   return `<!doctype html>
 <html>
   <body>
-    <section class="slide" data-od-id="slide-1"><h1>Slide One</h1></section>
-    <section class="slide" data-od-id="slide-2" hidden><h1>Slide Two</h1></section>
+    <section class="slide" data-viben-id="slide-1"><h1>Slide One</h1></section>
+    <section class="slide" data-viben-id="slide-2" hidden><h1>Slide Two</h1></section>
     <script>
       let active = 0;
       const slides = Array.from(document.querySelectorAll('.slide'));
@@ -966,7 +966,7 @@ async function runCommentAttachmentFlow(
   await page.getByTestId('board-mode-toggle').click();
   await page.getByTestId('comment-panel-toggle').click();
   const frame = page.frameLocator('[data-testid="artifact-preview-frame"]');
-  await frame.locator('[data-od-id="hero-title"]').click();
+  await frame.locator('[data-viben-id="hero-title"]').click();
   await expect(page.getByTestId('comment-popover')).toBeVisible();
   await page.getByTestId('comment-popover-input').fill('Make the headline more specific.');
   await page.getByTestId('comment-popover-save').click();
@@ -977,7 +977,7 @@ async function runCommentAttachmentFlow(
   await expect(page.getByTestId('chat-send')).toBeDisabled();
   await expect(page.getByTestId('comment-popover')).toHaveCount(0);
 
-  await frame.locator('[data-od-id="hero-copy"]').hover();
+  await frame.locator('[data-viben-id="hero-copy"]').hover();
   await expect(page.getByTestId('comment-target-overlay')).toBeVisible();
   await expect(page.getByTestId('comment-target-overlay')).toContainText('hero-copy');
 
@@ -1062,7 +1062,7 @@ async function seedDeckArtifact(
   slides: string[],
 ) {
   const slideHtml = slides
-    .map((slide, index) => `<section class="slide" data-od-id="slide-${index + 1}"${index === 0 ? '' : ' hidden'}><h1>${slide}</h1></section>`)
+    .map((slide, index) => `<section class="slide" data-viben-id="slide-${index + 1}"${index === 0 ? '' : ' hidden'}><h1>${slide}</h1></section>`)
     .join('\n');
   await seedProjectFile(
     page,
