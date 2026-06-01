@@ -1,8 +1,19 @@
 #!/usr/bin/env bash
 #
-# Viben Desktop E2E Test Script (macOS)
+# Viben Desktop Smoke Test Script (macOS)
 #
-# Tests the desktop app on macOS using WebdriverIO and tauri-driver.
+# This script performs a basic smoke test for the desktop app on macOS.
+#
+# NOTE: Unlike Linux, macOS cannot use tauri-driver for E2E testing because
+# tauri-driver relies on WebKitWebDriver which is not available for WKWebView
+# on macOS. See: https://v2.tauri.app/develop/tests/webdriver
+#
+# Instead, this script performs a smoke test that:
+#   1. Mounts the DMG and installs the app
+#   2. Launches the app to verify it starts without crashing
+#   3. Takes a screenshot using macOS built-in screencapture
+#   4. Verifies the app process is running
+#   5. Gracefully terminates the app
 #
 # Usage:
 #   ./scripts/macos/test-desktop-ui.sh
@@ -19,8 +30,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 BOLD='\033[1m'
 
-TAURI_DRIVER_PID=""
+APP_PID=""
 VOLUME_PATH=""
+APP_NAME=""
 
 info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[PASS]${NC} $1"; }
@@ -34,11 +46,20 @@ section() {
 }
 
 cleanup() {
-    if [ -n "$TAURI_DRIVER_PID" ]; then
-        info "Stopping tauri-driver (PID $TAURI_DRIVER_PID)..."
-        kill "$TAURI_DRIVER_PID" 2>/dev/null || true
-        wait "$TAURI_DRIVER_PID" 2>/dev/null || true
+    # Kill the app if it's still running
+    if [ -n "$APP_PID" ]; then
+        info "Stopping app (PID $APP_PID)..."
+        kill "$APP_PID" 2>/dev/null || true
+        # Give it a moment to terminate gracefully
+        sleep 1
+        # Force kill if still running
+        kill -9 "$APP_PID" 2>/dev/null || true
     fi
+    # Also kill by app name in case PID tracking failed
+    if [ -n "$APP_NAME" ]; then
+        pkill -f "$APP_NAME" 2>/dev/null || true
+    fi
+    # Detach DMG if still mounted
     if [ -n "$VOLUME_PATH" ] && [ -d "$VOLUME_PATH" ]; then
         info "Detaching DMG volume..."
         hdiutil detach "$VOLUME_PATH" 2>/dev/null || true
@@ -47,7 +68,10 @@ cleanup() {
 trap cleanup EXIT
 
 echo ""
-echo -e "${CYAN}${BOLD}  Viben Desktop E2E Test (macOS)${NC}"
+echo -e "${CYAN}${BOLD}  Viben Desktop Smoke Test (macOS)${NC}"
+echo ""
+echo -e "${YELLOW}  NOTE: Full E2E testing with tauri-driver is not supported on macOS.${NC}"
+echo -e "${YELLOW}  This script performs a smoke test to verify the app can launch.${NC}"
 echo ""
 
 # =============================================================================
@@ -77,11 +101,12 @@ if [ -z "$VOLUME_PATH" ] || [ ! -d "$VOLUME_PATH" ]; then
 fi
 
 info "Mounted at: $VOLUME_PATH"
+success "DMG mounted successfully"
 
 # =============================================================================
 # Step 2: Copy app to /Applications
 # =============================================================================
-info "Copying app to /Applications..."
+section "Copying App to /Applications"
 
 APP_BUNDLE=$(find "$VOLUME_PATH" -name "*.app" -maxdepth 1 -type d | head -1)
 if [ -z "$APP_BUNDLE" ]; then
@@ -90,15 +115,23 @@ if [ -z "$APP_BUNDLE" ]; then
 fi
 
 APP_NAME=$(basename "$APP_BUNDLE")
+info "Found app bundle: $APP_NAME"
+
+# Remove existing installation if present
+if [ -d "/Applications/$APP_NAME" ]; then
+    info "Removing existing installation..."
+    rm -rf "/Applications/$APP_NAME"
+fi
+
 cp -R "$APP_BUNDLE" /Applications/
 
-# Clear quarantine attribute
+# Clear quarantine attribute to allow the app to run
 info "Clearing quarantine attribute..."
 xattr -cr "/Applications/$APP_NAME"
 
 success "App installed at /Applications/$APP_NAME"
 
-# Detach DMG
+# Detach DMG - no longer needed
 hdiutil detach "$VOLUME_PATH" 2>/dev/null || true
 VOLUME_PATH=""
 
@@ -109,8 +142,8 @@ section "Locating App Executable"
 
 APP_EXECUTABLE="/Applications/$APP_NAME/Contents/MacOS/${APP_NAME%.app}"
 if [ ! -f "$APP_EXECUTABLE" ]; then
-    # Try common variations
-    APP_EXECUTABLE=$(find "/Applications/$APP_NAME/Contents/MacOS" -type f -perm +111 | head -1)
+    # Try to find any executable in MacOS directory
+    APP_EXECUTABLE=$(find "/Applications/$APP_NAME/Contents/MacOS" -type f -perm +111 2>/dev/null | head -1)
 fi
 
 if [ -z "$APP_EXECUTABLE" ] || [ ! -f "$APP_EXECUTABLE" ]; then
@@ -119,68 +152,130 @@ if [ -z "$APP_EXECUTABLE" ] || [ ! -f "$APP_EXECUTABLE" ]; then
 fi
 
 info "Found executable: $APP_EXECUTABLE"
-export TAURI_APP_PATH="$APP_EXECUTABLE"
 
 # =============================================================================
-# Step 4: Start tauri-driver
+# Step 4: Launch App and Verify Startup
 # =============================================================================
-section "Starting tauri-driver"
+section "Launching App (Smoke Test)"
 
-info "Starting tauri-driver on port 4444..."
-tauri-driver &
-TAURI_DRIVER_PID=$!
+# Create screenshots directory
+mkdir -p test-screenshots
 
-# Wait for tauri-driver to be ready
-sleep 3
+info "Launching $APP_NAME..."
 
-if ! kill -0 "$TAURI_DRIVER_PID" 2>/dev/null; then
-    fail "tauri-driver failed to start"
+# Launch the app in background
+# Using open command which is the standard way to launch apps on macOS
+open -a "/Applications/$APP_NAME" &
+
+# Wait for the app to start
+info "Waiting for app to initialize (5 seconds)..."
+sleep 5
+
+# Find the app's PID
+# The app name without .app extension is typically the process name
+PROCESS_NAME="${APP_NAME%.app}"
+APP_PID=$(pgrep -f "$PROCESS_NAME" 2>/dev/null | head -1 || true)
+
+if [ -z "$APP_PID" ]; then
+    # Try alternative ways to find the process
+    APP_PID=$(pgrep -f "$APP_EXECUTABLE" 2>/dev/null | head -1 || true)
+fi
+
+if [ -z "$APP_PID" ]; then
+    fail "App process not found - app may have crashed on startup"
     exit 1
 fi
 
-success "tauri-driver started (PID $TAURI_DRIVER_PID)"
+info "App is running with PID: $APP_PID"
+success "App launched successfully"
 
 # =============================================================================
-# Step 5: Run E2E tests
+# Step 5: Take Screenshot
 # =============================================================================
-section "Running E2E Tests"
+section "Capturing Screenshot"
 
-info "Running WebdriverIO tests..."
+# Use macOS built-in screencapture command
+# -x: Do not play sounds
+# -C: Capture the cursor as well
+# Note: In headless CI, this may capture a blank screen, but it verifies
+# the command works and the app hasn't crashed
 
-mkdir -p test-screenshots
+SCREENSHOT_FILE="test-screenshots/macos-smoke-test-$(date +%Y%m%d-%H%M%S).png"
 
-cd apps/desktop
+info "Taking screenshot..."
+if screencapture -x "$SCREENSHOT_FILE" 2>/dev/null; then
+    if [ -f "$SCREENSHOT_FILE" ]; then
+        SCREENSHOT_SIZE=$(stat -f%z "$SCREENSHOT_FILE" 2>/dev/null || echo "0")
+        if [ "$SCREENSHOT_SIZE" -gt 0 ]; then
+            success "Screenshot saved: $SCREENSHOT_FILE (${SCREENSHOT_SIZE} bytes)"
+        else
+            warn "Screenshot file is empty (may be running headless)"
+        fi
+    else
+        warn "Screenshot file was not created"
+    fi
+else
+    warn "screencapture command failed (may be running headless)"
+fi
 
-set +e
-npx wdio run wdio.conf.ts
-TEST_EXIT_CODE=$?
-set -e
+# =============================================================================
+# Step 6: Verify App Is Still Running
+# =============================================================================
+section "Verifying App Stability"
 
-cd ../..
+info "Waiting 3 more seconds to verify app stability..."
+sleep 3
+
+# Check if the app is still running
+if kill -0 "$APP_PID" 2>/dev/null; then
+    success "App is still running after 8 seconds - no crash detected"
+else
+    fail "App crashed during smoke test"
+    exit 1
+fi
+
+# =============================================================================
+# Step 7: Graceful Shutdown
+# =============================================================================
+section "Shutting Down App"
+
+info "Sending SIGTERM to app..."
+kill "$APP_PID" 2>/dev/null || true
+
+# Wait for graceful shutdown
+sleep 2
+
+# Check if app terminated
+if kill -0 "$APP_PID" 2>/dev/null; then
+    info "App still running, sending SIGKILL..."
+    kill -9 "$APP_PID" 2>/dev/null || true
+    sleep 1
+fi
+
+# Clear PID so cleanup doesn't try to kill again
+APP_PID=""
+
+success "App shut down successfully"
 
 # =============================================================================
 # Summary
 # =============================================================================
 section "Summary"
 
-SCREENSHOT_COUNT=$(find test-screenshots -name "*.png" 2>/dev/null | wc -l)
+SCREENSHOT_COUNT=$(find test-screenshots -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
 info "Screenshots captured: $SCREENSHOT_COUNT"
 
-if [ -f "apps/desktop/wdio-results.xml" ]; then
-    cp apps/desktop/wdio-results.xml ./wdio-results.xml
-    info "Test results saved to wdio-results.xml"
-fi
+echo ""
+echo -e "${GREEN}${BOLD}  Smoke test passed!${NC}"
+echo ""
+echo -e "  The following verifications succeeded:"
+echo -e "    - DMG mounted successfully"
+echo -e "    - App installed to /Applications"
+echo -e "    - App launched without crashing"
+echo -e "    - App remained stable for 8+ seconds"
+echo -e "    - App shut down gracefully"
+echo ""
+echo -e "${YELLOW}  NOTE: Full E2E UI testing requires Linux with tauri-driver.${NC}"
+echo ""
 
-if [ -d "apps/desktop/test-screenshots" ]; then
-    cp -r apps/desktop/test-screenshots/* test-screenshots/ 2>/dev/null || true
-fi
-
-if [ "$TEST_EXIT_CODE" -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}${BOLD}  All E2E tests passed!${NC}"
-    exit 0
-else
-    echo ""
-    echo -e "${RED}${BOLD}  E2E tests failed (exit code: $TEST_EXIT_CODE)${NC}"
-    exit "$TEST_EXIT_CODE"
-fi
+exit 0

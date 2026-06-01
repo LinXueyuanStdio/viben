@@ -38,7 +38,7 @@ echo "" >> "$SUMMARY_FILE"
 echo "| 配置 | 值 |" >> "$SUMMARY_FILE"
 echo "|------|-----|" >> "$SUMMARY_FILE"
 echo "| 系统 | macOS ARM64 |" >> "$SUMMARY_FILE"
-echo "| 测试框架 | WebdriverIO + tauri-driver |" >> "$SUMMARY_FILE"
+echo "| 测试框架 | Smoke Test (tauri-driver not supported on macOS) |" >> "$SUMMARY_FILE"
 [ -n "${GITHUB_RUN_ID:-}" ] && echo "| 运行 | [#${GITHUB_RUN_ID}](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) |" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
