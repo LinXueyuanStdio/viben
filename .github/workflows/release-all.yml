@@ -680,6 +680,8 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
+    # Note: macOS is excluded because tauri-driver doesn't support macOS (no WKWebView driver available)
+    # See: https://v2.tauri.app/develop/tests/webdriver
     strategy:
       fail-fast: false
       matrix:
@@ -688,10 +690,6 @@ jobs:
             artifact: desktop-ubuntu-22.04
             test_script: scripts/linux/test-desktop-ui.sh
             summary_script: scripts/linux/test-desktop-summary.sh
-          - platform: macos-latest
-            artifact: desktop-macos-latest
-            test_script: scripts/macos/test-desktop-ui.sh
-            summary_script: scripts/macos/test-desktop-summary.sh
           - platform: windows-latest
             artifact: desktop-windows-latest
             test_script: scripts/windows/test-desktop-ui.bat
@@ -735,7 +733,7 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb at-spi2-core imagemagick
+          sudo apt-get install -y xvfb at-spi2-core imagemagick webkit2gtk-driver
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
