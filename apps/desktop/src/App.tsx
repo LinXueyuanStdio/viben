@@ -13,7 +13,6 @@ import {
   LogsPage,
   SettingsPage,
   AboutPage,
-  TrayPopupPage,
   WorkspaceDetailPage,
   WorkspaceChatPage,
   WorkspaceKanbanPage,
@@ -260,9 +259,6 @@ function App() {
                 {/* Catch-all redirect to workspace */}
                 <Route path="*" element={<Navigate to="/workspace" replace />} />
               </Route>
-
-              {/* Tray popup - separate window without layout */}
-              <Route path="/tray-popup" element={<TrayPopupPage />} />
 
               {/* Onboarding - separate full-screen wizard without layout */}
               <Route path="/onboarding" element={<OnboardingPage />} />

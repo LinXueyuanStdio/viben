@@ -47,7 +47,7 @@
         "skipTaskbar": true,
         "alwaysOnTop": true,
         "resizable": false,
-        "url": "/tray-popup"
+        "url": "/tray-popup.html"
       }
     ],
     "security": {

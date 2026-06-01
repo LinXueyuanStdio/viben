@@ -7,7 +7,6 @@ export { SettingsMcpPage } from "./settings/settings-mcp";
 export { SettingsSkillsPage } from "./settings/settings-skills";
 export { AboutPage } from "./about";
 export { InspectorPage } from "./inspector";
-export { TrayPopupPage } from "./tray-popup";
 export { WorkspaceDetailPage } from "./workspace-detail";
 export { WorkspaceChatPage } from "./conversation";
 export { WorkspaceKanbanPage } from "./kanban";

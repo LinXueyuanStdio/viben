@@ -107,6 +107,7 @@ export default defineConfig(() => ({
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        trayPopup: fileURLToPath(new URL("./tray-popup.html", import.meta.url)),
         screenshotOverlay: fileURLToPath(new URL("./screenshot-overlay.html", import.meta.url)),
         pagePreviewWindow: fileURLToPath(new URL("./page-preview-window.html", import.meta.url)),
       },
