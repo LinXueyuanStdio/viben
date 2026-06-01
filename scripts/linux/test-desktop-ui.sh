@@ -20,6 +20,7 @@ NC='\033[0m'
 BOLD='\033[1m'
 
 TAURI_DRIVER_PID=""
+XVFB_PID=""
 
 info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[PASS]${NC} $1"; }
@@ -37,6 +38,10 @@ cleanup() {
         info "Stopping tauri-driver (PID $TAURI_DRIVER_PID)..."
         kill "$TAURI_DRIVER_PID" 2>/dev/null || true
         wait "$TAURI_DRIVER_PID" 2>/dev/null || true
+    fi
+    if [ -n "$XVFB_PID" ]; then
+        info "Stopping Xvfb (PID $XVFB_PID)..."
+        kill "$XVFB_PID" 2>/dev/null || true
     fi
 }
 trap cleanup EXIT
@@ -133,7 +138,34 @@ fi
 success "WebKitWebDriver is available"
 
 # =============================================================================
-# Step 4: Start tauri-driver
+# Step 4: Start Xvfb virtual display
+# =============================================================================
+section "Starting Virtual Display"
+
+# Find an available display number
+DISPLAY_NUM=99
+while [ -e "/tmp/.X${DISPLAY_NUM}-lock" ]; do
+    DISPLAY_NUM=$((DISPLAY_NUM + 1))
+done
+
+info "Starting Xvfb on display :${DISPLAY_NUM}..."
+Xvfb ":${DISPLAY_NUM}" -screen 0 1920x1080x24 &
+XVFB_PID=$!
+
+# Wait for Xvfb to start
+sleep 2
+
+if ! kill -0 "$XVFB_PID" 2>/dev/null; then
+    fail "Xvfb failed to start"
+    exit 1
+fi
+
+export DISPLAY=":${DISPLAY_NUM}"
+info "Virtual display started at DISPLAY=$DISPLAY"
+success "Xvfb running (PID $XVFB_PID)"
+
+# =============================================================================
+# Step 5: Start tauri-driver (with DISPLAY set)
 # =============================================================================
 section "Starting tauri-driver"
 
@@ -152,19 +184,18 @@ fi
 success "tauri-driver started (PID $TAURI_DRIVER_PID)"
 
 # =============================================================================
-# Step 5: Run E2E tests with xvfb
+# Step 6: Run E2E tests
 # =============================================================================
 section "Running E2E Tests"
 
-info "Running WebdriverIO tests with xvfb..."
+info "Running WebdriverIO tests..."
 
 mkdir -p test-screenshots
 
 cd apps/desktop
 
 set +e
-xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
-    npx wdio run wdio.conf.ts
+npx wdio run wdio.conf.ts
 TEST_EXIT_CODE=$?
 set -e
 

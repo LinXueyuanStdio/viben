@@ -130,7 +130,8 @@ describe("Viben Desktop App", () => {
     if (buttons.length > 0) {
       // Click the first visible button
       for (const button of buttons) {
-        if (await button.isDisplayedInViewport()) {
+        // Use isDisplayed() which is the standard WebDriverIO method
+        if (await button.isDisplayed()) {
           const buttonText = await button.getText();
           console.log(`Clicking button: "${buttonText || "(no text)"}"`);
           await button.click();
