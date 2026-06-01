@@ -36,5 +36,11 @@ export {
   type UseElapsedTimeReturn,
 } from "./use-elapsed-time";
 
+export {
+  useKanbanNavigation,
+  type UseKanbanNavigationOptions,
+  type UseKanbanNavigationReturn,
+} from "./use-kanban-navigation";
+
 // Re-export TaskActions from types (single source of truth)
 export type { TaskActions } from "../types";

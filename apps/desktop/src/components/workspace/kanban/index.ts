@@ -49,9 +49,6 @@ export {
   useKanbanNavigation,
   type UseKanbanNavigationOptions,
   type UseKanbanNavigationReturn,
-} from "./use-kanban-navigation";
-
-export {
   useColumnManagement,
   type UseColumnManagementOptions,
   type ColumnManagement,
