@@ -1,157 +1,30 @@
 /**
  * Cron Job Types
  *
- * TypeScript types for cron job management matching the Rust backend.
+ * Re-exports from @viben/core/shared for browser compatibility.
+ * Desktop-specific types (CronJobListResponse, CronExecutionLogResponse) are defined here.
  */
 
-// NotificationSettings is re-exported for convenience
+// Re-export core cron types from @viben/core/shared
+// Note: Using /shared subpath to avoid Node.js-only dependencies
+export type {
+  JobStatus,
+  CronJobType,
+  CronNotificationSettings,
+  CronJob,
+  CreateCronJob,
+  UpdateCronJob,
+  CronExecutionLog,
+} from "@viben/core/shared";
+
+// NotificationSettings is re-exported for convenience (legacy alias)
 export type { NotificationSettings } from "./channel";
 
-/** Job execution status */
-export type JobStatus = "success" | "failure" | "running";
-
-/** Cron job type */
-export type CronJobType = "agent" | "script";
-
-/** Notification settings for cron jobs */
-export interface CronNotificationSettings {
-  /** Enable in-app notifications */
-  in_app: boolean;
-  /** Enable system notifications (OS-level) */
-  system: boolean;
-  /** Channel instance IDs to notify */
-  channel_ids: string[];
-}
-
-/** A scheduled cron job */
-export interface CronJob {
-  /** Unique job ID (UUID) */
-  id: string;
-  /** Human-readable name */
-  name: string;
-  /** Job description */
-  description?: string;
-  /** Whether the job is enabled */
-  enabled: boolean;
-  /** Job type: agent or script */
-  job_type: CronJobType;
-  /** Message to send to agent (optional - uses name if empty) */
-  message?: string;
-  /** Bash script to execute (for script type) */
-  script?: string;
-  /** Cron expression (e.g., "0 9 * * *") - mutually exclusive with `every` */
-  cron?: string;
-  /** Interval in seconds - mutually exclusive with `cron` */
-  every?: number;
-  /** Target channel ID (legacy) */
-  channel?: string;
-  /** Agent ID to use */
-  agent: string;
-  /** Notification settings */
-  notifications?: CronNotificationSettings;
-  /** Last execution timestamp (milliseconds) */
-  last_run?: number;
-  /** Last execution status */
-  last_status?: JobStatus;
-  /** Last error message if failed */
-  last_error?: string;
-  /** Last script output */
-  last_output?: string;
-  /** Next scheduled execution timestamp (milliseconds) */
-  next_run?: number;
-  /** Creation timestamp (milliseconds) */
-  created_at: number;
-  /** Last update timestamp (milliseconds) */
-  updated_at: number;
-}
-
-/** Request to create a new cron job */
-export interface CreateCronJob {
-  /** Optional ID (auto-generated if not provided) */
-  id?: string;
-  /** Human-readable name */
-  name: string;
-  /** Job description */
-  description?: string;
-  /** Job type: agent or script */
-  job_type?: CronJobType;
-  /** Message to send to agent (optional - uses name if empty) */
-  message?: string;
-  /** Bash script to execute (for script type) */
-  script?: string;
-  /** Cron expression */
-  cron?: string;
-  /** Interval in seconds */
-  every?: number;
-  /** Target channel ID (legacy) */
-  channel?: string;
-  /** Agent ID */
-  agent?: string;
-  /** Whether enabled (default true) */
-  enabled?: boolean;
-  /** Notification settings */
-  notifications?: CronNotificationSettings;
-}
-
-/** Request to update a cron job */
-export interface UpdateCronJob {
-  name?: string;
-  description?: string;
-  job_type?: CronJobType;
-  message?: string;
-  script?: string;
-  cron?: string;
-  every?: number;
-  channel?: string;
-  agent?: string;
-  enabled?: boolean;
-  notifications?: CronNotificationSettings;
-}
+import type { CronJob, CronExecutionLog } from "@viben/core/shared";
 
 /** API response for listing cron jobs */
 export interface CronJobListResponse {
   jobs: CronJob[];
-}
-
-/**
- * Cron job execution log entry
- * Stored in JSONL format for easy querying and analysis
- */
-export interface CronExecutionLog {
-  /** Unique execution ID */
-  execution_id: string;
-  /** Job ID */
-  job_id: string;
-  /** Job name at execution time */
-  job_name: string;
-  /** Job type at execution time */
-  job_type: CronJobType;
-  /** Agent ID used */
-  agent: string;
-  /** Channel ID if specified */
-  channel?: string;
-  /** Execution start timestamp (milliseconds) */
-  started_at: number;
-  /** Execution end timestamp (milliseconds) */
-  completed_at: number;
-  /** Execution duration (milliseconds) */
-  duration_ms: number;
-  /** Execution status */
-  status: JobStatus;
-  /** Error message if failed */
-  error?: string;
-  /** Output (truncated if too long) */
-  output?: string;
-  /** Full output length */
-  output_length: number;
-  /** Next scheduled run timestamp */
-  next_run?: number;
-  /** Trigger type: scheduled or manual */
-  trigger: "scheduled" | "manual";
-  /** Cron expression if using cron schedule */
-  cron?: string;
-  /** Interval in seconds if using interval schedule */
-  every?: number;
 }
 
 /** API response for listing cron execution logs */

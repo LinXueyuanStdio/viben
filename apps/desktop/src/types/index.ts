@@ -77,16 +77,6 @@ export interface McpStatus {
   session_id?: string | null;
 }
 
-// Agent types
-export interface AgentInfo {
-  id: string;
-  name: string;
-  installed: boolean;
-  configured: boolean;
-  config_path: string | null;
-  app_path: string | null;
-}
-
 // Agent MCP Configuration - which server and key to use
 export interface AgentMcpAssignment {
   agentId: string;

@@ -4,29 +4,20 @@
  * Supports multiple instances of the same channel type
  */
 
-/** Channel type identifiers (matches backend ChannelType) */
-export type ChannelType = "telegram" | "discord" | "feishu" | "whatsapp" | "slack" | "webhook";
+// Re-export core channel types from @viben/core/shared
+// Note: Using /shared subpath to avoid Node.js-only dependencies
+export type {
+  ChannelType,
+  BindingType,
+  AgentBinding,
+  NotificationMode,
+} from "@viben/core/shared";
+
+// Import for local use (only types actually used locally)
+import type { ChannelType, AgentBinding, NotificationMode } from "@viben/core/shared";
 
 /** Notification target type */
 export type NotificationType = "in_app" | "system" | "channel";
-
-// ============================================================================
-// Gateway API Types (matches Rust backend)
-// ============================================================================
-
-/** Notification mode for channel messages (matches backend NotificationMode) */
-export type NotificationMode = "none" | "in_app" | "system" | "both";
-
-/** Binding type for agent/executor (matches backend BindingType) */
-export type BindingType = "agent" | "executor";
-
-/** Agent or executor binding for a channel (matches backend AgentBinding) */
-export interface AgentBinding {
-  binding_type: BindingType;
-  id: string;
-  name: string;
-  workspace_path?: string;
-}
 
 /** Channel config union type (matches backend ChannelConfig) */
 export type ChannelConfig =

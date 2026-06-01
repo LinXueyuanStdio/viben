@@ -55,3 +55,22 @@ export type {
   AvailableSkill,
   AgentSkillConfig,
 } from "./skill/ops/types";
+
+// Re-export cron types (browser-safe, only primitives)
+export type {
+  JobStatus,
+  CronJobType,
+  CronNotificationSettings,
+  CronJob,
+  CreateCronJob,
+  UpdateCronJob,
+  CronExecutionLog,
+} from "./cron/ops/types";
+
+// Re-export channel types (browser-safe, only primitives)
+export type {
+  ChannelType,
+  BindingType,
+  AgentBinding,
+  NotificationMode,
+} from "./channels/types";
