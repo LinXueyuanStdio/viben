@@ -2,7 +2,7 @@ name: github-metrics
 
 on:
   schedule:
-    # Runs daily at 00:15 UTC; output is committed to docs/assets/github-metrics.svg.
+    # Runs daily at 00:15 UTC; output is committed to ci-assets branch at assets/github-metrics.svg.
     - cron: '15 0 * * *'
   workflow_dispatch:
   push:
@@ -22,12 +22,13 @@ jobs:
       - name: Generate GitHub repository metrics
         uses: lowlighter/metrics@latest
         with:
-          # Output path; the action commits directly to the repository.
-          filename: docs/assets/github-metrics.svg
+          # Output path; the action commits to the ci-assets branch.
+          filename: assets/github-metrics.svg
 
           # Auth: use the default GITHUB_TOKEN for simplicity.
           token: ${{ secrets.GITHUB_TOKEN }}
           committer_token: ${{ secrets.GITHUB_TOKEN }}
+          committer_branch: ci-assets
           committer_message: 'chore: update ${filename}'
           output_action: commit
           output_condition: data-changed
