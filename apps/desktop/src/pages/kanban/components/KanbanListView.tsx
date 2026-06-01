@@ -10,7 +10,7 @@ import {
 import type { UseKanbanBoardReturn } from "../hooks/useKanbanBoard";
 import type { EnhancedTask } from "../types";
 import { COLUMN_COLOR_VARS } from "../constants";
-import { TaskCardContent } from "./TaskCardContent";
+import { TaskCardContent } from "./task-card-content";
 import { ListViewItemWithStuckDetection } from "./ListViewItemWithStuckDetection";
 
 interface KanbanListViewProps {

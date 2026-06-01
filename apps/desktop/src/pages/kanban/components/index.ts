@@ -1,10 +1,10 @@
-export { ErrorState } from "./ErrorState";
-export { TaskCardContent } from "./TaskCardContent";
+export { ErrorState } from "./error-state";
+export { TaskCardContent } from "./task-card-content";
 export { TaskCardWithStuckDetection } from "./TaskCardWithStuckDetection";
 export { ListViewItemWithStuckDetection } from "./ListViewItemWithStuckDetection";
 export { KanbanToolbar } from "./KanbanToolbar";
 export { KanbanColumnHeader } from "./KanbanColumnHeader";
-export { KanbanBoardView } from "./KanbanBoardView";
+export { KanbanBoardView } from "./kanban-board-view";
 export { KanbanListView } from "./KanbanListView";
 export { KanbanTableView } from "./KanbanTableView";
 export { KanbanModals } from "./KanbanModals";
