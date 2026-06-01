@@ -57,9 +57,9 @@ export { GroupChatSidebar } from "./group-chat-sidebar";
 export { AgentListItem } from "./agent-list-item";
 export type { AgentListItemProps } from "./agent-list-item";
 
-// Collapsible Section
-export { CollapsibleSection } from "./collapsible-section";
-export type { CollapsibleSectionProps } from "./collapsible-section";
+// Collapsible Section (re-export from shared ui)
+export { CollapsibleSection } from "@/components/ui/collapsible-section";
+export type { CollapsibleSectionProps } from "@/components/ui/collapsible-section";
 
 // Detail Panels
 export { ExecutorDetailPanel } from "./executor-detail-panel";
