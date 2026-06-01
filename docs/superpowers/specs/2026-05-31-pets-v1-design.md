@@ -53,8 +53,7 @@ viben/
 │   │   ├── spritesheet.webp
 │   │   └── thumbnail.png
 │   ├── pixel-cat/
-│   ├── coding-duck/
-│   └── registry.ts                      # 预设清单 + 加载器
+│   └── coding-duck/
 │
 ├── apps/desktop/
 │   ├── src-tauri/
