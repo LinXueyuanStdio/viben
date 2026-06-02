@@ -1,0 +1,158 @@
+/* packages/pet/src/styles/pet.css */
+
+/* Sprite animation keyframe - moves horizontally through frames */
+@keyframes pet-frames {
+  from { background-position-x: 0%; }
+  to { background-position-x: 100%; }
+}
+
+/* Container styles */
+.pet-container {
+  position: fixed;
+  z-index: 9999;
+  user-select: none;
+  touch-action: none;
+  cursor: grab;
+}
+
+.pet-container[data-dragging="true"] {
+  cursor: grabbing;
+}
+
+/* Sprite wrapper */
+.pet-sprite {
+  position: relative;
+}
+
+/* Sprite image layer - used for static and strip modes */
+.pet-image {
+  display: block;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+}
+
+.pet-image.static {
+  background-size: contain;
+}
+
+.pet-image.frames {
+  /* Animation set via inline style */
+}
+
+.pet-image.atlas {
+  /* Background position set via inline style */
+}
+
+/* Shadow effect */
+.pet-sprite-shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 8px;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Speech bubble */
+.pet-bubble {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  max-width: 220px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.pet-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  right: 20px;
+  border: 7px solid transparent;
+  border-top-color: white;
+  border-bottom: none;
+}
+
+.pet-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: 19px;
+  border: 8px solid transparent;
+  border-top-color: #e5e5e5;
+  border-bottom: none;
+}
+
+.pet-bubble-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--pet-accent, #6366f1);
+  margin-bottom: 4px;
+}
+
+.pet-bubble-line {
+  color: #374151;
+}
+
+/* Idle quote styling */
+.pet-idle-quote {
+  margin: 0;
+}
+
+.pet-idle-quote blockquote {
+  margin: 0;
+  color: #374151;
+  font-style: italic;
+}
+
+.pet-idle-quote figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.pet-idle-quote figcaption::before {
+  content: '- ';
+}
+
+/* Overlay wrapper */
+.pet-overlay {
+  position: fixed;
+  z-index: 9999;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Status badge on sprite */
+.pet-sprite-status {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--pet-accent, #6366f1);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .pet-image.frames {
+    animation: none !important;
+  }
+}

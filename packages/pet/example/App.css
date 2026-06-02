@@ -1,0 +1,557 @@
+.example-app {
+  min-height: 100vh;
+  padding: 24px;
+  color: white;
+}
+
+.example-header {
+  max-width: 600px;
+  margin: 0 auto 40px;
+  text-align: center;
+}
+
+.example-header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.example-header p {
+  opacity: 0.8;
+  font-size: 14px;
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  position: fixed;
+  top: 24px;
+  right: 120px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  z-index: 1001;
+  backdrop-filter: blur(8px);
+}
+
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  z-index: 1001;
+  backdrop-filter: blur(8px);
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Pet Selection Sidebar */
+.pet-sidebar {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 80px 20px 20px;
+  transition: right 0.3s ease;
+  z-index: 1000;
+  overflow-y: auto;
+  backdrop-filter: blur(12px);
+}
+
+.pet-sidebar.open {
+  right: 0;
+}
+
+.pet-sidebar h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: white;
+}
+
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.pet-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pet-card:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pet-card.active {
+  border-color: #f5a623;
+  background: rgba(245, 166, 35, 0.2);
+}
+
+.pet-card-preview {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pet-card-placeholder {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.pet-card-name {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Debug Panel */
+.debug-panel {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  max-width: 320px;
+  color: white;
+  backdrop-filter: blur(8px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.debug-panel h3 {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+}
+
+/* State Badge */
+.state-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.state-label {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.state-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+}
+
+/* Performance Metrics */
+.metrics-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.metric-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.metric-label {
+  font-size: 10px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.metric-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a0f0a0;
+}
+
+.debug-panel pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+  color: #a0f0a0;
+  margin-bottom: 12px;
+  font-size: 10px;
+}
+
+/* Size Slider */
+.debug-slider {
+  margin-bottom: 12px;
+}
+
+.debug-slider label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.debug-slider input[type="range"] {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.debug-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f5a623;
+  cursor: pointer;
+}
+
+.debug-slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f5a623;
+  cursor: pointer;
+  border: none;
+}
+
+/* Animation Selector */
+.animation-selector {
+  margin-bottom: 12px;
+}
+
+.animation-selector label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.animation-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.anim-btn {
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.anim-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.anim-btn.active {
+  background: #f5a623;
+  border-color: #f5a623;
+  color: black;
+  font-weight: 600;
+}
+
+/* Control Buttons */
+.debug-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.debug-controls button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.debug-controls button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Position Presets */
+.position-presets {
+  margin-top: 12px;
+}
+
+.position-presets label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preset-btn {
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 36px;
+  text-align: center;
+}
+
+.preset-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: white;
+}
+
+.preset-btn:active {
+  background: #f5a623;
+  border-color: #f5a623;
+  color: black;
+}
+
+/* Instructions */
+.instructions {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 240px;
+  color: white;
+  backdrop-filter: blur(4px);
+}
+
+.instructions strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.instructions .kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Error/Loading States */
+.error-message {
+  color: #ff6b6b;
+  padding: 20px;
+  text-align: center;
+}
+
+.loading-message {
+  color: white;
+  padding: 100px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.retry-button {
+  display: block;
+  margin: 16px auto;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.retry-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   Light Theme Styles
+   ======================================== */
+.example-app.light {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ed 100%);
+  color: #1a1a2e;
+}
+
+.example-app.light .example-header h1 {
+  color: #1a1a2e;
+}
+
+.example-app.light .example-header p {
+  color: #4a5568;
+}
+
+.example-app.light .theme-toggle,
+.example-app.light .sidebar-toggle {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1a1a2e;
+}
+
+.example-app.light .theme-toggle:hover,
+.example-app.light .sidebar-toggle:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.example-app.light .debug-panel {
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1a2e;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .debug-panel h3 {
+  color: #4a5568;
+}
+
+.example-app.light .debug-panel pre {
+  color: #047857;
+}
+
+.example-app.light .metric-value {
+  color: #047857;
+}
+
+.example-app.light .metrics-section {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.example-app.light .metric-row:not(:last-child) {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .debug-slider input[type="range"] {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .anim-btn {
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #4a5568;
+}
+
+.example-app.light .anim-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.example-app.light .debug-controls button {
+  background: rgba(0, 0, 0, 0.08);
+  color: #1a1a2e;
+}
+
+.example-app.light .debug-controls button:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.example-app.light .preset-btn {
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #4a5568;
+}
+
+.example-app.light .preset-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.3);
+  color: #1a1a2e;
+}
+
+.example-app.light .preset-btn:active {
+  background: #f5a623;
+  border-color: #f5a623;
+  color: black;
+}
+
+.example-app.light .instructions {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a1a2e;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .instructions hr {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.example-app.light .instructions .kbd {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1a2e;
+}
+
+.example-app.light .loading-message {
+  color: #4a5568;
+}
