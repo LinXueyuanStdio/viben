@@ -22,7 +22,7 @@ import type { WorkspaceSection } from "@/navigation/navigation-meta";
 import { cn } from "@/lib/utils";
 import { WorkspaceHeader } from "@/components/workspace";
 import { PageWrapper } from "@/components/layout";
-import { PageIconGrid } from "./apps/components/page-app-grid";
+import { PageIconGrid } from "../../apps/components/page-app-grid";
 import { GRADIENT_COLORS } from "@/lib/gradient-colors";
 import type { GradientColorKey } from "@/lib/gradient-colors";
 import "./workspace-detail.css";
