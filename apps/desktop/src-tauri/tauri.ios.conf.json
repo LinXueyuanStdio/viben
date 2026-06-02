@@ -5,5 +5,15 @@
     "iOS": {
       "developmentTeam": "PLACEHOLDER"
     }
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Viben",
+        "url": "/index.html",
+        "fullscreen": false
+      }
+    ]
   }
 }

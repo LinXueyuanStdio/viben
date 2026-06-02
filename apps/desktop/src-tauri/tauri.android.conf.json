@@ -2,5 +2,15 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "externalBin": []
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Viben",
+        "url": "/index.html",
+        "fullscreen": false
+      }
+    ]
   }
 }

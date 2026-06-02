@@ -28,6 +28,7 @@
       {
         "label": "main",
         "title": "Viben",
+        "url": "/index.html",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
@@ -48,6 +49,20 @@
         "alwaysOnTop": true,
         "resizable": false,
         "url": "/tray-popup.html"
+      },
+      {
+        "label": "pet-window",
+        "title": "Viben Pet",
+        "width": 200,
+        "height": 260,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "shadow": false,
+        "url": "/pet-window.html"
       }
     ],
     "security": {
