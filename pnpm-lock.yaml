@@ -329,6 +329,9 @@ importers:
       '@viben/os':
         specifier: workspace:*
         version: link:../../packages/os
+      '@viben/pet':
+        specifier: workspace:*
+        version: link:../../packages/pet
       '@viben/presentation':
         specifier: workspace:*
         version: link:../../packages/presentation
