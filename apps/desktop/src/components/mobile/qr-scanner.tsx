@@ -1,6 +1,12 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { scan, Format } from "@tauri-apps/plugin-barcode-scanner";
+import {
+  checkPermissions,
+  scan,
+  Format,
+  requestPermissions,
+  type PermissionState,
+} from "@tauri-apps/plugin-barcode-scanner";
 import { Button } from "@/components/ui/button";
 import { Camera, AlertCircle } from "lucide-react";
 
@@ -24,6 +30,23 @@ export function parseQrPayload(raw: string): QrPayload | null {
   }
 }
 
+function needsCameraPermissionPrompt(permission: PermissionState) {
+  return permission === "prompt" || permission === "prompt-with-rationale";
+}
+
+export async function ensureQrScannerCameraPermission() {
+  const currentPermission = await checkPermissions();
+  if (currentPermission === "granted") {
+    return true;
+  }
+
+  if (!needsCameraPermissionPrompt(currentPermission)) {
+    return false;
+  }
+
+  return (await requestPermissions()) === "granted";
+}
+
 interface QrScannerProps {
   onScan: (payload: QrPayload) => void;
   onError?: (error: string) => void;
@@ -38,6 +61,15 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
     setError(null);
     setScanning(true);
     try {
+      const hasCameraPermission = await ensureQrScannerCameraPermission();
+      if (!hasCameraPermission) {
+        const msg = t("mobile.qrScanner.cameraPermissionDenied", "Camera permission is required to scan QR codes.");
+        setError(msg);
+        onError?.(msg);
+        setScanning(false);
+        return;
+      }
+
       const result = await scan({ formats: [Format.QRCode] });
       if (!result.content) {
         setScanning(false);
