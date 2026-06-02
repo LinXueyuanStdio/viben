@@ -14,5 +14,5 @@
       "@viben/pet/*": ["../src/*"]
     }
   },
-  "include": ["*.tsx", "*.ts", "../src/**/*"]
+  "include": ["*.tsx", "*.ts", "src/**/*"]
 }

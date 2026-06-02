@@ -1,0 +1,429 @@
+/* ========================================
+   Pet Editor Modal Styles
+   ======================================== */
+
+/* Overlay (semi-transparent backdrop) */
+.pet-editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+  padding: 24px;
+}
+
+/* Modal Container */
+.pet-editor-modal {
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 16px;
+  max-width: 500px;
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Header */
+.pet-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pet-editor-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+}
+
+.pet-editor-close-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pet-editor-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Content */
+.pet-editor-content {
+  padding: 24px;
+}
+
+/* Preview Section */
+.pet-editor-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pet-editor-preview-container {
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 3px solid;
+  transition: border-color 0.2s;
+}
+
+.pet-editor-preview-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pet-editor-preview-controls label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.pet-editor-preview-controls select {
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.pet-editor-preview-controls select:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.pet-editor-preview-controls select:focus {
+  border-color: #f5a623;
+}
+
+.pet-editor-preview-controls select option {
+  background: #1a1a2e;
+  color: white;
+}
+
+/* Form Fields */
+.pet-editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pet-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pet-editor-field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pet-editor-field input[type="text"],
+.pet-editor-field textarea {
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s;
+  resize: vertical;
+}
+
+.pet-editor-field input[type="text"]:hover,
+.pet-editor-field textarea:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pet-editor-field input[type="text"]:focus,
+.pet-editor-field textarea:focus {
+  border-color: #f5a623;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pet-editor-field input[type="text"]::placeholder,
+.pet-editor-field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.pet-editor-field input[type="text"].error {
+  border-color: #ef4444;
+}
+
+.pet-editor-field textarea {
+  min-height: 60px;
+}
+
+/* Color Input */
+.pet-editor-color-input {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.pet-editor-color-input input[type="color"] {
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.pet-editor-color-input input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 4px;
+}
+
+.pet-editor-color-input input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+
+.pet-editor-color-input input[type="text"] {
+  flex: 1;
+  font-family: ui-monospace, monospace;
+}
+
+/* Error Message */
+.pet-editor-error {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+}
+
+/* Footer */
+.pet-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.pet-editor-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pet-editor-btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pet-editor-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.pet-editor-btn.save {
+  background: #f5a623;
+  color: #1a1a2e;
+}
+
+.pet-editor-btn.save:hover {
+  background: #e69a1f;
+}
+
+.pet-editor-btn.save:active {
+  transform: scale(0.98);
+}
+
+/* ========================================
+   Light Theme Styles
+   ======================================== */
+.example-app.light .pet-editor-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.example-app.light .pet-editor-modal {
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.example-app.light .pet-editor-header {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .pet-editor-header h2 {
+  color: #1a1a2e;
+}
+
+.example-app.light .pet-editor-close-btn {
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.example-app.light .pet-editor-close-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1a1a2e;
+}
+
+.example-app.light .pet-editor-preview {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .pet-editor-preview-container {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.example-app.light .pet-editor-preview-controls label {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.example-app.light .pet-editor-preview-controls select {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.05);
+  color: #1a1a2e;
+}
+
+.example-app.light .pet-editor-preview-controls select:hover {
+  border-color: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.example-app.light .pet-editor-preview-controls select option {
+  background: white;
+  color: #1a1a2e;
+}
+
+.example-app.light .pet-editor-field label {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.example-app.light .pet-editor-field input[type="text"],
+.example-app.light .pet-editor-field textarea {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+  color: #1a1a2e;
+}
+
+.example-app.light .pet-editor-field input[type="text"]:hover,
+.example-app.light .pet-editor-field textarea:hover {
+  border-color: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.example-app.light .pet-editor-field input[type="text"]:focus,
+.example-app.light .pet-editor-field textarea:focus {
+  border-color: #f5a623;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.example-app.light .pet-editor-field input[type="text"]::placeholder,
+.example-app.light .pet-editor-field textarea::placeholder {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.example-app.light .pet-editor-color-input input[type="color"] {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.example-app.light .pet-editor-footer {
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+.example-app.light .pet-editor-btn.cancel {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.example-app.light .pet-editor-btn.cancel:hover {
+  background: rgba(0, 0, 0, 0.12);
+  color: #1a1a2e;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+@media (max-width: 520px) {
+  .pet-editor-overlay {
+    padding: 16px;
+  }
+
+  .pet-editor-modal {
+    max-height: calc(100vh - 32px);
+  }
+
+  .pet-editor-header {
+    padding: 16px 20px;
+  }
+
+  .pet-editor-content {
+    padding: 20px;
+  }
+
+  .pet-editor-preview-container {
+    width: 100px;
+    height: 100px;
+  }
+
+  .pet-editor-preview-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pet-editor-footer {
+    flex-direction: column;
+  }
+
+  .pet-editor-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

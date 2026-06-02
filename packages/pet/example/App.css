@@ -145,6 +145,34 @@
   word-break: break-word;
 }
 
+/* Panel Toggle Button */
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.panel-toggle:hover {
+  opacity: 1;
+}
+
+.panel-toggle-icon {
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+
 /* Debug Panel */
 .debug-panel {
   position: fixed;
@@ -162,13 +190,17 @@
   overflow-y: auto;
 }
 
-.debug-panel h3 {
-  font-size: 12px;
-  font-weight: 600;
+.debug-panel.collapsed {
+  max-width: none;
+  width: auto;
+}
+
+.debug-panel .panel-toggle {
   margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  opacity: 0.7;
+}
+
+.debug-panel.collapsed .panel-toggle {
+  margin-bottom: 0;
 }
 
 /* State Badge */
@@ -275,6 +307,81 @@
   border: none;
 }
 
+/* Checkbox Toggle */
+.debug-checkbox {
+  margin-bottom: 12px;
+}
+
+.debug-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.debug-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #f5a623;
+}
+
+/* Frame Controls */
+.frame-controls {
+  margin-bottom: 12px;
+}
+
+.frame-controls label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.frame-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.frame-btn {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 48px;
+  text-align: center;
+}
+
+.frame-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.frame-btn.active {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: black;
+  font-weight: 600;
+}
+
+.frame-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Paused Badge */
+.paused-badge {
+  color: #f59e0b;
+  font-weight: 600;
+  font-size: 10px;
+}
+
 /* Animation Selector */
 .animation-selector {
   margin-bottom: 12px;
@@ -338,6 +445,12 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
+.debug-controls button.copy-success {
+  background: #22c55e;
+  color: white;
+  transition: background 0.15s;
+}
+
 /* Position Presets */
 .position-presets {
   margin-top: 12px;
@@ -397,12 +510,25 @@
   backdrop-filter: blur(4px);
 }
 
-.instructions strong {
+.instructions.collapsed {
+  max-width: none;
+  width: auto;
+}
+
+.instructions .panel-toggle {
+  margin-bottom: 8px;
+}
+
+.instructions.collapsed .panel-toggle {
+  margin-bottom: 0;
+}
+
+.instructions-content strong {
   display: block;
   margin-bottom: 4px;
 }
 
-.instructions .kbd {
+.instructions-content .kbd {
   display: inline-block;
   padding: 2px 6px;
   background: rgba(255, 255, 255, 0.15);
@@ -510,6 +636,26 @@
   border-color: rgba(0, 0, 0, 0.3);
 }
 
+.example-app.light .frame-btn {
+  border-color: rgba(0, 0, 0, 0.2);
+  color: #4a5568;
+}
+
+.example-app.light .frame-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.example-app.light .frame-btn.active {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: white;
+}
+
+.example-app.light .paused-badge {
+  color: #d97706;
+}
+
 .example-app.light .debug-controls button {
   background: rgba(0, 0, 0, 0.08);
   color: #1a1a2e;
@@ -517,6 +663,11 @@
 
 .example-app.light .debug-controls button:hover {
   background: rgba(0, 0, 0, 0.15);
+}
+
+.example-app.light .debug-controls button.copy-success {
+  background: #22c55e;
+  color: white;
 }
 
 .example-app.light .preset-btn {
@@ -542,8 +693,18 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
-.example-app.light .instructions hr {
+.example-app.light .instructions-content hr {
   border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.example-app.light .instructions-content .kbd {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1a2e;
+}
+
+.example-app.light .panel-toggle {
+  color: #1a1a2e;
 }
 
 .example-app.light .instructions .kbd {
@@ -554,4 +715,71 @@
 
 .example-app.light .loading-message {
   color: #4a5568;
+}
+
+.example-app.light .debug-checkbox label {
+  color: #1a1a2e;
+}
+
+/* ========================================
+   Boundary Hit Visual Feedback
+   ======================================== */
+
+/* Base boundary hit animation */
+@keyframes boundary-flash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Edge indicator overlay */
+.example-app.boundary-hit::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  animation: boundary-flash 0.3s ease-out forwards;
+}
+
+/* Top edge hit */
+.example-app.boundary-hit-top::after {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(180deg, rgba(245, 166, 35, 0.8) 0%, transparent 100%);
+  box-shadow: 0 0 20px rgba(245, 166, 35, 0.6);
+}
+
+/* Right edge hit */
+.example-app.boundary-hit-right::after {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(270deg, rgba(245, 166, 35, 0.8) 0%, transparent 100%);
+  box-shadow: 0 0 20px rgba(245, 166, 35, 0.6);
+}
+
+/* Bottom edge hit */
+.example-app.boundary-hit-bottom::after {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(0deg, rgba(245, 166, 35, 0.8) 0%, transparent 100%);
+  box-shadow: 0 0 20px rgba(245, 166, 35, 0.6);
+}
+
+/* Left edge hit */
+.example-app.boundary-hit-left::after {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(90deg, rgba(245, 166, 35, 0.8) 0%, transparent 100%);
+  box-shadow: 0 0 20px rgba(245, 166, 35, 0.6);
 }
