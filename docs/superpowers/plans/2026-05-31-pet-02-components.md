@@ -2,13 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Create React components and hooks for rendering and interacting with the pet sprite.
+**Goal:** Create React components and hooks for rendering and interacting with the pet sprite, adapted from the open-design reference implementation.
 
-**Architecture:** React components using CSS sprite animation. Hooks encapsulate drag handling, animation state, and ambient cycling. Components are headless-friendly with style injection points.
+**Architecture:** React components using CSS sprite animation. Hooks encapsulate drag handling, animation state, and ambient cycling. Components are self-contained with no external dependencies beyond React and the core library.
 
-**Tech Stack:** React 18, TypeScript, CSS Modules (optional), Framer Motion (optional)
+**Tech Stack:** React 18, TypeScript, Vitest
 
 **Spec Reference:** `docs/superpowers/specs/2026-05-31-pets-v1-design.md`
+
+**Reference Implementation:** `~/github/others/open-design/apps/web/src/components/pet/`
 
 **Depends On:** Plan 1 (packages/pet core) must be completed first.
 
@@ -19,13 +21,11 @@
 ```
 packages/pet/src/
 ├── components/
-│   ├── PetSprite.tsx         # Sprite renderer with CSS animation
-│   ├── PetContainer.tsx      # Draggable container with interaction handling
+│   ├── PetSprite.tsx         # Sprite renderer with JS-driven animation
+│   ├── PetContainer.tsx      # Draggable container with full interaction
 │   ├── PetBubble.tsx         # Speech bubble component
-│   ├── PetSettings.tsx       # Settings panel for pet selection (P1)
 │   └── index.ts              # Component exports
 ├── hooks/
-│   ├── usePetAnimation.ts    # Animation row selection and timing
 │   ├── usePetDrag.ts         # Pointer drag handling
 │   ├── usePetAmbient.ts      # Ambient animation cycling
 │   └── index.ts              # Hook exports
@@ -34,8 +34,6 @@ packages/pet/src/
 └── index.ts                  # Updated exports
 ```
 
-**Note:** `PetContainer` implements the complete interaction logic internally by composing the three focused hooks (`usePetDrag`, `usePetAnimation`, `usePetAmbient`). No separate `usePetInteraction` hook is needed.
-
 ---
 
 ## Task 1: Base Styles
@@ -43,19 +41,22 @@ packages/pet/src/
 **Files:**
 - Create: `packages/pet/src/styles/pet.css`
 
-- [ ] **Step 1: Create pet.css with keyframes and base styles**
+- [ ] **Step 1: Create styles directory**
+
+Run:
+```bash
+mkdir -p packages/pet/src/styles
+```
+
+- [ ] **Step 2: Create pet.css with base styles**
 
 ```css
 /* packages/pet/src/styles/pet.css */
 
 /* Sprite animation keyframe - moves horizontally through frames */
-@keyframes pet-sprite-play {
-  from {
-    background-position-x: 0;
-  }
-  to {
-    background-position-x: var(--pet-sprite-end-x, -1536px);
-  }
+@keyframes pet-frames {
+  from { background-position-x: 0%; }
+  to { background-position-x: 100%; }
 }
 
 /* Container styles */
@@ -74,28 +75,36 @@ packages/pet/src/
 /* Sprite wrapper */
 .pet-sprite {
   position: relative;
-  width: var(--pet-cell-width, 192px);
-  height: var(--pet-cell-height, 208px);
 }
 
-/* Sprite image layer */
-.pet-sprite-image {
-  width: 100%;
-  height: 100%;
+/* Sprite image layer - used for static and strip modes */
+.pet-image {
+  display: block;
   background-repeat: no-repeat;
-  background-position-y: var(--pet-row-offset, 0);
-  animation: pet-sprite-play var(--pet-duration, 1s) steps(var(--pet-frames, 6)) infinite;
+  background-position: 0 0;
 }
 
-/* Glow/shadow effect */
+.pet-image.static {
+  background-size: contain;
+}
+
+.pet-image.frames {
+  /* Animation set via inline style */
+}
+
+.pet-image.atlas {
+  /* Background position set via inline style */
+}
+
+/* Shadow effect */
 .pet-sprite-shadow {
   position: absolute;
-  bottom: 0;
+  bottom: -4px;
   left: 50%;
   transform: translateX(-50%);
   width: 60%;
   height: 8px;
-  background: radial-gradient(ellipse, rgba(0,0,0,0.2) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(0,0,0,0.15) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -103,28 +112,36 @@ packages/pet/src/
 .pet-bubble {
   position: absolute;
   bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 0;
   margin-bottom: 8px;
-  padding: 8px 12px;
-  background: var(--pet-bubble-bg, white);
-  border: 1px solid var(--pet-bubble-border, #e5e5e5);
+  padding: 10px 14px;
+  background: white;
+  border: 1px solid #e5e5e5;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  max-width: 200px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  max-width: 220px;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.5;
   white-space: pre-wrap;
 }
 
 .pet-bubble::after {
   content: '';
   position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--pet-bubble-bg, white);
+  bottom: -7px;
+  right: 20px;
+  border: 7px solid transparent;
+  border-top-color: white;
+  border-bottom: none;
+}
+
+.pet-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: 19px;
+  border: 8px solid transparent;
+  border-top-color: #e5e5e5;
   border-bottom: none;
 }
 
@@ -135,36 +152,163 @@ packages/pet/src/
   margin-bottom: 4px;
 }
 
-.pet-bubble-text {
+.pet-bubble-line {
   color: #374151;
 }
 
-/* Animation states */
-.pet-sprite[data-interaction="idle"] .pet-sprite-image {
-  /* Default idle animation */
+/* Idle quote styling */
+.pet-idle-quote {
+  margin: 0;
 }
 
-.pet-sprite[data-interaction="hover"] .pet-sprite-image {
-  /* Waving animation - different row */
+.pet-idle-quote blockquote {
+  margin: 0;
+  color: #374151;
+  font-style: italic;
 }
 
-.pet-sprite[data-interaction="waiting"] .pet-sprite-image {
-  animation-play-state: running;
+.pet-idle-quote figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.pet-idle-quote figcaption::before {
+  content: '— ';
+}
+
+/* Task list in bubble */
+.pet-task-list {
+  margin-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 8px;
+}
+
+.pet-task-group {
+  margin-bottom: 6px;
+}
+
+.pet-task-group:last-child {
+  margin-bottom: 0;
+}
+
+.pet-task-group-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.pet-task-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #374151;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pet-task-item:hover {
+  color: var(--pet-accent, #6366f1);
+}
+
+.pet-task-item--static {
+  cursor: default;
+}
+
+.pet-task-item--static:hover {
+  color: #374151;
+}
+
+.pet-task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d1d5db;
+  flex-shrink: 0;
+}
+
+.pet-task-dot[data-pet-task-status="running"] {
+  background: #10b981;
+}
+
+.pet-task-dot[data-pet-task-status="queued"] {
+  background: #f59e0b;
+}
+
+.pet-task-dot[data-pet-task-status="succeeded"] {
+  background: #10b981;
+}
+
+.pet-task-dot[data-pet-task-status="failed"] {
+  background: #ef4444;
+}
+
+.pet-task-dot[data-pet-task-status="canceled"] {
+  background: #6b7280;
+}
+
+.pet-task-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-task-count {
+  font-size: 10px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+/* Overlay wrapper */
+.pet-overlay {
+  position: fixed;
+  z-index: 9999;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Status badge on sprite */
+.pet-sprite-status {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--pet-accent, #6366f1);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .pet-sprite-image {
-    animation: none;
+  .pet-image.frames {
+    animation: none !important;
   }
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add packages/pet/src/styles/pet.css
-git commit -m "feat(pet): add base CSS styles and sprite animation keyframes"
+git commit -m "feat(pet): add base CSS styles for pet components"
 ```
 
 ---
@@ -173,238 +317,16 @@ git commit -m "feat(pet): add base CSS styles and sprite animation keyframes"
 
 **Files:**
 - Create: `packages/pet/src/hooks/usePetDrag.ts`
-- Create: `packages/pet/tests/hooks/usePetDrag.test.ts`
+- Create: `packages/pet/src/hooks/index.ts`
 
-- [ ] **Step 1: Write failing tests for usePetDrag**
-
-```typescript
-// packages/pet/tests/hooks/usePetDrag.test.ts
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { usePetDrag } from '../../src/hooks/usePetDrag';
-
-describe('usePetDrag', () => {
-  it('initializes with not dragging', () => {
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 24, bottom: 24 },
-        onPositionChange: vi.fn(),
-      })
-    );
-
-    expect(result.current.isDragging).toBe(false);
-    expect(result.current.dragDirection).toBeNull();
-  });
-
-  it('starts drag on pointer down', () => {
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 24, bottom: 24 },
-        onPositionChange: vi.fn(),
-      })
-    );
-
-    act(() => {
-      result.current.handlers.onPointerDown({
-        button: 0,
-        clientX: 100,
-        clientY: 100,
-        currentTarget: { setPointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(result.current.isDragging).toBe(true);
-  });
-
-  it('ignores non-primary button', () => {
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 24, bottom: 24 },
-        onPositionChange: vi.fn(),
-      })
-    );
-
-    act(() => {
-      result.current.handlers.onPointerDown({
-        button: 2, // Right click
-        clientX: 100,
-        clientY: 100,
-        currentTarget: { setPointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(result.current.isDragging).toBe(false);
-  });
-
-  it('calls onPositionChange during drag', () => {
-    const onPositionChange = vi.fn();
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 100, bottom: 100 },
-        onPositionChange,
-      })
-    );
-
-    // Start drag
-    act(() => {
-      result.current.handlers.onPointerDown({
-        button: 0,
-        clientX: 200,
-        clientY: 200,
-        currentTarget: { setPointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    // Move pointer
-    act(() => {
-      result.current.handlers.onPointerMove({
-        clientX: 250,
-        clientY: 200,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(onPositionChange).toHaveBeenCalled();
-  });
-
-  it('detects drag direction', () => {
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 100, bottom: 100 },
-        onPositionChange: vi.fn(),
-      })
-    );
-
-    // Start drag
-    act(() => {
-      result.current.handlers.onPointerDown({
-        button: 0,
-        clientX: 200,
-        clientY: 200,
-        currentTarget: { setPointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    // Move significantly to the right
-    act(() => {
-      result.current.handlers.onPointerMove({
-        clientX: 280,
-        clientY: 200,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(result.current.dragDirection).toBe('drag-right');
-  });
-
-  it('ends drag on pointer up', () => {
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 24, bottom: 24 },
-        onPositionChange: vi.fn(),
-      })
-    );
-
-    // Start drag
-    act(() => {
-      result.current.handlers.onPointerDown({
-        button: 0,
-        clientX: 100,
-        clientY: 100,
-        currentTarget: { setPointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(result.current.isDragging).toBe(true);
-
-    // End drag
-    act(() => {
-      result.current.handlers.onPointerUp({
-        currentTarget: { releasePointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(result.current.isDragging).toBe(false);
-    expect(result.current.dragDirection).toBeNull();
-  });
-
-  it('detects tap (no movement)', () => {
-    const onTap = vi.fn();
-    const { result } = renderHook(() =>
-      usePetDrag({
-        position: { right: 24, bottom: 24 },
-        onPositionChange: vi.fn(),
-        onTap,
-      })
-    );
-
-    // Start and immediately end (tap)
-    act(() => {
-      result.current.handlers.onPointerDown({
-        button: 0,
-        clientX: 100,
-        clientY: 100,
-        currentTarget: { setPointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    act(() => {
-      result.current.handlers.onPointerUp({
-        currentTarget: { releasePointerCapture: vi.fn() },
-        pointerId: 1,
-      } as unknown as React.PointerEvent);
-    });
-
-    expect(onTap).toHaveBeenCalled();
-  });
-});
-```
-
-- [ ] **Step 2: Install testing library**
+- [ ] **Step 1: Create hooks directory**
 
 Run:
 ```bash
-cd packages/pet && pnpm add -D @testing-library/react jsdom
+mkdir -p packages/pet/src/hooks
 ```
 
-- [ ] **Step 3: Update vitest.config.ts for React testing**
-
-```typescript
-// packages/pet/vitest.config.ts
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
-    setupFiles: ['./tests/setup.ts'],
-  },
-});
-```
-
-- [ ] **Step 4: Create test setup file**
-
-```typescript
-// packages/pet/tests/setup.ts
-import '@testing-library/react';
-```
-
-- [ ] **Step 5: Run tests to verify they fail**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: FAIL - module not found
-
-- [ ] **Step 6: Implement usePetDrag**
+- [ ] **Step 2: Implement usePetDrag**
 
 ```typescript
 // packages/pet/src/hooks/usePetDrag.ts
@@ -416,13 +338,12 @@ export interface UsePetDragOptions {
   position: PetPosition;
   onPositionChange: (position: PetPosition) => void;
   onTap?: () => void;
-  /** Viewport bounds for clamping */
-  bounds?: { width: number; height: number };
 }
 
 export interface UsePetDragResult {
   isDragging: boolean;
   dragDirection: PetInteraction | null;
+  hasMoved: boolean;
   handlers: {
     onPointerDown: (e: React.PointerEvent) => void;
     onPointerMove: (e: React.PointerEvent) => void;
@@ -436,33 +357,33 @@ interface DragState {
   startRight: number;
   startBottom: number;
   moved: boolean;
+  direction: 'right' | 'left' | 'up' | 'down' | null;
 }
 
 const MOVE_THRESHOLD = 4;
 const EDGE_PADDING = 8;
-const SPRITE_SIZE = 120; // Approximate sprite + shadow
+const SPRITE_SIZE = 120;
 
 export function usePetDrag({
   position,
   onPositionChange,
   onTap,
-  bounds,
 }: UsePetDragOptions): UsePetDragResult {
   const [isDragging, setIsDragging] = useState(false);
   const [dragDirection, setDragDirection] = useState<PetInteraction | null>(null);
+  const [hasMoved, setHasMoved] = useState(false);
   const dragRef = useRef<DragState | null>(null);
 
   const getViewportBounds = useCallback(() => {
-    if (bounds) return bounds;
     if (typeof window !== 'undefined') {
       return { width: window.innerWidth, height: window.innerHeight };
     }
     return { width: 1920, height: 1080 };
-  }, [bounds]);
+  }, []);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (e.button !== 0) return; // Only primary button
+      if (e.button !== 0) return;
 
       const target = e.currentTarget as HTMLElement;
       target.setPointerCapture(e.pointerId);
@@ -473,10 +394,12 @@ export function usePetDrag({
         startRight: position.right,
         startBottom: position.bottom,
         moved: false,
+        direction: null,
       };
 
       setIsDragging(true);
       setDragDirection(null);
+      setHasMoved(false);
     },
     [position.right, position.bottom]
   );
@@ -489,13 +412,12 @@ export function usePetDrag({
       const dx = e.clientX - drag.startX;
       const dy = e.clientY - drag.startY;
 
-      // Check if moved beyond threshold
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < MOVE_THRESHOLD) {
         return;
       }
       drag.moved = true;
+      setHasMoved(true);
 
-      // Calculate new position (right/bottom are distances from edges)
       const { width, height } = getViewportBounds();
       const nextRight = Math.max(
         EDGE_PADDING,
@@ -508,10 +430,28 @@ export function usePetDrag({
 
       onPositionChange({ right: nextRight, bottom: nextBottom });
 
-      // Classify drag direction
-      const direction = classifyDragDirection(dx, dy, DRAG_GESTURE_MIN_PX, DRAG_AXIS_BIAS);
-      if (direction) {
-        setDragDirection(direction);
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+      if (absX < DRAG_GESTURE_MIN_PX && absY < DRAG_GESTURE_MIN_PX) return;
+      
+      let dir: 'right' | 'left' | 'up' | 'down' | null = null;
+      if (absX >= absY * DRAG_AXIS_BIAS) {
+        dir = dx > 0 ? 'right' : 'left';
+      } else if (absY >= absX * DRAG_AXIS_BIAS) {
+        dir = dy < 0 ? 'up' : 'down';
+      }
+      
+      if (dir && dir !== drag.direction) {
+        drag.direction = dir;
+        setDragDirection(
+          dir === 'right'
+            ? 'drag-right'
+            : dir === 'left'
+              ? 'drag-left'
+              : dir === 'up'
+                ? 'drag-up'
+                : 'drag-down'
+        );
       }
     },
     [onPositionChange, getViewportBounds]
@@ -525,10 +465,9 @@ export function usePetDrag({
       try {
         (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
       } catch {
-        // Ignore if capture already released
+        // Ignore
       }
 
-      // Detect tap (no movement)
       if (drag && !drag.moved && onTap) {
         onTap();
       }
@@ -542,6 +481,7 @@ export function usePetDrag({
   return {
     isDragging,
     dragDirection,
+    hasMoved,
     handlers: {
       onPointerDown,
       onPointerMove,
@@ -551,198 +491,14 @@ export function usePetDrag({
 }
 ```
 
-- [ ] **Step 7: Create hooks index**
+- [ ] **Step 3: Create hooks index**
 
 ```typescript
 // packages/pet/src/hooks/index.ts
 export * from './usePetDrag';
 ```
 
-- [ ] **Step 8: Run tests to verify they pass**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: All tests PASS
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add packages/pet/src/hooks/usePetDrag.ts packages/pet/src/hooks/index.ts packages/pet/tests/hooks/usePetDrag.test.ts packages/pet/tests/setup.ts packages/pet/vitest.config.ts
-git commit -m "feat(pet): add usePetDrag hook for pointer drag handling"
-```
-
----
-
-## Task 3: usePetAnimation Hook
-
-**Files:**
-- Create: `packages/pet/src/hooks/usePetAnimation.ts`
-- Modify: `packages/pet/src/hooks/index.ts`
-
-- [ ] **Step 1: Implement usePetAnimation**
-
-```typescript
-// packages/pet/src/hooks/usePetAnimation.ts
-import { useMemo } from 'react';
-import type { PetConfig, PetInteraction, PetAnimationDef, PetAtlasLayout } from '../types';
-import { pickAnimationRow } from '../atlas';
-import { getAnimationIdForInteraction } from '../interaction';
-import { createAnimationStyle, type AnimationStyle } from '../animation';
-
-export interface UsePetAnimationOptions {
-  pet: PetConfig | null;
-  interaction: PetInteraction;
-  /** Override animation ID (e.g., for ambient) */
-  overrideAnimationId?: string | null;
-}
-
-export interface UsePetAnimationResult {
-  /** Current animation definition */
-  animation: PetAnimationDef | null;
-  /** CSS style properties for sprite */
-  style: AnimationStyle | null;
-  /** CSS custom properties for the sprite element */
-  cssVars: Record<string, string | number>;
-}
-
-export function usePetAnimation({
-  pet,
-  interaction,
-  overrideAnimationId,
-}: UsePetAnimationOptions): UsePetAnimationResult {
-  return useMemo(() => {
-    if (!pet) {
-      return { animation: null, style: null, cssVars: {} };
-    }
-
-    const { atlas } = pet;
-
-    // Determine which animation to play
-    const targetId = overrideAnimationId ?? getAnimationIdForInteraction(interaction);
-    const animation = pickAnimationRow(atlas.animations, targetId);
-
-    if (!animation) {
-      return { animation: null, style: null, cssVars: {} };
-    }
-
-    const style = createAnimationStyle(atlas, animation);
-
-    // CSS custom properties for the sprite element
-    const cssVars: Record<string, string | number> = {
-      '--pet-cell-width': `${atlas.cellWidth}px`,
-      '--pet-cell-height': `${atlas.cellHeight}px`,
-      '--pet-row-offset': `${style.backgroundPositionY}px`,
-      '--pet-duration': style.animationDuration,
-      '--pet-frames': animation.frames,
-      '--pet-sprite-end-x': `${-(animation.frames * atlas.cellWidth)}px`,
-    };
-
-    return { animation, style, cssVars };
-  }, [pet, interaction, overrideAnimationId]);
-}
-```
-
-- [ ] **Step 2: Write failing tests for usePetAnimation**
-
-```typescript
-// packages/pet/tests/hooks/usePetAnimation.test.ts
-import { describe, it, expect } from 'vitest';
-import { renderHook } from '@testing-library/react';
-import { usePetAnimation } from '../../src/hooks/usePetAnimation';
-import { STANDARD_ANIMATIONS, CODEX_ATLAS } from '../../src/types';
-import type { PetConfig } from '../../src/types';
-
-const mockPet: PetConfig = {
-  id: 'test',
-  name: 'Test',
-  description: 'Test pet',
-  accent: '#000',
-  greeting: 'Hello',
-  spritesheet: 'test.png',
-  atlas: {
-    cols: CODEX_ATLAS.cols,
-    rows: CODEX_ATLAS.rows,
-    cellWidth: CODEX_ATLAS.cellWidth,
-    cellHeight: CODEX_ATLAS.cellHeight,
-    animations: STANDARD_ANIMATIONS,
-  },
-};
-
-describe('usePetAnimation', () => {
-  it('returns null when pet is null', () => {
-    const { result } = renderHook(() =>
-      usePetAnimation({ pet: null, interaction: 'idle' })
-    );
-    expect(result.current.animation).toBeNull();
-    expect(result.current.style).toBeNull();
-  });
-
-  it('selects correct animation for idle interaction', () => {
-    const { result } = renderHook(() =>
-      usePetAnimation({ pet: mockPet, interaction: 'idle' })
-    );
-    expect(result.current.animation?.id).toBe('idle');
-  });
-
-  it('selects correct animation for hover interaction', () => {
-    const { result } = renderHook(() =>
-      usePetAnimation({ pet: mockPet, interaction: 'hover' })
-    );
-    expect(result.current.animation?.id).toBe('waving');
-  });
-
-  it('respects overrideAnimationId', () => {
-    const { result } = renderHook(() =>
-      usePetAnimation({
-        pet: mockPet,
-        interaction: 'idle',
-        overrideAnimationId: 'jumping',
-      })
-    );
-    expect(result.current.animation?.id).toBe('jumping');
-  });
-
-  it('generates correct CSS custom properties', () => {
-    const { result } = renderHook(() =>
-      usePetAnimation({ pet: mockPet, interaction: 'idle' })
-    );
-    expect(result.current.cssVars).toHaveProperty('--pet-cell-width');
-    expect(result.current.cssVars).toHaveProperty('--pet-cell-height');
-    expect(result.current.cssVars['--pet-cell-width']).toBe('192px');
-  });
-});
-```
-
-- [ ] **Step 3: Run tests to verify they fail**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: FAIL - usePetAnimation tests fail
-
-- [ ] **Step 4: Update hooks index**
-
-```typescript
-// packages/pet/src/hooks/index.ts
-export * from './usePetDrag';
-export * from './usePetAnimation';
-```
-
-- [ ] **Step 5: Run tests to verify they pass**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: All tests PASS
-
-- [ ] **Step 6: Verify types compile**
+- [ ] **Step 4: Verify types compile**
 
 Run:
 ```bash
@@ -751,150 +507,46 @@ cd packages/pet && pnpm typecheck
 
 Expected: No errors
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add packages/pet/src/hooks/usePetAnimation.ts packages/pet/tests/hooks/usePetAnimation.test.ts packages/pet/src/hooks/index.ts
-git commit -m "feat(pet): add usePetAnimation hook with tests for animation row selection"
+git add packages/pet/src/hooks/
+git commit -m "feat(pet): add usePetDrag hook for pointer drag handling"
 ```
 
 ---
 
-## Task 4: usePetAmbient Hook
+## Task 3: usePetAmbient Hook
 
 **Files:**
 - Create: `packages/pet/src/hooks/usePetAmbient.ts`
 - Modify: `packages/pet/src/hooks/index.ts`
 
-- [ ] **Step 1: Write failing tests for usePetAmbient**
-
-```typescript
-// packages/pet/tests/hooks/usePetAmbient.test.ts
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import { usePetAmbient } from '../../src/hooks/usePetAmbient';
-import { STANDARD_ANIMATIONS } from '../../src/types';
-import type { PetConfig } from '../../src/types';
-
-const mockPet: PetConfig = {
-  id: 'test',
-  name: 'Test',
-  description: 'Test pet',
-  accent: '#000',
-  greeting: 'Hello',
-  spritesheet: 'test.png',
-  atlas: {
-    cols: 8,
-    rows: 9,
-    cellWidth: 192,
-    cellHeight: 208,
-    animations: STANDARD_ANIMATIONS,
-  },
-  ambient: {
-    pool: ['waving', 'jumping'],
-    playMs: { min: 100, variance: 0 },
-    restMs: { min: 100, variance: 0 },
-    initialDelayMs: { min: 50, variance: 0 },
-  },
-};
-
-describe('usePetAmbient', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('starts with no ambient animation', () => {
-    const { result } = renderHook(() =>
-      usePetAmbient({ pet: mockPet, interaction: 'idle' })
-    );
-    expect(result.current.ambientRowId).toBeNull();
-  });
-
-  it('plays ambient animation after initial delay', async () => {
-    const { result } = renderHook(() =>
-      usePetAmbient({ pet: mockPet, interaction: 'idle' })
-    );
-
-    // Fast-forward past initial delay
-    vi.advanceTimersByTime(50);
-    await waitFor(() => {
-      expect(result.current.ambientRowId).not.toBeNull();
-    });
-  });
-
-  it('disables ambient when not idle', () => {
-    const { result } = renderHook(() =>
-      usePetAmbient({ pet: mockPet, interaction: 'hover' })
-    );
-
-    vi.advanceTimersByTime(1000);
-    expect(result.current.ambientRowId).toBeNull();
-  });
-
-  it('disables ambient when disabled flag is true', () => {
-    const { result } = renderHook(() =>
-      usePetAmbient({ pet: mockPet, interaction: 'idle', disabled: true })
-    );
-
-    vi.advanceTimersByTime(1000);
-    expect(result.current.ambientRowId).toBeNull();
-  });
-
-  it('resets ambient on reset call', async () => {
-    const { result } = renderHook(() =>
-      usePetAmbient({ pet: mockPet, interaction: 'idle' })
-    );
-
-    vi.advanceTimersByTime(50);
-    await waitFor(() => {
-      expect(result.current.ambientRowId).not.toBeNull();
-    });
-
-    result.current.reset();
-    expect(result.current.ambientRowId).toBeNull();
-  });
-});
-```
-
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: FAIL - usePetAmbient tests fail
-
-- [ ] **Step 3: Implement usePetAmbient**
+- [ ] **Step 1: Implement usePetAmbient**
 
 ```typescript
 // packages/pet/src/hooks/usePetAmbient.ts
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { PetConfig, PetInteraction } from '../types';
+import type { PetAnimationDef, PetAmbientConfig, PetAtlasLayout, PetInteraction } from '../types';
 import { PET_DEFAULTS } from '../types';
 import { pickAmbientAnimation, randomInRange } from '../animation';
 
 export interface UsePetAmbientOptions {
-  pet: PetConfig | null;
+  atlas: PetAtlasLayout | null;
   interaction: PetInteraction;
-  /** Disable ambient when true (e.g., during drag) */
+  ambientConfig?: PetAmbientConfig;
   disabled?: boolean;
 }
 
 export interface UsePetAmbientResult {
-  /** Currently playing ambient animation ID, or null */
   ambientRowId: string | null;
-  /** Reset the ambient cycle */
   reset: () => void;
 }
 
 export function usePetAmbient({
-  pet,
+  atlas,
   interaction,
+  ambientConfig,
   disabled = false,
 }: UsePetAmbientOptions): UsePetAmbientResult {
   const [ambientRowId, setAmbientRowId] = useState<string | null>(null);
@@ -920,15 +572,14 @@ export function usePetAmbient({
   }, [clearTimers]);
 
   useEffect(() => {
-    // Only run ambient when idle and not disabled
-    if (interaction !== 'idle' || disabled || !pet) {
+    if (interaction !== 'idle' || disabled || !atlas || atlas.animations.length === 0) {
       clearTimers();
       setAmbientRowId(null);
       return;
     }
 
-    const ambient = pet.ambient ?? PET_DEFAULTS.ambient;
-    const { animations } = pet.atlas;
+    const ambient = ambientConfig ?? PET_DEFAULTS.ambient;
+    const animations = atlas.animations;
 
     const playBeat = () => {
       const def = pickAmbientAnimation(animations, ambient.pool, lastPlayedRef.current);
@@ -937,18 +588,15 @@ export function usePetAmbient({
       lastPlayedRef.current = def.id;
       setAmbientRowId(def.id);
 
-      // Schedule end of play
       const playMs = randomInRange(ambient.playMs);
       playTimerRef.current = window.setTimeout(() => {
         setAmbientRowId(null);
 
-        // Schedule next beat
         const restMs = randomInRange(ambient.restMs);
         restTimerRef.current = window.setTimeout(playBeat, restMs);
       }, playMs);
     };
 
-    // Initial delay before first beat
     const initialDelay = randomInRange(ambient.initialDelayMs);
     restTimerRef.current = window.setTimeout(playBeat, initialDelay);
 
@@ -956,113 +604,18 @@ export function usePetAmbient({
       clearTimers();
       setAmbientRowId(null);
     };
-  }, [interaction, disabled, pet, clearTimers]);
+  }, [interaction, disabled, atlas, ambientConfig, clearTimers]);
 
   return { ambientRowId, reset };
 }
 ```
 
-- [ ] **Step 4: Update hooks index**
+- [ ] **Step 2: Update hooks index**
 
 ```typescript
 // packages/pet/src/hooks/index.ts
 export * from './usePetDrag';
-export * from './usePetAnimation';
 export * from './usePetAmbient';
-```
-
-- [ ] **Step 5: Run tests to verify they pass**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: All tests PASS
-
-- [ ] **Step 6: Verify types compile**
-
-Run:
-```bash
-cd packages/pet && pnpm typecheck
-```
-
-Expected: No errors
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add packages/pet/src/hooks/usePetAmbient.ts packages/pet/tests/hooks/usePetAmbient.test.ts packages/pet/src/hooks/index.ts
-git commit -m "feat(pet): add usePetAmbient hook with tests for ambient animation cycling"
-```
-
----
-
-## Task 5: PetSprite Component
-
-**Files:**
-- Create: `packages/pet/src/components/PetSprite.tsx`
-- Create: `packages/pet/src/components/index.ts`
-
-- [ ] **Step 1: Implement PetSprite**
-
-```tsx
-// packages/pet/src/components/PetSprite.tsx
-import type { CSSProperties } from 'react';
-import type { PetConfig, PetInteraction } from '../types';
-import { usePetAnimation } from '../hooks/usePetAnimation';
-
-export interface PetSpriteProps {
-  pet: PetConfig;
-  interaction: PetInteraction;
-  /** Override animation ID (e.g., for ambient) */
-  overrideAnimationId?: string | null;
-  /** Additional class name */
-  className?: string;
-  /** Additional inline styles */
-  style?: CSSProperties;
-}
-
-export function PetSprite({
-  pet,
-  interaction,
-  overrideAnimationId,
-  className = '',
-  style: styleProp,
-}: PetSpriteProps) {
-  const { animation, cssVars } = usePetAnimation({
-    pet,
-    interaction,
-    overrideAnimationId,
-  });
-
-  if (!animation) return null;
-
-  const spriteStyle: CSSProperties = {
-    ...cssVars,
-    backgroundImage: `url(${pet.spritesheet})`,
-    ...styleProp,
-  };
-
-  return (
-    <div
-      className={`pet-sprite ${className}`}
-      data-interaction={interaction}
-      data-animation={animation.id}
-      style={{ '--pet-accent': pet.accent } as CSSProperties}
-    >
-      <div className="pet-sprite-image" style={spriteStyle} />
-      <span className="pet-sprite-shadow" aria-hidden="true" />
-    </div>
-  );
-}
-```
-
-- [ ] **Step 2: Create components index**
-
-```typescript
-// packages/pet/src/components/index.ts
-export * from './PetSprite';
 ```
 
 - [ ] **Step 3: Verify types compile**
@@ -1077,13 +630,142 @@ Expected: No errors
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/pet/src/components/PetSprite.tsx packages/pet/src/components/index.ts
-git commit -m "feat(pet): add PetSprite component for sprite rendering"
+git add packages/pet/src/hooks/
+git commit -m "feat(pet): add usePetAmbient hook for ambient animation cycling"
 ```
 
 ---
 
-## Task 6: PetBubble Component
+## Task 4: PetSprite Component
+
+**Files:**
+- Create: `packages/pet/src/components/PetSprite.tsx`
+- Create: `packages/pet/src/components/index.ts`
+
+Reference: `~/github/others/open-design/apps/web/src/components/pet/PetSpriteFace.tsx`
+
+- [ ] **Step 1: Create components directory**
+
+Run:
+```bash
+mkdir -p packages/pet/src/components
+```
+
+- [ ] **Step 2: Implement PetSprite**
+
+```tsx
+// packages/pet/src/components/PetSprite.tsx
+import { useEffect, useState, type CSSProperties } from 'react';
+import type { PetAnimationDef, PetAtlasLayout, PetConfig } from '../types';
+import { pickAnimationRow } from '../atlas';
+
+export interface PetSpriteProps {
+  pet: PetConfig;
+  rowId?: string;
+  className?: string;
+  size?: number;
+}
+
+export function PetSprite({ pet, rowId, className, size }: PetSpriteProps) {
+  const { atlas, spritesheet } = pet;
+
+  return (
+    <AtlasSprite
+      imageUrl={spritesheet}
+      cols={atlas.cols}
+      rows={atlas.rows}
+      animations={atlas.animations}
+      rowId={rowId}
+      className={className}
+      size={size}
+    />
+  );
+}
+
+interface AtlasSpriteProps {
+  imageUrl: string;
+  cols: number;
+  rows: number;
+  animations: PetAnimationDef[];
+  rowId?: string;
+  className?: string;
+  size?: number;
+}
+
+function AtlasSprite({
+  imageUrl,
+  cols,
+  rows,
+  animations,
+  rowId,
+  className,
+  size,
+}: AtlasSpriteProps) {
+  const def = pickAnimationRow(animations, rowId ?? 'idle');
+  if (!def) return null;
+
+  const rowFrames = Math.max(1, def.frames);
+  const fps = Math.max(1, def.fps);
+
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    setFrame(0);
+    if (rowFrames <= 1) return;
+    const intervalMs = Math.max(16, Math.round(1000 / fps));
+    const id = window.setInterval(() => {
+      setFrame((f) => (f + 1) % rowFrames);
+    }, intervalMs);
+    return () => window.clearInterval(id);
+  }, [def.id, def.row, rowFrames, fps]);
+
+  const xPct = cols > 1 ? (frame / (cols - 1)) * 100 : 0;
+  const yPct = rows > 1 ? (def.row / (rows - 1)) * 100 : 0;
+
+  const style: CSSProperties = {
+    backgroundImage: `url(${imageUrl})`,
+    backgroundSize: `${cols * 100}% ${rows * 100}%`,
+    backgroundPosition: `${xPct}% ${yPct}%`,
+    width: size,
+    height: size,
+  };
+
+  return (
+    <span
+      className={`${className ?? ''} pet-image atlas`.trim()}
+      aria-hidden
+      style={style}
+    />
+  );
+}
+```
+
+- [ ] **Step 3: Create components index**
+
+```typescript
+// packages/pet/src/components/index.ts
+export * from './PetSprite';
+```
+
+- [ ] **Step 4: Verify types compile**
+
+Run:
+```bash
+cd packages/pet && pnpm typecheck
+```
+
+Expected: No errors
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/pet/src/components/
+git commit -m "feat(pet): add PetSprite component for atlas rendering"
+```
+
+---
+
+## Task 5: PetBubble Component
 
 **Files:**
 - Create: `packages/pet/src/components/PetBubble.tsx`
@@ -1096,18 +778,11 @@ git commit -m "feat(pet): add PetSprite component for sprite rendering"
 import type { CSSProperties, ReactNode } from 'react';
 
 export interface PetBubbleProps {
-  /** Pet name shown in bubble header */
   name: string;
-  /** Bubble content - typically greeting or status */
   children: ReactNode;
-  /** Accent color for name */
   accent?: string;
-  /** Additional class name */
   className?: string;
-  /** Additional inline styles */
   style?: CSSProperties;
-  /** Called when bubble is clicked */
-  onClick?: () => void;
 }
 
 export function PetBubble({
@@ -1116,26 +791,15 @@ export function PetBubble({
   accent = '#6366f1',
   className = '',
   style,
-  onClick,
 }: PetBubbleProps) {
   return (
     <div
       className={`pet-bubble ${className}`}
       role="status"
-      onClick={onClick}
-      style={
-        {
-          '--pet-accent': accent,
-          '--pet-bubble-bg': 'white',
-          '--pet-bubble-border': '#e5e5e5',
-          ...style,
-        } as CSSProperties
-      }
+      style={{ '--pet-accent': accent, ...style } as CSSProperties}
     >
-      <div className="pet-bubble-name" style={{ color: accent }}>
-        {name}
-      </div>
-      <div className="pet-bubble-text">{children}</div>
+      <div className="pet-bubble-name">{name}</div>
+      <div className="pet-bubble-line">{children}</div>
     </div>
   );
 }
@@ -1152,17 +816,19 @@ export * from './PetBubble';
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/pet/src/components/PetBubble.tsx packages/pet/src/components/index.ts
+git add packages/pet/src/components/
 git commit -m "feat(pet): add PetBubble component for speech bubble"
 ```
 
 ---
 
-## Task 7: PetContainer Component
+## Task 6: PetContainer Component
 
 **Files:**
 - Create: `packages/pet/src/components/PetContainer.tsx`
 - Modify: `packages/pet/src/components/index.ts`
+
+Reference: `~/github/others/open-design/apps/web/src/components/pet/PetOverlay.tsx`
 
 - [ ] **Step 1: Implement PetContainer**
 
@@ -1171,31 +837,24 @@ git commit -m "feat(pet): add PetBubble component for speech bubble"
 import { useState, useEffect, useCallback, type CSSProperties } from 'react';
 import type { PetConfig, PetInteraction, PetPosition } from '../types';
 import { PET_DEFAULTS } from '../types';
+import { getAnimationIdForInteraction } from '../interaction';
 import { usePetDrag } from '../hooks/usePetDrag';
 import { usePetAmbient } from '../hooks/usePetAmbient';
 import { PetSprite } from './PetSprite';
 import { PetBubble } from './PetBubble';
 
 export interface PetContainerProps {
-  /** Pet configuration */
   pet: PetConfig | null;
-  /** Position relative to viewport bottom-right */
   position?: PetPosition;
-  /** Called when position changes (drag) */
   onPositionChange?: (position: PetPosition) => void;
-  /** Called when pet is tapped (not dragged) */
   onTap?: () => void;
-  /** Show speech bubble */
   showBubble?: boolean;
-  /** Bubble content (defaults to greeting) */
   bubbleContent?: React.ReactNode;
-  /** Additional class name */
   className?: string;
-  /** Additional inline styles */
   style?: CSSProperties;
 }
 
-const IDLE_TIMEOUT_MS = PET_DEFAULTS.idleTimeoutMs;
+const IDLE_TIMEOUT_MS = 45000;
 const BUBBLE_AUTO_HIDE_MS = 4000;
 
 export function PetContainer({
@@ -1213,11 +872,9 @@ export function PetContainer({
   const [bubbleOpen, setBubbleOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  // Use prop position if provided, otherwise internal
   const position = positionProp ?? internalPosition;
   const handlePositionChange = onPositionChange ?? setInternalPosition;
 
-  // Drag handling
   const handleTap = useCallback(() => {
     setBubbleOpen((prev) => !prev);
     onTapProp?.();
@@ -1229,14 +886,13 @@ export function PetContainer({
     onTap: handleTap,
   });
 
-  // Ambient animation
-  const { ambientRowId, reset: resetAmbient } = usePetAmbient({
-    pet,
+  const { ambientRowId } = usePetAmbient({
+    atlas: pet?.atlas ?? null,
     interaction,
+    ambientConfig: pet?.ambient,
     disabled: isDragging || hovered,
   });
 
-  // Update interaction based on drag/hover state
   useEffect(() => {
     if (isDragging && dragDirection) {
       setInteraction(dragDirection);
@@ -1247,7 +903,6 @@ export function PetContainer({
     }
   }, [isDragging, dragDirection, hovered]);
 
-  // Idle timeout -> waiting
   useEffect(() => {
     if (interaction !== 'idle' || isDragging || hovered) return;
 
@@ -1259,7 +914,6 @@ export function PetContainer({
     return () => window.clearTimeout(timer);
   }, [interaction, isDragging, hovered, pet?.idleTimeoutMs]);
 
-  // Auto-hide bubble
   useEffect(() => {
     if (!bubbleOpen || showBubbleProp !== undefined) return;
 
@@ -1270,21 +924,21 @@ export function PetContainer({
     return () => window.clearTimeout(timer);
   }, [bubbleOpen, showBubbleProp]);
 
-  // Show bubble on mount
   useEffect(() => {
     if (pet) {
       setBubbleOpen(true);
     }
   }, [pet?.id]);
 
-  // Handle hover
   const handlePointerEnter = useCallback(() => {
     setHovered(true);
-  }, []);
+    if (!isDragging) setInteraction('hover');
+  }, [isDragging]);
 
   const handlePointerLeave = useCallback(() => {
     setHovered(false);
-  }, []);
+    if (!isDragging) setInteraction('idle');
+  }, [isDragging]);
 
   if (!pet) return null;
 
@@ -1296,26 +950,40 @@ export function PetContainer({
   } as CSSProperties;
 
   const isBubbleVisible = showBubbleProp ?? bubbleOpen;
+  const currentRowId = ambientRowId ?? getAnimationIdForInteraction(interaction);
 
   return (
     <div
-      className={`pet-container ${className}`}
+      className={`pet-overlay ${className}`}
       style={containerStyle}
-      data-dragging={isDragging}
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
-      {...handlers}
+      role="complementary"
+      aria-label={`Pet: ${pet.name}`}
     >
       {isBubbleVisible && (
         <PetBubble name={pet.name} accent={pet.accent}>
           {bubbleContent ?? pet.greeting}
         </PetBubble>
       )}
-      <PetSprite
-        pet={pet}
-        interaction={interaction}
-        overrideAnimationId={ambientRowId}
-      />
+      <div
+        className="pet-sprite"
+        onPointerDown={handlers.onPointerDown}
+        onPointerMove={handlers.onPointerMove}
+        onPointerUp={handlers.onPointerUp}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
+        data-pet-state={interaction}
+        data-pet-ambient={ambientRowId ?? undefined}
+        data-dragging={isDragging}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
+        <PetSprite
+          pet={pet}
+          rowId={currentRowId}
+          className="pet-sprite-glyph"
+          size={96}
+        />
+        <span className="pet-sprite-shadow" aria-hidden />
+      </div>
     </div>
   );
 }
@@ -1342,13 +1010,13 @@ Expected: No errors
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/pet/src/components/PetContainer.tsx packages/pet/src/components/index.ts
+git add packages/pet/src/components/
 git commit -m "feat(pet): add PetContainer component with drag, hover, and ambient"
 ```
 
 ---
 
-## Task 8: Update Package Exports
+## Task 7: Update Package Exports
 
 **Files:**
 - Modify: `packages/pet/src/index.ts`
@@ -1358,6 +1026,7 @@ git commit -m "feat(pet): add PetContainer component with drag, hover, and ambie
 
 ```typescript
 // packages/pet/src/index.ts
+export const VERSION = '0.1.0';
 
 // Types
 export * from './types';
@@ -1375,52 +1044,25 @@ export * from './hooks';
 
 // Components
 export * from './components';
-
-// CSS (consumers need to import this)
-// import '@viben/pet/styles/pet.css';
 ```
 
-- [ ] **Step 1.5: Update package.json to export CSS**
+- [ ] **Step 2: Update package.json exports**
+
+Add CSS export to `package.json`:
 
 ```json
 {
-  "name": "@viben/pet",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
     "./styles/pet.css": "./src/styles/pet.css"
-  },
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "zustand": "^4.5.0"
-  },
-  "devDependencies": {
-    "@testing-library/react": "^14.0.0",
-    "@types/react": "^18.3.0",
-    "jsdom": "^23.0.0",
-    "typescript": "^5.4.0",
-    "vitest": "^2.0.0"
-  },
-  "peerDependencies": {
-    "react": "^18.0.0"
   }
 }
 ```
 
-- [ ] **Step 2: Run full type check**
+- [ ] **Step 3: Run full type check**
 
 Run:
 ```bash
@@ -1428,15 +1070,6 @@ cd packages/pet && pnpm typecheck
 ```
 
 Expected: No errors
-
-- [ ] **Step 3: Run tests**
-
-Run:
-```bash
-cd packages/pet && pnpm test
-```
-
-Expected: All tests PASS
 
 - [ ] **Step 4: Build package**
 
@@ -1456,7 +1089,7 @@ git commit -m "feat(pet): export all components, hooks, and CSS from package"
 
 ---
 
-## Task 9: Final Verification
+## Task 8: Final Verification
 
 **Files:**
 - Verify: all files in `packages/pet/src/`
@@ -1495,14 +1128,16 @@ git add -A packages/pet/
 git commit -m "feat(pet): complete packages/pet components layer
 
 Components:
-- PetSprite: CSS sprite animation renderer
+- PetSprite: Atlas sprite renderer with JS-driven frame animation
 - PetBubble: Speech bubble with name and content
 - PetContainer: Full-featured draggable container
 
 Hooks:
 - usePetDrag: Pointer drag with direction detection
-- usePetAnimation: Animation row selection and CSS vars
 - usePetAmbient: Ambient animation cycling
+
+Styles:
+- pet.css: Base styles for all components
 
 Ready for example app (Plan 3)"
 ```
@@ -1517,9 +1152,8 @@ This plan creates the component layer of `packages/pet`:
 |------|---------|
 | `styles/pet.css` | Base styles and keyframes |
 | `hooks/usePetDrag.ts` | Pointer drag handling |
-| `hooks/usePetAnimation.ts` | Animation row selection |
 | `hooks/usePetAmbient.ts` | Ambient animation cycling |
-| `components/PetSprite.tsx` | Sprite renderer |
+| `components/PetSprite.tsx` | Atlas sprite renderer |
 | `components/PetBubble.tsx` | Speech bubble |
 | `components/PetContainer.tsx` | Full container with all features |
 
