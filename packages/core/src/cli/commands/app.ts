@@ -62,6 +62,24 @@ function createProgressBar(): cliProgress.SingleBar {
   });
 }
 
+function formatDownloadError(error: unknown): { code: string; message: string } {
+  const code = error instanceof Error ? error.message : "DOWNLOAD_FAILED";
+
+  if (code === "FILE_EXISTS") {
+    return { code, message: "File already exists. Use --force to overwrite." };
+  }
+
+  if (code === "OUTPUT_DIR_ERROR") {
+    return { code, message: "Output directory does not exist." };
+  }
+
+  if (code.startsWith("DOWNLOAD_FAILED: ")) {
+    return { code: "DOWNLOAD_FAILED", message: `Download failed: ${code.slice("DOWNLOAD_FAILED: ".length)}.` };
+  }
+
+  return { code, message: "Download failed." };
+}
+
 // ============================================================================
 // Command Handlers
 // ============================================================================
@@ -191,9 +209,9 @@ async function handleAppDefault(ctx: OutputContext, options: AppOptions): Promis
     if (!ctx.quiet) {
       progressBar.stop();
     }
-    const code = error instanceof Error ? error.message : "DOWNLOAD_FAILED";
-    output(ctx, errorResponse(code, "Download failed"), () => {
-      console.log(chalk.red("\nError: Download failed."));
+    const { code, message } = formatDownloadError(error);
+    output(ctx, errorResponse(code, message), () => {
+      console.log(chalk.red(`\nError: ${message}`));
     });
     process.exit(1);
   }
@@ -362,11 +380,7 @@ async function handleInstall(
     if (!ctx.quiet) {
       progressBar.stop();
     }
-    const code = error instanceof Error ? error.message : "DOWNLOAD_FAILED";
-    const message =
-      code === "FILE_EXISTS"
-        ? `File already exists. Use --force to overwrite.`
-        : "Download failed.";
+    const { code, message } = formatDownloadError(error);
 
     output(ctx, errorResponse(code, message), () => {
       console.log(chalk.red(`\nError: ${message}`));

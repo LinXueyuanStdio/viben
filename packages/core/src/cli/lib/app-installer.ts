@@ -2,7 +2,8 @@
  * App installer - download and install Viben desktop app
  */
 import { execSync, spawn } from "node:child_process";
-import { createWriteStream, existsSync } from "node:fs";
+import { createWriteStream, existsSync, renameSync, rmSync } from "node:fs";
+import type { WriteStream } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { proxyFetch } from "../../http";
@@ -323,56 +324,84 @@ export async function downloadAsset(
   }
 
   const outputPath = join(outputDir, asset.name);
+  const tempOutputPath = `${outputPath}.download`;
 
   // Check if file already exists
   if (existsSync(outputPath) && !force) {
     throw new Error("FILE_EXISTS");
   }
 
-  // Download the file
-  const response = await proxyFetch(asset.url, {
-    headers: { "User-Agent": "viben-cli" },
-    redirect: "follow",
-  });
-
-  if (!response.ok) {
-    throw new Error("DOWNLOAD_FAILED");
-  }
-
-  const totalSize = parseInt(response.headers.get("content-length") ?? "0", 10) || asset.size || 0;
-  let downloadedSize = 0;
-
-  // Create write stream
-  const fileStream = createWriteStream(outputPath);
-
-  // Process the response body with progress tracking
-  const reader = response.body?.getReader();
-  if (!reader) {
-    throw new Error("DOWNLOAD_FAILED");
-  }
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let fileStream: WriteStream | undefined;
+  let finished: Promise<void> | undefined;
 
   try {
+    rmSync(tempOutputPath, { force: true });
+
+    // Download the file
+    const response = await proxyFetch(asset.url, {
+      headers: { "User-Agent": "viben-cli" },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      const statusText = response.statusText ? ` ${response.statusText}` : "";
+      throw new Error(`DOWNLOAD_FAILED: HTTP ${response.status}${statusText}`);
+    }
+
+    const totalSize = parseInt(response.headers.get("content-length") ?? "0", 10) || asset.size || 0;
+    let downloadedSize = 0;
+
+    // Process the response body with progress tracking
+    reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error("DOWNLOAD_FAILED: response body is empty");
+    }
+
+    const stream = createWriteStream(tempOutputPath);
+    fileStream = stream;
+    finished = new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        fn();
+      };
+      stream.on("finish", () => settle(resolve));
+      stream.on("close", () => settle(resolve));
+      stream.on("error", (error) => settle(() => reject(error)));
+    });
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      fileStream.write(value);
+      await new Promise<void>((resolve, reject) => {
+        stream.write(value, (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
       downloadedSize += value.length;
 
       if (onProgress && totalSize > 0) {
         onProgress(downloadedSize, totalSize);
       }
     }
-  } finally {
-    fileStream.end();
-    reader.releaseLock();
-  }
 
-  // Wait for file to be fully written
-  await new Promise<void>((resolve, reject) => {
-    fileStream.on("finish", resolve);
-    fileStream.on("error", reject);
-  });
+    stream.end();
+    reader.releaseLock();
+    await finished;
+    renameSync(tempOutputPath, outputPath);
+  } catch (error) {
+    reader?.releaseLock();
+    fileStream?.destroy();
+    await finished?.catch(() => undefined);
+    rmSync(tempOutputPath, { force: true });
+    rmSync(outputPath, { force: true });
+    const message = error instanceof Error ? error.message : "unknown error";
+    throw new Error(message.startsWith("DOWNLOAD_FAILED") ? message : `DOWNLOAD_FAILED: ${message}`);
+  }
 
   return outputPath;
 }
