@@ -144,7 +144,7 @@
     "postcss": "^8.5.15",
     "tailwindcss": "^4.2.1",
     "tauri-plugin-mcp-server": "^0.1.0",
-    "typescript": "~5.8.3",
+    "typescript": "~5.9.3",
     "vite": "^7.0.4",
     "webdriverio": "^9.27.1"
   }
