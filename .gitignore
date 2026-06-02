@@ -296,3 +296,8 @@ docs/index/
 
 /infra/
 !/infra/Yoopta-Editor/
+/wdio-results.xml
+/apps/desktop/wdio-results.xml
+/test-screenshots/
+/apps/desktop/test-screenshots/
+/desktop-artifact/
