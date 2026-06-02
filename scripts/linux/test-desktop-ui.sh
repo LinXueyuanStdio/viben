@@ -138,7 +138,27 @@ fi
 success "WebKitWebDriver is available"
 
 # =============================================================================
-# Step 4: Start Xvfb virtual display
+# Step 4: Clean up any existing processes
+# =============================================================================
+section "Cleaning Up"
+
+# Kill any existing tauri-driver or Xvfb processes from previous runs
+if pgrep -f tauri-driver >/dev/null 2>&1; then
+    info "Killing existing tauri-driver processes..."
+    pkill -f tauri-driver 2>/dev/null || true
+    sleep 1
+fi
+
+if pgrep -f "Xvfb :99" >/dev/null 2>&1; then
+    info "Killing existing Xvfb processes..."
+    pkill -f "Xvfb :99" 2>/dev/null || true
+    sleep 1
+fi
+
+success "Cleanup complete"
+
+# =============================================================================
+# Step 5: Start Xvfb virtual display
 # =============================================================================
 section "Starting Virtual Display"
 
@@ -165,7 +185,7 @@ info "Virtual display started at DISPLAY=$DISPLAY"
 success "Xvfb running (PID $XVFB_PID)"
 
 # =============================================================================
-# Step 5: Start tauri-driver (with DISPLAY set)
+# Step 6: Start tauri-driver (with DISPLAY set)
 # =============================================================================
 section "Starting tauri-driver"
 
@@ -184,7 +204,7 @@ fi
 success "tauri-driver started (PID $TAURI_DRIVER_PID)"
 
 # =============================================================================
-# Step 6: Run E2E tests
+# Step 7: Run E2E tests
 # =============================================================================
 section "Running E2E Tests"
 
