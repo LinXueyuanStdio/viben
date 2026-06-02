@@ -110,6 +110,7 @@ export default defineConfig(() => ({
         trayPopup: fileURLToPath(new URL("./tray-popup.html", import.meta.url)),
         screenshotOverlay: fileURLToPath(new URL("./screenshot-overlay.html", import.meta.url)),
         pagePreviewWindow: fileURLToPath(new URL("./page-preview-window.html", import.meta.url)),
+        petWindow: fileURLToPath(new URL("./pet-window.html", import.meta.url)),
       },
       // Externalize server-side only packages (including deep imports)
       external: (id: string) => {
