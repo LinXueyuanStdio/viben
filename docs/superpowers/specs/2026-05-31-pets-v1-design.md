@@ -47,15 +47,14 @@ viben/
 │   ├── package.json
 │   └── tsconfig.json
 │
-├── packages/core/templates/viben/pets/  # 预设宠物资源
-│   ├── viben-mascot/
-│   │   ├── pet.json
-│   │   ├── spritesheet.webp
-│   │   └── thumbnail.png
-│   ├── pixel-cat/
-│   └── coding-duck/
-│
 ├── apps/desktop/
+│   ├── public/pets/                     # 预设宠物资源
+│   │   ├── viben-mascot/
+│   │   │   ├── pet.json
+│   │   │   ├── spritesheet.webp
+│   │   │   └── thumbnail.png
+│   │   ├── pixel-cat/
+│   │   └── coding-duck/
 │   ├── src-tauri/
 │   │   └── tauri.conf.json              # 新增 pet-window 透明窗口配置
 │   └── src/
