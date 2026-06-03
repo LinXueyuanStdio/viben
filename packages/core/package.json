@@ -106,12 +106,10 @@
     "@types/node": "^22.10.0",
     "@types/qrcode": "^1.5.6",
     "@types/shell-quote": "^1.7.5",
-    "@types/unzipper": "^0.10.11",
     "@types/ws": "^8.18.1",
     "archiver": "^8.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
-    "unzipper": "^0.12.3",
     "vitest": "^4.0.18"
   },
   "optionalDependencies": {

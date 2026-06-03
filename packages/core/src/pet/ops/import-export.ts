@@ -1,4 +1,5 @@
 // packages/core/src/pet/ops/import-export.ts
+import AdmZip from "adm-zip";
 import { createWriteStream, existsSync } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
@@ -31,20 +32,16 @@ export async function importPet(zipPath: string): Promise<Pet> {
     throw new PetError("Zip file too large", "FILE_TOO_LARGE");
   }
 
-  // Dynamic import unzipper
-  const unzipper = await import("unzipper");
-
   // Parse zip to get pet.json
-  const directory = await unzipper.Open.file(zipPath);
-  const petJsonEntry = directory.files.find(
-    (f) => f.path === "pet.json" || f.path.endsWith("/pet.json"),
-  );
+  const zip = new AdmZip(zipPath);
+  const entries = zip.getEntries();
+  const petJsonEntry = entries.find((entry) => entry.entryName === "pet.json" || entry.entryName.endsWith("/pet.json"));
 
   if (!petJsonEntry) {
     throw new PetError("pet.json not found in zip", "INVALID_PET_FORMAT");
   }
 
-  const petJsonContent = await petJsonEntry.buffer();
+  const petJsonContent = petJsonEntry.getData();
   const metadata = JSON.parse(petJsonContent.toString()) as PetMetadata;
 
   if (!metadata.id || !metadata.displayName || !metadata.spritesheetPath) {
@@ -53,9 +50,9 @@ export async function importPet(zipPath: string): Promise<Pet> {
 
   // Calculate total extracted size
   let totalSize = 0;
-  for (const file of directory.files) {
-    if (file.type === "File") {
-      totalSize += file.uncompressedSize;
+  for (const entry of entries) {
+    if (!entry.isDirectory) {
+      totalSize += entry.header.size;
     }
   }
   if (totalSize > PET_LIMITS.MAX_EXTRACTED_SIZE) {
@@ -67,10 +64,10 @@ export async function importPet(zipPath: string): Promise<Pet> {
   await mkdir(petDir, { recursive: true });
 
   // Extract files (with security checks)
-  for (const file of directory.files) {
-    if (file.type !== "File") continue;
+  for (const entry of entries) {
+    if (entry.isDirectory) continue;
 
-    const relativePath = file.path.replace(/^[^/]+\//, ""); // Remove top-level directory
+    const relativePath = entry.entryName.replace(/^[^/]+\//, ""); // Remove top-level directory
     if (!relativePath || !isZipEntrySafe(relativePath)) continue;
     if (!isPathSafe(petDir, relativePath)) continue;
 
@@ -78,7 +75,7 @@ export async function importPet(zipPath: string): Promise<Pet> {
     const targetDir = join(targetPath, "..");
     await mkdir(targetDir, { recursive: true });
 
-    const content = await file.buffer();
+    const content = entry.getData();
     await writeFile(targetPath, content);
   }
 
