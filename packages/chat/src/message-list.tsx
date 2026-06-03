@@ -169,10 +169,12 @@ function CollapsedToolRun({
   tools,
   artifacts,
   onArtifactClick,
+  onExpandSubagent,
 }: {
   tools: ToolWithResult[];
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isExecuting = tools.some((t) => !t.result);
@@ -201,6 +203,7 @@ function CollapsedToolRun({
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
+          onExpandSubagent={onExpandSubagent}
         />
       ))}
     </CollapsedToolGroup>
@@ -214,7 +217,8 @@ function CollapsedToolRun({
 function renderToolsWithCollapsing(
   tools: ToolWithResult[],
   artifacts?: Artifact[],
-  onArtifactClick?: (artifactId: string) => void
+  onArtifactClick?: (artifactId: string) => void,
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void,
 ): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
   let collapsibleRun: ToolWithResult[] = [];
@@ -227,6 +231,7 @@ function renderToolsWithCollapsing(
           tools={collapsibleRun}
           artifacts={artifacts}
           onArtifactClick={onArtifactClick}
+          onExpandSubagent={onExpandSubagent}
         />
       );
     } else if (collapsibleRun.length === 1) {
@@ -243,6 +248,7 @@ function renderToolsWithCollapsing(
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
+          onExpandSubagent={onExpandSubagent}
         />
       );
     }
@@ -267,6 +273,7 @@ function renderToolsWithCollapsing(
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
+          onExpandSubagent={onExpandSubagent}
         />
       );
     }
@@ -387,12 +394,14 @@ const MemoizedToolList = React.memo(function MemoizedToolList({
   tools,
   artifacts,
   onArtifactClick,
+  onExpandSubagent,
 }: {
   tools: ToolWithResult[];
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
 }) {
-  return <>{renderToolsWithCollapsing(tools, artifacts, onArtifactClick)}</>;
+  return <>{renderToolsWithCollapsing(tools, artifacts, onArtifactClick, onExpandSubagent)}</>;
 });
 
 /**
@@ -406,6 +415,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   isRunning,
   artifacts,
   onArtifactClick,
+  onExpandSubagent,
 }: {
   title: string;
   description: string;
@@ -414,6 +424,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   isRunning: boolean;
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
 }) {
   const { t } = useTranslation();
   // Default: collapsed when completed, expanded when running or in progress
@@ -473,7 +484,12 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
           {/* Tool list */}
           {isExpanded && (
             <div className="px-2 pb-2 space-y-1">
-              <MemoizedToolList tools={tools} artifacts={artifacts} onArtifactClick={onArtifactClick} />
+              <MemoizedToolList
+                tools={tools}
+                artifacts={artifacts}
+                onArtifactClick={onArtifactClick}
+                onExpandSubagent={onExpandSubagent}
+              />
             </div>
           )}
         </div>
@@ -1492,6 +1508,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                     isRunning={isStreaming || false}
                     artifacts={artifacts}
                     onArtifactClick={onArtifactClick}
+                    onExpandSubagent={stableOnExpandSubagent}
                   />
                 </div>
               );
