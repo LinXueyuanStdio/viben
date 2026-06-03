@@ -8,9 +8,9 @@ export async function searchCommunityPets(query: string): Promise<CommunityPet[]
   const lowerQuery = query.toLowerCase();
 
   return allPets.filter((pet) => {
-    if (pet.id.toLowerCase().includes(lowerQuery)) return true;
-    if (pet.displayName.toLowerCase().includes(lowerQuery)) return true;
-    if (pet.description.toLowerCase().includes(lowerQuery)) return true;
+    if ((pet.id ?? "").toLowerCase().includes(lowerQuery)) return true;
+    if ((pet.displayName ?? "").toLowerCase().includes(lowerQuery)) return true;
+    if ((pet.description ?? "").toLowerCase().includes(lowerQuery)) return true;
     if (pet.author?.toLowerCase().includes(lowerQuery)) return true;
     if (pet.tags?.some((tag) => tag.toLowerCase().includes(lowerQuery))) return true;
     return false;
