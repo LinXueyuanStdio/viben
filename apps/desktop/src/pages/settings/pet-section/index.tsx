@@ -17,6 +17,8 @@ import {
 } from "./api";
 import type { PetResponse, PetConfigResponse } from "./api";
 import { loadAllBuiltinPets } from "@/lib/pet-loader";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 async function notifyPetWindow() {
   try {
@@ -122,14 +124,16 @@ export function PetSection() {
       {/* 头部 */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Pet 设置</h2>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
+        <div className="flex items-center gap-2">
+          <Switch
+            id="pet-enabled"
             checked={config.enabled}
-            onChange={(e) => handleConfigChange({ enabled: e.target.checked })}
+            onCheckedChange={(checked) => handleConfigChange({ enabled: checked })}
           />
-          <span className="text-sm">启用 Pet</span>
-        </label>
+          <Label htmlFor="pet-enabled" className="text-sm cursor-pointer">
+            启用 Pet
+          </Label>
+        </div>
       </div>
 
       {/* 当前 Pet 预览 */}
