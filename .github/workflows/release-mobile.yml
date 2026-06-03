@@ -168,6 +168,10 @@ jobs:
         shell: bash
         run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
+      - name: Generate mobile app icons
+        working-directory: apps/desktop
+        run: pnpm tauri-mobile-icons
+
       - name: Initialize Android project
         working-directory: apps/desktop
         run: pnpm tauri android init --ci
@@ -550,6 +554,10 @@ jobs:
       - name: Sync version
         shell: bash
         run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
+
+      - name: Generate mobile app icons
+        working-directory: apps/desktop
+        run: pnpm tauri-mobile-icons
 
       - name: Initialize iOS project
         working-directory: apps/desktop
