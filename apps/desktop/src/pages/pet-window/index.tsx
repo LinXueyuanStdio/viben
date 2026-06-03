@@ -1,5 +1,5 @@
 // apps/desktop/src/pages/pet-window/index.tsx
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { PetSprite, type PetConfig } from "@viben/pet";
@@ -18,11 +18,17 @@ interface PetConfigResponse {
 
 async function fetchPetConfig(): Promise<PetConfigResponse | null> {
   try {
+    console.log("[PetWindow] Fetching pet config from:", `${API_BASE}/api/pet/config`);
     const res = await fetch(`${API_BASE}/api/pet/config`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log("[PetWindow] fetchPetConfig failed with status:", res.status);
+      return null;
+    }
     const data = await res.json();
+    console.log("[PetWindow] fetchPetConfig result:", data.config);
     return data.config;
-  } catch {
+  } catch (err) {
+    console.error("[PetWindow] fetchPetConfig error:", err);
     return null;
   }
 }
@@ -44,60 +50,82 @@ const WINDOW_PADDING = 16;
 const WINDOW_SIZE = PET_SIZE + WINDOW_PADDING * 2;
 
 export default function PetWindowPage() {
+  console.log("[PetWindowPage] Component rendering");
+
   const [pet, setPet] = useState<PetConfig | null>(null);
   const [config, setConfig] = useState<PetConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const dragRef = useRef<{ startX: number; startY: number; startWinX: number; startWinY: number } | null>(null);
 
   // Load config and pet
   useEffect(() => {
+    console.log("[PetWindowPage] useEffect triggered, reloadKey:", reloadKey);
     let mounted = true;
 
     async function init() {
+      console.log("[PetWindowPage] init() starting...");
       const cfg = await fetchPetConfig();
-      if (!mounted) return;
+      console.log("[PetWindowPage] Config fetched:", JSON.stringify(cfg, null, 2));
+
+      if (!mounted) {
+        console.log("[PetWindowPage] Component unmounted during fetch, aborting");
+        return;
+      }
 
       setConfig(cfg);
 
       if (!cfg?.enabled || !cfg.current) {
         // Hide window if pet is disabled or not selected
+        console.log("[PetWindowPage] Pet disabled or no current pet selected. enabled:", cfg?.enabled, "current:", cfg?.current);
         const win = getCurrentWindow();
+        console.log("[PetWindowPage] Hiding window...");
         await win.hide();
+        console.log("[PetWindowPage] Window hidden");
         setPet(null);
         setLoading(false);
         return;
       }
 
+      console.log("[PetWindowPage] Pet enabled and selected, loading pet:", cfg.current);
+
       // Load pet
       try {
+        console.log("[PetWindowPage] Calling loadPetFromPublic with:", cfg.current);
         const petData = await loadPetFromPublic(cfg.current);
+        console.log("[PetWindowPage] Pet data loaded:", petData ? "success" : "null");
         if (!mounted) return;
         setPet(petData);
 
         // Position and show window
         const win = getCurrentWindow();
+        console.log("[PetWindowPage] Getting monitors...");
         const monitors = await (await import("@tauri-apps/api/window")).availableMonitors();
+        console.log("[PetWindowPage] Monitors found:", monitors.length);
         const primaryMonitor = monitors[0];
         if (primaryMonitor) {
           const screenWidth = primaryMonitor.size.width;
           const screenHeight = primaryMonitor.size.height;
+          console.log("[PetWindowPage] Screen size:", screenWidth, "x", screenHeight);
           const x = screenWidth - cfg.preferences.position.right - WINDOW_SIZE;
           const y = screenHeight - cfg.preferences.position.bottom - WINDOW_SIZE;
+          console.log("[PetWindowPage] Setting window position to:", x, y);
           await win.setPosition(new PhysicalPosition(x, y));
         }
+        console.log("[PetWindowPage] Showing window...");
         await win.show();
+        console.log("[PetWindowPage] Window shown successfully");
       } catch (err) {
-        console.error("Failed to load pet:", err);
+        console.error("[PetWindowPage] Failed to load pet:", err);
       }
 
       setLoading(false);
+      console.log("[PetWindowPage] init() complete");
     }
 
     init();
 
     return () => {
+      console.log("[PetWindowPage] useEffect cleanup");
       mounted = false;
     };
   }, [reloadKey]);
@@ -113,66 +141,47 @@ export default function PetWindowPage() {
     };
   }, []);
 
-  // Handle window dragging
-  const handlePointerDown = useCallback(async (e: React.PointerEvent) => {
+  // Handle window dragging using Tauri's native drag
+  const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
+    console.log("[PetWindowPage] Mouse down, starting drag");
 
     const win = getCurrentWindow();
-    const pos = await win.outerPosition();
+    // Use Tauri's native window dragging
+    await win.startDragging();
+    console.log("[PetWindowPage] startDragging called");
+  }, []);
 
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startWinX: pos.x,
-      startWinY: pos.y,
+  // Save position when window is moved (after drag ends)
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const savePosition = async () => {
+      const win = getCurrentWindow();
+      const pos = await win.outerPosition();
+      const monitors = await (await import("@tauri-apps/api/window")).availableMonitors();
+      const primaryMonitor = monitors[0];
+
+      if (primaryMonitor) {
+        const screenWidth = primaryMonitor.size.width;
+        const screenHeight = primaryMonitor.size.height;
+        const right = screenWidth - pos.x - WINDOW_SIZE;
+        const bottom = screenHeight - pos.y - WINDOW_SIZE;
+        await updatePetPosition(right, bottom);
+        console.log("[PetWindowPage] Position saved:", { right, bottom });
+      }
     };
-    setIsDragging(true);
-  }, []);
 
-  const handlePointerMove = useCallback(async (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (!drag) return;
+    // Listen for window move events and debounce save
+    const unlisten = listen("tauri://move", () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(savePosition, 500);
+    });
 
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-
-    const win = getCurrentWindow();
-    const newX = drag.startWinX + dx;
-    const newY = drag.startWinY + dy;
-
-    await win.setPosition(new PhysicalPosition(newX, newY));
-  }, []);
-
-  const handlePointerUp = useCallback(async (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    dragRef.current = null;
-
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      // Ignore
-    }
-
-    setIsDragging(false);
-
-    if (!drag) return;
-
-    // Save new position to config
-    const win = getCurrentWindow();
-    const pos = await win.outerPosition();
-    const monitors = await (await import("@tauri-apps/api/window")).availableMonitors();
-    const primaryMonitor = monitors[0];
-
-    if (primaryMonitor) {
-      const screenWidth = primaryMonitor.size.width;
-      const screenHeight = primaryMonitor.size.height;
-      const right = screenWidth - pos.x - WINDOW_SIZE;
-      const bottom = screenHeight - pos.y - WINDOW_SIZE;
-      await updatePetPosition(right, bottom);
-    }
+    return () => {
+      clearTimeout(timeoutId);
+      unlisten.then((fn) => fn());
+    };
   }, []);
 
   if (loading) {
@@ -209,11 +218,9 @@ export default function PetWindowPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        cursor: isDragging ? "grabbing" : "grab",
+        cursor: "grab",
       }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      onMouseDown={handleMouseDown}
     >
       <PetSprite
         pet={pet}
