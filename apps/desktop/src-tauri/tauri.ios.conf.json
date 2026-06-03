@@ -2,6 +2,9 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "externalBin": [],
+    "icon": [
+      "icons/icon.png"
+    ],
     "iOS": {
       "developmentTeam": "PLACEHOLDER"
     }
