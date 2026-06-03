@@ -312,6 +312,9 @@ export function ExecutorChatView({
         title={sheetData?.title || ""}
         subagentType={sheetData?.subagentType}
         messages={sheetData?.messages || []}
+        onExpandSubagent={(title, subagentType, messages) =>
+          setSheetData({ title, subagentType, messages })
+        }
       />
     </>
   );
