@@ -135,10 +135,15 @@ export default function PetWindowPage() {
     };
   }, []);
 
-  // When app is activated (e.g., clicking dock icon), focus main window instead
+  // Track whether user is interacting with pet (to avoid focus redirect during interaction)
+  const isInteractingRef = useRef(false);
+
+  // When app is activated (e.g., clicking dock icon), focus main window instead.
+  // But NOT when the user is directly interacting with the pet (drag/click).
   useEffect(() => {
     const handleFocus = async () => {
-      // When pet window gets focus, redirect focus to main window
+      if (isInteractingRef.current) return;
+
       const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
       const mainWindow = await WebviewWindow.getByLabel("main");
       if (mainWindow) {
@@ -154,6 +159,9 @@ export default function PetWindowPage() {
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
+    // Mark as interacting so focus redirect is suppressed
+    isInteractingRef.current = true;
+
     const win = getCurrentWindow();
     const pos = await win.outerPosition();
 
@@ -163,6 +171,11 @@ export default function PetWindowPage() {
 
     // Use Tauri's native window dragging
     await win.startDragging();
+
+    // After drag ends (startDragging resolves), clear interacting flag after a short delay
+    setTimeout(() => {
+      isInteractingRef.current = false;
+    }, 300);
   }, []);
 
   // Listen to tauri://move events to detect drag direction
@@ -244,10 +257,12 @@ export default function PetWindowPage() {
 
   // Hover interaction
   const handleMouseEnter = useCallback(() => {
+    isInteractingRef.current = true;
     if (!isDragging) setInteraction("hover");
   }, [isDragging]);
 
   const handleMouseLeave = useCallback(() => {
+    isInteractingRef.current = false;
     if (!isDragging) setInteraction("idle");
   }, [isDragging]);
 
