@@ -78,6 +78,14 @@ echo -e "${YELLOW}Building workspace packages...${NC}"
 pnpm turbo build --filter=@viben/desktop^...
 echo ""
 
+# Generate mobile icons before initializing the native project so Tauri copies
+# the current Android/iOS icon assets into the generated project.
+echo -e "${YELLOW}Generating mobile app icons...${NC}"
+cd apps/desktop
+pnpm tauri-mobile-icons
+cd "$PROJECT_ROOT"
+echo ""
+
 # Initialize iOS project
 echo -e "${YELLOW}Initializing iOS project...${NC}"
 cd apps/desktop

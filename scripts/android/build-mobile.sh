@@ -12,6 +12,10 @@
 #   - ANDROID_HOME: Android SDK path
 #   - NDK_HOME: Android NDK path
 #   - VERSION: Version to build (optional)
+#   - ANDROID_KEYSTORE_BASE64: Base64-encoded release keystore (optional)
+#   - ANDROID_KEY_ALIAS: Release key alias (required when signing)
+#   - ANDROID_KEY_PASSWORD: Release key and store password (required when signing)
+#   - RUNNER_TEMP: Temporary directory for GitHub Actions keystore material (optional)
 
 set -e
 
@@ -80,14 +84,91 @@ echo -e "${YELLOW}Building workspace packages...${NC}"
 pnpm turbo build --filter=@viben/desktop^...
 echo ""
 
+# Generate mobile icons before initializing the native project so Tauri copies
+# the current Android/iOS icon assets into the generated project.
+echo -e "${YELLOW}Generating mobile app icons...${NC}"
+cd apps/desktop
+pnpm tauri-mobile-icons
+cd "$PROJECT_ROOT"
+echo ""
+
 # Initialize Android project
 echo -e "${YELLOW}Initializing Android project...${NC}"
 cd apps/desktop
 pnpm tauri android init --ci
 echo ""
 
+# Configure Android safe area handling
+echo -e "${YELLOW}Configuring Android safe area handling...${NC}"
+cd "$PROJECT_ROOT"
+./scripts/android/configure-safe-area.sh apps/desktop/src-tauri/gen/android
+echo ""
+
+# Configure Android release signing when CI secrets are available.
+if [[ -n "$ANDROID_KEYSTORE_BASE64" || -n "$ANDROID_KEY_ALIAS" || -n "$ANDROID_KEY_PASSWORD" ]]; then
+  echo -e "${YELLOW}Configuring Android release signing...${NC}"
+
+  if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEY_ALIAS" || -z "$ANDROID_KEY_PASSWORD" ]]; then
+    echo -e "${RED}Error: ANDROID_KEYSTORE_BASE64, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD must all be set for signing${NC}"
+    exit 1
+  fi
+
+  ANDROID_PROJECT_DIR="$PROJECT_ROOT/apps/desktop/src-tauri/gen/android"
+  KEYSTORE_FILE="${RUNNER_TEMP:-/tmp}/viben-release.keystore"
+
+  cd "$ANDROID_PROJECT_DIR"
+  echo "keyAlias=$ANDROID_KEY_ALIAS" > keystore.properties
+  echo "password=$ANDROID_KEY_PASSWORD" >> keystore.properties
+  base64 -d <<< "$ANDROID_KEYSTORE_BASE64" > "$KEYSTORE_FILE"
+  echo "storeFile=$KEYSTORE_FILE" >> keystore.properties
+
+  if ! grep -q "import java.util.Properties" app/build.gradle.kts; then
+    sed -i '1s/^/import java.util.Properties\n/' app/build.gradle.kts
+  fi
+  if ! grep -q "import java.io.FileInputStream" app/build.gradle.kts; then
+    sed -i '1s/^/import java.io.FileInputStream\n/' app/build.gradle.kts
+  fi
+
+  if ! grep -q "Release signing configuration" app/build.gradle.kts; then
+    cat >> app/build.gradle.kts << 'GRADLE_PATCH'
+
+// Release signing configuration
+android.signingConfigs {
+    create("release") {
+        val keystorePropertiesFile = rootProject.file("keystore.properties")
+        val keystoreProperties = Properties()
+        if (keystorePropertiesFile.exists()) {
+            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+        }
+        keyAlias = keystoreProperties["keyAlias"] as String?
+        keyPassword = keystoreProperties["password"] as String?
+        storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+        storePassword = keystoreProperties["password"] as String?
+    }
+}
+
+android.buildTypes.getByName("release") {
+    signingConfig = android.signingConfigs.getByName("release")
+}
+GRADLE_PATCH
+  fi
+
+  echo "Android signing configured"
+  echo "=== keystore.properties ==="
+  sed 's/password=.*/password=***/' keystore.properties
+  echo "=== build.gradle.kts head ==="
+  head -10 app/build.gradle.kts
+  echo "=== build.gradle.kts tail ==="
+  tail -20 app/build.gradle.kts
+  echo ""
+else
+  echo -e "${YELLOW}Android signing secrets not provided; building unsigned APK${NC}"
+  echo ""
+fi
+
 # Build Android APK
 echo -e "${YELLOW}Building Android APK...${NC}"
+cd "$PROJECT_ROOT/apps/desktop"
 pnpm tauri android build --apk true --ci
 echo ""
 
