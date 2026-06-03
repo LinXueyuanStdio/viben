@@ -6,11 +6,12 @@ import { getPetDir, getPetMetadataPath, PET_LIMITS } from "../paths";
 import type { CommunityPet, PetSource } from "./types";
 import { PetError } from "./types";
 import { readSources, getSource } from "./sources";
+import { proxyFetch } from "../../http";
 
 /** 从 Codex Pet Share 获取列表 */
 async function fetchFromPetShare(source: PetSource): Promise<CommunityPet[]> {
   const url = `${source.url}/api/pets?pageSize=100`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
+  const response = await proxyFetch(url, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
   if (!response.ok) {
     throw new PetError(`Failed to fetch from ${source.name}: ${response.status}`, "DOWNLOAD_FAILED");
   }
@@ -27,20 +28,34 @@ async function fetchFromPetShare(source: PetSource): Promise<CommunityPet[]> {
   }));
 }
 
+/** j20 Hatchery API 响应格式 */
+interface HatcheryPet {
+  id: string;
+  displayName?: string;
+  description?: string;
+  authorLabel?: string;
+  keywords?: string;
+  petJsonUrl?: string;
+  previewUrl?: string;
+}
+
 /** 从 j20 Hatchery 获取列表 */
 async function fetchFromHatchery(source: PetSource): Promise<CommunityPet[]> {
-  const response = await fetch(source.url, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
+  const response = await proxyFetch(source.url, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
   if (!response.ok) {
     throw new PetError(`Failed to fetch from ${source.name}: ${response.status}`, "DOWNLOAD_FAILED");
   }
-  const data = await response.json() as Array<{ id: string; name: string; description?: string; author?: string; tags?: string[]; url: string }>;
-  return data.map((p) => ({
+  const data = await response.json() as { count?: number; pets?: HatcheryPet[] } | HatcheryPet[];
+  // j20 API 返回 {count, pets} 格式
+  const pets = Array.isArray(data) ? data : (data.pets ?? []);
+  return pets.map((p) => ({
     id: p.id,
-    displayName: p.name,
+    displayName: p.displayName ?? p.id,
     description: p.description ?? "",
-    author: p.author,
-    tags: p.tags,
-    downloadUrl: p.url,
+    author: p.authorLabel,
+    tags: p.keywords?.split(",").map((t) => t.trim()).filter(Boolean),
+    thumbnailUrl: p.previewUrl,
+    downloadUrl: p.petJsonUrl?.replace(/\/pet\.json.*$/, "") ?? "",
     source: source.name,
   }));
 }
@@ -129,7 +144,7 @@ export async function installPet(petId: string, sourceName: string): Promise<Pet
     ? `${communityPet.downloadUrl}pet.json`
     : `${communityPet.downloadUrl}/pet.json`;
 
-  const metadataResponse = await fetch(petJsonUrl, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
+  const metadataResponse = await proxyFetch(petJsonUrl, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
   if (!metadataResponse.ok) {
     throw new PetError(`Failed to download pet.json: ${metadataResponse.status}`, "DOWNLOAD_FAILED");
   }
@@ -145,7 +160,7 @@ export async function installPet(petId: string, sourceName: string): Promise<Pet
     ? `${communityPet.downloadUrl}${metadata.spritesheetPath}`
     : `${communityPet.downloadUrl}/${metadata.spritesheetPath}`;
 
-  const spritesheetResponse = await fetch(spritesheetUrl, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
+  const spritesheetResponse = await proxyFetch(spritesheetUrl, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
   if (!spritesheetResponse.ok) {
     throw new PetError(`Failed to download spritesheet: ${spritesheetResponse.status}`, "DOWNLOAD_FAILED");
   }
