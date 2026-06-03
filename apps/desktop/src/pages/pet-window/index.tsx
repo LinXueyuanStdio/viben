@@ -2,7 +2,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { PetSprite, type PetConfig, type PetInteraction } from "@viben/pet";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { PetSprite, type PetConfig, type PetInteraction, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
 import { loadPetFromPublic } from "@/lib/pet-loader";
 
 const API_BASE = "http://127.0.0.1:18790";
@@ -78,9 +79,37 @@ export default function PetWindowPage() {
         return;
       }
 
-      // Load pet
+      // Load pet - 先尝试从 public/pets 加载（内置），失败则从 Gateway 获取
       try {
-        const petData = await loadPetFromPublic(cfg.current);
+        let petData: PetConfig;
+        try {
+          petData = await loadPetFromPublic(cfg.current);
+        } catch {
+          // 不是内置 Pet，从 Gateway 获取已安装 Pet 的信息
+          const petRes = await fetch(`${API_BASE}/api/pet/show/${encodeURIComponent(cfg.current)}`);
+          if (!petRes.ok) throw new Error("Pet not found");
+          const { pet: petInfo } = await petRes.json();
+          const spritesheetSrc = petInfo.spritesheet_url.startsWith("/")
+            ? convertFileSrc(petInfo.spritesheet_url)
+            : petInfo.spritesheet_url;
+          petData = {
+            id: petInfo.id,
+            name: petInfo.metadata.display_name,
+            description: petInfo.metadata.description,
+            accent: "#6366f1",
+            greeting: `Hi! I'm ${petInfo.metadata.display_name}.`,
+            spritesheet: spritesheetSrc,
+            atlas: {
+              cols: 8,
+              rows: 9,
+              cellWidth: 192,
+              cellHeight: 208,
+              animations: STANDARD_ANIMATIONS,
+            },
+            ambient: PET_DEFAULTS.ambient,
+            idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
+          };
+        }
         if (!mounted) return;
         setPet(petData);
 
@@ -135,8 +164,18 @@ export default function PetWindowPage() {
     };
   }, []);
 
-  // Track whether user is interacting with pet (to avoid focus redirect during interaction)
+  // Track whether user is interacting with pet (to avoid focus redirect during interaction).
+  // Use pointerdown on document (capture phase) to set the flag BEFORE the focus event fires.
   const isInteractingRef = useRef(false);
+
+  useEffect(() => {
+    const markInteracting = () => {
+      isInteractingRef.current = true;
+    };
+    // Capture phase ensures this fires before the focus event
+    document.addEventListener("pointerdown", markInteracting, true);
+    return () => document.removeEventListener("pointerdown", markInteracting, true);
+  }, []);
 
   // When app is activated (e.g., clicking dock icon), focus main window instead.
   // But NOT when the user is directly interacting with the pet (drag/click).
