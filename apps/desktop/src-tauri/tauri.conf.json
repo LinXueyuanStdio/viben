@@ -62,6 +62,7 @@
         "skipTaskbar": true,
         "resizable": false,
         "shadow": false,
+        "focus": false,
         "url": "/pet-window.html"
       }
     ],
