@@ -16,6 +16,7 @@ import {
   removePet,
 } from "./api";
 import type { PetResponse, PetConfigResponse } from "./api";
+import { loadAllBuiltinPets } from "@/lib/pet-loader";
 
 async function notifyPetWindow() {
   try {
@@ -38,8 +39,32 @@ export function PetSection() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [petData, configData] = await Promise.all([fetchPetList(), fetchPetConfig()]);
-      setPets(petData.pets);
+      const [petData, configData, builtinPets] = await Promise.all([
+        fetchPetList(),
+        fetchPetConfig(),
+        loadAllBuiltinPets(),
+      ]);
+      // 合并内置 Pet 和已安装 Pet（去重）
+      const installedIds = new Set(petData.pets.map((p) => p.id));
+      const builtinPetsResponse: PetResponse[] = builtinPets
+        .filter((p) => !installedIds.has(p.id))
+        .map((p) => ({
+          id: p.id,
+          metadata: {
+            id: p.id,
+            display_name: p.display_name,
+            description: p.description,
+            spritesheet_path: p.spritesheet_url,
+            author: p.author,
+            tags: [],
+            source: "builtin",
+            source_url: "",
+          },
+          local_path: "",
+          spritesheet_url: p.spritesheet_url,
+          is_builtin: true,
+        }));
+      setPets([...builtinPetsResponse, ...petData.pets]);
       setConfig(configData.config);
     } catch (e) {
       console.error("Failed to load pet data:", e);
