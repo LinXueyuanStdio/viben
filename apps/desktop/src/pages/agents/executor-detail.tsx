@@ -302,6 +302,9 @@ export function ExecutorDetailPage() {
       title={sheetData?.title || ""}
       subagentType={sheetData?.subagentType}
       messages={sheetData?.messages || []}
+      onExpandSubagent={(title, subagentType, msgs) =>
+        setSheetData({ title, subagentType, messages: msgs })
+      }
     />
     <PageWrapper className="h-full flex flex-col">
       {/* Breadcrumb Header */}
