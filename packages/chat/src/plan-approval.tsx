@@ -99,7 +99,7 @@ export function PlanApproval({
       animate={{ opacity: 1, y: 0 }}
       exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
-      className={cn("flex gap-3", className)}
+      className={cn("flex gap-3 w-full min-w-0", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
         {isCancelled && !isPending ? (
