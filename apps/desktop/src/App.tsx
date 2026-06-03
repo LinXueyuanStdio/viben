@@ -122,14 +122,21 @@ function App() {
   // Memoize platform detection to avoid repeated calls during re-renders
   const mobile = useMemo(() => {
     try {
-      return isMobile();
+      const result = isMobile();
+      console.log("[App] isMobile() returned:", result);
+      return result;
     } catch (e) {
       console.error("[App] isMobile() failed:", e);
       // Fallback: check user agent
       const ua = navigator.userAgent.toLowerCase();
-      return ua.includes("android") || ua.includes("iphone") || ua.includes("ipad");
+      const fallbackResult = ua.includes("android") || ua.includes("iphone") || ua.includes("ipad");
+      console.log("[App] isMobile() fallback result:", fallbackResult, "ua:", ua);
+      return fallbackResult;
     }
   }, []);
+
+  // Log whether PetWindowManager will be rendered
+  console.log("[App] mobile:", mobile, "=> PetWindowManager will be rendered:", !mobile);
 
   return (
     <AppErrorBoundary>
