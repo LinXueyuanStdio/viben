@@ -33,8 +33,8 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
   const filteredPets = searchQuery
     ? pets.filter(
         (p) =>
-          p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.display_name.toLowerCase().includes(searchQuery.toLowerCase())
+          p.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : pets;
 
@@ -91,9 +91,9 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
               className="rounded-lg border p-2 flex flex-col items-center gap-1"
             >
               <div className="h-12 w-12 rounded bg-muted flex items-center justify-center text-lg">
-                {pet.display_name.charAt(0)}
+                {(pet.display_name ?? pet.id ?? "?").charAt(0)}
               </div>
-              <span className="text-xs truncate w-full text-center">{pet.display_name}</span>
+              <span className="text-xs truncate w-full text-center">{pet.display_name ?? pet.id}</span>
               <button
                 className="mt-1 flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground disabled:opacity-50"
                 disabled={installing === pet.id}
