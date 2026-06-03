@@ -33,8 +33,8 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
   const filteredPets = searchQuery
     ? pets.filter(
         (p) =>
-          p.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
+          (p.id ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.display_name ?? "").toLowerCase().includes(searchQuery.toLowerCase())
       )
     : pets;
 
@@ -94,9 +94,18 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
               key={`${pet.source}-${pet.id}`}
               className="rounded-lg border p-2 flex flex-col items-center gap-1"
             >
-              <div className="h-12 w-12 rounded bg-muted flex items-center justify-center text-lg">
-                {(pet.display_name ?? pet.id ?? "?").charAt(0)}
-              </div>
+              {pet.thumbnail_url ? (
+                <img
+                  src={pet.thumbnail_url}
+                  alt={pet.display_name ?? pet.id}
+                  className="h-12 w-12 rounded object-contain bg-muted"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded bg-muted flex items-center justify-center text-lg">
+                  {(pet.display_name ?? pet.id ?? "?").charAt(0)}
+                </div>
+              )}
               <span className="text-xs truncate w-full text-center">{pet.display_name ?? pet.id}</span>
               <button
                 className="mt-1 flex items-center gap-1 rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground disabled:opacity-50"
