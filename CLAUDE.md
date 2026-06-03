@@ -1,6 +1,7 @@
 # Guidelines
 
 生成 spec 时使用中文
+编辑文件时使用绝对路径
 
 ## Core Architecture
 
