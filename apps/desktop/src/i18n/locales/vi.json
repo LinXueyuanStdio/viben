@@ -529,7 +529,8 @@
       "setup": "Setup",
       "terminalFonts": "Terminal Fonts",
       "overlay": "Overlay",
-      "voice": "Voice"
+      "voice": "Voice",
+      "pet": "Thú cưng"
     },
     "terminalFonts": {
       "description": "Customize terminal font appearance, cursor behavior, and display settings",

@@ -540,7 +540,8 @@
       "setup": "设置向导",
       "terminalFonts": "终端字体",
       "overlay": "覆盖层",
-      "voice": "语音交互"
+      "voice": "语音交互",
+      "pet": "虚拟宠物"
     },
     "terminalFonts": {
       "description": "自定义终端字体外观、光标行为和显示设置",
@@ -5973,7 +5974,7 @@
     "pages": "页面",
     "createPage": "创建页面",
     "createSubpage": "创建子页面",
-    "openInNewTab": "在新标签页打开",
+    "openInNewTab": "在新标签页中打开",
     "createPageDescription": "在工作空间中创建新页面",
     "createSubpageDescription": "在 {{parent}} 下创建子页面",
     "createSuccess": "页面创建成功",
@@ -6046,7 +6047,6 @@
     "pageWidthFull": "全宽",
     "showToc": "显示目录",
     "editConfig": "编辑页面配置",
-    "openInNewTab": "在新标签页中打开",
     "openInNewWindow": "在新窗口中打开",
     "openExternal": "在浏览器中打开",
     "fullscreen": "全屏",

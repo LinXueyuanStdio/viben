@@ -15,13 +15,12 @@
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { ClientSideToolOptions } from "../../../services/client-tool-completion";
+import { z } from "zod";
 import { ClientToolCancelledError, clientToolCompletionRegistry } from "../../../services/client-tool-completion";
 import { registerSdkMcpServer } from "../sdk-mcp-registry";
 
 registerSdkMcpServer("presentation", (sdk, context) => {
   const { createSdkMcpServer, tool } = sdk;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const z = require("zod");
 
   const sessionId = context?.sessionId;
 

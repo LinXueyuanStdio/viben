@@ -7,13 +7,12 @@
  */
 
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { ClientToolCancelledError, clientToolCompletionRegistry } from "../../../services/client-tool-completion";
 import { registerSdkMcpServer } from "../sdk-mcp-registry";
 
 registerSdkMcpServer("gui_action", (sdk, context) => {
   const { createSdkMcpServer, tool } = sdk;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const z = require("zod");
 
   const sessionId = context?.sessionId;
 
@@ -44,7 +43,7 @@ registerSdkMcpServer("gui_action", (sdk, context) => {
         "执行桌面应用的 GUI action。使用 list_actions 查看当前可用 action，使用 get_action_detail 查看 action 详情和参数定义。内置 action：list_actions, get_action_detail, read_window, navigate_to。",
         {
           action: z.string().describe("完整 action 名称。内置 action 无需前缀，自定义 action 使用 namespace.name 格式（如 chat.send_message）"),
-          payload: z.record(z.unknown()).optional().describe("action 输入参数，具体结构由 get_action_detail 返回的 input_schema 定义"),
+          payload: z.record(z.string(), z.unknown()).optional().describe("action 输入参数，具体结构由 get_action_detail 返回的 input_schema 定义"),
         },
         async (args) => {
           const { action } = args as { action: string; payload?: Record<string, unknown> };

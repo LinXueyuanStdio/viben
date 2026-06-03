@@ -540,7 +540,8 @@
       "setup": "Setup",
       "terminalFonts": "Terminal Fonts",
       "overlay": "Overlay",
-      "voice": "Voice"
+      "voice": "Voice",
+      "pet": "Pet"
     },
     "terminalFonts": {
       "description": "Customize terminal font appearance, cursor behavior, and display settings",
@@ -6046,7 +6047,6 @@
     "pageWidthFull": "Full",
     "showToc": "Show Table of Contents",
     "editConfig": "Edit Page Settings",
-    "openInNewTab": "Open in New Tab",
     "openInNewWindow": "Open in New Window",
     "openExternal": "Open in Browser",
     "fullscreen": "Fullscreen",

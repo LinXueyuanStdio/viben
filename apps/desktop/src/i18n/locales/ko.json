@@ -529,7 +529,8 @@
       "setup": "Setup",
       "terminalFonts": "Terminal Fonts",
       "overlay": "Overlay",
-      "voice": "Voice"
+      "voice": "Voice",
+      "pet": "펫"
     },
     "terminalFonts": {
       "description": "Customize terminal font appearance, cursor behavior, and display settings",
@@ -5579,7 +5580,7 @@
     "pages": "Pages",
     "createPage": "Create Page",
     "createSubpage": "Create Subpage",
-    "openInNewTab": "Open in New Tab",
+    "openInNewTab": "새 탭에서 열기",
     "createPageDescription": "Create a new page in the workspace",
     "createSubpageDescription": "Create a new subpage under {{parent}}",
     "createSuccess": "Page created successfully",
@@ -5647,7 +5648,6 @@
     "pageWidthFull": "전체",
     "showToc": "목차 표시",
     "editConfig": "페이지 설정 편집",
-    "openInNewTab": "새 탭에서 열기",
     "openInNewWindow": "새 창에서 열기",
     "openExternal": "브라우저에서 열기",
     "fullscreen": "전체 화면",
