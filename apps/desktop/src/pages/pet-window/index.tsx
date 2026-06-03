@@ -44,8 +44,8 @@ const WINDOW_PADDING = 16;
 const WINDOW_SIZE = PET_SIZE + WINDOW_PADDING * 2;
 
 // Drag detection thresholds
-const DRAG_GESTURE_MIN_PX = 10;
-const DRAG_AXIS_BIAS = 1.5;
+const DRAG_GESTURE_MIN_PX = 5;
+const DRAG_AXIS_BIAS = 1.3;
 
 export default function PetWindowPage() {
   const [pet, setPet] = useState<PetConfig | null>(null);
@@ -55,9 +55,10 @@ export default function PetWindowPage() {
   const [interaction, setInteraction] = useState<PetInteraction>("idle");
   const [isDragging, setIsDragging] = useState(false);
 
-  // Track window position for drag direction detection
-  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  // Track positions for drag direction detection
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load config and pet
   useEffect(() => {
@@ -134,108 +135,112 @@ export default function PetWindowPage() {
     };
   }, []);
 
-  // Handle window dragging
+  // When app is activated (e.g., clicking dock icon), focus main window instead
+  useEffect(() => {
+    const handleFocus = async () => {
+      // When pet window gets focus, redirect focus to main window
+      const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+      const mainWindow = await WebviewWindow.getByLabel("main");
+      if (mainWindow) {
+        await mainWindow.setFocus();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
+
+  // Handle window dragging start
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
-    setIsDragging(true);
-
     const win = getCurrentWindow();
     const pos = await win.outerPosition();
+
     dragStartPosRef.current = { x: pos.x, y: pos.y };
     lastPosRef.current = { x: pos.x, y: pos.y };
+    setIsDragging(true);
 
     // Use Tauri's native window dragging
     await win.startDragging();
   }, []);
 
-  // Detect drag direction from window movement
+  // Listen to tauri://move events to detect drag direction
   useEffect(() => {
-    if (!isDragging) return;
+    let saveTimeoutId: ReturnType<typeof setTimeout>;
 
-    let animationFrame: number;
+    const handleMove = async (event: { payload: { x: number; y: number } }) => {
+      const { x, y } = event.payload;
+      const lastPos = lastPosRef.current;
 
-    const detectDirection = async () => {
-      const win = getCurrentWindow();
-      const pos = await win.outerPosition();
-      const startPos = dragStartPosRef.current;
+      // We're moving, so we're dragging
+      if (!isDragging) {
+        setIsDragging(true);
+      }
 
-      if (startPos) {
-        const dx = pos.x - startPos.x;
-        const dy = pos.y - startPos.y;
+      // Clear any pending idle timeout
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = null;
+      }
 
+      // Detect direction based on movement delta from last position
+      if (lastPos) {
+        const dx = x - lastPos.x;
+        const dy = y - lastPos.y;
         const absX = Math.abs(dx);
         const absY = Math.abs(dy);
 
         if (absX >= DRAG_GESTURE_MIN_PX || absY >= DRAG_GESTURE_MIN_PX) {
-          let dir: PetInteraction = "idle";
+          let dir: PetInteraction = interaction;
 
           if (absX >= absY * DRAG_AXIS_BIAS) {
             dir = dx > 0 ? "drag-right" : "drag-left";
           } else if (absY >= absX * DRAG_AXIS_BIAS) {
-            dir = dy < 0 ? "drag-up" : "drag-down";
+            dir = dy > 0 ? "drag-down" : "drag-up";
           }
 
-          if (dir !== "idle") {
+          if (dir !== interaction) {
             setInteraction(dir);
           }
         }
       }
 
-      lastPosRef.current = { x: pos.x, y: pos.y };
-      animationFrame = requestAnimationFrame(detectDirection);
-    };
+      lastPosRef.current = { x, y };
 
-    animationFrame = requestAnimationFrame(detectDirection);
-
-    return () => {
-      cancelAnimationFrame(animationFrame);
-    };
-  }, [isDragging]);
-
-  // Reset interaction when drag ends (detect via mouse up on document)
-  useEffect(() => {
-    const handleMouseUp = () => {
-      if (isDragging) {
+      // Set idle timeout - if no movement for 150ms, consider drag ended
+      idleTimeoutRef.current = setTimeout(() => {
         setIsDragging(false);
         setInteraction("idle");
         dragStartPosRef.current = null;
-      }
+        lastPosRef.current = null;
+      }, 150);
+
+      // Debounce save position
+      clearTimeout(saveTimeoutId);
+      saveTimeoutId = setTimeout(async () => {
+        const monitors = await (await import("@tauri-apps/api/window")).availableMonitors();
+        const primaryMonitor = monitors[0];
+        if (primaryMonitor) {
+          const screenWidth = primaryMonitor.size.width;
+          const screenHeight = primaryMonitor.size.height;
+          const right = screenWidth - x - WINDOW_SIZE;
+          const bottom = screenHeight - y - WINDOW_SIZE;
+          await updatePetPosition(right, bottom);
+        }
+      }, 500);
     };
 
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
-  }, [isDragging]);
-
-  // Save position when window is moved (debounced)
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const savePosition = async () => {
-      const win = getCurrentWindow();
-      const pos = await win.outerPosition();
-      const monitors = await (await import("@tauri-apps/api/window")).availableMonitors();
-      const primaryMonitor = monitors[0];
-
-      if (primaryMonitor) {
-        const screenWidth = primaryMonitor.size.width;
-        const screenHeight = primaryMonitor.size.height;
-        const right = screenWidth - pos.x - WINDOW_SIZE;
-        const bottom = screenHeight - pos.y - WINDOW_SIZE;
-        await updatePetPosition(right, bottom);
-      }
-    };
-
-    const unlisten = listen("tauri://move", () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(savePosition, 500);
-    });
+    const unlisten = listen<{ x: number; y: number }>("tauri://move", handleMove);
 
     return () => {
-      clearTimeout(timeoutId);
+      clearTimeout(saveTimeoutId);
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
       unlisten.then((fn) => fn());
     };
-  }, []);
+  }, [isDragging, interaction]);
 
   // Hover interaction
   const handleMouseEnter = useCallback(() => {
