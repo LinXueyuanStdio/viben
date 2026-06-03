@@ -13,6 +13,7 @@ import {
   GlobalBreadcrumbShell,
   NavigationShellProvider,
 } from "@/components/navigation/navigation-shell";
+import { ActionNavigationHandlerProvider } from "@/components/action-system";
 import { TabRouterBridge } from "@/components/navigation/tab-router-bridge";
 
 export function AppLayout() {
@@ -44,6 +45,7 @@ export function AppLayout() {
     <NavigationShellProvider>
       <div className="flex h-screen flex-col">
         <TabRouterBridge />
+        <ActionNavigationHandlerProvider />
         {/* Global Tab Bar at top */}
         <GlobalTabBar />
 
