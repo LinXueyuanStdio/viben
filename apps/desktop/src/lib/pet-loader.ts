@@ -1,6 +1,6 @@
 import type { PetConfig } from "@viben/pet";
 import { STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
-import { readDir, BaseDirectory } from "@tauri-apps/plugin-fs";
+import { readDir } from "@tauri-apps/plugin-fs";
 import { resolveResource } from "@tauri-apps/api/path";
 
 interface RawPetJson {
@@ -24,17 +24,24 @@ const DEFAULT_GREETINGS: Record<string, string> = {
 };
 
 export async function loadPetFromPublic(petId: string): Promise<PetConfig> {
+  console.log("[pet-loader] loadPetFromPublic called with petId:", petId);
   const configUrl = `/pets/${petId}/pet.json`;
+  console.log("[pet-loader] Fetching pet config from:", configUrl);
 
   const response = await fetch(configUrl);
+  console.log("[pet-loader] Fetch response status:", response.status, response.ok);
   if (!response.ok) {
-    throw new Error(`Failed to load pet "${petId}": ${response.status}`);
+    const error = new Error(`Failed to load pet "${petId}": ${response.status}`);
+    console.error("[pet-loader] Failed to load pet:", error);
+    throw error;
   }
 
   const raw = (await response.json()) as RawPetJson;
+  console.log("[pet-loader] Raw pet JSON:", JSON.stringify(raw, null, 2));
   const spritesheetUrl = `/pets/${petId}/${raw.spritesheetPath}`;
+  console.log("[pet-loader] Spritesheet URL:", spritesheetUrl);
 
-  return {
+  const petConfig: PetConfig = {
     id: raw.id,
     name: raw.displayName,
     description: raw.description,
@@ -51,6 +58,9 @@ export async function loadPetFromPublic(petId: string): Promise<PetConfig> {
     ambient: PET_DEFAULTS.ambient,
     idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
   };
+
+  console.log("[pet-loader] Returning pet config:", JSON.stringify(petConfig, null, 2));
+  return petConfig;
 }
 
 /** 动态扫描 public/pets 目录获取内置 Pet ID 列表 */
