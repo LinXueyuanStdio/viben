@@ -48,16 +48,19 @@ async function fetchFromHatchery(source: PetSource): Promise<CommunityPet[]> {
   const data = await response.json() as { count?: number; pets?: HatcheryPet[] } | HatcheryPet[];
   // j20 API 返回 {count, pets} 格式
   const pets = Array.isArray(data) ? data : (data.pets ?? []);
-  return pets.map((p) => ({
-    id: p.id,
-    displayName: p.displayName ?? p.id,
-    description: p.description ?? "",
-    author: p.authorLabel,
-    tags: p.keywords?.split(",").map((t) => t.trim()).filter(Boolean),
-    thumbnailUrl: p.previewUrl,
-    downloadUrl: p.petJsonUrl?.replace(/\/pet\.json.*$/, "") ?? "",
-    source: source.name,
-  }));
+  return pets
+    .filter((p) => p.id && typeof p.id === "string") // 过滤无效数据
+    .map((p) => ({
+      id: p.id,
+      displayName: p.displayName ?? p.id,
+      description: p.description ?? "",
+      author: p.authorLabel,
+      tags: p.keywords?.split(",").map((t) => t.trim()).filter(Boolean),
+      thumbnailUrl: p.previewUrl,
+      // 保存完整的 pet.json URL，安装时直接使用
+      downloadUrl: p.petJsonUrl ?? "",
+      source: source.name,
+    }));
 }
 
 /** 从单个来源获取 Pet 列表 */
@@ -142,9 +145,13 @@ export async function installPet(petId: string, sourceName: string): Promise<Pet
   }
 
   // 下载 pet.json
-  const petJsonUrl = communityPet.downloadUrl.endsWith("/")
-    ? `${communityPet.downloadUrl}pet.json`
-    : `${communityPet.downloadUrl}/pet.json`;
+  // downloadUrl 可能是完整的 pet.json URL（j20）或基础目录 URL
+  let petJsonUrl = communityPet.downloadUrl;
+  if (!petJsonUrl.includes("pet.json")) {
+    petJsonUrl = petJsonUrl.endsWith("/")
+      ? `${petJsonUrl}pet.json`
+      : `${petJsonUrl}/pet.json`;
+  }
 
   const metadataResponse = await proxyFetch(petJsonUrl, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
   if (!metadataResponse.ok) {
@@ -158,9 +165,27 @@ export async function installPet(petId: string, sourceName: string): Promise<Pet
   }
 
   // 下载 spritesheet
-  const spritesheetUrl = communityPet.downloadUrl.endsWith("/")
-    ? `${communityPet.downloadUrl}${metadata.spritesheetPath}`
-    : `${communityPet.downloadUrl}/${metadata.spritesheetPath}`;
+  // 从 pet.json URL 推导出 spritesheet URL
+  let spritesheetUrl: string;
+  if (petJsonUrl.includes("firebasestorage.googleapis.com")) {
+    // Firebase Storage: 替换文件名，保留查询参数
+    // pet.json URL: .../o/path%2Fpet.json?alt=media&token=xxx
+    // spritesheet URL: .../o/path%2Fspritesheet.webp?alt=media
+    spritesheetUrl = petJsonUrl.replace(
+      /pet\.json\?alt=media.*$/,
+      `${encodeURIComponent(metadata.spritesheetPath)}?alt=media`
+    );
+  } else {
+    // 普通 URL: 从基础目录拼接
+    let baseUrl = petJsonUrl;
+    if (baseUrl.includes("pet.json")) {
+      baseUrl = baseUrl.replace(/\/pet\.json.*$/, "");
+    }
+    if (!baseUrl.endsWith("/")) {
+      baseUrl += "/";
+    }
+    spritesheetUrl = `${baseUrl}${metadata.spritesheetPath}`;
+  }
 
   const spritesheetResponse = await proxyFetch(spritesheetUrl, { signal: AbortSignal.timeout(PET_LIMITS.DOWNLOAD_TIMEOUT) });
   if (!spritesheetResponse.ok) {
