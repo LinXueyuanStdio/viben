@@ -58,6 +58,7 @@ sync_android_icons() {
     "$target_res_dir/mipmap-mdpi/ic_launcher.png"
     "$target_res_dir/mipmap-mdpi/ic_launcher_foreground.png"
     "$target_res_dir/mipmap-anydpi-v26/ic_launcher.xml"
+    "$target_res_dir/mipmap-anydpi-v26/ic_launcher_round.xml"
     "$target_res_dir/values/ic_launcher_background.xml"
   )
 
@@ -149,6 +150,12 @@ sync_android_icons
 echo -e "${YELLOW}Configuring Android safe area handling...${NC}"
 cd "$PROJECT_ROOT"
 ./scripts/android/configure-safe-area.sh "$ANDROID_DIR"
+echo ""
+
+# Configure Android camera permissions for QR scanning
+echo -e "${YELLOW}Configuring Android camera permissions...${NC}"
+cd "$PROJECT_ROOT"
+./scripts/android/configure-camera-permissions.sh "$ANDROID_DIR"
 echo ""
 
 # Configure Android release signing when CI secrets are available.

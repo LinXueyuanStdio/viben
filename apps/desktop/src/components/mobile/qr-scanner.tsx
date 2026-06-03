@@ -5,9 +5,10 @@ import {
   scan,
   Format,
   requestPermissions,
+  openAppSettings,
 } from "@tauri-apps/plugin-barcode-scanner";
 import { Button } from "@/components/ui/button";
-import { Camera, AlertCircle } from "lucide-react";
+import { Camera, AlertCircle, Settings } from "lucide-react";
 
 export interface QrPayload {
   type: "viben-gateway";
@@ -51,15 +52,26 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
   const { t } = useTranslation();
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+
+  const handleOpenSettings = useCallback(async () => {
+    try {
+      await openAppSettings();
+    } catch (err) {
+      console.error("Failed to open app settings:", err);
+    }
+  }, []);
 
   const handleScan = useCallback(async () => {
     setError(null);
+    setPermissionDenied(false);
     setScanning(true);
     try {
       const hasCameraPermission = await ensureQrScannerCameraPermission();
       if (!hasCameraPermission) {
-        const msg = t("mobile.qrScanner.cameraPermissionDenied", "Camera permission is required to scan QR codes.");
+        const msg = t("mobile.qrScanner.cameraPermissionDenied", "Camera permission is required. Please enable it in Settings.");
         setError(msg);
+        setPermissionDenied(true);
         onError?.(msg);
         setScanning(false);
         return;
@@ -102,9 +114,22 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
         {scanning ? t("mobile.qrScanner.scanning", "Scanning...") : t("mobile.qrScanner.scanQrCode", "Scan QR Code")}
       </Button>
       {error && (
-        <div className="flex items-center gap-2 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <span>{error}</span>
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </div>
+          {permissionDenied && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenSettings}
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              {t("mobile.qrScanner.openSettings", "Open Settings")}
+            </Button>
+          )}
         </div>
       )}
     </div>
