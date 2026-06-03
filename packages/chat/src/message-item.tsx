@@ -213,18 +213,16 @@ function UserMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
     >
-      {/* Left spacer — matches assistant avatar width for symmetric indent */}
-      <div className="w-8 shrink-0" />
-      <div className="flex-1 min-w-0 flex justify-end">
-        <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground min-w-0">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <User className="h-4 w-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="w-fit max-w-full rounded-2xl rounded-tl-md bg-primary px-4 py-3 text-primary-foreground min-w-0">
           <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere]">{content}</p>
           {attachments?.map((attachment) => (
             <AttachmentPreview key={attachment.id} attachment={attachment} />
           ))}
         </div>
-      </div>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-        <User className="h-4 w-4 text-primary" />
       </div>
     </motion.div>
   );
@@ -255,8 +253,6 @@ function ErrorMessage({ errorMessage, skipAnimation }: { errorMessage: string; s
           <p className="mt-1 text-sm text-destructive/80">{errorMessage}</p>
         </div>
       </div>
-      {/* Right spacer */}
-      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }
@@ -419,8 +415,6 @@ function AssistantMessage({
           </div>
         </div>
       </div>
-      {/* Right spacer — matches user avatar width for symmetric indent */}
-      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }
@@ -470,8 +464,6 @@ function PlanModeMessage({ action, skipAnimation }: { action: "enter" | "exit"; 
           </p>
         </div>
       </div>
-      {/* Right spacer */}
-      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }
@@ -491,11 +483,6 @@ function MessageItemImpl({
   isLatestThinking,
 }: MessageItemProps) {
   const { t } = useTranslation();
-
-  // Style for max width constraint
-  const maxWidthStyle = maxWidth
-    ? { maxWidth } as React.CSSProperties
-    : undefined;
 
   // Determine the content based on message type
   let content: React.ReactNode;
@@ -605,7 +592,13 @@ function MessageItemImpl({
   }
 
   return (
-    <div className={className} style={maxWidthStyle}>
+    <div
+      className={cn("w-full min-w-0", className)}
+      style={{
+        width: "100%",
+        maxWidth: maxWidth ? `min(100%, ${maxWidth})` : "100%",
+      }}
+    >
       {content}
     </div>
   );
