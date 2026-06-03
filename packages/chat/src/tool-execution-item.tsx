@@ -884,6 +884,15 @@ export function ToolExecutionItem({
     const toolUseCount = mergedSubagentMessages
       ? mergedSubagentMessages.filter(m => m.type === "tool_use").length
       : 0;
+    const title = taskInput.description || taskInput.subagent_type || "Sub-Agent";
+    const canOpenSubagent = hasSubagentMessages && !!onExpandSubagent;
+    const handleOpenSubagent = () => {
+      if (!canOpenSubagent) return;
+      onExpandSubagent(title, taskInput.subagent_type, subagentMessages!);
+    };
+    const handleToggleInlineDetails = () => {
+      if (hasDetails) setIsExpanded(!isExpanded);
+    };
 
     return (
       <motion.div
@@ -897,18 +906,19 @@ export function ToolExecutionItem({
           <div className="flex items-center">
             <button
               type="button"
-              onClick={() => hasDetails && setIsExpanded(!isExpanded)}
-              disabled={!hasDetails}
+              onClick={canOpenSubagent ? handleOpenSubagent : handleToggleInlineDetails}
+              disabled={!canOpenSubagent && !hasDetails}
               className={cn(
                 "flex flex-1 items-center gap-2 px-3 py-2 text-left min-w-0",
-                hasDetails && "cursor-pointer hover:bg-accent/50",
+                (canOpenSubagent || hasDetails) && "cursor-pointer hover:bg-accent/50",
                 "transition-colors"
               )}
+              title={canOpenSubagent ? t("chat.expandSubagent", "Open in side panel") : undefined}
             >
               <StatusDot status={resolvedStatus} isWarning={isWarning} />
               <Bot className="h-3.5 w-3.5 shrink-0 text-violet-500" />
               <span className="truncate font-semibold text-foreground">
-                {taskInput.description || taskInput.subagent_type || "Sub-Agent"}
+                {title}
               </span>
               {taskInput.subagent_type && (
                 <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
@@ -920,28 +930,24 @@ export function ToolExecutionItem({
                   · {toolUseCount} tools
                 </span>
               )}
-              {hasDetails && (
+              {canOpenSubagent && (
                 <span className="ml-auto shrink-0 text-muted-foreground">
-                  {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  <Maximize2 className="h-3.5 w-3.5" />
                 </span>
               )}
             </button>
-            {/* Expand to side panel button */}
-            {hasSubagentMessages && onExpandSubagent && (
+            {/* Inline details toggle */}
+            {hasDetails && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onExpandSubagent(
-                    taskInput.description || taskInput.subagent_type || "Sub-Agent",
-                    taskInput.subagent_type,
-                    subagentMessages!
-                  );
+                  handleToggleInlineDetails();
                 }}
-                className="shrink-0 mr-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-                title={t("chat.expandSubagent", "Open in side panel")}
+                className="shrink-0 mr-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+                title={isExpanded ? t("chat.hideDetails", "Hide details") : t("chat.showDetails", "Show details")}
               >
-                <Maximize2 className="h-3 w-3" />
+                {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               </button>
             )}
           </div>
@@ -1182,8 +1188,6 @@ export function ToolExecutionItem({
             )}
           </div>
         </div>
-        {/* Right spacer — symmetric indent */}
-        <div className="w-8 shrink-0" />
       </motion.div>
 
       {/* Modal (only used when not in expandedInline mode) */}
