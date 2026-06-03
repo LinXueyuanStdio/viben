@@ -18,6 +18,7 @@ import { listCommunityPets as listCommunityPetsOp, installPet as installPetOp } 
 import { searchCommunityPets as searchCommunityPetsOp, previewCommunityPet } from "./ops/search";
 import { importPet as importPetOp, exportPet as exportPetOp } from "./ops/import-export";
 import { getPetDir } from "./paths";
+import { join } from "node:path";
 
 // Re-export types
 export * from "./types";
@@ -56,7 +57,7 @@ export class PetManager {
       id,
       metadata,
       localPath: petDir,
-      spritesheetUrl: `${petDir}/${metadata.spritesheetPath}`,
+      spritesheetUrl: join(petDir, metadata.spritesheetPath),
       isBuiltin: false,
     };
   }

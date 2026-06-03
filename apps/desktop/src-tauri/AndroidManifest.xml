@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  This manifest file will be merged with the generated AndroidManifest.xml
+  to add camera permissions required for QR code scanning.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Camera permission for QR code scanning -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+</manifest>

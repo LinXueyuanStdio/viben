@@ -53,8 +53,8 @@
       {
         "label": "pet-window",
         "title": "Viben Pet",
-        "width": 200,
-        "height": 260,
+        "width": 128,
+        "height": 128,
         "visible": false,
         "decorations": false,
         "transparent": true,

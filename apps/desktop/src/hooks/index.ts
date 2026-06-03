@@ -432,3 +432,6 @@ export type { PageDialogsState } from "./use-page-dialogs";
 
 // Platform Detection
 export { usePlatform } from "./use-platform";
+
+// Pet Window
+export { usePetWindow } from "./use-pet-window";

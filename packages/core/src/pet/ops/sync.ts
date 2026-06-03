@@ -77,8 +77,41 @@ export async function listCommunityPets(sourceFilter?: string): Promise<Communit
   return results;
 }
 
+/** Validate petId to prevent path traversal */
+function isValidPetId(petId: string): boolean {
+  // Must not contain path separators or traversal patterns
+  if (petId.includes("/") || petId.includes("\\") || petId.includes("..")) {
+    return false;
+  }
+  // Must not be empty or only dots
+  if (!petId || petId === "." || petId === "..") {
+    return false;
+  }
+  return true;
+}
+
+/** Validate spritesheetPath to prevent path traversal */
+function isValidSpritesheetPath(path: string): boolean {
+  // Must not contain path traversal
+  if (path.includes("..")) {
+    return false;
+  }
+  // Must not be absolute
+  if (path.startsWith("/") || /^[a-zA-Z]:/.test(path)) {
+    return false;
+  }
+  // Must have allowed extension
+  const ext = path.toLowerCase().split(".").pop();
+  return ext === "webp" || ext === "png" || ext === "gif";
+}
+
 /** 下载并安装 Pet */
 export async function installPet(petId: string, sourceName: string): Promise<Pet> {
+  // Validate petId to prevent path traversal
+  if (!isValidPetId(petId)) {
+    throw new PetError(`Invalid pet ID: "${petId}"`, "INVALID_PET_FORMAT");
+  }
+
   const source = await getSource(sourceName);
   if (!source) {
     throw new PetError(`Source "${sourceName}" not found`, "SOURCE_NOT_FOUND");
@@ -101,6 +134,11 @@ export async function installPet(petId: string, sourceName: string): Promise<Pet
     throw new PetError(`Failed to download pet.json: ${metadataResponse.status}`, "DOWNLOAD_FAILED");
   }
   const metadata = await metadataResponse.json() as PetMetadata;
+
+  // Validate spritesheetPath to prevent path traversal
+  if (!isValidSpritesheetPath(metadata.spritesheetPath)) {
+    throw new PetError(`Invalid spritesheet path: "${metadata.spritesheetPath}"`, "INVALID_PET_FORMAT");
+  }
 
   // 下载 spritesheet
   const spritesheetUrl = communityPet.downloadUrl.endsWith("/")

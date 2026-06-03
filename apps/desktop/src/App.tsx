@@ -5,6 +5,7 @@ import { AppLayout, McpServicesLayout } from "@/components/layout";
 import { OverlayRoot } from "@/components/overlay";
 import { ActionApprovalDialog } from "@/components/action-system";
 import { PresentationActionProvider } from "@/components/overlay/layers/presentation-action-provider";
+import { PetWindowManager } from "@/components/pet-window-manager";
 import {
   DashboardPage,
   ProvidersPage,
@@ -272,6 +273,7 @@ function App() {
           <OverlayRoot />
           <ActionApprovalDialog />
           <PresentationActionProvider />
+          <PetWindowManager />
         </>
       )}
     </AppErrorBoundary>

@@ -1,6 +1,7 @@
 // apps/desktop/src/pages/settings/pet-section/index.tsx
 import { useState, useEffect, useCallback } from "react";
 import { RefreshCw, Upload } from "lucide-react";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { PetPreview } from "./pet-preview";
 import { PetSelector } from "./pet-selector";
 import { PreferencesForm } from "./preferences-form";
@@ -15,6 +16,18 @@ import {
   removePet,
 } from "./api";
 import type { PetResponse, PetConfigResponse } from "./api";
+
+async function notifyPetWindow() {
+  try {
+    const petWindow = await WebviewWindow.getByLabel("pet-window");
+    if (petWindow) {
+      // Reload the pet window to pick up new config
+      await petWindow.emit("pet-config-changed");
+    }
+  } catch {
+    // Ignore errors
+  }
+}
 
 export function PetSection() {
   const [pets, setPets] = useState<PetResponse[]>([]);
@@ -43,6 +56,8 @@ export function PetSection() {
     try {
       await setCurrentPet(id);
       setConfig((c) => (c ? { ...c, current: id } : c));
+      // Notify pet window about the change
+      await notifyPetWindow();
     } catch (e) {
       console.error("Failed to set pet:", e);
     }
@@ -64,6 +79,8 @@ export function PetSection() {
     setConfig(newConfig);
     try {
       await updatePetConfig(updates);
+      // Notify pet window about config changes
+      await notifyPetWindow();
     } catch (e) {
       console.error("Failed to update config:", e);
     }
