@@ -1,7 +1,9 @@
 import { toPng } from "html-to-image";
 import type { ClientToolResult } from "../client-side-tool/types";
-import type { ExecutionContext } from "./types";
+import type { ActionDetail, ExecutionContext } from "./types";
 import { useActionStore } from "@/stores/action-store";
+import { navigateToPath } from "./navigation-handler";
+import { ROUTE_ENTRIES, registry } from "@/navigation/route-registry";
 
 /**
  * Execute a built-in action. Returns null if the action name is not a built-in.
@@ -39,6 +41,13 @@ function handleGetActionDetail(payload: unknown): ClientToolResult {
     return {
       content: [{ type: "text", text: 'validation_error: missing required field "action"' }],
       isError: true,
+    };
+  }
+
+  const builtinDetail = getBuiltinActionDetail(action);
+  if (builtinDetail) {
+    return {
+      content: [{ type: "text", text: JSON.stringify(builtinDetail, null, 2) }],
     };
   }
 
@@ -91,6 +100,47 @@ async function handleReadWindow(ctx: ExecutionContext): Promise<ClientToolResult
   }
 }
 
+function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, unknown>) | null {
+  switch (action) {
+    case "navigate_to":
+      return {
+        name: "navigate_to",
+        description:
+          "Navigate to an in-app desktop route through Viben's tab and breadcrumb navigation system. The url must be a relative route matching one of the supported route patterns.",
+        input_schema: {
+          type: "object",
+          properties: {
+            url: {
+              type: "string",
+              description:
+                "In-app relative URL. Dynamic route parameters must be filled, for example /workspace/global/chat.",
+            },
+          },
+          required: ["url"],
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            url: { type: "string" },
+          },
+          required: ["success", "url"],
+        },
+        urls: ROUTE_ENTRIES.map((entry) => entry.pattern),
+        routes: ROUTE_ENTRIES.map((entry) => ({
+          pattern: entry.pattern,
+          title: typeof entry.title === "string" ? entry.title : undefined,
+          title_key: entry.titleKey,
+          params: registry.getParamNames(entry.pattern),
+          rest_param: registry.getRestParam(entry.pattern),
+          query_params: entry.queryParams ?? [],
+        })),
+      };
+    default:
+      return null;
+  }
+}
+
 async function handleNavigateTo(payload: unknown, ctx: ExecutionContext): Promise<ClientToolResult> {
   const { url } = (payload as { url?: string }) || {};
   if (!url) {
@@ -109,17 +159,20 @@ async function handleNavigateTo(payload: unknown, ctx: ExecutionContext): Promis
       };
     }
 
+    if (!registry.match(path)) {
+      return {
+        content: [{ type: "text", text: `validation_error: url does not match a supported app route: ${path}` }],
+        isError: true,
+      };
+    }
+
     await ctx.requireApproval(`Allow the agent to navigate to ${path}?`, {
       title: "Navigate",
       description: "This changes the current app route.",
       confirmLabel: "Navigate",
     });
 
-    // Use history.pushState + popstate event for SPA navigation.
-    // BrowserRouter listens to popstate events, so this triggers a route
-    // change without a full page reload (which would destroy React state).
-    window.history.pushState(null, "", path);
-    window.dispatchEvent(new PopStateEvent("popstate"));
+    navigateToPath(path);
     return {
       content: [{ type: "text", text: JSON.stringify({ success: true, url: path }) }],
     };
