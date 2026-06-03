@@ -1,7 +1,8 @@
 // apps/desktop/src/pages/settings/pet-section/pet-preview.tsx
 import { PetSprite, STANDARD_ANIMATIONS } from "@viben/pet";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import type { PetResponse } from "./api";
+
+const API_BASE = "http://127.0.0.1:18790";
 
 interface PetPreviewProps {
   pet: PetResponse | null;
@@ -10,13 +11,17 @@ interface PetPreviewProps {
 
 function resolveSpritesheet(pet: PetResponse): string {
   const url = pet.spritesheet_url;
-  // 相对路径（内置 Pet）直接使用
-  if (url.startsWith("/pets/") || url.startsWith("http")) {
+  // 相对路径（内置 Pet 从 public/pets/ 加载）
+  if (url.startsWith("/pets/")) {
     return url;
   }
-  // 绝对文件路径（已安装 Pet）使用 Tauri asset 协议
-  if (url.startsWith("/")) {
-    return convertFileSrc(url);
+  // Gateway asset 路由（已安装 Pet）
+  if (url.startsWith("/api/pet/asset/")) {
+    return `${API_BASE}${url}`;
+  }
+  // HTTP URL 直接使用
+  if (url.startsWith("http")) {
+    return url;
   }
   return url;
 }
