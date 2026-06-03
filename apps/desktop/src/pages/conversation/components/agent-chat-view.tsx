@@ -234,6 +234,9 @@ export function AgentChatView({
         title={sheetData?.title || ""}
         subagentType={sheetData?.subagentType}
         messages={sheetData?.messages || []}
+        onExpandSubagent={(title, subagentType, msgs) =>
+          setSheetData({ title, subagentType, messages: msgs })
+        }
       />
 
       {!headerless ? (
