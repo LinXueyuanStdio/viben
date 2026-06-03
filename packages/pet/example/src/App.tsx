@@ -10,19 +10,21 @@ import {
   STANDARD_ANIMATIONS,
   getFrameAtTime,
 } from '@viben/pet';
-import { PetManagerPanel } from './src/components/PetManagerPanel';
-import { PetEditorModal } from './src/components/PetEditorModal';
-import { PetImportDialog } from './src/components/PetImportDialog';
+import { PetManagerPanel } from './components/PetManagerPanel';
+import { PetEditorModal } from './components/PetEditorModal';
+import { PetImportDialog } from './components/PetImportDialog';
 import {
   getAllCustomPets,
   saveCustomPet,
   deleteCustomPet,
   downloadCustomPet,
   type CustomPet,
-} from './src/lib/petStorage';
-import './src/components/PetManagerPanel.css';
-import './src/components/PetEditorModal.css';
-import './src/components/PetImportDialog.css';
+} from './lib/petStorage';
+import { createCustomPetConfig } from './lib/customPetConfig';
+import { getPetPublicAssetUrl } from './lib/publicAssets';
+import './components/PetManagerPanel.css';
+import './components/PetEditorModal.css';
+import './components/PetImportDialog.css';
 
 interface RawPetJson {
   id: string;
@@ -104,14 +106,14 @@ const AVAILABLE_PETS = [
 ];
 
 async function loadPetFromPublic(petId: string): Promise<PetConfig> {
-  const configUrl = `/pets/${petId}/pet.json`;
+  const configUrl = getPetPublicAssetUrl(petId, 'pet.json', import.meta.env.BASE_URL);
   const response = await fetch(configUrl);
   if (!response.ok) {
     throw new Error(`Failed to load pet: ${response.status}`);
   }
 
   const raw = (await response.json()) as RawPetJson;
-  const spritesheetUrl = `/pets/${petId}/${raw.spritesheetPath}`;
+  const spritesheetUrl = getPetPublicAssetUrl(petId, raw.spritesheetPath, import.meta.env.BASE_URL);
 
   return {
     id: raw.id,
@@ -363,7 +365,10 @@ export function App() {
         // If current pet ID is not a built-in pet and not in custom pets, fallback to default
         if (!AVAILABLE_PETS.includes(currentPetId)) {
           const found = pets.find(p => p.id === currentPetId);
-          if (!found) {
+          if (found) {
+            setPet(createCustomPetConfig(found));
+            setLoading(false);
+          } else {
             console.warn(`Pet "${currentPetId}" not found, falling back to default`);
             setCurrentPetId('tux');
           }
@@ -533,24 +538,7 @@ export function App() {
     if (isCustom || !AVAILABLE_PETS.includes(petId)) {
       const customPet = customPets.find(p => p.id === petId);
       if (customPet) {
-        const config: PetConfig = {
-          id: customPet.id,
-          name: customPet.displayName,
-          description: customPet.description,
-          accent: customPet.accent,
-          greeting: customPet.greeting,
-          spritesheet: customPet.spritesheetDataUrl,
-          atlas: {
-            cols: 8,
-            rows: 9,
-            cellWidth: 192,
-            cellHeight: 208,
-            animations: STANDARD_ANIMATIONS,
-          },
-          ambient: PET_DEFAULTS.ambient,
-          idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
-        };
-        setPet(config);
+        setPet(createCustomPetConfig(customPet));
         setLoading(false);
       }
     }
@@ -561,24 +549,7 @@ export function App() {
   const handleEditPet = useCallback((petId: string) => {
     const customPet = customPets.find(p => p.id === petId);
     if (customPet) {
-      const config: PetConfig = {
-        id: customPet.id,
-        name: customPet.displayName,
-        description: customPet.description,
-        accent: customPet.accent,
-        greeting: customPet.greeting,
-        spritesheet: customPet.spritesheetDataUrl,
-        atlas: {
-          cols: 8,
-          rows: 9,
-          cellWidth: 192,
-          cellHeight: 208,
-          animations: STANDARD_ANIMATIONS,
-        },
-        ambient: PET_DEFAULTS.ambient,
-        idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
-      };
-      setEditingPet(config);
+      setEditingPet(createCustomPetConfig(customPet));
       setEditingCustomPetId(petId);
       setEditorOpen(true);
     }
