@@ -10,6 +10,8 @@ export interface PetResponse {
     spritesheet_path: string;
     author?: string;
     tags?: string[];
+    source?: string;
+    source_url?: string;
   };
   local_path: string;
   spritesheet_url: string;
