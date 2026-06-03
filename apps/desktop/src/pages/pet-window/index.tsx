@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { PetSprite, type PetConfig, type PetInteraction, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
 import { loadPetFromPublic } from "@/lib/pet-loader";
 
@@ -89,9 +88,11 @@ export default function PetWindowPage() {
           const petRes = await fetch(`${API_BASE}/api/pet/show/${encodeURIComponent(cfg.current)}`);
           if (!petRes.ok) throw new Error("Pet not found");
           const { pet: petInfo } = await petRes.json();
-          const spritesheetSrc = petInfo.spritesheet_url.startsWith("/")
-            ? convertFileSrc(petInfo.spritesheet_url)
-            : petInfo.spritesheet_url;
+          // spritesheet_url 由 Gateway 返回为 /api/pet/asset/... 格式
+          let spritesheetSrc = petInfo.spritesheet_url;
+          if (spritesheetSrc.startsWith("/api/")) {
+            spritesheetSrc = `${API_BASE}${spritesheetSrc}`;
+          }
           petData = {
             id: petInfo.id,
             name: petInfo.metadata.display_name,
@@ -198,9 +199,6 @@ export default function PetWindowPage() {
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
-    // Mark as interacting so focus redirect is suppressed
-    isInteractingRef.current = true;
-
     const win = getCurrentWindow();
     const pos = await win.outerPosition();
 
@@ -208,13 +206,15 @@ export default function PetWindowPage() {
     lastPosRef.current = { x: pos.x, y: pos.y };
     setIsDragging(true);
 
-    // Use Tauri's native window dragging
+    // Use Tauri's native window dragging (blocks until drag ends)
     await win.startDragging();
 
-    // After drag ends (startDragging resolves), clear interacting flag after a short delay
+    // Drag ended - reset state after a short delay to let focus events settle
     setTimeout(() => {
       isInteractingRef.current = false;
-    }, 300);
+      setIsDragging(false);
+      setInteraction("idle");
+    }, 200);
   }, []);
 
   // Listen to tauri://move events to detect drag direction
@@ -296,13 +296,15 @@ export default function PetWindowPage() {
 
   // Hover interaction
   const handleMouseEnter = useCallback(() => {
-    isInteractingRef.current = true;
     if (!isDragging) setInteraction("hover");
   }, [isDragging]);
 
   const handleMouseLeave = useCallback(() => {
-    isInteractingRef.current = false;
-    if (!isDragging) setInteraction("idle");
+    if (!isDragging) {
+      setInteraction("idle");
+      // Allow focus redirect when mouse leaves
+      isInteractingRef.current = false;
+    }
   }, [isDragging]);
 
   // Get animation row based on interaction
