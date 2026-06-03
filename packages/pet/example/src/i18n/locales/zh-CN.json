@@ -1,0 +1,59 @@
+{
+  "pet": {
+    "title": "Pet 开发环境",
+    "subtitle": "@viben/pet 组件交互式测试环境",
+    "selectPet": "选择 Pet",
+    "debug": {
+      "title": "调试信息",
+      "interaction": "交互状态",
+      "animation": "动画",
+      "fps": "帧率",
+      "frames": "帧数",
+      "frame": "当前帧",
+      "renders": "渲染次数",
+      "paused": "已暂停"
+    },
+    "frameControl": {
+      "title": "帧控制",
+      "play": "播放",
+      "pause": "暂停",
+      "prevFrame": "上一帧",
+      "nextFrame": "下一帧"
+    },
+    "controls": {
+      "resetPosition": "重置位置",
+      "hidePet": "隐藏 Pet",
+      "showPet": "显示 Pet",
+      "toggleBubble": "切换气泡",
+      "copyLink": "复制链接",
+      "copied": "已复制！",
+      "resetSettings": "重置设置"
+    },
+    "settings": {
+      "size": "大小",
+      "speed": "速度",
+      "animation": "动画",
+      "auto": "自动",
+      "constrainViewport": "限制在视口内"
+    },
+    "presets": {
+      "title": "位置预设",
+      "topLeft": "左上",
+      "topRight": "右上",
+      "center": "居中",
+      "bottomLeft": "左下",
+      "bottomRight": "右下"
+    },
+    "help": {
+      "title": "帮助",
+      "interactions": "交互方式",
+      "interactionsText": "点击切换气泡\n拖拽移动\n悬停挥手\n等待45秒进入空闲动画",
+      "keyboard": "快捷键",
+      "keyboardText": "空格: 气泡 | R: 重置 | T: 主题 | Esc: 关闭侧栏 | 0: 自动 | 1-9: 动画"
+    },
+    "theme": {
+      "light": "浅色",
+      "dark": "深色"
+    }
+  }
+}

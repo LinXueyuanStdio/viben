@@ -9,6 +9,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "resolveJsonModule": true,
     "paths": {
       "@viben/pet": ["../src"],
       "@viben/pet/*": ["../src/*"]

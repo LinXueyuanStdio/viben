@@ -783,3 +783,24 @@
   background: linear-gradient(90deg, rgba(245, 166, 35, 0.8) 0%, transparent 100%);
   box-shadow: 0 0 20px rgba(245, 166, 35, 0.6);
 }
+
+/* ========================================
+   Language Switcher
+   ======================================== */
+.lang-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.lang-switch:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

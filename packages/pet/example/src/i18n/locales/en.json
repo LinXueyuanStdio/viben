@@ -1,0 +1,59 @@
+{
+  "pet": {
+    "title": "Pet Development",
+    "subtitle": "Interactive testing environment for @viben/pet components",
+    "selectPet": "Select Pet",
+    "debug": {
+      "title": "Debug Info",
+      "interaction": "Interaction",
+      "animation": "Animation",
+      "fps": "FPS",
+      "frames": "Frames",
+      "frame": "Frame",
+      "renders": "Renders",
+      "paused": "Paused"
+    },
+    "frameControl": {
+      "title": "Frame Control",
+      "play": "Play",
+      "pause": "Pause",
+      "prevFrame": "Previous frame",
+      "nextFrame": "Next frame"
+    },
+    "controls": {
+      "resetPosition": "Reset Position",
+      "hidePet": "Hide Pet",
+      "showPet": "Show Pet",
+      "toggleBubble": "Toggle Bubble",
+      "copyLink": "Copy Link",
+      "copied": "Copied!",
+      "resetSettings": "Reset Settings"
+    },
+    "settings": {
+      "size": "Size",
+      "speed": "Speed",
+      "animation": "Animation",
+      "auto": "Auto",
+      "constrainViewport": "Constrain to viewport"
+    },
+    "presets": {
+      "title": "Position Presets",
+      "topLeft": "Top Left",
+      "topRight": "Top Right",
+      "center": "Center",
+      "bottomLeft": "Bottom Left",
+      "bottomRight": "Bottom Right"
+    },
+    "help": {
+      "title": "Help",
+      "interactions": "Interactions",
+      "interactionsText": "Click to toggle bubble\nDrag to move\nHover to wave\nWait 45s for idle animation",
+      "keyboard": "Keyboard",
+      "keyboardText": "Space: bubble | R: reset | T: theme | Esc: close sidebar | 0: auto | 1-9: animations"
+    },
+    "theme": {
+      "light": "Light",
+      "dark": "Dark"
+    }
+  }
+}
