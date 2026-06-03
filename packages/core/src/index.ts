@@ -679,6 +679,9 @@ export type {
   QwenCodeExecutorConfig,
 } from "./executors";
 
+// Pet management
+export * from "./pet";
+
 /**
  * Initialize all core managers
  * Call this once at application startup
