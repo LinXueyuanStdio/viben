@@ -5,7 +5,6 @@ import {
   scan,
   Format,
   requestPermissions,
-  type PermissionState,
 } from "@tauri-apps/plugin-barcode-scanner";
 import { Button } from "@/components/ui/button";
 import { Camera, AlertCircle } from "lucide-react";
@@ -30,21 +29,17 @@ export function parseQrPayload(raw: string): QrPayload | null {
   }
 }
 
-function needsCameraPermissionPrompt(permission: PermissionState) {
-  return permission === "prompt" || permission === "prompt-with-rationale";
-}
-
 export async function ensureQrScannerCameraPermission() {
   const currentPermission = await checkPermissions();
   if (currentPermission === "granted") {
     return true;
   }
 
-  if (!needsCameraPermissionPrompt(currentPermission)) {
-    return false;
-  }
-
   return (await requestPermissions()) === "granted";
+}
+
+export async function scanQrCode() {
+  return scan({ formats: [Format.QRCode], cameraDirection: "back" });
 }
 
 interface QrScannerProps {
@@ -70,7 +65,7 @@ export function QrScanner({ onScan, onError }: QrScannerProps) {
         return;
       }
 
-      const result = await scan({ formats: [Format.QRCode] });
+      const result = await scanQrCode();
       if (!result.content) {
         setScanning(false);
         return;

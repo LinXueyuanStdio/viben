@@ -3,10 +3,12 @@
   "identifier": "mobile",
   "description": "Mobile-only capabilities",
   "platforms": ["android", "iOS"],
+  "windows": ["main"],
   "permissions": [
     "os:default",
     "barcode-scanner:allow-check-permissions",
     "barcode-scanner:allow-request-permissions",
+    "barcode-scanner:allow-open-app-settings",
     "barcode-scanner:allow-scan",
     "barcode-scanner:allow-cancel",
     "barcode-scanner:allow-vibrate",

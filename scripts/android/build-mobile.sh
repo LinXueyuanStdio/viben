@@ -28,6 +28,51 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+DESKTOP_DIR="$PROJECT_ROOT/apps/desktop"
+TAURI_DIR="$DESKTOP_DIR/src-tauri"
+ANDROID_DIR="$TAURI_DIR/gen/android"
+
+sync_android_icons() {
+  local source_dir="$TAURI_DIR/icons/android"
+  local target_res_dir="$ANDROID_DIR/app/src/main/res"
+
+  if [[ ! -d "$source_dir" ]]; then
+    echo -e "${RED}Error: Android icon source directory not found: $source_dir${NC}"
+    exit 1
+  fi
+
+  if [[ ! -d "$target_res_dir" ]]; then
+    echo -e "${RED}Error: Android generated res directory not found: $target_res_dir${NC}"
+    exit 1
+  fi
+
+  echo -e "${YELLOW}Syncing Android app icons into generated project...${NC}"
+  while IFS= read -r source_file; do
+    local relative_path="${source_file#$source_dir/}"
+    local target_file="$target_res_dir/$relative_path"
+    mkdir -p "$(dirname "$target_file")"
+    cp "$source_file" "$target_file"
+  done < <(find "$source_dir" -type f | sort)
+
+  local required_files=(
+    "$target_res_dir/mipmap-mdpi/ic_launcher.png"
+    "$target_res_dir/mipmap-mdpi/ic_launcher_foreground.png"
+    "$target_res_dir/mipmap-anydpi-v26/ic_launcher.xml"
+    "$target_res_dir/values/ic_launcher_background.xml"
+  )
+
+  for file in "${required_files[@]}"; do
+    if [[ ! -f "$file" ]]; then
+      echo -e "${RED}Error: expected Android icon file missing after sync: $file${NC}"
+      exit 1
+    fi
+  done
+
+  echo "Android launcher icons in generated project:"
+  find "$target_res_dir" -path '*/mipmap*' -name 'ic_launcher*' -type f | sort | xargs sha256sum
+  find "$target_res_dir" -path '*/mipmap*' -name 'ic_launcher*' -type f | sort | xargs file
+  echo ""
+}
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  Building Android APK${NC}"
@@ -84,24 +129,26 @@ echo -e "${YELLOW}Building workspace packages...${NC}"
 pnpm turbo build --filter=@viben/desktop^...
 echo ""
 
-# Generate mobile icons before initializing the native project so Tauri copies
-# the current Android/iOS icon assets into the generated project.
+# Generate mobile icons before initializing the native project, then explicitly
+# sync Android assets into gen/android because Tauri builds from that res tree.
 echo -e "${YELLOW}Generating mobile app icons...${NC}"
-cd apps/desktop
+cd "$DESKTOP_DIR"
 pnpm tauri-mobile-icons
 cd "$PROJECT_ROOT"
 echo ""
 
 # Initialize Android project
 echo -e "${YELLOW}Initializing Android project...${NC}"
-cd apps/desktop
+cd "$DESKTOP_DIR"
 pnpm tauri android init --ci
 echo ""
+
+sync_android_icons
 
 # Configure Android safe area handling
 echo -e "${YELLOW}Configuring Android safe area handling...${NC}"
 cd "$PROJECT_ROOT"
-./scripts/android/configure-safe-area.sh apps/desktop/src-tauri/gen/android
+./scripts/android/configure-safe-area.sh "$ANDROID_DIR"
 echo ""
 
 # Configure Android release signing when CI secrets are available.
@@ -113,7 +160,7 @@ if [[ -n "$ANDROID_KEYSTORE_BASE64" || -n "$ANDROID_KEY_ALIAS" || -n "$ANDROID_K
     exit 1
   fi
 
-  ANDROID_PROJECT_DIR="$PROJECT_ROOT/apps/desktop/src-tauri/gen/android"
+  ANDROID_PROJECT_DIR="$ANDROID_DIR"
   KEYSTORE_FILE="${RUNNER_TEMP:-/tmp}/viben-release.keystore"
 
   cd "$ANDROID_PROJECT_DIR"
