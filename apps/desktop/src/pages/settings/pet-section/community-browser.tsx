@@ -39,6 +39,10 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
     : pets;
 
   const handleInstall = async (pet: CommunityPetResponse) => {
+    if (!pet.id || !pet.source) {
+      setError("Pet data is incomplete");
+      return;
+    }
     setInstalling(pet.id);
     try {
       await installPet(pet.id, pet.source);
