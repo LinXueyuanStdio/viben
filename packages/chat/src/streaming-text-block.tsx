@@ -189,8 +189,6 @@ export function StreamingTextBlock({
           </div>
         </div>
       </div>
-      {/* Right spacer — matches user avatar width for symmetric indent */}
-      <div className="w-8 shrink-0" />
     </motion.div>
   );
 }
