@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
-import { cn, Button } from "@viben/ui";
+import { useTranslation } from "react-i18next";
+import { cn, Badge, Button } from "@viben/ui";
 import { MessageList } from "./message-list";
 import type { AgentMessage } from "./types";
 
@@ -10,7 +11,33 @@ export interface SubagentSheetProps {
   title: string;
   subagentType?: string;
   messages: AgentMessage[];
+  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
   className?: string;
+}
+
+function getSubagentStats(messages: AgentMessage[]) {
+  let toolCount = 0;
+  let errorCount = 0;
+  let completedToolCount = 0;
+
+  for (const message of messages) {
+    if (message.type === "tool_use") {
+      toolCount += 1;
+      if (message.output !== undefined) completedToolCount += 1;
+      if (message.isError) errorCount += 1;
+    }
+
+    if (message.type === "tool_result") {
+      if (message.isError) errorCount += 1;
+      if (message.toolUseId) completedToolCount += 1;
+    }
+
+    if (message.type === "error") {
+      errorCount += 1;
+    }
+  }
+
+  return { toolCount, errorCount, completedToolCount };
 }
 
 export function SubagentSheet({
@@ -19,8 +46,22 @@ export function SubagentSheet({
   title,
   subagentType,
   messages,
+  onExpandSubagent,
   className,
 }: SubagentSheetProps) {
+  const { t } = useTranslation();
+  const { toolCount, errorCount, completedToolCount } = getSubagentStats(messages);
+  const status = errorCount > 0
+    ? "Error"
+    : toolCount > 0 && completedToolCount >= toolCount
+      ? "Done"
+      : "Running";
+  const statusLabel = status === "Error"
+    ? t("chat.error", "Error")
+    : status === "Done"
+      ? t("chat.done", "Done")
+      : t("chat.subAgentRunning", "Running…");
+
   return (
     <AnimatePresence>
       {open && (
@@ -48,14 +89,34 @@ export function SubagentSheet({
             )}
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
               <div className="min-w-0 flex-1">
                 <h3 className="truncate text-sm font-medium">{title}</h3>
-                {subagentType && (
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+                  {subagentType && (
+                    <Badge variant="secondary" className="max-w-full truncate px-1.5 py-0 text-[10px]">
+                      {subagentType}
+                    </Badge>
+                  )}
+                  <Badge
+                    variant={errorCount > 0 ? "destructive" : status === "Done" ? "success" : "warning"}
+                    className="px-1.5 py-0 text-[10px]"
+                  >
+                    {statusLabel}
+                  </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {subagentType}
+                    {t("chat.subagentMessageCount", {
+                      count: messages.length,
+                      defaultValue: `${messages.length} messages`,
+                    })}
+                    {toolCount > 0
+                      ? ` · ${t("chat.subagentToolCount", {
+                          count: toolCount,
+                          defaultValue: `${toolCount} tools`,
+                        })}`
+                      : ""}
                   </span>
-                )}
+                </div>
               </div>
               <Button
                 variant="ghost"
@@ -72,6 +133,8 @@ export function SubagentSheet({
                 messages={messages}
                 simpleMode
                 toolExpandedInline
+                maxMessageWidth="100%"
+                onExpandSubagent={onExpandSubagent}
               />
             </div>
           </motion.div>
