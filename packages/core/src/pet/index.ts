@@ -25,7 +25,7 @@ export * from "./types";
 export * from "./ops/types";
 export * from "./paths";
 
-/** Pet 管理器 */
+/** Pet 管理器 - 管理已安装的 Pet（内置 Pet 由前端处理） */
 export class PetManager {
   // ========== 配置管理 ==========
 
@@ -43,8 +43,8 @@ export class PetManager {
 
   // ========== Pet CRUD ==========
 
+  /** 列出已安装的 Pet（不包括内置 Pet，内置 Pet 由前端从 public/pets 加载） */
   async listPets(): Promise<Pet[]> {
-    // TODO: 合并内置 Pet（需要知道内置 Pet 路径）
     return listInstalledPets();
   }
 
@@ -63,7 +63,6 @@ export class PetManager {
   }
 
   async removePet(id: string): Promise<void> {
-    // TODO: 检查是否为内置 Pet
     await removeInstalledPet(id);
 
     // 如果删除的是当前 Pet，清空选择
