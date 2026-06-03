@@ -14,7 +14,7 @@
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
-    "@lobehub/icons": "^5.8.0",
+    "@lobehub/icons": "^5.10.0",
     "@viben/ui": "workspace:*",
     "clsx": "^2.1.1",
     "framer-motion": "^12.39.0",
