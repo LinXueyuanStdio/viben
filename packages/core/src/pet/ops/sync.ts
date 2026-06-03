@@ -93,20 +93,22 @@ export async function listCommunityPets(sourceFilter?: string): Promise<Communit
 }
 
 /** Validate petId to prevent path traversal */
-function isValidPetId(petId: string): boolean {
+function isValidPetId(petId: string | undefined | null): petId is string {
+  if (!petId || typeof petId !== "string") return false;
   // Must not contain path separators or traversal patterns
   if (petId.includes("/") || petId.includes("\\") || petId.includes("..")) {
     return false;
   }
   // Must not be empty or only dots
-  if (!petId || petId === "." || petId === "..") {
+  if (petId === "." || petId === "..") {
     return false;
   }
   return true;
 }
 
 /** Validate spritesheetPath to prevent path traversal */
-function isValidSpritesheetPath(path: string): boolean {
+function isValidSpritesheetPath(path: string | undefined | null): path is string {
+  if (!path || typeof path !== "string") return false;
   // Must not contain path traversal
   if (path.includes("..")) {
     return false;
