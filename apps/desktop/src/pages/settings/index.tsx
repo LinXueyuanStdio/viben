@@ -31,6 +31,7 @@ import { SettingsVoice } from "./settings-voice";
 import { StorageSection } from "./storage-section";
 import { DeveloperSection } from "./developer-section";
 import { AboutSection } from "./about-section";
+import { PetSection } from "./pet-section";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -157,6 +158,8 @@ export function SettingsPage() {
         return <SettingsOverlay key="overlay" />;
       case "voice":
         return <SettingsVoice key="voice" />;
+      case "pet":
+        return <PetSection key="pet" />;
       case "storage":
         return <StorageSection key="storage" />;
       case "developer":

@@ -24,6 +24,7 @@ import {
   Type,
   Layers,
   Mic,
+  Cat,
 } from "lucide-react";
 import { Boxes } from "lucide-react";
 import type { SettingsSection } from "./navigation-meta";
@@ -58,6 +59,7 @@ const SETTINGS_ICON_COMPONENTS = {
   type: Type,
   layers: Layers,
   mic: Mic,
+  cat: Cat,
   "hard-drive": HardDrive,
   bug: Bug,
   info: Info,

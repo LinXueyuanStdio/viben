@@ -32,6 +32,7 @@ export type SettingsSection =
   | "terminalFonts"
   | "overlay"
   | "voice"
+  | "pet"
   | "storage"
   | "developer"
   | "about";
@@ -124,6 +125,7 @@ export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { section: "terminalFonts", icon: { type: "lucide", value: "type" }, titleKey: "settings.sections.terminalFonts", fallbackLabel: "Terminal Fonts" },
   { section: "overlay", icon: { type: "lucide", value: "layers" }, titleKey: "settings.sections.overlay", fallbackLabel: "Overlay" },
   { section: "voice", icon: { type: "lucide", value: "mic" }, titleKey: "settings.sections.voice", fallbackLabel: "Voice" },
+  { section: "pet", icon: { type: "lucide", value: "cat" }, titleKey: "settings.sections.pet", fallbackLabel: "Pet" },
   { section: "storage", icon: { type: "lucide", value: "hard-drive" }, titleKey: "settings.sections.storage", fallbackLabel: "Storage" },
   { section: "developer", icon: { type: "lucide", value: "bug" }, titleKey: "settings.sections.developer", fallbackLabel: "Developer" },
   { section: "about", icon: { type: "lucide", value: "info" }, titleKey: "settings.sections.about", fallbackLabel: "About" },
