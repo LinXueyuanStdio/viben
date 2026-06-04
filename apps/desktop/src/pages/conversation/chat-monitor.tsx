@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/dialog";
 import { JsonViewer } from "@/components/ui/json-viewer";
 import { useTranslation } from "react-i18next";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 
 // Import from observability components
 import {
@@ -120,9 +120,7 @@ export function ChatMonitorPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${getGatewayUrl()}/api/telemetry/dates`);
-      if (!response.ok) throw new Error(t("observability.loadDatesFailed"));
-      const data: DateSummary[] = await response.json();
+      const data = await getGatewayClient().get<DateSummary[]>("/api/telemetry/dates");
       setDates(data);
 
       // Select today or first available date
@@ -147,13 +145,10 @@ export function ChatMonitorPage() {
     setLoading(true);
     setError(null);
     try {
-      let url = `${getGatewayUrl()}/api/telemetry/traces?date=${date}`;
-      if (route && route !== "all") {
-        url += `&route=${encodeURIComponent(route)}`;
-      }
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(t("observability.loadTracesFailed"));
-      const data = await response.json();
+      const data = await getGatewayClient().listTraces(
+        date,
+        route && route !== "all" ? route : undefined
+      );
       setTraces(data.traces || []);
 
       // Clear selection if not in new list
@@ -176,11 +171,7 @@ export function ChatMonitorPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(
-          `${getGatewayUrl()}/api/telemetry/trace/${traceId}?date=${selectedDate}`
-        );
-        if (!response.ok) throw new Error(t("observability.loadTraceFailed"));
-        const data = await response.json();
+        const data = await getGatewayClient().getTrace(traceId, selectedDate);
         setTraceTree(data.tree);
         setTraceStats(data.stats);
         setSelectedSpan(null);
