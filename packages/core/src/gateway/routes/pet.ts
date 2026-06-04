@@ -1,6 +1,9 @@
 // packages/core/src/gateway/routes/pet.ts
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { petManager } from "../../pet";
+import { createReadStream, existsSync } from "node:fs";
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
+import { petManager, getPetsDir } from "../../pet";
 import type { Pet, PetConfig, CommunityPet, PetSource } from "../../pet";
 import { PetError } from "../../pet";
 
@@ -9,6 +12,11 @@ import { PetError } from "../../pet";
 // ============================================================================
 
 function toSnakeCasePet(pet: Pet) {
+  // 已安装 Pet 的 spritesheet_url 使用 Gateway asset 路由
+  const spritesheetUrl = pet.isBuiltin
+    ? pet.spritesheetUrl
+    : `/api/pet/asset/${encodeURIComponent(pet.id)}/${pet.metadata.spritesheetPath}`;
+
   return {
     id: pet.id,
     metadata: {
@@ -22,7 +30,7 @@ function toSnakeCasePet(pet: Pet) {
       source_url: pet.metadata.sourceUrl,
     },
     local_path: pet.localPath,
-    spritesheet_url: pet.spritesheetUrl,
+    spritesheet_url: spritesheetUrl,
     is_builtin: pet.isBuiltin,
     installed_at: pet.installedAt,
   };
@@ -299,6 +307,49 @@ export function registerPetRoutes(fastify: FastifyInstance): void {
       } catch (error) {
         return handlePetError(error, reply);
       }
+    },
+  );
+
+  // GET /api/pet/asset/:id/:filename - 提供已安装 Pet 的资源文件
+  fastify.get(
+    "/api/pet/asset/:id/:filename",
+    async (
+      request: FastifyRequest<{ Params: { id: string; filename: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { id, filename } = request.params;
+
+      // 安全检查：防止路径穿越
+      if (id.includes("..") || id.includes("/") || filename.includes("..") || filename.includes("/")) {
+        reply.code(400);
+        return { error: "Invalid path" };
+      }
+
+      // 只允许图片格式
+      const allowedExts = [".webp", ".png", ".gif"];
+      const ext = filename.toLowerCase().slice(filename.lastIndexOf("."));
+      if (!allowedExts.includes(ext)) {
+        reply.code(400);
+        return { error: "Invalid file type" };
+      }
+
+      const filePath = join(getPetsDir(), id, filename);
+      if (!existsSync(filePath)) {
+        reply.code(404);
+        return { error: "File not found" };
+      }
+
+      const stats = await stat(filePath);
+      const mimeMap: Record<string, string> = {
+        ".webp": "image/webp",
+        ".png": "image/png",
+        ".gif": "image/gif",
+      };
+
+      reply.header("Content-Type", mimeMap[ext] ?? "application/octet-stream");
+      reply.header("Content-Length", stats.size);
+      reply.header("Cache-Control", "public, max-age=86400");
+      return reply.send(createReadStream(filePath));
     },
   );
 }
