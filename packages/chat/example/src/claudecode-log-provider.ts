@@ -147,6 +147,7 @@ export function parseSessionJsonlDetailed(text: string): ParsedSessionJsonl {
         if (Array.isArray(content) && content.some((c: { type?: string }) => c.type === "tool_result")) {
           for (const c of content) {
             if (c.type !== "tool_result") continue
+            if (!c.content) continue
             messages.push({
               id: `msg-${msgCounter++}`,
               type: "tool_result",
@@ -207,23 +208,38 @@ export function parseSessionJsonlDetailed(text: string): ParsedSessionJsonl {
             }
           }
         }
-      } else if (t === "system" && obj.level === "error") {
-        messages.push({
-          id: `msg-${msgCounter++}`,
-          type: "error",
-          content: obj.subtype || "System error",
-          message: obj.error ? JSON.stringify(obj.error) : undefined,
-          timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
-        })
-        emitted += 1
-      } else if (t === "progress" || t === "file-history-snapshot") {
+      } else if (t === "system") {
+        if (obj.level === "error") {
+          messages.push({
+            id: `msg-${msgCounter++}`,
+            type: "error",
+            content: obj.subtype || "System error",
+            message: obj.error ? JSON.stringify(obj.error) : undefined,
+            timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+          })
+          emitted += 1
+        }
+      } else if (
+        t === "progress" ||
+        t === "file-history-snapshot" ||
+        t === "queue-operation" ||
+        t === "last-prompt"
+      ) {
         // These are metadata lines. They are handled by counting them as known
         // session records, while message rendering uses their derived mappings.
       } else {
         incrementReason(stats, `unsupported:${String(t)}`)
       }
 
-      if (emitted > 0 || t === "progress" || t === "file-history-snapshot") {
+      if (
+        emitted > 0 ||
+        t === "progress" ||
+        t === "file-history-snapshot" ||
+        t === "system" ||
+        t === "queue-operation" ||
+        t === "last-prompt" ||
+        (t === "user" && obj.isMeta)
+      ) {
         stats.handledLines += 1
       } else if (t === "user" || t === "assistant") {
         incrementReason(stats, "empty_or_meta_message")

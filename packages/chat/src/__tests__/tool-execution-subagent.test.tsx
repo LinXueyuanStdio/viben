@@ -26,6 +26,8 @@ describe("ToolExecutionItem subagent cards", () => {
           description: "Inspect workspace",
           subagent_type: "explorer",
         }}
+        toolUseId="tool-1"
+        subagentId="agent-1"
         output="done"
         subagentMessages={subagentMessages}
         onExpandSubagent={onExpandSubagent}
@@ -37,7 +39,12 @@ describe("ToolExecutionItem subagent cards", () => {
     expect(onExpandSubagent).toHaveBeenCalledWith(
       "Inspect workspace",
       "explorer",
-      subagentMessages
+      subagentMessages,
+      {
+        messages: subagentMessages,
+        subagentId: "agent-1",
+        toolUseId: "tool-1",
+      }
     );
   });
 

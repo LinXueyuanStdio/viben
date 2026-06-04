@@ -9,7 +9,7 @@ import {
   compilePresentationCommands,
 } from "@viben/presentation";
 import type { ClientToolResult, PresentationToolName } from "@viben/presentation";
-import type { ExecutionContext } from "@/lib/action-system/types";
+import type { ActionDef, ExecutionContext } from "@/lib/action-system/types";
 
 /**
  * Registers presentation actions under the "presentation" namespace.
@@ -18,7 +18,14 @@ import type { ExecutionContext } from "@/lib/action-system/types";
  * Mount at app root level (always available).
  */
 export function PresentationActionProvider() {
-  const actions = useMemo(() => ({
+  const actions = useMemo(() => createPresentationActions(), []);
+
+  useActionProvider("presentation", actions);
+  return null;
+}
+
+export function createPresentationActions(): Record<string, Omit<ActionDef, "name">> {
+  return {
     ...Object.fromEntries(
       ALL_STEP_COMMANDS.map((def) => [
         def.name,
@@ -41,10 +48,7 @@ export function PresentationActionProvider() {
         return { content: [{ type: "text", text: "Presentation mode stopped." }] };
       },
     },
-  }), []);
-
-  useActionProvider("presentation", actions);
-  return null;
+  };
 }
 
 // ============================================================================

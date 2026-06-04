@@ -122,5 +122,4 @@ export function getRegisteredSdkMcpServerNames(): string[] {
 // ============================================================================
 
 // Import built-in servers (side-effect: registers into the registry)
-import "./sdk-mcp-servers/presentation";
 import "./sdk-mcp-servers/gui-action";
