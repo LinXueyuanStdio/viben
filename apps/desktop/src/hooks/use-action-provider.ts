@@ -34,22 +34,7 @@ export function useActionProvider(
       name,
       ...def,
     }));
-    const actionNames = defs.map((def) => `${namespace}.${def.name}`);
-    console.info("[ActionProvider] register", {
-      providerId,
-      namespace,
-      actionCount: defs.length,
-      actions: actionNames,
-    });
     register(providerId, namespace, defs);
-    return () => {
-      console.info("[ActionProvider] unregister", {
-        providerId,
-        namespace,
-        actionCount: defs.length,
-        actions: actionNames,
-      });
-      unregister(providerId);
-    };
+    return () => unregister(providerId);
   }, [namespace, reactId, actions, register, unregister]);
 }
