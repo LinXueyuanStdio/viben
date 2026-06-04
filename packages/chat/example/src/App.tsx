@@ -160,8 +160,6 @@ export function App() {
     subagentType?: string
     messages: AgentMessage[]
     context?: SubagentOpenContext
-    isLoading?: boolean
-    error?: string | null
   } | null>(null)
 
   // Refs
@@ -234,7 +232,7 @@ export function App() {
     setSheetData(null)
     try {
       const loaded = await loadClaudeCodeSession(session)
-      player.loadMessages(loaded.messages)
+      player.loadSteps(messagesToSteps(loaded.messages))
       setLoadedClaudeSession(loaded)
       setSessionInfo(`${loaded.label} · ${formatStats(loaded.stats, loaded.subagentCount)}`)
     } catch (error) {
@@ -244,26 +242,22 @@ export function App() {
     } finally {
       setIsLoadingSession(false)
     }
-  }, [formatStats, player.loadMessages])
+  }, [formatStats, player.loadSteps])
 
-  const handleExpandSubagent = useCallback<ExpandSubagentHandler>(async (title, subagentType, messages, context) => {
-    setSheetData({ title, subagentType, messages, context, isLoading: messages.length === 0, error: null })
+  const handleExpandSubagent = useCallback<ExpandSubagentHandler>((title, subagentType, messages, context) => {
+    setSheetData({ title, subagentType, messages, context })
+  }, [])
 
-    if (messages.length > 0 || !context?.subagentId || !activeClaudeSession) return
+  const loadSubagentDetails = useCallback(async (context: SubagentOpenContext) => {
+    if (!context.subagentId || !activeClaudeSession) {
+      throw new Error("No Claude Code subagent log is available for this card")
+    }
 
-    try {
-      const loaded = await loadClaudeCodeSubagent(activeClaudeSession, context.subagentId)
-      setSheetData({
-        title: loaded.meta?.description || title,
-        subagentType: loaded.meta?.agentType || subagentType,
-        messages: loaded.messages,
-        context,
-        isLoading: false,
-        error: null,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      setSheetData((prev) => prev ? { ...prev, isLoading: false, error: message } : prev)
+    const loaded = await loadClaudeCodeSubagent(activeClaudeSession, context.subagentId)
+    return {
+      title: loaded.meta?.description,
+      subagentType: loaded.meta?.agentType,
+      messages: loaded.messages,
     }
   }, [activeClaudeSession])
 
@@ -294,8 +288,8 @@ export function App() {
         title={sheetData?.title || ""}
         subagentType={sheetData?.subagentType}
         messages={sheetData?.messages || []}
-        isLoading={sheetData?.isLoading}
-        error={sheetData?.error}
+        context={sheetData?.context}
+        loadSubagentDetails={loadSubagentDetails}
         onExpandSubagent={handleExpandSubagent}
       />
 

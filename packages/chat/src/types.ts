@@ -115,6 +115,16 @@ export interface SubagentOpenContext {
   messages?: AgentMessage[];
 }
 
+export interface LoadedSubagentDetails {
+  title?: string;
+  subagentType?: string;
+  messages: AgentMessage[];
+}
+
+export type LoadSubagentDetails = (
+  context: SubagentOpenContext
+) => Promise<LoadedSubagentDetails>;
+
 export type ExpandSubagentHandler = (
   title: string,
   subagentType: string | undefined,

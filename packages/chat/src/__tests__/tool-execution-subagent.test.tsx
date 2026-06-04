@@ -69,4 +69,34 @@ describe("ToolExecutionItem subagent cards", () => {
 
     expect(screen.queryByText("nested subagent transcript")).not.toBeInTheDocument();
   });
+
+  test("opens the side panel with only toolUseId so the host can load details lazily", () => {
+    const onExpandSubagent = vi.fn();
+
+    render(
+      <ToolExecutionItem
+        name="Agent"
+        input={{
+          description: "Research message width",
+          subagent_type: "explorer",
+        }}
+        toolUseId="tool-2"
+        output="done"
+        onExpandSubagent={onExpandSubagent}
+      />
+    );
+
+    fireEvent.click(screen.getByTitle("Open in side panel"));
+
+    expect(onExpandSubagent).toHaveBeenCalledWith(
+      "Research message width",
+      "explorer",
+      [],
+      {
+        messages: undefined,
+        subagentId: undefined,
+        toolUseId: "tool-2",
+      }
+    );
+  });
 });

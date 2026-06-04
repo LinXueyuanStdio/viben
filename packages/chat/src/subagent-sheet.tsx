@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn, Badge, Button } from "@viben/ui";
 import { MessageList } from "./message-list";
-import type { AgentMessage, ExpandSubagentHandler } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, LoadSubagentDetails, SubagentOpenContext } from "./types";
 
 export interface SubagentSheetProps {
   open: boolean;
@@ -11,6 +12,8 @@ export interface SubagentSheetProps {
   title: string;
   subagentType?: string;
   messages: AgentMessage[];
+  context?: SubagentOpenContext;
+  loadSubagentDetails?: LoadSubagentDetails;
   isLoading?: boolean;
   error?: string | null;
   onExpandSubagent?: ExpandSubagentHandler;
@@ -48,13 +51,27 @@ export function SubagentSheet({
   title,
   subagentType,
   messages,
+  context,
+  loadSubagentDetails,
   isLoading = false,
   error,
   onExpandSubagent,
   className,
 }: SubagentSheetProps) {
   const { t } = useTranslation();
-  const { toolCount, errorCount, completedToolCount } = getSubagentStats(messages);
+  const [loadedTitle, setLoadedTitle] = useState<string | undefined>();
+  const [loadedSubagentType, setLoadedSubagentType] = useState<string | undefined>();
+  const [loadedMessages, setLoadedMessages] = useState<AgentMessage[] | null>(null);
+  const [loadState, setLoadState] = useState<{
+    isLoading: boolean;
+    error: string | null;
+  }>({ isLoading: false, error: null });
+  const effectiveMessages = messages.length > 0 ? messages : (loadedMessages ?? messages);
+  const effectiveTitle = loadedTitle ?? title;
+  const effectiveSubagentType = loadedSubagentType ?? subagentType;
+  const effectiveIsLoading = isLoading || loadState.isLoading;
+  const effectiveError = error ?? loadState.error;
+  const { toolCount, errorCount, completedToolCount } = getSubagentStats(effectiveMessages);
   const status = errorCount > 0
     ? "Error"
     : toolCount > 0 && completedToolCount >= toolCount
@@ -65,6 +82,38 @@ export function SubagentSheet({
     : status === "Done"
       ? t("chat.done", "Done")
       : t("chat.subAgentRunning", "Running…");
+
+  useEffect(() => {
+    setLoadedTitle(undefined);
+    setLoadedSubagentType(undefined);
+    setLoadedMessages(null);
+    setLoadState({ isLoading: false, error: null });
+  }, [context?.subagentId, context?.toolUseId, open]);
+
+  useEffect(() => {
+    if (!open || !loadSubagentDetails || !context || messages.length > 0) return;
+
+    let cancelled = false;
+    setLoadState({ isLoading: true, error: null });
+
+    loadSubagentDetails(context)
+      .then((details) => {
+        if (cancelled) return;
+        setLoadedTitle(details.title);
+        setLoadedSubagentType(details.subagentType);
+        setLoadedMessages(details.messages);
+        setLoadState({ isLoading: false, error: null });
+      })
+      .catch((loadError: unknown) => {
+        if (cancelled) return;
+        const message = loadError instanceof Error ? loadError.message : String(loadError);
+        setLoadState({ isLoading: false, error: message });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [context, loadSubagentDetails, messages.length, open]);
 
   return (
     <AnimatePresence>
@@ -95,23 +144,27 @@ export function SubagentSheet({
             {/* Header */}
             <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
               <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-medium">{title}</h3>
+                <h3 className="truncate text-sm font-medium">{effectiveTitle}</h3>
                 <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
-                  {subagentType && (
+                  {effectiveSubagentType && (
                     <Badge variant="secondary" className="max-w-full truncate px-1.5 py-0 text-[10px]">
-                      {subagentType}
+                      {effectiveSubagentType}
                     </Badge>
                   )}
                   <Badge
-                    variant={errorCount > 0 ? "destructive" : status === "Done" ? "success" : "warning"}
+                    variant={effectiveError || errorCount > 0 ? "destructive" : status === "Done" ? "success" : "warning"}
                     className="px-1.5 py-0 text-[10px]"
                   >
-                    {statusLabel}
+                    {effectiveError
+                      ? t("chat.error", "Error")
+                      : effectiveIsLoading
+                        ? t("chat.subAgentRunning", "Running…")
+                        : statusLabel}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {t("chat.subagentMessageCount", {
-                      count: messages.length,
-                      defaultValue: `${messages.length} messages`,
+                      count: effectiveMessages.length,
+                      defaultValue: `${effectiveMessages.length} messages`,
                     })}
                     {toolCount > 0
                       ? ` · ${t("chat.subagentToolCount", {
@@ -133,18 +186,18 @@ export function SubagentSheet({
             </div>
             {/* Message list */}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-              {isLoading ? (
+              {effectiveIsLoading ? (
                 <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t("chat.loadingSubagent", "Loading subagent…")}
                 </div>
-              ) : error ? (
+              ) : effectiveError ? (
                 <div className="m-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                  {error}
+                  {effectiveError}
                 </div>
               ) : (
                 <MessageList
-                  messages={messages}
+                  messages={effectiveMessages}
                   simpleMode
                   toolExpandedInline
                   maxMessageWidth="100%"

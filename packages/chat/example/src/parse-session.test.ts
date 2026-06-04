@@ -421,17 +421,16 @@ describe("parseSessionJsonl - multimodal content handling", () => {
 });
 
 describe("Claude Code bundled session logs", () => {
-  it("parses every bundled main and subagent jsonl with classified line coverage", () => {
+  it("parses every bundled main and subagent jsonl without skipped records", () => {
     for (const session of CLAUDE_CODE_SESSIONS) {
       const mainPath = path.join(PUBLIC_DIR, session.mainFile.replace(/^\//, ""));
       const mainText = fs.readFileSync(mainPath, "utf-8");
       const main = parseSessionJsonlDetailed(mainText);
 
       expect(main.messages.length, `${session.id} main messages`).toBeGreaterThan(0);
-      expect(
-        main.stats.handledLines + main.stats.skippedLines,
-        `${session.id} main classified line count`
-      ).toBe(main.stats.totalLines);
+      expect(main.stats.handledLines, `${session.id} main handled records`).toBe(main.stats.totalLines);
+      expect(main.stats.skippedLines, `${session.id} main skipped records`).toBe(0);
+      expect(main.stats.skippedByReason, `${session.id} main skipped reasons`).toEqual({});
       expect(main.stats.skippedByReason.invalid_json ?? 0).toBe(0);
 
       for (const subagent of session.subagents) {
@@ -440,12 +439,38 @@ describe("Claude Code bundled session logs", () => {
         const parsed = parseSessionJsonlDetailed(subText);
 
         expect(parsed.messages.length, `${subagent.id} messages`).toBeGreaterThan(0);
-        expect(
-          parsed.stats.handledLines + parsed.stats.skippedLines,
-          `${subagent.id} classified line count`
-        ).toBe(parsed.stats.totalLines);
+        expect(parsed.stats.handledLines, `${subagent.id} handled records`).toBe(parsed.stats.totalLines);
+        expect(parsed.stats.skippedLines, `${subagent.id} skipped records`).toBe(0);
+        expect(parsed.stats.skippedByReason, `${subagent.id} skipped reasons`).toEqual({});
         expect(parsed.stats.skippedByReason.invalid_json ?? 0).toBe(0);
       }
+    }
+  });
+
+  it("maps every Agent/Task tool call to a bundled subagent log", () => {
+    for (const session of CLAUDE_CODE_SESSIONS) {
+      const mainPath = path.join(PUBLIC_DIR, session.mainFile.replace(/^\//, ""));
+      const mainText = fs.readFileSync(mainPath, "utf-8");
+      const parsed = parseSessionJsonlDetailed(mainText);
+      const manifestAgentIds = new Set(session.subagents.map((subagent) => subagent.id));
+      const mappedAgentIds = new Set<string>();
+
+      for (const line of mainText.split(/\r?\n/)) {
+        if (!line.trim()) continue;
+        const record = JSON.parse(line);
+        if (record.type === "progress" && record.parentToolUseID && record.data?.agentId) {
+          mappedAgentIds.add(record.data.agentId);
+        }
+      }
+
+      const agentCalls = parsed.messages.filter(
+        (message) =>
+          message.type === "tool_use" &&
+          (message.name === "Agent" || message.name === "Task")
+      );
+
+      expect(agentCalls.length, `${session.id} Agent/Task calls`).toBe(session.subagents.length);
+      expect(mappedAgentIds, `${session.id} mapped subagent ids`).toEqual(manifestAgentIds);
     }
   });
 });

@@ -748,7 +748,7 @@ export function ToolExecutionItem({
     prompt?: string;
     model?: string;
   } : null;
-  const canOpenSubagent = !!taskInput && !!onExpandSubagent && (!!subagentId || !!hasSubagentMessages);
+  const canOpenSubagent = !!taskInput && !!onExpandSubagent && (!!toolUseId || !!subagentId || !!hasSubagentMessages);
   // Subagent cards stay folded by default; regular tools can still auto-open details.
   const [isExpanded, setIsExpanded] = useState(false);
 
