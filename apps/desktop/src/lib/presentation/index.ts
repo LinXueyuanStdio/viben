@@ -3,7 +3,6 @@ export type {
   PresentationCommand,
   Point,
   Rect,
-  TldrawColor,
   AnimationHandle,
   PresentationStep,
   PlayerState,

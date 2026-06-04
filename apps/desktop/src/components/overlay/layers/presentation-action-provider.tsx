@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { useActionProvider } from "@/hooks/use-action-provider";
 import { useOverlayStore } from "@/stores/overlay-store";
 import {
+  ALL_STEP_COMMANDS,
   registerCompletionCallback,
   removeCompletionCallback,
   compilePresentationCommands,
@@ -18,91 +19,17 @@ import type { ExecutionContext } from "@/lib/action-system/types";
  */
 export function PresentationActionProvider() {
   const actions = useMemo(() => ({
-    draw: {
-      description: "Draw shapes on the canvas (arrows, highlights, circles, text, lines, etc.). Pass a commands array.",
-      input_schema: {
-        type: "object",
-        properties: {
-          commands: {
-            type: "array",
-            description: "Drawing command sequence",
-            items: { type: "object" },
-          },
+    ...Object.fromEntries(
+      ALL_STEP_COMMANDS.map((def) => [
+        def.name,
+        {
+          description: def.description,
+          input_schema: { type: "object", properties: {} },
+          execute: (payload: unknown, ctx: ExecutionContext) =>
+            executePresentationAction(`presentation_${def.name}` as PresentationToolName, payload, ctx),
         },
-        required: ["commands"],
-      },
-      execute: (payload: unknown, ctx: ExecutionContext) =>
-        executePresentationAction("presentation_draw", payload, ctx),
-    },
-    spotlight: {
-      description: "Highlight a UI region with an optional short description.",
-      input_schema: {
-        type: "object",
-        properties: {
-          target: { type: "object", description: "Target region {x, y, width, height}" },
-          title: { type: "string" },
-          description: { type: "string" },
-        },
-        required: ["target"],
-      },
-      execute: (payload: unknown, ctx: ExecutionContext) =>
-        executePresentationAction("presentation_spotlight", payload, ctx),
-    },
-    callout: {
-      description: "Add an arrowed callout annotation to a UI region.",
-      input_schema: {
-        type: "object",
-        properties: {
-          target: { type: "object", description: "Target region" },
-          from: { type: "object", description: "Arrow start point" },
-          label: { type: "string", description: "Label text" },
-        },
-        required: ["target", "from", "label"],
-      },
-      execute: (payload: unknown, ctx: ExecutionContext) =>
-        executePresentationAction("presentation_callout", payload, ctx),
-    },
-    walkthrough: {
-      description: "Walk through multiple UI regions step-by-step.",
-      input_schema: {
-        type: "object",
-        properties: {
-          steps: { type: "array", description: "Steps array", items: { type: "object" } },
-        },
-        required: ["steps"],
-      },
-      execute: (payload: unknown, ctx: ExecutionContext) =>
-        executePresentationAction("presentation_walkthrough", payload, ctx),
-    },
-    compare: {
-      description: "Compare two UI regions side-by-side with labels.",
-      input_schema: {
-        type: "object",
-        properties: {
-          left: { type: "object", description: "Left region configuration" },
-          right: { type: "object", description: "Right region configuration" },
-        },
-        required: ["left", "right"],
-      },
-      execute: (payload: unknown, ctx: ExecutionContext) =>
-        executePresentationAction("presentation_compare", payload, ctx),
-    },
-    clear: {
-      description: "Clear all annotations from the presentation canvas.",
-      input_schema: { type: "object", properties: {} },
-      execute: async (): Promise<ClientToolResult> => {
-        const store = useOverlayStore.getState();
-        if (store.presentationActive) {
-          store.actions.addPresentationSteps({
-            toolUseId: nanoid(),
-            toolName: "presentation_clear",
-            toolInput: {},
-            commands: [{ type: "clear" }],
-          });
-        }
-        return { content: [{ type: "text", text: "Presentation canvas cleared." }] };
-      },
-    },
+      ]),
+    ),
     stop: {
       description: "Exit presentation mode, clearing canvas and hiding overlay.",
       input_schema: { type: "object", properties: {} },

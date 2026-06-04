@@ -38,6 +38,7 @@ import { useOverlayStore } from "@/stores/overlay-store";
 import { completeClientSideToolOnce } from "@/lib/client-side-tool/complete";
 import {
   compilePresentationCommands,
+  isClientSidePresentationTool,
   normalizePresentationToolName,
 } from "@viben/presentation";
 import { toast } from "sonner";
@@ -147,32 +148,6 @@ const PRESENTATION_STOP_TOOL_NAMES = new Set([
   "presentation_stop",
   "mcp__presentation__presentation_stop",
 ]);
-
-/**
- * All client-side presentation tools that should be intercepted and
- * dispatched to the overlay store (excluding clear/stop which have
- * their own handling).
- */
-const PRESENTATION_CLIENT_SIDE_TOOLS = new Set([
-  "presentation_draw",
-  "mcp__presentation__presentation_draw",
-  "presentation_spotlight",
-  "mcp__presentation__presentation_spotlight",
-  "presentation_callout",
-  "mcp__presentation__presentation_callout",
-  "presentation_walkthrough",
-  "mcp__presentation__presentation_walkthrough",
-  "presentation_compare",
-  "mcp__presentation__presentation_compare",
-]);
-
-/**
- * Check if a tool name (possibly prefixed with mcp__<server>__) is a
- * client-side presentation tool that needs interception.
- */
-function isClientSidePresentationTool(toolName: string): boolean {
-  return PRESENTATION_CLIENT_SIDE_TOOLS.has(toolName);
-}
 
 /**
  * SSE message data from /api/agent/run endpoint
@@ -551,7 +526,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
         // --- Presentation tool interception ---
         // When agent calls presentation tools, dispatch to overlay store.
-        // Tool names may arrive as "presentation_draw" or "mcp__presentation__presentation_draw"
+        // Tool names may arrive as "presentation_<type>" or "mcp__presentation__presentation_<type>"
         // depending on SDK version and MCP server name resolution.
         const toolName = data.name || "";
         if (isClientSidePresentationTool(toolName)) {
