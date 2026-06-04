@@ -40,4 +40,26 @@ describe("ToolExecutionItem subagent cards", () => {
       subagentMessages
     );
   });
+
+  test("does not render full subagent messages inline when side panel is available", () => {
+    const subagentMessages: AgentMessage[] = [
+      { id: "m1", type: "text", content: "nested subagent transcript" },
+    ];
+
+    render(
+      <ToolExecutionItem
+        name="Task"
+        input={{
+          description: "Inspect workspace",
+          subagent_type: "explorer",
+        }}
+        output="done"
+        subagentMessages={subagentMessages}
+        renderMessage={(message) => <div>{message.content}</div>}
+        onExpandSubagent={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText("nested subagent transcript")).not.toBeInTheDocument();
+  });
 });
