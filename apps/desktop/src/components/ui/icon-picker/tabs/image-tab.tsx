@@ -15,6 +15,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useImageUpload } from "../hooks/use-image-upload";
+import { getGatewayUrl } from "@/lib/gateway/config";
 
 export interface ImageTabProps {
   /** Workspace path for saving uploaded images */
@@ -193,7 +194,7 @@ export function ImageTab({ workspacePath, onSelect }: ImageTabProps) {
             <img
               src={(() => {
                 if (!workspacePath) return preview;
-                const gatewayUrl = import.meta.env.VITE_GATEWAY_URL || "http://127.0.0.1:18790";
+                const gatewayUrl = getGatewayUrl();
                 return `${gatewayUrl}/api/file/read?workspace_path=${encodeURIComponent(workspacePath)}&file_path=${encodeURIComponent(preview)}`;
               })()}
               alt="Preview"
