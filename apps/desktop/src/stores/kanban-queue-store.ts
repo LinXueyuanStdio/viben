@@ -1,6 +1,6 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist } from "zustand/middleware";
-import { getGatewayUrl } from "@/lib/gateway/config";
+import { getGatewayClient } from "@/lib/gateway";
 import { useMemo, useSyncExternalStore, useCallback, useRef } from "react";
 import i18n from "@/i18n";
 
@@ -129,14 +129,7 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
         fetchGatewayQueueStatus: async () => {
           set({ isLoadingGatewayStatus: true, gatewayStatusError: null });
           try {
-            const gatewayUrl = getGatewayUrl();
-            const response = await fetch(`${gatewayUrl}/api/queue/status`);
-
-            if (!response.ok) {
-              throw new Error(i18n.t("errors.kanbanQueue.fetchStatusFailed", { defaultValue: "Failed to fetch queue status: {{status}}", status: response.status }));
-            }
-
-            const data: GatewayQueueStatus = await response.json();
+            const data = await getGatewayClient().get<GatewayQueueStatus>("/api/queue/status");
             set({
               gatewayQueueStatus: data,
               isLoadingGatewayStatus: false,
@@ -157,20 +150,10 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
           const clampedValue = Math.max(1, Math.min(10, value));
 
           try {
-            const gatewayUrl = getGatewayUrl();
-            const response = await fetch(`${gatewayUrl}/api/queue/config`, {
+            const config = await getGatewayClient().request<GatewayQueueConfig>("/api/queue/config", {
               method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ max_concurrency: clampedValue }),
+              body: { max_concurrency: clampedValue },
             });
-
-            if (!response.ok) {
-              throw new Error(i18n.t("errors.kanbanQueue.updateConfigFailed", { defaultValue: "Failed to update queue config: {{status}}", status: response.status }));
-            }
-
-            const config: GatewayQueueConfig = await response.json();
 
             // Update both local and gateway status
             set({
@@ -192,20 +175,10 @@ function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundS
 
         queueAllBacklogTasks: async (taskIds) => {
           try {
-            const gatewayUrl = getGatewayUrl();
-            const response = await fetch(`${gatewayUrl}/api/queue/enqueue-batch`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ task_ids: taskIds }),
-            });
-
-            if (!response.ok) {
-              throw new Error(i18n.t("errors.kanbanQueue.batchEnqueueFailed", { defaultValue: "Failed to batch enqueue: {{status}}", status: response.status }));
-            }
-
-            const result: BatchEnqueueResponse = await response.json();
+            const result = await getGatewayClient().post<BatchEnqueueResponse>(
+              "/api/queue/enqueue-batch",
+              { task_ids: taskIds }
+            );
 
             // Refresh queue status after batch operation
             await get().fetchGatewayQueueStatus();
