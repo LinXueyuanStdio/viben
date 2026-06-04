@@ -31,7 +31,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { type TabViewModel } from "@/stores/tab-store";
-import { getDescriptorIcon } from "@/navigation/navigation-meta";
+import { getDescriptorIcon } from "@/navigation/route-registry";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import type { IconData } from "@/components/ui/icon-picker";
 
