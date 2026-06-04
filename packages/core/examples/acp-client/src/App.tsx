@@ -15,6 +15,7 @@ import {
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
+  type ClientToolCall,
   type ConnectionStatus,
   type TrafficEntry,
 } from "./acp-client";
@@ -24,6 +25,7 @@ interface ChatMessage {
   role: "agent" | "thought" | "tool" | "system";
   text: string;
   status?: string;
+  toolCallId?: string;
 }
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
@@ -40,6 +42,7 @@ export function App() {
   const [promptResult, setPromptResult] = useState<unknown>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [traffic, setTraffic] = useState<TrafficEntry[]>([]);
+  const [clientToolCalls, setClientToolCalls] = useState<ClientToolCall[]>([]);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<AcpWebSocketClient | null>(null);
 
@@ -57,27 +60,40 @@ export function App() {
       const text = update.content?.text ?? "";
       if (!text) return;
       setMessages((current) => [
-        ...current,
-        {
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          role: update.sessionUpdate === "agent_thought_chunk" ? "thought" : "agent",
-          text,
-        },
+        ...mergeTextChunk(current, update.sessionUpdate === "agent_thought_chunk" ? "thought" : "agent", text),
       ]);
       return;
     }
 
-    if (update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update") {
+    if (update.sessionUpdate === "tool_call") {
       setMessages((current) => [
         ...current,
         {
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           role: "tool",
-          text: `${update.title ?? update.toolCallId ?? "tool"} ${update.sessionUpdate}`,
+          text: update.title ?? update.toolCallId ?? "tool",
           status: update.status,
+          toolCallId: update.toolCallId,
         },
       ]);
+      return;
     }
+
+    if (update.sessionUpdate === "tool_call_update") {
+      setMessages((current) => updateToolStatus(current, update.toolCallId, update.status));
+    }
+  }, []);
+
+  const appendClientToolCall = useCallback((call: ClientToolCall) => {
+    setClientToolCalls((current) => [call, ...current].slice(0, 50));
+    setMessages((current) => [
+      ...current,
+      {
+        id: call.id,
+        role: "system",
+        text: `Client tool handled: ${call.toolName} (${call.toolUseId})`,
+      },
+    ]);
   }, []);
 
   const ensureClient = useCallback(() => {
@@ -85,12 +101,13 @@ export function App() {
       clientRef.current = new AcpWebSocketClient({
         onTraffic: appendTraffic,
         onSessionUpdate: appendSessionUpdate,
+        onClientToolCall: appendClientToolCall,
         onStatus: setStatus,
         onError: setError,
       });
     }
     return clientRef.current;
-  }, [appendSessionUpdate, appendTraffic]);
+  }, [appendClientToolCall, appendSessionUpdate, appendTraffic]);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -99,6 +116,7 @@ export function App() {
     setPromptResult(null);
     setSessionId(null);
     setMessages([]);
+    setClientToolCalls([]);
     try {
       const client = ensureClient();
       await client.connect(wsUrl);
@@ -274,6 +292,16 @@ export function App() {
           </section>
 
           <section className="space-y-5">
+            <Panel title="Client Tools" description="Requests initiated by Viben through _viben/client_tool_call.">
+              <div className="max-h-80 space-y-2 overflow-auto pr-1">
+                {clientToolCalls.length === 0 ? (
+                  <EmptyState text="No client-side tool calls yet." />
+                ) : (
+                  clientToolCalls.map((call) => <ClientToolRow key={call.id} call={call} />)
+                )}
+              </div>
+            </Panel>
+
             <Panel title="ACP Results">
               <JsonBlock title="initialize" value={initializeResult} />
               <JsonBlock title="session/new" value={sessionResult} />
@@ -358,6 +386,25 @@ function MessageRow({ message }: { message: ChatMessage }) {
   );
 }
 
+function ClientToolRow({ call }: { call: ClientToolCall }) {
+  return (
+    <details className="rounded-lg border border-info/35 bg-info/10 p-3 text-xs">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate font-semibold">{call.toolName}</div>
+            <div className="truncate text-muted-foreground">{call.toolUseId}</div>
+          </div>
+          <span className="shrink-0 text-muted-foreground">{new Date(call.at).toLocaleTimeString()}</span>
+        </div>
+      </summary>
+      <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
+        {JSON.stringify({ input: call.input, result: call.result }, null, 2)}
+      </pre>
+    </details>
+  );
+}
+
 function JsonBlock({ title, value }: { title: string; value: unknown }) {
   return (
     <div className="mb-3 last:mb-0">
@@ -406,6 +453,51 @@ function summarizeTraffic(entries: TrafficEntry[]) {
     },
     { inbound: 0, outbound: 0, clientTools: 0 }
   );
+}
+
+function mergeTextChunk(current: ChatMessage[], role: "agent" | "thought", text: string): ChatMessage[] {
+  const previous = current[current.length - 1];
+  if (previous?.role === role && !previous.status) {
+    return [
+      ...current.slice(0, -1),
+      {
+        ...previous,
+        text: `${previous.text}${text}`,
+      },
+    ];
+  }
+  return [
+    ...current,
+    {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      role,
+      text,
+    },
+  ];
+}
+
+function updateToolStatus(current: ChatMessage[], toolCallId: string | undefined, status: string | undefined): ChatMessage[] {
+  if (!toolCallId) return current;
+  let updated = false;
+  const next = current.map((message) => {
+    if (message.toolCallId !== toolCallId) return message;
+    updated = true;
+    return {
+      ...message,
+      status,
+    };
+  });
+  if (updated) return next;
+  return [
+    ...current,
+    {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      role: "tool",
+      text: toolCallId,
+      status,
+      toolCallId,
+    },
+  ];
 }
 
 function readSessionId(value: unknown): string | null {

@@ -65,12 +65,17 @@ export function registerAgentAcpRoutes(fastify: FastifyInstance): void {
     };
     const ownedSessionIds = new Set<string>();
     let buffer = "";
+    let processing = Promise.resolve();
 
     log.info({ cwd: context.cwd, agentConfigPath: context.agent_config_path }, "ACP WebSocket connected");
 
     socket.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
-      buffer = handleIncomingData(webSocketDataToString(data), buffer, async (line) => {
-        await handleJsonRpcLine(line, connection, context, ownedSessionIds);
+      buffer = handleIncomingData(webSocketDataToString(data), buffer, (line) => {
+        processing = processing
+          .then(() => handleJsonRpcLine(line, connection, context, ownedSessionIds))
+          .catch((error) => {
+            log.error({ err: error }, "Failed to process ACP JSON-RPC line");
+          });
       });
     });
 
@@ -259,7 +264,7 @@ function createInitializeResponse(_request?: AcpInitializeRequest): AcpInitializ
 function handleIncomingData(
   data: string,
   previousBuffer: string,
-  onLine: (line: string) => Promise<void>
+  onLine: (line: string) => void
 ): string {
   let buffer = previousBuffer + data;
   if (buffer.indexOf("\n") === -1) {
