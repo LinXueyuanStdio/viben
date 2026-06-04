@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+set -eu
+
+HOOK_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_ROOT=$(git -C "$HOOK_DIR" rev-parse --show-toplevel)
+
+"$PROJECT_ROOT/scripts/check-pnpm-lockfile.sh"

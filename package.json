@@ -8,6 +8,8 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
+    "prepare": "./scripts/install-git-hooks.sh",
+    "check:lockfile": "./scripts/check-pnpm-lockfile.sh",
     "clean": "turbo clean && rm -rf node_modules",
     "code-stats": "python scripts/code-stats.py",
     "desktop": "pnpm --filter @viben/desktop",
