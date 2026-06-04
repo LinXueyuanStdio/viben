@@ -51,7 +51,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { open } from "@tauri-apps/plugin-shell";
-import { getGatewayUrl, getGatewayClient } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
 import { useFileBrowser, type ViewMode, type SortField, type SortDirection, type GroupField, type FileGroup } from "@/hooks/use-file-browser";
 import { SortDropdown, FileSearchInput, GroupDropdown } from "@/components/file-browser/file-actions";
@@ -1888,20 +1888,8 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
     if (file.is_directory) return;
 
     try {
-      // Use gateway API to open file with specific app
-      const gatewayUrl = getGatewayUrl();
-      const response = await fetch(`${gatewayUrl}/api/files/open`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: file.path,
-          app_id: app,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to open file: ${response.statusText}`);
-      }
+      const client = getGatewayClient();
+      await client.openFile(file.path, app);
     } catch (error) {
       console.error("Failed to open file:", error);
       // Fallback to Tauri shell open
@@ -1916,19 +1904,8 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
   // Handle "Show in Finder/Explorer" - reveal file in system file manager
   const handleShowInFinder = useCallback(async (file: FileEntry) => {
     try {
-      // Use gateway API to reveal file in system file manager
-      const gatewayUrl = getGatewayUrl();
-      const response = await fetch(`${gatewayUrl}/api/files/reveal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: file.path,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to reveal file: ${response.statusText}`);
-      }
+      const client = getGatewayClient();
+      await client.revealFile(file.path);
     } catch (error) {
       console.error("Failed to show in finder:", error);
       // Fallback to Tauri shell open
