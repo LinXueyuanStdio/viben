@@ -310,6 +310,7 @@ function extractAgentMapping(text: string): Map<string, string> {
 
 export function extractSubagentPreviewEvents(text: string): SubagentPreviewEvent[] {
   const events: SubagentPreviewEvent[] = []
+  let eventIndex = 0
   for (const line of text.split(/\r?\n/)) {
     if (!line.trim()) continue
     try {
@@ -319,10 +320,15 @@ export function extractSubagentPreviewEvents(text: string): SubagentPreviewEvent
       if (!progressMessage || typeof progressMessage !== "object") continue
       const messages = parseSessionJsonlDetailed(JSON.stringify(progressMessage)).messages
       if (messages.length === 0) continue
+      const currentEventIndex = eventIndex++
+      const messagesWithStableIds = messages.map((message, messageIndex) => ({
+        ...message,
+        id: `${obj.parentToolUseID}:${obj.data.agentId}:preview-${currentEventIndex}-${message.id ?? messageIndex}`,
+      }))
       events.push({
         parentToolUseId: obj.parentToolUseID,
         subagentId: obj.data.agentId,
-        messages,
+        messages: messagesWithStableIds,
       })
     } catch {
       // Detailed parser covers malformed session records. Preview extraction is best-effort.

@@ -62,7 +62,7 @@ describe("SubagentSheet", () => {
     let resolveDetails: ((messages: AgentMessage[]) => void) | undefined;
     const loadSubagentDetails: LoadSubagentDetails = vi.fn(
       () =>
-        new Promise((resolve) => {
+        new Promise<{ messages: AgentMessage[] }>((resolve) => {
           resolveDetails = (messages) => resolve({ messages });
         })
     );
