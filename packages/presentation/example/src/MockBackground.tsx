@@ -4,7 +4,7 @@ import { useEffect } from "react"
  * Mock "2024 Global AI Chip Market Analysis" background
  *
  * A rich, information-dense financial research dashboard styled like
- * Bloomberg terminal meets educational video (小Lin说 style).
+ * Bloomberg terminal meets educational video.
  *
  * Layout: dark theme, 1024x768 viewport, 40px padding, max-width ~920px centered.
  */
