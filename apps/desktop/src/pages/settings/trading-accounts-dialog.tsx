@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
+import { getGatewayClient } from "@/lib/gateway";
 import { exchangeIcons } from "./exchange-icons";
 
 interface ExchangeMeta {
@@ -60,8 +61,6 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const GATEWAY = "http://127.0.0.1:18790";
 
 /** Map exchange id to a brand color used for the avatar. */
 function getExchangeColor(id: string): string {
@@ -91,6 +90,27 @@ function getExchangeAccentColor(id: string): string {
     mexc: "before:bg-indigo-500",
   };
   return accents[id] ?? "before:bg-muted-foreground";
+}
+
+interface ExchangesResponse {
+  exchanges?: ExchangeMeta[];
+}
+
+interface AccountsResponse {
+  accounts?: AccountItem[];
+}
+
+interface PublicIpResponse {
+  ip?: string;
+}
+
+interface AccountMutationResponse {
+  success: boolean;
+  error?: string;
+}
+
+interface AccountTestResponse extends AccountMutationResponse {
+  latency_ms?: number;
 }
 
 export function TradingAccountsDialog({ open, onOpenChange }: Props) {
@@ -138,14 +158,16 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
 
   const fetchData = useCallback(async () => {
     try {
+      const client = getGatewayClient();
       const [exRes, accRes] = await Promise.all([
-        fetch(`${GATEWAY}/api/exchanges`).then((r) => r.json()),
-        fetch(`${GATEWAY}/api/accounts`).then((r) => r.json()),
+        client.get<ExchangesResponse>("/api/exchanges"),
+        client.get<AccountsResponse>("/api/accounts"),
       ]);
-      setExchanges(exRes.exchanges ?? []);
+      const exchanges = exRes.exchanges ?? [];
+      setExchanges(exchanges);
       setAccounts(accRes.accounts ?? []);
-      if (exRes.exchanges?.length > 0) {
-        setSelectedExchange((prev) => prev || exRes.exchanges[0].id);
+      if (exchanges.length > 0) {
+        setSelectedExchange((prev) => prev || exchanges[0].id);
       }
     } catch {
       toast.error("Failed to load exchange data");
@@ -156,8 +178,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
     if (publicIpFetched.current) return;
     setPublicIpLoading(true);
     try {
-      const res = await fetch(`${GATEWAY}/api/system/public-ip`);
-      const data = await res.json();
+      const data = await getGatewayClient().get<PublicIpResponse>("/api/system/public-ip");
       if (data.ip) {
         setPublicIp(data.ip);
         publicIpFetched.current = true;
@@ -257,12 +278,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
       };
       if (formPassphrase) body.passphrase = formPassphrase;
 
-      const res = await fetch(`${GATEWAY}/api/accounts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      const data = await getGatewayClient().post<AccountMutationResponse>("/api/accounts", body);
       if (data.success) {
         toast.success("账户添加成功");
         setShowForm(false);
@@ -285,10 +301,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
       return next;
     });
     try {
-      const res = await fetch(`${GATEWAY}/api/accounts/${id}/test`, {
-        method: "POST",
-      });
-      const data = await res.json();
+      const data = await getGatewayClient().post<AccountTestResponse>(`/api/accounts/${id}/test`);
       if (data.success) {
         setTestResults((prev) =>
           new Map(prev).set(id, {
@@ -323,10 +336,9 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`${GATEWAY}/api/accounts/${id}`, {
+      const data = await getGatewayClient().request<AccountMutationResponse>(`/api/accounts/${id}`, {
         method: "DELETE",
       });
-      const data = await res.json();
       if (data.success) {
         toast.success("账户已删除");
         await fetchData();
