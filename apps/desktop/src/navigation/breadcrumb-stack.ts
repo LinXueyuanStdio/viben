@@ -1,5 +1,5 @@
 import type { BreadcrumbStackItem } from "./breadcrumb-builder";
-import { getDescriptorIcon } from "./navigation-meta";
+import { getDescriptorIcon } from "./route-registry";
 
 // ─── Atomic Stack Operations ─────────────────────────────────────────────────
 
