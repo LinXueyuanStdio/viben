@@ -22,7 +22,7 @@ registerSdkMcpServer("gui_action", (sdk, context) => {
 
   async function safeWaitForClient(sid: string): Promise<CallToolResult> {
     try {
-      return await clientToolCompletionRegistry.waitForClient(sid);
+      return await clientToolCompletionRegistry.waitForClient(sid, undefined, "GUI_execute");
     } catch (err) {
       if (err instanceof ClientToolCancelledError) {
         return { content: [{ type: "text" as const, text: "GUI action cancelled by user." }], isError: true };

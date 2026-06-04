@@ -18,6 +18,8 @@ export {
   type AcpNewSessionResponse,
   type AcpPromptRequest,
   type AcpPromptResponse,
+  type AcpRequestPermissionRequest,
+  type AcpRequestPermissionResponse,
   type AcpSandboxConfig,
   type AcpSessionContext,
   type AcpSessionNotification,
@@ -27,13 +29,6 @@ export {
   type AcpStopReason,
   type AcpTextContent,
   type AgentConfigPayload,
-  type JsonRpcErrorObject,
-  type JsonRpcFailure,
-  type JsonRpcId,
-  type JsonRpcMessage,
-  type JsonRpcNotification,
-  type JsonRpcRequest,
-  type JsonRpcSuccess,
 } from "./types";
 export {
   AcpPromptError,
@@ -41,4 +36,9 @@ export {
   getAcpErrorDetail,
   normalizeAcpError,
 } from "./ops/errors";
+export {
+  listBuiltinAcpBackends,
+  resolveBuiltinAcpBackend,
+  type AcpBackendInfo,
+} from "./ops/backend-adapter";
 export { AcpSessionManager, acpSessionManager } from "./ops/session-manager";

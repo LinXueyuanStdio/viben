@@ -28,6 +28,8 @@ const testCase = args.case ?? "default";
 const cwd = resolve(args.cwd ?? repoRoot);
 const expectedClientTool = args.expectClientTool;
 const agentConfig = parseJsonArg(args.agentConfigJson, "agent-config-json");
+const requestTimeoutMs = Number(args.requestTimeoutMs ?? 30_000);
+const permissionResponse = args.permissionResponse ?? "allow";
 
 mkdirSync(dirname(logPath), { recursive: true });
 const logStream = createWriteStream(logPath, { flags: "w" });
@@ -59,8 +61,8 @@ class RpcPeer {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`request timed out: ${method}`));
-      }, 30_000);
+        reject(new Error(`request timed out after ${requestTimeoutMs}ms: ${method}`));
+      }, requestTimeoutMs);
       this.pending.set(id, { method, resolve, reject, timer });
     });
   }
@@ -110,6 +112,18 @@ class RpcPeer {
         result,
       };
       log(this.name, "OUT client-call response", response);
+      this.sendFrame(response);
+      return;
+    }
+
+    if (frame.method === "session/request_permission") {
+      const result = selectPermissionOutcome(frame.params);
+      const response = {
+        jsonrpc: "2.0",
+        id: frame.id,
+        result,
+      };
+      log(this.name, "OUT permission response", response);
       this.sendFrame(response);
       return;
     }
@@ -260,6 +274,19 @@ async function runGuiExecuteCase() {
   return result;
 }
 
+async function runPermissionCase() {
+  const result = await runFakeCliControl({ FAKE_ACP_TRIGGER_PERMISSION: "1" });
+  const summary = summarizeResult(result);
+  log("case", "permission summary", summary);
+  if (summary.stopReason !== "end_turn") {
+    throw new Error(`permission case expected end_turn, got ${summary.stopReason ?? "missing"}`);
+  }
+  if (!summary.permissionRequests.length) {
+    throw new Error("permission case expected at least one session/request_permission client-call");
+  }
+  return result;
+}
+
 async function runRealAcpCase() {
   const result = await runWebSocketEndpoint("real-acp");
   log("case", "real-acp summary", summarizeResult(result));
@@ -287,12 +314,22 @@ function splitFrames(buffer, onFrame) {
 function summarizeResult(result) {
   return {
     agentInfo: result.initialize?.agentInfo ?? result.initialize?.serverInfo,
-    capabilities: result.initialize?.agentCapabilities ?? result.initialize?.serverCapabilities,
+      capabilities: result.initialize?.agentCapabilities ?? result.initialize?.serverCapabilities,
     sessionId: result.session?.sessionId,
     stopReason: result.prompt?.stopReason,
     promptError: result.prompt?.error,
     notificationCount: result.notifications.length,
     clientRequestCount: result.clientRequests?.length ?? 0,
+    permissionRequests: (result.clientRequests ?? [])
+      .filter((frame) => frame.method === "session/request_permission")
+      .map((frame) => ({
+        sessionId: frame.params?.sessionId,
+        toolCallId: frame.params?.toolCall?.toolCallId,
+        title: frame.params?.toolCall?.title,
+        kind: frame.params?.toolCall?.kind,
+        rawInput: frame.params?.toolCall?.rawInput,
+        options: frame.params?.options,
+      })),
     clientToolNames: (result.clientRequests ?? [])
       .filter((frame) => frame.method === "_viben/client_tool_call")
       .map((frame) => frame.params?.toolName),
@@ -312,9 +349,15 @@ function assertExpectedClientTool(result, fallbackTool) {
   const toolNames = (result.clientRequests ?? [])
     .filter((frame) => frame.method === "_viben/client_tool_call")
     .map((frame) => frame.params?.toolName);
-  if (!toolNames.includes(expected)) {
+  if (!toolNames.some((toolName) => isExpectedToolName(toolName, expected))) {
     throw new Error(`Expected client tool ${expected}, got ${toolNames.length ? toolNames.join(", ") : "none"}`);
   }
+}
+
+function isExpectedToolName(actual, expected) {
+  if (actual === expected) return true;
+  if (expected === "GUI_execute" && actual === "mcp__gui_action__GUI_execute") return true;
+  return false;
 }
 
 function executeClientTool(params) {
@@ -360,6 +403,32 @@ function executeClientTool(params) {
   };
 }
 
+function selectPermissionOutcome(params) {
+  const options = Array.isArray(params?.options) ? params.options : [];
+  log("permission", "request detail", {
+    sessionId: params?.sessionId,
+    toolCall: params?.toolCall,
+    options,
+    configuredResponse: permissionResponse,
+  });
+
+  if (permissionResponse === "cancel") {
+    return { outcome: { outcome: "cancelled" } };
+  }
+
+  const matcher = permissionResponse === "reject"
+    ? (option) => String(option?.kind ?? "").startsWith("reject") || /reject|deny|no/i.test(String(option?.optionId ?? option?.name ?? ""))
+    : (option) => String(option?.kind ?? "").startsWith("allow") || /allow|accept|yes|default/i.test(String(option?.optionId ?? option?.name ?? ""));
+
+  const selected = options.find(matcher) ?? options[0] ?? { optionId: permissionResponse === "reject" ? "reject" : "allow" };
+  return {
+    outcome: {
+      outcome: "selected",
+      optionId: selected.optionId,
+    },
+  };
+}
+
 function getFakeActions() {
   return [
     {
@@ -397,6 +466,8 @@ function parseArgs(argv) {
     else if (arg === "--skip-stdio") parsed.skipStdio = true;
     else if (arg === "--skip-ws") parsed.skipWs = true;
     else if (arg === "--fail-on-prompt-error") parsed.failOnPromptError = true;
+    else if (arg === "--request-timeout-ms") parsed.requestTimeoutMs = argv[++i];
+    else if (arg === "--permission-response") parsed.permissionResponse = argv[++i];
   }
   return parsed;
 }
@@ -419,6 +490,8 @@ async function main() {
     testCase,
     cwd,
     expectedClientTool,
+    requestTimeoutMs,
+    agentConfig,
   });
 
   if (testCase === "gui-execute") {
@@ -426,6 +499,18 @@ async function main() {
       await runGuiExecuteCase();
     } catch (error) {
       log("case", "gui-execute failed", error instanceof Error ? error.stack ?? error.message : String(error));
+      process.exitCode = 1;
+    }
+    log("main", "fake ACP client finished");
+    await new Promise((resolve) => logStream.end(resolve));
+    return;
+  }
+
+  if (testCase === "permission") {
+    try {
+      await runPermissionCase();
+    } catch (error) {
+      log("case", "permission failed", error instanceof Error ? error.stack ?? error.message : String(error));
       process.exitCode = 1;
     }
     log("main", "fake ACP client finished");

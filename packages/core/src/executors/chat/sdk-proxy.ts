@@ -103,8 +103,7 @@ export type SSEMessage =
   | SSEQuestionMessage
   | SSESdkSessionMessage;
 
-import { execSync, spawn } from "node:child_process";
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import { execSync } from "node:child_process";
 import { logger as globalLogger } from "../../telemetry";
 
 // Module-level logger
@@ -141,36 +140,6 @@ function findClaudeCodeExecutable(): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-function attachClaudeProcessDiagnostics(
-  child: ChildProcessWithoutNullStreams,
-  onStderr: (data: string) => void,
-  onExit?: (exitCode: number | null, signal: NodeJS.Signals | null) => void
-): void {
-  child.stderr.on("data", (chunk: Buffer | string) => {
-    onStderr(String(chunk));
-  });
-  child.stderr.on("error", (error) => {
-    log.warn({ err: error }, "Claude stderr stream error");
-  });
-  child.stdout.on("error", (error) => {
-    log.warn({ err: error }, "Claude stdout stream error");
-  });
-  child.stdin.on("error", (error) => {
-    // Claude may exit before the SDK finishes writing the prompt. Without this
-    // listener Node treats EPIPE as an unhandled stream error and terminates the
-    // gateway process before ACP can return diagnostics to the client.
-    log.warn({ err: error }, "Claude stdin stream error");
-  });
-  child.on("error", (error) => {
-    log.error({ err: error }, "Claude process spawn error");
-  });
-  child.on("exit", (exitCode, signal) => {
-    onExit?.(exitCode, signal);
-    if (exitCode === 0 && signal === null) return;
-    log.warn({ exitCode, signal }, "Claude process exited before completing SDK query");
-  });
 }
 
 /**
@@ -554,8 +523,6 @@ export class SdkChatProxy implements ChatProxy {
 
     // Capture stderr from Claude Code subprocess for debugging (declared outside try for access in catch)
     let stderrOutput = "";
-    let processExitCode: number | undefined;
-    let processSignal: string | undefined;
     let claudePath: string | undefined;
 
     try {
@@ -629,13 +596,9 @@ export class SdkChatProxy implements ChatProxy {
         verboseLog("Starting new session", { sessionId });
       }
 
-      // Permission mode - use bypassPermissions by default for gateway usage
       if (permissionMode) {
         queryOptions.permissionMode = permissionMode;
       } else if (dangerouslySkipPermissions) {
-        queryOptions.permissionMode = "bypassPermissions";
-      } else {
-        // Default to bypassPermissions for server-side execution
         queryOptions.permissionMode = "bypassPermissions";
       }
 
@@ -661,28 +624,6 @@ export class SdkChatProxy implements ChatProxy {
         stderrOutput += data;
         verboseError('Claude stderr', { data });
       };
-      queryOptions.spawnClaudeCodeProcess = (spawnOptions: ClaudeAgentSdk.SpawnOptions) => {
-        const child = spawn(spawnOptions.command, spawnOptions.args, {
-          cwd: spawnOptions.cwd,
-          env: spawnOptions.env,
-          signal: spawnOptions.signal,
-          stdio: ["pipe", "pipe", "pipe"],
-          windowsHide: true,
-        });
-        attachClaudeProcessDiagnostics(
-          child,
-          (data) => {
-            stderrOutput += data;
-            verboseError("Claude stderr", { data });
-          },
-          (exitCode, signal) => {
-            processExitCode = exitCode ?? undefined;
-            processSignal = signal ?? undefined;
-          }
-        );
-        return child;
-      };
-
       // Resolve SDK MCP servers from registry by name
       if (mcpServers && mcpServers.length > 0) {
         const perfMcpStart = Date.now();
@@ -751,8 +692,6 @@ export class SdkChatProxy implements ChatProxy {
       const baseError = {
         stderr: stderr || undefined,
         details: stderr || undefined,
-        exitCode: processExitCode,
-        signal: processSignal,
         claudePath,
         code: typeof (error as { code?: unknown }).code === "string" || typeof (error as { code?: unknown }).code === "number"
           ? (error as { code?: string | number }).code

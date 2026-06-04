@@ -53,6 +53,8 @@ export default function PetWindowPage() {
 
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragStartRef = useRef<{ cursorX: number; cursorY: number; winX: number; winY: number } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   // Load config and pet
   useEffect(() => {
@@ -155,9 +157,6 @@ export default function PetWindowPage() {
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
-  const dragStartRef = useRef<{ cursorX: number; cursorY: number; winX: number; winY: number } | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
@@ -187,6 +186,7 @@ export default function PetWindowPage() {
     }
   }, []);
 
+  // Drag polling loop
   useEffect(() => {
     if (!isDragging) return;
 

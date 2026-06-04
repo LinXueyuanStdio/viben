@@ -49,6 +49,15 @@ interface PendingEntry {
   timer: ReturnType<typeof setTimeout> | null;
 }
 
+interface WaitingConsumer {
+  sessionId: string;
+  toolName: string;
+  createdAt: number;
+  resolve: (result: CallToolResult) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout> | null;
+}
+
 // ---------------------------------------------------------------------------
 // Error
 // ---------------------------------------------------------------------------
@@ -98,6 +107,9 @@ export class ClientToolCompletionRegistry {
 
   /** Per-session FIFO queues of toolUseIds awaiting pickup by waitForClient */
   private sessionQueues = new Map<string, string[]>();
+
+  /** Per-session consumers waiting for the next toolUseId to be enqueued */
+  private sessionWaiters = new Map<string, WaitingConsumer[]>();
 
   /** GC interval handle */
   private gcInterval: ReturnType<typeof setInterval> | null = null;
@@ -174,6 +186,8 @@ export class ClientToolCompletionRegistry {
     // cancelSession can properly reject it even before waitForClient is called.
     this.createPendingEntry(sessionId, toolUseId, toolName);
 
+    this.resolveNextSessionWaiter(sessionId);
+
     logger.debug({ sessionId, toolUseId, toolName }, "Enqueued client tool");
   }
 
@@ -203,10 +217,7 @@ export class ClientToolCompletionRegistry {
         this.createPendingEntry(sessionId, toolUseId, toolName ?? "");
       }
     } else {
-      return {
-        content: [{ type: "text", text: "No pending client tool call found." }],
-        isError: true,
-      };
+      return await this.waitForNextClientTool(sessionId, toolName);
     }
 
     const entry = this.pending.get(resolvedToolUseId!);
@@ -291,6 +302,15 @@ export class ClientToolCompletionRegistry {
     // Clear the queue
     this.sessionQueues.delete(sessionId);
 
+    const waiters = this.sessionWaiters.get(sessionId) ?? [];
+    for (const waiter of waiters) {
+      if (waiter.timer) {
+        clearTimeout(waiter.timer);
+      }
+      waiter.reject(new ClientToolCancelledError("pending", sessionId));
+    }
+    this.sessionWaiters.delete(sessionId);
+
     // Reject all pending entries for this session
     for (const [toolUseId, entry] of this.pending) {
       if (entry.sessionId === sessionId) {
@@ -330,6 +350,23 @@ export class ClientToolCompletionRegistry {
       }
     }
 
+    for (const [sessionId, waiters] of this.sessionWaiters) {
+      const retained = waiters.filter((waiter) => {
+        if (now - waiter.createdAt <= maxAgeMs) return true;
+        if (waiter.timer) {
+          clearTimeout(waiter.timer);
+        }
+        waiter.reject(new ClientToolTimeoutError("pending", maxAgeMs));
+        cleaned++;
+        return false;
+      });
+      if (retained.length > 0) {
+        this.sessionWaiters.set(sessionId, retained);
+      } else {
+        this.sessionWaiters.delete(sessionId);
+      }
+    }
+
     if (cleaned > 0) {
       logger.debug({ cleaned, maxAgeMs }, "GC cleaned orphan client tool entries");
     }
@@ -349,6 +386,11 @@ export class ClientToolCompletionRegistry {
   /** Get the queue length for a session (for testing/monitoring) */
   getQueueLength(sessionId: string): number {
     return this.sessionQueues.get(sessionId)?.length ?? 0;
+  }
+
+  /** Get the number of waiters for a session awaiting the next toolUseId */
+  getWaiterCount(sessionId: string): number {
+    return this.sessionWaiters.get(sessionId)?.length ?? 0;
   }
 
   /** Check if a specific toolUseId is pending */
@@ -389,6 +431,75 @@ export class ClientToolCompletionRegistry {
 
     this.pending.set(toolUseId, entry);
     return entry;
+  }
+
+  private async waitForNextClientTool(sessionId: string, toolName?: string): Promise<CallToolResult> {
+    const effectiveToolName = toolName ?? "client_tool";
+    const options = this.getToolOptions(effectiveToolName);
+    const effectiveTimeout = options?.timeoutMs && options.timeoutMs > 0
+      ? Math.min(options.timeoutMs, GLOBAL_MAX_TIMEOUT_MS)
+      : GLOBAL_MAX_TIMEOUT_MS;
+
+    return new Promise<CallToolResult>((resolve, reject) => {
+      const waiter: WaitingConsumer = {
+        sessionId,
+        toolName: effectiveToolName,
+        createdAt: Date.now(),
+        resolve,
+        reject,
+        timer: null,
+      };
+
+      waiter.timer = setTimeout(() => {
+        this.removeSessionWaiter(sessionId, waiter);
+        const fallback = (options?.onTimeout ?? defaultTimeoutResult)({
+          toolName: effectiveToolName,
+          toolUseId: "pending",
+          elapsedMs: effectiveTimeout,
+        });
+        resolve(fallback);
+      }, effectiveTimeout);
+
+      let waiters = this.sessionWaiters.get(sessionId);
+      if (!waiters) {
+        waiters = [];
+        this.sessionWaiters.set(sessionId, waiters);
+      }
+      waiters.push(waiter);
+
+      logger.debug({ sessionId, toolName: effectiveToolName, timeoutMs: effectiveTimeout }, "Waiting for next client tool enqueue");
+      this.resolveNextSessionWaiter(sessionId);
+    });
+  }
+
+  private resolveNextSessionWaiter(sessionId: string): void {
+    const queue = this.sessionQueues.get(sessionId);
+    const waiters = this.sessionWaiters.get(sessionId);
+    if (!queue?.length || !waiters?.length) return;
+
+    const waiter = waiters.shift()!;
+    if (waiters.length === 0) {
+      this.sessionWaiters.delete(sessionId);
+    }
+    if (waiter.timer) {
+      clearTimeout(waiter.timer);
+      waiter.timer = null;
+    }
+
+    void this.waitForClient(sessionId, undefined, waiter.toolName)
+      .then(waiter.resolve)
+      .catch(waiter.reject);
+  }
+
+  private removeSessionWaiter(sessionId: string, waiter: WaitingConsumer): void {
+    const waiters = this.sessionWaiters.get(sessionId);
+    if (!waiters) return;
+    const next = waiters.filter((item) => item !== waiter);
+    if (next.length > 0) {
+      this.sessionWaiters.set(sessionId, next);
+    } else {
+      this.sessionWaiters.delete(sessionId);
+    }
   }
 
   private getToolOptions(toolName: string): ClientSideToolOptions | undefined {

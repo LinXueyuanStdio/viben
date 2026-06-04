@@ -1,9 +1,7 @@
 import { randomUUID } from "node:crypto";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
-import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
-import type { SSEMessage } from "../../executors/ops/types";
-import { agentService } from "../../services/agent";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 import { logger as globalLogger } from "../../telemetry";
 import type {
@@ -26,6 +24,11 @@ import type {
   AgentConfigPayload,
 } from "../types";
 import { AcpPromptError, createAcpErrorDetail, getAcpErrorDetail } from "./errors";
+import {
+  createDefaultAcpBackendAdapter,
+  type AcpBackendAdapter,
+  type AcpBackendSession,
+} from "./backend-adapter";
 
 const log = globalLogger.child({ module: "acp-session-manager" });
 
@@ -33,8 +36,7 @@ const DEFAULT_AGENT_CAPABILITIES: AcpAgentCapabilities = {
   loadSession: true,
   modes: false,
   sessionCapabilities: {
-    list: true,
-    loadSession: true,
+    list: {},
   },
 };
 
@@ -57,7 +59,8 @@ interface AcpSession {
   agent_config?: AgentConfigPayload;
   sandbox_config?: AcpSandboxConfig;
   connection: AcpConnection;
-  active_proxy?: SdkChatProxy;
+  gateway_url?: string;
+  backend?: AcpBackendSession;
   prompt_running: boolean;
   prompt_queue: AcpPromptQueueItem[];
   sdk_session_id?: string;
@@ -68,6 +71,7 @@ interface AcpSession {
 
 export class AcpSessionManager {
   private sessions = new Map<string, AcpSession>();
+  private backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter();
 
   getSession(sessionId: string): AcpSessionSummary | undefined {
     const session = this.sessions.get(sessionId);
@@ -105,7 +109,7 @@ export class AcpSessionManager {
     const agentConfig = await resolveAgentConfig(agentConfigPath, inlineConfig);
     const cwd = request.cwd ?? context.cwd ?? process.cwd();
 
-    return {
+    const session: AcpSession = {
       id: sessionId,
       status: "initializing",
       cwd,
@@ -127,10 +131,33 @@ export class AcpSessionManager {
         request.sandboxConfig ??
         context.sandbox_config,
       connection,
+      gateway_url: context.gateway_url,
       prompt_running: false,
       prompt_queue: [],
       agent_capabilities: DEFAULT_AGENT_CAPABILITIES,
     };
+    return session;
+  }
+
+  async requestClientTool(
+    sessionId: string,
+    toolName: string,
+    input: unknown,
+    toolUseId: string = randomUUID()
+  ): Promise<CallToolResult> {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return {
+        content: [{ type: "text", text: `ACP session not found: ${sessionId}` }],
+        isError: true,
+      };
+    }
+
+    clientToolCompletionRegistry.registerToolOptions("GUI_execute", { timeoutMs: 60_000 });
+    clientToolCompletionRegistry.enqueue(session.id, toolUseId, toolName);
+    const result = clientToolCompletionRegistry.waitForClient(session.id, toolUseId, toolName);
+    await this.dispatchClientToolRequest(session, toolUseId, toolName, input);
+    return await result;
   }
 
   async loadSession(
@@ -152,6 +179,7 @@ export class AcpSessionManager {
       request.sessionId,
       {
         cwd: request.cwd,
+        mcpServers: request.mcpServers ?? [],
         agent_config_path: context.agent_config_path,
         agent_dir: context.agent_dir,
         agent_config: context.agent_config,
@@ -197,13 +225,12 @@ export class AcpSessionManager {
       item.resolve({ stopReason: "cancelled" });
     }
 
-    agentService.stopSession(sessionId);
     clientToolCompletionRegistry.cancelSession(sessionId);
-    if (session.active_proxy) {
+    if (session.backend) {
       try {
-        await session.active_proxy.steer("The user cancelled the current turn. Stop as soon as possible.");
+        await session.backend.cancel();
       } catch {
-        // The SDK proxy may not be steerable once the stream is already ending.
+        // The backend may already be ending its current prompt.
       }
     }
     log.info({ sessionId }, "ACP session cancelled");
@@ -214,9 +241,11 @@ export class AcpSessionManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
     if (session.prompt_running) {
-      agentService.stopSession(sessionId);
       clientToolCompletionRegistry.cancelSession(sessionId);
     }
+    void session.backend?.close().catch((error) => {
+      log.debug({ err: error, sessionId }, "ACP backend close failed");
+    });
     for (const item of session.prompt_queue.splice(0)) {
       item.resolve({ stopReason: "cancelled" });
     }
@@ -244,8 +273,6 @@ export class AcpSessionManager {
       item.reject(new AcpPromptError(getAcpErrorDetail(error)));
     } finally {
       session.prompt_running = false;
-      session.active_proxy = undefined;
-      agentService.unregisterSession(session.id);
 
       const next = session.prompt_queue.shift();
       if (next) {
@@ -265,173 +292,74 @@ export class AcpSessionManager {
       throw new Error("Prompt is required");
     }
 
-    agentService.registerSession(session.id);
-    const proxy = new SdkChatProxy();
-    session.active_proxy = proxy;
-    agentService.registerProxy(session.id, proxy);
-
-    const stream = proxy.executeStreaming({
-      prompt,
-      cwd: session.cwd,
-      sessionId: session.id,
-      resume: session.sdk_session_id,
-      model: session.agent_config?.model,
-      systemPrompt: session.agent_config?.system_prompt,
-      appendPrompt: session.agent_config?.append_prompt,
-      mcpServers: session.agent_config?.mcp_servers,
-      skills: session.agent_config?.skills,
-      dangerouslySkipPermissions: true,
-      sandboxConfig: session.sandbox_config?.enabled
-        ? {
-            enabled: true,
-            provider: session.sandbox_config.provider,
-          }
-        : undefined,
+    const backend = await this.ensureBackend(session, request);
+    const response = await backend.prompt({
+      ...request,
+      sessionId: backend.backendSessionId,
     });
 
-    let stopReason: AcpPromptResponse["stopReason"] = "end_turn";
-
-    for await (const message of stream) {
-      if (agentService.isSessionAborted(session.id) || session.status === "cancelled") {
-        stopReason = "cancelled";
-        break;
-      }
-
-      const maybeStopReason = await this.handleStreamMessage(session, message);
-      if (maybeStopReason) {
-        stopReason = maybeStopReason;
-      }
+    if (session.status === "cancelled") {
+      return { stopReason: "cancelled" };
     }
-
-    const response: AcpPromptResponse = { stopReason };
-    if (stopReason === "error" && session.last_error) {
-      response.error = session.last_error;
-    }
-    return response;
+    return response as AcpPromptResponse;
   }
 
-  private async handleStreamMessage(
+  private async ensureBackend(
     session: AcpSession,
-    message: SSEMessage
-  ): Promise<AcpPromptResponse["stopReason"] | undefined> {
-    switch (message.type) {
-      case "sdk_session": {
-        session.sdk_session_id = message.sdk_session_id;
-        return undefined;
-      }
-      case "text": {
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "agent_message_chunk",
-            content: { type: "text", text: message.content },
-          },
-        });
-        return undefined;
-      }
-      case "thinking": {
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "agent_thought_chunk",
-            content: { type: "text", text: message.content },
-          },
-        });
-        return undefined;
-      }
-      case "tool_use": {
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "tool_call",
-            toolCallId: message.id,
-            title: message.name,
-            kind: "other",
-            status: "in_progress",
-          },
-        });
+    request: AcpPromptRequest
+  ): Promise<AcpBackendSession> {
+    if (session.backend) return session.backend;
 
-        if (clientToolCompletionRegistry.isClientSideTool(message.name)) {
-          clientToolCompletionRegistry.enqueue(session.id, message.id, message.name);
-          this.requestClientTool(session, message.id, message.name, message.input).catch((error) => {
-            log.warn({ err: error, sessionId: session.id, toolUseId: message.id }, "ACP client tool request failed");
-            clientToolCompletionRegistry.complete(message.id, session.id, {
-              content: [{ type: "text", text: `Client tool failed: ${error.message}` }],
-              isError: true,
-            });
-          });
-        }
-        return undefined;
-      }
-      case "tool_result": {
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "tool_call_update",
-            toolCallId: message.tool_use_id,
-            status: message.is_error ? "failed" : "completed",
-          },
+    const startRequest: AcpNewSessionRequest = {
+      cwd: session.cwd,
+      mcpServers: [],
+      agent_config: session.agent_config,
+      persist_session_id: session.persist_session_id,
+      persist_task_id: session.persist_task_id,
+    };
+
+    const backend = await this.backendAdapter.start({
+      outerSessionId: session.id,
+      cwd: session.cwd,
+      request: startRequest,
+      connection: session.connection,
+      agentConfig: session.agent_config,
+      onSessionUpdate: (notification) => {
+        this.handleBackendSessionUpdate(session, notification).catch((error) => {
+          log.warn({ err: error, sessionId: session.id }, "ACP backend session/update hook failed");
         });
-        return undefined;
-      }
-      case "question": {
-        const text = message.questions
-          .map((question) => `${question.header}: ${question.question}`)
-          .join("\n");
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "agent_message_chunk",
-            content: { type: "text", text: `\n${text}\n` },
-          },
-        });
-        return undefined;
-      }
-      case "error": {
-        const errorDetail = createAcpErrorDetail(message.message, {
-          source: "sdk_stream",
-          details: message.details,
-          stderr: message.stderr,
-          stdout: message.stdout,
-          exitCode: message.exitCode,
-          signal: message.signal,
-          claudePath: message.claudePath,
-          code: message.code,
-          cause: message.cause,
-        });
-        session.last_error = errorDetail;
-        log.error({ sessionId: session.id, error: errorDetail }, "ACP agent stream error");
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "error",
-            error: errorDetail,
-            _meta: {
-              source: "sdk_stream",
-            },
-          },
-        });
-        session.connection.sendNotification("session/update", {
-          sessionId: session.id,
-          update: {
-            sessionUpdate: "agent_message_chunk",
-            content: { type: "text", text: `\nError: ${message.message}\n` },
-            _meta: {
-              error: errorDetail,
-            },
-          },
-        });
-        return "error";
-      }
-      case "result": {
-        return message.subtype === "error" ? "error" : "end_turn";
-      }
-      default:
-        return undefined;
-    }
+      },
+    });
+
+    session.backend = backend;
+    session.sdk_session_id = backend.backendSessionId;
+    session.agent_capabilities = backend.agentCapabilities ?? DEFAULT_AGENT_CAPABILITIES;
+    session.config_options = backend.configOptions;
+    return backend;
   }
 
-  private async requestClientTool(
+  private async handleBackendSessionUpdate(
+    session: AcpSession,
+    notification: { update: { sessionUpdate?: string; toolCallId?: string; title?: string | null; rawInput?: unknown } }
+  ): Promise<void> {
+    const update = notification.update;
+    if (update.sessionUpdate !== "tool_call") return;
+    const toolName = update.title ?? "";
+    const toolUseId = update.toolCallId;
+    if (toolName === "mcp__gui_action__GUI_execute") return;
+    if (!toolUseId || !clientToolCompletionRegistry.isClientSideTool(toolName)) return;
+
+    clientToolCompletionRegistry.enqueue(session.id, toolUseId, toolName);
+    this.dispatchClientToolRequest(session, toolUseId, toolName, update.rawInput).catch((error) => {
+      log.warn({ err: error, sessionId: session.id, toolUseId }, "ACP client tool request failed");
+      clientToolCompletionRegistry.complete(toolUseId, session.id, {
+        content: [{ type: "text", text: `Client tool failed: ${error.message}` }],
+        isError: true,
+      });
+    });
+  }
+
+  private async dispatchClientToolRequest(
     session: AcpSession,
     toolUseId: string,
     toolName: string,

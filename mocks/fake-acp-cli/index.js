@@ -135,6 +135,62 @@ function handleRequest(message) {
         break;
       }
 
+      if (process.env.FAKE_ACP_TRIGGER_PERMISSION === '1') {
+        const toolUseId = 'fake-permission-tool-1';
+        const toolCall = {
+          sessionUpdate: 'tool_call',
+          toolCallId: toolUseId,
+          title: 'Fake Permission Tool',
+          kind: 'execute',
+          status: 'pending',
+          rawInput: {
+            command: 'fake-permission-command',
+          },
+        };
+        sendNotification('session/update', {
+          sessionId,
+          update: toolCall,
+        });
+        sendRequest('session/request_permission', {
+          sessionId,
+          toolCall,
+          options: [
+            { kind: 'allow_once', name: 'Allow once', optionId: 'allow' },
+            { kind: 'allow_always', name: 'Always allow', optionId: 'allow_always' },
+            { kind: 'reject_once', name: 'Reject', optionId: 'reject' },
+          ],
+        }, (response) => {
+          sendNotification('session/update', {
+            sessionId,
+            update: {
+              sessionUpdate: 'tool_call_update',
+              toolCallId: toolUseId,
+              status: response.error ? 'failed' : 'completed',
+              rawOutput: response.result,
+            },
+          });
+          sendNotification('session/update', {
+            sessionId,
+            update: {
+              sessionUpdate: 'agent_message_chunk',
+              content: {
+                type: 'text',
+                text: `permission result: ${JSON.stringify(response.result ?? response.error)}`,
+              },
+            },
+          });
+          sendResponse(id, {
+            stopReason: response.error ? 'error' : 'end_turn',
+            usage: {
+              inputTokens: 12,
+              outputTokens: 18,
+              totalTokens: 30,
+            },
+          });
+        });
+        break;
+      }
+
       // Send streaming chunks via session/update notifications
       const responseText = `Fake response to: ${promptText}`;
       const chunks = [responseText.slice(0, 10), responseText.slice(10)];

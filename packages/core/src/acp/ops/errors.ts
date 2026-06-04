@@ -8,6 +8,7 @@ const DETAIL_KEYS = [
   "stderr",
   "details",
   "claudePath",
+  "claudeConfigDir",
   "path",
   "errno",
   "syscall",

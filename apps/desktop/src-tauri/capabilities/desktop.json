@@ -96,6 +96,7 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-outer-position",
     "core:window:allow-available-monitors",
+    "core:window:allow-cursor-position",
     "deep-link:default",
     "screenshots:default"
   ]

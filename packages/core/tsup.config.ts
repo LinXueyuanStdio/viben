@@ -16,6 +16,7 @@ export default defineConfig({
     "telemetry/index": "src/telemetry/index.ts",
     "cli/index": "src/cli/index.ts",
     "cli/bin": "src/cli/bin.ts",
+    "acp/ops/gui-action-mcp-server": "src/acp/ops/gui-action-mcp-server.ts",
   },
   format: ["cjs", "esm"],
   dts: {
@@ -39,7 +40,12 @@ export default defineConfig({
     const path = await import("path");
 
     // Add shebang to bin.js after build
-    const binFiles = ["dist/cli/bin.js", "dist/cli/bin.cjs"];
+    const binFiles = [
+      "dist/cli/bin.js",
+      "dist/cli/bin.cjs",
+      "dist/acp/ops/gui-action-mcp-server.js",
+      "dist/acp/ops/gui-action-mcp-server.cjs",
+    ];
     for (const file of binFiles) {
       try {
         const filePath = path.resolve(process.cwd(), file);
