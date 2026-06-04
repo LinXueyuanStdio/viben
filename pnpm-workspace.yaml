@@ -5,6 +5,7 @@ packages:
   - "apps/web"
   - "packages/*"
   - "packages/*/example"
+  - "packages/core/examples/*"
   - "infra/Yoopta-Editor/packages/core/*"
   - "infra/Yoopta-Editor/packages/plugins/*"
   - "infra/Yoopta-Editor/packages/marks"
