@@ -186,15 +186,16 @@ export function useGatewayStatus(): UseGatewayStatusReturn {
     notifyListeners();
 
     const controller = createPollController();
-    const gatewayUrl = getGatewayUrl();
+    const client = getGatewayClient();
 
     const result = await pollWithBackoff({
       policy: GATEWAY_READINESS_POLICY,
       poll: async () => {
         try {
-          const response = await fetch(`${gatewayUrl}/health`, {
+          const response = await client.request<Response>("/health", {
             method: "GET",
             signal: AbortSignal.timeout(5000),
+            responseType: "response",
           });
           if (response.ok) {
             return { done: true, value: true };
