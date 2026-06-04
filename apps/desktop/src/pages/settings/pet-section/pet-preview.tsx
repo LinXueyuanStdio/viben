@@ -1,8 +1,7 @@
 // apps/desktop/src/pages/settings/pet-section/pet-preview.tsx
 import { PetSprite, STANDARD_ANIMATIONS } from "@viben/pet";
+import { getGatewayUrl } from "@/lib/gateway/config";
 import type { PetResponse } from "./api";
-
-const API_BASE = "http://127.0.0.1:18790";
 
 interface PetPreviewProps {
   pet: PetResponse | null;
@@ -16,8 +15,8 @@ function resolveSpritesheet(pet: PetResponse): string {
     return url;
   }
   // Gateway asset 路由（已安装 Pet）
-  if (url.startsWith("/api/pet/asset/")) {
-    return `${API_BASE}${url}`;
+  if (url.startsWith("/api/")) {
+    return `${getGatewayUrl()}${url}`;
   }
   // HTTP URL 直接使用
   if (url.startsWith("http")) {
