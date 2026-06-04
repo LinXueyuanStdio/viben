@@ -1,4 +1,4 @@
-import { forwardRef, useState, useEffect, useRef, memo, useMemo } from "react"
+import { forwardRef, useState, useEffect, useRef, memo, useMemo, useImperativeHandle } from "react"
 import { Player, type PlayerRef } from "@remotion/player"
 import type { PresentationStep } from "../types"
 import { msToFrame } from "../utils/motion"
@@ -130,8 +130,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       height: typeof window !== "undefined" ? window.innerHeight : 1080,
     })
 
-    // Use the forwarded ref or the internal one
-    const playerRef = (ref as React.RefObject<PlayerRef | null>) ?? internalPlayerRef
+    useImperativeHandle(ref, () => internalPlayerRef.current as PlayerRef)
 
     // Measure container to set composition dimensions
     useEffect(() => {
@@ -165,7 +164,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
     const durationInFrames = Math.max(1, msToFrame(durationMs, fps))
 
     // Playback state for transport/timeline (useSyncExternalStore-based)
-    const playback = usePlaybackState(playerRef, fps, durationMs)
+    const playback = usePlaybackState(internalPlayerRef, fps, durationMs)
 
     // Latest-ref pattern: avoid re-running effects when callback identity changes
     const onTimeUpdateRef = useRef(onTimeUpdate)
@@ -224,7 +223,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       >
         {size.width > 0 && size.height > 0 && (
           <Player
-            ref={playerRef as React.Ref<PlayerRef>}
+            ref={internalPlayerRef}
             component={OverlayComposition}
             inputProps={inputProps}
             durationInFrames={durationInFrames}
@@ -241,7 +240,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
         {/* Built-in Transport Bar */}
         {showTransport && (
           <TransportBar
-            playerRef={playerRef}
+            playerRef={internalPlayerRef}
             steps={steps}
             playback={playback}
             fps={fps}
@@ -253,7 +252,7 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
         {/* Built-in Timeline Panel */}
         {showTimeline && (
           <TimelinePanel
-            playerRef={playerRef}
+            playerRef={internalPlayerRef}
             steps={steps}
             playback={playback}
             fps={fps}
