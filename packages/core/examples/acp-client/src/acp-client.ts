@@ -61,6 +61,17 @@ export interface ClientToolCall {
   result: unknown;
 }
 
+export interface PermissionRequestLog {
+  id: string;
+  at: string;
+  sessionId: string;
+  toolCallId: string;
+  title: string;
+  selectedOptionId: string;
+  options: unknown[];
+  rawInput: unknown;
+}
+
 export interface AcpSessionUpdate {
   sessionId: string;
   update: {
@@ -78,6 +89,7 @@ export interface AcpClientCallbacks {
   onTraffic: (entry: TrafficEntry) => void;
   onSessionUpdate: (update: AcpSessionUpdate) => void;
   onClientToolCall: (call: ClientToolCall) => void;
+  onPermissionRequest: (request: PermissionRequestLog) => void;
   executeClientTool?: (request: ClientToolExecutionRequest) => Promise<CallToolResult> | CallToolResult;
   onStatus: (status: ConnectionStatus) => void;
   onError: (message: string) => void;
@@ -96,6 +108,29 @@ export interface CallToolResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
   _meta?: Record<string, unknown>;
+}
+
+export interface AgentConfigPayload {
+  executor_type?: string;
+  model?: string;
+  permission_mode?: string;
+  append_prompt?: string;
+  mcp_servers?: string[];
+}
+
+export interface SessionCreateParams {
+  cwd: string;
+  agent_config_path?: string;
+  agent_dir?: string;
+  agent_config?: AgentConfigPayload;
+  mcpServers?: unknown[];
+}
+
+export interface SessionLoadParams {
+  session_id: string;
+  cwd?: string;
+  agent_config?: AgentConfigPayload;
+  mcpServers?: unknown[];
 }
 
 interface PendingRequest {
@@ -197,20 +232,22 @@ export class AcpWebSocketClient {
     });
   }
 
-  newSession(params: { cwd: string; agent_config_path?: string; agent_dir?: string }): Promise<unknown> {
+  newSession(params: SessionCreateParams): Promise<unknown> {
     return this.request("session/new", {
       cwd: params.cwd,
-      mcpServers: [],
+      mcpServers: params.mcpServers ?? [],
       agent_config_path: params.agent_config_path || undefined,
       agent_dir: params.agent_dir || undefined,
+      agent_config: params.agent_config,
     });
   }
 
-  loadSession(params: { session_id: string; cwd?: string }): Promise<unknown> {
+  loadSession(params: SessionLoadParams): Promise<unknown> {
     return this.request("session/load", {
       sessionId: params.session_id,
       cwd: params.cwd || undefined,
-      mcpServers: [],
+      mcpServers: params.mcpServers ?? [],
+      agent_config: params.agent_config,
     });
   }
 
@@ -337,6 +374,42 @@ export class AcpWebSocketClient {
         action: readGuiAction(input),
         input,
         result,
+      });
+      return;
+    }
+
+    if (frame.method === "session/request_permission") {
+      const params = frame.params as {
+        sessionId?: string;
+        toolCall?: {
+          toolCallId?: string;
+          title?: string;
+          rawInput?: unknown;
+        };
+        options?: Array<{ optionId?: string; kind?: string; name?: string }>;
+      };
+      const selected = selectPermissionOption(params.options ?? []);
+      const response: JsonRpcSuccess = {
+        jsonrpc: "2.0",
+        id: frame.id,
+        result: {
+          outcome: {
+            outcome: "selected",
+            optionId: selected.optionId,
+          },
+        },
+      };
+      this.recordTraffic("out", response, frame.method);
+      this.send(response);
+      this.callbacks.onPermissionRequest({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        at: new Date().toISOString(),
+        sessionId: params.sessionId ?? "unknown session",
+        toolCallId: params.toolCall?.toolCallId ?? "unknown tool call",
+        title: params.toolCall?.title ?? "Permission request",
+        selectedOptionId: selected.optionId,
+        options: params.options ?? [],
+        rawInput: params.toolCall?.rawInput ?? null,
       });
       return;
     }
@@ -512,4 +585,12 @@ function readGuiAction(input: unknown): string | undefined {
   if (typeof input !== "object" || input === null) return undefined;
   const action = (input as { action?: unknown }).action;
   return typeof action === "string" ? action : undefined;
+}
+
+function selectPermissionOption(options: Array<{ optionId?: string; kind?: string; name?: string }>): { optionId: string } {
+  const selected = options.find((option) => option.kind === "allow_always")
+    ?? options.find((option) => option.kind === "allow_once")
+    ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("allow"))
+    ?? options[0];
+  return { optionId: selected?.optionId ?? selected?.name ?? "allow" };
 }

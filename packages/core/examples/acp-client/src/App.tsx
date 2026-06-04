@@ -20,11 +20,13 @@ import {
 } from "lucide-react";
 import {
   AcpWebSocketClient,
+  type AgentConfigPayload,
   type AcpSessionUpdate,
   type CallToolResult,
   type ClientToolCall,
   type ClientToolExecutionRequest,
   type ConnectionStatus,
+  type PermissionRequestLog,
   type TrafficEntry,
 } from "./acp-client";
 
@@ -55,6 +57,7 @@ interface UiSessionState {
   promptResult: unknown;
   messages: ChatMessage[];
   clientToolCalls: ClientToolCall[];
+  permissionRequests: PermissionRequestLog[];
 }
 
 interface TrafficFilters {
@@ -64,6 +67,9 @@ interface TrafficFilters {
 }
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
+const DEFAULT_MODEL = "claude-sonnet-4-6";
+const DEFAULT_PROMPT = "Call GUI_execute exactly once now. Use action get_action_detail with payload {\"action\":\"app.open_settings\"}. Do not use Bash. After the tool result, summarize the action name and available input schema.";
+const DEFAULT_APPEND_PROMPT = "You must use the GUI_execute MCP tool when asked for GUI action details. Do not use Bash or shell commands for GUI actions.";
 const DEFAULT_ACTIONS: GuiActionDefinition[] = [
   {
     id: "action-open-settings",
@@ -99,7 +105,10 @@ export function App() {
   const [wsUrl, setWsUrl] = useState(DEFAULT_WS_URL);
   const [cwd, setCwd] = useState("/root/viben");
   const [agentConfigPath, setAgentConfigPath] = useState("");
-  const [prompt, setPrompt] = useState("Hello from the Viben ACP example client.");
+  const [model, setModel] = useState(DEFAULT_MODEL);
+  const [permissionMode, setPermissionMode] = useState("default");
+  const [useInlineAgentConfig, setUseInlineAgentConfig] = useState(true);
+  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
@@ -126,6 +135,7 @@ export function App() {
   const sessionId = activeSession?.id ?? null;
   const messages = activeSession?.messages ?? [];
   const clientToolCalls = activeSession?.clientToolCalls ?? [];
+  const permissionRequests = activeSession?.permissionRequests ?? [];
   const sessionResult = activeSession?.sessionResult ?? null;
   const promptResult = activeSession?.promptResult ?? null;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
@@ -204,6 +214,21 @@ export function App() {
     ]);
   }, []);
 
+  const appendPermissionRequest = useCallback((request: PermissionRequestLog) => {
+    updateSession(setSessionsById, request.sessionId, (session) => ({
+      ...session,
+      permissionRequests: [request, ...session.permissionRequests].slice(0, 50),
+      lastActiveAt: new Date().toISOString(),
+    }));
+    appendSessionMessages(setSessionsById, request.sessionId, [
+      {
+        id: request.id,
+        role: "system",
+        text: `Permission approved: ${request.title} -> ${request.selectedOptionId}`,
+      },
+    ]);
+  }, []);
+
   const executeClientTool = useCallback(
     (request: ClientToolExecutionRequest): CallToolResult => {
       if (!isGuiExecuteTool(request.toolName)) {
@@ -223,13 +248,25 @@ export function App() {
         onTraffic: appendTraffic,
         onSessionUpdate: appendSessionUpdate,
         onClientToolCall: appendClientToolCall,
+        onPermissionRequest: appendPermissionRequest,
         executeClientTool,
         onStatus: setStatus,
         onError: setError,
       });
     }
     return clientRef.current;
-  }, [appendClientToolCall, appendSessionUpdate, appendTraffic, executeClientTool]);
+  }, [appendClientToolCall, appendPermissionRequest, appendSessionUpdate, appendTraffic, executeClientTool]);
+
+  const buildAgentConfig = useCallback((): AgentConfigPayload | undefined => {
+    if (!useInlineAgentConfig) return undefined;
+    return {
+      executor_type: "CLAUDE_CODE",
+      model: model.trim() || DEFAULT_MODEL,
+      permission_mode: permissionMode,
+      mcp_servers: ["gui_action"],
+      append_prompt: DEFAULT_APPEND_PROMPT,
+    };
+  }, [model, permissionMode, useInlineAgentConfig]);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -255,6 +292,7 @@ export function App() {
       const session = await client.newSession({
         cwd,
         agent_config_path: agentConfigPath.trim() || undefined,
+        agent_config: buildAgentConfig(),
       });
       const id = readSessionId(session);
       if (!id) throw new Error("session/new did not return sessionId");
@@ -270,7 +308,7 @@ export function App() {
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
-  }, [agentConfigPath, cwd, ensureClient, initializeResult, wsUrl]);
+  }, [agentConfigPath, buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl]);
 
   const loadSession = useCallback(async () => {
     const id = loadSessionId.trim();
@@ -282,7 +320,7 @@ export function App() {
       if (!initializeResult) {
         setInitializeResult(await client.initialize());
       }
-      const session = await client.loadSession({ session_id: id, cwd });
+      const session = await client.loadSession({ session_id: id, cwd, agent_config: buildAgentConfig() });
       const loadedId = readSessionId(session) ?? id;
       setSessionsById((current) => ({
         ...current,
@@ -298,7 +336,7 @@ export function App() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     }
-  }, [cwd, ensureClient, initializeResult, loadSessionId, wsUrl]);
+  }, [buildAgentConfig, cwd, ensureClient, initializeResult, loadSessionId, wsUrl]);
 
   const disconnect = useCallback(() => {
     clientRef.current?.disconnect();
@@ -547,6 +585,18 @@ export function App() {
                 <Field label="Working Directory">
                   <input value={cwd} onChange={(event) => setCwd(event.target.value)} className="input" />
                 </Field>
+                <Field label="Model">
+                  <input value={model} onChange={(event) => setModel(event.target.value)} className="input" />
+                </Field>
+                <Field label="Permission Mode">
+                  <select value={permissionMode} onChange={(event) => setPermissionMode(event.target.value)} className="input">
+                    <option value="default">default</option>
+                    <option value="acceptEdits">acceptEdits</option>
+                    <option value="dontAsk">dontAsk</option>
+                    <option value="plan">plan</option>
+                    <option value="bypassPermissions">bypassPermissions</option>
+                  </select>
+                </Field>
                 <Field label="Agent Config Path">
                   <input
                     value={agentConfigPath}
@@ -560,6 +610,14 @@ export function App() {
                 </Field>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
+                <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={useInlineAgentConfig}
+                    onChange={(event) => setUseInlineAgentConfig(event.target.checked)}
+                  />
+                  Inline Claude ACP + gui_action
+                </label>
                 <button className="btn-secondary" onClick={createSession} disabled={!connected}>
                   <FolderPlus size={16} />
                   New Session
@@ -623,6 +681,16 @@ export function App() {
                   <EmptyState text="No client-side tool calls yet." />
                 ) : (
                   clientToolCalls.map((call) => <ClientToolRow key={call.id} call={call} />)
+                )}
+              </div>
+            </Panel>
+
+            <Panel title="Permission Requests" description="ACP session/request_permission calls auto-approved by this example client.">
+              <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                {permissionRequests.length === 0 ? (
+                  <EmptyState text="No permission requests yet." />
+                ) : (
+                  permissionRequests.map((request) => <PermissionRow key={request.id} request={request} />)
                 )}
               </div>
             </Panel>
@@ -776,7 +844,28 @@ function ClientToolRow({ call }: { call: ClientToolCall }) {
         </div>
       </summary>
       <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
-        {JSON.stringify({ input: call.input, result: call.result }, null, 2)}
+        <JsonCode value={{ input: call.input, result: call.result }} />
+      </pre>
+    </details>
+  );
+}
+
+function PermissionRow({ request }: { request: PermissionRequestLog }) {
+  return (
+    <details className="rounded-lg border border-warning/35 bg-warning/10 p-3 text-xs">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate font-semibold">{request.title}</div>
+            <div className="truncate text-muted-foreground">{request.toolCallId}</div>
+          </div>
+          <span className="shrink-0 rounded-full bg-card px-2 py-1 font-semibold text-foreground">
+            {request.selectedOptionId}
+          </span>
+        </div>
+      </summary>
+      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
+        <JsonCode value={{ rawInput: request.rawInput, options: request.options }} />
       </pre>
     </details>
   );
@@ -787,7 +876,7 @@ function JsonBlock({ title, value }: { title: string; value: unknown }) {
     <div className="mb-3 last:mb-0">
       <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
       <pre className="max-h-44 overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5 text-code-foreground">
-        {value ? JSON.stringify(value, null, 2) : "null"}
+        <JsonCode value={value ?? null} />
       </pre>
     </div>
   );
@@ -817,9 +906,21 @@ function TrafficRow({ entry }: { entry: TrafficEntry }) {
         </div>
       </summary>
       <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-code-block p-3 leading-5">
-        {JSON.stringify(entry.payload, null, 2)}
+        <JsonCode value={entry.payload} />
       </pre>
     </details>
+  );
+}
+
+function JsonCode({ value }: { value: unknown }) {
+  return (
+    <code className="json-code">
+      {tokenizeJson(prettyJson(value)).map((token, index) => (
+        <span key={`${index}-${token.text}`} className={token.className}>
+          {token.text}
+        </span>
+      ))}
+    </code>
   );
 }
 
@@ -990,6 +1091,7 @@ function createUiSession(
     promptResult: existing?.promptResult ?? null,
     messages: existing?.messages ?? [],
     clientToolCalls: existing?.clientToolCalls ?? [],
+    permissionRequests: existing?.permissionRequests ?? [],
   };
 }
 
@@ -1119,6 +1221,42 @@ function normalizeJsonText(text: string): string {
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
+}
+
+interface JsonToken {
+  text: string;
+  className?: string;
+}
+
+function tokenizeJson(json: string): JsonToken[] {
+  const tokens: JsonToken[] = [];
+  let cursor = 0;
+  const pattern = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(json)) !== null) {
+    if (match.index > cursor) {
+      tokens.push({ text: json.slice(cursor, match.index) });
+    }
+    tokens.push({
+      text: match[0],
+      className: getJsonTokenClass(match[0]),
+    });
+    cursor = match.index + match[0].length;
+  }
+
+  if (cursor < json.length) {
+    tokens.push({ text: json.slice(cursor) });
+  }
+  return tokens;
+}
+
+function getJsonTokenClass(token: string): string {
+  if (/^"/.test(token)) return token.endsWith(":") ? "json-key" : "json-string";
+  if (/^-?\d/.test(token)) return "json-number";
+  if (token === "true" || token === "false") return "json-boolean";
+  if (token === "null") return "json-null";
+  return "json-punctuation";
 }
 
 function stringifyDiagnostic(value: unknown): string {

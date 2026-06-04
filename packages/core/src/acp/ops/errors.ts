@@ -14,6 +14,8 @@ const DETAIL_KEYS = [
   "syscall",
   "command",
   "args",
+  "hint",
+  "resolution",
   "output",
   "status",
 ];

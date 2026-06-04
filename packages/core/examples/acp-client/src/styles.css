@@ -44,6 +44,41 @@ code {
   color: var(--color-foreground);
 }
 
+pre code.json-code {
+  display: block;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--color-code-foreground);
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  white-space: pre;
+}
+
+.json-key {
+  color: oklch(0.82 0.11 80);
+}
+
+.json-string {
+  color: oklch(0.78 0.12 155);
+}
+
+.json-number {
+  color: oklch(0.78 0.12 250);
+}
+
+.json-boolean {
+  color: oklch(0.8 0.12 35);
+}
+
+.json-null {
+  color: oklch(0.72 0.04 250);
+}
+
+.json-punctuation {
+  color: oklch(0.64 0.02 250);
+}
+
 .btn-primary,
 .btn-secondary,
 .btn-danger {

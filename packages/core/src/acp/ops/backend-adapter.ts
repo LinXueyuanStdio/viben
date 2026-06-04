@@ -302,6 +302,7 @@ interface AcpBackendTemplate {
 interface ResolvedBackendCommand {
   command: string;
   args: string[];
+  diagnostics?: AcpBackendResolutionDiagnostics;
 }
 
 interface AcpBackendProcess {
@@ -311,7 +312,21 @@ interface AcpBackendProcess {
   stdoutTransform: Transform;
   stderr: RingBuffer;
   claudeConfigDir?: string;
+  resolutionDiagnostics?: AcpBackendResolutionDiagnostics;
   kill(): void;
+}
+
+interface AcpBackendResolutionDiagnostics {
+  requestedCommand: string;
+  resolvedCommand: string;
+  resolvedArgs: string[];
+  attemptedPackage?: string;
+  attemptedPackageEntry?: string;
+  packageResolveError?: unknown;
+  localBin?: string;
+  localBinExists?: boolean;
+  pathEnv?: string;
+  installHint?: string;
 }
 
 export interface AcpBackendStartContext {
@@ -912,28 +927,65 @@ async function readJsonObject(filePath: string): Promise<Record<string, unknown>
 }
 
 function resolveBackendCommand(command: string): ResolvedBackendCommand {
+  const diagnostics: AcpBackendResolutionDiagnostics = {
+    requestedCommand: command,
+    resolvedCommand: command,
+    resolvedArgs: [],
+    pathEnv: process.env.PATH,
+  };
+
   if (command === OFFICIAL_CLAUDE_ACP_COMMAND) {
+    diagnostics.attemptedPackage = "@agentclientprotocol/claude-agent-acp";
     try {
       const packageJson = require.resolve("@agentclientprotocol/claude-agent-acp/package.json");
       const entry = path.join(path.dirname(packageJson), "dist", "index.js");
+      diagnostics.attemptedPackageEntry = entry;
       if (fs.existsSync(entry)) {
-        return { command: process.execPath, args: [entry] };
+        return {
+          command: process.execPath,
+          args: [entry],
+          diagnostics: {
+            ...diagnostics,
+            resolvedCommand: process.execPath,
+            resolvedArgs: [entry],
+          },
+        };
       }
     } catch (error) {
-      log.warn({ err: error }, "Failed to resolve official Claude ACP package entry");
+      diagnostics.packageResolveError = error;
+      diagnostics.installHint = "Install @agentclientprotocol/claude-agent-acp in the package that runs the gateway, or set agent_config.executor_config.command to an absolute ACP backend command.";
+      log.warn({ err: error, command, installHint: diagnostics.installHint }, "Failed to resolve official Claude ACP package entry");
     }
   }
 
   if (path.isAbsolute(command) && fs.existsSync(command)) {
-    return commandForScript(command);
+    const resolved = commandForScript(command);
+    return {
+      ...resolved,
+      diagnostics: {
+        ...diagnostics,
+        resolvedCommand: resolved.command,
+        resolvedArgs: resolved.args,
+      },
+    };
   }
 
   const localBin = path.resolve(process.cwd(), "node_modules", ".bin", command);
+  diagnostics.localBin = localBin;
+  diagnostics.localBinExists = fs.existsSync(localBin);
   if (fs.existsSync(localBin)) {
-    return commandForScript(localBin);
+    const resolved = commandForScript(localBin);
+    return {
+      ...resolved,
+      diagnostics: {
+        ...diagnostics,
+        resolvedCommand: resolved.command,
+        resolvedArgs: resolved.args,
+      },
+    };
   }
 
-  return { command, args: [] };
+  return { command, args: [], diagnostics };
 }
 
 function commandForScript(filePath: string): ResolvedBackendCommand {
@@ -999,6 +1051,7 @@ async function spawnBackendProcess(
     stdoutTransform,
     stderr,
     claudeConfigDir: definition.env.CLAUDE_CONFIG_DIR,
+    resolutionDiagnostics: resolvedCommand.diagnostics,
     kill() {
       if (child.exitCode !== null || child.killed) return;
       child.kill("SIGTERM");
@@ -1014,7 +1067,7 @@ async function spawnBackendProcess(
     child.once("spawn", resolve);
     child.once("error", reject);
   }).catch((error) => {
-    throw addProcessDiagnostics(error, processHandle, "Failed to spawn ACP backend");
+    throw addProcessDiagnostics(error, processHandle, createSpawnFailureMessage(definition, processHandle));
   });
 
   log.info(
@@ -1061,7 +1114,7 @@ async function withBackendTimeout<T>(
 function addProcessDiagnostics(error: unknown, processHandle: AcpBackendProcess, fallbackMessage: string): Error {
   const base = error instanceof Error ? error : new Error(String(error));
   const diagnostic = base as Error & Record<string, unknown>;
-  if (!diagnostic.message) {
+  if (!diagnostic.message || isEnoentError(diagnostic)) {
     diagnostic.message = fallbackMessage;
   }
   diagnostic.stderr = diagnostic.stderr ?? processHandle.stderr.toString();
@@ -1070,11 +1123,37 @@ function addProcessDiagnostics(error: unknown, processHandle: AcpBackendProcess,
   diagnostic.command = diagnostic.command ?? processHandle.command;
   diagnostic.args = diagnostic.args ?? processHandle.args;
   diagnostic.claudeConfigDir = diagnostic.claudeConfigDir ?? processHandle.claudeConfigDir;
+  diagnostic.resolution = diagnostic.resolution ?? processHandle.resolutionDiagnostics;
+  diagnostic.hint = diagnostic.hint ?? createBackendFailureHint(processHandle);
   return base;
 }
 
 function createBackendError(message: string, processHandle: AcpBackendProcess): Error {
   return addProcessDiagnostics(new Error(message), processHandle, message);
+}
+
+function createSpawnFailureMessage(definition: AcpBackendDefinition, processHandle: AcpBackendProcess): string {
+  if (definition.registryId === "claude-acp" && processHandle.command === OFFICIAL_CLAUDE_ACP_COMMAND) {
+    return [
+      "Failed to start Claude ACP backend.",
+      "Could not resolve bundled @agentclientprotocol/claude-agent-acp, and no claude-agent-acp executable was found on PATH.",
+      "Install @agentclientprotocol/claude-agent-acp in packages/core, or configure agent_config.executor_config.command with an absolute ACP backend command.",
+    ].join(" ");
+  }
+  return `Failed to spawn ACP backend command: ${processHandle.command}`;
+}
+
+function createBackendFailureHint(processHandle: AcpBackendProcess): string | undefined {
+  const resolution = processHandle.resolutionDiagnostics;
+  if (resolution?.installHint) return resolution.installHint;
+  if (processHandle.command === OFFICIAL_CLAUDE_ACP_COMMAND) {
+    return "Install @agentclientprotocol/claude-agent-acp or ensure claude-agent-acp is on PATH for the gateway process.";
+  }
+  return undefined;
+}
+
+function isEnoentError(error: Record<string, unknown>): boolean {
+  return error.code === "ENOENT" || (typeof error.message === "string" && error.message.includes("ENOENT"));
 }
 
 function nodeToWebWritable(nodeStream: Writable): WritableStream<Uint8Array> {
