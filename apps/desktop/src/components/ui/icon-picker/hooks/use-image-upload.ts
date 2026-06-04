@@ -8,6 +8,7 @@
 
 import { useState, useCallback } from "react";
 import { readFile } from "@tauri-apps/plugin-fs";
+import { getGatewayClient } from "@/lib/gateway";
 import { generateIconFilename, getIconStoragePath } from "../utils";
 
 export interface UseImageUploadOptions {
@@ -35,6 +36,12 @@ async function readLocalFile(path: string): Promise<Uint8Array> {
   return readFile(path);
 }
 
+function joinWorkspacePath(workspacePath: string, relativePath: string): string {
+  const base = workspacePath.replace(/\/+$/, "");
+  const relative = relativePath.replace(/^\/+/, "");
+  return `${base}/${relative}`;
+}
+
 /**
  * Write a file using Gateway API
  */
@@ -43,19 +50,17 @@ async function writeToWorkspace(
   relativePath: string,
   data: Uint8Array
 ): Promise<void> {
-  const gatewayUrl = import.meta.env.VITE_GATEWAY_URL || "http://127.0.0.1:18790";
+  const client = getGatewayClient();
 
   // First, ensure the directory exists
   const dirPath = relativePath.substring(0, relativePath.lastIndexOf("/"));
-  await fetch(`${gatewayUrl}/api/file/mkdir`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      workspace_path: workspacePath,
-      dir_path: dirPath,
-      recursive: true,
-    }),
-  });
+  if (dirPath) {
+    try {
+      await client.createDirectory(joinWorkspacePath(workspacePath, dirPath), true);
+    } catch (err) {
+      console.warn("Failed to ensure icon directory exists:", err);
+    }
+  }
 
   // Convert Uint8Array to base64 (chunked to avoid call stack overflow on large files)
   let binary = "";
@@ -66,20 +71,7 @@ async function writeToWorkspace(
   const base64 = btoa(binary);
 
   // Write the file
-  const response = await fetch(`${gatewayUrl}/api/file/write`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      workspace_path: workspacePath,
-      file_path: relativePath,
-      content: base64,
-      encoding: "base64",
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to write file: ${response.statusText}`);
-  }
+  await client.writeFile(joinWorkspacePath(workspacePath, relativePath), base64, "base64");
 }
 
 /**
