@@ -35,11 +35,20 @@ export const useActionStore = create<ActionStoreState>()((set, get) => ({
   register: (providerId, namespace, actions) => {
     set((state) => {
       const newRegistry = new Map(state.registry);
+      const existing = newRegistry.get(providerId);
+      const actionNames = getActionNames(namespace, actions);
+      logActionConflicts(newRegistry, providerId, namespace, actions);
+      console.info(existing ? "[ActionStore] update" : "[ActionStore] register", {
+        providerId,
+        namespace,
+        actionCount: actions.length,
+        actions: actionNames,
+      });
       newRegistry.set(providerId, {
         id: providerId,
         namespace,
         actions,
-        registeredAt: newRegistry.get(providerId)?.registeredAt ?? Date.now(),
+        registeredAt: existing?.registeredAt ?? Date.now(),
       });
       return { registry: newRegistry };
     });
@@ -48,6 +57,15 @@ export const useActionStore = create<ActionStoreState>()((set, get) => ({
   unregister: (providerId) => {
     set((state) => {
       const newRegistry = new Map(state.registry);
+      const existing = newRegistry.get(providerId);
+      if (existing) {
+        console.info("[ActionStore] unregister", {
+          providerId,
+          namespace: existing.namespace,
+          actionCount: existing.actions.length,
+          actions: getActionNames(existing.namespace, existing.actions),
+        });
+      }
       newRegistry.delete(providerId);
       return { registry: newRegistry };
     });
@@ -112,6 +130,30 @@ export const useActionStore = create<ActionStoreState>()((set, get) => ({
     return result;
   },
 }));
+
+function getActionNames(namespace: string, actions: ActionDef[]): string[] {
+  return actions.map((action) => `${namespace}.${action.name}`);
+}
+
+function logActionConflicts(
+  registry: Map<string, ActionProviderRegistration>,
+  providerId: string,
+  namespace: string,
+  actions: ActionDef[]
+): void {
+  for (const action of actions) {
+    for (const provider of registry.values()) {
+      if (provider.id === providerId || provider.namespace !== namespace) continue;
+      if (!provider.actions.some((existing) => existing.name === action.name)) continue;
+      console.warn("[ActionStore] conflict", {
+        providerId,
+        existingProviderId: provider.id,
+        namespace,
+        action: `${namespace}.${action.name}`,
+      });
+    }
+  }
+}
 
 function getProvidersInPriorityOrder(registry: Map<string, ActionProviderRegistration>): ActionProviderRegistration[] {
   return [...registry.values()].sort((a, b) => b.registeredAt - a.registeredAt);
