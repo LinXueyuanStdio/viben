@@ -1,5 +1,5 @@
 // ─── Route Registry (single source of truth) ─────────────────────────────────
-export { registry, ROUTE_ENTRIES, humanize } from "./route-registry";
+export { registry, ROUTE_ENTRIES, humanize, getDescriptorIcon } from "./route-registry";
 export type { RouteEntry, RouteMatch } from "./route-compiler";
 
 // ─── Navigate API ─────────────────────────────────────────────────────────────
@@ -25,15 +25,14 @@ export {
   WORKSPACE_SECTIONS,
   SETTINGS_SECTIONS,
   VALID_SETTINGS_SECTIONS,
-  getDescriptorIcon,
   getWorkspaceSectionDescriptor,
-  getWorkspaceSectionRoutePath,
   normalizeWorkspaceSection,
   getSettingsSectionDescriptor,
   normalizeSettingsSection,
   getSettingsSectionLabel,
   getSettingsSectionIcon,
   getWorkspaceSectionLabel,
+  getSettingsTitle,
 } from "./navigation-meta";
 
 // ─── Breadcrumb Stack (atomic operations) ────────────────────────────────────
