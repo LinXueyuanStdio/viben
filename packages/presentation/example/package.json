@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "remotion:studio": "remotion studio src/remotion-entry.tsx",
-    "remotion:still": "remotion still src/remotion-entry.tsx CinematicFinanceShowcase --frame=90 --scale=0.35",
+    "remotion:studio": "remotion studio src/remotion/remotion-entry.tsx",
+    "remotion:still": "remotion still src/remotion/remotion-entry.tsx CinematicFinanceShowcase --frame=90 --scale=0.35",
     "test": "vitest run",
     "test:watch": "vitest"
   },

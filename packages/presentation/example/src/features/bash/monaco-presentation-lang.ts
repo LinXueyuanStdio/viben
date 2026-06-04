@@ -1,4 +1,5 @@
-import { ALL_STEP_COMMANDS, STEP_COMMAND_MAP } from "../../src/commands/index"
+import type * as Monaco from "monaco-editor"
+import { ALL_STEP_COMMANDS, STEP_COMMAND_MAP } from "../../../../src/commands/index"
 
 /** Regex that matches any known subcommand name */
 const SUBCOMMAND_REGEX = new RegExp(
@@ -12,7 +13,7 @@ const SUBCOMMAND_REGEX = new RegExp(
  * Call once in `beforeMount`.
  */
 export function registerPresentationLanguage(
-  monaco: typeof import("monaco-editor"),
+  monaco: typeof Monaco,
 ): void {
   // 1. Register the language id
   monaco.languages.register({ id: "presentation-script" })

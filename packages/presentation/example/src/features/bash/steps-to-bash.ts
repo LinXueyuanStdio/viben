@@ -1,4 +1,4 @@
-import type { PresentationStep } from "../../src/types"
+import type { PresentationStep } from "../../../../src/types"
 
 /**
  * Serialize PresentationStep[] into a bash script string.

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback } from "react"
 import Editor from "@monaco-editor/react"
 import type { OnMount, BeforeMount } from "@monaco-editor/react"
+import type * as Monaco from "monaco-editor"
 import type { editor as MonacoEditor } from "monaco-editor"
 import { registerPresentationLanguage } from "./monaco-presentation-lang"
 import "./bash-editor.css"
@@ -40,7 +41,7 @@ export const BashEditor = React.memo(function BashEditor({
   style,
 }: BashEditorProps) {
   const editorRef = useRef<MonacoEditor.IStandaloneCodeEditor | null>(null)
-  const monacoRef = useRef<typeof import("monaco-editor") | null>(null)
+  const monacoRef = useRef<typeof Monaco | null>(null)
   const decorationsRef = useRef<MonacoEditor.IEditorDecorationsCollection | null>(null)
   const timingDecorationsRef = useRef<MonacoEditor.IEditorDecorationsCollection | null>(null)
   const prevFirstActiveRef = useRef<number | null>(null)
