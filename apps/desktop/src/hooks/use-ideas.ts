@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { getGatewayClient } from "@/lib/gateway";
+import { GatewayError, getGatewayClient } from "@/lib/gateway";
 
 // =============================================================================
 // Types
@@ -177,7 +177,6 @@ async function gatewayFetch<T>(
   options?: RequestInit
 ): Promise<T> {
   const client = getGatewayClient();
-  const baseUrl = client.getBaseUrl();
 
   // Build headers - only set Content-Type for requests with body
   const headers: HeadersInit = {
@@ -198,30 +197,26 @@ async function gatewayFetch<T>(
     }
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers,
-    body,
-  });
-
-  if (!response.ok) {
-    let errorMessage = response.statusText;
-    try {
-      const errorBody = await response.json();
-      errorMessage = errorBody?.error?.message || errorBody?.error || errorBody?.message || JSON.stringify(errorBody);
-    } catch {
-      // Keep statusText as fallback
+  let result: T | undefined;
+  try {
+    result = await client.request<T | undefined>(path, {
+      ...options,
+      headers,
+      body,
+    });
+  } catch (error) {
+    if (error instanceof GatewayError) {
+      throw new Error(error.message);
     }
-    throw new Error(errorMessage);
+    throw error;
   }
 
   // Handle empty responses
-  const text = await response.text();
-  if (!text) {
+  if (result === undefined) {
     return {} as T;
   }
 
-  return JSON.parse(text) as T;
+  return result;
 }
 
 // =============================================================================
