@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createElement } from "react";
 import { Zap } from "lucide-react";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 import i18n from "@/i18n";
 import type {
   SlashCommandDefinition,
@@ -23,7 +23,6 @@ export function useSkillCommands(
 
     async function loadSkills() {
       try {
-        const baseUrl = getGatewayUrl();
         const params = new URLSearchParams();
         if (workspacePath) {
           params.set("workspace_path", workspacePath);
@@ -32,19 +31,10 @@ export function useSkillCommands(
           params.set("agent_id", agentId);
         }
 
-        const response = await fetch(
-          `${baseUrl}/api/commands/skills?${params.toString()}`,
-          {
-            method: "GET",
-            headers: { Accept: "application/json" },
-          }
+        const query = params.toString();
+        const data = await getGatewayClient().get<SkillCommandsResponse>(
+          `/api/commands/skills${query ? `?${query}` : ""}`
         );
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data: SkillCommandsResponse = await response.json();
 
         if (!cancelled && data?.skills) {
           setSkills(data.skills);
