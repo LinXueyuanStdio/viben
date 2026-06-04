@@ -51,6 +51,7 @@ export interface ClientToolCall {
   at: string;
   toolName: string;
   toolUseId: string;
+  action?: string;
   input: unknown;
   result: unknown;
 }
@@ -71,11 +72,25 @@ export interface AcpClientCallbacks {
   onTraffic: (entry: TrafficEntry) => void;
   onSessionUpdate: (update: AcpSessionUpdate) => void;
   onClientToolCall: (call: ClientToolCall) => void;
+  executeClientTool?: (request: ClientToolExecutionRequest) => Promise<CallToolResult> | CallToolResult;
   onStatus: (status: ConnectionStatus) => void;
   onError: (message: string) => void;
 }
 
 export type ConnectionStatus = "idle" | "connecting" | "connected" | "closed" | "error";
+
+export interface ClientToolExecutionRequest {
+  sessionId: string;
+  toolUseId: string;
+  toolName: string;
+  input: unknown;
+}
+
+export interface CallToolResult {
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+  _meta?: Record<string, unknown>;
+}
 
 interface PendingRequest {
   method: string;
@@ -161,7 +176,11 @@ export class AcpWebSocketClient {
           writeTextFile: false,
         },
         terminal: false,
-        _vibenClientTools: true,
+        _vibenClientTools: {
+          enabled: true,
+          tools: ["GUI_execute", "mcp__gui_action__GUI_execute"],
+          actionRegistry: "editable",
+        },
       },
       clientInfo: {
         name: "viben-core-acp-client-example",
@@ -253,7 +272,18 @@ export class AcpWebSocketClient {
     }
 
     if (isRequest(frame)) {
-      this.handleServerRequest(frame);
+      void this.handleServerRequest(frame).catch((error) => {
+        const response: JsonRpcFailure = {
+          jsonrpc: "2.0",
+          id: frame.id,
+          error: {
+            code: -32603,
+            message: error instanceof Error ? error.message : String(error),
+          },
+        };
+        this.recordTraffic("out", response, frame.method);
+        this.send(response);
+      });
       return;
     }
 
@@ -262,30 +292,25 @@ export class AcpWebSocketClient {
     }
   }
 
-  private handleServerRequest(frame: JsonRpcRequest): void {
+  private async handleServerRequest(frame: JsonRpcRequest): Promise<void> {
     if (frame.method === "_viben/client_tool_call") {
       const params = frame.params as {
+        sessionId?: string;
         toolName?: string;
         toolUseId?: string;
         input?: unknown;
       };
       const toolName = params?.toolName ?? "client tool";
       const toolUseId = params?.toolUseId ?? "unknown id";
-      const response: JsonRpcSuccess = {
-        jsonrpc: "2.0",
-        id: frame.id,
-        result: {
-          content: [
-            {
-              type: "text",
-              text: `Example client handled ${toolName} (${toolUseId}).`,
-            },
-          ],
-          _meta: {
-            echoedInput: params?.input ?? null,
-          },
-        },
-      };
+      const sessionId = params?.sessionId ?? "unknown session";
+      const input = params?.input ?? null;
+      const result = await this.executeClientTool({
+        sessionId,
+        toolName,
+        toolUseId,
+        input,
+      });
+      const response: JsonRpcSuccess = { jsonrpc: "2.0", id: frame.id, result };
       this.recordTraffic("out", response, frame.method);
       this.send(response);
       this.callbacks.onClientToolCall({
@@ -293,8 +318,9 @@ export class AcpWebSocketClient {
         at: new Date().toISOString(),
         toolName,
         toolUseId,
-        input: params?.input ?? null,
-        result: response.result,
+        action: readGuiAction(input),
+        input,
+        result,
       });
       return;
     }
@@ -309,6 +335,31 @@ export class AcpWebSocketClient {
     };
     this.recordTraffic("out", response, frame.method);
     this.send(response);
+  }
+
+  private async executeClientTool(request: ClientToolExecutionRequest): Promise<CallToolResult> {
+    if (this.callbacks.executeClientTool) {
+      try {
+        return await this.callbacks.executeClientTool(request);
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `execution_error: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Example client handled ${request.toolName} (${request.toolUseId}).`,
+        },
+      ],
+      _meta: {
+        echoedInput: request.input,
+      },
+    };
   }
 
   private assertOpen(): void {
@@ -395,4 +446,10 @@ function getFrameMethod(frame: JsonRpcFrame, pendingMethods: Map<JsonRpcId, stri
   if ("method" in frame) return frame.method;
   if ("id" in frame) return pendingMethods.get(frame.id);
   return undefined;
+}
+
+function readGuiAction(input: unknown): string | undefined {
+  if (typeof input !== "object" || input === null) return undefined;
+  const action = (input as { action?: unknown }).action;
+  return typeof action === "string" ? action : undefined;
 }

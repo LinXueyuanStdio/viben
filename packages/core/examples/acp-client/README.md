@@ -15,7 +15,34 @@ The UI is adapted from the OpenACP dashboard shape, but targets Viben's ACP rout
 - `session/update` stream rendering
 - `_viben/client_tool_call` responses for client-side tools
 - client-side tool call history with echoed input/result payloads
+- `GUI_execute` simulation with editable actions
 - JSON-RPC traffic inspection
+
+## GUI_execute Actions
+
+The example client handles both `GUI_execute` and
+`mcp__gui_action__GUI_execute`. Use the action editor to expose custom actions
+to backend agents.
+
+Supported built-in action names inside `GUI_execute`:
+
+- `list_actions`
+- `get_action_detail`
+- any action name configured in the editor, such as `app.open_settings`
+
+Example `GUI_execute` input:
+
+```json
+{
+  "action": "app.open_settings",
+  "payload": {
+    "section": "models"
+  }
+}
+```
+
+`list_actions` returns the configured action summaries. `get_action_detail`
+expects `payload.action` or `payload.name` and returns the configured schema.
 
 ## Run
 

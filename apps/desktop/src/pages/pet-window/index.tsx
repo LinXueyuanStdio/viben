@@ -1,6 +1,6 @@
 // apps/desktop/src/pages/pet-window/index.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getCurrentWindow, PhysicalPosition, availableMonitors } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalPosition, availableMonitors, cursorPosition } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { PetSprite, type PetConfig, type PetInteraction, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
 import { loadPetFromPublic } from "@/lib/pet-loader";
@@ -155,80 +155,121 @@ export default function PetWindowPage() {
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
-  // Handle window dragging via Tauri native drag
+  const dragStartRef = useRef<{ cursorX: number; cursorY: number; winX: number; winY: number } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
-    setIsDragging(true);
-
     const win = getCurrentWindow();
     const pos = await win.outerPosition();
+    const cursor = await cursorPosition();
+
+    dragStartRef.current = {
+      cursorX: cursor.x,
+      cursorY: cursor.y,
+      winX: pos.x,
+      winY: pos.y,
+    };
     lastPosRef.current = { x: pos.x, y: pos.y };
+    setIsDragging(true);
+  }, []);
 
-    // Blocks until drag ends
-    await win.startDragging();
-
-    // Drag ended
+  const handleMouseUp = useCallback(() => {
+    if (!dragStartRef.current) return;
+    dragStartRef.current = null;
     setIsDragging(false);
     setInteraction("idle");
     lastPosRef.current = null;
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
   }, []);
 
-  // Detect drag direction from tauri://move events (stable subscription, no deps on state)
   useEffect(() => {
+    if (!isDragging) return;
+
+    let running = true;
     let saveTimeoutId: ReturnType<typeof setTimeout>;
 
-    const unlisten = listen<{ x: number; y: number }>("tauri://move", (event) => {
-      const { x, y } = event.payload;
-      const lastPos = lastPosRef.current;
+    const pollCursor = async () => {
+      if (!running || !dragStartRef.current) return;
 
-      if (idleTimeoutRef.current) {
-        clearTimeout(idleTimeoutRef.current);
-        idleTimeoutRef.current = null;
-      }
+      try {
+        const cursor = await cursorPosition();
+        const start = dragStartRef.current;
+        const dx = cursor.x - start.cursorX;
+        const dy = cursor.y - start.cursorY;
+        const newX = start.winX + dx;
+        const newY = start.winY + dy;
 
-      if (lastPos) {
-        const dx = x - lastPos.x;
-        const dy = y - lastPos.y;
-        const absX = Math.abs(dx);
-        const absY = Math.abs(dy);
+        const win = getCurrentWindow();
+        await win.setPosition(new PhysicalPosition(newX, newY));
 
-        if (absX >= DRAG_GESTURE_MIN_PX || absY >= DRAG_GESTURE_MIN_PX) {
-          if (absX >= absY * DRAG_AXIS_BIAS) {
-            setInteraction(dx > 0 ? "drag-right" : "drag-left");
-          } else if (absY >= absX * DRAG_AXIS_BIAS) {
-            setInteraction(dy > 0 ? "drag-down" : "drag-up");
+        const lastPos = lastPosRef.current;
+        if (lastPos) {
+          const moveDx = newX - lastPos.x;
+          const moveDy = newY - lastPos.y;
+          const absX = Math.abs(moveDx);
+          const absY = Math.abs(moveDy);
+
+          if (absX >= DRAG_GESTURE_MIN_PX || absY >= DRAG_GESTURE_MIN_PX) {
+            if (absX >= absY * DRAG_AXIS_BIAS) {
+              setInteraction(moveDx > 0 ? "drag-right" : "drag-left");
+            } else if (absY >= absX * DRAG_AXIS_BIAS) {
+              setInteraction(moveDy > 0 ? "drag-down" : "drag-up");
+            }
           }
         }
+        lastPosRef.current = { x: newX, y: newY };
+
+        if (idleTimeoutRef.current) {
+          clearTimeout(idleTimeoutRef.current);
+        }
+        idleTimeoutRef.current = setTimeout(() => {
+          setInteraction("idle");
+        }, 150);
+
+        clearTimeout(saveTimeoutId);
+        saveTimeoutId = setTimeout(async () => {
+          const monitors = await availableMonitors();
+          const primaryMonitor = monitors[0];
+          if (primaryMonitor) {
+            const screenWidth = primaryMonitor.size.width;
+            const screenHeight = primaryMonitor.size.height;
+            const right = screenWidth - newX - WINDOW_SIZE;
+            const bottom = screenHeight - newY - WINDOW_SIZE;
+            await updatePetPosition(right, bottom);
+          }
+        }, 500);
+      } catch {
+        // Ignore errors during rapid polling
       }
 
-      lastPosRef.current = { x, y };
+      if (running) {
+        rafIdRef.current = requestAnimationFrame(pollCursor);
+      }
+    };
 
-      idleTimeoutRef.current = setTimeout(() => {
-        setInteraction("idle");
-      }, 150);
-
-      // Debounce save position
-      clearTimeout(saveTimeoutId);
-      saveTimeoutId = setTimeout(async () => {
-        const monitors = await availableMonitors();
-        const primaryMonitor = monitors[0];
-        if (primaryMonitor) {
-          const screenWidth = primaryMonitor.size.width;
-          const screenHeight = primaryMonitor.size.height;
-          const right = screenWidth - x - WINDOW_SIZE;
-          const bottom = screenHeight - y - WINDOW_SIZE;
-          await updatePetPosition(right, bottom);
-        }
-      }, 500);
-    });
+    pollCursor();
 
     return () => {
+      running = false;
       clearTimeout(saveTimeoutId);
-      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-      unlisten.then((fn) => fn());
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
     };
-  }, []);
+  }, [isDragging]);
+
+  useEffect(() => {
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseUp]);
 
   // Hover interaction
   const handleMouseEnter = useCallback(() => {

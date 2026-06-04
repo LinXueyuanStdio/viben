@@ -1,12 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Bot,
   CircleStop,
   Copy,
+  FileJson,
   EthernetPort,
   Loader2,
   Plug,
+  Plus,
+  Save,
   Send,
   SquareTerminal,
   Trash2,
@@ -15,7 +18,9 @@ import {
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
+  type CallToolResult,
   type ClientToolCall,
+  type ClientToolExecutionRequest,
   type ConnectionStatus,
   type TrafficEntry,
 } from "./acp-client";
@@ -28,7 +33,46 @@ interface ChatMessage {
   toolCallId?: string;
 }
 
+interface GuiActionDefinition {
+  id: string;
+  name: string;
+  description: string;
+  inputSchemaText: string;
+  responseText: string;
+  fail: boolean;
+}
+
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
+const DEFAULT_ACTIONS: GuiActionDefinition[] = [
+  {
+    id: "action-open-settings",
+    name: "app.open_settings",
+    description: "Open the app settings panel.",
+    inputSchemaText: prettyJson({
+      type: "object",
+      properties: {
+        section: { type: "string", enum: ["general", "models", "tools"] },
+      },
+    }),
+    responseText: "Settings panel opened.",
+    fail: false,
+  },
+  {
+    id: "action-compose-message",
+    name: "chat.compose_message",
+    description: "Fill the current chat input with a draft message.",
+    inputSchemaText: prettyJson({
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        submit: { type: "boolean" },
+      },
+      required: ["text"],
+    }),
+    responseText: "Draft message composed.",
+    fail: false,
+  },
+];
 
 export function App() {
   const [wsUrl, setWsUrl] = useState(DEFAULT_WS_URL);
@@ -43,12 +87,21 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [traffic, setTraffic] = useState<TrafficEntry[]>([]);
   const [clientToolCalls, setClientToolCalls] = useState<ClientToolCall[]>([]);
+  const [actions, setActions] = useState<GuiActionDefinition[]>(DEFAULT_ACTIONS);
+  const [selectedActionId, setSelectedActionId] = useState(DEFAULT_ACTIONS[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<AcpWebSocketClient | null>(null);
+  const actionsRef = useRef(actions);
 
   const busy = status === "connecting";
   const connected = status === "connected";
   const stats = useMemo(() => summarizeTraffic(traffic), [traffic]);
+  const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
+  const actionSummaries = useMemo(() => buildActionSummaries(actions), [actions]);
+
+  useEffect(() => {
+    actionsRef.current = actions;
+  }, [actions]);
 
   const appendTraffic = useCallback((entry: TrafficEntry) => {
     setTraffic((current) => [entry, ...current].slice(0, 120));
@@ -96,18 +149,32 @@ export function App() {
     ]);
   }, []);
 
+  const executeClientTool = useCallback(
+    (request: ClientToolExecutionRequest): CallToolResult => {
+      if (!isGuiExecuteTool(request.toolName)) {
+        return {
+          content: [{ type: "text", text: `Example client has no handler for ${request.toolName}.` }],
+          isError: true,
+        };
+      }
+      return executeGuiAction(request, actionsRef.current);
+    },
+    []
+  );
+
   const ensureClient = useCallback(() => {
     if (!clientRef.current) {
       clientRef.current = new AcpWebSocketClient({
         onTraffic: appendTraffic,
         onSessionUpdate: appendSessionUpdate,
         onClientToolCall: appendClientToolCall,
+        executeClientTool,
         onStatus: setStatus,
         onError: setError,
       });
     }
     return clientRef.current;
-  }, [appendClientToolCall, appendSessionUpdate, appendTraffic]);
+  }, [appendClientToolCall, appendSessionUpdate, appendTraffic, executeClientTool]);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -234,6 +301,115 @@ export function App() {
 
         <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_420px]">
           <section className="space-y-5">
+            <Panel title="GUI_execute Action Editor" description="Actions exposed by this example client to backend agents.">
+              <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+                <div className="space-y-2">
+                  {actions.map((action) => (
+                    <button
+                      key={action.id}
+                      className={action.id === selectedAction?.id ? "action-tab action-tab-active" : "action-tab"}
+                      onClick={() => setSelectedActionId(action.id)}
+                    >
+                      <span className="truncate">{action.name}</span>
+                      {action.fail && <span className="action-fail">error</span>}
+                    </button>
+                  ))}
+                  <button
+                    className="btn-secondary w-full"
+                    onClick={() => {
+                      const action = createBlankAction();
+                      setActions((current) => [...current, action]);
+                      setSelectedActionId(action.id);
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add Action
+                  </button>
+                </div>
+
+                {selectedAction ? (
+                  <div className="grid gap-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label="Action Name">
+                        <input
+                          value={selectedAction.name}
+                          onChange={(event) => updateAction(setActions, selectedAction.id, { name: event.target.value })}
+                          className="input"
+                          placeholder="namespace.name"
+                        />
+                      </Field>
+                      <Field label="Response">
+                        <input
+                          value={selectedAction.responseText}
+                          onChange={(event) => updateAction(setActions, selectedAction.id, { responseText: event.target.value })}
+                          className="input"
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Description">
+                      <input
+                        value={selectedAction.description}
+                        onChange={(event) => updateAction(setActions, selectedAction.id, { description: event.target.value })}
+                        className="input"
+                      />
+                    </Field>
+                    <Field label="Input Schema JSON">
+                      <textarea
+                        value={selectedAction.inputSchemaText}
+                        onChange={(event) => updateAction(setActions, selectedAction.id, { inputSchemaText: event.target.value })}
+                        className="textarea font-mono text-xs"
+                        rows={7}
+                      />
+                    </Field>
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedAction.fail}
+                          onChange={(event) => updateAction(setActions, selectedAction.id, { fail: event.target.checked })}
+                        />
+                        Return isError
+                      </label>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => updateAction(setActions, selectedAction.id, { inputSchemaText: normalizeJsonText(selectedAction.inputSchemaText) })}
+                      >
+                        <FileJson size={16} />
+                        Format Schema
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => setPrompt(buildGuiExecutePrompt(selectedAction.name))}
+                      >
+                        <Save size={16} />
+                        Use In Prompt
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => {
+                          const call = runLocalGuiExecute(selectedAction.name, actions);
+                          appendClientToolCall(call);
+                        }}
+                      >
+                        <SquareTerminal size={16} />
+                        Test Local
+                      </button>
+                      <button
+                        className="btn-danger"
+                        onClick={() => removeAction(actions, selectedAction.id, setActions, setSelectedActionId)}
+                        disabled={actions.length <= 1}
+                      >
+                        <Trash2 size={16} />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyState text="Create an action to expose through GUI_execute." />
+                )}
+              </div>
+            </Panel>
+
             <Panel title="Connection" description="Initialize ACP and create a live Viben session.">
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="WebSocket URL">
@@ -293,6 +469,12 @@ export function App() {
 
           <section className="space-y-5">
             <Panel title="Client Tools" description="Requests initiated by Viben through _viben/client_tool_call.">
+              <div className="mb-3 rounded-lg border border-border bg-muted/35 p-3 text-xs">
+                <div className="mb-2 font-semibold">Available GUI actions</div>
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words leading-5">
+                  {JSON.stringify(actionSummaries, null, 2)}
+                </pre>
+              </div>
               <div className="max-h-80 space-y-2 overflow-auto pr-1">
                 {clientToolCalls.length === 0 ? (
                   <EmptyState text="No client-side tool calls yet." />
@@ -393,7 +575,7 @@ function ClientToolRow({ call }: { call: ClientToolCall }) {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate font-semibold">{call.toolName}</div>
-            <div className="truncate text-muted-foreground">{call.toolUseId}</div>
+            <div className="truncate text-muted-foreground">{call.action ?? call.toolUseId}</div>
           </div>
           <span className="shrink-0 text-muted-foreground">{new Date(call.at).toLocaleTimeString()}</span>
         </div>
@@ -453,6 +635,182 @@ function summarizeTraffic(entries: TrafficEntry[]) {
     },
     { inbound: 0, outbound: 0, clientTools: 0 }
   );
+}
+
+function isGuiExecuteTool(toolName: string): boolean {
+  return toolName === "GUI_execute" || toolName === "mcp__gui_action__GUI_execute";
+}
+
+function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActionDefinition[]): CallToolResult {
+  const input = isRecord(request.input) ? request.input : {};
+  const actionName = typeof input.action === "string" ? input.action : "";
+  const payload = isRecord(input.payload) ? input.payload : {};
+
+  if (!actionName) {
+    return {
+      content: [{ type: "text", text: "GUI_execute error: input.action is required." }],
+      isError: true,
+    };
+  }
+
+  if (actionName === "list_actions") {
+    return textResult(prettyJson(buildActionSummaries(actions)), {
+      actions: buildActionSummaries(actions),
+    });
+  }
+
+  if (actionName === "get_action_detail") {
+    const requested = typeof payload.action === "string" ? payload.action : typeof payload.name === "string" ? payload.name : "";
+    const action = actions.find((item) => item.name === requested);
+    if (!action) {
+      return {
+        content: [{ type: "text", text: `Action not found: ${requested || "(missing payload.action)"}` }],
+        isError: true,
+      };
+    }
+    const detail = actionToDetail(action);
+    return textResult(prettyJson(detail), { action: detail });
+  }
+
+  const action = actions.find((item) => item.name === actionName);
+  if (!action) {
+    return {
+      content: [{ type: "text", text: `Unknown GUI action: ${actionName}. Use list_actions first.` }],
+      isError: true,
+      _meta: { availableActions: actions.map((item) => item.name) },
+    };
+  }
+
+  const detail = actionToDetail(action);
+  return {
+    content: [
+      {
+        type: "text",
+        text: action.responseText || `Executed ${action.name}.`,
+      },
+    ],
+    isError: action.fail || undefined,
+    _meta: {
+      action: detail,
+      payload,
+      sessionId: request.sessionId,
+      toolUseId: request.toolUseId,
+    },
+  };
+}
+
+function runLocalGuiExecute(actionName: string, actions: GuiActionDefinition[]): ClientToolCall {
+  const request: ClientToolExecutionRequest = {
+    sessionId: "local-preview-session",
+    toolUseId: `local-${Date.now()}`,
+    toolName: "GUI_execute",
+    input: {
+      action: actionName,
+      payload: {},
+    },
+  };
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    at: new Date().toISOString(),
+    toolName: request.toolName,
+    toolUseId: request.toolUseId,
+    action: actionName,
+    input: request.input,
+    result: executeGuiAction(request, actions),
+  };
+}
+
+function textResult(text: string, meta: Record<string, unknown>): CallToolResult {
+  return {
+    content: [{ type: "text", text }],
+    _meta: meta,
+  };
+}
+
+function buildActionSummaries(actions: GuiActionDefinition[]) {
+  return actions.map((action) => ({
+    name: action.name,
+    description: action.description,
+    input_schema: parseJsonOrFallback(action.inputSchemaText, { type: "object", properties: {} }),
+  }));
+}
+
+function actionToDetail(action: GuiActionDefinition) {
+  return {
+    name: action.name,
+    description: action.description,
+    input_schema: parseJsonOrFallback(action.inputSchemaText, { type: "object", properties: {} }),
+    output_schema: {
+      type: "object",
+      properties: {
+        content: { type: "array" },
+        isError: { type: "boolean" },
+        _meta: { type: "object" },
+      },
+    },
+  };
+}
+
+function updateAction(
+  setActions: React.Dispatch<React.SetStateAction<GuiActionDefinition[]>>,
+  id: string,
+  patch: Partial<GuiActionDefinition>
+): void {
+  setActions((current) => current.map((action) => (action.id === id ? { ...action, ...patch } : action)));
+}
+
+function removeAction(
+  actions: GuiActionDefinition[],
+  id: string,
+  setActions: React.Dispatch<React.SetStateAction<GuiActionDefinition[]>>,
+  setSelectedActionId: React.Dispatch<React.SetStateAction<string>>
+): void {
+  const next = actions.filter((action) => action.id !== id);
+  if (next.length === 0) return;
+  setActions(next);
+  setSelectedActionId(next[0].id);
+}
+
+function createBlankAction(): GuiActionDefinition {
+  const suffix = Math.random().toString(16).slice(2, 6);
+  return {
+    id: `action-${Date.now()}-${suffix}`,
+    name: `custom.action_${suffix}`,
+    description: "Custom GUI action exposed by the example ACP client.",
+    inputSchemaText: prettyJson({ type: "object", properties: {} }),
+    responseText: "Custom action executed.",
+    fail: false,
+  };
+}
+
+function buildGuiExecutePrompt(actionName: string): string {
+  return [
+    "Call the GUI_execute client tool with:",
+    prettyJson({
+      action: actionName,
+      payload: {},
+    }),
+  ].join("\n");
+}
+
+function parseJsonOrFallback(text: string, fallback: unknown): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeJsonText(text: string): string {
+  return prettyJson(parseJsonOrFallback(text, { type: "object", properties: {} }));
+}
+
+function prettyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function mergeTextChunk(current: ChatMessage[], role: "agent" | "thought", text: string): ChatMessage[] {
