@@ -8,13 +8,13 @@ import type {
   TaskWithAttemptStatus,
   CreateTaskRequest,
 } from "./types";
-import { getGatewayUrl } from "@/lib/gateway";
+import { GatewayError, getGatewayClient } from "@/lib/gateway";
 import { NETWORK_RETRY_CONFIG } from "./constants";
 import i18n from "@/i18n";
 
 // Get Gateway URL dynamically
 function getApiBaseUrl(): string {
-  return getGatewayUrl();
+  return getGatewayClient().getBaseUrl();
 }
 
 // API path prefix for task endpoints (unified API)
@@ -42,43 +42,23 @@ async function makeRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${getApiBaseUrl()}${path}`;
-
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type") && options.body) {
     headers.set("Content-Type", "application/json");
   }
 
   try {
-    const response = await fetch(url, {
+    return await getGatewayClient().request<T>(path, {
       ...options,
       headers,
     });
-
-    if (!response.ok) {
-      let errorMessage = `API request failed with status ${response.status}`;
-      let errorData: unknown = null;
-
-      try {
-        const errorJson = await response.json();
-        if (errorJson.error) {
-          errorMessage = errorJson.error;
-        } else if (errorJson.message) {
-          errorMessage = errorJson.message;
-        }
-        errorData = errorJson.error_data;
-      } catch {
-        // Ignore JSON parse errors
-      }
-
-      throw new VibeKanbanApiError(errorMessage, response.status, errorData);
-    }
-
-    const json = await response.json();
-    return json as T;
   } catch (error) {
     if (error instanceof VibeKanbanApiError) {
       throw error;
+    }
+
+    if (error instanceof GatewayError) {
+      throw new VibeKanbanApiError(error.message, error.statusCode);
     }
 
     // Network errors
@@ -99,9 +79,8 @@ async function makeRequest<T>(
  */
 export async function checkHealth(): Promise<boolean> {
   try {
-    const url = `${getApiBaseUrl()}/health`;
-    const response = await fetch(url);
-    return response.ok;
+    await getGatewayClient().request("/health", { responseType: "none" });
+    return true;
   } catch {
     return false;
   }
@@ -293,29 +272,13 @@ export async function checkTaskRunningDetailed(
       const params = workspacePath
         ? `?workspace_path=${encodeURIComponent(workspacePath)}`
         : "";
-      const url = `${getApiBaseUrl()}/api/tasks/${encodeURIComponent(taskId)}/running${params}`;
-      const response = await fetch(url, { signal: controller.signal });
+      const data = await getGatewayClient().request<TaskRunningResponse>(
+        `/api/tasks/${encodeURIComponent(taskId)}/running${params}`,
+        { signal: controller.signal }
+      );
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        // HTTP error - task might not exist or server error
-        // Don't retry for 404 (task not found) - this is a reliable result
-        if (response.status === 404) {
-          return {
-            running: false,
-            reliable: true,
-            success: true,
-            retryCount,
-          };
-        }
-
-        lastError = `HTTP ${response.status}`;
-        console.warn(`[checkTaskRunning] HTTP error for task ${taskId}: ${response.status}`);
-        continue; // Retry on server errors
-      }
-
-      const data: TaskRunningResponse = await response.json();
       return {
         running: data.success && data.data?.running === true,
         reliable: true,
@@ -324,6 +287,23 @@ export async function checkTaskRunningDetailed(
       };
     } catch (error) {
       clearTimeout(timeoutId);
+
+      if (error instanceof GatewayError) {
+        // HTTP error - task might not exist or server error
+        // Don't retry for 404 (task not found) - this is a reliable result
+        if (error.statusCode === 404) {
+          return {
+            running: false,
+            reliable: true,
+            success: true,
+            retryCount,
+          };
+        }
+
+        lastError = `HTTP ${error.statusCode}`;
+        console.warn(`[checkTaskRunning] HTTP error for task ${taskId}: ${error.statusCode}`);
+        continue; // Retry on server errors
+      }
 
       if (error instanceof Error) {
         if (error.name === "AbortError") {
