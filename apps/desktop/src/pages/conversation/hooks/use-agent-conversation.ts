@@ -1312,8 +1312,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
       try {
         // Use the new SSE endpoint /api/agent/run
-        const gatewayUrl = getGatewayUrl();
-        const url = `${gatewayUrl}/api/agent/run`;
+        const url = "/api/agent/run";
 
         console.log("[useAgent] Starting SSE connection to:", url);
 
@@ -1352,13 +1351,13 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
         perfMark("FE:fetch:start", `url=${url}, resume=${!!sdkSessionId}`);
 
-        const response = await fetch(url, {
+        const response = await client.request<Response>(url, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "Accept": "text/event-stream",
           },
-          body: JSON.stringify(requestBody),
+          body: requestBody,
+          responseType: "response",
         });
 
         perfMark("FE:fetch:response_received", `status=${response.status}`);
@@ -1659,14 +1658,10 @@ The workspace ID for this session is: \`${workspaceId}\`
     try {
       if (planId && gatewayConnected) {
         // Call real Gateway endpoint
-        const gatewayUrl = getGatewayUrl();
-        const response = await fetch(`${gatewayUrl}/api/agent/approve/${planId}`, {
+        await client.request<void>(`/api/agent/approve/${planId}`, {
           method: "POST",
+          responseType: "none",
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to approve plan: ${response.statusText}`);
-        }
 
         console.log("[useAgent] Plan approved:", planId);
       }
@@ -1728,14 +1723,10 @@ The workspace ID for this session is: \`${workspaceId}\`
     try {
       if (planId && gatewayConnected) {
         // Call real Gateway endpoint
-        const gatewayUrl = getGatewayUrl();
-        const response = await fetch(`${gatewayUrl}/api/agent/reject/${planId}`, {
+        await client.request<void>(`/api/agent/reject/${planId}`, {
           method: "POST",
+          responseType: "none",
         });
-
-        if (!response.ok) {
-          throw new Error(`Failed to reject plan: ${response.statusText}`);
-        }
 
         console.log("[useAgent] Plan rejected:", planId);
       }
