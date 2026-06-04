@@ -1574,7 +1574,11 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
           {bottomSpacer > 0 && !isStreaming && <div style={{ height: `${bottomSpacer}px` }} aria-hidden />}
 
           {/* Running indicator (hidden when streaming text is visible — the caret already signals activity) */}
-          {isStreaming && !streamingText && <RunningIndicator messages={messages} />}
+          {isStreaming && !streamingText && (
+            <MessageWidthShell maxMessageWidth={maxMessageWidth}>
+              <RunningIndicator messages={messages} />
+            </MessageWidthShell>
+          )}
 
           {/* Streaming text - rendered as separate sibling to avoid full list reconciliation */}
           {streamingText && (
