@@ -82,3 +82,22 @@ export function getDisplayPath(filePath: string, cwd?: string): string {
   if (segments.length <= 3) return filePath;
   return segments.slice(-3).join("/");
 }
+
+/**
+ * Replace i18n-style placeholders in fallback strings.
+ * Some host apps or tests provide a minimal `t()` implementation that returns
+ * `defaultValue` without interpolation, so component fallbacks need this guard.
+ */
+export function formatI18nTemplate(
+  value: string,
+  vars: Record<string, string | number | undefined>
+): string {
+  let formatted = value;
+  for (const [key, rawValue] of Object.entries(vars)) {
+    formatted = formatted.replace(
+      new RegExp(`{{\\s*${key}\\s*}}`, "g"),
+      String(rawValue ?? "")
+    );
+  }
+  return formatted;
+}

@@ -44,6 +44,7 @@ import {
   type ClaudeCodeSessionManifestItem,
   type LoadedClaudeCodeSession,
   type ParseStats,
+  type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
 
 // ============================================================================
@@ -85,6 +86,64 @@ function messagesToSteps(messages: AgentMessage[]): DemoStep[] {
   }))
 }
 
+function buildClaudeCodePlaybackSteps(
+  messages: AgentMessage[],
+  events: SubagentPreviewEvent[]
+): DemoStep[] {
+  if (events.length === 0) return messagesToSteps(messages)
+
+  const eventsByParent = new Map<string, SubagentPreviewEvent[]>()
+  for (const event of events) {
+    const list = eventsByParent.get(event.parentToolUseId) ?? []
+    list.push(event)
+    eventsByParent.set(event.parentToolUseId, list)
+  }
+
+  const steps: DemoStep[] = []
+  const updates: Record<string, Partial<AgentMessage>> = {}
+
+  for (const message of messages) {
+    steps.push({
+      messages: [message],
+      delayMs: message.type === "user" ? 800 : message.type === "text" ? 1200 : message.type === "thinking" ? 600 : 400,
+      messageUpdates: { ...updates },
+    })
+
+    if (message.type === "tool_use" && (message.name === "Agent" || message.name === "Task") && message.toolUseId && message.id) {
+      const previewMessages: AgentMessage[] = []
+      for (const event of eventsByParent.get(message.toolUseId) ?? []) {
+        previewMessages.push(...event.messages)
+        updates[message.id] = { subagentPreviewMessages: [...previewMessages] }
+        steps.push({
+          messages: [],
+          delayMs: 450,
+          messageUpdates: { ...updates },
+        })
+      }
+    }
+
+    if (message.type === "tool_result" && message.toolUseId) {
+      for (const agentMessage of messages) {
+        if (
+          agentMessage.type === "tool_use" &&
+          (agentMessage.name === "Agent" || agentMessage.name === "Task") &&
+          agentMessage.toolUseId === message.toolUseId &&
+          agentMessage.id
+        ) {
+          delete updates[agentMessage.id]
+          steps[steps.length - 1] = {
+            ...steps[steps.length - 1],
+            messageUpdates: { ...updates },
+          }
+          break
+        }
+      }
+    }
+  }
+
+  return steps
+}
+
 // ============================================================================
 // App
 // ============================================================================
@@ -108,7 +167,6 @@ export function App() {
 
   // Derive agent busy state from messages (unresolved tool calls)
   const agentBusy = useMemo(() => isAgentBusy(player.messages), [player.messages])
-
   // Command Queue (event-driven, auto-dequeue when agent becomes idle)
   const commandQueue = useCommandQueue({
     id: "demo-session",
@@ -232,7 +290,7 @@ export function App() {
     setSheetData(null)
     try {
       const loaded = await loadClaudeCodeSession(session)
-      player.loadSteps(messagesToSteps(loaded.messages))
+      player.loadSteps(buildClaudeCodePlaybackSteps(loaded.messages, loaded.subagentPreviewEvents))
       setLoadedClaudeSession(loaded)
       setSessionInfo(`${loaded.label} · ${formatStats(loaded.stats, loaded.subagentCount)}`)
     } catch (error) {
@@ -650,6 +708,7 @@ export function App() {
                 <MessageList
                   ref={messageListRef}
                   messages={player.messages}
+                  messageUpdates={player.messageUpdates}
                   isStreaming={player.isStreaming}
                   pendingPlan={player.pendingPlan}
                   welcomeTitle="@viben/chat Session Player"

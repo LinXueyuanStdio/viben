@@ -9,6 +9,8 @@
 const JSONRPC_VERSION = '2.0';
 
 let sessionCounter = 0;
+let nextServerRequestId = 1000;
+const pendingServerRequests = new Map();
 
 function sendResponse(id, result) {
   const msg = JSON.stringify({ jsonrpc: JSONRPC_VERSION, id, result });
@@ -18,6 +20,30 @@ function sendResponse(id, result) {
 function sendNotification(method, params) {
   const msg = JSON.stringify({ jsonrpc: JSONRPC_VERSION, method, params });
   process.stdout.write(msg + '\n');
+}
+
+function sendRequest(method, params, onResponse) {
+  const id = nextServerRequestId++;
+  const timeout = setTimeout(() => {
+    if (!pendingServerRequests.delete(id)) return;
+    onResponse({
+      jsonrpc: JSONRPC_VERSION,
+      id,
+      error: { code: -32000, message: `Client request timed out: ${method}` },
+    });
+  }, 5000);
+  pendingServerRequests.set(id, { onResponse, timeout });
+  const msg = JSON.stringify({ jsonrpc: JSONRPC_VERSION, id, method, params });
+  process.stdout.write(msg + '\n');
+}
+
+function handleResponse(message) {
+  const pending = pendingServerRequests.get(message.id);
+  if (!pending) return false;
+  pendingServerRequests.delete(message.id);
+  clearTimeout(pending.timeout);
+  pending.onResponse(message);
+  return true;
 }
 
 function handleRequest(message) {
@@ -57,6 +83,57 @@ function handleRequest(message) {
     case 'session/prompt': {
       const sessionId = params?.sessionId || 'unknown';
       const promptText = Array.isArray(params?.prompt) && params.prompt[0]?.text ? params.prompt[0].text : 'unknown';
+
+      if (process.env.FAKE_ACP_TRIGGER_GUI_EXECUTE === '1') {
+        const toolUseId = 'fake-gui-tool-1';
+        sendNotification('session/update', {
+          sessionId,
+          update: {
+            sessionUpdate: 'tool_call',
+            toolCallId: toolUseId,
+            title: 'GUI_execute',
+            kind: 'other',
+            status: 'in_progress',
+          },
+        });
+        sendRequest('_viben/client_tool_call', {
+          sessionId,
+          toolName: 'GUI_execute',
+          toolUseId,
+          input: {
+            action: 'get_action_detail',
+            payload: { action: 'app.open_settings' },
+          },
+        }, (response) => {
+          sendNotification('session/update', {
+            sessionId,
+            update: {
+              sessionUpdate: 'tool_call_update',
+              toolCallId: toolUseId,
+              status: response.error ? 'failed' : 'completed',
+            },
+          });
+          sendNotification('session/update', {
+            sessionId,
+            update: {
+              sessionUpdate: 'agent_message_chunk',
+              content: {
+                type: 'text',
+                text: `GUI_execute result: ${JSON.stringify(response.result ?? response.error)}`,
+              },
+            },
+          });
+          sendResponse(id, {
+            stopReason: response.error ? 'error' : 'end_turn',
+            usage: {
+              inputTokens: 12,
+              outputTokens: 24,
+              totalTokens: 36,
+            },
+          });
+        });
+        break;
+      }
 
       // Send streaming chunks via session/update notifications
       const responseText = `Fake response to: ${promptText}`;
@@ -119,6 +196,9 @@ stdin.on('line', (line) => {
   if (!trimmed) return;
   try {
     const message = JSON.parse(trimmed);
+    if (message && typeof message === 'object' && 'id' in message && !('method' in message)) {
+      if (handleResponse(message)) return;
+    }
     handleRequest(message);
   } catch {
     // Ignore parse errors

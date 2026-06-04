@@ -148,6 +148,14 @@ export interface SSEResultMessage {
 export interface SSEErrorMessage {
   type: "error";
   message: string;
+  details?: string;
+  stderr?: string;
+  stdout?: string;
+  exitCode?: number;
+  signal?: string;
+  claudePath?: string;
+  code?: string | number;
+  cause?: unknown;
 }
 
 export interface SSEQuestionMessage {

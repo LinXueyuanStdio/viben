@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@viben/ui";
-import { getDisplayPath } from "./utils";
+import { formatI18nTemplate, getDisplayPath } from "./utils";
 import { useMinDisplayTime } from "./use-min-display-time";
 import type { ContentBlock } from "./types";
 
@@ -87,52 +87,73 @@ function useSummaryText(counts: ToolCounts, isExecuting: boolean): string {
   const { t } = useTranslation();
   const parts: string[] = [];
 
+  const formatCount = (value: string, count: number) =>
+    formatI18nTemplate(value, { count });
+
   if (counts.read > 0) {
     parts.push(
-      t(isExecuting ? "chat.collapsedGroup.readingFiles" : "chat.collapsedGroup.readFiles", {
-        count: counts.read,
-        defaultValue: isExecuting ? "Reading {{count}} files" : "Read {{count}} files",
-      }) as string
+      formatCount(
+        t(isExecuting ? "chat.collapsedGroup.readingFiles" : "chat.collapsedGroup.readFiles", {
+          count: counts.read,
+          defaultValue: isExecuting ? "Reading {{count}} files" : "Read {{count}} files",
+        }) as string,
+        counts.read
+      )
     );
   }
   if (counts.search > 0) {
     parts.push(
-      t(isExecuting ? "chat.collapsedGroup.searchingPatterns" : "chat.collapsedGroup.searchedPatterns", {
-        count: counts.search,
-        defaultValue: isExecuting ? "Searching {{count}} patterns" : "Searched {{count}} patterns",
-      }) as string
+      formatCount(
+        t(isExecuting ? "chat.collapsedGroup.searchingPatterns" : "chat.collapsedGroup.searchedPatterns", {
+          count: counts.search,
+          defaultValue: isExecuting ? "Searching {{count}} patterns" : "Searched {{count}} patterns",
+        }) as string,
+        counts.search
+      )
     );
   }
   if (counts.bash > 0) {
     parts.push(
-      t(isExecuting ? "chat.collapsedGroup.runningCommands" : "chat.collapsedGroup.ranCommands", {
-        count: counts.bash,
-        defaultValue: isExecuting ? "Running {{count}} commands" : "Ran {{count}} commands",
-      }) as string
+      formatCount(
+        t(isExecuting ? "chat.collapsedGroup.runningCommands" : "chat.collapsedGroup.ranCommands", {
+          count: counts.bash,
+          defaultValue: isExecuting ? "Running {{count}} commands" : "Ran {{count}} commands",
+        }) as string,
+        counts.bash
+      )
     );
   }
   if (counts.write > 0) {
     parts.push(
-      t(isExecuting ? "chat.collapsedGroup.writingFiles" : "chat.collapsedGroup.wroteFiles", {
-        count: counts.write,
-        defaultValue: isExecuting ? "Writing {{count}} files" : "Wrote {{count}} files",
-      }) as string
+      formatCount(
+        t(isExecuting ? "chat.collapsedGroup.writingFiles" : "chat.collapsedGroup.wroteFiles", {
+          count: counts.write,
+          defaultValue: isExecuting ? "Writing {{count}} files" : "Wrote {{count}} files",
+        }) as string,
+        counts.write
+      )
     );
   }
   if (counts.edit > 0) {
     parts.push(
-      t(isExecuting ? "chat.collapsedGroup.editingFiles" : "chat.collapsedGroup.editedFiles", {
-        count: counts.edit,
-        defaultValue: isExecuting ? "Editing {{count}} files" : "Edited {{count}} files",
-      }) as string
+      formatCount(
+        t(isExecuting ? "chat.collapsedGroup.editingFiles" : "chat.collapsedGroup.editedFiles", {
+          count: counts.edit,
+          defaultValue: isExecuting ? "Editing {{count}} files" : "Edited {{count}} files",
+        }) as string,
+        counts.edit
+      )
     );
   }
   if (counts.other > 0) {
     parts.push(
-      t(isExecuting ? "chat.collapsedGroup.usingTools" : "chat.collapsedGroup.usedTools", {
-        count: counts.other,
-        defaultValue: isExecuting ? "Using {{count}} tools" : "Used {{count}} tools",
-      }) as string
+      formatCount(
+        t(isExecuting ? "chat.collapsedGroup.usingTools" : "chat.collapsedGroup.usedTools", {
+          count: counts.other,
+          defaultValue: isExecuting ? "Using {{count}} tools" : "Used {{count}} tools",
+        }) as string,
+        counts.other
+      )
     );
   }
 
@@ -219,10 +240,10 @@ export function CollapsedToolGroup({
         type="button"
         onClick={onToggle}
         className={cn(
-          "group flex w-full items-center gap-2 rounded-md px-2 py-1",
+          "group flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5",
           "text-left transition-colors",
           "hover:bg-accent/50 cursor-pointer",
-          "font-mono text-[13px]"
+          "font-mono text-xs"
         )}
       >
         {/* Chevron indicator */}
@@ -233,7 +254,7 @@ export function CollapsedToolGroup({
             duration: prefersReducedMotion ? 0 : 0.15,
           }}
         >
-          <ChevronRight className="size-3.5" />
+          <ChevronRight className="size-3" />
         </motion.span>
 
         {/* Status dot: pulsing amber when executing, static green when done, red on error */}
@@ -259,7 +280,7 @@ export function CollapsedToolGroup({
 
         {/* Hint showing last processed item (stabilized with min display time) */}
         {isExecuting && displayedHint && (
-          <span className="text-muted-foreground/40 truncate text-[11px] ml-auto max-w-[200px]">
+          <span className="text-muted-foreground/40 truncate text-[10px] ml-auto max-w-[200px]">
             {displayedHint}
           </span>
         )}
@@ -278,7 +299,7 @@ export function CollapsedToolGroup({
             }}
             className="overflow-hidden"
           >
-            <div className="ml-[22px] border-l border-muted-foreground/10 pl-2 pt-0.5 pb-0.5">{children}</div>
+            <div className="ml-4 border-l border-muted-foreground/10 pl-1.5 py-0.5">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>

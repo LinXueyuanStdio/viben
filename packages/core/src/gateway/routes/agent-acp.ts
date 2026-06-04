@@ -11,6 +11,7 @@ import type { WebSocket } from "ws";
 import {
   ACP_PROTOCOL_VERSION,
   acpSessionManager,
+  getAcpErrorDetail,
   type AcpCancelNotification,
   type AcpConnection,
   type AcpInitializeRequest,
@@ -215,9 +216,12 @@ async function handleRequest(
         });
     }
   } catch (error) {
+    const detail = getAcpErrorDetail(error);
+    log.error({ err: error, detail, method: request.method }, "ACP request failed");
     connection.sendError(request.id, {
       code: JSONRPC_INTERNAL_ERROR,
-      message: error instanceof Error ? error.message : String(error),
+      message: detail.message,
+      data: detail,
     });
   }
 }
@@ -360,7 +364,7 @@ class AcpWebSocketConnection implements AcpConnection {
     clearTimeout(pending.timer);
     this.pending.delete(id);
     if (error) {
-      pending.reject(new Error(error.message));
+      pending.reject(new Error(formatJsonRpcError(error)));
     } else {
       pending.resolve(result);
     }
@@ -400,4 +404,9 @@ class AcpWebSocketConnection implements AcpConnection {
       log.error({ err: error }, "Failed to send ACP WebSocket frame");
     }
   }
+}
+
+function formatJsonRpcError(error: JsonRpcErrorObject): string {
+  if (!error.data) return error.message;
+  return `${error.message}\n${JSON.stringify(error.data, null, 2)}`;
 }

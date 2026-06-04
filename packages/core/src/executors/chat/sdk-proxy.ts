@@ -58,6 +58,14 @@ export interface SSEResultMessage {
 export interface SSEErrorMessage {
   type: "error";
   message: string;
+  details?: string;
+  stderr?: string;
+  stdout?: string;
+  exitCode?: number;
+  signal?: string;
+  claudePath?: string;
+  code?: string | number;
+  cause?: unknown;
 }
 
 /**
@@ -95,7 +103,8 @@ export type SSEMessage =
   | SSEQuestionMessage
   | SSESdkSessionMessage;
 
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
+import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { logger as globalLogger } from "../../telemetry";
 
 // Module-level logger
@@ -132,6 +141,36 @@ function findClaudeCodeExecutable(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function attachClaudeProcessDiagnostics(
+  child: ChildProcessWithoutNullStreams,
+  onStderr: (data: string) => void,
+  onExit?: (exitCode: number | null, signal: NodeJS.Signals | null) => void
+): void {
+  child.stderr.on("data", (chunk: Buffer | string) => {
+    onStderr(String(chunk));
+  });
+  child.stderr.on("error", (error) => {
+    log.warn({ err: error }, "Claude stderr stream error");
+  });
+  child.stdout.on("error", (error) => {
+    log.warn({ err: error }, "Claude stdout stream error");
+  });
+  child.stdin.on("error", (error) => {
+    // Claude may exit before the SDK finishes writing the prompt. Without this
+    // listener Node treats EPIPE as an unhandled stream error and terminates the
+    // gateway process before ACP can return diagnostics to the client.
+    log.warn({ err: error }, "Claude stdin stream error");
+  });
+  child.on("error", (error) => {
+    log.error({ err: error }, "Claude process spawn error");
+  });
+  child.on("exit", (exitCode, signal) => {
+    onExit?.(exitCode, signal);
+    if (exitCode === 0 && signal === null) return;
+    log.warn({ exitCode, signal }, "Claude process exited before completing SDK query");
+  });
 }
 
 /**
@@ -514,12 +553,15 @@ export class SdkChatProxy implements ChatProxy {
     const startTime = Date.now();
 
     // Capture stderr from Claude Code subprocess for debugging (declared outside try for access in catch)
-    let stderrOutput = '';
+    let stderrOutput = "";
+    let processExitCode: number | undefined;
+    let processSignal: string | undefined;
+    let claudePath: string | undefined;
 
     try {
       // Find Claude Code executable path
       const perfFindStart = Date.now();
-      const claudePath = findClaudeCodeExecutable();
+      claudePath = findClaudeCodeExecutable();
       log.info({ findExeMs: Date.now() - perfFindStart, claudePath }, "[perf] findClaudeCodeExecutable");
 
       // Build query options following WorkAny patterns
@@ -619,6 +661,27 @@ export class SdkChatProxy implements ChatProxy {
         stderrOutput += data;
         verboseError('Claude stderr', { data });
       };
+      queryOptions.spawnClaudeCodeProcess = (spawnOptions: ClaudeAgentSdk.SpawnOptions) => {
+        const child = spawn(spawnOptions.command, spawnOptions.args, {
+          cwd: spawnOptions.cwd,
+          env: spawnOptions.env,
+          signal: spawnOptions.signal,
+          stdio: ["pipe", "pipe", "pipe"],
+          windowsHide: true,
+        });
+        attachClaudeProcessDiagnostics(
+          child,
+          (data) => {
+            stderrOutput += data;
+            verboseError("Claude stderr", { data });
+          },
+          (exitCode, signal) => {
+            processExitCode = exitCode ?? undefined;
+            processSignal = signal ?? undefined;
+          }
+        );
+        return child;
+      };
 
       // Resolve SDK MCP servers from registry by name
       if (mcpServers && mcpServers.length > 0) {
@@ -683,7 +746,19 @@ export class SdkChatProxy implements ChatProxy {
       }
 
       // Build detailed error message including stderr output
-      const stderrInfo = stderrOutput.trim() ? `\nDetails: ${stderrOutput.trim()}` : '';
+      const stderr = stderrOutput.trim();
+      const stderrInfo = stderr ? `\nDetails: ${stderr}` : "";
+      const baseError = {
+        stderr: stderr || undefined,
+        details: stderr || undefined,
+        exitCode: processExitCode,
+        signal: processSignal,
+        claudePath,
+        code: typeof (error as { code?: unknown }).code === "string" || typeof (error as { code?: unknown }).code === "number"
+          ? (error as { code?: string | number }).code
+          : undefined,
+        cause: (error as Error & { cause?: unknown }).cause,
+      };
 
       // Handle specific error types following WorkAny patterns
       if (errorMessage.includes("exited with code")) {
@@ -692,6 +767,7 @@ export class SdkChatProxy implements ChatProxy {
         yield {
           type: "error",
           message: `Agent process terminated unexpectedly: ${errorMessage}${stderrInfo}`,
+          ...baseError,
         };
       } else if (
         errorMessage.includes("API key") ||
@@ -700,16 +776,19 @@ export class SdkChatProxy implements ChatProxy {
         yield {
           type: "error",
           message: `API authentication failed. Please check your API key configuration.${stderrInfo}`,
+          ...baseError,
         };
       } else if (errorMessage.includes("not found") || errorMessage.includes("ENOENT")) {
         yield {
           type: "error",
           message: `Claude Code executable not found. Please ensure Claude Code is installed.${stderrInfo}`,
+          ...baseError,
         };
       } else {
         yield {
           type: "error",
           message: `${errorMessage}${stderrInfo}`,
+          ...baseError,
         };
       }
     }

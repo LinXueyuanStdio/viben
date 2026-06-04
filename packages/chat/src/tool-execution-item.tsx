@@ -18,7 +18,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import { cn } from "@viben/ui";
-import { getDisplayPath } from "./utils";
+import { formatI18nTemplate, getDisplayPath } from "./utils";
 import type { AgentMessage, ContentBlock, ExpandSubagentHandler } from "./types";
 
 /** Artifact info for linking tool_use messages to artifacts */
@@ -51,6 +51,8 @@ export interface ToolExecutionItemProps {
   toolUseId?: string;
   /** Recursively loaded subagent messages for Task tool calls */
   subagentMessages?: AgentMessage[];
+  /** Temporary running transcript preview for Task/Agent calls. Hidden once the call completes. */
+  subagentPreviewMessages?: AgentMessage[];
   /** Render function for subagent messages */
   renderMessage?: (message: AgentMessage, index: number) => React.ReactNode;
   /** Artifact info when this tool created/modified a file */
@@ -217,6 +219,13 @@ function getToolParam(
 function truncateParam(param: string, maxLen: number = 60): string {
   if (param.length <= maxLen) return param;
   return param.slice(0, maxLen) + "...";
+}
+
+function formatTranslated(
+  value: string,
+  vars: Record<string, string | number | undefined>
+): string {
+  return formatI18nTemplate(value, vars);
 }
 
 /**
@@ -422,10 +431,10 @@ function useResultSummaryFromString(
     case "Bash":
       if (lineCount === 0) return { summary: t("chat.toolResult.noOutput", "(No output)"), isWarning: false };
       if (lineCount === 1) return { summary: lines[0].slice(0, 80), isWarning: false };
-      return { summary: t("chat.toolResult.linesOfOutput", { defaultValue: "{{count}} lines of output", count: lineCount }) as string, isWarning: false };
+      return { summary: formatTranslated(t("chat.toolResult.linesOfOutput", { defaultValue: "{{count}} lines of output", count: lineCount }) as string, { count: lineCount }), isWarning: false };
 
     case "Read":
-      return { summary: t("chat.toolResult.readLines", { defaultValue: "Read {{count}} lines", count: lineCount }) as string, isWarning: false };
+      return { summary: formatTranslated(t("chat.toolResult.readLines", { defaultValue: "Read {{count}} lines", count: lineCount }) as string, { count: lineCount }), isWarning: false };
 
     case "Write":
       return { summary: t("chat.toolResult.fileCreated", "File created successfully"), isWarning: false };
@@ -436,14 +445,14 @@ function useResultSummaryFromString(
 
     case "Grep":
       if (lineCount === 0) return { summary: t("chat.toolResult.noMatchesFound", "No matches found"), isWarning: false };
-      return { summary: t("chat.toolResult.foundMatchesInFiles", { defaultValue: "Found matches in {{count}} files", count: lineCount }) as string, isWarning: false };
+      return { summary: formatTranslated(t("chat.toolResult.foundMatchesInFiles", { defaultValue: "Found matches in {{count}} files", count: lineCount }) as string, { count: lineCount }), isWarning: false };
 
     case "Glob":
       if (lineCount === 0) return { summary: t("chat.toolResult.noFilesFound", "No files found"), isWarning: false };
-      return { summary: t("chat.toolResult.foundFiles", { defaultValue: "Found {{count}} files", count: lineCount }) as string, isWarning: false };
+      return { summary: formatTranslated(t("chat.toolResult.foundFiles", { defaultValue: "Found {{count}} files", count: lineCount }) as string, { count: lineCount }), isWarning: false };
 
     case "WebFetch":
-      return { summary: t("chat.toolResult.fetchedCharacters", { defaultValue: "Fetched {{count}} characters", count: cleanOutput.length }) as string, isWarning: false };
+      return { summary: formatTranslated(t("chat.toolResult.fetchedCharacters", { defaultValue: "Fetched {{count}} characters", count: cleanOutput.length }) as string, { count: cleanOutput.length }), isWarning: false };
 
     case "WebSearch":
       return { summary: t("chat.toolResult.searchCompleted", "Search completed"), isWarning: false };
@@ -461,7 +470,7 @@ function useResultSummaryFromString(
 
     default:
       return {
-        summary: lineCount > 0 ? t("chat.toolResult.lines", { defaultValue: "{{count}} lines", count: lineCount }) as string : t("chat.toolResult.noContent", "(No content)"),
+        summary: lineCount > 0 ? formatTranslated(t("chat.toolResult.lines", { defaultValue: "{{count}} lines", count: lineCount }) as string, { count: lineCount }) : t("chat.toolResult.noContent", "(No content)"),
         isWarning: false,
       };
   }
@@ -665,37 +674,88 @@ function getProgressText(
     case "Read": {
       const filename = getDisplayPath((input.file_path as string) || "");
       return filename
-        ? t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: filename })
+        ? formatTranslated(t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: filename }) as string, { file: filename })
         : t("chat.running", "Running...");
     }
     case "Write": {
       const filename = getDisplayPath((input.file_path as string) || "");
       return filename
-        ? t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: filename })
+        ? formatTranslated(t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: filename }) as string, { file: filename })
         : t("chat.running", "Running...");
     }
     case "Edit":
     case "MultiEdit": {
       const filename = getDisplayPath((input.file_path as string) || "");
       return filename
-        ? t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: filename })
+        ? formatTranslated(t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: filename }) as string, { file: filename })
         : t("chat.running", "Running...");
     }
     case "Grep": {
       const pattern = (input.pattern as string) || "";
       return pattern
-        ? t("chat.activity.searching", { defaultValue: "Searching \"{{pattern}}\"...", pattern: pattern.slice(0, 40) })
+        ? formatTranslated(t("chat.activity.searching", { defaultValue: "Searching \"{{pattern}}\"...", pattern: pattern.slice(0, 40) }) as string, { pattern: pattern.slice(0, 40) })
         : t("chat.running", "Running...");
     }
     case "Glob": {
       const pattern = (input.pattern as string) || "";
       return pattern
-        ? t("chat.activity.findingFiles", { defaultValue: "Finding {{pattern}}...", pattern: pattern.slice(0, 40) })
+        ? formatTranslated(t("chat.activity.findingFiles", { defaultValue: "Finding {{pattern}}...", pattern: pattern.slice(0, 40) }) as string, { pattern: pattern.slice(0, 40) })
         : t("chat.running", "Running...");
     }
     default:
       return t("chat.running", "Running...");
   }
+}
+
+function getPreviewText(message: AgentMessage): string {
+  if (message.type === "tool_use") {
+    const param = getToolParam(message.name || "", message.input);
+    return param ? `${message.name || "Tool"} ${param}` : message.name || "Tool";
+  }
+  if (message.type === "tool_result") {
+    if (typeof message.output === "string") {
+      return message.output.split("\n").find((line) => line.trim())?.trim() || "Tool completed";
+    }
+    return "Tool completed";
+  }
+  if (message.type === "thinking") return message.content || "Thinking";
+  if (message.type === "text") return message.content || "";
+  if (message.type === "error") return message.message || message.content || "Error";
+  if (message.type === "user") return message.content || "";
+  return message.content || message.type;
+}
+
+function getPreviewLabel(message: AgentMessage): string {
+  if (message.type === "tool_use") return message.name || "Tool";
+  if (message.type === "tool_result") return message.isError ? "Error" : "Done";
+  if (message.type === "thinking") return "Thinking";
+  if (message.type === "text") return "Text";
+  if (message.type === "user") return "User";
+  if (message.type === "error") return "Error";
+  return message.type;
+}
+
+function SubagentPreviewRow({ message }: { message: AgentMessage }) {
+  const isActive = message.type === "tool_use" && !message.output;
+  const isError = message.type === "error" || message.isError;
+  const text = getPreviewText(message);
+
+  return (
+    <div className="flex min-w-0 items-start gap-1.5 rounded bg-background/60 px-2 py-1 text-[11px]">
+      <span
+        className={cn(
+          "mt-1 size-1.5 shrink-0 rounded-full",
+          isError ? "bg-red-500" : isActive ? "animate-pulse bg-amber-500" : "bg-emerald-500"
+        )}
+      />
+      <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
+        {getPreviewLabel(message)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-muted-foreground">
+        {text}
+      </span>
+    </div>
+  );
 }
 
 // ============================================================================
@@ -715,6 +775,7 @@ export function ToolExecutionItem({
   subagentId,
   toolUseId,
   subagentMessages,
+  subagentPreviewMessages,
   renderMessage,
   artifactInfo,
   onArtifactClick,
@@ -725,6 +786,7 @@ export function ToolExecutionItem({
   const prefersReducedMotion = useReducedMotion();
   const [showModal, setShowModal] = useState(false);
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
+  const hasSubagentPreviewMessages = subagentPreviewMessages && subagentPreviewMessages.length > 0;
 
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
@@ -773,14 +835,14 @@ export function ToolExecutionItem({
       <>
         <div
           className={cn(
-            "-mx-1 rounded-md px-1 py-1.5 font-mono text-[13px] transition-colors",
+            "-mx-1 rounded-md px-1 py-1 font-mono text-xs transition-colors",
             !isRunning && "hover:bg-accent/50 cursor-pointer",
             className
           )}
           onClick={handleClick}
         >
           {/* Line 1: bullet + tool name + params */}
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-1.5">
             <StatusDot status={resolvedStatus} isWarning={isWarning} />
 
             {/* Tool call text */}
@@ -908,7 +970,7 @@ export function ToolExecutionItem({
         transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
         className={cn("w-full min-w-0", className)}
       >
-        <div className="rounded-lg border border-border overflow-hidden font-mono text-[13px]">
+        <div className="rounded-md border border-border overflow-hidden font-mono text-xs">
           {/* Header */}
           <div className="flex items-center">
             <button
@@ -916,14 +978,14 @@ export function ToolExecutionItem({
               onClick={canOpenSubagent ? handleOpenSubagent : handleToggleInlineDetails}
               disabled={!canOpenSubagent && !hasDetails}
               className={cn(
-                "flex flex-1 items-center gap-2 px-3 py-2 text-left min-w-0",
+                "flex flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left min-w-0",
                 (canOpenSubagent || hasDetails) && "cursor-pointer hover:bg-accent/50",
                 "transition-colors"
               )}
               title={canOpenSubagent ? t("chat.expandSubagent", "Open in side panel") : undefined}
             >
               <StatusDot status={resolvedStatus} isWarning={isWarning} />
-              <Bot className="h-3.5 w-3.5 shrink-0 text-violet-500" />
+              <Bot className="h-3 w-3 shrink-0 text-violet-500" />
               <span className="truncate font-semibold text-foreground">
                 {title}
               </span>
@@ -939,7 +1001,7 @@ export function ToolExecutionItem({
               )}
               {canOpenSubagent && (
                 <span className="ml-auto shrink-0 text-muted-foreground">
-                  <Maximize2 className="h-3.5 w-3.5" />
+                  <Maximize2 className="h-3 w-3" />
                 </span>
               )}
             </button>
@@ -951,20 +1013,34 @@ export function ToolExecutionItem({
                   e.stopPropagation();
                   handleToggleInlineDetails();
                 }}
-                className="shrink-0 mr-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
+                className="shrink-0 mr-1.5 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors cursor-pointer"
                 title={isExpanded ? t("chat.hideDetails", "Hide details") : t("chat.showDetails", "Show details")}
               >
-                {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
               </button>
             )}
           </div>
 
           {/* Status line */}
           {(status === "executing" || status === "completed") && (
-            <div className="px-3 pb-2 -mt-0.5">
-              <span className="text-[11px] text-muted-foreground ml-4">
+            <div className="px-2.5 pb-1.5 -mt-0.5">
+              <span className="text-[10px] text-muted-foreground ml-3.5">
                 ⎿ {status === "executing" ? t("chat.subAgentRunning", "Running…") : t("chat.done", "Done")}
               </span>
+            </div>
+          )}
+
+          {isRunning && hasSubagentPreviewMessages && (
+            <div className="border-t border-border/60 bg-muted/20 px-2.5 py-2">
+              <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
+                <span>{t("chat.subagentLivePreview", "Subagent activity")}</span>
+              </div>
+              <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                {subagentPreviewMessages!.slice(-8).map((msg, idx) => (
+                  <SubagentPreviewRow key={msg.id || idx} message={msg} />
+                ))}
+              </div>
             </div>
           )}
 
@@ -978,14 +1054,14 @@ export function ToolExecutionItem({
                 transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
                 className="overflow-hidden"
               >
-                <div className="border-t border-border px-3 py-2 space-y-2 min-w-0 overflow-hidden">
+                <div className="border-t border-border px-2.5 py-2 space-y-1.5 min-w-0 overflow-hidden">
                   {/* Task prompt (collapsed by default for brevity) */}
                   {taskInput.prompt && (
                     <details className="min-w-0 overflow-hidden">
                       <summary className="text-[11px] text-muted-foreground cursor-pointer hover:text-foreground select-none">
                         {t("chat.taskPrompt", "Task Prompt")}
                       </summary>
-                      <pre className="mt-1 overflow-x-auto overflow-y-auto rounded bg-muted p-2 text-xs max-h-[120px] max-w-full">
+                      <pre className="mt-1 overflow-x-auto overflow-y-auto rounded bg-muted p-2 text-[11px] max-h-[120px] max-w-full">
                         <code className="whitespace-pre-wrap break-words text-xs">{taskInput.prompt}</code>
                       </pre>
                     </details>
@@ -1068,23 +1144,23 @@ export function ToolExecutionItem({
         initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-        className={cn("flex gap-3 w-full min-w-0", className)}
+        className={cn("flex gap-2 w-full min-w-0", className)}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-          <Wrench className="h-4 w-4 text-muted-foreground" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+          <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div
             className={cn(
-              "rounded-xl border border-border bg-card overflow-hidden font-mono text-[13px]",
+              "rounded-lg border border-border bg-card overflow-hidden font-mono text-xs",
               !expandedInline && !isRunning && "hover:bg-accent/30 cursor-pointer",
               "transition-colors"
             )}
             onClick={expandedInline ? undefined : handleClick}
           >
-            <div className="px-4 py-3">
+            <div className="px-3 py-2">
               {/* Line 1: status dot + tool name + params */}
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-1.5">
                 <StatusDot status={resolvedStatus} isWarning={isWarning} />
 
                 {/* Tool call text */}
@@ -1143,7 +1219,7 @@ export function ToolExecutionItem({
 
             {/* Inline expanded details (when expandedInline is true) */}
             {expandedInline && (input || output) && (
-              <div className="border-t border-border px-4 py-3 space-y-3">
+              <div className="border-t border-border px-3 py-2 space-y-2">
                 {input && (
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">

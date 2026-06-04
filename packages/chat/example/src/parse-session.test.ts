@@ -5,6 +5,7 @@ import * as os from "node:os";
 import { parseSessionJsonl } from "./demo-data";
 import {
   CLAUDE_CODE_SESSIONS,
+  extractSubagentPreviewEvents,
   parseSessionJsonlDetailed,
 } from "./claudecode-log-provider";
 import { getPublicAssetUrl } from "./public-assets";
@@ -482,6 +483,35 @@ describe("Claude Code bundled session logs", () => {
       expect(agentCalls.length, `${session.id} Agent/Task calls`).toBe(session.subagents.length);
       expect(mappedAgentIds, `${session.id} mapped subagent ids`).toEqual(manifestAgentIds);
     }
+  });
+
+  it("formats empty Claude Code api_error records without raw empty cause JSON", () => {
+    const input = JSON.stringify({
+      type: "system",
+      subtype: "api_error",
+      level: "error",
+      error: { cause: {} },
+      retryAttempt: 1,
+      maxRetries: 10,
+      retryInMs: 581.263,
+      timestamp: "2026-05-15T15:29:33.995Z",
+    });
+
+    const parsed = parseSessionJsonlDetailed(input);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].type).toBe("error");
+    expect(parsed.messages[0].message).toContain("api_error");
+    expect(parsed.messages[0].message).toContain("attempt 1/10");
+    expect(parsed.messages[0].message).not.toContain('{"cause":{}}');
+  });
+
+  it("extracts bundled subagent progress events for transient playback previews", () => {
+    const mainPath = path.join(PUBLIC_DIR, CLAUDE_CODE_SESSIONS[0].mainFile.replace(/^\//, ""));
+    const mainText = fs.readFileSync(mainPath, "utf-8");
+    const events = extractSubagentPreviewEvents(mainText);
+
+    expect(events.length).toBeGreaterThan(0);
+    expect(events.some((event) => event.messages.length > 0)).toBe(true);
   });
 });
 

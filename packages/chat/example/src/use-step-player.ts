@@ -26,6 +26,8 @@ import type { AgentMessage, PendingExecApproval, PendingQuestion, TaskPlan } fro
 export interface DemoStep {
   /** Messages to append when this step fires */
   messages: AgentMessage[]
+  /** Transient UI-only updates applied when this step fires. */
+  messageUpdates?: Record<string, Partial<AgentMessage>>
   /** Delay before auto-advancing to next step (ms). Default 400. */
   delayMs?: number
   /**
@@ -48,6 +50,7 @@ interface PlayerState {
   status: "idle" | "playing" | "paused"
   stepIndex: number
   messages: AgentMessage[]
+  messageUpdates: Record<string, Partial<AgentMessage>>
   /** Current pending interactions (null = nothing awaited) */
   pendingApproval: PendingExecApproval | null
   pendingQuestion: PendingQuestion | null
@@ -75,6 +78,7 @@ type PlayerAction =
   | { type: "RESOLVE_PLAN" }
   | { type: "LOAD_STEPS" }
   | { type: "LOAD_MESSAGES"; messages: AgentMessage[] }
+  | { type: "SET_MESSAGE_UPDATES"; updates: Record<string, Partial<AgentMessage>> }
   | { type: "INJECT_MESSAGE"; message: AgentMessage }
   | { type: "CONSUME_PENDING_USERS" }
 
@@ -83,6 +87,7 @@ function createInitialState(): PlayerState {
     status: "idle",
     stepIndex: 0,
     messages: [],
+    messageUpdates: {},
     pendingApproval: null,
     pendingQuestion: null,
     pendingPlan: null,
@@ -91,12 +96,19 @@ function createInitialState(): PlayerState {
   }
 }
 
-function buildMessagesUpTo(steps: DemoStep[], endIndex: number): AgentMessage[] {
+function buildStateUpTo(steps: DemoStep[], endIndex: number): {
+  messages: AgentMessage[];
+  messageUpdates: Record<string, Partial<AgentMessage>>;
+} {
   const msgs: AgentMessage[] = []
+  let messageUpdates: Record<string, Partial<AgentMessage>> = {}
   for (let i = 0; i < endIndex && i < steps.length; i++) {
     msgs.push(...steps[i].messages)
+    if (steps[i].messageUpdates) {
+      messageUpdates = steps[i].messageUpdates ?? {}
+    }
   }
-  return msgs
+  return { messages: msgs, messageUpdates }
 }
 
 function createReducer(steps: DemoStep[]) {
@@ -122,6 +134,7 @@ function createReducer(steps: DemoStep[]) {
 
         const userMsgs = step.messages.filter(msg => msg.type === "user")
         const agentMsgs = step.messages.filter(msg => msg.type !== "user")
+        const nextMessageUpdates = step.messageUpdates ?? state.messageUpdates
 
         // Only separate user messages when agent has produced output.
         // If no agent output yet (start of conversation), user messages go straight to list.
@@ -135,6 +148,7 @@ function createReducer(steps: DemoStep[]) {
             status: done ? "idle" : "playing",
             stepIndex: newIndex,
             messages: [...state.messages, ...agentMsgs],
+            messageUpdates: nextMessageUpdates,
             pendingUserMessages: userMsgs,
             pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
             pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
@@ -148,6 +162,7 @@ function createReducer(steps: DemoStep[]) {
           status: done ? "idle" : "playing",
           stepIndex: newIndex,
           messages: [...state.messages, ...step.messages],
+          messageUpdates: nextMessageUpdates,
           pendingUserMessages: [],
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
           pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
@@ -167,6 +182,7 @@ function createReducer(steps: DemoStep[]) {
           ...state,
           stepIndex: newIndex,
           messages: newMessages,
+          messageUpdates: step.messageUpdates ?? state.messageUpdates,
           pendingUserMessages: [],
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
           pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
@@ -176,11 +192,13 @@ function createReducer(steps: DemoStep[]) {
 
       case "PREV": {
         const newIndex = Math.max(0, state.stepIndex - 1)
+        const replayed = buildStateUpTo(steps, newIndex)
         return {
           ...state,
           status: "paused",
           stepIndex: newIndex,
-          messages: buildMessagesUpTo(steps, newIndex),
+          messages: replayed.messages,
+          messageUpdates: replayed.messageUpdates,
           pendingApproval: null,
           pendingQuestion: null,
           pendingPlan: null,
@@ -190,11 +208,13 @@ function createReducer(steps: DemoStep[]) {
 
       case "SEEK": {
         const idx = Math.max(0, Math.min(action.stepIndex, steps.length))
+        const replayed = buildStateUpTo(steps, idx)
         return {
           ...state,
           status: "paused",
           stepIndex: idx,
-          messages: buildMessagesUpTo(steps, idx),
+          messages: replayed.messages,
+          messageUpdates: replayed.messageUpdates,
           pendingApproval: null,
           pendingQuestion: null,
           pendingPlan: null,
@@ -226,8 +246,12 @@ function createReducer(steps: DemoStep[]) {
           speed: state.speed,
           status: "paused",
           stepIndex: steps.length,
-          messages: action.messages,
-        }
+        messages: action.messages,
+        messageUpdates: {},
+      }
+
+      case "SET_MESSAGE_UPDATES":
+        return { ...state, messageUpdates: action.updates }
 
       case "INJECT_MESSAGE":
         return { ...state, messages: [...state.messages, action.message] }
@@ -247,6 +271,7 @@ function createReducer(steps: DemoStep[]) {
 
 export interface StepPlayerReturn {
   messages: AgentMessage[]
+  messageUpdates: Record<string, Partial<AgentMessage>>
   stepIndex: number
   totalSteps: number
   status: "idle" | "playing" | "paused"
@@ -271,6 +296,7 @@ export interface StepPlayerReturn {
   resolvePlan: (approved: boolean) => void
   loadSteps: (newSteps: DemoStep[]) => void
   loadMessages: (messages: AgentMessage[]) => void
+  setMessageUpdates: (updates: Record<string, Partial<AgentMessage>>) => void
   /** Inject a message into the message list (e.g., from command queue dequeue) */
   injectMessage: (message: AgentMessage) => void
   /** User messages waiting to be routed (consumed by App via consumePendingUsers) */
@@ -389,6 +415,10 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     dispatch({ type: "LOAD_MESSAGES", messages })
   }, [])
 
+  const setMessageUpdates = useCallback((updates: Record<string, Partial<AgentMessage>>) => {
+    dispatch({ type: "SET_MESSAGE_UPDATES", updates })
+  }, [])
+
   const injectMessage = useCallback((message: AgentMessage) => {
     dispatch({ type: "INJECT_MESSAGE", message })
   }, [])
@@ -399,6 +429,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
 
   return {
     messages: state.messages,
+    messageUpdates: state.messageUpdates,
     stepIndex: state.stepIndex,
     totalSteps: stepsRef.current.length,
     status: state.status,
@@ -420,6 +451,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     resolvePlan,
     loadSteps,
     loadMessages,
+    setMessageUpdates,
     injectMessage,
     pendingUserMessages: state.pendingUserMessages,
     consumePendingUsers,

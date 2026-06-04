@@ -6,11 +6,15 @@ import {
   Copy,
   FileJson,
   EthernetPort,
+  FolderPlus,
   Loader2,
   Plug,
   Plus,
+  RotateCcw,
   Save,
+  Search,
   Send,
+  Settings,
   SquareTerminal,
   Trash2,
   Unplug,
@@ -27,7 +31,7 @@ import {
 
 interface ChatMessage {
   id: string;
-  role: "agent" | "thought" | "tool" | "system";
+  role: "agent" | "thought" | "tool" | "system" | "error";
   text: string;
   status?: string;
   toolCallId?: string;
@@ -40,6 +44,24 @@ interface GuiActionDefinition {
   inputSchemaText: string;
   responseText: string;
   fail: boolean;
+}
+
+interface UiSessionState {
+  id: string;
+  title: string;
+  cwd: string;
+  createdAt: string;
+  lastActiveAt: string;
+  sessionResult: unknown;
+  promptResult: unknown;
+  messages: ChatMessage[];
+  clientToolCalls: ClientToolCall[];
+}
+
+interface TrafficFilters {
+  query: string;
+  direction: "all" | "in" | "out";
+  type: "all" | TrafficEntry["type"] | "error";
 }
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
@@ -80,13 +102,17 @@ export function App() {
   const [agentConfigPath, setAgentConfigPath] = useState("");
   const [prompt, setPrompt] = useState("Hello from the Viben ACP example client.");
   const [status, setStatus] = useState<ConnectionStatus>("idle");
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
+  const [sessionOrder, setSessionOrder] = useState<string[]>([]);
+  const [loadSessionId, setLoadSessionId] = useState("");
   const [initializeResult, setInitializeResult] = useState<unknown>(null);
-  const [sessionResult, setSessionResult] = useState<unknown>(null);
-  const [promptResult, setPromptResult] = useState<unknown>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [traffic, setTraffic] = useState<TrafficEntry[]>([]);
-  const [clientToolCalls, setClientToolCalls] = useState<ClientToolCall[]>([]);
+  const [trafficFilters, setTrafficFilters] = useState<TrafficFilters>({
+    query: "",
+    direction: "all",
+    type: "all",
+  });
   const [actions, setActions] = useState<GuiActionDefinition[]>(DEFAULT_ACTIONS);
   const [selectedActionId, setSelectedActionId] = useState(DEFAULT_ACTIONS[0]?.id ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +122,13 @@ export function App() {
   const busy = status === "connecting";
   const connected = status === "connected";
   const stats = useMemo(() => summarizeTraffic(traffic), [traffic]);
+  const filteredTraffic = useMemo(() => filterTraffic(traffic, trafficFilters), [traffic, trafficFilters]);
+  const activeSession = activeSessionId ? sessionsById[activeSessionId] : null;
+  const sessionId = activeSession?.id ?? null;
+  const messages = activeSession?.messages ?? [];
+  const clientToolCalls = activeSession?.clientToolCalls ?? [];
+  const sessionResult = activeSession?.sessionResult ?? null;
+  const promptResult = activeSession?.promptResult ?? null;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
   const actionSummaries = useMemo(() => buildActionSummaries(actions), [actions]);
 
@@ -109,18 +142,27 @@ export function App() {
 
   const appendSessionUpdate = useCallback((notification: AcpSessionUpdate) => {
     const update = notification.update;
+    const sessionId = notification.sessionId;
     if (update.sessionUpdate === "agent_message_chunk" || update.sessionUpdate === "agent_thought_chunk") {
       const text = update.content?.text ?? "";
       if (!text) return;
-      setMessages((current) => [
-        ...mergeTextChunk(current, update.sessionUpdate === "agent_thought_chunk" ? "thought" : "agent", text),
-      ]);
+      appendSessionMessages(
+        setSessionsById,
+        sessionId,
+        [
+          {
+            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            role: update.sessionUpdate === "agent_thought_chunk" ? "thought" : "agent",
+            text,
+          },
+        ],
+        (current, incoming) => mergeTextChunk(current, incoming[0].role as "agent" | "thought", incoming[0].text)
+      );
       return;
     }
 
     if (update.sessionUpdate === "tool_call") {
-      setMessages((current) => [
-        ...current,
+      appendSessionMessages(setSessionsById, sessionId, [
         {
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           role: "tool",
@@ -133,14 +175,28 @@ export function App() {
     }
 
     if (update.sessionUpdate === "tool_call_update") {
-      setMessages((current) => updateToolStatus(current, update.toolCallId, update.status));
+      updateSessionMessages(setSessionsById, sessionId, (current) => updateToolStatus(current, update.toolCallId, update.status));
+      return;
+    }
+
+    if (update.sessionUpdate === "error") {
+      appendSessionMessages(setSessionsById, sessionId, [
+        {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          role: "error",
+          text: stringifyDiagnostic(update.error),
+        },
+      ]);
     }
   }, []);
 
   const appendClientToolCall = useCallback((call: ClientToolCall) => {
-    setClientToolCalls((current) => [call, ...current].slice(0, 50));
-    setMessages((current) => [
-      ...current,
+    updateSession(setSessionsById, call.sessionId, (session) => ({
+      ...session,
+      clientToolCalls: [call, ...session.clientToolCalls].slice(0, 50),
+      lastActiveAt: new Date().toISOString(),
+    }));
+    appendSessionMessages(setSessionsById, call.sessionId, [
       {
         id: call.id,
         role: "system",
@@ -179,39 +235,75 @@ export function App() {
   const connect = useCallback(async () => {
     setError(null);
     setInitializeResult(null);
-    setSessionResult(null);
-    setPromptResult(null);
-    setSessionId(null);
-    setMessages([]);
-    setClientToolCalls([]);
     try {
       const client = ensureClient();
       await client.connect(wsUrl);
       const initialized = await client.initialize();
       setInitializeResult(initialized);
+    } catch (connectError) {
+      setError(connectError instanceof Error ? connectError.message : String(connectError));
+    }
+  }, [ensureClient, wsUrl]);
+
+  const createSession = useCallback(async () => {
+    setError(null);
+    try {
+      const client = ensureClient();
+      await client.connect(wsUrl);
+      if (!initializeResult) {
+        setInitializeResult(await client.initialize());
+      }
       const session = await client.newSession({
         cwd,
         agent_config_path: agentConfigPath.trim() || undefined,
       });
-      setSessionResult(session);
-      setSessionId(readSessionId(session));
-      setMessages((current) => [
-        ...current,
-        {
-          id: `${Date.now()}-session`,
-          role: "system",
-          text: `Session ready: ${readSessionId(session) ?? "unknown"}`,
-        },
-      ]);
-    } catch (connectError) {
-      setError(connectError instanceof Error ? connectError.message : String(connectError));
+      const id = readSessionId(session);
+      if (!id) throw new Error("session/new did not return sessionId");
+      const record = createUiSession(id, cwd, session);
+      setSessionsById((current) => ({ ...current, [id]: record }));
+      setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
+      setActiveSessionId(id);
+      appendSessionMessages(setSessionsById, id, [{
+        id: `${Date.now()}-session`,
+        role: "system",
+        text: `Session ready: ${id}`,
+      }]);
+    } catch (sessionError) {
+      setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
-  }, [agentConfigPath, cwd, ensureClient, wsUrl]);
+  }, [agentConfigPath, cwd, ensureClient, initializeResult, wsUrl]);
+
+  const loadSession = useCallback(async () => {
+    const id = loadSessionId.trim();
+    if (!id) return;
+    setError(null);
+    try {
+      const client = ensureClient();
+      await client.connect(wsUrl);
+      if (!initializeResult) {
+        setInitializeResult(await client.initialize());
+      }
+      const session = await client.loadSession({ session_id: id, cwd });
+      const loadedId = readSessionId(session) ?? id;
+      setSessionsById((current) => ({
+        ...current,
+        [loadedId]: createUiSession(loadedId, cwd, session, current[loadedId]),
+      }));
+      setSessionOrder((current) => [loadedId, ...current.filter((item) => item !== loadedId)]);
+      setActiveSessionId(loadedId);
+      appendSessionMessages(setSessionsById, loadedId, [{
+        id: `${Date.now()}-load-session`,
+        role: "system",
+        text: `Session loaded: ${loadedId}`,
+      }]);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : String(loadError));
+    }
+  }, [cwd, ensureClient, initializeResult, loadSessionId, wsUrl]);
 
   const disconnect = useCallback(() => {
     clientRef.current?.disconnect();
     clientRef.current = null;
-    setSessionId(null);
   }, []);
 
   const sendPrompt = useCallback(async () => {
@@ -220,17 +312,18 @@ export function App() {
     if (!text) return;
 
     setError(null);
-    setMessages((current) => [
-      ...current,
-      {
-        id: `${Date.now()}-system`,
-        role: "system",
-        text: `Prompt sent: ${text}`,
-      },
-    ]);
+    appendSessionMessages(setSessionsById, sessionId, [{
+      id: `${Date.now()}-system`,
+      role: "system",
+      text: `Prompt sent: ${text}`,
+    }]);
     try {
       const result = await clientRef.current?.prompt(sessionId, text);
-      setPromptResult(result);
+      updateSession(setSessionsById, sessionId, (session) => ({
+        ...session,
+        promptResult: result,
+        lastActiveAt: new Date().toISOString(),
+      }));
     } catch (promptError) {
       setError(promptError instanceof Error ? promptError.message : String(promptError));
     }
@@ -242,35 +335,68 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-border bg-sidebar px-5 py-6 lg:block">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <EthernetPort size={20} />
+      <aside className="fixed inset-y-0 left-0 hidden w-80 border-r border-border bg-sidebar px-4 py-5 lg:block">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <EthernetPort size={20} />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold tracking-wide">Viben ACP</div>
+              <div className="text-xs text-muted-foreground">WebSocket Client</div>
+            </div>
           </div>
-          <div>
-            <div className="text-sm font-semibold tracking-wide">Viben ACP</div>
-            <div className="text-xs text-muted-foreground">Client Example</div>
-          </div>
+          <StatusPill status={status} compact />
         </div>
 
-        <nav className="mt-8 space-y-2">
-          <NavItem icon={<Plug size={16} />} label="Connection" active />
-          <NavItem icon={<Bot size={16} />} label="Session" />
-          <NavItem icon={<Activity size={16} />} label="Traffic" />
-          <NavItem icon={<SquareTerminal size={16} />} label="Client Tools" />
-        </nav>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button className="btn-secondary" onClick={createSession} disabled={!connected}>
+            <FolderPlus size={16} />
+            New
+          </button>
+          <button className="btn-secondary" onClick={loadSession} disabled={!connected || !loadSessionId.trim()}>
+            <RotateCcw size={16} />
+            Load
+          </button>
+        </div>
 
-        <div className="absolute bottom-6 left-5 right-5 rounded-lg border border-border bg-surface p-4">
-          <StatusPill status={status} />
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+        <input
+          value={loadSessionId}
+          onChange={(event) => setLoadSessionId(event.target.value)}
+          className="input mt-3 text-xs"
+          placeholder="session id to load"
+        />
+
+        <div className="mt-5 flex items-center justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <span>Sessions</span>
+          <span>{sessionOrder.length}</span>
+        </div>
+        <div className="mt-2 max-h-[calc(100vh-260px)] space-y-2 overflow-auto pr-1">
+          {sessionOrder.length === 0 ? (
+            <EmptyState text="No sessions." compact />
+          ) : (
+            sessionOrder.map((id) => (
+              <SessionRow
+                key={id}
+                session={sessionsById[id]}
+                active={id === activeSessionId}
+                onSelect={() => setActiveSessionId(id)}
+              />
+            ))
+          )}
+        </div>
+
+        <div className="absolute bottom-5 left-4 right-4 rounded-lg border border-border bg-surface p-3">
+          <div className="grid grid-cols-4 gap-2 text-center text-xs">
             <Stat label="In" value={stats.inbound} />
             <Stat label="Out" value={stats.outbound} />
+            <Stat label="Err" value={stats.errors} />
             <Stat label="Tools" value={stats.clientTools} />
           </div>
         </div>
       </aside>
 
-      <main className="lg:pl-72">
+      <main className="lg:pl-80">
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 px-5 py-4 backdrop-blur">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
@@ -283,6 +409,10 @@ export function App() {
               <button className="btn-secondary" onClick={() => copyText(sessionId ?? "")} disabled={!sessionId}>
                 <Copy size={16} />
                 Copy Session
+              </button>
+              <button className="btn-secondary" onClick={createSession} disabled={!connected}>
+                <FolderPlus size={16} />
+                New Session
               </button>
               {connected ? (
                 <button className="btn-danger" onClick={disconnect}>
@@ -410,7 +540,7 @@ export function App() {
               </div>
             </Panel>
 
-            <Panel title="Connection" description="Initialize ACP and create a live Viben session.">
+            <Panel title="Connection" description="Initialize ACP, then create or load sessions from the sidebar.">
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="WebSocket URL">
                   <input value={wsUrl} onChange={(event) => setWsUrl(event.target.value)} className="input" />
@@ -429,6 +559,16 @@ export function App() {
                 <Field label="Session ID">
                   <input value={sessionId ?? ""} readOnly className="input text-muted-foreground" />
                 </Field>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button className="btn-secondary" onClick={createSession} disabled={!connected}>
+                  <FolderPlus size={16} />
+                  New Session
+                </button>
+                <button className="btn-secondary" onClick={loadSession} disabled={!connected || !loadSessionId.trim()}>
+                  <RotateCcw size={16} />
+                  Load Session
+                </button>
               </div>
               {error && <div className="mt-4 rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
             </Panel>
@@ -449,7 +589,11 @@ export function App() {
                   <CircleStop size={16} />
                   Cancel Turn
                 </button>
-                <button className="btn-secondary" onClick={() => setMessages([])}>
+                <button className="btn-secondary" onClick={() => {
+                  if (sessionId) {
+                    updateSession(setSessionsById, sessionId, (session) => ({ ...session, messages: [] }));
+                  }
+                }}>
                   <Trash2 size={16} />
                   Clear
                 </button>
@@ -490,12 +634,49 @@ export function App() {
               <JsonBlock title="session/prompt" value={promptResult} />
             </Panel>
 
-            <Panel title="Traffic Monitor" description="Newest JSON-RPC frames first.">
+            <Panel title="Traffic Monitor" description="Connection-level JSON-RPC frames.">
+              <div className="mb-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_120px_150px_auto]">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={15} />
+                  <input
+                    value={trafficFilters.query}
+                    onChange={(event) => setTrafficFilters((current) => ({ ...current, query: event.target.value }))}
+                    className="input pl-9"
+                    placeholder="method, id, session, payload"
+                  />
+                </div>
+                <select
+                  value={trafficFilters.direction}
+                  onChange={(event) => setTrafficFilters((current) => ({ ...current, direction: event.target.value as TrafficFilters["direction"] }))}
+                  className="input"
+                >
+                  <option value="all">all dirs</option>
+                  <option value="in">in</option>
+                  <option value="out">out</option>
+                </select>
+                <select
+                  value={trafficFilters.type}
+                  onChange={(event) => setTrafficFilters((current) => ({ ...current, type: event.target.value as TrafficFilters["type"] }))}
+                  className="input"
+                >
+                  <option value="all">all frames</option>
+                  <option value="request">request</option>
+                  <option value="response">response</option>
+                  <option value="notification">notification</option>
+                  <option value="error">error</option>
+                </select>
+                <button className="btn-secondary" onClick={() => setTraffic([])}>
+                  <Trash2 size={16} />
+                  Clear
+                </button>
+              </div>
               <div className="max-h-[680px] space-y-2 overflow-auto pr-1">
                 {traffic.length === 0 ? (
                   <EmptyState text="Connect to start recording frames." />
+                ) : filteredTraffic.length === 0 ? (
+                  <EmptyState text="No frames match the filters." />
                 ) : (
-                  traffic.map((entry) => <TrafficRow key={entry.id} entry={entry} />)
+                  filteredTraffic.map((entry) => <TrafficRow key={entry.id} entry={entry} />)
                 )}
               </div>
             </Panel>
@@ -506,12 +687,19 @@ export function App() {
   );
 }
 
-function NavItem({ icon, label, active = false }: { icon: React.ReactNode; label: string; active?: boolean }) {
+function SessionRow({ session, active, onSelect }: { session: UiSessionState | undefined; active: boolean; onSelect: () => void }) {
+  if (!session) return null;
   return (
-    <div className={active ? "nav-item nav-item-active" : "nav-item"}>
-      {icon}
-      <span>{label}</span>
-    </div>
+    <button className={active ? "session-row session-row-active" : "session-row"} onClick={onSelect}>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold">{session.title}</div>
+        <div className="truncate text-xs text-muted-foreground">{session.id}</div>
+      </div>
+      <div className="shrink-0 text-right text-xs text-muted-foreground">
+        <div>{session.messages.length}</div>
+        <div>msgs</div>
+      </div>
+    </button>
   );
 }
 
@@ -536,10 +724,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function StatusPill({ status }: { status: ConnectionStatus }) {
+function StatusPill({ status, compact = false }: { status: ConnectionStatus; compact?: boolean }) {
   const color = status === "connected" ? "bg-success" : status === "connecting" ? "bg-warning" : status === "error" ? "bg-destructive" : "bg-muted-foreground";
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div className={compact ? "flex items-center gap-2 text-xs" : "flex items-center gap-2 text-sm"}>
       <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
       <span className="font-medium capitalize">{status}</span>
     </div>
@@ -556,7 +744,15 @@ function Stat({ label, value }: { label: string; value: number }) {
 }
 
 function MessageRow({ message }: { message: ChatMessage }) {
-  const tone = message.role === "agent" ? "border-primary/30 bg-primary/5" : message.role === "thought" ? "border-warning/35 bg-warning/10" : message.role === "tool" ? "border-info/35 bg-info/10" : "border-border bg-muted/50";
+  const tone = message.role === "agent"
+    ? "border-primary/30 bg-primary/5"
+    : message.role === "thought"
+      ? "border-warning/35 bg-warning/10"
+      : message.role === "tool"
+        ? "border-info/35 bg-info/10"
+        : message.role === "error"
+          ? "border-destructive/35 bg-destructive/10 text-destructive"
+          : "border-border bg-muted/50";
   return (
     <div className={`rounded-lg border px-3 py-2 text-sm ${tone}`}>
       <div className="mb-1 flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -600,14 +796,25 @@ function JsonBlock({ title, value }: { title: string; value: unknown }) {
 
 function TrafficRow({ entry }: { entry: TrafficEntry }) {
   return (
-    <details className="rounded-lg border border-border bg-surface p-3 text-xs">
+    <details className={entry.error ? "rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs" : "rounded-lg border border-border bg-surface p-3 text-xs"}>
       <summary className="cursor-pointer list-none">
-        <div className="flex items-center justify-between gap-3">
+        <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-center gap-2">
             <span className={entry.direction === "in" ? "badge-in" : "badge-out"}>{entry.direction}</span>
+            <span className="traffic-type">{entry.type}</span>
             <span className="truncate font-medium">{entry.method ?? entry.type}</span>
+            {entry.error && <span className="action-fail">error</span>}
           </div>
-          <span className="shrink-0 text-muted-foreground">{new Date(entry.at).toLocaleTimeString()}</span>
+          <div className="flex items-center gap-2 text-muted-foreground md:justify-end">
+            {entry.durationMs !== undefined && <span>{entry.durationMs}ms</span>}
+            <span>{formatPayloadSize(entry.payloadSize)}</span>
+            <span>{new Date(entry.at).toLocaleTimeString()}</span>
+          </div>
+          <div className="truncate text-muted-foreground md:col-span-2">
+            {entry.summary}
+            {entry.sessionId && <span className="ml-2">session {shortId(entry.sessionId)}</span>}
+            {entry.requestId !== undefined && <span className="ml-2">id {String(entry.requestId)}</span>}
+          </div>
         </div>
       </summary>
       <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-code-block p-3 leading-5">
@@ -617,9 +824,9 @@ function TrafficRow({ entry }: { entry: TrafficEntry }) {
   );
 }
 
-function EmptyState({ text }: { text: string }) {
+function EmptyState({ text, compact = false }: { text: string; compact?: boolean }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center text-sm text-muted-foreground">
+    <div className={`rounded-lg border border-dashed border-border bg-muted/30 px-4 text-center text-sm text-muted-foreground ${compact ? "py-4" : "py-8"}`}>
       {text}
     </div>
   );
@@ -631,10 +838,41 @@ function summarizeTraffic(entries: TrafficEntry[]) {
       if (entry.direction === "in") stats.inbound += 1;
       if (entry.direction === "out") stats.outbound += 1;
       if (entry.method === "_viben/client_tool_call") stats.clientTools += 1;
+      if (entry.error) stats.errors += 1;
+      if (entry.type === "request") stats.requests += 1;
+      if (entry.type === "response") stats.responses += 1;
       return stats;
     },
-    { inbound: 0, outbound: 0, clientTools: 0 }
+    { inbound: 0, outbound: 0, clientTools: 0, errors: 0, requests: 0, responses: 0 }
   );
+}
+
+function filterTraffic(entries: TrafficEntry[], filters: TrafficFilters): TrafficEntry[] {
+  const query = filters.query.trim().toLowerCase();
+  return entries.filter((entry) => {
+    if (filters.direction !== "all" && entry.direction !== filters.direction) return false;
+    if (filters.type === "error" && !entry.error) return false;
+    if (filters.type !== "all" && filters.type !== "error" && entry.type !== filters.type) return false;
+    if (!query) return true;
+    const haystack = [
+      entry.method,
+      entry.type,
+      entry.summary,
+      entry.sessionId,
+      entry.requestId === undefined ? undefined : String(entry.requestId),
+      JSON.stringify(entry.payload),
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function formatPayloadSize(size: number): string {
+  if (size < 1024) return `${size}b`;
+  return `${(size / 1024).toFixed(1)}kb`;
+}
+
+function shortId(id: string): string {
+  return id.length <= 8 ? id : id.slice(0, 8);
 }
 
 function isGuiExecuteTool(toolName: string): boolean {
@@ -712,12 +950,72 @@ function runLocalGuiExecute(actionName: string, actions: GuiActionDefinition[]):
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     at: new Date().toISOString(),
+    sessionId: request.sessionId,
     toolName: request.toolName,
     toolUseId: request.toolUseId,
     action: actionName,
     input: request.input,
     result: executeGuiAction(request, actions),
   };
+}
+
+function createUiSession(
+  id: string,
+  cwd: string,
+  sessionResult: unknown,
+  existing?: UiSessionState
+): UiSessionState {
+  const now = new Date().toISOString();
+  return {
+    id,
+    title: existing?.title ?? `Session ${shortId(id)}`,
+    cwd,
+    createdAt: existing?.createdAt ?? now,
+    lastActiveAt: now,
+    sessionResult,
+    promptResult: existing?.promptResult ?? null,
+    messages: existing?.messages ?? [],
+    clientToolCalls: existing?.clientToolCalls ?? [],
+  };
+}
+
+function ensureUiSession(id: string): UiSessionState {
+  return createUiSession(id, "", { sessionId: id });
+}
+
+function updateSession(
+  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  sessionId: string,
+  updater: (session: UiSessionState) => UiSessionState
+): void {
+  setSessionsById((current) => {
+    const existing = current[sessionId] ?? ensureUiSession(sessionId);
+    return {
+      ...current,
+      [sessionId]: updater(existing),
+    };
+  });
+}
+
+function updateSessionMessages(
+  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  sessionId: string,
+  updater: (messages: ChatMessage[]) => ChatMessage[]
+): void {
+  updateSession(setSessionsById, sessionId, (session) => ({
+    ...session,
+    messages: updater(session.messages),
+    lastActiveAt: new Date().toISOString(),
+  }));
+}
+
+function appendSessionMessages(
+  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  sessionId: string,
+  messages: ChatMessage[],
+  merge?: (current: ChatMessage[], incoming: ChatMessage[]) => ChatMessage[]
+): void {
+  updateSessionMessages(setSessionsById, sessionId, (current) => merge ? merge(current, messages) : [...current, ...messages]);
 }
 
 function textResult(text: string, meta: Record<string, unknown>): CallToolResult {
@@ -807,6 +1105,12 @@ function normalizeJsonText(text: string): string {
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
+}
+
+function stringifyDiagnostic(value: unknown): string {
+  if (value === undefined || value === null) return "Unknown ACP error";
+  if (typeof value === "string") return value;
+  return prettyJson(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

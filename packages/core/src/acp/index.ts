@@ -9,6 +9,7 @@ export {
   type AcpConfigOption,
   type AcpConnection,
   type AcpContentBlock,
+  type AcpErrorDetail,
   type AcpInitializeRequest,
   type AcpInitializeResponse,
   type AcpLoadSessionRequest,
@@ -34,4 +35,10 @@ export {
   type JsonRpcRequest,
   type JsonRpcSuccess,
 } from "./types";
+export {
+  AcpPromptError,
+  createAcpErrorDetail,
+  getAcpErrorDetail,
+  normalizeAcpError,
+} from "./ops/errors";
 export { AcpSessionManager, acpSessionManager } from "./ops/session-manager";

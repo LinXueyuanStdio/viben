@@ -33,7 +33,7 @@ export interface JsonRpcFailure {
 export interface JsonRpcErrorObject {
   code: number;
   message: string;
-  data?: unknown;
+  data?: AcpErrorDetail | unknown;
 }
 
 export type JsonRpcMessage =
@@ -133,6 +133,7 @@ export interface AcpPromptRequest {
 
 export interface AcpPromptResponse {
   stopReason: AcpStopReason;
+  error?: AcpErrorDetail;
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
@@ -173,6 +174,7 @@ export type AcpSessionUpdate =
   | {
       sessionUpdate: "user_message_chunk" | "agent_message_chunk" | "agent_thought_chunk";
       content: AcpTextContent;
+      _meta?: Record<string, unknown>;
     }
   | {
       sessionUpdate: "tool_call";
@@ -187,6 +189,11 @@ export type AcpSessionUpdate =
       toolCallId: string;
       title?: string;
       status?: "pending" | "in_progress" | "completed" | "failed";
+    }
+  | {
+      sessionUpdate: "error";
+      error: AcpErrorDetail;
+      _meta?: Record<string, unknown>;
     }
   | {
       sessionUpdate: "current_mode_update";
@@ -241,6 +248,22 @@ export interface AcpClientToolCallRequest {
 }
 
 export type AcpClientToolCallResponse = CallToolResult;
+
+export interface AcpErrorDetail {
+  message: string;
+  name?: string;
+  code?: string | number;
+  stack?: string;
+  cause?: AcpErrorDetail;
+  stderr?: string;
+  stdout?: string;
+  exitCode?: number;
+  signal?: string;
+  claudePath?: string;
+  details?: string;
+  raw?: unknown;
+  [key: string]: unknown;
+}
 
 export interface AcpSessionSummary {
   id: string;

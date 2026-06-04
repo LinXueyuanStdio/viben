@@ -34,6 +34,8 @@ export interface MessageListHandle {
 
 export interface MessageListProps {
   messages: AgentMessage[];
+  /** Transient per-message display updates keyed by message id. */
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   isStreaming?: boolean;
   /**
    * Streaming text content rendered as a separate sibling AFTER the message list.
@@ -167,11 +169,13 @@ const COLLAPSIBLE_TOOL_NAMES = new Set(["Read", "Glob", "Grep"]);
  */
 function CollapsedToolRun({
   tools,
+  messageUpdates,
   artifacts,
   onArtifactClick,
   onExpandSubagent,
 }: {
   tools: ToolWithResult[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
   onExpandSubagent?: ExpandSubagentHandler;
@@ -200,6 +204,7 @@ function CollapsedToolRun({
           toolUseId={message.toolUseId}
           subagentId={message.subagentId}
           subagentMessages={message.subagentMessages}
+          subagentPreviewMessages={message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined}
           output={result?.output}
           isError={result?.isError}
           isExecuting={!result}
@@ -219,6 +224,7 @@ function CollapsedToolRun({
  */
 function renderToolsWithCollapsing(
   tools: ToolWithResult[],
+  messageUpdates?: Record<string, Partial<AgentMessage>>,
   artifacts?: Artifact[],
   onArtifactClick?: (artifactId: string) => void,
   onExpandSubagent?: ExpandSubagentHandler,
@@ -232,6 +238,7 @@ function renderToolsWithCollapsing(
         <CollapsedToolRun
           key={`collapsed-${collapsibleRun[0].globalIndex}`}
           tools={collapsibleRun}
+          messageUpdates={messageUpdates}
           artifacts={artifacts}
           onArtifactClick={onArtifactClick}
           onExpandSubagent={onExpandSubagent}
@@ -248,6 +255,7 @@ function renderToolsWithCollapsing(
           toolUseId={message.toolUseId}
           subagentId={message.subagentId}
           subagentMessages={message.subagentMessages}
+          subagentPreviewMessages={message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined}
           output={result?.output}
           isError={result?.isError}
           isExecuting={!result}
@@ -276,6 +284,7 @@ function renderToolsWithCollapsing(
           toolUseId={message.toolUseId}
           subagentId={message.subagentId}
           subagentMessages={message.subagentMessages}
+          subagentPreviewMessages={message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined}
           output={result?.output}
           isError={result?.isError}
           isExecuting={!result}
@@ -401,16 +410,18 @@ function useTaskGroupSummary(
  */
 const MemoizedToolList = React.memo(function MemoizedToolList({
   tools,
+  messageUpdates,
   artifacts,
   onArtifactClick,
   onExpandSubagent,
 }: {
   tools: ToolWithResult[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
   onExpandSubagent?: ExpandSubagentHandler;
 }) {
-  return <>{renderToolsWithCollapsing(tools, artifacts, onArtifactClick, onExpandSubagent)}</>;
+  return <>{renderToolsWithCollapsing(tools, messageUpdates, artifacts, onArtifactClick, onExpandSubagent)}</>;
 });
 
 function getMessageWidthStyle(maxMessageWidth?: string): React.CSSProperties {
@@ -447,6 +458,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   title,
   description,
   tools,
+  messageUpdates,
   isCompleted,
   isRunning,
   artifacts,
@@ -456,6 +468,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   title: string;
   description: string;
   tools: ToolWithResult[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   isCompleted: boolean;
   isRunning: boolean;
   artifacts?: Artifact[];
@@ -477,19 +490,19 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   const collapsedSummary = useTaskGroupSummary(tools, isCompleted, isRunning, t);
 
   return (
-    <div className="min-w-0 space-y-3">
+    <div className="min-w-0 space-y-2">
       {/* Task description with status icon */}
       {description && (
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex min-w-0 items-start gap-2">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex min-w-0 items-start gap-1.5">
             {isCompleted ? (
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
-                <div className="bg-primary size-2 animate-pulse rounded-full" />
+              <div className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center">
+                <div className="bg-primary size-1.5 animate-pulse rounded-full" />
               </div>
             )}
-            <span className="text-foreground line-clamp-2 min-w-0 text-sm font-medium break-words">
+            <span className="text-foreground line-clamp-2 min-w-0 text-xs font-medium break-words">
               {title}
             </span>
           </div>
@@ -498,15 +511,15 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
 
       {/* Collapsible tool list */}
       {tools.length > 0 && (
-        <div className="border-border/40 bg-accent/20 min-w-0 overflow-hidden rounded-xl border">
+        <div className="border-border/40 bg-accent/20 min-w-0 overflow-hidden rounded-lg border">
           {/* Header */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-muted-foreground hover:text-foreground hover:bg-accent/30 flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-sm transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent/30 flex w-full cursor-pointer items-center gap-1.5 px-3 py-1.5 text-xs transition-colors"
           >
             <ChevronDown
               className={cn(
-                "size-4 shrink-0 transition-transform",
+                "size-3.5 shrink-0 transition-transform",
                 !isExpanded && "-rotate-90"
               )}
             />
@@ -519,9 +532,10 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
 
           {/* Tool list */}
           {isExpanded && (
-            <div className="px-2 pb-2 space-y-1">
+            <div className="px-1.5 pb-1.5 space-y-0.5">
               <MemoizedToolList
                 tools={tools}
+                messageUpdates={messageUpdates}
                 artifacts={artifacts}
                 onArtifactClick={onArtifactClick}
                 onExpandSubagent={onExpandSubagent}
@@ -953,6 +967,7 @@ function ResolvedMessageItem({
  */
 interface MessageRowProps {
   group: OtherMessageGroup;
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   index: number;
   groupsLength: number;
   isStreaming: boolean;
@@ -971,6 +986,7 @@ interface MessageRowProps {
 
 const MessageRow = React.memo(function MessageRow({
   group,
+  messageUpdates,
   index,
   groupsLength,
   isStreaming,
@@ -984,7 +1000,12 @@ const MessageRow = React.memo(function MessageRow({
   onExpandSubagent,
   registerRef,
 }: MessageRowProps) {
-  const message = group.message;
+  const message = useMemo(() => {
+    const base = group.message;
+    if (!base.id) return base;
+    const update = messageUpdates?.[base.id];
+    return update ? { ...base, ...update } : base;
+  }, [group.message, messageUpdates]);
   const isPlanMessage = message.type === "plan" && message.plan;
   const messageId = message.id;
   const isHighlighted = activeHighlight === messageId;
@@ -1043,6 +1064,7 @@ const MessageRow = React.memo(function MessageRow({
     // when the message is not the last one (which static messages never are).
     return (
       prev.group === next.group &&
+      prev.messageUpdates === next.messageUpdates &&
       prev.activeHighlight === next.activeHighlight &&
       prev.index === next.index &&
       prev.lastThinkingIdx === next.lastThinkingIdx &&
@@ -1061,6 +1083,7 @@ const MessageRow = React.memo(function MessageRow({
 function areMessageListPropsEqual(prev: MessageListProps, next: MessageListProps): boolean {
   // Data props that affect output
   if (prev.messages !== next.messages) return false;
+  if (prev.messageUpdates !== next.messageUpdates) return false;
   if (prev.isStreaming !== next.isStreaming) return false;
   if (prev.streamingText !== next.streamingText) return false;
   if (prev.pendingPlan !== next.pendingPlan) return false;
@@ -1083,6 +1106,7 @@ function areMessageListPropsEqual(prev: MessageListProps, next: MessageListProps
 
 export const MessageList = React.memo(React.forwardRef<MessageListHandle, MessageListProps>(function MessageList({
   messages,
+  messageUpdates,
   isStreaming,
   streamingText,
   pendingPlan,
@@ -1530,6 +1554,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                       title={group.title}
                       description={group.description}
                       tools={group.tools}
+                      messageUpdates={messageUpdates}
                       isCompleted={group.isCompleted}
                       isRunning={isStreaming || false}
                       artifacts={artifacts}
@@ -1546,6 +1571,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                 <MessageWidthShell maxMessageWidth={maxMessageWidth}>
                   <MessageRow
                     group={group}
+                    messageUpdates={messageUpdates}
                     index={index}
                     groupsLength={renderGroups.length}
                     isStreaming={isStreaming || false}

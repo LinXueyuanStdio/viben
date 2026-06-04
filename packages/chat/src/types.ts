@@ -104,6 +104,7 @@ export interface AgentMessage {
   planModeAction?: "enter" | "exit"; // For plan_mode type
   subagentId?: string; // For Agent/Task tool, the subagent ID
   subagentMessages?: AgentMessage[]; // For Agent/Task tool, recursively loaded subagent messages
+  subagentPreviewMessages?: AgentMessage[]; // Transient UI-only preview while a subagent is running
   timestamp?: number; // Unix timestamp (ms) for turn separator display
 }
 

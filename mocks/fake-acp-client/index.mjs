@@ -24,6 +24,10 @@ const logPath = resolve(args.log ?? defaultLogPath);
 const wsUrl = args.url ?? "ws://127.0.0.1:18790/ws/agent/acp";
 const promptText = args.prompt ?? "Hello from fake ACP client";
 const fakeCliPath = resolve(args.fakeCli ?? defaultFakeCli);
+const testCase = args.case ?? "default";
+const cwd = resolve(args.cwd ?? repoRoot);
+const expectedClientTool = args.expectClientTool;
+const agentConfig = parseJsonArg(args.agentConfigJson, "agent-config-json");
 
 mkdirSync(dirname(logPath), { recursive: true });
 const logStream = createWriteStream(logPath, { flags: "w" });
@@ -44,6 +48,7 @@ class RpcPeer {
     this.nextId = 1;
     this.pending = new Map();
     this.notifications = [];
+    this.clientRequests = [];
   }
 
   request(method, params = {}) {
@@ -74,7 +79,7 @@ class RpcPeer {
       clearTimeout(pending.timer);
       this.pending.delete(frame.id);
       if (frame.error) {
-        pending.reject(new Error(frame.error.message ?? "JSON-RPC error"));
+        pending.reject(new Error(formatJsonRpcError(frame.error)));
       } else {
         pending.resolve(frame.result);
       }
@@ -84,6 +89,7 @@ class RpcPeer {
     if (frame && typeof frame === "object" && frame.method) {
       if ("id" in frame) {
         log(this.name, "IN client-call", frame);
+        this.clientRequests.push(frame);
         this.respondToServerRequest(frame);
       } else {
         log(this.name, "IN notification", frame);
@@ -97,15 +103,11 @@ class RpcPeer {
 
   respondToServerRequest(frame) {
     if (frame.method === "_viben/client_tool_call") {
+      const result = executeClientTool(frame.params);
       const response = {
         jsonrpc: "2.0",
         id: frame.id,
-        result: {
-          content: [{
-            type: "text",
-            text: `fake client completed ${frame.params?.toolName ?? "unknown tool"}`,
-          }],
-        },
+        result,
       };
       log(this.name, "OUT client-call response", response);
       this.sendFrame(response);
@@ -146,6 +148,8 @@ async function runProtocol(peer, cwd) {
   const session = await peer.request("session/new", {
     cwd,
     mcpServers: [],
+    agent_config: agentConfig ?? undefined,
+    agent_config_path: args.agentConfigPath,
   });
 
   let prompt;
@@ -163,13 +167,18 @@ async function runProtocol(peer, cwd) {
     session,
     prompt,
     notifications: peer.notifications,
+    clientRequests: peer.clientRequests,
   };
 }
 
-async function runFakeCliControl() {
-  log("stdio", "starting fake ACP CLI", { fakeCliPath });
+async function runFakeCliControl(env = {}) {
+  log("stdio", "starting fake ACP CLI", { fakeCliPath, env });
   const child = spawn(process.execPath, [fakeCliPath], {
     cwd: repoRoot,
+    env: {
+      ...process.env,
+      ...env,
+    },
     stdio: ["pipe", "pipe", "pipe"],
   });
 
@@ -189,17 +198,18 @@ async function runFakeCliControl() {
     }
   });
 
-  const result = await runProtocol(peer, repoRoot);
+  const result = await runProtocol(peer, cwd);
   child.kill("SIGTERM");
   log("stdio", "summary", summarizeResult(result));
+  assertExpectedClientTool(result);
   return result;
 }
 
-async function runWebSocketEndpoint() {
-  log("ws", "connecting", { wsUrl });
+async function runWebSocketEndpoint(section = "ws") {
+  log(section, "connecting", { wsUrl });
 
   const ws = new WebSocket(wsUrl, ["acp.v1"]);
-  const peer = new RpcPeer("ws", (frame) => {
+  const peer = new RpcPeer(section, (frame) => {
     ws.send(`${JSON.stringify(frame)}\n`);
   });
   let buffer = "";
@@ -212,7 +222,7 @@ async function runWebSocketEndpoint() {
     const timer = setTimeout(() => reject(new Error(`websocket connect timeout: ${wsUrl}`)), 10_000);
     ws.once("open", () => {
       clearTimeout(timer);
-      log("ws", "open");
+      log(section, "open");
       resolve();
     });
     ws.once("error", (error) => {
@@ -222,13 +232,38 @@ async function runWebSocketEndpoint() {
   });
 
   try {
-    const result = await runProtocol(peer, repoRoot);
-    log("ws", "summary", summarizeResult(result));
+    const result = await runProtocol(peer, cwd);
+    log(section, "summary", summarizeResult(result));
+    assertExpectedClientTool(result);
+    if (args.failOnPromptError && result.prompt?.error) {
+      throw new Error(`Prompt failed: ${result.prompt.error}`);
+    }
     return result;
   } finally {
     peer.rejectAll(new Error("websocket closed"));
     ws.close(1000, "fake client finished");
   }
+}
+
+async function runGuiExecuteCase() {
+  const result = await runFakeCliControl({ FAKE_ACP_TRIGGER_GUI_EXECUTE: "1" });
+  const clientCalls = result.clientRequests.filter((frame) => frame.method === "_viben/client_tool_call");
+  const summary = summarizeResult(result);
+  log("case", "gui-execute summary", {
+    ...summary,
+    clientCallCount: clientCalls.length,
+  });
+  if (summary.stopReason !== "end_turn") {
+    throw new Error(`GUI_execute case expected end_turn, got ${summary.stopReason ?? "missing"}`);
+  }
+  assertExpectedClientTool(result, "GUI_execute");
+  return result;
+}
+
+async function runRealAcpCase() {
+  const result = await runWebSocketEndpoint("real-acp");
+  log("case", "real-acp summary", summarizeResult(result));
+  return result;
 }
 
 function splitFrames(buffer, onFrame) {
@@ -257,10 +292,93 @@ function summarizeResult(result) {
     stopReason: result.prompt?.stopReason,
     promptError: result.prompt?.error,
     notificationCount: result.notifications.length,
+    clientRequestCount: result.clientRequests?.length ?? 0,
+    clientToolNames: (result.clientRequests ?? [])
+      .filter((frame) => frame.method === "_viben/client_tool_call")
+      .map((frame) => frame.params?.toolName),
+    guiActions: (result.clientRequests ?? [])
+      .filter((frame) => frame.method === "_viben/client_tool_call")
+      .map((frame) => frame.params?.input?.action)
+      .filter(Boolean),
     updateTypes: result.notifications
       .filter((frame) => frame.method === "session/update")
       .map((frame) => frame.params?.update?.sessionUpdate),
   };
+}
+
+function assertExpectedClientTool(result, fallbackTool) {
+  const expected = expectedClientTool ?? fallbackTool;
+  if (!expected) return;
+  const toolNames = (result.clientRequests ?? [])
+    .filter((frame) => frame.method === "_viben/client_tool_call")
+    .map((frame) => frame.params?.toolName);
+  if (!toolNames.includes(expected)) {
+    throw new Error(`Expected client tool ${expected}, got ${toolNames.length ? toolNames.join(", ") : "none"}`);
+  }
+}
+
+function executeClientTool(params) {
+  const toolName = params?.toolName ?? "unknown tool";
+  if (toolName !== "GUI_execute" && toolName !== "mcp__gui_action__GUI_execute") {
+    return {
+      content: [{ type: "text", text: `fake client has no handler for ${toolName}` }],
+      isError: true,
+    };
+  }
+
+  const input = params?.input && typeof params.input === "object" ? params.input : {};
+  const action = typeof input.action === "string" ? input.action : "";
+  if (action === "list_actions") {
+    return {
+      content: [{ type: "text", text: JSON.stringify(getFakeActions(), null, 2) }],
+      _meta: { actions: getFakeActions() },
+    };
+  }
+  if (action === "get_action_detail") {
+    const requested = input.payload?.action ?? input.payload?.name;
+    const detail = getFakeActions().find((item) => item.name === requested);
+    if (!detail) {
+      return {
+        content: [{ type: "text", text: `Action not found: ${requested ?? "(missing)"}` }],
+        isError: true,
+      };
+    }
+    return {
+      content: [{ type: "text", text: JSON.stringify(detail, null, 2) }],
+      _meta: { action: detail },
+    };
+  }
+  return {
+    content: [{ type: "text", text: `fake client executed ${action || "missing action"}` }],
+    isError: !action,
+    _meta: {
+      action,
+      payload: input.payload ?? {},
+      sessionId: params?.sessionId,
+      toolUseId: params?.toolUseId,
+    },
+  };
+}
+
+function getFakeActions() {
+  return [
+    {
+      name: "app.open_settings",
+      description: "Open the app settings panel.",
+      input_schema: {
+        type: "object",
+        properties: {
+          section: { type: "string", enum: ["general", "models", "tools"] },
+        },
+      },
+    },
+  ];
+}
+
+function formatJsonRpcError(error) {
+  if (!error) return "JSON-RPC error";
+  if (error.data === undefined) return error.message ?? "JSON-RPC error";
+  return `${error.message ?? "JSON-RPC error"}\n${JSON.stringify(error.data, null, 2)}`;
 }
 
 function parseArgs(argv) {
@@ -268,13 +386,28 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--url") parsed.url = argv[++i];
+    else if (arg === "--case") parsed.case = argv[++i];
+    else if (arg === "--cwd") parsed.cwd = argv[++i];
+    else if (arg === "--agent-config-json") parsed.agentConfigJson = argv[++i];
+    else if (arg === "--agent-config-path") parsed.agentConfigPath = argv[++i];
+    else if (arg === "--expect-client-tool") parsed.expectClientTool = argv[++i];
     else if (arg === "--log") parsed.log = argv[++i];
     else if (arg === "--prompt") parsed.prompt = argv[++i];
     else if (arg === "--fake-cli") parsed.fakeCli = argv[++i];
     else if (arg === "--skip-stdio") parsed.skipStdio = true;
     else if (arg === "--skip-ws") parsed.skipWs = true;
+    else if (arg === "--fail-on-prompt-error") parsed.failOnPromptError = true;
   }
   return parsed;
+}
+
+function parseJsonArg(value, label) {
+  if (!value) return undefined;
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    throw new Error(`Invalid --${label}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 async function main() {
@@ -283,7 +416,34 @@ async function main() {
     wsUrl,
     fakeCliPath,
     promptText,
+    testCase,
+    cwd,
+    expectedClientTool,
   });
+
+  if (testCase === "gui-execute") {
+    try {
+      await runGuiExecuteCase();
+    } catch (error) {
+      log("case", "gui-execute failed", error instanceof Error ? error.stack ?? error.message : String(error));
+      process.exitCode = 1;
+    }
+    log("main", "fake ACP client finished");
+    await new Promise((resolve) => logStream.end(resolve));
+    return;
+  }
+
+  if (testCase === "real-acp") {
+    try {
+      await runRealAcpCase();
+    } catch (error) {
+      log("case", "real-acp failed", error instanceof Error ? error.stack ?? error.message : String(error));
+      process.exitCode = 1;
+    }
+    log("main", "fake ACP client finished");
+    await new Promise((resolve) => logStream.end(resolve));
+    return;
+  }
 
   if (!args.skipStdio) {
     try {

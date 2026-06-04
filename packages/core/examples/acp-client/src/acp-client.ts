@@ -42,6 +42,10 @@ export interface TrafficEntry {
   type: "request" | "response" | "notification" | "unknown";
   method?: string;
   requestId?: JsonRpcId;
+  sessionId?: string;
+  durationMs?: number;
+  payloadSize: number;
+  summary: string;
   payload: unknown;
   error?: boolean;
 }
@@ -49,6 +53,7 @@ export interface TrafficEntry {
 export interface ClientToolCall {
   id: string;
   at: string;
+  sessionId: string;
   toolName: string;
   toolUseId: string;
   action?: string;
@@ -61,6 +66,7 @@ export interface AcpSessionUpdate {
   update: {
     sessionUpdate?: string;
     content?: { type: string; text?: string };
+    error?: unknown;
     toolCallId?: string;
     title?: string;
     status?: string;
@@ -94,6 +100,7 @@ export interface CallToolResult {
 
 interface PendingRequest {
   method: string;
+  startedAt: number;
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -199,6 +206,14 @@ export class AcpWebSocketClient {
     });
   }
 
+  loadSession(params: { session_id: string; cwd?: string }): Promise<unknown> {
+    return this.request("session/load", {
+      sessionId: params.session_id,
+      cwd: params.cwd || undefined,
+      mcpServers: [],
+    });
+  }
+
   prompt(sessionId: string, text: string): Promise<unknown> {
     return this.request("session/prompt", {
       sessionId,
@@ -230,7 +245,7 @@ export class AcpWebSocketClient {
         reject(new Error(`Request timeout: ${method}`));
       }, DEFAULT_REQUEST_TIMEOUT_MS);
 
-      this.pending.set(id, { method, resolve, reject, timer });
+      this.pending.set(id, { method, startedAt: Date.now(), resolve, reject, timer });
       this.send(frame);
     });
   }
@@ -264,7 +279,7 @@ export class AcpWebSocketClient {
       clearTimeout(pending.timer);
       this.pending.delete(frame.id);
       if ("error" in frame) {
-        pending.reject(new Error(frame.error.message));
+        pending.reject(new Error(formatJsonRpcError(frame.error)));
       } else {
         pending.resolve(frame.result);
       }
@@ -316,6 +331,7 @@ export class AcpWebSocketClient {
       this.callbacks.onClientToolCall({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: new Date().toISOString(),
+        sessionId,
         toolName,
         toolUseId,
         action: readGuiAction(input),
@@ -378,6 +394,8 @@ export class AcpWebSocketClient {
   }
 
   private recordTraffic(direction: TrafficEntry["direction"], frame: JsonRpcFrame, fallbackMethod?: string): void {
+    const payloadText = safeJson(frame);
+    const pending = "id" in frame ? this.pending.get(frame.id) : undefined;
     this.callbacks.onTraffic({
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
       at: new Date().toISOString(),
@@ -385,6 +403,10 @@ export class AcpWebSocketClient {
       type: classifyFrame(frame),
       method: getFrameMethod(frame, this.pendingMethods) ?? fallbackMethod,
       requestId: "id" in frame ? frame.id : undefined,
+      sessionId: readFrameSessionId(frame),
+      durationMs: isResponse(frame) && pending ? Date.now() - pending.startedAt : undefined,
+      payloadSize: payloadText.length,
+      summary: summarizeFrame(frame),
       payload: frame,
       error: "error" in frame,
     });
@@ -394,6 +416,11 @@ export class AcpWebSocketClient {
     this.status = status;
     this.callbacks.onStatus(status);
   }
+}
+
+function formatJsonRpcError(error: JsonRpcFailure["error"]): string {
+  if (error.data === undefined) return error.message;
+  return `${error.message}\n${JSON.stringify(error.data, null, 2)}`;
 }
 
 function splitFrames(buffer: string, onFrame: (frame: JsonRpcFrame) => void): string {
@@ -446,6 +473,39 @@ function getFrameMethod(frame: JsonRpcFrame, pendingMethods: Map<JsonRpcId, stri
   if ("method" in frame) return frame.method;
   if ("id" in frame) return pendingMethods.get(frame.id);
   return undefined;
+}
+
+function readFrameSessionId(frame: JsonRpcFrame): string | undefined {
+  if (!("params" in frame) || typeof frame.params !== "object" || frame.params === null) return undefined;
+  const params = frame.params as { sessionId?: unknown; session_id?: unknown };
+  if (typeof params.sessionId === "string") return params.sessionId;
+  if (typeof params.session_id === "string") return params.session_id;
+  return undefined;
+}
+
+function summarizeFrame(frame: JsonRpcFrame): string {
+  if (isRequest(frame)) return frame.method;
+  if (isNotification(frame)) {
+    const update = typeof frame.params === "object" && frame.params !== null
+      ? (frame.params as { update?: { sessionUpdate?: unknown } }).update
+      : undefined;
+    return typeof update?.sessionUpdate === "string" ? `${frame.method}: ${update.sessionUpdate}` : frame.method;
+  }
+  if ("error" in frame) return frame.error.message;
+  if ("result" in frame && typeof frame.result === "object" && frame.result !== null) {
+    const result = frame.result as { stopReason?: unknown; sessionId?: unknown };
+    if (typeof result.stopReason === "string") return `stopReason: ${result.stopReason}`;
+    if (typeof result.sessionId === "string") return `sessionId: ${result.sessionId}`;
+  }
+  return "response";
+}
+
+function safeJson(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }
 
 function readGuiAction(input: unknown): string | undefined {

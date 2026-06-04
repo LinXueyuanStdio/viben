@@ -36,8 +36,15 @@ export interface LoadedClaudeCodeSession {
   id: string
   label: string
   messages: AgentMessage[]
+  subagentPreviewEvents: SubagentPreviewEvent[]
   stats: ParseStats
   subagentCount: number
+}
+
+export interface SubagentPreviewEvent {
+  parentToolUseId: string
+  subagentId: string
+  messages: AgentMessage[]
 }
 
 const EMPTY_STATS: ParseStats = {
@@ -128,6 +135,33 @@ function parseToolResultContent(content: unknown): string | ContentBlock[] {
   return String(content ?? "")
 }
 
+function hasMeaningfulErrorValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0
+  if (typeof value !== "object" || value === null) return value !== undefined
+  const entries = Object.entries(value)
+  return entries.some(([, entryValue]) => hasMeaningfulErrorValue(entryValue))
+}
+
+function formatSystemError(obj: Record<string, unknown>): string {
+  const subtype = typeof obj.subtype === "string" ? obj.subtype : "system_error"
+  const retryAttempt = typeof obj.retryAttempt === "number" ? obj.retryAttempt : undefined
+  const maxRetries = typeof obj.maxRetries === "number" ? obj.maxRetries : undefined
+  const retryInMs = typeof obj.retryInMs === "number" ? obj.retryInMs : undefined
+  const retryText = retryInMs !== undefined ? `; retrying in ${(retryInMs / 1000).toFixed(1)}s` : ""
+  const attemptText =
+    retryAttempt !== undefined && maxRetries !== undefined
+      ? ` (attempt ${retryAttempt}/${maxRetries})`
+      : ""
+
+  if (hasMeaningfulErrorValue(obj.error)) {
+    return `${subtype}${attemptText}${retryText}: ${JSON.stringify(obj.error)}`
+  }
+  if (hasMeaningfulErrorValue(obj.cause)) {
+    return `${subtype}${attemptText}${retryText}: ${JSON.stringify(obj.cause)}`
+  }
+  return `${subtype}${attemptText}${retryText}`
+}
+
 export function parseSessionJsonlDetailed(text: string): ParsedSessionJsonl {
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
   const stats: ParseStats = { ...EMPTY_STATS, skippedByReason: {} }
@@ -215,7 +249,7 @@ export function parseSessionJsonlDetailed(text: string): ParsedSessionJsonl {
             id: `msg-${msgCounter++}`,
             type: "error",
             content: obj.subtype || "System error",
-            message: obj.error ? JSON.stringify(obj.error) : undefined,
+            message: formatSystemError(obj),
             timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
           })
           emitted += 1
@@ -272,6 +306,29 @@ function extractAgentMapping(text: string): Map<string, string> {
     }
   }
   return mapping
+}
+
+export function extractSubagentPreviewEvents(text: string): SubagentPreviewEvent[] {
+  const events: SubagentPreviewEvent[] = []
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue
+    try {
+      const obj = JSON.parse(line)
+      if (obj.type !== "progress" || !obj.parentToolUseID || !obj.data?.agentId) continue
+      const progressMessage = obj.data?.message
+      if (!progressMessage || typeof progressMessage !== "object") continue
+      const messages = parseSessionJsonlDetailed(JSON.stringify(progressMessage)).messages
+      if (messages.length === 0) continue
+      events.push({
+        parentToolUseId: obj.parentToolUseID,
+        subagentId: obj.data.agentId,
+        messages,
+      })
+    } catch {
+      // Detailed parser covers malformed session records. Preview extraction is best-effort.
+    }
+  }
+  return events
 }
 
 async function fetchText(path: string): Promise<string> {
@@ -344,6 +401,7 @@ export async function loadClaudeCodeSession(
     id: session.id,
     label: session.label,
     messages: parsed.messages,
+    subagentPreviewEvents: extractSubagentPreviewEvents(mainText),
     stats: parsed.stats,
     subagentCount: session.subagents.length,
   }

@@ -12,6 +12,7 @@ import type {
   AcpConfigOption,
   AcpConnection,
   AcpContentBlock,
+  AcpErrorDetail,
   AcpLoadSessionRequest,
   AcpLoadSessionResponse,
   AcpNewSessionRequest,
@@ -24,6 +25,7 @@ import type {
   AcpSessionSummary,
   AgentConfigPayload,
 } from "../types";
+import { AcpPromptError, createAcpErrorDetail, getAcpErrorDetail } from "./errors";
 
 const log = globalLogger.child({ module: "acp-session-manager" });
 
@@ -59,6 +61,7 @@ interface AcpSession {
   prompt_running: boolean;
   prompt_queue: AcpPromptQueueItem[];
   sdk_session_id?: string;
+  last_error?: AcpErrorDetail;
   config_options?: AcpConfigOption[];
   agent_capabilities: AcpAgentCapabilities;
 }
@@ -231,13 +234,14 @@ export class AcpSessionManager {
     session.prompt_running = true;
     session.status = "active";
     session.last_active_at = new Date();
+    session.last_error = undefined;
 
     try {
       const response = await this.executePrompt(session, item.request);
       item.resolve(response);
     } catch (error) {
       session.status = "error";
-      item.reject(error instanceof Error ? error : new Error(String(error)));
+      item.reject(new AcpPromptError(getAcpErrorDetail(error)));
     } finally {
       session.prompt_running = false;
       session.active_proxy = undefined;
@@ -299,7 +303,11 @@ export class AcpSessionManager {
       }
     }
 
-    return { stopReason };
+    const response: AcpPromptResponse = { stopReason };
+    if (stopReason === "error" && session.last_error) {
+      response.error = session.last_error;
+    }
+    return response;
   }
 
   private async handleStreamMessage(
@@ -380,11 +388,37 @@ export class AcpSessionManager {
         return undefined;
       }
       case "error": {
+        const errorDetail = createAcpErrorDetail(message.message, {
+          source: "sdk_stream",
+          details: message.details,
+          stderr: message.stderr,
+          stdout: message.stdout,
+          exitCode: message.exitCode,
+          signal: message.signal,
+          claudePath: message.claudePath,
+          code: message.code,
+          cause: message.cause,
+        });
+        session.last_error = errorDetail;
+        log.error({ sessionId: session.id, error: errorDetail }, "ACP agent stream error");
+        session.connection.sendNotification("session/update", {
+          sessionId: session.id,
+          update: {
+            sessionUpdate: "error",
+            error: errorDetail,
+            _meta: {
+              source: "sdk_stream",
+            },
+          },
+        });
         session.connection.sendNotification("session/update", {
           sessionId: session.id,
           update: {
             sessionUpdate: "agent_message_chunk",
             content: { type: "text", text: `\nError: ${message.message}\n` },
+            _meta: {
+              error: errorDetail,
+            },
           },
         });
         return "error";
