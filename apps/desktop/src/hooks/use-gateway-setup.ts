@@ -16,6 +16,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { checkBundledCli } from "@/lib/onboarding/bundled-cli";
 import { getGatewayClient } from "@/lib/gateway";
+import { getGatewayUrl } from "@/lib/gateway/config";
 import { useGateway } from "./use-gateway";
 import { useNodeInstaller } from "./use-node-installer";
 import { useCliInstaller } from "./use-cli-installer";
@@ -182,7 +183,7 @@ export function useGatewaySetup(): UseGatewaySetupReturn {
       updateStep("gateway", {
         label: t("onboarding.gatewaySetup.connected", "Gateway 连接成功"),
         state: "success",
-        detail: "http://127.0.0.1:18790",
+        detail: getGatewayUrl(),
       });
       setIsComplete(true);
       isRunningRef.current = false;
