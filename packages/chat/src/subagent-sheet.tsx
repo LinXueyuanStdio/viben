@@ -12,6 +12,8 @@ export interface SubagentSheetProps {
   title: string;
   subagentType?: string;
   messages: AgentMessage[];
+  /** Transient messages that update while the parent Agent/Task is still running. */
+  liveMessages?: AgentMessage[];
   context?: SubagentOpenContext;
   loadSubagentDetails?: LoadSubagentDetails;
   isLoading?: boolean;
@@ -51,6 +53,7 @@ export function SubagentSheet({
   title,
   subagentType,
   messages,
+  liveMessages,
   context,
   loadSubagentDetails,
   isLoading = false,
@@ -66,7 +69,13 @@ export function SubagentSheet({
     isLoading: boolean;
     error: string | null;
   }>({ isLoading: false, error: null });
-  const effectiveMessages = messages.length > 0 ? messages : (loadedMessages ?? messages);
+  const hasLiveMessages = !!liveMessages && liveMessages.length > 0;
+  const effectiveMessages = hasLiveMessages
+    ? liveMessages
+    : messages.length > 0
+      ? messages
+      : (loadedMessages ?? messages);
+  const hasDisplayMessages = effectiveMessages.length > 0;
   const effectiveTitle = loadedTitle ?? title;
   const effectiveSubagentType = loadedSubagentType ?? subagentType;
   const effectiveIsLoading = isLoading || loadState.isLoading;
@@ -186,23 +195,32 @@ export function SubagentSheet({
             </div>
             {/* Message list */}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-              {effectiveIsLoading ? (
+              {effectiveIsLoading && !hasDisplayMessages ? (
                 <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t("chat.loadingSubagent", "Loading subagent…")}
                 </div>
-              ) : effectiveError ? (
-                <div className="m-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                  {effectiveError}
-                </div>
               ) : (
-                <MessageList
-                  messages={effectiveMessages}
-                  simpleMode
-                  toolExpandedInline
-                  maxMessageWidth="100%"
-                  onExpandSubagent={onExpandSubagent}
-                />
+                <>
+                  {effectiveError && (
+                    <div className="m-3 shrink-0 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive">
+                      {effectiveError}
+                    </div>
+                  )}
+                  {effectiveIsLoading && hasDisplayMessages && (
+                    <div className="mx-3 mt-2 flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {t("chat.loadingSubagent", "Loading subagent…")}
+                    </div>
+                  )}
+                  <MessageList
+                    messages={effectiveMessages}
+                    simpleMode
+                    toolExpandedInline
+                    maxMessageWidth="100%"
+                    onExpandSubagent={onExpandSubagent}
+                  />
+                </>
               )}
             </div>
           </motion.div>

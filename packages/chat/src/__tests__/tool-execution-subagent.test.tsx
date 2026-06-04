@@ -99,4 +99,36 @@ describe("ToolExecutionItem subagent cards", () => {
       }
     );
   });
+
+  test("renders running subagent preview rows inside the Agent card", () => {
+    render(
+      <ToolExecutionItem
+        name="Agent"
+        input={{
+          description: "Research message width",
+          subagent_type: "explorer",
+        }}
+        toolUseId="tool-3"
+        isExecuting
+        subagentPreviewMessages={[
+          {
+            id: "preview-1",
+            type: "tool_use",
+            name: "Grep",
+            input: { pattern: "MESSAGE_COLUMN_MAX_WIDTH" },
+          },
+          {
+            id: "preview-2",
+            type: "text",
+            content: "Found the width constant usage",
+          },
+        ]}
+        onExpandSubagent={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Subagent activity")).toBeInTheDocument();
+    expect(screen.getByText("Grep")).toBeInTheDocument();
+    expect(screen.getByText("Found the width constant usage")).toBeInTheDocument();
+  });
 });

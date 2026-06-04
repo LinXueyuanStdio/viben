@@ -306,6 +306,21 @@ export function App() {
     setSheetData({ title, subagentType, messages, context })
   }, [])
 
+  const activeSheetLiveMessages = useMemo(() => {
+    const toolUseId = sheetData?.context?.toolUseId
+    if (!toolUseId) return undefined
+
+    const parentMessage = player.messages.find((message) =>
+      message.type === "tool_use" &&
+      (message.name === "Agent" || message.name === "Task") &&
+      message.toolUseId === toolUseId &&
+      message.id
+    )
+    if (!parentMessage?.id) return undefined
+
+    return player.messageUpdates[parentMessage.id]?.subagentPreviewMessages
+  }, [player.messageUpdates, player.messages, sheetData?.context?.toolUseId])
+
   const loadSubagentDetails = useCallback(async (context: SubagentOpenContext) => {
     if (!context.subagentId || !activeClaudeSession) {
       throw new Error("No Claude Code subagent log is available for this card")
@@ -346,6 +361,7 @@ export function App() {
         title={sheetData?.title || ""}
         subagentType={sheetData?.subagentType}
         messages={sheetData?.messages || []}
+        liveMessages={activeSheetLiveMessages}
         context={sheetData?.context}
         loadSubagentDetails={loadSubagentDetails}
         onExpandSubagent={handleExpandSubagent}

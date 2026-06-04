@@ -30,11 +30,11 @@ import { AcpPromptError, createAcpErrorDetail, getAcpErrorDetail } from "./error
 const log = globalLogger.child({ module: "acp-session-manager" });
 
 const DEFAULT_AGENT_CAPABILITIES: AcpAgentCapabilities = {
-  loadSession: false,
+  loadSession: true,
   modes: false,
   sessionCapabilities: {
     list: true,
-    loadSession: false,
+    loadSession: true,
   },
 };
 

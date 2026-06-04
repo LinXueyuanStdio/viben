@@ -253,11 +253,11 @@ function createInitializeResponse(_request?: AcpInitializeRequest): AcpInitializ
       version: "1.0.0",
     },
     agentCapabilities: {
-      loadSession: false,
+      loadSession: true,
       modes: false,
       sessionCapabilities: {
         list: true,
-        loadSession: false,
+        loadSession: true,
       },
       _vibenClientTools: true,
     },

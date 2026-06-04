@@ -536,6 +536,7 @@ function MessageItemImpl({
         isError={message.isError}
         subagentId={message.subagentId}
         subagentMessages={message.subagentMessages}
+        subagentPreviewMessages={message.subagentPreviewMessages}
         renderMessage={renderSubagentMessage}
         expandedInline={toolExpandedInline}
         onExpandSubagent={onExpandSubagent}

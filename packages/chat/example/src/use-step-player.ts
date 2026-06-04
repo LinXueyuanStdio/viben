@@ -46,6 +46,7 @@ export interface DemoStep {
 // ============================================================================
 
 interface PlayerState {
+  steps: DemoStep[]
   /** idle = not started / finished, playing = auto-advancing, paused = manual stop */
   status: "idle" | "playing" | "paused"
   stepIndex: number
@@ -76,14 +77,15 @@ type PlayerAction =
   | { type: "RESOLVE_APPROVAL" }
   | { type: "RESOLVE_QUESTION" }
   | { type: "RESOLVE_PLAN" }
-  | { type: "LOAD_STEPS" }
+  | { type: "LOAD_STEPS"; steps: DemoStep[] }
   | { type: "LOAD_MESSAGES"; messages: AgentMessage[] }
   | { type: "SET_MESSAGE_UPDATES"; updates: Record<string, Partial<AgentMessage>> }
   | { type: "INJECT_MESSAGE"; message: AgentMessage }
   | { type: "CONSUME_PENDING_USERS" }
 
-function createInitialState(): PlayerState {
+function createInitialState(steps: DemoStep[] = []): PlayerState {
   return {
+    steps,
     status: "idle",
     stepIndex: 0,
     messages: [],
@@ -111,157 +113,156 @@ function buildStateUpTo(steps: DemoStep[], endIndex: number): {
   return { messages: msgs, messageUpdates }
 }
 
-function createReducer(steps: DemoStep[]) {
-  return function reducer(state: PlayerState, action: PlayerAction): PlayerState {
-    switch (action.type) {
-      case "PLAY":
-        if (state.stepIndex >= steps.length) return state
-        return { ...state, status: "playing" }
+function reducer(state: PlayerState, action: PlayerAction): PlayerState {
+  const steps = state.steps
+  switch (action.type) {
+    case "PLAY":
+      if (state.stepIndex >= steps.length) return state
+      return { ...state, status: "playing" }
 
-      case "PAUSE":
-        return { ...state, status: "paused" }
+    case "PAUSE":
+      return { ...state, status: "paused" }
 
-      case "ADVANCE": {
-        // Called by rAF loop. Only advances if no blocking condition.
-        if (state.status !== "playing") return state
-        if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
-        if (state.pendingUserMessages.length > 0) return state // wait for routing
-        if (state.stepIndex >= steps.length) return { ...state, status: "idle" }
+    case "ADVANCE": {
+      // Called by rAF loop. Only advances if no blocking condition.
+      if (state.status !== "playing") return state
+      if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
+      if (state.pendingUserMessages.length > 0) return state // wait for routing
+      if (state.stepIndex >= steps.length) return { ...state, status: "idle" }
 
-        const step = steps[state.stepIndex]
-        const newIndex = state.stepIndex + 1
-        const done = newIndex >= steps.length
+      const step = steps[state.stepIndex]
+      const newIndex = state.stepIndex + 1
+      const done = newIndex >= steps.length
 
-        const userMsgs = step.messages.filter(msg => msg.type === "user")
-        const agentMsgs = step.messages.filter(msg => msg.type !== "user")
-        const nextMessageUpdates = step.messageUpdates ?? state.messageUpdates
+      const userMsgs = step.messages.filter(msg => msg.type === "user")
+      const agentMsgs = step.messages.filter(msg => msg.type !== "user")
+      const nextMessageUpdates = step.messageUpdates ?? state.messageUpdates
 
-        // Only separate user messages when agent has produced output.
-        // If no agent output yet (start of conversation), user messages go straight to list.
-        const hasAgentOutput = state.messages.some(m => m.type !== "user")
+      // Only separate user messages when agent has produced output.
+      // If no agent output yet (start of conversation), user messages go straight to list.
+      const hasAgentOutput = state.messages.some(m => m.type !== "user")
 
-        if (hasAgentOutput && userMsgs.length > 0) {
-          // User messages go to pendingUserMessages for routing by App.
-          // App will check isAgentBusy(messages) to decide queue vs direct inject.
-          return {
-            ...state,
-            status: done ? "idle" : "playing",
-            stepIndex: newIndex,
-            messages: [...state.messages, ...agentMsgs],
-            messageUpdates: nextMessageUpdates,
-            pendingUserMessages: userMsgs,
-            pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
-            pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
-            pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
-          }
-        }
-
-        // All messages go directly to list (no queue routing)
+      if (hasAgentOutput && userMsgs.length > 0) {
+        // User messages go to pendingUserMessages for routing by App.
+        // App will check isAgentBusy(messages) to decide queue vs direct inject.
         return {
           ...state,
           status: done ? "idle" : "playing",
           stepIndex: newIndex,
-          messages: [...state.messages, ...step.messages],
+          messages: [...state.messages, ...agentMsgs],
           messageUpdates: nextMessageUpdates,
-          pendingUserMessages: [],
+          pendingUserMessages: userMsgs,
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
           pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
           pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
         }
       }
 
-      case "NEXT_MANUAL": {
-        if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
-        if (state.stepIndex >= steps.length) return state
-
-        const step = steps[state.stepIndex]
-        const newMessages = [...state.messages, ...step.messages]
-        const newIndex = state.stepIndex + 1
-
-        return {
-          ...state,
-          stepIndex: newIndex,
-          messages: newMessages,
-          messageUpdates: step.messageUpdates ?? state.messageUpdates,
-          pendingUserMessages: [],
-          pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
-          pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
-          pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
-        }
+      // All messages go directly to list (no queue routing)
+      return {
+        ...state,
+        status: done ? "idle" : "playing",
+        stepIndex: newIndex,
+        messages: [...state.messages, ...step.messages],
+        messageUpdates: nextMessageUpdates,
+        pendingUserMessages: [],
+        pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
+        pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
+        pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
       }
+    }
 
-      case "PREV": {
-        const newIndex = Math.max(0, state.stepIndex - 1)
-        const replayed = buildStateUpTo(steps, newIndex)
-        return {
-          ...state,
-          status: "paused",
-          stepIndex: newIndex,
-          messages: replayed.messages,
-          messageUpdates: replayed.messageUpdates,
-          pendingApproval: null,
-          pendingQuestion: null,
-          pendingPlan: null,
-          pendingUserMessages: [],
-        }
+    case "NEXT_MANUAL": {
+      if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
+      if (state.stepIndex >= steps.length) return state
+
+      const step = steps[state.stepIndex]
+      const newMessages = [...state.messages, ...step.messages]
+      const newIndex = state.stepIndex + 1
+
+      return {
+        ...state,
+        stepIndex: newIndex,
+        messages: newMessages,
+        messageUpdates: step.messageUpdates ?? state.messageUpdates,
+        pendingUserMessages: [],
+        pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
+        pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
+        pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
       }
+    }
 
-      case "SEEK": {
-        const idx = Math.max(0, Math.min(action.stepIndex, steps.length))
-        const replayed = buildStateUpTo(steps, idx)
-        return {
-          ...state,
-          status: "paused",
-          stepIndex: idx,
-          messages: replayed.messages,
-          messageUpdates: replayed.messageUpdates,
-          pendingApproval: null,
-          pendingQuestion: null,
-          pendingPlan: null,
-          pendingUserMessages: [],
-        }
+    case "PREV": {
+      const newIndex = Math.max(0, state.stepIndex - 1)
+      const replayed = buildStateUpTo(steps, newIndex)
+      return {
+        ...state,
+        status: "paused",
+        stepIndex: newIndex,
+        messages: replayed.messages,
+        messageUpdates: replayed.messageUpdates,
+        pendingApproval: null,
+        pendingQuestion: null,
+        pendingPlan: null,
+        pendingUserMessages: [],
       }
+    }
 
-      case "REPLAY":
-        return { ...createInitialState(), speed: state.speed, status: "playing" }
+    case "SEEK": {
+      const idx = Math.max(0, Math.min(action.stepIndex, steps.length))
+      const replayed = buildStateUpTo(steps, idx)
+      return {
+        ...state,
+        status: "paused",
+        stepIndex: idx,
+        messages: replayed.messages,
+        messageUpdates: replayed.messageUpdates,
+        pendingApproval: null,
+        pendingQuestion: null,
+        pendingPlan: null,
+        pendingUserMessages: [],
+      }
+    }
 
-      case "SET_SPEED":
-        return { ...state, speed: action.speed }
+    case "REPLAY":
+      return { ...createInitialState(steps), speed: state.speed, status: "playing" }
 
-      case "RESOLVE_APPROVAL":
-        return { ...state, pendingApproval: null }
+    case "SET_SPEED":
+      return { ...state, speed: action.speed }
 
-      case "RESOLVE_QUESTION":
-        return { ...state, pendingQuestion: null }
+    case "RESOLVE_APPROVAL":
+      return { ...state, pendingApproval: null }
 
-      case "RESOLVE_PLAN":
-        return { ...state, pendingPlan: null }
+    case "RESOLVE_QUESTION":
+      return { ...state, pendingQuestion: null }
 
-      case "LOAD_STEPS":
-        return createInitialState()
+    case "RESOLVE_PLAN":
+      return { ...state, pendingPlan: null }
 
-      case "LOAD_MESSAGES":
-        return {
-          ...createInitialState(),
-          speed: state.speed,
-          status: "paused",
-          stepIndex: steps.length,
+    case "LOAD_STEPS":
+      return { ...createInitialState(action.steps), speed: state.speed }
+
+    case "LOAD_MESSAGES":
+      return {
+        ...createInitialState(action.messages.map((message): DemoStep => ({ messages: [message] }))),
+        speed: state.speed,
+        status: "paused",
+        stepIndex: action.messages.length,
         messages: action.messages,
         messageUpdates: {},
       }
 
-      case "SET_MESSAGE_UPDATES":
-        return { ...state, messageUpdates: action.updates }
+    case "SET_MESSAGE_UPDATES":
+      return { ...state, messageUpdates: action.updates }
 
-      case "INJECT_MESSAGE":
-        return { ...state, messages: [...state.messages, action.message] }
+    case "INJECT_MESSAGE":
+      return { ...state, messages: [...state.messages, action.message] }
 
-      case "CONSUME_PENDING_USERS":
-        return { ...state, pendingUserMessages: [] }
+    case "CONSUME_PENDING_USERS":
+      return { ...state, pendingUserMessages: [] }
 
-      default:
-        return state
-    }
+    default:
+      return state
   }
 }
 
@@ -307,8 +308,7 @@ export interface StepPlayerReturn {
 
 export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
   const stepsRef = useRef(initialSteps)
-  const reducerRef = useRef(createReducer(initialSteps))
-  const [state, dispatch] = useReducer(reducerRef.current, undefined, createInitialState)
+  const [state, dispatch] = useReducer(reducer, initialSteps, createInitialState)
 
   // rAF-based advance loop
   const rafRef = useRef<number | null>(null)
@@ -404,14 +404,14 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
 
   const loadSteps = useCallback((newSteps: DemoStep[]) => {
     stepsRef.current = newSteps
-    reducerRef.current = createReducer(newSteps)
-    dispatch({ type: "LOAD_STEPS" })
+    lastAdvanceRef.current = 0
+    dispatch({ type: "LOAD_STEPS", steps: newSteps })
   }, [])
 
   const loadMessages = useCallback((messages: AgentMessage[]) => {
     const steps = messages.map((message): DemoStep => ({ messages: [message] }))
     stepsRef.current = steps
-    reducerRef.current = createReducer(steps)
+    lastAdvanceRef.current = 0
     dispatch({ type: "LOAD_MESSAGES", messages })
   }, [])
 
@@ -431,7 +431,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     messages: state.messages,
     messageUpdates: state.messageUpdates,
     stepIndex: state.stepIndex,
-    totalSteps: stepsRef.current.length,
+    totalSteps: state.steps.length,
     status: state.status,
     speed: state.speed,
     isStreaming,

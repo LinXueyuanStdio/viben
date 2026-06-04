@@ -127,20 +127,32 @@ code {
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 16%, transparent);
 }
 
-.nav-item {
+.session-row {
   display: flex;
+  min-height: 58px;
+  width: 100%;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
   border-radius: 7px;
-  padding: 10px 12px;
-  color: var(--color-muted-foreground);
-  font-size: 14px;
-  font-weight: 500;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 9px 10px;
+  color: var(--color-foreground);
+  text-align: left;
 }
 
-.nav-item-active {
-  background: var(--color-primary);
-  color: var(--color-primary-foreground);
+.session-row:hover {
+  background: var(--color-muted);
+}
+
+.session-row-active {
+  border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-card));
+}
+
+.session-row-active .text-muted-foreground {
+  color: color-mix(in oklch, var(--color-primary) 70%, var(--color-muted-foreground));
 }
 
 .action-tab {
@@ -199,4 +211,13 @@ code {
 .badge-out {
   background: color-mix(in oklch, var(--color-info) 16%, transparent);
   color: color-mix(in oklch, var(--color-info) 75%, black);
+}
+
+.traffic-type {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--color-muted);
+  padding: 2px 7px;
+  color: var(--color-muted-foreground);
+  font-weight: 700;
 }

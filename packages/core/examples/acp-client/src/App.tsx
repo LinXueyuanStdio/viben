@@ -14,7 +14,6 @@ import {
   Save,
   Search,
   Send,
-  Settings,
   SquareTerminal,
   Trash2,
   Unplug,
@@ -883,6 +882,7 @@ function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActio
   const input = isRecord(request.input) ? request.input : {};
   const actionName = typeof input.action === "string" ? input.action : "";
   const payload = isRecord(input.payload) ? input.payload : {};
+  const listActions = [builtinListActionsDetail(), ...buildActionSummaries(actions)];
 
   if (!actionName) {
     return {
@@ -892,13 +892,16 @@ function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActio
   }
 
   if (actionName === "list_actions") {
-    return textResult(prettyJson(buildActionSummaries(actions)), {
-      actions: buildActionSummaries(actions),
+    return textResult(prettyJson(listActions), {
+      actions: listActions,
     });
   }
 
   if (actionName === "get_action_detail") {
     const requested = typeof payload.action === "string" ? payload.action : typeof payload.name === "string" ? payload.name : "";
+    if (requested === "list_actions") {
+      return textResult(prettyJson(builtinListActionsDetail()), { action: builtinListActionsDetail() });
+    }
     const action = actions.find((item) => item.name === requested);
     if (!action) {
       return {
@@ -933,6 +936,17 @@ function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActio
       payload,
       sessionId: request.sessionId,
       toolUseId: request.toolUseId,
+    },
+  };
+}
+
+function builtinListActionsDetail() {
+  return {
+    name: "list_actions",
+    description: "List GUI actions exposed by this ACP client.",
+    input_schema: {
+      type: "object",
+      properties: {},
     },
   };
 }

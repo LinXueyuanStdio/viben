@@ -54,4 +54,42 @@ describe("SubagentSheet", () => {
       toolUseId: "tool-1",
     });
   });
+
+  test("shows live playback messages while lazy details are still loading", async () => {
+    const loadedMessages: AgentMessage[] = [
+      { id: "loaded-1", type: "text", content: "loaded transcript" },
+    ];
+    let resolveDetails: ((messages: AgentMessage[]) => void) | undefined;
+    const loadSubagentDetails: LoadSubagentDetails = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveDetails = (messages) => resolve({ messages });
+        })
+    );
+
+    render(
+      <SubagentSheet
+        open
+        onClose={vi.fn()}
+        title="Subagent"
+        messages={[]}
+        liveMessages={[
+          { id: "live-1", type: "text", content: "live progress card" },
+        ]}
+        context={{ subagentId: "agent-1", toolUseId: "tool-1" }}
+        loadSubagentDetails={loadSubagentDetails}
+      />
+    );
+
+    expect(screen.getByText("live progress card")).toBeInTheDocument();
+    expect(screen.getByText("Loading subagent…")).toBeInTheDocument();
+
+    resolveDetails?.(loadedMessages);
+
+    await waitFor(() => {
+      expect(loadSubagentDetails).toHaveBeenCalled();
+    });
+
+    expect(screen.queryByText("loaded transcript")).not.toBeInTheDocument();
+  });
 });
