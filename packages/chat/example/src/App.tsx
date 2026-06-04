@@ -17,6 +17,7 @@ import {
   getModelIcon,
 } from "@viben/chat"
 import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment } from "@viben/chat"
+import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
 import "react-json-view-lite/dist/index.css"
@@ -36,6 +37,14 @@ import {
 import { demoSteps } from "./demo-steps"
 import { useStepPlayer } from "./use-step-player"
 import type { DemoStep } from "./use-step-player"
+import {
+  CLAUDE_CODE_SESSIONS,
+  loadClaudeCodeSession,
+  loadClaudeCodeSubagent,
+  type ClaudeCodeSessionManifestItem,
+  type LoadedClaudeCodeSession,
+  type ParseStats,
+} from "./claudecode-log-provider"
 
 // ============================================================================
 // Agent Busy Detection
@@ -89,6 +98,10 @@ export function App() {
 
   // Session info display
   const [sessionInfo, setSessionInfo] = useState(`Demo · ${demoSteps.length} steps`)
+  const [activeClaudeSession, setActiveClaudeSession] = useState<ClaudeCodeSessionManifestItem | null>(null)
+  const [loadedClaudeSession, setLoadedClaudeSession] = useState<LoadedClaudeCodeSession | null>(null)
+  const [isLoadingSession, setIsLoadingSession] = useState(false)
+  const [sessionLoadError, setSessionLoadError] = useState<string | null>(null)
 
   // Speed index (maps to SPEEDS array)
   const [speedIdx, setSpeedIdx] = useState(1)
@@ -146,6 +159,9 @@ export function App() {
     title: string
     subagentType?: string
     messages: AgentMessage[]
+    context?: SubagentOpenContext
+    isLoading?: boolean
+    error?: string | null
   } | null>(null)
 
   // Refs
@@ -204,6 +220,53 @@ export function App() {
     })
   }, [player.loadSteps])
 
+  const formatStats = useCallback((stats: ParseStats, subagentCount?: number) => {
+    const skipped = stats.skippedLines > 0 ? ` · ${stats.skippedLines} skipped` : ""
+    const subagents = subagentCount ? ` · ${subagentCount} subagents` : ""
+    return `${stats.emittedMessages} messages · ${stats.handledLines}/${stats.totalLines} records handled${skipped}${subagents}`
+  }, [])
+
+  const handleClaudeSessionLoad = useCallback(async (session: ClaudeCodeSessionManifestItem) => {
+    setIsLoadingSession(true)
+    setSessionLoadError(null)
+    setActiveClaudeSession(session)
+    setLoadedClaudeSession(null)
+    setSheetData(null)
+    try {
+      const loaded = await loadClaudeCodeSession(session)
+      player.loadMessages(loaded.messages)
+      setLoadedClaudeSession(loaded)
+      setSessionInfo(`${loaded.label} · ${formatStats(loaded.stats, loaded.subagentCount)}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setSessionLoadError(message)
+      setSessionInfo(`Failed to load ${session.label}`)
+    } finally {
+      setIsLoadingSession(false)
+    }
+  }, [formatStats, player.loadMessages])
+
+  const handleExpandSubagent = useCallback<ExpandSubagentHandler>(async (title, subagentType, messages, context) => {
+    setSheetData({ title, subagentType, messages, context, isLoading: messages.length === 0, error: null })
+
+    if (messages.length > 0 || !context?.subagentId || !activeClaudeSession) return
+
+    try {
+      const loaded = await loadClaudeCodeSubagent(activeClaudeSession, context.subagentId)
+      setSheetData({
+        title: loaded.meta?.description || title,
+        subagentType: loaded.meta?.agentType || subagentType,
+        messages: loaded.messages,
+        context,
+        isLoading: false,
+        error: null,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setSheetData((prev) => prev ? { ...prev, isLoading: false, error: message } : prev)
+    }
+  }, [activeClaudeSession])
+
   // ===== ChatInput handlers =====
   const handleSend = useCallback((content: string, attachments?: MessageAttachment[]) => {
     // Route through command queue: if busy, it queues; if idle, it sends immediately
@@ -231,9 +294,9 @@ export function App() {
         title={sheetData?.title || ""}
         subagentType={sheetData?.subagentType}
         messages={sheetData?.messages || []}
-        onExpandSubagent={(title, subagentType, messages) =>
-          setSheetData({ title, subagentType, messages })
-        }
+        isLoading={sheetData?.isLoading}
+        error={sheetData?.error}
+        onExpandSubagent={handleExpandSubagent}
       />
 
       {/* ===== Main row ===== */}
@@ -270,6 +333,36 @@ export function App() {
               </div>
 
               <p className="text-center text-[11px] text-muted-foreground">{sessionInfo}</p>
+              {sessionLoadError && (
+                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1 text-[11px] text-destructive">
+                  {sessionLoadError}
+                </p>
+              )}
+
+              <div className="space-y-1.5">
+                <SectionLabel>Claude Code Sessions</SectionLabel>
+                {CLAUDE_CODE_SESSIONS.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => handleClaudeSessionLoad(session)}
+                    disabled={isLoadingSession}
+                    className={`flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors ${
+                      activeClaudeSession?.id === session.id
+                        ? "border-primary/50 bg-primary/10 text-foreground"
+                        : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
+                    } disabled:cursor-wait disabled:opacity-60`}
+                  >
+                    <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{session.label}</span>
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                        {session.subagents.length} subagents · real JSONL
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
 
               {/* Status badge */}
               {isAwaiting && (
@@ -568,9 +661,7 @@ export function App() {
                   welcomeTitle="@viben/chat Session Player"
                   welcomeDescription="Press Play to replay the demo session, or load a .jsonl file."
                   maxMessageWidth="760px"
-                  onExpandSubagent={(title, subagentType, messages) =>
-                    setSheetData({ title, subagentType, messages })
-                  }
+                  onExpandSubagent={handleExpandSubagent}
                 />
                 {/* Inline Command Queue (shows when items are queued) */}
                 {commandQueue.items.length > 0 && (

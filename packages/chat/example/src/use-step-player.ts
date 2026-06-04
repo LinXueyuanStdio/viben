@@ -74,6 +74,7 @@ type PlayerAction =
   | { type: "RESOLVE_QUESTION" }
   | { type: "RESOLVE_PLAN" }
   | { type: "LOAD_STEPS" }
+  | { type: "LOAD_MESSAGES"; messages: AgentMessage[] }
   | { type: "INJECT_MESSAGE"; message: AgentMessage }
   | { type: "CONSUME_PENDING_USERS" }
 
@@ -219,6 +220,15 @@ function createReducer(steps: DemoStep[]) {
       case "LOAD_STEPS":
         return createInitialState()
 
+      case "LOAD_MESSAGES":
+        return {
+          ...createInitialState(),
+          speed: state.speed,
+          status: "paused",
+          stepIndex: steps.length,
+          messages: action.messages,
+        }
+
       case "INJECT_MESSAGE":
         return { ...state, messages: [...state.messages, action.message] }
 
@@ -260,6 +270,7 @@ export interface StepPlayerReturn {
   resolveQuestion: (answers: Record<string, string[]>) => void
   resolvePlan: (approved: boolean) => void
   loadSteps: (newSteps: DemoStep[]) => void
+  loadMessages: (messages: AgentMessage[]) => void
   /** Inject a message into the message list (e.g., from command queue dequeue) */
   injectMessage: (message: AgentMessage) => void
   /** User messages waiting to be routed (consumed by App via consumePendingUsers) */
@@ -371,6 +382,13 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     dispatch({ type: "LOAD_STEPS" })
   }, [])
 
+  const loadMessages = useCallback((messages: AgentMessage[]) => {
+    const steps = messages.map((message): DemoStep => ({ messages: [message] }))
+    stepsRef.current = steps
+    reducerRef.current = createReducer(steps)
+    dispatch({ type: "LOAD_MESSAGES", messages })
+  }, [])
+
   const injectMessage = useCallback((message: AgentMessage) => {
     dispatch({ type: "INJECT_MESSAGE", message })
   }, [])
@@ -401,6 +419,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     resolveQuestion,
     resolvePlan,
     loadSteps,
+    loadMessages,
     injectMessage,
     pendingUserMessages: state.pendingUserMessages,
     consumePendingUsers,

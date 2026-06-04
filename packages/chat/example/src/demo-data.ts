@@ -8,9 +8,9 @@ import type {
   ContextTokenBreakdown,
   CommandQueueItem,
   PendingExecApproval,
-  ContentBlock,
 } from "@viben/chat"
 import type { AgentOption, ModelOption, ExecutorOption } from "@viben/chat"
+import { parseSessionJsonl as parseClaudeCodeSessionJsonl } from "./claudecode-log-provider"
 
 // ============================================================================
 // Demo Messages - simulates a full agent conversation with ALL features
@@ -1049,89 +1049,7 @@ export const demoExecApprovals: PendingExecApproval[] = [
 // ============================================================================
 
 export function parseSessionJsonl(text: string): AgentMessage[] {
-  const lines = text.trim().split("\n")
-  const messages: AgentMessage[] = []
-  const seenTool = new Set<string>()
-  let msgCounter = 0
-
-  for (const line of lines) {
-    try {
-      const obj = JSON.parse(line)
-      const t = obj.type
-
-      if (t === "user") {
-        const content = obj.message?.content
-        if (Array.isArray(content) && content.some((c: { type: string }) => c.type === "tool_result")) {
-          for (const c of content) {
-            if (c.type === "tool_result" && c.content) {
-              const toolUseId = c.tool_use_id
-              let output: string | ContentBlock[]
-              if (typeof c.content === "string") {
-                output = c.content
-              } else if (Array.isArray(c.content)) {
-                // If content blocks contain images, pass as ContentBlock[] directly
-                const hasImage = c.content.some((block: { type: string }) => block.type === "image")
-                if (hasImage) {
-                  output = c.content as ContentBlock[]
-                } else {
-                  output = c.content
-                    .map((block: { type: string; text?: string }) => block.type === "text" ? block.text || "" : "")
-                    .join("")
-                }
-              } else {
-                output = String(c.content)
-              }
-              messages.push({
-                id: `msg-${msgCounter++}`,
-                type: "tool_result",
-                toolUseId,
-                output,
-                isError: c.is_error,
-              })
-            }
-          }
-          continue
-        }
-        let txt = ""
-        if (typeof content === "string") txt = content
-        else if (Array.isArray(content)) {
-          for (const c of content) {
-            if (c.type === "text") txt += c.text
-          }
-        }
-        if (txt) {
-          txt = txt.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "").trim()
-          if (txt && !txt.startsWith("<local-command")) {
-            messages.push({ id: `msg-${msgCounter++}`, type: "user", content: txt })
-          }
-        }
-      } else if (t === "assistant") {
-        const content = obj.message?.content
-        if (!Array.isArray(content)) continue
-        for (const c of content) {
-          if (c.type === "thinking" && c.thinking) {
-            messages.push({ id: `msg-${msgCounter++}`, type: "thinking", content: c.thinking })
-          } else if (c.type === "text" && c.text) {
-            messages.push({ id: `msg-${msgCounter++}`, type: "text", content: c.text })
-          } else if (c.type === "tool_use") {
-            const tid = c.id
-            if (tid && seenTool.has(tid)) continue
-            seenTool.add(tid)
-            messages.push({
-              id: `msg-${msgCounter++}`,
-              type: "tool_use",
-              name: c.name,
-              toolUseId: tid,
-              input: c.input,
-            })
-          }
-        }
-      }
-    } catch {
-      // skip invalid lines
-    }
-  }
-  return messages
+  return parseClaudeCodeSessionJsonl(text)
 }
 
 // ============================================================================

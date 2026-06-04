@@ -13,7 +13,7 @@ import { isMessageStatic } from "./utils/is-message-static";
 import { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
 import { StreamingTextBlock } from "./streaming-text-block";
 import { useVirtualScroll } from "./hooks/use-virtual-scroll";
-import type { AgentMessage, PendingQuestion, TaskPlan } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, PendingQuestion, TaskPlan } from "./types";
 
 /** Artifact definition for linking with tool_use messages */
 export interface Artifact {
@@ -107,7 +107,7 @@ export interface MessageListProps {
   /**
    * Callback to expand subagent messages in a side panel.
    */
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
 }
 
 // Types for message grouping
@@ -174,7 +174,7 @@ function CollapsedToolRun({
   tools: ToolWithResult[];
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isExecuting = tools.some((t) => !t.result);
@@ -197,6 +197,9 @@ function CollapsedToolRun({
           name={message.name || "unknown"}
           displayName={message.name}
           input={message.input}
+          toolUseId={message.toolUseId}
+          subagentId={message.subagentId}
+          subagentMessages={message.subagentMessages}
           output={result?.output}
           isError={result?.isError}
           isExecuting={!result}
@@ -218,7 +221,7 @@ function renderToolsWithCollapsing(
   tools: ToolWithResult[],
   artifacts?: Artifact[],
   onArtifactClick?: (artifactId: string) => void,
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void,
+  onExpandSubagent?: ExpandSubagentHandler,
 ): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
   let collapsibleRun: ToolWithResult[] = [];
@@ -242,6 +245,9 @@ function renderToolsWithCollapsing(
           name={message.name || "unknown"}
           displayName={message.name}
           input={message.input}
+          toolUseId={message.toolUseId}
+          subagentId={message.subagentId}
+          subagentMessages={message.subagentMessages}
           output={result?.output}
           isError={result?.isError}
           isExecuting={!result}
@@ -267,6 +273,9 @@ function renderToolsWithCollapsing(
           name={message.name || "unknown"}
           displayName={message.name}
           input={message.input}
+          toolUseId={message.toolUseId}
+          subagentId={message.subagentId}
+          subagentMessages={message.subagentMessages}
           output={result?.output}
           isError={result?.isError}
           isExecuting={!result}
@@ -399,7 +408,7 @@ const MemoizedToolList = React.memo(function MemoizedToolList({
   tools: ToolWithResult[];
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
 }) {
   return <>{renderToolsWithCollapsing(tools, artifacts, onArtifactClick, onExpandSubagent)}</>;
 });
@@ -451,7 +460,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   isRunning: boolean;
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
 }) {
   const { t } = useTranslation();
   // Default: collapsed when completed, expanded when running or in progress
@@ -955,7 +964,7 @@ interface MessageRowProps {
   onLinkClick?: (href: string) => void;
   maxMessageWidth?: string;
   toolExpandedInline?: boolean;
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
   // Ref callback for scroll-to-message
   registerRef?: (id: string, el: HTMLDivElement | null) => void;
 }
@@ -1411,8 +1420,13 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const stableOnExpandSubagent = useCallback(
-    (title: string, subagentType: string | undefined, messages: AgentMessage[]) => {
-      handlersRef.current.onExpandSubagent?.(title, subagentType, messages);
+    (
+      title: string,
+      subagentType: string | undefined,
+      messages: AgentMessage[],
+      context?: Parameters<ExpandSubagentHandler>[3]
+    ) => {
+      handlersRef.current.onExpandSubagent?.(title, subagentType, messages, context);
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
     []

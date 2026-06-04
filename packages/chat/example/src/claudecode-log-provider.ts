@@ -1,0 +1,331 @@
+import type { AgentMessage, ContentBlock } from "@viben/chat"
+
+export interface ParseStats {
+  totalLines: number
+  handledLines: number
+  skippedLines: number
+  emittedMessages: number
+  skippedByReason: Record<string, number>
+}
+
+export interface ParsedSessionJsonl {
+  messages: AgentMessage[]
+  stats: ParseStats
+}
+
+export interface SubagentMeta {
+  agentType?: string
+  description?: string
+}
+
+export interface ClaudeCodeSessionManifestItem {
+  id: string
+  label: string
+  basePath: string
+  mainFile: string
+  subagents: Array<{
+    id: string
+    jsonl: string
+    meta: string
+  }>
+  toolResults?: string[]
+}
+
+export interface LoadedClaudeCodeSession {
+  id: string
+  label: string
+  messages: AgentMessage[]
+  stats: ParseStats
+  subagentCount: number
+}
+
+const EMPTY_STATS: ParseStats = {
+  totalLines: 0,
+  handledLines: 0,
+  skippedLines: 0,
+  emittedMessages: 0,
+  skippedByReason: {},
+}
+
+export const CLAUDE_CODE_SESSIONS: ClaudeCodeSessionManifestItem[] = [
+  {
+    id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8",
+    label: "Claude Code: breadcrumb navigation debug",
+    basePath: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8",
+    mainFile: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8.jsonl",
+    subagents: [
+      {
+        id: "a1e81c33764536d41",
+        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1e81c33764536d41.jsonl",
+        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1e81c33764536d41.meta.json",
+      },
+      {
+        id: "a1eda7958897db6d8",
+        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1eda7958897db6d8.jsonl",
+        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1eda7958897db6d8.meta.json",
+      },
+      {
+        id: "a3d0c3d9c1f5e40ff",
+        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a3d0c3d9c1f5e40ff.jsonl",
+        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a3d0c3d9c1f5e40ff.meta.json",
+      },
+      {
+        id: "a5789a7c985400424",
+        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a5789a7c985400424.jsonl",
+        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a5789a7c985400424.meta.json",
+      },
+      {
+        id: "a719d89a17777f87b",
+        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a719d89a17777f87b.jsonl",
+        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a719d89a17777f87b.meta.json",
+      },
+      {
+        id: "a9d5f106ac0c11270",
+        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a9d5f106ac0c11270.jsonl",
+        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a9d5f106ac0c11270.meta.json",
+      },
+    ],
+    toolResults: [
+      "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/tool-results/toolu_bdrk_012CKHBCCMarEZ85rG59VMM5.txt",
+    ],
+  },
+]
+
+function incrementReason(stats: ParseStats, reason: string) {
+  stats.skippedLines += 1
+  stats.skippedByReason[reason] = (stats.skippedByReason[reason] ?? 0) + 1
+}
+
+function textFromContent(content: unknown): string {
+  if (typeof content === "string") return content
+  if (!Array.isArray(content)) return ""
+  return content
+    .map((block) => {
+      if (
+        typeof block === "object" &&
+        block !== null &&
+        "type" in block &&
+        block.type === "text" &&
+        "text" in block
+      ) {
+        return String(block.text ?? "")
+      }
+      return ""
+    })
+    .join("")
+}
+
+function parseToolResultContent(content: unknown): string | ContentBlock[] {
+  if (typeof content === "string") return content
+  if (Array.isArray(content)) {
+    const hasImage = content.some((block) => {
+      return typeof block === "object" && block !== null && "type" in block && block.type === "image"
+    })
+    if (hasImage) return content as ContentBlock[]
+    return textFromContent(content)
+  }
+  return String(content ?? "")
+}
+
+export function parseSessionJsonlDetailed(text: string): ParsedSessionJsonl {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0)
+  const stats: ParseStats = { ...EMPTY_STATS, skippedByReason: {} }
+  const messages: AgentMessage[] = []
+  const seenTool = new Set<string>()
+  let msgCounter = 0
+
+  for (const line of lines) {
+    stats.totalLines += 1
+    let emitted = 0
+
+    try {
+      const obj = JSON.parse(line)
+      const t = obj.type
+
+      if (t === "user") {
+        const content = obj.message?.content
+        if (Array.isArray(content) && content.some((c: { type?: string }) => c.type === "tool_result")) {
+          for (const c of content) {
+            if (c.type !== "tool_result") continue
+            messages.push({
+              id: `msg-${msgCounter++}`,
+              type: "tool_result",
+              toolUseId: c.tool_use_id,
+              output: parseToolResultContent(c.content),
+              isError: c.is_error,
+              timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+            })
+            emitted += 1
+          }
+        } else {
+          let txt = textFromContent(content)
+          txt = txt.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "").trim()
+
+          if (txt && !txt.startsWith("<local-command")) {
+            messages.push({
+              id: `msg-${msgCounter++}`,
+              type: "user",
+              content: txt,
+              timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+            })
+            emitted += 1
+          }
+        }
+      } else if (t === "assistant") {
+        const content = obj.message?.content
+        if (Array.isArray(content)) {
+          for (const c of content) {
+            if (c.type === "thinking" && c.thinking) {
+              messages.push({
+                id: `msg-${msgCounter++}`,
+                type: "thinking",
+                content: c.thinking,
+                timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+              })
+              emitted += 1
+            } else if (c.type === "text" && c.text) {
+              messages.push({
+                id: `msg-${msgCounter++}`,
+                type: "text",
+                content: c.text,
+                timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+              })
+              emitted += 1
+            } else if (c.type === "tool_use") {
+              const tid = c.id
+              if (tid && seenTool.has(tid)) continue
+              seenTool.add(tid)
+              messages.push({
+                id: `msg-${msgCounter++}`,
+                type: "tool_use",
+                name: c.name,
+                toolUseId: tid,
+                input: c.input,
+                timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+              })
+              emitted += 1
+            }
+          }
+        }
+      } else if (t === "system" && obj.level === "error") {
+        messages.push({
+          id: `msg-${msgCounter++}`,
+          type: "error",
+          content: obj.subtype || "System error",
+          message: obj.error ? JSON.stringify(obj.error) : undefined,
+          timestamp: obj.timestamp ? Date.parse(obj.timestamp) : undefined,
+        })
+        emitted += 1
+      } else if (t === "progress" || t === "file-history-snapshot") {
+        // These are metadata lines. They are handled by counting them as known
+        // session records, while message rendering uses their derived mappings.
+      } else {
+        incrementReason(stats, `unsupported:${String(t)}`)
+      }
+
+      if (emitted > 0 || t === "progress" || t === "file-history-snapshot") {
+        stats.handledLines += 1
+      } else if (t === "user" || t === "assistant") {
+        incrementReason(stats, "empty_or_meta_message")
+      }
+    } catch {
+      incrementReason(stats, "invalid_json")
+    }
+  }
+
+  stats.emittedMessages = messages.length
+  return { messages, stats }
+}
+
+export function parseSessionJsonl(text: string): AgentMessage[] {
+  return parseSessionJsonlDetailed(text).messages
+}
+
+function extractAgentMapping(text: string): Map<string, string> {
+  const mapping = new Map<string, string>()
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue
+    try {
+      const obj = JSON.parse(line)
+      if (obj.type === "progress" && obj.parentToolUseID && obj.data?.agentId) {
+        if (!mapping.has(obj.parentToolUseID)) mapping.set(obj.parentToolUseID, obj.data.agentId)
+      }
+    } catch {
+      // ignored; detailed parser reports invalid lines
+    }
+  }
+  return mapping
+}
+
+async function fetchText(path: string): Promise<string> {
+  const response = await fetch(path)
+  if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`)
+  return response.text()
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const response = await fetch(path)
+  if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`)
+  return response.json() as Promise<T>
+}
+
+export async function loadClaudeCodeSubagent(
+  session: ClaudeCodeSessionManifestItem,
+  subagentId: string
+): Promise<{ messages: AgentMessage[]; meta?: SubagentMeta; stats: ParseStats }> {
+  const entry = session.subagents.find((item) => item.id === subagentId)
+  if (!entry) {
+    throw new Error(`Unknown subagent: ${subagentId}`)
+  }
+
+  const [jsonl, meta] = await Promise.all([
+    fetchText(entry.jsonl),
+    fetchJson<SubagentMeta>(entry.meta).catch(() => undefined),
+  ])
+  const parsed = parseSessionJsonlDetailed(jsonl)
+  return { messages: parsed.messages, meta, stats: parsed.stats }
+}
+
+export async function loadClaudeCodeSession(
+  session: ClaudeCodeSessionManifestItem
+): Promise<LoadedClaudeCodeSession> {
+  const mainText = await fetchText(session.mainFile)
+  const parsed = parseSessionJsonlDetailed(mainText)
+  const agentMapping = extractAgentMapping(mainText)
+
+  const metaEntries = await Promise.all(
+    session.subagents.map(async (subagent) => ({
+      id: subagent.id,
+      meta: await fetchJson<SubagentMeta>(subagent.meta).catch(() => undefined),
+    }))
+  )
+  const metaMap = new Map(metaEntries.map((entry) => [entry.id, entry.meta]))
+
+  for (const message of parsed.messages) {
+    if (message.type !== "tool_use") continue
+    if (message.name !== "Agent" && message.name !== "Task") continue
+    if (!message.toolUseId) continue
+
+    const agentId = agentMapping.get(message.toolUseId)
+    if (!agentId) continue
+    message.subagentId = agentId
+
+    const meta = metaMap.get(agentId)
+    if (meta && message.input) {
+      if (!message.input.subagent_type && meta.agentType) {
+        message.input.subagent_type = meta.agentType
+      }
+      if (!message.input.description && meta.description) {
+        message.input.description = meta.description
+      }
+    }
+  }
+
+  return {
+    id: session.id,
+    label: session.label,
+    messages: parsed.messages,
+    stats: parsed.stats,
+    subagentCount: session.subagents.length,
+  }
+}

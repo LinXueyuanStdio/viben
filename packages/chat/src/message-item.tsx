@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
-import type { AgentMessage, MessageAttachment } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, MessageAttachment } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanSummary } from "./plan-approval";
 import { QuestionInput } from "./question-input";
@@ -27,7 +27,7 @@ export interface MessageItemProps {
   /** When true, show full tool input/output inline without requiring a click-to-open modal */
   toolExpandedInline?: boolean;
   /** Callback to expand subagent messages in a side panel */
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
   /** Whether this is the latest thinking message (starts expanded) */
   isLatestThinking?: boolean;
 }
@@ -530,6 +530,7 @@ function MessageItemImpl({
       <ToolExecutionItem
         name={message.name || "unknown"}
         input={message.input}
+        toolUseId={message.toolUseId}
         output={message.output}
         isExecuting={!hasOutput}
         isError={message.isError}

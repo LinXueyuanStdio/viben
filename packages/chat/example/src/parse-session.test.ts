@@ -3,6 +3,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { parseSessionJsonl } from "./demo-data";
+import {
+  CLAUDE_CODE_SESSIONS,
+  parseSessionJsonlDetailed,
+} from "./claudecode-log-provider";
 import type { AgentMessage, ContentBlock } from "@viben/chat";
 
 // ============================================================================
@@ -17,6 +21,8 @@ const SESSION_PATHS: string[] = fs.existsSync(TEST_PATHS_FILE)
       .map((l) => l.trim())
       .filter((l) => l.length > 0 && fs.existsSync(l))
   : [];
+
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
 
 // ============================================================================
 // Helper: enhanced parser that also loads subagent messages and tool-results
@@ -411,6 +417,36 @@ describe("parseSessionJsonl - multimodal content handling", () => {
     const messages = parseSessionJsonl(fakeJsonl);
     expect(messages.length).toBe(1);
     expect(messages[0].output).toBe("Simple string output");
+  });
+});
+
+describe("Claude Code bundled session logs", () => {
+  it("parses every bundled main and subagent jsonl with classified line coverage", () => {
+    for (const session of CLAUDE_CODE_SESSIONS) {
+      const mainPath = path.join(PUBLIC_DIR, session.mainFile.replace(/^\//, ""));
+      const mainText = fs.readFileSync(mainPath, "utf-8");
+      const main = parseSessionJsonlDetailed(mainText);
+
+      expect(main.messages.length, `${session.id} main messages`).toBeGreaterThan(0);
+      expect(
+        main.stats.handledLines + main.stats.skippedLines,
+        `${session.id} main classified line count`
+      ).toBe(main.stats.totalLines);
+      expect(main.stats.skippedByReason.invalid_json ?? 0).toBe(0);
+
+      for (const subagent of session.subagents) {
+        const subPath = path.join(PUBLIC_DIR, subagent.jsonl.replace(/^\//, ""));
+        const subText = fs.readFileSync(subPath, "utf-8");
+        const parsed = parseSessionJsonlDetailed(subText);
+
+        expect(parsed.messages.length, `${subagent.id} messages`).toBeGreaterThan(0);
+        expect(
+          parsed.stats.handledLines + parsed.stats.skippedLines,
+          `${subagent.id} classified line count`
+        ).toBe(parsed.stats.totalLines);
+        expect(parsed.stats.skippedByReason.invalid_json ?? 0).toBe(0);
+      }
+    }
   });
 });
 

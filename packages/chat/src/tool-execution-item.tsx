@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@viben/ui";
 import { getDisplayPath } from "./utils";
-import type { AgentMessage, ContentBlock } from "./types";
+import type { AgentMessage, ContentBlock, ExpandSubagentHandler } from "./types";
 
 /** Artifact info for linking tool_use messages to artifacts */
 export interface ArtifactInfo {
@@ -47,6 +47,8 @@ export interface ToolExecutionItemProps {
   compact?: boolean;
   /** Subagent ID for Task tool calls */
   subagentId?: string;
+  /** Parent tool_use ID for matching external subagent loaders */
+  toolUseId?: string;
   /** Recursively loaded subagent messages for Task tool calls */
   subagentMessages?: AgentMessage[];
   /** Render function for subagent messages */
@@ -58,7 +60,7 @@ export interface ToolExecutionItemProps {
   /** When true, show full tool input/output inline without requiring a click-to-open modal */
   expandedInline?: boolean;
   /** Callback to expand subagent messages in a side panel */
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  onExpandSubagent?: ExpandSubagentHandler;
 }
 
 // ============================================================================
@@ -710,7 +712,8 @@ export function ToolExecutionItem({
   status: statusProp,
   className,
   compact = false,
-  subagentId: _subagentId,
+  subagentId,
+  toolUseId,
   subagentMessages,
   renderMessage,
   artifactInfo,
@@ -745,9 +748,9 @@ export function ToolExecutionItem({
     prompt?: string;
     model?: string;
   } : null;
-  const canOpenSubagent = !!taskInput && !!hasSubagentMessages && !!onExpandSubagent;
-  // Default to expanded for regular tools and inline-only subagent cards.
-  const [isExpanded, setIsExpanded] = useState((!!hasSubagentMessages && !canOpenSubagent) || !!output);
+  const canOpenSubagent = !!taskInput && !!onExpandSubagent && (!!subagentId || !!hasSubagentMessages);
+  // Subagent cards stay folded by default; regular tools can still auto-open details.
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Auto-expand Task/Agent tool when running or when result arrives
   useEffect(() => {
@@ -888,7 +891,11 @@ export function ToolExecutionItem({
     const title = taskInput.description || taskInput.subagent_type || "Sub-Agent";
     const handleOpenSubagent = () => {
       if (!canOpenSubagent) return;
-      onExpandSubagent(title, taskInput.subagent_type, subagentMessages!);
+      onExpandSubagent(title, taskInput.subagent_type, subagentMessages ?? [], {
+        subagentId,
+        toolUseId,
+        messages: subagentMessages,
+      });
     };
     const handleToggleInlineDetails = () => {
       if (hasDetails) setIsExpanded(!isExpanded);

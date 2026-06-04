@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn, Badge, Button } from "@viben/ui";
 import { MessageList } from "./message-list";
-import type { AgentMessage } from "./types";
+import type { AgentMessage, ExpandSubagentHandler } from "./types";
 
 export interface SubagentSheetProps {
   open: boolean;
@@ -11,7 +11,9 @@ export interface SubagentSheetProps {
   title: string;
   subagentType?: string;
   messages: AgentMessage[];
-  onExpandSubagent?: (title: string, subagentType: string | undefined, messages: AgentMessage[]) => void;
+  isLoading?: boolean;
+  error?: string | null;
+  onExpandSubagent?: ExpandSubagentHandler;
   className?: string;
 }
 
@@ -46,6 +48,8 @@ export function SubagentSheet({
   title,
   subagentType,
   messages,
+  isLoading = false,
+  error,
   onExpandSubagent,
   className,
 }: SubagentSheetProps) {
@@ -129,13 +133,24 @@ export function SubagentSheet({
             </div>
             {/* Message list */}
             <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-              <MessageList
-                messages={messages}
-                simpleMode
-                toolExpandedInline
-                maxMessageWidth="100%"
-                onExpandSubagent={onExpandSubagent}
-              />
+              {isLoading ? (
+                <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("chat.loadingSubagent", "Loading subagent…")}
+                </div>
+              ) : error ? (
+                <div className="m-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </div>
+              ) : (
+                <MessageList
+                  messages={messages}
+                  simpleMode
+                  toolExpandedInline
+                  maxMessageWidth="100%"
+                  onExpandSubagent={onExpandSubagent}
+                />
+              )}
             </div>
           </motion.div>
         </>
