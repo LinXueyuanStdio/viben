@@ -301,7 +301,7 @@ export function AgentChatView({
         onRejectPlan={onRejectPlan}
         onAnswerQuestions={onAnswerQuestions}
         className="flex-1 min-w-0 overflow-hidden"
-        maxMessageWidth="100%"
+        maxMessageWidth="820px"
         artifacts={artifacts}
         highlightedMessageId={highlightedMessageId}
         onArtifactClick={onArtifactClick}
