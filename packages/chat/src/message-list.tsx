@@ -404,6 +404,33 @@ const MemoizedToolList = React.memo(function MemoizedToolList({
   return <>{renderToolsWithCollapsing(tools, artifacts, onArtifactClick, onExpandSubagent)}</>;
 });
 
+function getMessageWidthStyle(maxMessageWidth?: string): React.CSSProperties {
+  return {
+    width: "100%",
+    maxWidth: maxMessageWidth ? `min(100%, ${maxMessageWidth})` : "100%",
+    marginLeft: "auto",
+    marginRight: "auto",
+  };
+}
+
+function MessageWidthShell({
+  maxMessageWidth,
+  children,
+}: {
+  maxMessageWidth?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      data-message-width-shell="true"
+      className="w-full min-w-0"
+      style={getMessageWidthStyle(maxMessageWidth)}
+    >
+      {children}
+    </div>
+  );
+}
+
 /**
  * Task Group Component - shows text description and collapsible tool list
  */
@@ -1015,7 +1042,9 @@ const MessageRow = React.memo(function MessageRow({
       prev.group === next.group &&
       prev.activeHighlight === next.activeHighlight &&
       prev.index === next.index &&
-      prev.lastThinkingIdx === next.lastThinkingIdx
+      prev.lastThinkingIdx === next.lastThinkingIdx &&
+      prev.maxMessageWidth === next.maxMessageWidth &&
+      prev.toolExpandedInline === next.toolExpandedInline
     );
   }
   // Non-static: always re-render
@@ -1500,39 +1529,43 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
             if (group.type === "task") {
               return (
                 <div key={key} ref={vMeasureRef(index)} data-vkey={key} className="mb-4">
-                  <TaskGroupComponent
-                    title={group.title}
-                    description={group.description}
-                    tools={group.tools}
-                    isCompleted={group.isCompleted}
-                    isRunning={isStreaming || false}
-                    artifacts={artifacts}
-                    onArtifactClick={onArtifactClick}
-                    onExpandSubagent={stableOnExpandSubagent}
-                  />
+                  <MessageWidthShell maxMessageWidth={maxMessageWidth}>
+                    <TaskGroupComponent
+                      title={group.title}
+                      description={group.description}
+                      tools={group.tools}
+                      isCompleted={group.isCompleted}
+                      isRunning={isStreaming || false}
+                      artifacts={artifacts}
+                      onArtifactClick={onArtifactClick}
+                      onExpandSubagent={stableOnExpandSubagent}
+                    />
+                  </MessageWidthShell>
                 </div>
               );
             }
 
             return (
               <div key={key} ref={vMeasureRef(index)} data-vkey={key} className="mb-4">
-                <MessageRow
-                  group={group}
-                  index={index}
-                  groupsLength={renderGroups.length}
-                  isStreaming={isStreaming || false}
-                  streamingText={streamingText}
-                  lastThinkingIdx={lastThinkingIdx}
-                  activeHighlight={activeHighlight}
-                  onApprovePlan={stableOnApprovePlan}
-                  onRejectPlan={stableOnRejectPlan}
-                  pendingPlan={pendingPlan}
-                  onLinkClick={stableOnLinkClick}
-                  maxMessageWidth={maxMessageWidth}
-                  toolExpandedInline={toolExpandedInline}
-                  onExpandSubagent={stableOnExpandSubagent}
-                  registerRef={registerRef}
-                />
+                <MessageWidthShell maxMessageWidth={maxMessageWidth}>
+                  <MessageRow
+                    group={group}
+                    index={index}
+                    groupsLength={renderGroups.length}
+                    isStreaming={isStreaming || false}
+                    streamingText={streamingText}
+                    lastThinkingIdx={lastThinkingIdx}
+                    activeHighlight={activeHighlight}
+                    onApprovePlan={stableOnApprovePlan}
+                    onRejectPlan={stableOnRejectPlan}
+                    pendingPlan={pendingPlan}
+                    onLinkClick={stableOnLinkClick}
+                    maxMessageWidth={maxMessageWidth}
+                    toolExpandedInline={toolExpandedInline}
+                    onExpandSubagent={stableOnExpandSubagent}
+                    registerRef={registerRef}
+                  />
+                </MessageWidthShell>
               </div>
             );
           })}
@@ -1545,11 +1578,13 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
 
           {/* Streaming text - rendered as separate sibling to avoid full list reconciliation */}
           {streamingText && (
-            <StreamingTextBlock
-              text={streamingText}
-              onLinkClick={onLinkClick}
-              maxWidth={maxMessageWidth}
-            />
+            <MessageWidthShell maxMessageWidth={maxMessageWidth}>
+              <StreamingTextBlock
+                text={streamingText}
+                onLinkClick={onLinkClick}
+                maxWidth={maxMessageWidth}
+              />
+            </MessageWidthShell>
           )}
 
           {/* Scroll anchor */}
