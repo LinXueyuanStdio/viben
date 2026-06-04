@@ -4,16 +4,20 @@
  * Uses bonjour-service to publish and discover Viben gateways on the local network.
  * bonjour-service is an optional dependency -- if not available, mDNS features are disabled.
  */
-import type { Bonjour as BonjourType, Browser, Service } from "bonjour-service";
+import type Bonjour from "bonjour-service";
 import type { ServiceInfo } from "./types";
 
 const SERVICE_TYPE = "viben-gateway";
 
+type BonjourInstance = InstanceType<typeof Bonjour>;
+type BrowserInstance = ReturnType<BonjourInstance["find"]>;
+type DiscoveredService = Parameters<NonNullable<Parameters<BonjourInstance["find"]>[1]>>[0];
+
 // Lazy-loaded bonjour-service module
-let BonjourClass: (new () => BonjourType) | null = null;
+let BonjourClass: (new () => BonjourInstance) | null = null;
 let loadAttempted = false;
 
-async function loadBonjour(): Promise<(new () => BonjourType) | null> {
+async function loadBonjour(): Promise<(new () => BonjourInstance) | null> {
   if (loadAttempted) return BonjourClass;
   loadAttempted = true;
   try {
@@ -26,8 +30,8 @@ async function loadBonjour(): Promise<(new () => BonjourType) | null> {
 }
 
 export class MdnsService {
-  private instance: BonjourType | null = null;
-  private browser: Browser | null = null;
+  private instance: BonjourInstance | null = null;
+  private browser: BrowserInstance | null = null;
   private published = false;
   private onDiscoverCallback: ((info: ServiceInfo) => void) | null = null;
 
@@ -51,7 +55,7 @@ export class MdnsService {
     this.published = true;
 
     // Browse for other gateways
-    this.browser = this.instance.find({ type: SERVICE_TYPE }, (service: Service) => {
+    this.browser = this.instance.find({ type: SERVICE_TYPE }, (service: DiscoveredService) => {
       const txtRecord = service.txt || {};
       // Skip ourselves
       if (txtRecord.gateway_id === localInfo.gateway_id) return;
