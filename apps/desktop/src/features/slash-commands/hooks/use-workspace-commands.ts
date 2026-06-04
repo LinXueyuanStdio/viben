@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createElement } from "react";
 import { FileText } from "lucide-react";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 import type {
   SlashCommandDefinition,
   WorkspaceCommandFile,
@@ -26,20 +26,12 @@ export function useWorkspaceCommands(
 
     async function loadCommands() {
       try {
-        const baseUrl = getGatewayUrl();
-        const response = await fetch(
-          `${baseUrl}/api/commands/workspace?workspace_path=${encodeURIComponent(workspacePath!)}`,
-          {
-            method: "GET",
-            headers: { Accept: "application/json" },
-          }
+        const params = new URLSearchParams({
+          workspace_path: workspacePath!,
+        });
+        const data = await getGatewayClient().get<WorkspaceCommandsResponse>(
+          `/api/commands/workspace?${params.toString()}`
         );
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data: WorkspaceCommandsResponse = await response.json();
 
         if (!cancelled && data?.commands) {
           setCommands(data.commands);
