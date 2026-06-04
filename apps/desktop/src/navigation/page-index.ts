@@ -7,7 +7,6 @@ import type {
 import {
   SETTINGS_SECTIONS,
   getWorkspaceSectionDescriptor,
-  getWorkspaceSectionRoutePath,
   WORKSPACE_SECTIONS,
   getSettingsSectionIcon,
   getSettingsSectionLabel,
@@ -308,7 +307,7 @@ export function buildRootDropdownItems({
   labelGlobalWorkspace?: string;
 }): BreadcrumbDropdownItem[] {
   const sectionRoutePath = currentSection
-    ? getWorkspaceSectionRoutePath(currentSection)
+    ? currentSection
     : "";
 
   const workspaceItems = buildDropdownItems(workspaces, (workspace) => {
