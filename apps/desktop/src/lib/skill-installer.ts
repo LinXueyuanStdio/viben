@@ -7,7 +7,7 @@
 
 import { getClient } from './viben';
 import type { SkillPackage } from '@viben/api-client';
-import { getGatewayUrl } from './gateway';
+import { getGatewayClient } from './gateway';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, writeFile, exists, remove } from '@tauri-apps/plugin-fs';
 import i18n from '@/i18n';
@@ -178,21 +178,15 @@ export async function downloadAndInstallSkill(
     });
 
     // Call Gateway API to install the skill
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/skill/install`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const result = await getGatewayClient().post<GatewayInstallResponse>(
+      '/api/skill/install',
+      {
         name: pkg.slug,
         zip_path: tempZipPath,
         force,
         version: pkg.version,
-      }),
-    });
-
-    const result: GatewayInstallResponse = await response.json();
+      }
+    );
 
     if (!result.success) {
       throw new Error(result.error || 'Installation failed');
@@ -267,9 +261,7 @@ export async function downloadAndInstallSkill(
  */
 export async function isSkillInstalled(skillSlug: string): Promise<boolean> {
   try {
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/packages/skills`);
-    const data: { packages: Array<{ id: string }> } = await response.json();
+    const data = await getGatewayClient().get<{ packages: Array<{ id: string }> }>('/api/packages/skills');
     return data.packages.some(pkg => pkg.id === skillSlug);
   } catch {
     return false;
