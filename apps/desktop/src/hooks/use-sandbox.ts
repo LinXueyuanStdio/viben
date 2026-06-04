@@ -4,9 +4,9 @@
  * Provides functions for managing sandbox providers via the Gateway API.
  */
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 
 /**
  * Sandbox provider type
@@ -104,35 +104,26 @@ export function useSandbox(): UseSandboxReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const gatewayUrl = useMemo(() => getGatewayUrl(), []);
-
   // Fetch available providers
   const refreshProviders = useCallback(async () => {
-    if (!gatewayUrl) {
-      setError(t("errors.sandbox.gatewayNotConnected"));
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${gatewayUrl}/api/sandbox/available`);
-      if (!response.ok) {
-        throw new Error(t("errors.sandbox.fetchProvidersFailed", { error: response.statusText }));
-      }
-      const data = await response.json();
+      const data = await getGatewayClient().get<{
+        providers?: SandboxProviderType[];
+        details?: SandboxProviderDetails[];
+      }>("/api/sandbox/available");
       setProviders(data.providers || []);
       setProviderDetails(data.details || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(t("errors.sandbox.fetchProvidersFailed", { error: err instanceof Error ? err.message : String(err) }));
       setProviders([]);
       setProviderDetails([]);
     } finally {
       setIsLoading(false);
     }
-  }, [gatewayUrl, t]);
+  }, [t]);
 
   // Initial load
   useEffect(() => {
@@ -151,36 +142,24 @@ export function useSandbox(): UseSandboxReturn {
         provider?: SandboxProviderType;
       }
     ): Promise<SandboxExecResult | null> => {
-      if (!gatewayUrl) {
-        setError(t("errors.sandbox.gatewayNotConnected"));
-        return null;
-      }
-
       try {
-        const response = await fetch(`${gatewayUrl}/api/sandbox/exec`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        return await getGatewayClient().post<SandboxExecResult>(
+          "/api/sandbox/exec",
+          {
             command,
             args,
             cwd: options?.cwd,
             env: options?.env,
             timeout: options?.timeout,
             provider: options?.provider,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(t("errors.sandbox.executionFailed", { error: response.statusText }));
-        }
-
-        return await response.json();
+          }
+        );
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(t("errors.sandbox.executionFailed", { error: err instanceof Error ? err.message : String(err) }));
         return null;
       }
     },
-    [gatewayUrl, t]
+    [t]
   );
 
   // Run a script file
@@ -196,16 +175,10 @@ export function useSandbox(): UseSandboxReturn {
         provider?: SandboxProviderType;
       }
     ): Promise<SandboxExecResult | null> => {
-      if (!gatewayUrl) {
-        setError(t("errors.sandbox.gatewayNotConnected"));
-        return null;
-      }
-
       try {
-        const response = await fetch(`${gatewayUrl}/api/sandbox/run/file`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        return await getGatewayClient().post<SandboxExecResult>(
+          "/api/sandbox/run/file",
+          {
             file_path: filePath,
             work_dir: workDir,
             args: options?.args,
@@ -213,20 +186,14 @@ export function useSandbox(): UseSandboxReturn {
             packages: options?.packages,
             timeout: options?.timeout,
             provider: options?.provider,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(t("errors.sandbox.scriptExecutionFailed", { error: response.statusText }));
-        }
-
-        return await response.json();
+          }
+        );
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(t("errors.sandbox.scriptExecutionFailed", { error: err instanceof Error ? err.message : String(err) }));
         return null;
       }
     },
-    [gatewayUrl, t]
+    [t]
   );
 
   // Get provider details by type
