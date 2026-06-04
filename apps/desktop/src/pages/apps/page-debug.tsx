@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getGatewayClient } from "@/lib/gateway";
 
 const SOCKET_PATH = "/tmp/viben-mcp.sock";
 const GATEWAY_PORT = 18790;
@@ -60,7 +61,10 @@ export function PageDebugPage() {
     setIsChecking(true);
     try {
       // Try to check via Gateway API first
-      const response = await fetch(`http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/status`);
+      const response = await getGatewayClient().request<Response>("/api/mcp/tauri/status", {
+        method: "GET",
+        responseType: "response",
+      });
       if (response.ok) {
         const data = await response.json();
         setSocketStatus(data.available && data.connected ? "connected" : "disconnected");
