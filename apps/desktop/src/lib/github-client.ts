@@ -4,7 +4,7 @@
  * Type-safe client for GitHub API endpoints.
  */
 
-import { getGatewayUrl } from "./gateway";
+import { GatewayError, getGatewayClient } from "./gateway";
 import type {
   GitHubAuthType,
   GitHubUser,
@@ -66,31 +66,24 @@ export interface CreateAutoFixTaskOptions {
 // ============================================================================
 
 export class GitHubClient {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = getGatewayUrl();
-  }
-
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(error.error || `Request failed: ${response.status}`);
+    try {
+      return await getGatewayClient().request<T>(endpoint, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+    } catch (error) {
+      if (error instanceof GatewayError) {
+        throw new Error(error.message);
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   // ---------------------------------------------------------------------------
