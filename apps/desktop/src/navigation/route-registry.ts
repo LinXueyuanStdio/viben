@@ -2,7 +2,12 @@
 import type { RouteEntry } from "./route-compiler";
 import { compileRegistry, matchUrlCompiled, buildUrlCompiled, type CompiledRoute, type RouteMatch } from "./route-compiler";
 import type { IconData } from "@/components/ui/icon-picker";
-import i18n from "@/i18n";
+import {
+  WORKSPACE_SECTION_MAP,
+  SETTINGS_SECTION_MAP,
+  getSettingsSectionIcon,
+  getSettingsTitle,
+} from "./navigation-meta";
 
 // ─── Route Definitions ──────────────────────────────────────────────────────
 
@@ -23,7 +28,7 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
 
   // ─── Settings ───
   { pattern: "/settings", icon: { type: "lucide", value: "settings" }, title: "Settings", titleKey: "nav.settings", dropdownCategory: "root" },
-  { pattern: "/settings/:section", icon: (p) => getSettingsIcon(p.section), title: (p) => getSettingsTitle(p.section), dropdownCategory: "settings" },
+  { pattern: "/settings/:section", icon: (p) => getSettingsSectionIcon(p.section), title: (p) => getSettingsTitle(p.section), dropdownCategory: "settings" },
 
   // ─── Workspace ───
   { pattern: "/workspace/:workspaceId", icon: { type: "lucide", value: "home" }, title: (p) => p.workspaceId, dropdownCategory: "workspace" },
@@ -124,58 +129,24 @@ export function humanize(slug: string): string {
   return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function getSettingsIcon(section: string): IconData {
-  return SETTINGS_ICON_MAP[section] ?? { type: "lucide", value: "settings" };
+// ─── Descriptor Icon Lookup ─────────────────────────────────────────────────
+
+/** Resolve icon for an item by looking up via route-registry */
+export function getDescriptorIcon(descriptorId: string | undefined): IconData | undefined {
+  if (!descriptorId) return undefined;
+  // Try route-registry pattern lookup
+  const icon = registry.getIcon(descriptorId);
+  if (icon) return icon;
+  // Fallback: check workspace/settings section maps by legacy descriptor id format
+  if (descriptorId.startsWith("workspace-section:")) {
+    const section = descriptorId.slice("workspace-section:".length);
+    return WORKSPACE_SECTION_MAP.get(section)?.icon;
+  }
+  if (descriptorId.startsWith("settings:")) {
+    const section = descriptorId.slice("settings:".length);
+    return SETTINGS_SECTION_MAP.get(section)?.icon;
+  }
+  return undefined;
 }
-
-function getSettingsTitle(section: string): string {
-  const key = SETTINGS_TITLE_KEY_MAP[section];
-  if (key) return i18n.t(key, { defaultValue: humanize(section) });
-  return humanize(section);
-}
-
-const SETTINGS_TITLE_KEY_MAP: Record<string, string> = {
-  general: "settings.sections.general",
-  account: "settings.sections.account",
-  shortcuts: "settings.sections.shortcuts",
-  notifications: "settings.sections.notifications",
-  gateway: "settings.sections.gateway",
-  channels: "settings.sections.channels",
-  executors: "settings.sections.executors",
-  model: "settings.sections.model",
-  agents: "settings.sections.agents",
-  mcp: "settings.sections.mcp",
-  skills: "settings.sections.skills",
-  sandbox: "settings.sections.sandbox",
-  environment: "settings.sections.environment",
-  terminalFonts: "settings.sections.terminalFonts",
-  overlay: "settings.sections.overlay",
-  voice: "settings.sections.voice",
-  storage: "settings.sections.storage",
-  developer: "settings.sections.developer",
-  about: "settings.sections.about",
-};
-
-const SETTINGS_ICON_MAP: Record<string, IconData> = {
-  general: { type: "lucide", value: "settings" },
-  account: { type: "lucide", value: "user" },
-  shortcuts: { type: "lucide", value: "keyboard" },
-  notifications: { type: "lucide", value: "bell" },
-  gateway: { type: "lucide", value: "network" },
-  channels: { type: "lucide", value: "message-square" },
-  executors: { type: "lucide", value: "play" },
-  model: { type: "lucide", value: "cpu" },
-  agents: { type: "lucide", value: "bot" },
-  mcp: { type: "lucide", value: "boxes" },
-  skills: { type: "lucide", value: "sparkles" },
-  sandbox: { type: "lucide", value: "box" },
-  environment: { type: "lucide", value: "terminal" },
-  terminalFonts: { type: "lucide", value: "type" },
-  overlay: { type: "lucide", value: "layers" },
-  voice: { type: "lucide", value: "mic" },
-  storage: { type: "lucide", value: "hard-drive" },
-  developer: { type: "lucide", value: "bug" },
-  about: { type: "lucide", value: "info" },
-};
 
 export type { RouteEntry, RouteMatch, CompiledRoute };
