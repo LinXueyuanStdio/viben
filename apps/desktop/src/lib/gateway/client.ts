@@ -7,6 +7,7 @@
  */
 
 import { getGatewayUrl, discoverGateway } from "./config";
+import { GatewayError } from "./error";
 
 // Import module functions
 import {
@@ -462,6 +463,60 @@ import type { DeviceListResponse, QrResponse, SendMessageRequest, SendMessageRes
 // GatewayClient Class
 // ============================================================================
 
+export type GatewayResponseType = "json" | "text" | "blob" | "arrayBuffer" | "response" | "none";
+
+export interface GatewayRequestOptions extends Omit<RequestInit, "body"> {
+  body?: BodyInit | unknown;
+  responseType?: GatewayResponseType;
+}
+
+function isBodyInit(body: unknown): body is BodyInit {
+  return (
+    typeof body === "string" ||
+    body instanceof FormData ||
+    body instanceof Blob ||
+    body instanceof ArrayBuffer ||
+    body instanceof URLSearchParams ||
+    body instanceof ReadableStream
+  );
+}
+
+function hasHeader(headers: Headers, name: string): boolean {
+  for (const key of headers.keys()) {
+    if (key.toLowerCase() === name.toLowerCase()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getJsonErrorMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const record = data as Record<string, unknown>;
+  const message = record.error ?? record.message;
+  return typeof message === "string" ? message : null;
+}
+
+async function parseGatewayError(response: Response): Promise<string> {
+  const fallback = response.statusText || `Request failed with status ${response.status}`;
+
+  try {
+    const contentType = response.headers.get("Content-Type") ?? "";
+    if (contentType.includes("application/json")) {
+      const data = await response.json();
+      return getJsonErrorMessage(data) ?? fallback;
+    }
+
+    const text = await response.text();
+    return text || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Gateway API client for agent management
  *
@@ -514,21 +569,83 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
+   * Generic raw request that prefixes the configured Gateway URL.
+   */
+  async requestRaw(path: string, options: RequestInit = {}): Promise<Response> {
+    return fetch(`${this.baseUrl}${path}`, options);
+  }
+
+  /**
+   * Generic Gateway request with JSON body handling, typed response parsing,
+   * and GatewayError failures.
+   */
+  async request<T = unknown>(path: string, options: GatewayRequestOptions = {}): Promise<T> {
+    const { responseType = "json", headers: inputHeaders, body, ...requestOptions } = options;
+    const headers = new Headers(inputHeaders);
+    const requestInit: RequestInit = {
+      ...requestOptions,
+    };
+
+    if (body !== undefined) {
+      if (isBodyInit(body)) {
+        requestInit.body = body;
+      } else {
+        if (!hasHeader(headers, "Content-Type")) {
+          headers.set("Content-Type", "application/json");
+        }
+        requestInit.body = JSON.stringify(body);
+      }
+    }
+
+    if ([...headers.keys()].length > 0) {
+      requestInit.headers = Object.fromEntries(headers.entries());
+    }
+
+    const response = await this.requestRaw(path, requestInit);
+
+    if (!response.ok) {
+      throw new GatewayError(await parseGatewayError(response), response.status);
+    }
+
+    if (responseType === "response") {
+      return response as T;
+    }
+
+    if (responseType === "none" || response.status === 204 || response.status === 205) {
+      return undefined as T;
+    }
+
+    if (responseType === "text") {
+      return (await response.text()) as T;
+    }
+
+    if (responseType === "blob") {
+      return (await response.blob()) as T;
+    }
+
+    if (responseType === "arrayBuffer") {
+      return (await response.arrayBuffer()) as T;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      return undefined as T;
+    }
+    return JSON.parse(text) as T;
+  }
+
+  /**
    * Generic GET request
    * @param path - API path (e.g., "/api/packages/installed")
    * @returns Response data
    */
   async get<T>(path: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    return this.request<T>(path, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
     });
-    if (!response.ok) {
-      throw new Error(`GET ${path} failed: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
   }
 
   /**
@@ -538,17 +655,13 @@ export class GatewayClient {
    * @returns Response data
    */
   async post<T>(path: string, body?: unknown): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    return this.request<T>(path, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body,
     });
-    if (!response.ok) {
-      throw new Error(`POST ${path} failed: ${response.status} ${response.statusText}`);
-    }
-    return response.json();
   }
 
   // ==========================================================================
