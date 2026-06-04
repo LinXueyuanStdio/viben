@@ -87,21 +87,14 @@ import { getWorkspaceSectionDescriptor } from "@/navigation/page-index";
 async function submitToQueue(command: string, cwd: string): Promise<boolean> {
   try {
     const client = getGatewayClient();
-    const baseUrl = client.getBaseUrl();
-
-    const response = await fetch(`${baseUrl}/api/command-queue/enqueue`, {
+    await client.request("/api/command-queue/enqueue", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ command, cwd }),
+      body: { command, cwd },
+      responseType: "none",
     });
-
-    if (!response.ok) {
-      console.error("Failed to submit to queue:", response.statusText);
-      return false;
-    }
 
     return true;
   } catch (err) {
@@ -114,21 +107,14 @@ async function submitToQueue(command: string, cwd: string): Promise<boolean> {
 async function saveFileContent(filePath: string, content: string): Promise<boolean> {
   try {
     const client = getGatewayClient();
-    const baseUrl = client.getBaseUrl();
-
-    const response = await fetch(`${baseUrl}/api/files/content`, {
+    await client.request("/api/files/content", {
       method: "PUT",
       headers: {
-        "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ path: filePath, content }),
+      body: { path: filePath, content },
+      responseType: "none",
     });
-
-    if (!response.ok) {
-      console.error("Failed to save file:", response.statusText);
-      return false;
-    }
 
     return true;
   } catch (err) {
