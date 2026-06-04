@@ -22,7 +22,7 @@ import {
   type TaskStatus,
 } from "@/lib/kanban";
 import { recordTaskActivity, clearTaskActivity } from "@/stores/task-activity-store";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 
 // ============================================================================
 // Types for Update Hooks
@@ -326,7 +326,6 @@ export function useTaskLifecycle() {
     mutationFn: async (params: LifecycleParams): Promise<LifecycleResponse> => {
       const { action, workspace_path, task_id, ...rest } = params;
 
-      const url = `${getGatewayUrl()}/api/task/${action}`;
       const body = { workspace_path, task_id, ...rest };
 
       // Special case: stop endpoint uses task_dir instead of task_id
@@ -335,18 +334,7 @@ export function useTaskLifecycle() {
         delete (body as Record<string, unknown>).task_id;
       }
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Lifecycle action '${action}' failed with status ${response.status}`);
-      }
-
-      return response.json();
+      return getGatewayClient().post<LifecycleResponse>(`/api/task/${action}`, body);
     },
     onMutate: async (params) => {
       const queryKey = kanbanKeys.tasks(params.workspace_path ?? "");
@@ -432,8 +420,6 @@ export function _useCreateTask() {
 
   return useMutation({
     mutationFn: async (input: CreateTaskInput): Promise<CreateTaskApiResponse> => {
-      const url = `${getGatewayUrl()}/api/task/create`;
-
       // Map input to API request format
       const apiRequest: CreateTaskApiRequest = {
         workspace_path: input.workspace_path,
@@ -456,18 +442,7 @@ export function _useCreateTask() {
         Object.entries(apiRequest).filter(([, v]) => v !== undefined)
       );
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Create task failed with status ${response.status}`);
-      }
-
-      return response.json();
+      return getGatewayClient().post<CreateTaskApiResponse>("/api/task/create", body);
     },
     onSuccess: (_result: CreateTaskApiResponse, variables: CreateTaskInput) => {
       // Invalidate tasks query to refetch
@@ -527,8 +502,6 @@ export function _useUpdateTask() {
 
   return useMutation({
     mutationFn: async ({ workspacePath, taskId, data }: UpdateTaskParams): Promise<UpdateTaskApiResponse> => {
-      const url = `${getGatewayUrl()}/api/task/update`;
-
       // Build API request body
       const body: UpdateTaskApiRequest = {
         workspace_path: workspacePath,
@@ -541,18 +514,7 @@ export function _useUpdateTask() {
         Object.entries(body).filter(([, v]) => v !== undefined)
       );
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(cleanBody),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Update task failed with status ${response.status}`);
-      }
-
-      return response.json();
+      return getGatewayClient().post<UpdateTaskApiResponse>("/api/task/update", cleanBody);
     },
     onMutate: async ({ workspacePath, taskId, data }: UpdateTaskParams) => {
       const queryKey = kanbanKeys.tasks(workspacePath ?? "");
@@ -618,19 +580,10 @@ export function _useUpdateTaskStatus() {
   return useMutation({
     mutationFn: async ({ taskId, status }: UpdateTaskStatusParams) => {
       // Use PUT /api/tasks/:id directly
-      const url = `${getGatewayUrl()}/api/tasks/${encodeURIComponent(taskId)}`;
-      const response = await fetch(url, {
+      return getGatewayClient().request(`/api/tasks/${encodeURIComponent(taskId)}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: { status },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Update task status failed with status ${response.status}`);
-      }
-
-      return response.json();
     },
     onMutate: async ({ taskId, status, workspacePath }: UpdateTaskStatusParams) => {
       const queryKey = kanbanKeys.tasks(workspacePath ?? "");
@@ -691,23 +644,13 @@ export function _useDeleteTask() {
 
   return useMutation({
     mutationFn: async ({ taskId, workspacePath }: DeleteTaskParams): Promise<DeleteTaskApiResponse> => {
-      const url = `${getGatewayUrl()}/api/task/delete`;
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      return getGatewayClient().post<DeleteTaskApiResponse>(
+        "/api/task/delete",
+        {
           workspace_path: workspacePath,
           task_id: taskId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Delete task failed with status ${response.status}`);
-      }
-
-      return response.json();
+        }
+      );
     },
     onSuccess: (_data: DeleteTaskApiResponse, { taskId, workspacePath }: DeleteTaskParams) => {
       // Clear activity tracking for deleted task
