@@ -63,6 +63,7 @@
         "resizable": false,
         "shadow": false,
         "focus": false,
+        "focusable": false,
         "url": "/pet-window.html"
       }
     ],
