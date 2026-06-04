@@ -523,7 +523,9 @@ function MessageItemImpl({
         key={msg.id || idx}
         message={msg}
         onLinkClick={onLinkClick}
-        // Don't pass maxWidth to nested messages - they should fill their container
+        maxWidth="100%"
+        toolExpandedInline={toolExpandedInline}
+        onExpandSubagent={onExpandSubagent}
       />
     );
 
