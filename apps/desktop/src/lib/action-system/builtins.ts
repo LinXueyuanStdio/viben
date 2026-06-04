@@ -29,7 +29,7 @@ export async function executeBuiltin(
 
 function handleListActions(): ClientToolResult {
   const store = useActionStore.getState();
-  const actions = store.listActions();
+  const actions = [...getBuiltinActionInfos(), ...store.listActions()];
   return {
     content: [{ type: "text", text: JSON.stringify(actions, null, 2) }],
   };
@@ -102,6 +102,68 @@ async function handleReadWindow(ctx: ExecutionContext): Promise<ClientToolResult
 
 function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, unknown>) | null {
   switch (action) {
+    case "list_actions":
+      return {
+        name: "list_actions",
+        description: "List currently available GUI actions. Builtin actions are unprefixed; frontend provider actions use namespace.name.",
+        input_schema: {
+          type: "object",
+          properties: {},
+        },
+        output_schema: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              description: { type: "string" },
+            },
+            required: ["name", "description"],
+          },
+        },
+      };
+    case "get_action_detail":
+      return {
+        name: "get_action_detail",
+        description: "Return description and JSON schema details for a builtin or registered GUI action.",
+        input_schema: {
+          type: "object",
+          properties: {
+            action: {
+              type: "string",
+              description: "Action name to inspect. Builtins are unprefixed; provider actions use namespace.name.",
+            },
+          },
+          required: ["action"],
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            input_schema: { type: "object" },
+            output_schema: { type: "object" },
+          },
+          required: ["name", "description"],
+        },
+      };
+    case "read_window":
+      return {
+        name: "read_window",
+        description: "Capture the current desktop app window as a PNG image after user approval.",
+        input_schema: {
+          type: "object",
+          properties: {},
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            content: { type: "array" },
+            isError: { type: "boolean" },
+          },
+          required: ["content"],
+        },
+      };
     case "navigate_to":
       return {
         name: "navigate_to",
@@ -139,6 +201,20 @@ function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, 
     default:
       return null;
   }
+}
+
+function getBuiltinActionInfos() {
+  return ["list_actions", "get_action_detail", "read_window", "navigate_to"]
+    .map((name) => {
+      const detail = getBuiltinActionDetail(name);
+      return detail
+        ? {
+            name: detail.name,
+            description: detail.description,
+          }
+        : null;
+    })
+    .filter((detail): detail is { name: string; description: string } => detail !== null);
 }
 
 async function handleNavigateTo(payload: unknown, ctx: ExecutionContext): Promise<ClientToolResult> {
