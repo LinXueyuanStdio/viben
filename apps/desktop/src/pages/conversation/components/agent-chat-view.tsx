@@ -19,6 +19,8 @@ import { ChatHeader } from "./chat-header";
 import { ContextUsageIndicator } from "./context-usage-indicator";
 import type { Conversation } from "../conversation-utils";
 
+const MESSAGE_COLUMN_MAX_WIDTH = "820px";
+
 interface AgentChatViewProps {
   // Conversation
   selectedConversationId: string | null;
@@ -100,6 +102,7 @@ interface AgentChatViewProps {
   onOpenSessionFolder: () => void;
   onArchiveConversation: () => void;
   onAgentSettings: (agentId: string) => void;
+  messageColumnMaxWidth?: string;
   headerless?: boolean;
 }
 
@@ -156,6 +159,7 @@ export function AgentChatView({
   onOpenSessionFolder,
   onArchiveConversation,
   onAgentSettings,
+  messageColumnMaxWidth = MESSAGE_COLUMN_MAX_WIDTH,
   headerless = false,
 }: AgentChatViewProps) {
   const { t } = useTranslation();
@@ -301,7 +305,7 @@ export function AgentChatView({
         onRejectPlan={onRejectPlan}
         onAnswerQuestions={onAnswerQuestions}
         className="flex-1 min-w-0 overflow-hidden"
-        maxMessageWidth="820px"
+        maxMessageWidth={messageColumnMaxWidth}
         artifacts={artifacts}
         highlightedMessageId={highlightedMessageId}
         onArtifactClick={onArtifactClick}
@@ -319,14 +323,19 @@ export function AgentChatView({
 
       {/* Command Queue Panel */}
       {commandQueue && commandQueue.items.length > 0 && (
-        <CommandQueuePanel
-          items={commandQueue.items}
-          isPaused={commandQueue.isPaused}
-          onRemove={commandQueue.onRemove}
-          onClear={commandQueue.onClear}
-          onPause={commandQueue.onPause}
-          onResume={commandQueue.onResume}
-        />
+        <div
+          className="mx-auto w-full px-4 pb-2"
+          style={{ maxWidth: messageColumnMaxWidth }}
+        >
+          <CommandQueuePanel
+            items={commandQueue.items}
+            isPaused={commandQueue.isPaused}
+            onRemove={commandQueue.onRemove}
+            onClear={commandQueue.onClear}
+            onPause={commandQueue.onPause}
+            onResume={commandQueue.onResume}
+          />
+        </div>
       )}
 
       {/* Bottom bar: animated transition between PlanApproval / ExecApproval / QuestionInput / ChatInput */}

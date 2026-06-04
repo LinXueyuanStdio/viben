@@ -6,7 +6,7 @@ import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, Fil
 import { cn } from "@viben/ui";
 import type { AgentMessage, MessageAttachment } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
-import { PlanApproval } from "./plan-approval";
+import { PlanSummary } from "./plan-approval";
 import { QuestionInput } from "./question-input";
 import { CachedStreamdown } from "./cached-markdown";
 
@@ -472,9 +472,6 @@ function MessageItemImpl({
   message,
   isStreaming,
   isStatic,
-  onApprovePlan,
-  onRejectPlan,
-  isPlanPending,
   onLinkClick,
   className,
   maxWidth,
@@ -557,14 +554,7 @@ function MessageItemImpl({
   }
   // Plan message
   else if (message.type === "plan" && message.plan) {
-    content = (
-      <PlanApproval
-        plan={message.plan}
-        onApprove={onApprovePlan}
-        onReject={onRejectPlan}
-        isPending={isPlanPending}
-      />
-    );
+    content = <PlanSummary plan={message.plan} />;
   }
   // AskUserQuestion message - displayed as read-only QuestionInput
   else if (message.type === "ask_question" && message.questions) {

@@ -21,6 +21,11 @@ export interface PlanApprovalProps {
   className?: string;
 }
 
+export interface PlanSummaryProps {
+  plan: TaskPlan;
+  className?: string;
+}
+
 function StepStatusIndicator({
   step,
   index,
@@ -256,5 +261,86 @@ export function PlanApproval({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function getPlanApprovalStatus(plan: TaskPlan): "approved" | "rejected" | "pending" {
+  if (plan.approvalStatus) return plan.approvalStatus;
+  if (plan.steps.some((step) => step.status === "cancelled")) return "rejected";
+  if (
+    plan.steps.some(
+      (step) => step.status === "in_progress" || step.status === "completed"
+    )
+  ) {
+    return "approved";
+  }
+  return "pending";
+}
+
+export function PlanSummary({ plan, className }: PlanSummaryProps) {
+  const { t } = useTranslation();
+  const approvalStatus = getPlanApprovalStatus(plan);
+  const visibleSteps = plan.steps.slice(0, 3);
+  const remainingSteps = Math.max(0, plan.steps.length - visibleSteps.length);
+
+  return (
+    <div className={cn("flex gap-3 w-full min-w-0", className)}>
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        {approvalStatus === "rejected" ? (
+          <X className="h-4 w-4 text-muted-foreground" />
+        ) : approvalStatus === "approved" ? (
+          <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        ) : (
+          <ListChecks className="h-4 w-4 text-primary" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1 overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-2 border-b border-inherit px-4 py-3">
+            <h4 className="font-serif font-semibold text-foreground">
+              {t("chat.executionPlan", "Execution Plan")}
+            </h4>
+            {approvalStatus === "approved" ? (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                {t("chat.planApproved", "Approved")}
+              </span>
+            ) : approvalStatus === "rejected" ? (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {t("chat.planRejected", "Rejected")}
+              </span>
+            ) : (
+              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
+                {t("chat.pendingApproval", "Pending Approval")}
+              </span>
+            )}
+          </div>
+          <div className="space-y-3 px-4 py-3">
+            <p className="text-sm text-foreground">{plan.goal}</p>
+            {visibleSteps.length > 0 && (
+              <ol className="space-y-1.5 text-sm text-muted-foreground">
+                {visibleSteps.map((step, index) => (
+                  <li key={step.id} className="flex gap-2">
+                    <span className="w-5 shrink-0 text-right tabular-nums">
+                      {index + 1}.
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {step.description}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {remainingSteps > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t("chat.moreStepsCount", {
+                  count: remainingSteps,
+                  defaultValue: `+${remainingSteps} more steps`,
+                })}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

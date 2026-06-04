@@ -951,8 +951,6 @@ interface MessageRowProps {
   lastThinkingIdx: number;
   activeHighlight: string | null;
   // Stable callbacks and values
-  onApprovePlan?: () => void;
-  onRejectPlan?: () => void;
   pendingPlan?: TaskPlan | null;
   onLinkClick?: (href: string) => void;
   maxMessageWidth?: string;
@@ -970,8 +968,6 @@ const MessageRow = React.memo(function MessageRow({
   streamingText,
   lastThinkingIdx,
   activeHighlight,
-  onApprovePlan,
-  onRejectPlan,
   pendingPlan,
   onLinkClick,
   maxMessageWidth,
@@ -1008,8 +1004,6 @@ const MessageRow = React.memo(function MessageRow({
           message={message}
           isStreaming={isStreamingMessage}
           isStatic={isStatic}
-          onApprovePlan={onApprovePlan}
-          onRejectPlan={onRejectPlan}
           isPlanPending={isPlanMessage && pendingPlan !== null}
           onLinkClick={onLinkClick}
           maxWidth={maxMessageWidth}
@@ -1084,8 +1078,8 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   streamingText,
   pendingPlan,
   pendingQuestions: _pendingQuestions,
-  onApprovePlan,
-  onRejectPlan,
+  onApprovePlan: _onApprovePlan,
+  onRejectPlan: _onRejectPlan,
   onAnswerQuestions: _onAnswerQuestions,
   className,
   onLinkClick,
@@ -1401,29 +1395,17 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   // Latest-ref pattern: callbacks stored in ref, stable wrappers created once.
   // Prevents MessageRow re-renders when parent re-renders with new callback references.
   const handlersRef = useRef({
-    onApprovePlan,
-    onRejectPlan,
     onLinkClick,
     onExpandSubagent,
     onArtifactClick,
   });
   handlersRef.current = {
-    onApprovePlan,
-    onRejectPlan,
     onLinkClick,
     onExpandSubagent,
     onArtifactClick,
   };
 
   // Stable wrappers — empty deps, references never change
-  const stableOnApprovePlan = useCallback(() => {
-    handlersRef.current.onApprovePlan?.();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const stableOnRejectPlan = useCallback(() => {
-    handlersRef.current.onRejectPlan?.();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const stableOnLinkClick = useCallback((href: string) => {
     handlersRef.current.onLinkClick?.(href);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1556,8 +1538,6 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                     streamingText={streamingText}
                     lastThinkingIdx={lastThinkingIdx}
                     activeHighlight={activeHighlight}
-                    onApprovePlan={stableOnApprovePlan}
-                    onRejectPlan={stableOnRejectPlan}
                     pendingPlan={pendingPlan}
                     onLinkClick={stableOnLinkClick}
                     maxMessageWidth={maxMessageWidth}

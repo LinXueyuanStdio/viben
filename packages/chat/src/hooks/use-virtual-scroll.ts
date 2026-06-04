@@ -1,10 +1,10 @@
 import { useRef, useCallback, useMemo, useDeferredValue, useEffect, useSyncExternalStore } from "react";
 
 // --- Constants ---
-const OVERSCAN_PX = 800;
+const OVERSCAN_PX = 1600;
 const SCROLL_QUANTUM_PX = 100;
 const DEFAULT_HEIGHT = 80;
-const MAX_MOUNTED_ITEMS = 200;
+const MAX_MOUNTED_ITEMS = 500;
 const SLIDE_STEP = 25;
 const ITEM_GAP = 16;
 
@@ -292,6 +292,9 @@ export function useVirtualScroll(
   if (n === 0) {
     start = 0;
     end = 0;
+  } else if (n <= maxMounted) {
+    start = 0;
+    end = n;
   } else if (viewportH === 0) {
     // Cold start: render last N items (will pin to bottom)
     start = Math.max(0, n - 30);
@@ -363,9 +366,10 @@ export function useVirtualScroll(
     }
   }
 
-  // SLIDE_STEP: limit how many new items mount per frame
+  // SLIDE_STEP: limit how many new items mount per frame for very long lists.
+  // Small/medium lists are fully mounted above, so historical messages remain visible.
   const [prevStart, prevEnd] = prevRangeRef.current;
-  if (prevEnd > 0) {
+  if (n > maxMounted && prevEnd > 0) {
     if (pendingScrollTargetRef.current === null) {
       if (start < prevStart - slideStep) {
         start = prevStart - slideStep;
@@ -392,11 +396,11 @@ export function useVirtualScroll(
   start = Math.max(0, start);
   end = Math.min(n, end);
 
-  // useDeferredValue: defer range GROWTH only
+  // useDeferredValue: defer range GROWTH only for very long lists.
   const dStart = useDeferredValue(start);
   const dEnd = useDeferredValue(end);
-  let effStart = start < dStart ? dStart : start; // defer earlier start (scroll up)
-  let effEnd = end > dEnd ? dEnd : end; // defer later end (scroll down)
+  let effStart = n > maxMounted && start < dStart ? dStart : start;
+  let effEnd = n > maxMounted && end > dEnd ? dEnd : end;
 
   // Bypass deferral edge cases
   if (effStart >= effEnd) {
@@ -407,10 +411,12 @@ export function useVirtualScroll(
     // Sticky must render tail immediately
     effEnd = end;
   }
-  // Asymmetric bypass: scrolling DOWN → bypass effEnd deferral (mount tail immediately)
-  // Scrolling UP → keep effStart deferred (old messages' parse cost is expensive)
+  // Bypass deferral in the user's scroll direction so real messages mount immediately.
   if (scrollDirectionRef.current === "down" && effEnd < end) {
     effEnd = end;
+  }
+  if (scrollDirectionRef.current === "up" && effStart > start) {
+    effStart = start;
   }
 
   // Final clamp

@@ -34,14 +34,19 @@ export function CommandQueuePanel({
 
   if (compact) {
     return (
-      <div className={cn("border-t border-border/40 bg-muted/30", className)}>
+      <div
+        className={cn(
+          "border-t border-border/40 bg-muted/30 text-left",
+          className
+        )}
+      >
         {/* Compact header bar */}
-        <div className="flex items-center gap-2 px-3 py-1.5">
+        <div className="flex items-center gap-2 px-3 py-1.5 text-left">
           <ListOrdered className="size-3.5 text-muted-foreground" />
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            className="text-left text-xs text-muted-foreground hover:text-foreground cursor-pointer"
           >
             {items.length} {t("chat.commandQueue.queued", "queued")}
           </button>
@@ -71,11 +76,18 @@ export function CommandQueuePanel({
         </div>
         {/* Expandable item list */}
         {expanded && (
-          <div className="px-3 pb-2 max-h-24 overflow-y-auto border-t border-border/20">
+          <div className="px-3 pb-2 max-h-24 overflow-y-auto border-t border-border/20 text-left">
             {items.map((item, idx) => (
-              <div key={item.id} className="flex items-center gap-2 py-0.5 text-xs">
-                <span className="text-muted-foreground shrink-0">{idx + 1}.</span>
-                <span className="truncate flex-1">{item.content}</span>
+              <div
+                key={item.id}
+                className="flex items-center gap-2 py-0.5 text-left text-xs"
+              >
+                <span className="text-muted-foreground shrink-0 text-left">
+                  {idx + 1}.
+                </span>
+                <span className="truncate flex-1 text-left">
+                  {item.content}
+                </span>
                 <button
                   type="button"
                   onClick={() => onRemove(item.id)}
@@ -92,9 +104,9 @@ export function CommandQueuePanel({
   }
 
   return (
-    <div className={cn("rounded-lg border bg-card p-2", className)}>
+    <div className={cn("rounded-lg border bg-card p-2 text-left", className)}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center justify-between mb-1.5 text-left">
         <div className="flex items-center gap-1.5">
           <ListOrdered className="h-3.5 w-3.5 text-muted-foreground" />
           <span className="text-xs font-medium">
@@ -132,16 +144,16 @@ export function CommandQueuePanel({
       </div>
 
       {/* Item List */}
-      <div className="max-h-32 overflow-y-auto space-y-0.5">
+      <div className="max-h-32 overflow-y-auto space-y-0.5 text-left">
         {items.map((item, idx) => (
           <div
             key={item.id}
-            className="flex items-center gap-2 rounded-md px-2 py-1 text-xs hover:bg-muted/50 group"
+            className="flex items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-muted/50 group"
           >
-            <span className="text-muted-foreground w-4 shrink-0 text-center">
+            <span className="text-muted-foreground w-4 shrink-0 text-left">
               {idx + 1}
             </span>
-            <span className="flex-1 truncate">{item.content}</span>
+            <span className="flex-1 truncate text-left">{item.content}</span>
             {item.attachments && item.attachments.length > 0 && (
               <span className="shrink-0 text-muted-foreground">
                 +{item.attachments.length} {t("chat.commandQueue.files", "files")}

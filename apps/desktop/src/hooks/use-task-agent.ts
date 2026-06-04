@@ -189,6 +189,7 @@ Try asking about:
               { id: "4", description: i18n.t("taskAgent.testAndVerify"), status: "pending" },
             ],
             notes: taskContext?.description || "Implementation plan for the task.",
+            approvalStatus: "pending",
           };
 
           const planMessage: AgentMessage = {
@@ -317,7 +318,14 @@ Try these commands:
                       ? "in_progress"
                       : step.status,
               })) as typeof m.plan.steps;
-              return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+              return {
+                ...m,
+                plan: {
+                  ...m.plan,
+                  steps: updatedSteps,
+                  approvalStatus: "approved",
+                },
+              };
             }
             return m;
           })
@@ -332,7 +340,14 @@ Try these commands:
               ...step,
               status: "completed" as const,
             }));
-            return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+            return {
+              ...m,
+              plan: {
+                ...m.plan,
+                steps: updatedSteps,
+                approvalStatus: "approved",
+              },
+            };
           }
           return m;
         })
@@ -368,7 +383,14 @@ Try these commands:
             ...step,
             status: "cancelled" as const,
           }));
-          return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+          return {
+            ...m,
+            plan: {
+              ...m.plan,
+              steps: updatedSteps,
+              approvalStatus: "rejected",
+            },
+          };
         }
         return m;
       })

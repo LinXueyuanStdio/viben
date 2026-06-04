@@ -40,8 +40,13 @@ function computeRange(
   viewportH: number,
   overscan: number,
   isAtBottom: boolean,
+  maxMounted: number = 500,
 ): [number, number] {
   if (itemCount === 0) return [0, 0];
+
+  if (itemCount <= maxMounted) {
+    return [0, itemCount];
+  }
 
   if (viewportH === 0) {
     // Cold start
@@ -131,7 +136,12 @@ describe("computeRange", () => {
 
   test("cold start (viewport=0) returns last 30 items", () => {
     const offsets = buildOffsets(100, getKey, new Map());
-    expect(computeRange(offsets, 100, 0, 0, OVERSCAN_PX, false)).toEqual([70, 100]);
+    expect(computeRange(offsets, 100, 0, 0, OVERSCAN_PX, false, 50)).toEqual([70, 100]);
+  });
+
+  test("small and medium lists mount all items instead of spacer placeholders", () => {
+    const offsets = buildOffsets(100, getKey, new Map());
+    expect(computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false)).toEqual([0, 100]);
   });
 
   test("at-bottom returns range ending at itemCount", () => {
@@ -152,7 +162,7 @@ describe("computeRange", () => {
     const offsets = buildOffsets(100, getKey, new Map());
     // scrollTop = 4800 → target = 4800 - 800 = 4000
     // Each item is 96px (80 + 16 gap), so index ≈ 4000 / 96 = 41.6 → start = 41
-    const [start] = computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false);
+    const [start] = computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false, 50);
     expect(start).toBeGreaterThanOrEqual(40);
     expect(start).toBeLessThanOrEqual(42);
   });
@@ -160,7 +170,7 @@ describe("computeRange", () => {
   test("range covers viewport + overscan", () => {
     const offsets = buildOffsets(100, getKey, new Map());
     const viewportH = 600;
-    const [start, end] = computeRange(offsets, 100, 2000, viewportH, OVERSCAN_PX, false);
+    const [start, end] = computeRange(offsets, 100, 2000, viewportH, OVERSCAN_PX, false, 50);
     // Content covered should be >= viewport + overscan (from scrollTop onwards)
     const coveredHeight = offsets[end] - offsets[start];
     expect(coveredHeight).toBeGreaterThanOrEqual(viewportH);
@@ -179,14 +189,14 @@ describe("spacer calculations", () => {
 
   test("topSpacer = offsets[start]", () => {
     const offsets = buildOffsets(100, getKey, new Map());
-    const [start] = computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false);
+    const [start] = computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false, 50);
     const topSpacer = offsets[start];
     expect(topSpacer).toBeGreaterThan(0);
   });
 
   test("bottomSpacer = totalHeight - offsets[end]", () => {
     const offsets = buildOffsets(100, getKey, new Map());
-    const [, end] = computeRange(offsets, 100, 0, 600, OVERSCAN_PX, false);
+    const [, end] = computeRange(offsets, 100, 0, 600, OVERSCAN_PX, false, 50);
     const totalHeight = offsets[100];
     const bottomSpacer = totalHeight - offsets[end];
     if (end < 100) {
@@ -196,7 +206,7 @@ describe("spacer calculations", () => {
 
   test("topSpacer + content + bottomSpacer = totalHeight", () => {
     const offsets = buildOffsets(100, getKey, new Map());
-    const [start, end] = computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false);
+    const [start, end] = computeRange(offsets, 100, 4800, 600, OVERSCAN_PX, false, 50);
     const topSpacer = offsets[start];
     const contentHeight = offsets[end] - offsets[start];
     const bottomSpacer = Math.max(0, offsets[100] - offsets[end]);

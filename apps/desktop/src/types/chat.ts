@@ -39,6 +39,7 @@ export interface TaskPlan {
   goal: string;
   steps: TaskPlanStep[];
   notes?: string;
+  approvalStatus?: "pending" | "approved" | "rejected";
 }
 
 /** Question option in interactive question */

@@ -669,6 +669,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
                 status: s.status as "pending" | "in_progress" | "completed" | "failed" | "cancelled",
               })),
               notes: data.plan.notes,
+              approvalStatus: "pending",
             },
           };
           setMessages((prev) => [...prev, planMsg]);
@@ -1192,6 +1193,14 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     setPhase("running");
     setIsStreaming(true);
 
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.type === "plan" && m.plan?.id === planId
+          ? { ...m, plan: { ...m.plan, approvalStatus: "approved" } }
+          : m
+      )
+    );
+
     sendWebSocketMessage({
       type: "approve",
       plan_id: planId,
@@ -1225,7 +1234,14 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
             ...step,
             status: "cancelled" as const,
           }));
-          return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+          return {
+            ...m,
+            plan: {
+              ...m.plan,
+              steps: updatedSteps,
+              approvalStatus: "rejected",
+            },
+          };
         }
         return m;
       })
@@ -1482,6 +1498,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
               { id: "3", description: "Generate response", status: "pending" },
             ],
             notes: "This is a mock plan for demonstration purposes.",
+            approvalStatus: "pending",
           };
 
           const planMessage: AgentMessage = {
@@ -1674,7 +1691,14 @@ The workspace ID for this session is: \`${workspaceId}\`
               ...step,
               status: "in_progress" as const,
             }));
-            return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+            return {
+              ...m,
+              plan: {
+                ...m.plan,
+                steps: updatedSteps,
+                approvalStatus: "approved",
+              },
+            };
           }
           return m;
         })
@@ -1687,11 +1711,18 @@ The workspace ID for this session is: \`${workspaceId}\`
         setMessages((prev) =>
           prev.map((m) => {
             if (m.type === "plan" && m.plan) {
-              const updatedSteps = m.plan.steps.map((step) => ({
-                ...step,
-                status: "completed" as const,
-              }));
-              return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+            const updatedSteps = m.plan.steps.map((step) => ({
+              ...step,
+              status: "completed" as const,
+            }));
+              return {
+                ...m,
+                plan: {
+                  ...m.plan,
+                  steps: updatedSteps,
+                  approvalStatus: "approved",
+                },
+              };
             }
             return m;
           })
@@ -1743,7 +1774,14 @@ The workspace ID for this session is: \`${workspaceId}\`
             ...step,
             status: "cancelled" as const,
           }));
-          return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+          return {
+            ...m,
+            plan: {
+              ...m.plan,
+              steps: updatedSteps,
+              approvalStatus: "rejected",
+            },
+          };
         }
         return m;
       })

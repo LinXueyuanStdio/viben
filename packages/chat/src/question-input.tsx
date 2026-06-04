@@ -1,7 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
-import { HelpCircle, Check, Send, Loader2 } from "lucide-react";
+import {
+  HelpCircle,
+  Check,
+  Send,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { cn, Button } from "@viben/ui";
 import type { PendingQuestion, AgentQuestion } from "./types";
 
@@ -195,6 +202,29 @@ export function QuestionInput({
   const [showOtherFlags, setShowOtherFlags] = useState<Record<number, boolean>>(
     {}
   );
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const questionCount = questions.questions.length;
+  const usePagedQuestions = questionCount > 2;
+  const activeQuestionIndex = Math.min(
+    currentQuestionIndex,
+    Math.max(questionCount - 1, 0)
+  );
+  const visibleQuestions = usePagedQuestions
+    ? questions.questions[activeQuestionIndex]
+      ? [
+          {
+            question: questions.questions[activeQuestionIndex],
+            index: activeQuestionIndex,
+          },
+        ]
+      : []
+    : questions.questions.map((question, index) => ({ question, index }));
+
+  useEffect(() => {
+    setCurrentQuestionIndex((prev) =>
+      Math.min(prev, Math.max(questions.questions.length - 1, 0))
+    );
+  }, [questions.questions.length]);
 
   const handleOptionSelect = useCallback(
     (questionIndex: number, optionLabel: string, multiSelect: boolean) => {
@@ -297,13 +327,53 @@ export function QuestionInput({
             </div>
           </div>
 
+          {usePagedQuestions && (
+            <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-amber-500/20 bg-amber-500/5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() =>
+                  setCurrentQuestionIndex((prev) => Math.max(prev - 1, 0))
+                }
+                disabled={activeQuestionIndex === 0}
+                aria-label={t("chat.previousQuestion", "Previous question")}
+                title={t("chat.previousQuestion", "Previous question")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
+                {activeQuestionIndex + 1} / {questionCount}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() =>
+                  setCurrentQuestionIndex((prev) =>
+                    Math.min(prev + 1, questionCount - 1)
+                  )
+                }
+                disabled={activeQuestionIndex >= questionCount - 1}
+                aria-label={t("chat.nextQuestion", "Next question")}
+                title={t("chat.nextQuestion", "Next question")}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
           {/* Questions */}
-          {questions.questions.map((question, qIdx) => (
+          {visibleQuestions.map(({ question, index: qIdx }, visibleIdx) => (
             <div
               key={qIdx}
               className={cn(
                 "px-4 py-4",
-                qIdx > 0 && "border-t border-amber-500/20"
+                !usePagedQuestions &&
+                  visibleIdx > 0 &&
+                  "border-t border-amber-500/20"
               )}
             >
               <QuestionItem
