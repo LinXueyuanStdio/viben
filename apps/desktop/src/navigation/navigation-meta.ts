@@ -1,6 +1,5 @@
 import type { IconData } from "@/components/ui/icon-picker";
 import i18n from "@/i18n";
-import { registry } from "./route-registry";
 
 // ─── Section Types ───────────────────────────────────────────────────────────
 
@@ -102,7 +101,7 @@ export const WORKSPACE_SECTIONS: WorkspaceSectionInfo[] = [
   { section: "chat-monitor", icon: { type: "lucide", value: "activity" }, titleKey: "workspace.chatMonitor", fallbackLabel: "Chat Monitor" },
 ];
 
-const WORKSPACE_SECTION_MAP = new Map<string, WorkspaceSectionInfo>(
+export const WORKSPACE_SECTION_MAP = new Map<string, WorkspaceSectionInfo>(
   WORKSPACE_SECTIONS.map((info) => [info.section, info])
 );
 
@@ -131,7 +130,7 @@ export const SETTINGS_SECTIONS: SettingsSectionInfo[] = [
   { section: "about", icon: { type: "lucide", value: "info" }, titleKey: "settings.sections.about", fallbackLabel: "About" },
 ];
 
-const SETTINGS_SECTION_MAP = new Map<string, SettingsSectionInfo>(
+export const SETTINGS_SECTION_MAP = new Map<string, SettingsSectionInfo>(
   SETTINGS_SECTIONS.map((info) => [info.section, info])
 );
 
@@ -185,30 +184,19 @@ export function getSettingsSectionIcon(section?: string): IconData {
   return getSettingsSectionDescriptor(section)?.icon ?? { type: "lucide", value: "settings" };
 }
 
+export function getSettingsTitle(section: string): string {
+  const info = SETTINGS_SECTION_MAP.get(section);
+  if (info) return i18n.t(info.titleKey, { defaultValue: info.fallbackLabel });
+  return humanize(section);
+}
+
+function humanize(slug: string): string {
+  return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function getWorkspaceSectionLabel(section?: WorkspaceSection): string {
   const info = getWorkspaceSectionDescriptor(section);
   if (!info) return "";
   return i18n.t(info.titleKey, info.fallbackLabel);
 }
 
-export function getWorkspaceSectionRoutePath(section: WorkspaceSection): string {
-  return section;
-}
-
-/** Resolve icon for an item by looking up via route-registry */
-export function getDescriptorIcon(descriptorId: string | undefined): IconData | undefined {
-  if (!descriptorId) return undefined;
-  // Try route-registry pattern lookup
-  const icon = registry.getIcon(descriptorId);
-  if (icon) return icon;
-  // Fallback: check workspace/settings section maps by legacy descriptor id format
-  if (descriptorId.startsWith("workspace-section:")) {
-    const section = descriptorId.slice("workspace-section:".length);
-    return WORKSPACE_SECTION_MAP.get(section)?.icon;
-  }
-  if (descriptorId.startsWith("settings:")) {
-    const section = descriptorId.slice("settings:".length);
-    return SETTINGS_SECTION_MAP.get(section)?.icon;
-  }
-  return undefined;
-}
