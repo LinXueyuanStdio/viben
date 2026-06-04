@@ -1,6 +1,6 @@
 // apps/desktop/src/pages/pet-window/index.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
-import { getCurrentWindow, PhysicalPosition, LogicalPosition, availableMonitors } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalPosition, availableMonitors } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { PetSprite, type PetConfig, type PetInteraction, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
 import { loadPetFromPublic } from "@/lib/pet-loader";
@@ -155,55 +155,23 @@ export default function PetWindowPage() {
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
-  // Handle window dragging via manual setPosition (avoids native startDragging which triggers
-  // app activation and brings main window to foreground on macOS/Linux).
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // Handle window dragging via Tauri native drag
+  const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    e.preventDefault();
 
-    const win = getCurrentWindow();
-    const startWinX = window.screenLeft;
-    const startWinY = window.screenTop;
-    const startMouseX = e.screenX;
-    const startMouseY = e.screenY;
-
-    // lastPosRef is consumed by tauri://move handler which uses physical pixels
-    const scale = window.devicePixelRatio;
-    lastPosRef.current = {
-      x: Math.round(startWinX * scale),
-      y: Math.round(startWinY * scale),
-    };
     setIsDragging(true);
 
-    let rafId: number | null = null;
-    let pendingX = startWinX;
-    let pendingY = startWinY;
+    const win = getCurrentWindow();
+    const pos = await win.outerPosition();
+    lastPosRef.current = { x: pos.x, y: pos.y };
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      pendingX = startWinX + moveEvent.screenX - startMouseX;
-      pendingY = startWinY + moveEvent.screenY - startMouseY;
-      if (rafId === null) {
-        rafId = requestAnimationFrame(() => {
-          rafId = null;
-          void win.setPosition(new LogicalPosition(pendingX, pendingY));
-        });
-      }
-    };
+    // Blocks until drag ends
+    await win.startDragging();
 
-    const onMouseUp = () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      setIsDragging(false);
-      setInteraction("idle");
-      lastPosRef.current = null;
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    // Drag ended
+    setIsDragging(false);
+    setInteraction("idle");
+    lastPosRef.current = null;
   }, []);
 
   // Detect drag direction from tauri://move events (stable subscription, no deps on state)
