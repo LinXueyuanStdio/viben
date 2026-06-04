@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
 
 // ============================================================================
 // Types
@@ -188,15 +188,11 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
 
   // Stop a task
   const stopTask = useCallback(async (taskId: string) => {
-    const gatewayUrl = getGatewayUrl();
     try {
-      const response = await fetch(`${gatewayUrl}/api/agent/tasks/${taskId}/stop`, {
+      await getGatewayClient().request<void>(`/api/agent/tasks/${taskId}/stop`, {
         method: "POST",
+        responseType: "none",
       });
-
-      if (!response.ok) {
-        throw new Error(t("errors.backgroundTasks.failedToStopTask", { statusText: response.statusText }));
-      }
 
       console.log("[useBackgroundTasks] Stopped task:", taskId);
     } catch (err) {
