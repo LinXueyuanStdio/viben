@@ -51,7 +51,7 @@ import { useChannelInstances, useAgents } from "@/hooks";
 import { useExecutorSessions } from "@/pages/conversation/hooks/use-executor-sessions";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { getGatewayUrl } from "@/lib/gateway";
+import { GatewayError, getGatewayClient } from "@/lib/gateway";
 import type {
   ChannelType,
   GatewayChannel,
@@ -160,6 +160,14 @@ function buildChannelConfig(channel: GatewayChannel): ChannelConfig {
   return channel.config;
 }
 
+function formatGatewayStatusError(error: unknown): string | null {
+  if (error instanceof GatewayError && error.statusCode) {
+    return `Gateway returned ${error.statusCode}: ${error.message}`;
+  }
+
+  return null;
+}
+
 /**
  * Format error message for display
  */
@@ -240,30 +248,32 @@ async function testChannelConnection(
   channel: GatewayChannel,
 ): Promise<{ success: boolean; details?: string; error?: string }> {
   try {
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/channels/test`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const data = await getGatewayClient().post<{
+      success: boolean;
+      details?: string;
+      error?: string;
+    }>(
+      "/api/channels/test",
+      {
         channel_type: channel.channel_type,
         config: buildChannelConfig(channel),
-      }),
-    });
+      }
+    );
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `Gateway returned ${response.status}: ${response.statusText}`,
-      };
-    }
-
-    const data = await response.json();
     return {
       success: data.success,
       details: data.details,
       error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
+    const gatewayError = formatGatewayStatusError(error);
+    if (gatewayError) {
+      return {
+        success: false,
+        error: gatewayError,
+      };
+    }
+
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
@@ -284,30 +294,31 @@ async function sendTestMessage(
   }
 
   try {
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/channels/send-test`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const data = await getGatewayClient().post<{
+      success: boolean;
+      error?: string;
+    }>(
+      "/api/channels/send-test",
+      {
         channel_type: channel.channel_type,
         config: buildChannelConfig(channel),
         chat_id: chatId || "",
-      }),
-    });
+      }
+    );
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `Gateway returned ${response.status}: ${response.statusText}`,
-      };
-    }
-
-    const data = await response.json();
     return {
       success: data.success,
       error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
+    const gatewayError = formatGatewayStatusError(error);
+    if (gatewayError) {
+      return {
+        success: false,
+        error: gatewayError,
+      };
+    }
+
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
@@ -429,10 +440,7 @@ interface TunnelState {
  */
 async function getTunnelStatus(): Promise<TunnelState | null> {
   try {
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/tunnel/status`);
-    if (!response.ok) return null;
-    return await response.json();
+    return await getGatewayClient().get<TunnelState>("/api/tunnel/status");
   } catch {
     return null;
   }
@@ -448,11 +456,10 @@ async function startTunnel(port: number = 18790): Promise<{
   state?: TunnelState;
 }> {
   try {
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/tunnel/start`, {
+    const response = await getGatewayClient().request<Response>("/api/tunnel/start", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ port }),
+      body: { port },
+      responseType: "response",
     });
     return await response.json();
   } catch (error) {
@@ -468,11 +475,9 @@ async function startTunnel(port: number = 18790): Promise<{
  */
 async function stopTunnel(): Promise<{ success: boolean; error?: string }> {
   try {
-    const gatewayUrl = getGatewayUrl();
-    const response = await fetch(`${gatewayUrl}/api/tunnel/stop`, {
+    return await getGatewayClient().request<{ success: boolean; error?: string }>("/api/tunnel/stop", {
       method: "POST",
     });
-    return await response.json();
   } catch (error) {
     return {
       success: false,
@@ -1178,7 +1183,7 @@ export function SettingsChannelsPage() {
     }
 
     // Generate default webhook URL
-    const gatewayUrl = getGatewayUrl();
+    const gatewayUrl = getGatewayClient().getBaseUrl();
     const defaultWebhookUrl = `${gatewayUrl}/api/channels/webhook`;
     setWebhookUrl(defaultWebhookUrl);
 
@@ -1298,7 +1303,7 @@ export function SettingsChannelsPage() {
     if (result.success) {
       setTunnelState((prev) => prev ? { ...prev, status: "stopped", url: null } : null);
       // Reset to local URL
-      const gatewayUrl = getGatewayUrl();
+      const gatewayUrl = getGatewayClient().getBaseUrl();
       setWebhookUrl(`${gatewayUrl}/api/channels/webhook`);
       toast.success(t("channels.tunnel.stopped", "Tunnel stopped"));
     } else {
