@@ -722,8 +722,6 @@ export function ToolExecutionItem({
   const prefersReducedMotion = useReducedMotion();
   const [showModal, setShowModal] = useState(false);
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
-  // Default to expanded when there are subagent messages or when output already exists
-  const [isExpanded, setIsExpanded] = useState(!!hasSubagentMessages || !!output);
 
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
@@ -747,11 +745,14 @@ export function ToolExecutionItem({
     prompt?: string;
     model?: string;
   } : null;
+  const canOpenSubagent = !!taskInput && !!hasSubagentMessages && !!onExpandSubagent;
+  // Default to expanded for regular tools and inline-only subagent cards.
+  const [isExpanded, setIsExpanded] = useState((!!hasSubagentMessages && !canOpenSubagent) || !!output);
 
   // Auto-expand Task/Agent tool when running or when result arrives
   useEffect(() => {
-    if (isTaskTool && (isRunning || output)) setIsExpanded(true);
-  }, [isRunning, isTaskTool, output]);
+    if (isTaskTool && !canOpenSubagent && (isRunning || output)) setIsExpanded(true);
+  }, [canOpenSubagent, isRunning, isTaskTool, output]);
 
   const hasDetails = input || output || hasSubagentMessages;
 
@@ -885,7 +886,6 @@ export function ToolExecutionItem({
       ? mergedSubagentMessages.filter(m => m.type === "tool_use").length
       : 0;
     const title = taskInput.description || taskInput.subagent_type || "Sub-Agent";
-    const canOpenSubagent = hasSubagentMessages && !!onExpandSubagent;
     const handleOpenSubagent = () => {
       if (!canOpenSubagent) return;
       onExpandSubagent(title, taskInput.subagent_type, subagentMessages!);
@@ -921,7 +921,7 @@ export function ToolExecutionItem({
                 {title}
               </span>
               {taskInput.subagent_type && (
-                <span className="shrink-0 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
+                <span className="min-w-0 max-w-[140px] truncate rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
                   {taskInput.subagent_type}
                 </span>
               )}
@@ -985,7 +985,7 @@ export function ToolExecutionItem({
                   )}
 
                   {/* Subagent messages (merged, rendered inline) */}
-                  {mergedSubagentMessages && mergedSubagentMessages.length > 0 && renderMessage && (
+                  {!canOpenSubagent && mergedSubagentMessages && mergedSubagentMessages.length > 0 && renderMessage && (
                     <div className="space-y-1 min-w-0 overflow-hidden">
                       {mergedSubagentMessages.map((msg, idx) => (
                         <div key={msg.id || idx} className="min-w-0">
