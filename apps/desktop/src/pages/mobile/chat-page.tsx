@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useConnectionStore } from "@/stores/connection-store";
-import { getGatewayUrl } from "@/lib/gateway/config";
+import { getGatewayClient } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Monitor, Loader2 } from "lucide-react";
@@ -40,20 +40,14 @@ export function MobileChatPage() {
     setSending(true);
 
     try {
-      const baseUrl = getGatewayUrl();
-      const res = await fetch(`${baseUrl}/api/agent/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: content }),
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const data = await res.json();
+      const data = await getGatewayClient().post<Record<string, unknown>>(
+        "/api/agent/chat",
+        { message: content }
+      );
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: data.response ?? data.message ?? JSON.stringify(data),
+        content: String(data.response ?? data.message ?? JSON.stringify(data)),
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
