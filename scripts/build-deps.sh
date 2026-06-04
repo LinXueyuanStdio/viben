@@ -125,8 +125,8 @@ build_pkg() {
 
     has_dist_export=$(node -e "
         const pkg = require('$pkg_dir/package.json');
-        const main = pkg.main || '';
-        const mod = pkg.module || '';
+        const main = (pkg.main || '').replace(/^\.\//, '');
+        const mod = (pkg.module || '').replace(/^\.\//, '');
         console.log((main.startsWith('dist/') || mod.startsWith('dist/')) ? 'yes' : 'no');
     " 2>/dev/null || echo "no")
 
