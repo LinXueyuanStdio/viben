@@ -7,6 +7,7 @@ import {
   CLAUDE_CODE_SESSIONS,
   parseSessionJsonlDetailed,
 } from "./claudecode-log-provider";
+import { getPublicAssetUrl } from "./public-assets";
 import type { AgentMessage, ContentBlock } from "@viben/chat";
 
 // ============================================================================
@@ -421,6 +422,15 @@ describe("parseSessionJsonl - multimodal content handling", () => {
 });
 
 describe("Claude Code bundled session logs", () => {
+  it("prefixes bundled session asset paths with the configured Vite base", () => {
+    expect(
+      getPublicAssetUrl(
+        "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8.jsonl",
+        "/viben/chat/"
+      )
+    ).toBe("/viben/chat/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8.jsonl");
+  });
+
   it("parses every bundled main and subagent jsonl without skipped records", () => {
     for (const session of CLAUDE_CODE_SESSIONS) {
       const mainPath = path.join(PUBLIC_DIR, session.mainFile.replace(/^\//, ""));

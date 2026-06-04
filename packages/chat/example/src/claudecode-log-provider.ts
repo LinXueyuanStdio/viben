@@ -1,4 +1,5 @@
 import type { AgentMessage, ContentBlock } from "@viben/chat"
+import { getPublicAssetUrl } from "./public-assets"
 
 export interface ParseStats {
   totalLines: number
@@ -274,14 +275,16 @@ function extractAgentMapping(text: string): Map<string, string> {
 }
 
 async function fetchText(path: string): Promise<string> {
-  const response = await fetch(path)
-  if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`)
+  const url = getPublicAssetUrl(path, import.meta.env.BASE_URL)
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Failed to load ${url}: ${response.status}`)
   return response.text()
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(path)
-  if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`)
+  const url = getPublicAssetUrl(path, import.meta.env.BASE_URL)
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Failed to load ${url}: ${response.status}`)
   return response.json() as Promise<T>
 }
 
