@@ -19,6 +19,19 @@ import { StepComplete, type CreationResult } from "./steps/step-complete";
 
 type WizardStep = "choose" | "configure" | "complete";
 
+interface DetectFolderStatusResponse {
+  has_git: boolean;
+  has_viben: boolean;
+  folder_name: string;
+}
+
+interface CreateWorkspaceResponse {
+  workspace: WorkspaceResponse;
+  git_initialized: boolean;
+  viben_initialized: boolean;
+  viben_files?: string[];
+}
+
 interface AddWorkspaceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -66,13 +79,9 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
   const detectFolderStatus = useCallback(async (path: string): Promise<FolderStatus> => {
     try {
       const client = getGatewayClient();
-      const response = await fetch(`${client["baseUrl"]}/api/workspaces/detect?path=${encodeURIComponent(path)}`);
-
-      if (!response.ok) {
-        throw new Error(t("workspace.addModal.detectFailed"));
-      }
-
-      const data = await response.json();
+      const data = await client.request<DetectFolderStatusResponse>(
+        `/api/workspaces/detect?path=${encodeURIComponent(path)}`
+      );
       return {
         hasGit: data.has_git,
         hasViben: data.has_viben,
@@ -150,21 +159,12 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
         } : undefined,
       };
 
-      const response = await fetch(`${client["baseUrl"]}/api/workspaces/create`, {
+      const result = await client.request<CreateWorkspaceResponse>("/api/workspaces/create", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
+        body: requestBody,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t("workspace.createFailed", "Failed to create workspace"));
-      }
-
-      const result = await response.json();
-      const workspace = result.workspace as WorkspaceResponse;
+      const workspace = result.workspace;
 
       // Add to store (this updates the sidebar immediately)
       addWorkspaceToStore({
