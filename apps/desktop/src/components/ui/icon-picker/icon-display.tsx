@@ -14,6 +14,7 @@ import { DynamicLucideIcon } from "./dynamic-lucide-icon";
 import { LUCIDE_ICON_MAP, DEFAULT_ICON_NAME } from "./constants";
 import { parseIconData, getIconSizeClass, getIconPixelSize } from "./utils";
 import type { IconData, IconSize } from "./types";
+import { getGatewayUrl } from "@/lib/gateway/config";
 
 export interface IconDisplayProps {
   /** Icon data (new format) or string (old format) */
@@ -59,7 +60,7 @@ function ImageIcon({
     // Relative path - need to construct URL through gateway
     if (workspacePath) {
       // Use gateway file serving endpoint
-      const gatewayUrl = import.meta.env.VITE_GATEWAY_URL || "http://127.0.0.1:18790";
+      const gatewayUrl = getGatewayUrl();
       return `${gatewayUrl}/api/file/read?workspace_path=${encodeURIComponent(workspacePath)}&file_path=${encodeURIComponent(src)}`;
     }
 
