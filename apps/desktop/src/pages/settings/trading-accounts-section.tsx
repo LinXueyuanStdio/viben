@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { getGatewayClient } from "@/lib/gateway";
 import {
   Wallet,
   KeyRound,
@@ -23,8 +24,6 @@ import {
 } from "lucide-react";
 import { exchangeIcons } from "./exchange-icons";
 import { TradingAccountsDialog } from "./trading-accounts-dialog";
-
-const GATEWAY = "http://127.0.0.1:18790";
 
 interface AccountSummary {
   id: string;
@@ -43,6 +42,16 @@ type TestState = "idle" | "testing" | "success" | "error";
 
 interface TestResult {
   state: TestState;
+  latency_ms?: number;
+  error?: string;
+}
+
+interface AccountsResponse {
+  accounts?: AccountSummary[];
+}
+
+interface AccountTestResponse {
+  success: boolean;
   latency_ms?: number;
   error?: string;
 }
@@ -132,8 +141,7 @@ export function TradingAccountsSection() {
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${GATEWAY}/api/accounts`);
-      const data = await res.json();
+      const data = await getGatewayClient().get<AccountsResponse>("/api/accounts");
       setAccounts(data.accounts ?? []);
     } catch {
       // silently fail -- gateway may not be running
@@ -157,10 +165,7 @@ export function TradingAccountsSection() {
     });
 
     try {
-      const res = await fetch(`${GATEWAY}/api/accounts/${accId}/test`, {
-        method: "POST",
-      });
-      const data = await res.json();
+      const data = await getGatewayClient().post<AccountTestResponse>(`/api/accounts/${accId}/test`);
       setTestResults((prev) => {
         const next = new Map(prev);
         next.set(
@@ -194,10 +199,7 @@ export function TradingAccountsSection() {
 
     const results = await Promise.allSettled(
       accounts.map(async (acc) => {
-        const res = await fetch(`${GATEWAY}/api/accounts/${acc.id}/test`, {
-          method: "POST",
-        });
-        const data = await res.json();
+        const data = await getGatewayClient().post<AccountTestResponse>(`/api/accounts/${acc.id}/test`);
         // Update immediately per-card
         setTestResults((prev) => {
           const next = new Map(prev);
