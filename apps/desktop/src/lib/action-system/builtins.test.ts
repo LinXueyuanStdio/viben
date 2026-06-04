@@ -61,6 +61,34 @@ describe("action-system builtins", () => {
     );
   });
 
+  it("lists builtin actions and returns details for each builtin", async () => {
+    const listResult = await executeBuiltin("list_actions", {}, createContext());
+    expect(listResult).not.toBeNull();
+    const actions = JSON.parse(getTextContent(listResult!));
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "list_actions" }),
+        expect.objectContaining({ name: "get_action_detail" }),
+        expect.objectContaining({ name: "read_window" }),
+        expect.objectContaining({ name: "navigate_to" }),
+      ])
+    );
+
+    for (const action of ["list_actions", "get_action_detail", "read_window", "navigate_to"]) {
+      const detailResult = await executeBuiltin(
+        "get_action_detail",
+        { action },
+        createContext()
+      );
+      expect(detailResult).not.toBeNull();
+      expect(detailResult?.isError).toBeUndefined();
+      const detail = JSON.parse(getTextContent(detailResult!));
+      expect(detail.name).toBe(action);
+      expect(detail.description).toEqual(expect.any(String));
+      expect(detail.input_schema).toEqual(expect.objectContaining({ type: "object" }));
+    }
+  });
+
   it("navigates through the tab navigation store instead of browser history", async () => {
     const initialTabId = useTabStore.getState().openTab({
       navigationState: {
