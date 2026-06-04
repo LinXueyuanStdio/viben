@@ -1,5 +1,8 @@
 packages:
-  - "apps/*"
+  - "apps/desktop"
+  - "apps/cli"
+  - "apps/docs"
+  - "apps/web"
   - "packages/*"
   - "packages/*/example"
   - "infra/Yoopta-Editor/packages/core/*"
