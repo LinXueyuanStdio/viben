@@ -15,6 +15,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { checkBundledCli } from "@/lib/onboarding/bundled-cli";
+import { getGatewayClient } from "@/lib/gateway";
 import { useGateway } from "./use-gateway";
 import { useNodeInstaller } from "./use-node-installer";
 import { useCliInstaller } from "./use-cli-installer";
@@ -137,9 +138,10 @@ export function useGatewaySetup(): UseGatewaySetupReturn {
   const checkGatewayHealth = useCallback(async (): Promise<boolean> => {
     log("Checking gateway health...");
     try {
-      const response = await fetch("http://127.0.0.1:18790/health", {
+      const response = await getGatewayClient().request<Response>("/health", {
         method: "GET",
         signal: AbortSignal.timeout(3000),
+        responseType: "response",
       });
       return response.ok;
     } catch {
