@@ -1,5 +1,5 @@
 // apps/desktop/src/pages/settings/pet-section/api.ts
-const API_BASE = "http://127.0.0.1:18790";
+import { getGatewayClient } from "@/lib/gateway";
 
 export interface PetResponse {
   id: string;
@@ -46,98 +46,58 @@ export interface PetSourceResponse {
 }
 
 export async function fetchPetList(): Promise<{ pets: PetResponse[]; current: string | null }> {
-  const res = await fetch(`${API_BASE}/api/pet/list`);
-  if (!res.ok) throw new Error("Failed to fetch pets");
-  return res.json();
+  return getGatewayClient().get<{ pets: PetResponse[]; current: string | null }>("/api/pet/list");
 }
 
 export async function fetchPetConfig(): Promise<{ config: PetConfigResponse }> {
-  const res = await fetch(`${API_BASE}/api/pet/config`);
-  if (!res.ok) throw new Error("Failed to fetch config");
-  return res.json();
+  return getGatewayClient().get<{ config: PetConfigResponse }>("/api/pet/config");
 }
 
 export async function updatePetConfig(config: Partial<PetConfigResponse>): Promise<{ config: PetConfigResponse }> {
-  const res = await fetch(`${API_BASE}/api/pet/config`, {
+  return getGatewayClient().request<{ config: PetConfigResponse }>("/api/pet/config", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(config),
+    body: config,
   });
-  if (!res.ok) throw new Error("Failed to update config");
-  return res.json();
 }
 
 export async function setCurrentPet(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/pet/set/${encodeURIComponent(id)}`, { method: "POST" });
-  if (!res.ok) throw new Error("Failed to set pet");
+  await getGatewayClient().request<void>(`/api/pet/set/${encodeURIComponent(id)}`, {
+    method: "POST",
+    responseType: "none",
+  });
 }
 
 export async function removePet(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/pet/remove/${encodeURIComponent(id)}`, { method: "POST" });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || "Failed to remove pet");
-  }
+  await getGatewayClient().request<void>(`/api/pet/remove/${encodeURIComponent(id)}`, {
+    method: "POST",
+    responseType: "none",
+  });
 }
 
 export async function fetchCommunityPets(source?: string): Promise<{ pets: CommunityPetResponse[] }> {
-  const url = source
-    ? `${API_BASE}/api/pet/community?source=${encodeURIComponent(source)}`
-    : `${API_BASE}/api/pet/community`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch community pets");
-  return res.json();
+  const query = source ? `?${new URLSearchParams({ source }).toString()}` : "";
+  return getGatewayClient().get<{ pets: CommunityPetResponse[] }>(`/api/pet/community${query}`);
 }
 
 export async function installPet(petId: string, source: string): Promise<{ pet: PetResponse }> {
-  const res = await fetch(`${API_BASE}/api/pet/install`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pet_id: petId, source }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || "Failed to install pet");
-  }
-  return res.json();
+  return getGatewayClient().post<{ pet: PetResponse }>("/api/pet/install", { pet_id: petId, source });
 }
 
 export async function fetchSources(): Promise<{ sources: PetSourceResponse[] }> {
-  const res = await fetch(`${API_BASE}/api/pet/sources/list`);
-  if (!res.ok) throw new Error("Failed to fetch sources");
-  return res.json();
+  return getGatewayClient().get<{ sources: PetSourceResponse[] }>("/api/pet/sources/list");
 }
 
 export async function addSource(name: string, url: string): Promise<{ source: PetSourceResponse }> {
-  const res = await fetch(`${API_BASE}/api/pet/sources/add`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, url }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || "Failed to add source");
-  }
-  return res.json();
+  return getGatewayClient().post<{ source: PetSourceResponse }>("/api/pet/sources/add", { name, url });
 }
 
 export async function removeSource(name: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/pet/sources/remove/${encodeURIComponent(name)}`, { method: "POST" });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || "Failed to remove source");
-  }
+  await getGatewayClient().request<void>(`/api/pet/sources/remove/${encodeURIComponent(name)}`, {
+    method: "POST",
+    responseType: "none",
+  });
 }
 
 export async function importPetZip(path: string): Promise<{ pet: PetResponse }> {
-  const res = await fetch(`${API_BASE}/api/pet/import`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || "Failed to import pet");
-  }
-  return res.json();
+  return getGatewayClient().post<{ pet: PetResponse }>("/api/pet/import", { path });
 }
