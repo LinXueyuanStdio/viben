@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 // @vitest-environment jsdom
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, test, vi } from "vitest";
+import { beforeAll, describe, expect, test, vi } from "vitest";
 import { MessageList } from "../message-list";
 
 vi.mock("react-i18next", () => ({
@@ -17,6 +17,10 @@ vi.mock("react-i18next", () => ({
 vi.mock("streamdown", () => ({
   Streamdown: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
 
 describe("MessageList width", () => {
   test("wraps regular messages in a centered max-width row shell", () => {
@@ -59,6 +63,24 @@ describe("MessageList width", () => {
     );
 
     const rowShell = screen.getByText("Read 1 files").closest("[data-message-width-shell='true']");
+    expect(rowShell).toHaveStyle({
+      width: "100%",
+      maxWidth: "min(100%, 760px)",
+      marginLeft: "auto",
+      marginRight: "auto",
+    });
+  });
+
+  test("wraps the thinking loading indicator in the same centered max-width row shell", () => {
+    render(
+      <MessageList
+        messages={[{ id: "m1", type: "user", content: "start" }]}
+        isStreaming
+        maxMessageWidth="760px"
+      />
+    );
+
+    const rowShell = screen.getByText("Thinking...").closest("[data-message-width-shell='true']");
     expect(rowShell).toHaveStyle({
       width: "100%",
       maxWidth: "min(100%, 760px)",
