@@ -71,22 +71,6 @@ export type PositionOrTarget = Point | TargetRef
  */
 export type RegionOrTarget = Rect | (TargetRef & { padding?: number })
 
-/** tldraw color names (kept for compatibility) */
-export type TldrawColor =
-  | "black"
-  | "grey"
-  | "light-violet"
-  | "violet"
-  | "blue"
-  | "light-blue"
-  | "yellow"
-  | "orange"
-  | "green"
-  | "light-green"
-  | "light-red"
-  | "red"
-  | "white"
-
 /** Presentation command -- Agent-driven visual annotation instructions */
 export type PresentationCommand =
   | SpotlightCommand
@@ -927,13 +911,7 @@ export interface PresentationSequence {
 }
 
 /** Known presentation tool names */
-export type PresentationToolName =
-  | "presentation_draw"
-  | "presentation_spotlight"
-  | "presentation_callout"
-  | "presentation_walkthrough"
-  | "presentation_compare"
-  | "presentation_clear"
+export type PresentationToolName = `presentation_${PresentationCommand["type"]}`
 
 /** MCP CallToolResult equivalent for frontend */
 export type ClientToolResultContent =

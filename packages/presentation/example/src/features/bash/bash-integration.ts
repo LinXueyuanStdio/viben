@@ -1,7 +1,6 @@
 import { Bash, defineCommand } from "just-bash"
-import type { PresentationStep } from "../../../../src/types.ts"
-import { ALL_STEP_COMMANDS, createPresentationTools } from "../../../../src/commands/index.ts"
-import type { PresentationToolDef } from "../../../../src/commands/index.ts"
+import { ALL_STEP_COMMANDS, createPresentationTools } from "@viben/presentation"
+import type { PresentationStep, PresentationToolDef } from "@viben/presentation"
 
 export interface PresentationBashOptions {
   /** Called when a new step is produced */

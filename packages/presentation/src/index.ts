@@ -62,7 +62,6 @@ export type {
   TargetRef,
   PositionOrTarget,
   RegionOrTarget,
-  TldrawColor,
   PlayerState,
   PresentationStep,
   PresentationSequence,
@@ -141,6 +140,7 @@ export type { CardSizeResult } from "./hooks/use-card-size"
 // Command compiler
 export {
   compilePresentationCommands,
+  getPresentationToolNames,
   normalizePresentationToolName,
   isClientSidePresentationTool,
 } from "./command-compiler"

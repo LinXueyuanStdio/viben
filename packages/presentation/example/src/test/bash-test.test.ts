@@ -4,8 +4,8 @@
  * Run: pnpm test
  */
 import { describe, it, expect, beforeEach } from "vitest"
-import type { PresentationStep } from "../../../src/types"
-import { ALL_STEP_COMMANDS } from "../../../src/commands/index.ts"
+import { ALL_STEP_COMMANDS } from "@viben/presentation"
+import type { PresentationStep } from "@viben/presentation"
 import { createPresentationBash, fixJsonQuoting, joinMultilineQuotes } from "../features/bash/bash-integration"
 import { stepsToBashScript } from "../features/bash/steps-to-bash"
 

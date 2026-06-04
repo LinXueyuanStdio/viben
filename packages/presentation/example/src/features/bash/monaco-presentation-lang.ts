@@ -1,5 +1,5 @@
 import type * as Monaco from "monaco-editor"
-import { ALL_STEP_COMMANDS, STEP_COMMAND_MAP } from "../../../../src/commands/index"
+import { ALL_STEP_COMMANDS, STEP_COMMAND_MAP } from "@viben/presentation"
 
 /** Regex that matches any known subcommand name */
 const SUBCOMMAND_REGEX = new RegExp(
