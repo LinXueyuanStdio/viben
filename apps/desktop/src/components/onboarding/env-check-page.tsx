@@ -21,6 +21,7 @@ import {
   getEnvCheckSupportActionsForIssueKind,
 } from "@/lib/onboarding/env-check-policy";
 import type { CheckNode, CheckNodeState } from "@/lib/onboarding/check-dag";
+import { getGatewayUrl } from "@/lib/gateway/config";
 
 // Debug logging helper
 const log = (message: string, ...args: unknown[]) => {
@@ -218,7 +219,7 @@ export function EnvCheckPage({ onComplete, onBack }: EnvCheckPageProps) {
         const gatewayData = data as { url?: string; pid?: number; running?: boolean; command?: string; binary_path?: string } | undefined;
         const items: DetailItem[] = [];
         if (gatewayData?.running) {
-          items.push({ label: t("onboarding.envCheck.labels.url", "URL"), value: gatewayData.url || "http://127.0.0.1:18790", copyable: true });
+          items.push({ label: t("onboarding.envCheck.labels.url", "URL"), value: gatewayData.url || getGatewayUrl(), copyable: true });
           if (gatewayData.pid) {
             items.push({ label: t("common.pid", "PID"), value: String(gatewayData.pid), copyable: false });
           }
