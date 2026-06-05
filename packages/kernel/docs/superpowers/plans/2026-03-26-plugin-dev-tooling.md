@@ -219,10 +219,10 @@ Create `packages/kernel-sdk/package.json`:
     "test": "vitest run"
   },
   "peerDependencies": {
-    "viben": ">=0.6.0"
+    "@viben/kernel": ">=0.6.0"
   },
   "devDependencies": {
-    "viben": "workspace:*",
+    "@viben/kernel": "workspace:*",
     "vitest": "^3.0.0"
   },
   "keywords": ["viben", "plugin", "sdk", "testing"],

@@ -664,8 +664,8 @@ head -1 dist-publish/dist/cli.js   # should show #!/usr/bin/env node
 
 ```bash
 cd dist-publish
-npm pack                    # creates viben-0.1.0.tgz
-npm install -g viben-0.1.0.tgz
+npm pack                    # creates viben-kernel-0.1.0.tgz
+npm install -g viben-kernel-0.1.0.tgz
 viben --version           # should print version
 viben --help              # should show help
 viben plugins             # should show "No plugins installed"
@@ -674,7 +674,7 @@ viben plugins             # should show "No plugins installed"
 - [ ] **Step 4: Clean up global install**
 
 ```bash
-npm uninstall -g viben
+npm uninstall -g @viben/kernel
 ```
 
 - [ ] **Step 5: Commit any fixes from the build test**
@@ -702,7 +702,7 @@ npx viben
 Or install globally:
 
 ```bash
-npm install -g viben
+npm install -g @viben/kernel
 viben
 ```
 

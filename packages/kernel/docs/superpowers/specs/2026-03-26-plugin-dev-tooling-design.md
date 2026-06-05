@@ -765,7 +765,7 @@ packages:
 
 Published together: when CLI publishes new version, SDK publishes same version.
 
-**Note:** Root `package.json` has `"name": "viben"` (private), but publishes as `@viben/kernel`. For `workspace:*` resolution, the SDK should reference the root package by its actual name: `"viben": "workspace:*"` as devDependency. The publish script handles the name mapping to `@viben/kernel`.
+**Note:** The kernel package is named `@viben/kernel`. For `workspace:*` resolution, the SDK should reference the kernel package by that actual package name: `"@viben/kernel": "workspace:*"` as devDependency.
 
 **CI/CD update needed:** GitHub Actions workflow must be updated to build SDK package and publish both `@viben/kernel` and `@viben/plugin-sdk` on tag push.
 

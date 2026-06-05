@@ -45,7 +45,7 @@ Keep monorepo structure for development. Add a publish build step that bundles e
 
 ```
 dist-publish/
-  package.json       → name: "viben"
+  package.json       → name: "@viben/kernel"
   dist/
     cli.js           → #!/usr/bin/env node, CLI entry point
     index.js         → library exports (ChannelAdapter, types, etc.)
@@ -58,7 +58,7 @@ dist-publish/
 
 ```json
 {
-  "name": "viben",
+  "name": "@viben/kernel",
   "version": "0.1.0",
   "description": "Self-hosted bridge for AI coding agents via ACP protocol",
   "type": "module",
