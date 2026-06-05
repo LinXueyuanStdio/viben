@@ -1,0 +1,10 @@
+{
+  "cli_version": "0.5.0",
+  "checkpoint_id": "f634acf05138",
+  "session_id": "082e8393-b2a5-4eb4-b70a-4338c754da64",
+  "created_at": "2026-03-12T06:59:39.787Z",
+  "branch": "main",
+  "files_touched": ["src/app.ts", "src/app.test.ts"],
+  "agent": "Claude Code",
+  "session_metrics": { "turn_count": 5 }
+}

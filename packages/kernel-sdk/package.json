@@ -1,0 +1,52 @@
+{
+  "name": "@viben/plugin-sdk",
+  "version": "0.1.0",
+  "description": "SDK for building Viben plugins — types, base classes, and testing utilities",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./formatting": {
+      "types": "./dist/formatting.d.ts",
+      "import": "./dist/formatting.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@viben/kernel": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@viben/kernel": "workspace:*",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LinXueyuanStdio/viben",
+    "directory": "packages/kernel-sdk"
+  },
+  "homepage": "https://github.com/LinXueyuanStdio/viben",
+  "keywords": [
+    "viben",
+    "plugin",
+    "sdk",
+    "testing"
+  ],
+  "license": "MIT"
+}
