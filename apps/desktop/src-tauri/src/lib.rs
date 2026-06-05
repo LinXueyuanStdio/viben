@@ -20,7 +20,11 @@ use tauri_plugin_deep_link::DeepLinkExt;
 #[cfg(target_os = "macos")]
 use cocoa::appkit::{NSApp, NSWindow, NSWindowCollectionBehavior};
 #[cfg(target_os = "macos")]
-use cocoa::base::{id, NO};
+use cocoa::base::id;
+#[cfg(target_os = "macos")]
+use cocoa::foundation::NSInteger;
+#[cfg(target_os = "macos")]
+use objc::{msg_send, sel, sel_impl};
 
 /// Auto-start gateway on app startup
 #[cfg(desktop)]
@@ -353,43 +357,37 @@ pub fn run() {
                 // This prevents the main window from coming to foreground when pet is dragged
                 #[cfg(target_os = "macos")]
                 if let Some(pet_window) = app.get_webview_window("pet-window") {
-                    use cocoa::foundation::NSInteger;
-                    use tauri::WebviewWindowExt;
+                    use tauri::WebviewWindowExt as _;
 
-                    let ns_window: id = pet_window.ns_window().unwrap() as id;
-                    unsafe {
-                        // Set collection behavior for proper workspace handling
-                        ns_window.setCollectionBehavior_(
-                            NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-                                | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-                                | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle
-                                | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
-                        );
+                    if let Ok(ns_win_ptr) = pet_window.ns_window() {
+                        let ns_window: id = ns_win_ptr as id;
+                        unsafe {
+                            // Set collection behavior for proper workspace handling
+                            ns_window.setCollectionBehavior_(
+                                NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+                                    | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
+                                    | NSWindowCollectionBehavior::NSWindowCollectionBehaviorIgnoresCycle
+                                    | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
+                            );
 
-                        // Set window level to floating (above normal windows)
-                        // NSFloatingWindowLevel = 3
-                        let _: () = objc::msg_send![ns_window, setLevel: 3 as NSInteger];
+                            // Set window level to floating (above normal windows)
+                            // NSFloatingWindowLevel = 3
+                            let _: () = msg_send![ns_window, setLevel: 3 as NSInteger];
 
-                        // Make the window not activate the application when clicked
-                        // This is the key setting that prevents main window from coming to foreground
-                        let _: () = objc::msg_send![ns_window, setHidesOnDeactivate: NO];
-
-                        // Prevent the window from becoming the main window
-                        // (canBecomeMain is a method that needs to be overridden in subclass,
-                        // but we can try to work around by setting related properties)
+                            // Make the window not hide when app deactivates
+                            let _: () = msg_send![ns_window, setHidesOnDeactivate: false];
+                        }
                     }
 
-                    // Listen for focus events and immediately give focus back
-                    let app_handle = app.handle().clone();
+                    // Listen for focus events and immediately deactivate the app
+                    // This allows other apps to remain in foreground when pet is clicked
                     pet_window.on_window_event(move |event| {
                         if let tauri::WindowEvent::Focused(true) = event {
-                            // When pet window gains focus, hide the app activation
-                            // This allows other apps to remain in foreground
                             #[cfg(target_os = "macos")]
                             unsafe {
-                                let app: id = NSApp();
+                                let ns_app: id = NSApp();
                                 // Deactivate the application to let other apps stay focused
-                                let _: () = objc::msg_send![app, deactivate];
+                                let _: () = msg_send![ns_app, deactivate];
                             }
                         }
                     });
