@@ -1,12 +1,4 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-/**
- * Utility function for merging Tailwind CSS classes
- */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export { cn } from "@viben/ui";
 
 /**
  * Check if file is an image (by MIME type or file extension)

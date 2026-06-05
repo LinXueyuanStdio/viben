@@ -1,42 +1,46 @@
 {
   "name": "@viben/chat",
   "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "description": "Chat components for Viben",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc && cp src/emoji-picker/emoji-mart.css dist/emoji-picker/emoji-mart.css",
-    "dev": "tsc --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
     "@emoji-mart/react": "^1.1.1",
     "@lobehub/icons": "^5.10.0",
     "@viben/ui": "workspace:*",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",
-    "lucide-react": "^1.17.0",
-    "react-i18next": "^17.0.8",
-    "streamdown": "^2.5.0",
-    "tailwind-merge": "^3.5.0"
+    "streamdown": "^2.5.0"
+  },
+  "peerDependencies": {
+    "i18next": ">=23.0.0",
+    "lucide-react": ">=1.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "react-i18next": ">=14.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
+    "tsup": "^8.3.5",
     "typescript": "^5.9.3"
-  },
-  "peerDependencies": {
-    "react": "^19.2.4"
   }
 }
