@@ -142,8 +142,9 @@ export class ClientToolCompletionRegistry {
    * Register a tool as client-side with optional timeout config.
    */
   registerToolOptions(toolName: string, options: ClientSideToolOptions = {}): void {
-    this.toolOptions.set(toolName, options);
-    logger.debug({ toolName, options }, "Registered client tool options");
+    const canonicalToolName = this.canonicalizeToolName(toolName);
+    this.toolOptions.set(canonicalToolName, options);
+    logger.debug({ toolName: canonicalToolName, registeredAs: toolName, options }, "Registered client tool options");
   }
 
   /**
@@ -153,8 +154,8 @@ export class ClientToolCompletionRegistry {
    * by exposing a tool with the same name.
    */
   isClientSideTool(toolName: string): boolean {
-    if (this.toolOptions.has(toolName)) return true;
-    return this.getTrustedPrefixedToolOptions(toolName) !== undefined;
+    const canonicalToolName = this.canonicalizeToolName(toolName);
+    return this.toolOptions.has(canonicalToolName);
   }
 
   // -------------------------------------------------------------------------
@@ -166,6 +167,7 @@ export class ClientToolCompletionRegistry {
    * a client-side tool_use block is encountered.
    */
   enqueue(sessionId: string, toolUseId: string, toolName: string): void {
+    const canonicalToolName = this.canonicalizeToolName(toolName);
     let queue = this.sessionQueues.get(sessionId);
     if (!queue) {
       queue = [];
@@ -178,19 +180,19 @@ export class ClientToolCompletionRegistry {
       // Update toolName in case waitForClient created the entry without it
       const existing = this.pending.get(toolUseId)!;
       if (!existing.toolName) {
-        existing.toolName = toolName;
+        existing.toolName = canonicalToolName;
       }
-      logger.debug({ sessionId, toolUseId, toolName }, "Enqueued client tool (entry already exists)");
+      logger.debug({ sessionId, toolUseId, toolName: canonicalToolName, originalToolName: toolName }, "Enqueued client tool (entry already exists)");
       return;
     }
 
     // Create the entry with a real promise from the start so that
     // cancelSession can properly reject it even before waitForClient is called.
-    this.createPendingEntry(sessionId, toolUseId, toolName);
+    this.createPendingEntry(sessionId, toolUseId, canonicalToolName);
 
     this.resolveNextSessionWaiter(sessionId);
 
-    logger.debug({ sessionId, toolUseId, toolName }, "Enqueued client tool");
+    logger.debug({ sessionId, toolUseId, toolName: canonicalToolName, originalToolName: toolName }, "Enqueued client tool");
   }
 
   /**
@@ -204,11 +206,12 @@ export class ClientToolCompletionRegistry {
    * On timeout, resolves with a fallback CallToolResult (does not reject).
    */
   async waitForClient(sessionId: string, toolUseId?: string, toolName?: string): Promise<CallToolResult> {
+    const canonicalToolName = toolName ? this.canonicalizeToolName(toolName) : undefined;
     let resolvedToolUseId: string | undefined;
 
     const queue = this.sessionQueues.get(sessionId);
     if (queue && queue.length > 0) {
-      resolvedToolUseId = this.takeNextQueuedToolUseId(sessionId, toolName);
+      resolvedToolUseId = this.takeNextQueuedToolUseId(sessionId, canonicalToolName);
       if (queue.length === 0) {
         this.sessionQueues.delete(sessionId);
       }
@@ -218,10 +221,10 @@ export class ClientToolCompletionRegistry {
       // Called before enqueue — create the entry eagerly so the caller can await it.
       resolvedToolUseId = toolUseId;
       if (!this.pending.has(toolUseId)) {
-        this.createPendingEntry(sessionId, toolUseId, toolName ?? "");
+        this.createPendingEntry(sessionId, toolUseId, canonicalToolName ?? "");
       }
     } else if (!resolvedToolUseId) {
-      return await this.waitForNextClientTool(sessionId, toolName);
+      return await this.waitForNextClientTool(sessionId, canonicalToolName);
     }
 
     const entry = this.pending.get(resolvedToolUseId!);
@@ -543,21 +546,18 @@ export class ClientToolCompletionRegistry {
   }
 
   private getToolOptions(toolName: string): ClientSideToolOptions | undefined {
-    const direct = this.toolOptions.get(toolName);
-    if (direct) return direct;
-
-    return this.getTrustedPrefixedToolOptions(toolName);
+    return this.toolOptions.get(this.canonicalizeToolName(toolName));
   }
 
-  private getTrustedPrefixedToolOptions(toolName: string): ClientSideToolOptions | undefined {
+  private canonicalizeToolName(toolName: string): string {
     if (toolName.startsWith("mcp__gui_action__")) {
-      return this.toolOptions.get(toolName.slice("mcp__gui_action__".length));
+      return toolName.slice("mcp__gui_action__".length);
     }
     if (toolName.startsWith("mcp__client_side_bash__")) {
-      return this.toolOptions.get(toolName.slice("mcp__client_side_bash__".length));
+      return toolName.slice("mcp__client_side_bash__".length);
     }
 
-    return undefined;
+    return toolName;
   }
 }
 

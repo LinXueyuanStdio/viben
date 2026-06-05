@@ -652,6 +652,7 @@ export class SdkChatProxy implements ChatProxy {
       // Stream messages - yield all SSE messages from each SDK message
       let perfMsgCount = 0;
       let perfFirstMsgTime = 0;
+      let sawResult = false;
       for await (const message of queryResult) {
         perfMsgCount++;
         const msgType = (message as Record<string, unknown>).type;
@@ -663,6 +664,9 @@ export class SdkChatProxy implements ChatProxy {
           log.info({ msgNum: perfMsgCount, type: msgType, elapsed: Date.now() - perfQueryStart }, "[perf] SDK message");
         }
         for (const sseMessage of this.convertToSSEMessages(message)) {
+          if (sseMessage.type === "result") {
+            sawResult = true;
+          }
           yield sseMessage;
         }
       }
@@ -672,8 +676,11 @@ export class SdkChatProxy implements ChatProxy {
 
       const duration = Date.now() - startTime;
 
-      // Yield success result at the end
-      yield { type: "result", subtype: "success", duration };
+      // Some SDK streams include their own terminal result. Only synthesize one
+      // for streams that end without a result event.
+      if (!sawResult) {
+        yield { type: "result", subtype: "success", duration };
+      }
     } catch (error) {
       // Clear active query reference on error
       this.activeQuery = null;

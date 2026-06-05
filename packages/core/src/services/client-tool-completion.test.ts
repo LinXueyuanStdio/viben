@@ -181,6 +181,43 @@ describe("ClientToolCompletionRegistry", () => {
       await expect(guiPromise).resolves.toEqual(guiResult);
     });
 
+    it("should match a prefixed queued GUI tool with an unprefixed waiter", async () => {
+      registry.registerToolOptions("GUI_execute");
+      registry.enqueue("session-1", "tool-use-gui", "mcp__gui_action__GUI_execute");
+
+      const promise = registry.waitForClient("session-1", undefined, "GUI_execute");
+      const result: CallToolResult = { content: [{ type: "text", text: "gui" }] };
+      registry.complete("tool-use-gui", "session-1", result);
+
+      await expect(promise).resolves.toEqual(result);
+      expect(registry.pendingCount).toBe(0);
+    });
+
+    it("should match an unprefixed waiter when the prefixed GUI tool is enqueued later", async () => {
+      registry.registerToolOptions("GUI_execute");
+      const promise = registry.waitForClient("session-1", undefined, "GUI_execute");
+      expect(registry.getWaiterCount("session-1")).toBe(1);
+
+      registry.enqueue("session-1", "tool-use-gui", "mcp__gui_action__GUI_execute");
+      const result: CallToolResult = { content: [{ type: "text", text: "gui-late" }] };
+      registry.complete("tool-use-gui", "session-1", result);
+
+      await expect(promise).resolves.toEqual(result);
+      expect(registry.getWaiterCount("session-1")).toBe(0);
+    });
+
+    it("should match a prefixed queued ClientSideBash tool with an unprefixed waiter", async () => {
+      registry.registerToolOptions("ClientSideBash");
+      registry.enqueue("session-1", "tool-use-bash", "mcp__client_side_bash__ClientSideBash");
+
+      const promise = registry.waitForClient("session-1", undefined, "ClientSideBash");
+      const result: CallToolResult = { content: [{ type: "text", text: "bash" }] };
+      registry.complete("tool-use-bash", "session-1", result);
+
+      await expect(promise).resolves.toEqual(result);
+      expect(registry.pendingCount).toBe(0);
+    });
+
     it("should resolve when complete is called", async () => {
       registry.registerToolOptions("screenshot");
       registry.enqueue("session-1", "tool-use-1", "screenshot");
@@ -280,7 +317,7 @@ describe("ClientToolCompletionRegistry", () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toEqual({
         type: "text",
-        text: `Client-side tool "mcp__gui_action__GUI_execute" timed out after 3s. The client may be unresponsive. You may retry or skip this step.`,
+        text: `Client-side tool "GUI_execute" timed out after 3s. The client may be unresponsive. You may retry or skip this step.`,
       });
     });
 
