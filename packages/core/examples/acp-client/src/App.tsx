@@ -20,6 +20,8 @@ import {
   Unplug,
   X,
 } from "lucide-react";
+import { MessageList } from "@viben/chat";
+import type { AgentMessage } from "@viben/chat";
 import {
   AcpWebSocketClient,
   type AgentConfigPayload,
@@ -34,14 +36,15 @@ import {
   type PermissionRequestLog,
   type TrafficEntry,
 } from "./acp-client";
-
-interface ChatMessage {
-  id: string;
-  role: "agent" | "thought" | "tool" | "system" | "error";
-  text: string;
-  status?: string;
-  toolCallId?: string;
-}
+import {
+  appendClientToolRequestedStep,
+  appendClientToolResultStep,
+  appendPermissionDecisionStep,
+  appendSystemStep,
+  appendUserPromptStep,
+  applyAcpSessionUpdateStep,
+  type AcpUiStep,
+} from "./acp-chat-adapter";
 
 interface GuiActionDefinition {
   id: string;
@@ -60,7 +63,7 @@ interface UiSessionState {
   lastActiveAt: string;
   sessionResult: unknown;
   promptResult: unknown;
-  messages: ChatMessage[];
+  uiSteps: AcpUiStep[];
   clientToolCalls: ClientToolCall[];
   permissionRequests: PermissionRequestLog[];
 }
@@ -259,7 +262,7 @@ export function App() {
       {
         id: request.id,
         role: "system",
-        text: `Permission approved: ${request.title} -> ${request.selectedOptionId}`,
+        text: `Permission decision: ${request.title} -> ${request.selectedOptionId}`,
       },
     ]);
   }, []);
@@ -1454,6 +1457,13 @@ function textResult(text: string, meta: Record<string, unknown>): CallToolResult
   return {
     content: [{ type: "text", text }],
     _meta: meta,
+  };
+}
+
+function textErrorResult(text: string): CallToolResult {
+  return {
+    content: [{ type: "text", text }],
+    isError: true,
   };
 }
 
