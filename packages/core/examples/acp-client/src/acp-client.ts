@@ -398,10 +398,6 @@ export class AcpWebSocketClient {
     return await this.request("session/prompt/cancel", { sessionId, promptId }) as CancelSteerPromptResult;
   }
 
-  async isSteerPromptConsumed(sessionId: string, promptId: string): Promise<ConsumedSteerPromptResult> {
-    return await this.request("session/prompt/consumed", { sessionId, promptId }) as ConsumedSteerPromptResult;
-  }
-
   async viewSteerPrompt(sessionId: string, promptId?: string): Promise<ViewSteerPromptResult> {
     return await this.request("session/prompt/view", {
       sessionId,

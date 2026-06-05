@@ -184,6 +184,12 @@ pre code.json-code {
   padding-inline: 14px;
 }
 
+.acp-prompt-input [data-viben-slash-command-menu] {
+  background: var(--color-card);
+  border-color: color-mix(in oklch, var(--color-border) 88%, var(--color-foreground));
+  box-shadow: 0 18px 48px color-mix(in oklch, var(--color-foreground) 24%, transparent);
+}
+
 .acp-prompt-input textarea {
   line-height: 1.55;
 }
@@ -195,6 +201,18 @@ pre code.json-code {
 
 .acp-prompt-input .h-1.cursor-ns-resize:hover {
   background: color-mix(in oklch, var(--color-primary) 18%, var(--color-muted));
+}
+
+.acp-steer-input {
+  overflow: visible;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card);
+}
+
+.acp-steer-input:focus-within {
+  border-color: color-mix(in oklch, var(--color-primary) 58%, var(--color-border));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 14%, transparent);
 }
 
 .session-row {

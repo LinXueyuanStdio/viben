@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Copy,
   FileJson,
+  MessageSquare,
   EthernetPort,
   FolderPlus,
   Loader2,
@@ -17,8 +18,8 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { ChatInput, ExecApproval, MessageList, QuestionInput } from "@viben/chat";
-import type { AgentMessage, PendingQuestion, SlashCommand, SlashCommandSelection } from "@viben/chat";
+import { ChatInput, CommandQueuePanel, ExecApproval, MessageList, QuestionInput } from "@viben/chat";
+import type { AgentMessage, CommandQueueItem, PendingQuestion, SlashCommand, SlashCommandSelection } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -170,7 +171,10 @@ export function App() {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [steerPromptText, setSteerPromptText] = useState("Use the latest user instruction as steering context for the current turn.");
   const [steerPromptId, setSteerPromptId] = useState("");
+  const [steerQueueItems, setSteerQueueItems] = useState<CommandQueueItem[]>([]);
+  const [steerQueuePaused, setSteerQueuePaused] = useState(false);
   const [steerResult, setSteerResult] = useState<unknown>(null);
+  const [viewMode, setViewMode] = useState<"chat" | "inspector">("chat");
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
@@ -276,6 +280,7 @@ export function App() {
   const appendSteerPromptConsumed = useCallback((result: ConsumedSteerPromptResult & { sessionId: string }) => {
     setSteerResult(result);
     setSteerPromptId((current) => current || result.promptId);
+    setSteerQueueItems((current) => current.filter((item) => item.id !== result.promptId));
     enqueueUiSteps(
       setSessionsById,
       result.sessionId,
@@ -471,10 +476,10 @@ export function App() {
     void sendPromptText(text);
   }, [sendPromptText]);
 
-  const sendSteerPrompt = useCallback(async () => {
-    if (!sessionId) return;
-    const text = steerPromptText.trim();
-    if (!text) return;
+  const sendSteerPromptText = useCallback(async (content: string): Promise<string | null> => {
+    if (!sessionId) return null;
+    const text = content.trim();
+    if (!text) return null;
 
     setError(null);
     enqueueUiSteps(setSessionsById, sessionId, systemTextToUiSteps(`Steer queued: ${text}`));
@@ -489,11 +494,34 @@ export function App() {
       setSteerResult(result ?? null);
       if (result?.promptId) {
         setSteerPromptId(result.promptId);
+        return result.promptId;
       }
     } catch (steerError) {
       setError(steerError instanceof Error ? steerError.message : String(steerError));
     }
-  }, [executorType, sessionId, steerPromptText]);
+    return null;
+  }, [executorType, sessionId]);
+
+  const sendSteerPrompt = useCallback(async () => {
+    const promptId = await sendSteerPromptText(steerPromptText);
+    if (!promptId) return;
+    setSteerQueueItems((current) => [
+      ...current.filter((item) => item.id !== promptId),
+      { id: promptId, content: steerPromptText.trim(), createdAt: Date.now() },
+    ]);
+    setSteerPromptText("");
+  }, [sendSteerPromptText, steerPromptText]);
+
+  const handleSteerInputSend = useCallback(async (content: string) => {
+    const text = content.trim();
+    if (!text) return;
+    const promptId = await sendSteerPromptText(text);
+    if (!promptId) return;
+    setSteerQueueItems((current) => [
+      ...current.filter((item) => item.id !== promptId),
+      { id: promptId, content: text, createdAt: Date.now() },
+    ]);
+  }, [sendSteerPromptText]);
 
   const cancelSteerPrompt = useCallback(async () => {
     if (!sessionId || !steerPromptId.trim()) return;
@@ -501,10 +529,28 @@ export function App() {
     try {
       const result = await clientRef.current?.cancelSteerPrompt(sessionId, steerPromptId.trim());
       setSteerResult(result ?? null);
+      setSteerQueueItems((current) => current.filter((item) => item.id !== steerPromptId.trim()));
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
     }
   }, [sessionId, steerPromptId]);
+
+  const recallSteerQueue = useCallback(async () => {
+    if (!sessionId || steerQueueItems.length === 0) return;
+    const recalledItems = steerQueueItems;
+    setError(null);
+    try {
+      const results = await Promise.all(
+        recalledItems.map((item) => clientRef.current?.cancelSteerPrompt(sessionId, item.id))
+      );
+      setSteerResult({ recalled: recalledItems.map((item) => item.id), cancelled: results });
+      setSteerQueueItems([]);
+      setSteerPromptText(recalledItems.map((item) => item.content).join("\n\n"));
+      setSteerPromptId(recalledItems[0]?.id ?? "");
+    } catch (recallError) {
+      setError(recallError instanceof Error ? recallError.message : String(recallError));
+    }
+  }, [sessionId, steerQueueItems]);
 
   const viewSteerPrompt = useCallback(async () => {
     if (!sessionId) return;
@@ -643,6 +689,17 @@ export function App() {
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2">
+          <button className={viewMode === "chat" ? "btn-primary" : "btn-secondary"} onClick={() => setViewMode("chat")}>
+            <MessageSquare size={16} />
+            Chat
+          </button>
+          <button className={viewMode === "inspector" ? "btn-primary" : "btn-secondary"} onClick={() => setViewMode("inspector")}>
+            <EthernetPort size={16} />
+            Inspect
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <button className="btn-secondary" onClick={createSession} disabled={!connected}>
             <FolderPlus size={16} />
             New
@@ -703,9 +760,13 @@ export function App() {
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 px-5 py-4 backdrop-blur">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">ACP WebSocket 调试客户端</h1>
+              <h1 className="text-xl font-semibold tracking-tight">
+                {viewMode === "chat" ? "ACP Chat" : "ACP WebSocket 调试客户端"}
+              </h1>
               <p className="text-sm text-muted-foreground">
-                Connects to Viben Gateway at <code>/ws/agent/acp</code> and speaks ACP JSON-RPC.
+                {viewMode === "chat"
+                  ? "A real conversation surface over ACP with prompt, steering, approvals, elicitation, and slash commands."
+                  : <>Connects to Viben Gateway at <code>/ws/agent/acp</code> and speaks ACP JSON-RPC.</>}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -732,6 +793,35 @@ export function App() {
           </div>
         </header>
 
+        {viewMode === "chat" ? (
+          <AcpChatSurface
+            connected={connected}
+            sessionId={sessionId}
+            messages={messages}
+            pendingApproval={pendingApproval}
+            pendingQuestion={pendingQuestion}
+            slashCommands={slashCommands}
+            steerQueueItems={steerQueueItems}
+            steerQueuePaused={steerQueuePaused}
+            isStreaming={Boolean(activeSession?.uiStepQueue.length)}
+            prompt={prompt}
+            onPromptChange={setPrompt}
+            onSendPrompt={(content) => void sendPromptText(content)}
+            onCancelTurn={cancel}
+            onSlashCommand={handleSlashCommand}
+            onApprovalDecision={handleApprovalDecision}
+            onQuestionAnswers={handleQuestionAnswers}
+            onSteerSend={(content) => void handleSteerInputSend(content)}
+            onRecallSteerQueue={() => void recallSteerQueue()}
+            onRemoveSteerQueueItem={(id) => setSteerQueueItems((current) => current.filter((item) => item.id !== id))}
+            onClearSteerQueue={() => setSteerQueueItems([])}
+            onPauseSteerQueue={() => setSteerQueuePaused(true)}
+            onResumeSteerQueue={() => setSteerQueuePaused(false)}
+            onCreateSession={createSession}
+            onConnect={connect}
+            busy={busy}
+          />
+        ) : (
         <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_420px]">
           <section className="space-y-5">
             <Panel title="GUI_execute Action Editor" description="Actions exposed by this example client to backend agents.">
@@ -991,11 +1081,26 @@ export function App() {
             </Panel>
 
             <Panel title="Steer Queue" description="Send and inspect Viben ACP session/prompt/* extension requests.">
-              <textarea
+              <CommandQueuePanel
+                items={steerQueueItems}
+                isPaused={steerQueuePaused}
+                onRemove={(id) => setSteerQueueItems((current) => current.filter((item) => item.id !== id))}
+                onClear={() => setSteerQueueItems([])}
+                onPause={() => setSteerQueuePaused(true)}
+                onResume={() => setSteerQueuePaused(false)}
+                compact
+                className="mb-3 rounded-lg border border-border"
+              />
+              <ChatInput
                 value={steerPromptText}
-                onChange={(event) => setSteerPromptText(event.target.value)}
-                className="textarea"
-                rows={3}
+                onValueChange={setSteerPromptText}
+                onSend={(content) => void handleSteerInputSend(content)}
+                onRecallQueuedInput={() => void recallSteerQueue()}
+                sendDisabled={!connected || !sessionId}
+                sendBlockedReason={!connected ? "Connect first to steer." : !sessionId ? "Create or load a session before steering." : undefined}
+                placeholder="Queue a steering prompt. Press ArrowUp on empty input to recall queued prompts."
+                className="acp-steer-input"
+                showTopToolbar
               />
               <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                 <input
@@ -1146,6 +1251,7 @@ export function App() {
             </Panel>
           </section>
         </div>
+        )}
       </main>
       {toolDialog && (
         <ToolApprovalModal
@@ -1189,6 +1295,164 @@ function SessionRow({ session, active, onSelect }: { session: UiSessionState | u
         <div>{session.uiStepQueue.length ? `${session.uiStepQueue.length} queued` : "steps"}</div>
       </div>
     </button>
+  );
+}
+
+function AcpChatSurface({
+  connected,
+  sessionId,
+  messages,
+  pendingApproval,
+  pendingQuestion,
+  slashCommands,
+  steerQueueItems,
+  steerQueuePaused,
+  isStreaming,
+  prompt,
+  onPromptChange,
+  onSendPrompt,
+  onCancelTurn,
+  onSlashCommand,
+  onApprovalDecision,
+  onQuestionAnswers,
+  onSteerSend,
+  onRecallSteerQueue,
+  onRemoveSteerQueueItem,
+  onClearSteerQueue,
+  onPauseSteerQueue,
+  onResumeSteerQueue,
+  onCreateSession,
+  onConnect,
+  busy,
+}: {
+  connected: boolean;
+  sessionId: string | null;
+  messages: AgentMessage[];
+  pendingApproval: PendingExecApproval | null;
+  pendingQuestion: PendingQuestion | null;
+  slashCommands: SlashCommand[];
+  steerQueueItems: CommandQueueItem[];
+  steerQueuePaused: boolean;
+  isStreaming: boolean;
+  prompt: string;
+  onPromptChange: (value: string) => void;
+  onSendPrompt: (content: string) => void;
+  onCancelTurn: () => void;
+  onSlashCommand: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  onApprovalDecision: (decision: string) => void;
+  onQuestionAnswers: (answers: Record<string, string[]>) => void;
+  onSteerSend: (content: string) => void;
+  onRecallSteerQueue: () => void;
+  onRemoveSteerQueueItem: (id: string) => void;
+  onClearSteerQueue: () => void;
+  onPauseSteerQueue: () => void;
+  onResumeSteerQueue: () => void;
+  onCreateSession: () => void;
+  onConnect: () => void;
+  busy: boolean;
+}) {
+  return (
+    <div className="flex h-[calc(100vh-81px)] min-h-0 flex-col bg-background">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <MessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          pendingQuestions={pendingQuestion}
+          onAnswerQuestions={onQuestionAnswers}
+          maxMessageWidth="780px"
+          toolExpandedInline
+          welcomeTitle="ACP Chat"
+          welcomeDescription="Connect, create a session, then talk to an ACP backend."
+        />
+      </div>
+
+      <div className="border-t border-border bg-background px-4 py-3">
+        <div className="mx-auto max-w-[780px] space-y-3">
+          {steerQueueItems.length > 0 && (
+            <CommandQueuePanel
+              items={steerQueueItems}
+              isPaused={steerQueuePaused}
+              onRemove={onRemoveSteerQueueItem}
+              onClear={onClearSteerQueue}
+              onPause={onPauseSteerQueue}
+              onResume={onResumeSteerQueue}
+              compact
+              className="rounded-lg border border-border"
+            />
+          )}
+
+          {pendingApproval ? (
+            <ExecApproval approval={pendingApproval} onDecision={onApprovalDecision} enableKeyboard />
+          ) : pendingQuestion ? (
+            <QuestionInput questions={pendingQuestion.questions} onSubmit={onQuestionAnswers} />
+          ) : (
+            <>
+              <ChatInput
+                value={prompt}
+                onValueChange={onPromptChange}
+                onSend={onSendPrompt}
+                onCancel={onCancelTurn}
+                isLoading={isStreaming}
+                sendDisabled={!connected || !sessionId}
+                sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
+                placeholder="Type a message..."
+                slashCommands={slashCommands}
+                onSlashCommand={onSlashCommand}
+                showTopToolbar
+                showResizeHandle
+                defaultHeight={120}
+                minHeight={88}
+                maxHeight={320}
+                heightStorageKey="viben_acp_chat_input_height"
+                enableWritingMode
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-muted px-2 py-1">
+                    {sessionId ? `session ${shortId(sessionId)}` : "no session"}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-1">{slashCommands.length} slash commands</span>
+                  {steerQueueItems.length > 0 && (
+                    <span className="rounded-full bg-warning/15 px-2 py-1 text-warning">
+                      ArrowUp recalls {steerQueueItems.length} queued steer prompt{steerQueueItems.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {!connected && (
+                    <button className="btn-secondary" onClick={onConnect} disabled={busy}>
+                      {busy ? <Loader2 className="animate-spin" size={16} /> : <Plug size={16} />}
+                      Connect
+                    </button>
+                  )}
+                  {connected && !sessionId && (
+                    <button className="btn-primary" onClick={onCreateSession}>
+                      <FolderPlus size={16} />
+                      New Session
+                    </button>
+                  )}
+                  <button className="btn-secondary" onClick={onRecallSteerQueue} disabled={steerQueueItems.length === 0 || !sessionId}>
+                    <RotateCcw size={16} />
+                    Recall Queue
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/25 p-2">
+                <ChatInput
+                  value=""
+                  onSend={onSteerSend}
+                  onRecallQueuedInput={onRecallSteerQueue}
+                  sendDisabled={!connected || !sessionId}
+                  sendBlockedReason={!connected ? "Connect first to steer." : !sessionId ? "Create or load a session before steering." : undefined}
+                  placeholder="Optional steering prompt. Empty + ArrowUp recalls queued steer prompts."
+                  className="acp-steer-input"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
