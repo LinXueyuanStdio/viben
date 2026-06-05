@@ -146,6 +146,7 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 | 方法 | JSON-RPC 类型 | 触发条件 | 说明 |
 |------|---------------|----------|------|
 | `session/update` | notification | 后端产生流式内容、工具调用、计划、用量等更新 | 客户端必须按 `sessionId` 归并到对应会话 |
+| `session/prompt/consumed` | notification | Gateway 消费 queued steer prompt | Viben 扩展通知；客户端不能主动请求该方法 |
 | `session/elicitation` | request | 后端需要结构化用户输入、问题回答或计划确认 | 客户端返回 accept/decline/cancel 和表单内容 |
 | `session/request_permission` | request | 后端执行敏感工具前需要用户授权 | 客户端必须返回 selected 或 cancelled |
 | `_viben/client_tool_call` | request | 后端请求客户端侧工具，或 Viben 拦截到客户端侧 MCP 工具 | Viben 扩展方法，结果使用 MCP `CallToolResult` 形态 |
@@ -667,10 +668,12 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 1. 后端只消费 `status = "queued"` 且匹配 `session_id + agent_id` 的记录。
 2. 后端按 `created_at ASC` 获取最早一条或一批 steer prompt。
 3. 消费必须使用 SQL 条件更新或事务，确保只有一个 worker 能把记录从 `queued` 改为 `consumed`。
-4. Gateway 在把客户端工具结果传回 Agent 前，必须消费当前会话下所有 `queued` steer prompt，并向客户端发送 `session/prompt/consumed` 通知。
-5. 如果底层执行器支持运行中 steer，后端在消费后立即注入。
-6. 如果底层执行器不支持运行中 steer，后端可以在当前 turn 的安全检查点消费，或作为下一轮 prompt 的前置上下文。
-7. 已 `consumed` 的 steer prompt 不能通过 `session/prompt/cancel` 撤销；客户端应发新的 steer 修正指令，或用 `session/cancel` 取消当前 active prompt。
+4. Gateway 每次准备让 Agent 运行前，必须消费当前会话下所有 `queued` steer prompt，并向客户端发送 `session/prompt/consumed` 通知。
+5. Gateway 收到任意工具结束事件时，必须消费当前会话下所有 `queued` steer prompt。工具结束事件包括 `tool_call_update.status = "completed"` 或 `"failed"`；不区分服务端工具、MCP 工具或客户端侧工具。
+6. Gateway 把工具结果交还 Agent 之前，也属于“Agent 再次运行前”的消费检查点。即使客户端侧工具路径没有产生标准 `tool_call_update`，实现也必须在恢复 Agent 执行前消费 steer 队列。
+7. 如果底层执行器支持运行中 steer，后端在消费后立即注入。
+8. 如果底层执行器不支持运行中 steer，后端可以在当前 turn 的安全检查点消费，或作为下一轮 prompt 的前置上下文。
+9. 已 `consumed` 的 steer prompt 不能通过 `session/prompt/cancel` 撤销；客户端应发新的 steer 修正指令，或用 `session/cancel` 取消当前 active prompt。
 
 **消费通知**:
 
@@ -781,7 +784,9 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 
 **触发点**:
 
-- Gateway 在把客户端工具结果传回 Agent 前，消费当前会话下所有 `queued` steer prompt。
+- Gateway 在每次 `session/prompt` 交给 Agent 运行前，消费当前会话下所有 `queued` steer prompt。
+- Gateway 在任意工具结束时消费当前会话下所有 `queued` steer prompt；结束状态包括 `completed` 和 `failed`。
+- Gateway 在把客户端侧工具结果传回 Agent 前也必须执行同样的消费检查，以覆盖没有标准工具结束事件的适配器。
 - 每条被成功消费的 steer prompt 都会触发一条 `session/prompt/consumed` 通知。
 - 已通知的记录状态为 `consumed`，不能再被 `session/prompt/cancel` 撤销。
 
@@ -1766,16 +1771,17 @@ sequenceDiagram
   participant B as ACP Backend
 
   C->>G: request session/prompt id=7
+  G->>DB: consume queued steer prompts
   G->>B: session/prompt
   B-->>G: session/update agent_message_chunk
   G-->>C: session/update agent_message_chunk
   C->>G: request session/prompt/steer id=8
   G->>DB: insert queued steer prompt
   G-->>C: response id=8 promptId,status=queued
-  B->>G: check steer queue
+  B-->>G: session/update tool_call_update status=completed
   G->>DB: update queued -> consumed
-  G-->>C: session/update steer_consumed
-  G->>B: inject steer prompt
+  G-->>C: session/prompt/consumed
+  G->>B: resume agent after tool
   B-->>G: session/update ...
   G-->>C: session/update ...
   B-->>G: prompt result
@@ -1786,7 +1792,8 @@ sequenceDiagram
 
 - 客户端只在会话非空闲时使用 `session/prompt/steer`；空闲时使用普通 `session/prompt`。
 - steer 请求返回的是队列记录，不代表 Agent 已经读取或执行。
-- 后端消费 steer 后必须更新 SQL 状态，并应发送 `steer_consumed`。
+- Gateway 在 Agent 每次运行前都会消费已有 queued steer；如果 steer 在运行中入队，则在任意工具结束时消费所有 queued steer。
+- 消费成功后必须更新 SQL 状态，并发送 `session/prompt/consumed` 通知；处理完成或失败可再发送 `steer_completed` / `steer_failed` 更新。
 
 ### Case 8: 取消未消费 steer prompt
 
