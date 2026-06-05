@@ -62,6 +62,7 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "node:zlib": path.resolve(__dirname, "./src/polyfills/empty.ts"),
     },
   },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

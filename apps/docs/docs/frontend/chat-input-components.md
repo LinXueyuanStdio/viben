@@ -122,7 +122,9 @@ export interface ChatInputProps {
   /** Available slash commands list */
   slashCommands?: SlashCommand[];
   /** Command selection callback */
-  onSlashCommand?: (command: SlashCommand) => void;
+  onSlashCommand?: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  /** Custom command menu renderer */
+  renderSlashCommandMenu?: (props: SlashCommandMenuProps) => React.ReactNode;
 }
 ```
 
@@ -642,10 +644,9 @@ When `useGlobalConfig` prop is true, ChatInput uses `useChatConfig` hook to get 
 
 ```typescript
 interface SlashCommand {
-  id: string;
-  name: string;           // e.g., "clear"
-  description: string;    // e.g., "Clear conversation"
-  icon?: React.ReactNode; // Optional icon
+  name: string;                  // e.g., "clear"
+  description: string;           // e.g., "Clear conversation"
+  input: Record<string, unknown> | null;
 }
 ```
 
@@ -654,7 +655,8 @@ interface SlashCommand {
 - Command menu appears above input when user types "/"
 - Continue typing to filter command list (e.g., "/cl" matches "clear")
 - Arrow keys to navigate, Enter/Tab to select, Escape to close
-- On selection, calls `onSlashCommand` callback and clears slash input
+- Selecting a command without an input hint calls `onSlashCommand` and clears slash input
+- Selecting a command with `input.hint` inserts the hint into the input, then calls `onSlashCommand` when the user submits
 - Shows "No commands found" when no matches
 
 ### Usage Example
@@ -662,24 +664,28 @@ interface SlashCommand {
 ```tsx
 const slashCommands: SlashCommand[] = [
   {
-    id: "clear",
     name: "clear",
     description: "Clear conversation history",
-    icon: <Trash2 className="h-4 w-4" />,
+    input: null,
   },
   {
-    id: "help",
     name: "help",
     description: "Show available commands",
-    icon: <HelpCircle className="h-4 w-4" />,
+    input: null,
+  },
+  {
+    name: "review",
+    description: "Review a target path",
+    input: { hint: "[path]" },
   },
 ];
 
 <ChatInput
   onSend={handleSend}
   slashCommands={slashCommands}
-  onSlashCommand={(cmd) => {
-    if (cmd.id === "clear") clearMessages();
+  onSlashCommand={(command, selection) => {
+    if (command.name === "clear") clearMessages();
+    if (command.name === "review") runReview(selection.args);
   }}
 />
 ```

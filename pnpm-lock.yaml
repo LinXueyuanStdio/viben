@@ -463,6 +463,9 @@ importers:
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
+      just-bash:
+        specifier: ^3.0.1
+        version: 3.0.1
       konva:
         specifier: ^10.3.0
         version: 10.3.0

@@ -116,7 +116,9 @@ export interface ChatInputProps {
   /** 可用斜杠命令列表 */
   slashCommands?: SlashCommand[];
   /** 命令选择回调 */
-  onSlashCommand?: (command: SlashCommand) => void;
+  onSlashCommand?: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  /** 自定义命令菜单渲染 */
+  renderSlashCommandMenu?: (props: SlashCommandMenuProps) => React.ReactNode;
 }
 ```
 
@@ -635,10 +637,9 @@ interface ContextDetailsPopoverProps {
 
 ```typescript
 interface SlashCommand {
-  id: string;
-  name: string;           // e.g., "clear"
-  description: string;    // e.g., "Clear conversation"
-  icon?: React.ReactNode; // Optional icon
+  name: string;                  // e.g., "clear"
+  description: string;           // e.g., "Clear conversation"
+  input: Record<string, unknown> | null;
 }
 ```
 
@@ -647,7 +648,8 @@ interface SlashCommand {
 - 用户输入 "/" 时在输入框上方显示命令菜单
 - 继续输入过滤命令列表 (e.g., "/cl" 匹配 "clear")
 - 方向键导航，Enter/Tab 选择，Escape 关闭
-- 选择后调用 `onSlashCommand` 回调并清空斜杠输入
+- 选择无输入提示的命令后调用 `onSlashCommand` 回调并清空斜杠输入
+- 选择带 `input.hint` 的命令后将提示插入输入框，用户提交后再调用 `onSlashCommand`
 - 无匹配时显示 "No commands found"
 
 ### 使用示例
@@ -655,24 +657,28 @@ interface SlashCommand {
 ```tsx
 const slashCommands: SlashCommand[] = [
   {
-    id: "clear",
     name: "clear",
     description: "Clear conversation history",
-    icon: <Trash2 className="h-4 w-4" />,
+    input: null,
   },
   {
-    id: "help",
     name: "help",
     description: "Show available commands",
-    icon: <HelpCircle className="h-4 w-4" />,
+    input: null,
+  },
+  {
+    name: "review",
+    description: "Review a target path",
+    input: { hint: "[path]" },
   },
 ];
 
 <ChatInput
   onSend={handleSend}
   slashCommands={slashCommands}
-  onSlashCommand={(cmd) => {
-    if (cmd.id === "clear") clearMessages();
+  onSlashCommand={(command, selection) => {
+    if (command.name === "clear") clearMessages();
+    if (command.name === "review") runReview(selection.args);
   }}
 />
 ```
