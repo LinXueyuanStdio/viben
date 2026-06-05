@@ -115,6 +115,7 @@ export function StaticPagePreview({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bridgeRef = useRef<PageActionBridge | null>(null);
   const currentBridgeKeyRef = useRef<string | null>(null);
+  const resolvedThemeRef = useRef(resolvedTheme);
   const registerActions = useActionStore((s) => s.register);
   const unregisterActions = useActionStore((s) => s.unregister);
   const gatewayOrigin = useMemo(() => {
@@ -135,18 +136,19 @@ export function StaticPagePreview({
     return () => disposeBridge("page_action_unavailable");
   }, [disposeBridge]);
 
-  useEffect(() => {
-    disposeBridge("page_action_cancelled");
-  }, [iframeKey, gatewayServeUrl, filePreviewType, disposeBridge]);
-
   // Send theme updates when resolvedTheme changes
   useEffect(() => {
+    resolvedThemeRef.current = resolvedTheme;
     bridgeRef.current?.updateTheme(resolvedTheme);
   }, [resolvedTheme]);
 
   const bindIframe = useCallback(
     (iframe: HTMLIFrameElement | null) => {
-      if (!iframe) return;
+      if (!iframe) {
+        disposeBridge("page_action_cancelled");
+        iframeRef.current = null;
+        return;
+      }
       iframeRef.current = iframe;
       const bridgeKey = `${iframeKey}:${gatewayServeUrl}`;
       if (currentBridgeKeyRef.current === bridgeKey && bridgeRef.current) return;
@@ -157,7 +159,7 @@ export function StaticPagePreview({
         workspacePath,
         workspaceId,
         pageSlug: page.slug,
-        theme: resolvedTheme,
+        theme: resolvedThemeRef.current,
         registerActions,
         unregisterActions,
       });
@@ -170,9 +172,9 @@ export function StaticPagePreview({
       workspacePath,
       workspaceId,
       page.slug,
-      resolvedTheme,
       registerActions,
       unregisterActions,
+      disposeBridge,
     ]
   );
 
@@ -186,7 +188,7 @@ export function StaticPagePreview({
           src={gatewayServeUrl}
           className="h-full w-full border-0"
           title={page.name}
-          onLoad={(e) => {
+          onLoad={() => {
             bridgeRef.current?.sendInit();
           }}
         />

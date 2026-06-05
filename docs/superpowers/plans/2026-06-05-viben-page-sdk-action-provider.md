@@ -1,6 +1,6 @@
 # Viben Page SDK Action Provider Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 扩展现有 `viben-page-sdk.js`，让 static page iframe 能注册 GUI action，并让 agent 通过 `GUI_execute` 操作页面内部状态。
 
@@ -26,7 +26,7 @@
 - Create: `/root/viben/packages/core/src/page/sdk/viben-page-sdk.asset.test.ts`
 - Modify later: `/root/viben/packages/core/assets/viben-page-sdk.js`
 
-- [ ] **Step 1: 写 failing tests**
+- [x] **Step 1: 写 failing tests**
 
 创建 jsdom 测试，用 `readFileSync` 读取 `/root/viben/packages/core/assets/viben-page-sdk.js`，通过 `window.eval()` 执行。测试至少包含：
 
@@ -76,7 +76,7 @@ describe("viben-page-sdk action provider", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
-        origin: location.origin,
+        origin: "http://localhost:1549",
         source: window.parent,
         data: { type: "viben-page-init", theme: "dark", workspace_path: "/workspace" },
       })
@@ -116,7 +116,7 @@ describe("viben-page-sdk action provider", () => {
     });
     window.dispatchEvent(
       new MessageEvent("message", {
-        origin: location.origin,
+        origin: "http://localhost:1549",
         source: window.parent,
         data: { type: "viben-page-init", theme: "light", workspace_path: "/workspace" },
       })
@@ -124,7 +124,7 @@ describe("viben-page-sdk action provider", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
-        origin: location.origin,
+        origin: "http://localhost:1549",
         source: window.parent,
         data: {
           type: "viben-page-action-execute",
@@ -172,7 +172,7 @@ describe("viben-page-sdk action provider", () => {
     });
     window.dispatchEvent(
       new MessageEvent("message", {
-        origin: location.origin,
+        origin: "http://localhost:1549",
         source: window.parent,
         data: { type: "viben-page-init", theme: "light", workspace_path: "/workspace" },
       })
@@ -180,7 +180,7 @@ describe("viben-page-sdk action provider", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
-        origin: location.origin,
+        origin: "http://localhost:1549",
         source: window.parent,
         data: {
           type: "viben-page-action-execute",
@@ -207,7 +207,7 @@ describe("viben-page-sdk action provider", () => {
 
     window.dispatchEvent(
       new MessageEvent("message", {
-        origin: location.origin,
+        origin: "http://localhost:1549",
         source: window.parent,
         data: {
           type: "viben-page-action-approval-result",
@@ -229,7 +229,7 @@ describe("viben-page-sdk action provider", () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run:
 
@@ -239,7 +239,7 @@ pnpm --filter @viben/core test -- src/page/sdk/viben-page-sdk.asset.test.ts
 
 Expected: FAIL，原因是 `VibenPage.actions` 未定义或相关 message 未发送。
 
-- [ ] **Step 3: 实现 SDK**
+- [x] **Step 3: 实现 SDK**
 
 在 `/root/viben/packages/core/assets/viben-page-sdk.js` 中实现：
 
@@ -247,13 +247,13 @@ Expected: FAIL，原因是 `VibenPage.actions` 未定义或相关 message 未发
 - `VP.actions.unregister(namespace?)`：更新 registry 并发送 unregister。
 - `VP.actions.list()`：返回 `{ namespace, action, description, input_schema, output_schema }[]`。
 - `VP.actions.ready`：嵌入 Desktop 且收到 init 时 resolve `true`；standalone 下一轮 tick resolve `false`。
-- `message` handler：要求 `e.origin === location.origin` 且 iframe 中 `e.source === window.parent`。
+- `message` handler：iframe 中要求 `e.source === window.parent`；首个 init 锁定 `parent_origin`，后续要求 `e.origin === parent_origin`。
 - `viben-page-init` 后全量同步 registry。
 - `viben-page-action-execute` 调用 `execute(payload, context)`。
 - `context.requireApproval(message, options)` 发送带 `execute_request_id` 的 approval request。
 - 所有 execute 返回值标准化为 `ClientToolResult`。
 
-- [ ] **Step 4: 运行 SDK 测试确认通过**
+- [x] **Step 4: 运行 SDK 测试确认通过**
 
 Run:
 
@@ -263,7 +263,7 @@ pnpm --filter @viben/core test -- src/page/sdk/viben-page-sdk.asset.test.ts
 
 Expected: PASS。
 
-- [ ] **Step 5: 提交 SDK 测试与实现**
+- [x] **Step 5: 提交 SDK 测试与实现**
 
 ```bash
 git add /root/viben/packages/core/assets/viben-page-sdk.js /root/viben/packages/core/src/page/sdk/viben-page-sdk.asset.test.ts
@@ -276,18 +276,18 @@ git commit -m "feat: add page sdk action registry"
 - Create: `/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts`
 - Create: `/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.test.ts`
 
-- [ ] **Step 1: 写 failing tests**
+- [x] **Step 1: 写 failing tests**
 
 测试使用 fake iframe window、fake action store 和 fake execution context，覆盖：
 
 - 只接受匹配 `origin` 与当前 iframe `contentWindow` 的消息。
-- 注册 action 到 namespace `page`，name 为 `<workspace_key>.<page_key>.<namespace>.<action>`。
+- 注册 action 到 namespace `page`，name 为 `<workspace_key>.<page_key>.<iframe_key>.<namespace>.<action>`。
 - slug 中 `/` 被编码为稳定 `page_key`。
 - Desktop execute postMessage 到 iframe，并等待 result。
 - approval request 必须匹配 active `execute_request_id`。
 - dispose 时 unregister provider，并让 pending execute 返回 `page_action_cancelled`。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 Run:
 
@@ -297,7 +297,7 @@ pnpm --filter @viben/desktop test -- src/pages/apps/components/page-action-bridg
 
 Expected: FAIL，原因是 `page-action-bridge.ts` 不存在。
 
-- [ ] **Step 3: 实现 bridge 模块**
+- [x] **Step 3: 实现 bridge 模块**
 
 导出：
 
@@ -337,7 +337,7 @@ export function encodePageActionSegment(value: string): string;
 - `viben-page-action-approval-request` 必须绑定 active execute，调用该 execute 的 `ctx.requireApproval()`。
 - `dispose()` 清理 provider、timer、pending approval，pending execute resolve error result。
 
-- [ ] **Step 4: 运行 bridge 测试确认通过**
+- [x] **Step 4: 运行 bridge 测试确认通过**
 
 Run:
 
@@ -347,7 +347,7 @@ pnpm --filter @viben/desktop test -- src/pages/apps/components/page-action-bridg
 
 Expected: PASS。
 
-- [ ] **Step 5: 提交 bridge**
+- [x] **Step 5: 提交 bridge**
 
 ```bash
 git add /root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts /root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.test.ts
@@ -359,11 +359,11 @@ git commit -m "feat: add desktop page action bridge"
 **Files:**
 - Modify: `/root/viben/apps/desktop/src/pages/apps/components/static-page-preview.tsx`
 
-- [ ] **Step 1: 写或扩展轻量测试**
+- [x] **Step 1: 写或扩展轻量测试**
 
 如果现有环境不适合渲染完整组件，则依赖 Task 2 的 bridge 单测，React 层只做类型和手动验证。
 
-- [ ] **Step 2: 接入 bridge**
+- [x] **Step 2: 接入 bridge**
 
 在 HTML / iframe fallback 分支中：
 
@@ -373,7 +373,7 @@ git commit -m "feat: add desktop page action bridge"
 - `resolvedTheme` 变化调用 `bridge.updateTheme(resolvedTheme)`。
 - 组件 unmount 时 dispose bridge。
 
-- [ ] **Step 3: 运行 Desktop 相关检查**
+- [x] **Step 3: 运行 Desktop 相关检查**
 
 Run:
 
@@ -384,7 +384,7 @@ pnpm --filter @viben/desktop typecheck
 
 Expected: bridge test PASS；typecheck 无本功能新增错误。
 
-- [ ] **Step 4: 提交 React 接入**
+- [x] **Step 4: 提交 React 接入**
 
 ```bash
 git add /root/viben/apps/desktop/src/pages/apps/components/static-page-preview.tsx
@@ -397,7 +397,7 @@ git commit -m "feat: wire page action bridge into preview"
 - Modify: `/root/viben/packages/core/templates/pages/static-html/index.html.hbs`
 - Modify: `/root/viben/packages/core/templates/pages/static-html/SKILL.md.hbs`
 
-- [ ] **Step 1: 更新模板**
+- [x] **Step 1: 更新模板**
 
 在 HTML 中引入：
 
@@ -407,7 +407,7 @@ git commit -m "feat: wire page action bridge into preview"
 
 并增加一个空的 action 注册示例，使用当前页面已有 DOM 更新逻辑，不写营销文案。
 
-- [ ] **Step 2: 更新模板说明**
+- [x] **Step 2: 更新模板说明**
 
 在 `SKILL.md.hbs` 增加短说明：
 
@@ -428,7 +428,7 @@ VibenPage.actions.register("page", {
 ```
 ```
 
-- [ ] **Step 3: 提交模板更新**
+- [x] **Step 3: 提交模板更新**
 
 ```bash
 git add /root/viben/packages/core/templates/pages/static-html/index.html.hbs /root/viben/packages/core/templates/pages/static-html/SKILL.md.hbs
@@ -440,7 +440,7 @@ git commit -m "feat: document static page actions"
 **Files:**
 - No new files.
 
-- [ ] **Step 1: 运行定向测试**
+- [x] **Step 1: 运行定向测试**
 
 ```bash
 pnpm --filter @viben/core test -- src/page/sdk/viben-page-sdk.asset.test.ts
@@ -449,7 +449,7 @@ pnpm --filter @viben/desktop test -- src/pages/apps/components/page-action-bridg
 
 Expected: PASS。
 
-- [ ] **Step 2: 运行 typecheck**
+- [x] **Step 2: 运行 typecheck**
 
 ```bash
 pnpm --filter @viben/desktop typecheck
@@ -458,7 +458,7 @@ pnpm --filter @viben/core typecheck
 
 Expected: 无本功能新增 TypeScript 错误。
 
-- [ ] **Step 3: 运行根级检查**
+- [x] **Step 3: 运行根级检查**
 
 ```bash
 pnpm typecheck
@@ -466,7 +466,7 @@ pnpm typecheck
 
 Expected: PASS；如果因现有无关工作区改动失败，记录失败文件和原因。
 
-- [ ] **Step 4: 检查 git 范围**
+- [x] **Step 4: 检查 git 范围**
 
 ```bash
 git status --short

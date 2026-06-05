@@ -111,13 +111,14 @@ interface PageActionContext {
 Desktop 桥接层把 iframe action 注册到现有 `ActionStore`。完整 action 名格式：
 
 ```
-page.<workspace_key>.<page_key>.<namespace>.<action>
+page.<workspace_key>.<page_key>.<iframe_key>.<namespace>.<action>
 ```
 
 这里 `page` 是 Desktop 侧系统保留 namespace，禁止普通组件或页面 bridge 以外的代码注册 `useActionProvider("page", ...)`。
 
 - `workspace_key`: 优先使用 `workspaceId`；如果桥接层拿不到 `workspaceId`，使用 `workspacePath` 的稳定短 hash。
-- `page_key`: 对 `page.slug` 做稳定编码。slug 可能包含 `/` 等路径字符，不能直接拼入 action 名。编码结果必须只包含 `[a-zA-Z0-9_-]`。
+- `page_key`: 对 `page.slug` 做稳定、无碰撞倾向的可逆编码。slug 可能包含 `/` 等路径字符，不能直接拼入 action 名。编码结果必须只包含 `[a-zA-Z0-9_-]`。
+- `iframe_key`: 当前 iframe instance 的短 key，用于区分同一 workspace/page 的多个 tab 或预览实例。
 - `namespace` 与 `action` 也必须只包含 `[a-zA-Z0-9_-]`。
 
 例如 workspace key 为 `main`、页面 slug 为 `my-dashboard`，页面内注册：
@@ -130,12 +131,12 @@ agent 调用：
 
 ```json
 {
-  "action": "page.main.my-dashboard.todo.add_item",
+  "action": "page.main.my-dashboard.iframe123.todo.add_item",
   "payload": { "text": "Ship action bridge" }
 }
 ```
 
-在 `ActionStore` 内部注册时，namespace 为 `page`，action 短名称为 `<workspace_key>.<page_key>.<namespace>.<action>`。这样能复用现有 `ActionStore` 的 `namespace.name` 解析规则，不需要修改 `ActionStore` 命名模型，同时避免不同 workspace 或不同页面 slug 冲突。
+在 `ActionStore` 内部注册时，namespace 为 `page`，action 短名称为 `<workspace_key>.<page_key>.<iframe_key>.<namespace>.<action>`。这样能复用现有 `ActionStore` 的 `namespace.name` 解析规则，不需要修改 `ActionStore` 命名模型，同时避免不同 workspace、页面 slug 或同页多 iframe 冲突。
 
 ## postMessage 协议
 
@@ -146,10 +147,11 @@ agent 调用：
 
 页面 SDK 继续校验：
 
-- `event.origin === location.origin`
 - `event.source === window.parent`
+- 首个 `viben-page-init` 到达前，不校验 `event.origin`，只接受 `window.parent` 的消息，并把该 init 的 `event.origin` 记录为 `parent_origin`。
+- 首个 init 后，所有父级消息必须满足 `event.origin === parent_origin`。
 
-所有 `request_id` 必须由发送方用 `crypto.randomUUID()` 生成；不支持时使用足够随机的 fallback。接收方 pending map 的实际 key 必须至少包含 `iframe_instance_id + request_id`，result/approval result 只能消费一次。超时、reload、unmount 后到达的迟到消息必须忽略。
+SDK 初始 `viben-page-ready` 是非敏感握手消息，可以用 `targetOrigin: "*"` 发送；收到 init 后必须把后续 SDK -> Desktop 消息的 `targetOrigin` 固定为 `parent_origin`。所有 `request_id` 必须由发送方用 `crypto.randomUUID()` 生成；不支持时使用足够随机的 fallback。接收方 pending map 的实际 key 必须至少包含 `iframe_instance_id + request_id`，result/approval result 只能消费一次。超时、reload、unmount 后到达的迟到消息必须忽略。
 
 ### 页面到父级：注册 action
 
@@ -171,7 +173,7 @@ interface PageActionsRegisterMessage {
 1. 生成 provider id，例如 `page:<slug>:<iframe_instance_id>:<namespace>`。
 2. 把每个 action 转换为 `ActionDef`。
 3. 注册到 `ActionStore.register(providerId, "page", defs)`。
-4. action 短名称为 `<workspace_key>.<page_key>.<namespace>.<action>`。
+4. action 短名称为 `<workspace_key>.<page_key>.<iframe_key>.<namespace>.<action>`。
 5. 发送 `viben-page-actions-register-result` ack，包含 accepted/rejected action 列表与拒绝原因。
 
 ```typescript
@@ -344,8 +346,8 @@ SDK 侧也清理 pending request，避免内存泄漏。
 1. 只允许当前 `StaticPagePreview` 持有的 iframe 注册 action。
 2. 父级不接受 `event.source` 不匹配的消息。
 3. 父级 targetOrigin 使用 gateway origin，禁止 `"*"`。
-4. SDK targetOrigin 使用 `location.origin`。
-5. action 名、namespace、workspace_key、page_key 只接受简单标识符段，必须匹配 `^[a-zA-Z0-9_-]+$`；完整名称由 Desktop 组装，页面不能伪造 `page.<workspace_key>.<page_key>` 前缀。
+4. SDK 初始 ready 使用 `targetOrigin: "*"`，且只用于握手；收到 init 后，SDK targetOrigin 必须使用已锁定的 `parent_origin`。
+5. action 名、namespace、workspace_key、page_key、iframe_key 只接受简单标识符段，必须匹配 `^[a-zA-Z0-9_-]+$`；完整名称由 Desktop 组装，页面不能伪造 `page.<workspace_key>.<page_key>.<iframe_key>` 前缀。
 6. 函数不跨 iframe 传输，只传元数据和执行请求。
 7. `page` 是系统保留 namespace。
 
@@ -383,7 +385,7 @@ SDK 侧也清理 pending request，避免内存泄漏。
 桥接模块单测覆盖：
 
 - 只接受当前 iframe source 与 gateway origin。
-- 注册消息会调用 `ActionStore.register()`，名称为 `page.<workspace_key>.<page_key>.<namespace>.<action>`。
+- 注册消息会调用 `ActionStore.register()`，名称为 `page.<workspace_key>.<page_key>.<iframe_key>.<namespace>.<action>`。
 - slug 含 `/` 等字符时会生成稳定 `page_key`。
 - action 数量、description 长度、schema 大小、命名非法时会拒绝并 ack。
 - unmount/reload 会 unregister provider。
@@ -405,7 +407,7 @@ React 层测试只覆盖：
 1. 创建 static page，引用 `viben-page-sdk.js`。
 2. 页面注册一个 `todo.add_item` action。
 3. 在 chat popup 中让 agent 调用 `list_actions`。
-4. 确认能看到 `page.<workspace_key>.<page_key>.todo.add_item`。
+4. 确认能看到 `page.<workspace_key>.<page_key>.<iframe_key>.todo.add_item`。
 5. 让 agent 使用 `GUI_execute` 调用该 action。
 6. 确认页面 DOM 状态更新，并且 agent 收到 action result 后继续回答。
 
@@ -438,7 +440,7 @@ pnpm typecheck
 本设计固定以下决策：
 
 - action 签名为 `execute(payload, context)`。
-- Desktop action 完整名为 `page.<workspace_key>.<page_key>.<namespace>.<action>`。
+- Desktop action 完整名为 `page.<workspace_key>.<page_key>.<iframe_key>.<namespace>.<action>`。
 - 本阶段只支持 static HTML iframe。
 - 默认 action 执行超时为 30 秒。
 - `page` namespace 为系统保留。

@@ -119,8 +119,8 @@ describe("page-action-bridge", () => {
     const provider = [...providers.values()][0];
     expect(provider.namespace).toBe("page");
     expect(provider.actions).toHaveLength(1);
+    expect(provider.actions[0].name).toMatch(/^main\.reports_2Fdaily\.[a-zA-Z0-9_-]+\.todo\.add_item$/);
     expect(provider.actions[0]).toMatchObject({
-      name: "main.reports_daily.todo.add_item",
       description: "Add item",
       input_schema: { type: "object" },
     });
@@ -159,7 +159,7 @@ describe("page-action-bridge", () => {
         context: {
           session_id: "session-1",
           tool_use_id: "tool-1",
-          full_action: "page.main.reports_daily.todo.add_item",
+          full_action: expect.stringMatching(/^page\.main\.reports_2Fdaily\.[a-zA-Z0-9_-]+\.todo\.add_item$/),
           page_slug: "reports/daily",
           workspace_path: "/workspace/main",
         },
@@ -197,7 +197,9 @@ describe("page-action-bridge", () => {
   });
 
   it("does not post approval results after execute is cancelled", async () => {
-    let resolveApproval: ((value: boolean) => void) | null = null;
+    const approval = {
+      resolve: (_value: boolean) => {},
+    };
     const { bridge, dispatch, providers, posted } = createHarness();
     const ctx: ExecutionContext = {
       sessionId: "session-1",
@@ -205,7 +207,7 @@ describe("page-action-bridge", () => {
       requireApproval: vi.fn(
         () =>
           new Promise<boolean>((resolve) => {
-            resolveApproval = resolve;
+            approval.resolve = resolve;
           })
       ),
     };
@@ -231,7 +233,7 @@ describe("page-action-bridge", () => {
     await Promise.resolve();
 
     bridge.dispose("page_action_cancelled");
-    resolveApproval?.(true);
+    approval.resolve(true);
     await Promise.resolve();
 
     expect(posted).not.toContainEqual({

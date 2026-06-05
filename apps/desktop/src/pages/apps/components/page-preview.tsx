@@ -168,6 +168,7 @@ export function PagePreview({
                 {/* Static pages - route to appropriate viewer based on file type */}
                 {page.type === "static" && (
                   <StaticPagePreview
+                    key={iframeKey}
                     page={page as StaticPageConfig}
                     workspacePath={workspacePath}
                     workspaceId={workspaceId}
