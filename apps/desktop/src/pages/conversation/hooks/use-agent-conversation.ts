@@ -207,6 +207,7 @@ interface SSEMessageData {
   cost?: number;
   duration?: number;
   subtype?: string;
+  result?: string;
   // error
   message?: string;
   // status (OpenClaw connection lifecycle)
@@ -714,11 +715,14 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         setIsStreaming(false);
         useOverlayStore.getState().actions.markPresentationStreamDone();
         perfMark("SSE:result:phase=completed", `cost=${data.cost}, duration=${data.duration}`);
-        // Add result message with cost/duration for inline display
-        if (data.cost != null || data.duration != null) {
+        // Terminal metadata is tracked by state/logs; only render result events
+        // that carry user-visible content.
+        const resultContent = data.content ?? data.result;
+        if (typeof resultContent === "string" && resultContent.trim()) {
           const resultMsg: AgentMessage = {
             id: generateId(),
             type: "result",
+            content: resultContent,
             cost: data.cost,
             duration: data.duration,
           };
