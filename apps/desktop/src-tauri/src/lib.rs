@@ -357,8 +357,6 @@ pub fn run() {
                 // This prevents the main window from coming to foreground when pet is dragged
                 #[cfg(target_os = "macos")]
                 if let Some(pet_window) = app.get_webview_window("pet-window") {
-                    use tauri::WebviewWindowExt as _;
-
                     if let Ok(ns_win_ptr) = pet_window.ns_window() {
                         let ns_window: id = ns_win_ptr as id;
                         unsafe {
