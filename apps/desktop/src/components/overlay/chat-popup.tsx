@@ -19,7 +19,15 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { AttachmentPreview, type MessageAttachment, type SlashCommand, type SlashCommandSelection, SlashCommandMenu, parseSlashCommandInput, useSlashCommandMenu } from '@viben/chat';
+import {
+  AttachmentPreview,
+  type MessageAttachment,
+  type SlashCommand,
+  type SlashCommandHandler,
+  SlashCommandMenu,
+  parseSlashCommandInput,
+  useSlashCommandMenu
+} from '@viben/chat';
 import { cn } from '@/lib/utils';
 import { openAndReadFiles } from '@/lib/tauri-file-attach';
 import {
@@ -95,7 +103,7 @@ function ChatPopup({
   onSteer: (message: string) => void;
   onCancel: () => void;
   onSendBackground: (content: string) => void;
-  onSlashCommand?: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  onSlashCommand?: SlashCommandHandler;
   slashCommands?: SlashCommand[];
   workspacePath?: string;
   workspaceName?: string;
@@ -925,7 +933,7 @@ export function ChatPopupLayer(): ReactElement | null {
     steerMessage(message);
   }, [steerMessage]);
 
-  const handleSlashCommand = useCallback(async (command: SlashCommand, selection?: SlashCommandSelection) => {
+  const handleSlashCommand = useCallback<SlashCommandHandler>(async (command, selection) => {
     const context: CommandContext = {
       messages: messages.map((m) => ({
         role: m.type === "user" ? "user" : "assistant",

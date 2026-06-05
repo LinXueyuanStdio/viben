@@ -38,7 +38,7 @@ import {
   useTaskSpecsData,
 } from "@/hooks";
 import { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
-import type { SlashCommand } from "@viben/chat";
+import type { SlashCommand, SlashCommandHandler } from "@viben/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";
@@ -441,7 +441,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
   ], [t]);
 
   // Handle slash command execution
-  const handleSlashCommand = useCallback((command: SlashCommand) => {
+  const handleSlashCommand = useCallback<SlashCommandHandler>((command) => {
     switch (command.id) {
       case "clear":
         agentClearMessages?.();

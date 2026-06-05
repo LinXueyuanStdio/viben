@@ -20,8 +20,9 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { MessageList } from "@viben/chat";
-import type { AgentMessage } from "@viben/chat";
+import { ExecApproval, MessageList, QuestionInput } from "@viben/chat";
+import type { AgentMessage, PendingQuestion } from "@viben/chat";
+import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
   type AgentConfigPayload,
@@ -30,6 +31,11 @@ import {
   type ClientToolCall,
   type ClientToolExecutionRequest,
   type ConnectionStatus,
+  type ElicitationContentValue,
+  type ElicitationPropertySchema,
+  type ElicitationRequest,
+  type ElicitationRequestLog,
+  type ElicitationResponse,
   type PermissionDecisionRequest,
   type PermissionDecisionResult,
   type PermissionOption,
@@ -37,13 +43,20 @@ import {
   type TrafficEntry,
 } from "./acp-client";
 import {
-  appendClientToolRequestedStep,
-  appendClientToolResultStep,
-  appendPermissionDecisionStep,
-  appendSystemStep,
-  appendUserPromptStep,
-  applyAcpSessionUpdateStep,
+  acpSessionUpdateToUiSteps,
+  applyAcpUiStep,
+  clientToolCallToUiSteps,
+  clientToolRequestedToUiSteps,
+  elicitationRequestToPendingQuestion,
+  elicitationRequestToUiSteps,
+  elicitationResultToUiSteps,
+  getElicitationFormFields,
+  permissionDecisionToUiSteps,
+  permissionRequestToUiSteps,
+  systemTextToUiSteps,
+  userPromptToUiSteps,
   type AcpUiStep,
+  type ElicitationFormField,
 } from "./acp-chat-adapter";
 
 interface GuiActionDefinition {
@@ -63,9 +76,15 @@ interface UiSessionState {
   lastActiveAt: string;
   sessionResult: unknown;
   promptResult: unknown;
+  uiMessages: AgentMessage[];
   uiSteps: AcpUiStep[];
+  uiStepQueue: AcpUiStep[];
+  queueDraining: boolean;
+  pendingApproval: PendingExecApproval | null;
+  pendingQuestion: PendingQuestion | null;
   clientToolCalls: ClientToolCall[];
   permissionRequests: PermissionRequestLog[];
+  elicitationRequests: ElicitationRequestLog[];
 }
 
 interface TrafficFilters {
@@ -85,6 +104,14 @@ interface PermissionDialogState {
   request: PermissionDecisionRequest;
   selectedOptionId: string;
   resolve: (result: PermissionDecisionResult) => void;
+}
+
+interface ElicitationDialogState {
+  request: ElicitationRequest;
+  pendingQuestion: PendingQuestion;
+  formFields: ElicitationFormField[];
+  answersText: string;
+  resolve: (result: ElicitationResponse) => void;
 }
 
 const BACKEND_OPTIONS = [
@@ -169,9 +196,12 @@ export function App() {
   const filteredTraffic = useMemo(() => filterTraffic(traffic, trafficFilters), [traffic, trafficFilters]);
   const activeSession = activeSessionId ? sessionsById[activeSessionId] : null;
   const sessionId = activeSession?.id ?? null;
-  const messages = activeSession?.messages ?? [];
+  const messages = activeSession?.uiMessages ?? [];
   const clientToolCalls = activeSession?.clientToolCalls ?? [];
   const permissionRequests = activeSession?.permissionRequests ?? [];
+  const elicitationRequests = activeSession?.elicitationRequests ?? [];
+  const pendingApproval = activeSession?.pendingApproval ?? null;
+  const pendingQuestion = activeSession?.pendingQuestion ?? null;
   const sessionResult = activeSession?.sessionResult ?? null;
   const promptResult = activeSession?.promptResult ?? null;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
@@ -188,53 +218,7 @@ export function App() {
   }, []);
 
   const appendSessionUpdate = useCallback((notification: AcpSessionUpdate) => {
-    const update = notification.update;
-    const sessionId = notification.sessionId;
-    if (update.sessionUpdate === "agent_message_chunk" || update.sessionUpdate === "agent_thought_chunk") {
-      const text = update.content?.text ?? "";
-      if (!text) return;
-      appendSessionMessages(
-        setSessionsById,
-        sessionId,
-        [
-          {
-            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            role: update.sessionUpdate === "agent_thought_chunk" ? "thought" : "agent",
-            text,
-          },
-        ],
-        (current, incoming) => mergeTextChunk(current, incoming[0].role as "agent" | "thought", incoming[0].text)
-      );
-      return;
-    }
-
-    if (update.sessionUpdate === "tool_call") {
-      appendSessionMessages(setSessionsById, sessionId, [
-        {
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          role: "tool",
-          text: update.title ?? update.toolCallId ?? "tool",
-          status: update.status,
-          toolCallId: update.toolCallId,
-        },
-      ]);
-      return;
-    }
-
-    if (update.sessionUpdate === "tool_call_update") {
-      updateSessionMessages(setSessionsById, sessionId, (current) => updateToolStatus(current, update.toolCallId, update.status));
-      return;
-    }
-
-    if (update.sessionUpdate === "error") {
-      appendSessionMessages(setSessionsById, sessionId, [
-        {
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          role: "error",
-          text: stringifyDiagnostic(update.error),
-        },
-      ]);
-    }
+    enqueueUiSteps(setSessionsById, notification.sessionId, acpSessionUpdateToUiSteps(notification));
   }, []);
 
   const appendClientToolCall = useCallback((call: ClientToolCall) => {
@@ -243,13 +227,7 @@ export function App() {
       clientToolCalls: [call, ...session.clientToolCalls].slice(0, 50),
       lastActiveAt: new Date().toISOString(),
     }));
-    appendSessionMessages(setSessionsById, call.sessionId, [
-      {
-        id: call.id,
-        role: "system",
-        text: `Client tool handled: ${call.toolName} (${call.toolUseId})`,
-      },
-    ]);
+    enqueueUiSteps(setSessionsById, call.sessionId, clientToolCallToUiSteps(call));
   }, []);
 
   const appendPermissionRequest = useCallback((request: PermissionRequestLog) => {
@@ -258,13 +236,16 @@ export function App() {
       permissionRequests: [request, ...session.permissionRequests].slice(0, 50),
       lastActiveAt: new Date().toISOString(),
     }));
-    appendSessionMessages(setSessionsById, request.sessionId, [
-      {
-        id: request.id,
-        role: "system",
-        text: `Permission decision: ${request.title} -> ${request.selectedOptionId}`,
-      },
-    ]);
+    enqueueUiSteps(setSessionsById, request.sessionId, permissionDecisionToUiSteps(request));
+  }, []);
+
+  const appendElicitationRequest = useCallback((request: ElicitationRequestLog) => {
+    updateSession(setSessionsById, request.sessionId, (session) => ({
+      ...session,
+      elicitationRequests: [request, ...session.elicitationRequests].slice(0, 50),
+      lastActiveAt: new Date().toISOString(),
+    }));
+    enqueueUiSteps(setSessionsById, request.sessionId, elicitationResultToUiSteps(request));
   }, []);
 
   const executeClientTool = useCallback(
@@ -281,6 +262,7 @@ export function App() {
   );
 
   const requestClientToolResult = useCallback((request: ClientToolExecutionRequest, draft: CallToolResult): Promise<CallToolResult> => {
+    enqueueUiSteps(setSessionsById, request.sessionId, clientToolRequestedToUiSteps(request));
     return new Promise((resolve) => {
       setToolDialog({
         request,
@@ -292,11 +274,27 @@ export function App() {
   }, []);
 
   const requestPermissionDecision = useCallback((request: PermissionDecisionRequest): Promise<PermissionDecisionResult> => {
+    enqueueUiSteps(setSessionsById, request.sessionId, permissionRequestToUiSteps(request));
     return new Promise((resolve) => {
       const selected = selectInitialPermissionOption(request.options);
       setPermissionDialog({
         request,
         selectedOptionId: selected?.optionId ?? selected?.name ?? "",
+        resolve,
+      });
+    });
+  }, []);
+
+  const requestElicitationResponse = useCallback((request: ElicitationRequest): Promise<ElicitationResponse> => {
+    enqueueUiSteps(setSessionsById, request.sessionId, elicitationRequestToUiSteps(request));
+    return new Promise((resolve) => {
+      const pendingQuestion = elicitationRequestToPendingQuestion(request);
+      const formFields = getElicitationFormFields(request);
+      setElicitationDialog({
+        request,
+        pendingQuestion,
+        formFields,
+        answersText: prettyJson(buildDefaultElicitationContent(formFields)),
         resolve,
       });
     });
@@ -309,15 +307,17 @@ export function App() {
         onSessionUpdate: appendSessionUpdate,
         onClientToolCall: appendClientToolCall,
         onPermissionRequest: appendPermissionRequest,
+        onElicitationRequest: appendElicitationRequest,
         executeClientTool,
         requestClientToolResult,
         requestPermissionDecision,
+        requestElicitationResponse,
         onStatus: setStatus,
         onError: setError,
       });
     }
     return clientRef.current;
-  }, [appendClientToolCall, appendPermissionRequest, appendSessionUpdate, appendTraffic, executeClientTool, requestClientToolResult, requestPermissionDecision]);
+  }, [appendClientToolCall, appendElicitationRequest, appendPermissionRequest, appendSessionUpdate, appendTraffic, executeClientTool, requestClientToolResult, requestElicitationResponse, requestPermissionDecision]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload | undefined => {
     if (!useInlineAgentConfig) return undefined;

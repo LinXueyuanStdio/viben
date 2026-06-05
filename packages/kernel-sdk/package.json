@@ -1,6 +1,6 @@
 {
   "name": "@viben/plugin-sdk",
-  "version": "2026.518.2",
+  "version": "1.0.0",
   "description": "SDK for building Viben plugins — types, base classes, and testing utilities",
   "type": "module",
   "exports": {
@@ -29,7 +29,7 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@viben/kernel": ">=2026.518.2"
+    "@viben/kernel": ">=1.0.0"
   },
   "devDependencies": {
     "@viben/kernel": "workspace:*",

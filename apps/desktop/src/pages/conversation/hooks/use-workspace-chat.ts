@@ -25,7 +25,7 @@ import { useVitePreview } from "@/hooks/use-vite-preview";
 import type { AgentMessage, Artifact } from "@/types";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useSlashCommands, type CommandContext } from "@/features/slash-commands";
-import type { SlashCommand, SlashCommandSelection } from "@viben/chat";
+import type { SlashCommand, SlashCommandHandler } from "@viben/chat";
 import { useToast } from "@/hooks/use-toast";
 import {
   type Conversation,
@@ -1000,8 +1000,8 @@ export function useWorkspaceChat() {
     }
   };
 
-  const handleSlashCommand = useCallback(
-    async (command: SlashCommand, selection?: SlashCommandSelection) => {
+  const handleSlashCommand = useCallback<SlashCommandHandler>(
+    async (command, selection) => {
       const context: CommandContext = {
         sessionId: selectedConversationId || undefined,
         messages: messages.map((m) => ({
