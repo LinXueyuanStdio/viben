@@ -6062,7 +6062,10 @@
     "zoomIn": "Zoom In",
     "zoomOut": "Zoom Out",
     "history": "History",
-    "downloads": "Downloads"
+    "downloads": "Downloads",
+    "noHistory": "No history",
+    "previousMatch": "Previous match",
+    "nextMatch": "Next match"
   },
   "emojiPicker": {
     "categories": {
@@ -6131,6 +6134,7 @@
     "copyLink": "Copy Link",
     "detachToNewWindow": "Detach to New Window",
     "detachUnavailable": "This tab cannot be detached",
+    "closeAllTabs": "Close All Tabs",
     "closeAllUnpinned": "Close All Unpinned Tabs",
     "backHistory": "Back History",
     "forwardHistory": "Forward History",

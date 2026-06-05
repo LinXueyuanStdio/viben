@@ -6062,7 +6062,10 @@
     "zoomIn": "放大",
     "zoomOut": "缩小",
     "history": "浏览记录",
-    "downloads": "下载内容"
+    "downloads": "下载内容",
+    "noHistory": "没有浏览记录",
+    "previousMatch": "上一个匹配项",
+    "nextMatch": "下一个匹配项"
   },
   "emojiPicker": {
     "categories": {
@@ -6131,6 +6134,7 @@
     "copyLink": "复制链接",
     "detachToNewWindow": "分离到新窗口",
     "detachUnavailable": "此标签页无法分离",
+    "closeAllTabs": "关闭全部标签页",
     "closeAllUnpinned": "关闭所有未固定标签页",
     "backHistory": "后退历史",
     "forwardHistory": "前进历史",
