@@ -168,7 +168,7 @@ pre code.json-code {
 }
 
 .acp-prompt-input {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-card);

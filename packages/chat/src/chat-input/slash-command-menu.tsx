@@ -128,16 +128,14 @@ export function SlashCommandMenu({
     <div
       ref={menuRef}
       className={cn(
-        // Telegram style: top corners rounded, bottom corners flat (connects to input)
-        "rounded-t-lg rounded-b-none border border-b-0 border-border bg-popover overflow-hidden",
-        "absolute left-0 right-0 bottom-full z-[9999]",
+        "rounded-lg border border-border bg-card text-foreground overflow-hidden",
+        "absolute left-0 right-0 bottom-[calc(100%+8px)] z-[9999]",
         // Smooth height transition
         "transition-[max-height] duration-200 ease-out",
         className
       )}
       style={{
-        // Shadow on top and sides only (no bottom shadow for seamless connection)
-        boxShadow: '0 -4px 6px -1px rgb(0 0 0 / 0.1), -4px 0 6px -1px rgb(0 0 0 / 0.1), 4px 0 6px -1px rgb(0 0 0 / 0.1)',
+        boxShadow: "0 18px 48px rgb(0 0 0 / 0.22)",
         maxHeight: `${maxHeight}px`,
       }}
     >
@@ -172,13 +170,15 @@ export function SlashCommandMenu({
                 onMouseEnter={() => onHover(index)}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-foreground">
-                    /<HighlightedText text={command.name} query={query} />
-                    {typeof command.input?.hint === "string" && command.input.hint && (
-                      <span className="ml-1 font-normal text-muted-foreground">
+                  <div className="flex min-w-0 items-baseline gap-1 font-medium text-foreground">
+                    <span className="min-w-0 truncate">
+                      /<HighlightedText text={command.name} query={query} />
+                    </span>
+                    {typeof command.input?.hint === "string" && command.input.hint ? (
+                      <span className="min-w-0 truncate font-normal text-muted-foreground">
                         {command.input.hint}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
                     <HighlightedText text={command.description} query={query} />

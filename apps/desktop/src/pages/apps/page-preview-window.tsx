@@ -6,7 +6,6 @@ import { platform } from "@tauri-apps/plugin-os";
 import {
   ChevronLeft,
   ChevronRight,
-  CornerUpRight,
   FileQuestion,
   Loader2,
   MoreHorizontal,
@@ -21,26 +20,18 @@ import {
 } from "@/components/browser-tab-frame";
 import {
   ContextMenu,
-  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuShortcut,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconDisplay } from "@/components/ui/icon-picker";
@@ -362,8 +353,7 @@ function PagePreviewWindowTabBar({
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const refreshShortcut = isMacOS ? "⌘R" : "Ctrl+R";
-  const actualSizeShortcut = isMacOS ? "⌘0" : "Ctrl+0";
-  const closeTabsShortcut = isMacOS ? "⌥⌘W" : "Alt+Ctrl+W";
+  const closeTabShortcut = isMacOS ? "⌥⌘W" : "Alt+Ctrl+W";
   const tabIcon = page.icon ? (
     <IconDisplay icon={page.icon} size="sm" className="text-muted-foreground" />
   ) : (
@@ -478,8 +468,7 @@ function PagePreviewWindowTabBar({
                     <PreviewDropdownMenuItems
                       canOpenExternal={canOpenExternal}
                       refreshShortcut={refreshShortcut}
-                      actualSizeShortcut={actualSizeShortcut}
-                      closeTabsShortcut={closeTabsShortcut}
+                      closeTabShortcut={closeTabShortcut}
                       onRefresh={onRefresh}
                       onCopyLink={onCopyLink}
                       onOpenExternal={onOpenExternal}
@@ -496,8 +485,7 @@ function PagePreviewWindowTabBar({
         <PreviewContextMenuItems
           canOpenExternal={canOpenExternal}
           refreshShortcut={refreshShortcut}
-          actualSizeShortcut={actualSizeShortcut}
-          closeTabsShortcut={closeTabsShortcut}
+          closeTabShortcut={closeTabShortcut}
           onRefresh={onRefresh}
           onCopyLink={onCopyLink}
           onOpenExternal={onOpenExternal}
@@ -511,8 +499,7 @@ function PagePreviewWindowTabBar({
 function PreviewDropdownMenuItems({
   canOpenExternal,
   refreshShortcut,
-  actualSizeShortcut,
-  closeTabsShortcut,
+  closeTabShortcut,
   onRefresh,
   onCopyLink,
   onOpenExternal,
@@ -520,8 +507,7 @@ function PreviewDropdownMenuItems({
 }: {
   canOpenExternal: boolean;
   refreshShortcut: string;
-  actualSizeShortcut: string;
-  closeTabsShortcut: string;
+  closeTabShortcut: string;
   onRefresh: () => void;
   onCopyLink: () => void;
   onOpenExternal: () => void;
@@ -538,53 +524,14 @@ function PreviewDropdownMenuItems({
       <DropdownMenuItem onClick={onCopyLink} disabled={!canOpenExternal}>
         {t("tabBar.copyLink", "Copy Link")}
       </DropdownMenuItem>
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger>
-          {t("pagePreview.textSize", "Adjust Text Size")}
-        </DropdownMenuSubTrigger>
-        <DropdownMenuSubContent className="w-52">
-          <DropdownMenuCheckboxItem checked onCheckedChange={() => undefined}>
-            {t("pagePreview.actualSize", "Actual Size")}
-            <DropdownMenuShortcut>{actualSizeShortcut}</DropdownMenuShortcut>
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuItem disabled>
-            <span className="mr-6" />
-            {t("pagePreview.zoomIn", "Zoom In")}
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled>
-            <span className="mr-6" />
-            {t("pagePreview.zoomOut", "Zoom Out")}
-          </DropdownMenuItem>
-        </DropdownMenuSubContent>
-      </DropdownMenuSub>
-      <DropdownMenuItem disabled>
-        {t("common.find", "Find...")}
-      </DropdownMenuItem>
-      <DropdownMenuItem disabled>
-        {t("common.print", "Print")}
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem disabled>
-        <CornerUpRight className="mr-2 h-4 w-4" />
-        {t("common.forward", "Forward")}
-      </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={onOpenExternal} disabled={!canOpenExternal}>
         {t("page.openExternalDefault", "Open with Default Browser")}
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem disabled>
-        {t("pagePreview.history", "History")}
-      </DropdownMenuItem>
-      <DropdownMenuItem disabled>
-        {t("pagePreview.downloads", "Downloads")}
-      </DropdownMenuItem>
       <DropdownMenuItem onClick={onCloseTab}>
-        {t("tabBar.closeAllTabs", "Close All Tabs")}
-        <DropdownMenuShortcut>{closeTabsShortcut}</DropdownMenuShortcut>
-      </DropdownMenuItem>
-      <DropdownMenuItem disabled>
-        {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+        {t("tabBar.closeTab", "Close Tab")}
+        <DropdownMenuShortcut>{closeTabShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
     </>
   );
@@ -593,8 +540,7 @@ function PreviewDropdownMenuItems({
 function PreviewContextMenuItems({
   canOpenExternal,
   refreshShortcut,
-  actualSizeShortcut,
-  closeTabsShortcut,
+  closeTabShortcut,
   onRefresh,
   onCopyLink,
   onOpenExternal,
@@ -602,8 +548,7 @@ function PreviewContextMenuItems({
 }: {
   canOpenExternal: boolean;
   refreshShortcut: string;
-  actualSizeShortcut: string;
-  closeTabsShortcut: string;
+  closeTabShortcut: string;
   onRefresh: () => void;
   onCopyLink: () => void;
   onOpenExternal: () => void;
@@ -620,53 +565,14 @@ function PreviewContextMenuItems({
       <ContextMenuItem onClick={onCopyLink} disabled={!canOpenExternal}>
         {t("tabBar.copyLink", "Copy Link")}
       </ContextMenuItem>
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>
-          {t("pagePreview.textSize", "Adjust Text Size")}
-        </ContextMenuSubTrigger>
-        <ContextMenuSubContent className="w-52">
-          <ContextMenuCheckboxItem checked onCheckedChange={() => undefined}>
-            {t("pagePreview.actualSize", "Actual Size")}
-            <ContextMenuShortcut>{actualSizeShortcut}</ContextMenuShortcut>
-          </ContextMenuCheckboxItem>
-          <ContextMenuItem disabled>
-            <span className="mr-6" />
-            {t("pagePreview.zoomIn", "Zoom In")}
-          </ContextMenuItem>
-          <ContextMenuItem disabled>
-            <span className="mr-6" />
-            {t("pagePreview.zoomOut", "Zoom Out")}
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-      <ContextMenuItem disabled>
-        {t("common.find", "Find...")}
-      </ContextMenuItem>
-      <ContextMenuItem disabled>
-        {t("common.print", "Print")}
-      </ContextMenuItem>
-      <ContextMenuSeparator />
-      <ContextMenuItem disabled>
-        <CornerUpRight className="mr-2 h-4 w-4" />
-        {t("common.forward", "Forward")}
-      </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={onOpenExternal} disabled={!canOpenExternal}>
         {t("page.openExternalDefault", "Open with Default Browser")}
       </ContextMenuItem>
       <ContextMenuSeparator />
-      <ContextMenuItem disabled>
-        {t("pagePreview.history", "History")}
-      </ContextMenuItem>
-      <ContextMenuItem disabled>
-        {t("pagePreview.downloads", "Downloads")}
-      </ContextMenuItem>
       <ContextMenuItem onClick={onCloseTab}>
-        {t("tabBar.closeAllTabs", "Close All Tabs")}
-        <ContextMenuShortcut>{closeTabsShortcut}</ContextMenuShortcut>
-      </ContextMenuItem>
-      <ContextMenuItem disabled>
-        {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+        {t("tabBar.closeTab", "Close Tab")}
+        <ContextMenuShortcut>{closeTabShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
     </>
   );

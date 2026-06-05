@@ -944,8 +944,8 @@ export function App() {
                 onSend={(content) => void sendPromptText(content)}
                 onCancel={cancel}
                 isLoading={Boolean(activeSession?.uiStepQueue.length)}
-                disabled={!connected || !sessionId}
-                blockedReason={!connected ? "Connect first." : !sessionId ? "Create or load a session first." : undefined}
+                sendDisabled={!connected || !sessionId}
+                sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
                 placeholder="Send an ACP prompt, or type / for backend commands"
                 slashCommands={slashCommands}
                 onSlashCommand={handleSlashCommand}

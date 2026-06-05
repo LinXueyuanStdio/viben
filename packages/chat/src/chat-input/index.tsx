@@ -64,6 +64,8 @@ export function ChatInput({
   allowSendWhileLoading,
   disabled,
   blockedReason,
+  sendDisabled,
+  sendBlockedReason,
   placeholder,
   className,
   autoFocus = false,
@@ -347,6 +349,7 @@ export function ChatInput({
   const canSubmit =
     (content.trim().length > 0 || attachments.length > 0) &&
     !disabled &&
+    !sendDisabled &&
     !isAnyLoading;
 
   // Send handler
@@ -517,10 +520,10 @@ export function ChatInput({
       />
 
       {/* Blocked reason indicator */}
-      {disabled && blockedReason && (
+      {((disabled && blockedReason) || (!disabled && sendDisabled && sendBlockedReason)) && (
         <div className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground border-b border-border/40">
           <Shield className="size-3 text-amber-500" />
-          <span>{blockedReason}</span>
+          <span>{disabled ? blockedReason : sendBlockedReason}</span>
         </div>
       )}
 

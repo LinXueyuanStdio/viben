@@ -93,6 +93,10 @@ export interface ChatInputProps {
   disabled?: boolean;
   /** When set, shows a subtle message above the input explaining why it's disabled */
   blockedReason?: string;
+  /** Whether sending is disabled while the textarea remains editable */
+  sendDisabled?: boolean;
+  /** Optional reason to show when sending is disabled */
+  sendBlockedReason?: string;
   /** Placeholder text for the textarea */
   placeholder?: string;
   /** Additional CSS class */
