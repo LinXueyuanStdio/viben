@@ -40,8 +40,8 @@ export function generatePackageJson(params: TemplateParams): string {
     },
     devDependencies: {
       '@viben/plugin-sdk': params.cliVersion,
-      typescript: '^5.4.0',
-      vitest: '^3.0.0',
+      typescript: '^5.9.3',
+      vitest: '^4.0.18',
     },
   }
   return JSON.stringify(packageJson, null, 2) + '\n'

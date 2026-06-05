@@ -4,7 +4,7 @@
 
 **Goal:** Build plugin developer tooling: SDK package with types + testing utilities, scaffold generator, and dev mode with hot-reload.
 
-**Architecture:** `@viben/plugin-sdk` is a separate package in `packages/plugin-sdk/` (monorepo via pnpm workspace). It re-exports types from the main CLI package and provides testing utilities. `viben plugin create` generates a complete plugin project. `viben dev` loads a local plugin with file watching + hot-reload.
+**Architecture:** `@viben/plugin-sdk` is a separate package in `packages/kernel-sdk/` (monorepo via pnpm workspace). It re-exports types from the main CLI package and provides testing utilities. `viben plugin create` generates a complete plugin project. `viben dev` loads a local plugin with file watching + hot-reload.
 
 **Tech Stack:** TypeScript strict, ESM-only (.js imports), Vitest, pnpm workspaces, @clack/prompts
 
@@ -16,15 +16,15 @@
 | File | Responsibility |
 |------|---------------|
 | `pnpm-workspace.yaml` | Monorepo workspace definition |
-| `packages/plugin-sdk/package.json` | SDK package metadata |
-| `packages/plugin-sdk/tsconfig.json` | SDK TypeScript config |
-| `packages/plugin-sdk/src/index.ts` | Type + base class re-exports |
-| `packages/plugin-sdk/src/testing.ts` | Testing utility barrel export |
-| `packages/plugin-sdk/src/testing/test-context.ts` | createTestContext() |
-| `packages/plugin-sdk/src/testing/test-install-context.ts` | createTestInstallContext() |
-| `packages/plugin-sdk/src/testing/mock-services.ts` | Pre-built service mocks |
-| `packages/plugin-sdk/src/__tests__/test-context.test.ts` | Tests |
-| `packages/plugin-sdk/src/__tests__/test-install-context.test.ts` | Tests |
+| `packages/kernel-sdk/package.json` | SDK package metadata |
+| `packages/kernel-sdk/tsconfig.json` | SDK TypeScript config |
+| `packages/kernel-sdk/src/index.ts` | Type + base class re-exports |
+| `packages/kernel-sdk/src/testing.ts` | Testing utility barrel export |
+| `packages/kernel-sdk/src/testing/test-context.ts` | createTestContext() |
+| `packages/kernel-sdk/src/testing/test-install-context.ts` | createTestInstallContext() |
+| `packages/kernel-sdk/src/testing/mock-services.ts` | Pre-built service mocks |
+| `packages/kernel-sdk/src/__tests__/test-context.test.ts` | Tests |
+| `packages/kernel-sdk/src/__tests__/test-install-context.test.ts` | Tests |
 
 ### New Files — Phase 2: Scaffold Generator
 | File | Responsibility |
@@ -181,8 +181,8 @@ git commit -m "feat(plugin): add unloadPlugin() to LifecycleManager for dev mode
 
 **Files:**
 - Create: `pnpm-workspace.yaml`
-- Create: `packages/plugin-sdk/package.json`
-- Create: `packages/plugin-sdk/tsconfig.json`
+- Create: `packages/kernel-sdk/package.json`
+- Create: `packages/kernel-sdk/tsconfig.json`
 
 - [ ] **Step 1: Create pnpm-workspace.yaml**
 
@@ -195,7 +195,7 @@ packages:
 
 - [ ] **Step 2: Create SDK package.json**
 
-Create `packages/plugin-sdk/package.json`:
+Create `packages/kernel-sdk/package.json`:
 
 ```json
 {
@@ -232,7 +232,7 @@ Create `packages/plugin-sdk/package.json`:
 
 - [ ] **Step 3: Create SDK tsconfig.json**
 
-Create `packages/plugin-sdk/tsconfig.json`:
+Create `packages/kernel-sdk/tsconfig.json`:
 
 ```json
 {
@@ -276,7 +276,7 @@ git commit -m "chore: setup monorepo with pnpm workspace for @viben/plugin-sdk"
 ### Task 3: SDK Type Exports
 
 **Files:**
-- Create: `packages/plugin-sdk/src/index.ts`
+- Create: `packages/kernel-sdk/src/index.ts`
 - Modify: `src/core/index.ts` (add missing adapter primitive exports)
 
 - [ ] **Step 0: Add missing exports to main package**
@@ -294,7 +294,7 @@ Verify build: `pnpm build`
 
 - [ ] **Step 1: Create SDK index.ts with all re-exports**
 
-Create `packages/plugin-sdk/src/index.ts`:
+Create `packages/kernel-sdk/src/index.ts`:
 
 ```typescript
 // ─── Plugin interfaces ───
@@ -307,7 +307,7 @@ export type {
   MigrateContext,
   TerminalIO,
   SettingsAPI,
-} from 'viben'
+} from '@viben/kernel'
 
 // ─── Command types ───
 export type {
@@ -316,7 +316,7 @@ export type {
   CommandResponse,
   MenuOption,
   ListItem,
-} from 'viben'
+} from '@viben/kernel'
 
 // ─── Service interfaces ───
 export type {
@@ -327,7 +327,7 @@ export type {
   SpeechServiceInterface,
   TunnelServiceInterface,
   ContextService,
-} from 'viben'
+} from '@viben/kernel'
 
 // ─── Adapter types ───
 export type {
@@ -337,14 +337,14 @@ export type {
   PermissionOption,
   NotificationMessage,
   AgentCommand,
-} from 'viben'
+} from '@viben/kernel'
 
 // ─── Adapter base classes ───
 export {
   MessagingAdapter,
   StreamAdapter,
   BaseRenderer,
-} from 'viben'
+} from '@viben/kernel'
 
 // ─── Adapter primitives ───
 export {
@@ -352,15 +352,15 @@ export {
   DraftManager,
   ToolCallTracker,
   ActivityTracker,
-} from 'viben'
+} from '@viben/kernel'
 ```
 
-Note: These import from `viben` (the workspace package name). TypeScript resolves via `workspace:*`. When published, consumers install `@viben/kernel` as peer dep which provides the same exports.
+Note: These import from `@viben/kernel` (the published kernel package). TypeScript resolves via `workspace:*` during local development, and consumers install `@viben/kernel` as the peer dependency that provides the same exports.
 
 - [ ] **Step 2: Verify SDK builds**
 
 ```bash
-cd packages/plugin-sdk && pnpm build
+cd packages/kernel-sdk && pnpm build
 ```
 
 If type resolution fails, check that the main `viben` package exports all listed types from `src/index.ts` → `src/core/index.ts` → `src/core/plugin/types.ts` etc. Fix any missing exports in the main package.
@@ -368,7 +368,7 @@ If type resolution fails, check that the main `viben` package exports all listed
 - [ ] **Step 3: Commit**
 
 ```bash
-git add packages/plugin-sdk/src/index.ts
+git add packages/kernel-sdk/src/index.ts
 git commit -m "feat(sdk): add type and base class re-exports"
 ```
 
@@ -377,13 +377,13 @@ git commit -m "feat(sdk): add type and base class re-exports"
 ### Task 4: Testing Utilities — createTestContext
 
 **Files:**
-- Create: `packages/plugin-sdk/src/testing/test-context.ts`
-- Create: `packages/plugin-sdk/src/testing.ts`
-- Test: `packages/plugin-sdk/src/__tests__/test-context.test.ts`
+- Create: `packages/kernel-sdk/src/testing/test-context.ts`
+- Create: `packages/kernel-sdk/src/testing.ts`
+- Test: `packages/kernel-sdk/src/__tests__/test-context.test.ts`
 
 - [ ] **Step 1: Write tests**
 
-Create `packages/plugin-sdk/src/__tests__/test-context.test.ts`:
+Create `packages/kernel-sdk/src/__tests__/test-context.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -463,7 +463,7 @@ describe('createTestContext', () => {
 
 - [ ] **Step 2: Implement createTestContext**
 
-Create `packages/plugin-sdk/src/testing/test-context.ts`:
+Create `packages/kernel-sdk/src/testing/test-context.ts`:
 
 ```typescript
 import type { PluginContext, CommandDef, CommandArgs, CommandResponse } from '../index.js'
@@ -591,7 +591,7 @@ export function createTestContext(opts: TestContextOpts): TestPluginContext {
 
 - [ ] **Step 3: Create testing barrel export (partial — complete in Task 5)**
 
-Create `packages/plugin-sdk/src/testing.ts` with only what's available now:
+Create `packages/kernel-sdk/src/testing.ts` with only what's available now:
 
 ```typescript
 export { createTestContext } from './testing/test-context.js'
@@ -603,13 +603,13 @@ Note: `createTestInstallContext` and `mockServices` exports added in Task 5 afte
 - [ ] **Step 4: Run tests**
 
 ```bash
-cd packages/plugin-sdk && pnpm test
+cd packages/kernel-sdk && pnpm test
 ```
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/plugin-sdk/
+git add packages/kernel-sdk/
 git commit -m "feat(sdk): add createTestContext testing utility"
 ```
 
@@ -618,13 +618,13 @@ git commit -m "feat(sdk): add createTestContext testing utility"
 ### Task 5: Testing Utilities — createTestInstallContext + mockServices
 
 **Files:**
-- Create: `packages/plugin-sdk/src/testing/test-install-context.ts`
-- Create: `packages/plugin-sdk/src/testing/mock-services.ts`
-- Test: `packages/plugin-sdk/src/__tests__/test-install-context.test.ts`
+- Create: `packages/kernel-sdk/src/testing/test-install-context.ts`
+- Create: `packages/kernel-sdk/src/testing/mock-services.ts`
+- Test: `packages/kernel-sdk/src/__tests__/test-install-context.test.ts`
 
 - [ ] **Step 1: Write tests**
 
-Create `packages/plugin-sdk/src/__tests__/test-install-context.test.ts`:
+Create `packages/kernel-sdk/src/__tests__/test-install-context.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest'
@@ -694,7 +694,7 @@ describe('createTestInstallContext', () => {
 
 - [ ] **Step 2: Implement createTestInstallContext**
 
-Create `packages/plugin-sdk/src/testing/test-install-context.ts`:
+Create `packages/kernel-sdk/src/testing/test-install-context.ts`:
 
 ```typescript
 import type { InstallContext, SettingsAPI, TerminalIO } from '../index.js'
@@ -775,7 +775,7 @@ export function createTestInstallContext(opts: TestInstallContextOpts): TestInst
 
 - [ ] **Step 3: Implement mockServices**
 
-Create `packages/plugin-sdk/src/testing/mock-services.ts`:
+Create `packages/kernel-sdk/src/testing/mock-services.ts`:
 
 ```typescript
 import type {
@@ -850,19 +850,19 @@ export const mockServices = {
 - [ ] **Step 4: Run SDK tests**
 
 ```bash
-cd packages/plugin-sdk && pnpm test
+cd packages/kernel-sdk && pnpm test
 ```
 
 - [ ] **Step 5: Build SDK**
 
 ```bash
-cd packages/plugin-sdk && pnpm build
+cd packages/kernel-sdk && pnpm build
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add packages/plugin-sdk/
+git add packages/kernel-sdk/
 git commit -m "feat(sdk): add createTestInstallContext + mockServices testing utilities"
 ```
 
@@ -1491,14 +1491,14 @@ git commit -m "feat(cli): add viben dev command with hot-reload for local plugin
 
 ```bash
 pnpm build && pnpm test
-cd packages/plugin-sdk && pnpm build && pnpm test
+cd packages/kernel-sdk && pnpm build && pnpm test
 ```
 
 - [ ] **Step 2: Verify all phases work**
 
 ```bash
 # Phase 1: SDK builds
-cd packages/plugin-sdk && pnpm build
+cd packages/kernel-sdk && pnpm build
 
 # Phase 2: scaffold generates a project (manual test)
 # viben plugin create (interactive — skip in CI)

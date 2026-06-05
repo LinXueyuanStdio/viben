@@ -15,8 +15,8 @@
 ## File Structure
 
 ### Viben repo changes:
-- Modify: `packages/plugin-sdk/src/index.ts` — add ~20 re-exports
-- Modify: `packages/plugin-sdk/src/testing.ts` — add `runAdapterConformanceTests` re-export
+- Modify: `packages/kernel-sdk/src/index.ts` — add ~20 re-exports
+- Modify: `packages/kernel-sdk/src/testing.ts` — add `runAdapterConformanceTests` re-export
 - Modify: `src/core/adapter-primitives/index.ts` — export format-utils and message-formatter
 - Modify: `src/core/index.ts` — export CommandRegistry, DoctorEngine, PRODUCT_GUIDE, etc.
 - Modify: `src/core/plugin/lifecycle-manager.ts` — add migration alias
@@ -79,8 +79,8 @@ git commit -m "feat(core): export format-utils, message-formatter, CommandRegist
 Re-export all symbols the Discord plugin needs from the SDK.
 
 **Files:**
-- Modify: `packages/plugin-sdk/src/index.ts`
-- Modify: `packages/plugin-sdk/src/testing.ts`
+- Modify: `packages/kernel-sdk/src/index.ts`
+- Modify: `packages/kernel-sdk/src/testing.ts`
 
 - [ ] **Step 1: Add type re-exports to plugin-sdk/src/index.ts**
 
@@ -156,7 +156,7 @@ export type {
 
 - [ ] **Step 2: Add runAdapterConformanceTests to testing.ts**
 
-Add to `packages/plugin-sdk/src/testing.ts`:
+Add to `packages/kernel-sdk/src/testing.ts`:
 
 ```typescript
 export { runAdapterConformanceTests } from '@viben/kernel'
@@ -176,7 +176,7 @@ Expected: No errors
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/plugin-sdk/src/index.ts packages/plugin-sdk/src/testing.ts src/core/adapter-primitives/index.ts
+git add packages/kernel-sdk/src/index.ts packages/kernel-sdk/src/testing.ts src/core/adapter-primitives/index.ts
 git commit -m "feat(plugin-sdk): export all symbols needed by adapter plugins"
 ```
 
@@ -504,7 +504,7 @@ npm install
 Note: `@viben/plugin-sdk` and `@viben/kernel` will need to be linked locally since they're not published yet with the new exports. Use:
 
 ```bash
-cd ./packages/plugin-sdk && npm link
+cd ./packages/kernel-sdk && npm link
 cd . && npm link
 cd ../discord-plugin && npm link @viben/plugin-sdk @viben/kernel
 ```

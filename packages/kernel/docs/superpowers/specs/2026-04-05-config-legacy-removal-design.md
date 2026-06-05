@@ -200,7 +200,7 @@ Add `registerEditableFields()` calls to each plugin's `setup()` based on their `
 - `src/core/plugin/plugin-context.ts` — add `registerEditableFields()`
 - `src/core/plugin/plugin-context-types.ts` — add `FieldDef` interface, update `PluginContextAPI`
 - `src/core/config/config-registry.ts` — remove plugin-mapped fields, keep core only
-- `src/packages/plugin-sdk/` — export `FieldDef` type
+- `packages/kernel-sdk/` — export `FieldDef` type
 - `src/plugins/telegram/index.ts` — cleanup install, add registerEditableFields
 - `src/plugins/discord/index.ts` — cleanup install, add registerEditableFields
 - `src/plugins/slack/index.ts` — cleanup install, add registerEditableFields

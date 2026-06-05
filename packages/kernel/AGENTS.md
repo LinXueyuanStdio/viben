@@ -91,14 +91,6 @@ Published as `@viben/kernel` on npm. Users install with `npm install -g @viben/k
 - GitHub Action auto-publishes both `@viben/kernel` and `@viben/plugin-sdk` on tag push (`v*`)
 - Plugin system: `viben plugin install <name>` installs from npm to `~/.viben/plugins/`
 
-## Versioning
-
-Format: `YYYY.MMDD.<patch>` — e.g. `2026.327.1` is the first patch on March 27, 2026.
-
-- `YYYY` — year
-- `MMDD` — month (2-digit) + day (2-digit), leading zeros stripped by semver. Jan 5 = `105`, Mar 27 = `327`, Apr 1 = `401`, Dec 5 = `1205`
-- `<patch>` — sequential patch number for that day, starting from 1
-
 ## Documentation Sync
 
 When changing code, **you must update corresponding docs** to keep code and documentation in sync:

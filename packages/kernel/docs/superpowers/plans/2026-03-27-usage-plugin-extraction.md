@@ -38,7 +38,7 @@
 | `src/plugins/telegram/commands/index.ts` | Remove `handleUsage` import, remove `/usage` bot command, remove from `STATIC_COMMANDS` |
 | `src/plugins/telegram/formatting.ts` | Remove `formatUsageReport` function |
 | `src/core/plugin/types.ts` | Simplify `UsageService` interface |
-| `packages/plugin-sdk/src/testing/mock-services.ts` | Update mock usage service |
+| `packages/kernel-sdk/src/testing/mock-services.ts` | Update mock usage service |
 
 ### Files to Delete
 | File | Reason |
@@ -366,7 +366,7 @@ git commit -m "refactor(telegram): remove usage command and formatting, delete o
 **Files:**
 - Modify: `src/core/plugin/types.ts:477-481`
 - Modify: `src/core/types.ts:245-252`
-- Modify: `packages/plugin-sdk/src/testing/mock-services.ts:46-55`
+- Modify: `packages/kernel-sdk/src/testing/mock-services.ts:46-55`
 
 - [ ] **Step 1: Simplify `UsageService` interface**
 
@@ -398,7 +398,7 @@ export interface UsageSummary {
 
 - [ ] **Step 3: Update mock services**
 
-In `packages/plugin-sdk/src/testing/mock-services.ts`, replace the usage mock (lines 46-55):
+In `packages/kernel-sdk/src/testing/mock-services.ts`, replace the usage mock (lines 46-55):
 
 ```typescript
   usage(overrides?: Partial<UsageService>): UsageService {
@@ -420,7 +420,7 @@ Expected: Clean build, all tests pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/core/plugin/types.ts src/core/types.ts packages/plugin-sdk/src/testing/mock-services.ts
+git add src/core/plugin/types.ts src/core/types.ts packages/kernel-sdk/src/testing/mock-services.ts
 git commit -m "refactor(types): simplify UsageService interface, remove UsageSummary"
 ```
 

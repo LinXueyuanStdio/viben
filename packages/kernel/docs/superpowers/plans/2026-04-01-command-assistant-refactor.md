@@ -1769,7 +1769,7 @@ git commit -m "refactor: simplify Telegram adapter, registry-based menu, remove 
 
 **Files:**
 - Modify: `src/core/index.ts`
-- Modify: `src/packages/plugin-sdk/` (type exports)
+- Modify: `packages/kernel-sdk/` (type exports)
 - Modify: `src/cli/plugin-template/` (plugin guide, claude-md)
 - Modify: `docs/` (if applicable)
 

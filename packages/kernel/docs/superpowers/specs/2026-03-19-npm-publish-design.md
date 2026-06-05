@@ -108,7 +108,7 @@ npx viben --help                               → show help
 **`index.js`** exports library API for third-party adapter developers:
 
 ```typescript
-import { ChannelAdapter } from 'viben'
+import { ChannelAdapter } from '@viben/kernel'
 ```
 
 ### 5. Plugin System

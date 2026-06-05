@@ -182,7 +182,7 @@ The extracted plugin should set:
 
 ### Extend Plugin SDK
 
-Add all missing re-exports listed above to `packages/plugin-sdk/src/index.ts`. All re-exports come from `@viben/kernel` — the SDK is a thin re-export layer, no new code.
+Add all missing re-exports listed above to `packages/kernel-sdk/src/index.ts`. All re-exports come from `@viben/kernel` — the SDK is a thin re-export layer, no new code.
 
 ### Update legacy migration map
 
@@ -230,8 +230,8 @@ When installed, `discord.js` is npm-installed as a dependency of the plugin. Whe
 ## Files Modified (Summary)
 
 ### Viben repo
-- `packages/plugin-sdk/src/index.ts` — Add ~40 re-exports
-- `packages/plugin-sdk/src/testing.ts` — Add `runAdapterConformanceTests` re-export
+- `packages/kernel-sdk/src/index.ts` — Add ~40 re-exports
+- `packages/kernel-sdk/src/testing.ts` — Add `runAdapterConformanceTests` re-export
 - `src/core/plugin/lifecycle-manager.ts` — Add `@viben/adapter-discord` to migration map
 - `src/plugins/core-plugins.ts` — Remove Discord registration
 - `src/plugins/discord/` — Delete entirely

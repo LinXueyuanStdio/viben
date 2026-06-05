@@ -108,7 +108,7 @@ In `src/plugins/telegram/commands/session.ts`:
 - Remove `UsageService.getSummary()` from plugin types (simplify to just `trackUsage` + `checkBudget`)
 - Keep `UsageRecord` type in core for the event contract
 - Remove `UsageStore` and `UsageBudget` from public exports in `src/core/index.ts`
-- Update mock service in `packages/plugin-sdk/src/testing/mock-services.ts`
+- Update mock service in `packages/kernel-sdk/src/testing/mock-services.ts`
 
 ## Plugin Structure
 

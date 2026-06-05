@@ -2105,18 +2105,18 @@ Replace with a more specific check. The auto-approve is meant for Viben's own in
 ```typescript
     // Auto-approve viben's own internal CLI commands (e.g., viben install, viben setup)
     const toolName = (request as any).metadata?.name ?? "";
-    const isOpenacpInternal = toolName === "viben" || toolName.startsWith("viben ");
-    if (isOpenacpInternal) {
+    const isVibenInternal = toolName === "viben" || toolName.startsWith("viben ");
+    if (isVibenInternal) {
 ```
 
 If `request.metadata` is not available, fallback to checking if the description starts with "Run `viben " (prefix match, not substring):
 
 ```typescript
     // Auto-approve viben's own internal CLI commands
-    const isOpenacpInternal =
+    const isVibenInternal =
       request.description.startsWith("Run `viben ") ||
       request.description.startsWith("Execute `viben ");
-    if (isOpenacpInternal) {
+    if (isVibenInternal) {
 ```
 
 Verify which approach fits by checking the actual PermissionRequest shape from `core/types.ts`.

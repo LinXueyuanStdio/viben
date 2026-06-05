@@ -2109,7 +2109,7 @@ git commit -m "feat(sse): add user-level SSE endpoint and sendUserNotification"
 ### Task 15: Final integration test and plugin-sdk exports
 
 **Files:**
-- Modify: `src/packages/plugin-sdk/` (if identity types need to be exported)
+- Modify: `packages/kernel-sdk/` (if identity types need to be exported)
 
 - [ ] **Step 1: Run full test suite**
 

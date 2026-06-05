@@ -14,7 +14,7 @@
 
 | File | Change |
 |---|---|
-| `packages/plugin-sdk/src/types.ts` | Add `autoApprovedCommands?: string[]` to `VibenPlugin` |
+| `packages/kernel-sdk/src/types.ts` | Add `autoApprovedCommands?: string[]` to `VibenPlugin` |
 | `src/plugins/tunnel/tunnel-service.ts` | Add `onEvent` callback to constructor; call it on start/stop/URL change |
 | `src/plugins/tunnel/index.ts` | Pass `(e, d) => ctx.emit(e, d)` when constructing `TunnelService` |
 | `src/core/sessions/session-manager.ts` | Add `options?: { autoApprovedCommands?: string[] }` to `createSession()` |
@@ -166,11 +166,11 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 ## Task 2: `autoApprovedCommands` in Plugin Manifest Type
 
 **Files:**
-- Modify: `packages/plugin-sdk/src/types.ts`
+- Modify: `packages/kernel-sdk/src/types.ts`
 
 - [ ] **Step 2.1: Add field to `VibenPlugin` interface**
 
-In `packages/plugin-sdk/src/types.ts`, add to the `VibenPlugin` interface (after `permissions?`):
+In `packages/kernel-sdk/src/types.ts`, add to the `VibenPlugin` interface (after `permissions?`):
 
 ```typescript
 /**
@@ -187,7 +187,7 @@ autoApprovedCommands?: string[]
 - [ ] **Step 2.2: Run existing plugin-sdk tests**
 
 ```bash
-npx vitest run packages/plugin-sdk
+npx vitest run packages/kernel-sdk
 ```
 
 Expected: all PASS (type-only change, no runtime impact)
@@ -195,7 +195,7 @@ Expected: all PASS (type-only change, no runtime impact)
 - [ ] **Step 2.3: Commit**
 
 ```bash
-git add packages/plugin-sdk/src/types.ts
+git add packages/kernel-sdk/src/types.ts
 git commit -m "feat(plugin-sdk): add autoApprovedCommands to VibenPlugin manifest type
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"

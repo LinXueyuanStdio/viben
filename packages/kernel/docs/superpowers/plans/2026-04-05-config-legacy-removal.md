@@ -1338,17 +1338,17 @@ Added registerEditableFields() to each plugin's setup() hook."
 ### Task 11: Export FieldDef from plugin-sdk + final test run
 
 **Files:**
-- Modify: `packages/plugin-sdk/src/index.ts` (or equivalent)
+- Modify: `packages/kernel-sdk/src/index.ts` (or equivalent)
 
 - [ ] **Step 1: Find plugin-sdk entry point**
 
 ```bash
-cat packages/plugin-sdk/src/index.ts | head -30
+cat packages/kernel-sdk/src/index.ts | head -30
 ```
 
 - [ ] **Step 2: Add FieldDef export**
 
-In `packages/plugin-sdk/src/index.ts`, add `FieldDef` to the types export:
+In `packages/kernel-sdk/src/index.ts`, add `FieldDef` to the types export:
 
 ```typescript
 export type { FieldDef } from '@viben/kernel/core/plugin/types.js'
@@ -1381,7 +1381,7 @@ Address each error from the build output. Common ones:
 - [ ] **Step 6: Final commit**
 
 ```bash
-git add packages/plugin-sdk/src/index.ts
+git add packages/kernel-sdk/src/index.ts
 git commit -m "feat: export FieldDef from plugin-sdk
 
 Plugin authors can now import FieldDef from @viben/plugin-sdk

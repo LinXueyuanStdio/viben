@@ -40,13 +40,13 @@ The adapter is always the outermost layer. Core never talks to the platform dire
 ## Step 1 — Extend ChannelAdapter
 
 ```typescript
-import { ChannelAdapter, type ChannelConfig } from 'viben'
+import { ChannelAdapter, type ChannelConfig } from '@viben/kernel'
 import type {
   OutgoingMessage,
   PermissionRequest,
   NotificationMessage,
-} from 'viben'
-import type { VibenCore } from 'viben'
+} from '@viben/kernel'
+import type { VibenCore } from '@viben/kernel'
 
 export class MyPlatformAdapter extends ChannelAdapter<VibenCore> {
   constructor(core: VibenCore, config: ChannelConfig) {
@@ -203,7 +203,7 @@ async renameSessionThread(sessionId: string, newName: string): Promise<void> {
 Before calling `core.start()`, register your adapter:
 
 ```typescript
-import { VibenCore } from 'viben'
+import { VibenCore } from '@viben/kernel'
 import { MyPlatformAdapter } from './adapter.js'
 
 const core = new VibenCore(config)
@@ -245,14 +245,14 @@ Adapter implementations can extend `MessagingAdapter` (for platforms with thread
 ## Complete Minimal Adapter
 
 ```typescript
-import { ChannelAdapter } from 'viben'
+import { ChannelAdapter } from '@viben/kernel'
 import type {
   ChannelConfig,
   OutgoingMessage,
   PermissionRequest,
   NotificationMessage,
-} from 'viben'
-import type { VibenCore } from 'viben'
+} from '@viben/kernel'
+import type { VibenCore } from '@viben/kernel'
 
 export class MinimalAdapter extends ChannelAdapter<VibenCore> {
   private sessionThreads = new Map<string, string>()

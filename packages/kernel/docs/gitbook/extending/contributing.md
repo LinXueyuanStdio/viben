@@ -89,8 +89,8 @@ it('calls _processQueue internally', () => { ... })
 Mock `AgentInstance`, `ChannelAdapter`, and `SessionStore` — not internal classes. Use `vi.fn()` for mocks. For event-driven mocks, use `TypedEmitter` from `viben`:
 
 ```typescript
-import { TypedEmitter } from 'viben'
-import type { AgentEvent } from 'viben'
+import { TypedEmitter } from '@viben/kernel'
+import type { AgentEvent } from '@viben/kernel'
 
 function mockAgentInstance() {
   const emitter = new TypedEmitter<{ agent_event: (event: AgentEvent) => void }>()

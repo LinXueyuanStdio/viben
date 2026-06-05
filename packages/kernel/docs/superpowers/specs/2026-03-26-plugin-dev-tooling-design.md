@@ -550,7 +550,7 @@ Single dev dependency for plugin authors. Provides:
 ### Package Structure
 
 ```
-packages/plugin-sdk/
+packages/kernel-sdk/
   ├── src/
   │   ├── index.ts             ← types + base class re-exports
   │   ├── testing.ts           ← test utilities
