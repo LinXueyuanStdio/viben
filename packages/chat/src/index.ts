@@ -56,7 +56,6 @@ export type {
   SlashCommandDefinition,
   SlashCommandHandler,
   SlashCommandProvider,
-  SlashCommandProviderContext,
   SlashCommandSelection,
   UseSlashCommandsOptions,
   UseSlashCommandsReturn,

@@ -232,7 +232,10 @@ export function useSlashCommandMenu(
         case "Tab":
           if (!e.shiftKey) {
             e.preventDefault();
-            handleSelect(filteredCommands[selectedIndex]);
+            const command = filteredCommands[selectedIndex];
+            if (command && !command.disabled) {
+              handleSelect(command);
+            }
             return true;
           }
           return false;

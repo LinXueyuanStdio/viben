@@ -5,7 +5,6 @@ export type {
   SlashCommandDefinition,
   SlashCommandHandler,
   SlashCommandProvider,
-  SlashCommandProviderContext,
   SlashCommandSelection,
 } from "./types";
 export {

@@ -3,7 +3,6 @@ import type {
   SlashCommand,
   SlashCommandDefinition,
   SlashCommandProvider,
-  SlashCommandProviderContext,
 } from "./types";
 
 function commandSearchText(command: SlashCommand): string {
@@ -49,10 +48,14 @@ export function mergeSlashCommands<TCommand extends SlashCommand>(
   return Array.from(commandMap.values());
 }
 
-export interface UseSlashCommandsOptions<TContext = unknown, TResult = unknown> {
+export interface UseSlashCommandsOptions<
+  TProviderContext = unknown,
+  TContext = unknown,
+  TResult = unknown
+> {
   commands?: SlashCommandDefinition<TContext, TResult>[];
-  providers?: SlashCommandProvider<TContext, TResult>[];
-  providerContext?: SlashCommandProviderContext;
+  providers?: SlashCommandProvider<TProviderContext, TContext, TResult>[];
+  providerContext?: TProviderContext;
   onError?: (error: Error) => void;
 }
 
@@ -70,12 +73,16 @@ export interface UseSlashCommandsReturn<TContext = unknown, TResult = unknown> {
   ) => Promise<TResult | undefined>;
 }
 
-export function useSlashCommands<TContext = unknown, TResult = unknown>({
+export function useSlashCommands<
+  TProviderContext = unknown,
+  TContext = unknown,
+  TResult = unknown
+>({
   commands = [],
   providers = [],
-  providerContext = {},
+  providerContext,
   onError,
-}: UseSlashCommandsOptions<TContext, TResult> = {}): UseSlashCommandsReturn<TContext, TResult> {
+}: UseSlashCommandsOptions<TProviderContext, TContext, TResult> = {}): UseSlashCommandsReturn<TContext, TResult> {
   const [providedCommands, setProvidedCommands] = useState<SlashCommandDefinition<TContext, TResult>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -91,7 +98,7 @@ export function useSlashCommands<TContext = unknown, TResult = unknown>({
     setError(null);
     try {
       const loaded = await Promise.all(
-        providers.map((provider) => Promise.resolve(provider(providerContext)))
+        providers.map((provider) => Promise.resolve(provider(providerContext as TProviderContext)))
       );
       setProvidedCommands(mergeSlashCommands(loaded));
     } catch (unknownError) {
@@ -118,7 +125,7 @@ export function useSlashCommands<TContext = unknown, TResult = unknown>({
       setError(null);
       try {
         const loaded = await Promise.all(
-          providers.map((provider) => Promise.resolve(provider(providerContext)))
+          providers.map((provider) => Promise.resolve(provider(providerContext as TProviderContext)))
         );
         if (!cancelled) setProvidedCommands(mergeSlashCommands(loaded));
       } catch (unknownError) {
@@ -157,6 +164,7 @@ export function useSlashCommands<TContext = unknown, TResult = unknown>({
   const execute = useCallback(
     async (command: SlashCommand, context: TContext, args = "") => {
       const definition = find(command.id) ?? find(command.name);
+      if (definition?.disabled) return undefined;
       return definition?.execute?.(context, args, definition);
     },
     [find]

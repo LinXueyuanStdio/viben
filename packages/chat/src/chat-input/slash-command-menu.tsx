@@ -162,11 +162,15 @@ export function SlashCommandMenu({
                 data-index={index}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
+                  command.disabled && "cursor-not-allowed opacity-50",
                   index === selectedIndex
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-muted/50"
                 )}
-                onClick={() => onSelect(command)}
+                disabled={command.disabled}
+                onClick={() => {
+                  if (!command.disabled) onSelect(command);
+                }}
                 onMouseEnter={() => onHover(index)}
               >
                 {command.icon && (

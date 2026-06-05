@@ -43,17 +43,12 @@ export interface ParsedSlashCommandInput {
   args: string;
 }
 
-export interface SlashCommandProviderContext {
-  workspacePath?: string;
-  agentId?: string;
-  metadata?: Record<string, unknown>;
-}
-
 export type SlashCommandProvider<
+  TProviderContext = unknown,
   TContext = unknown,
   TResult = unknown
 > = (
-  context: SlashCommandProviderContext
+  context: TProviderContext
 ) =>
   | SlashCommandDefinition<TContext, TResult>[]
   | Promise<SlashCommandDefinition<TContext, TResult>[]>;

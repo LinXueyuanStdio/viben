@@ -331,6 +331,10 @@ export function ChatInput({
 
     const text = content.trim();
     const messageAttachments = attachments.length > 0 ? attachments : undefined;
+    const parsedCommand = parseSlashCommandInput(text);
+    const slashCommand = parsedCommand
+      ? slashCommands.find((command) => !command.disabled && (command.name === parsedCommand.name || command.id === parsedCommand.name))
+      : undefined;
 
     // Clear state first
     setContent("");
@@ -341,9 +345,18 @@ export function ChatInput({
       textareaRef.current.style.height = "auto";
     }
 
+    if (slashCommand && onSlashCommand) {
+      onSlashCommand(slashCommand, {
+        command: slashCommand,
+        args: parsedCommand?.args ?? "",
+        value: text,
+      });
+      return;
+    }
+
     // Call onSend
     onSend(text, messageAttachments);
-  }, [canSubmit, isLoading, allowSendWhileLoading, content, attachments, clearAttachments, onSend]);
+  }, [canSubmit, isLoading, allowSendWhileLoading, content, attachments, slashCommands, clearAttachments, onSlashCommand, onSend]);
 
   // Key down handler
   const handleKeyDown = useCallback(
