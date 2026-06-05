@@ -4,6 +4,7 @@ import type {
   CallToolResult,
   ClientToolCall,
   ClientToolExecutionRequest,
+  ElicitationRequestLog,
   PermissionRequestLog,
 } from "./acp-client";
 
@@ -90,6 +91,14 @@ export function appendClientToolRequestedStep(
 }
 
 export function appendClientToolResultStep(current: AcpUiStep[], call: ClientToolCall): AcpUiStep[] {
+  if (isRecord(call.result) && call.result.pending === true) {
+    return appendClientToolRequestedStep(current, {
+      sessionId: call.sessionId,
+      toolName: call.toolName,
+      toolUseId: call.toolUseId,
+      input: call.input,
+    });
+  }
   return upsertToolResult(current, {
     id: createStepId("client-tool-result"),
     type: "tool_result",
@@ -107,6 +116,15 @@ export function appendPermissionDecisionStep(current: AcpUiStep[], request: Perm
     toolUseId: request.toolCallId,
     output: `Permission decision: ${request.selectedOptionId}`,
     isError: request.selectedOptionId === "cancelled" || request.selectedOptionId.toLowerCase().includes("reject"),
+    timestamp: Date.now(),
+  });
+}
+
+export function appendElicitationResultStep(current: AcpUiStep[], request: ElicitationRequestLog): AcpUiStep[] {
+  return appendStep(current, {
+    id: request.id,
+    type: "text",
+    content: `Elicitation response: ${safeJson(request.action)}`,
     timestamp: Date.now(),
   });
 }

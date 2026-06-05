@@ -980,7 +980,7 @@ pub async fn start_gateway(
         viben_path.as_deref(),
         Some(&app_handle),
     ).ok_or_else(|| {
-        "Gateway binary not found. Please install viben CLI: npm install -g @viben/kernel".to_string()
+        "Gateway binary not found. Please install viben CLI: npm install -g viben".to_string()
     })?;
 
     // ... rest of existing start logic ...
