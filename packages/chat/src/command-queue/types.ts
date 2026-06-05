@@ -40,12 +40,16 @@ export interface UseCommandQueueReturn {
   hasPendingCommands: boolean;
   /** Route a message: immediate send, steer, or queue */
   send: (content: string, attachments?: MessageAttachment[]) => void;
+  /** Add a message directly to the queue */
+  enqueue: (content: string, attachments?: MessageAttachment[]) => CommandQueueItem | null;
   /** Update an existing queue item's content text */
   update: (id: string, content: string) => void;
   /** Remove an item from the queue */
   remove: (id: string) => void;
   /** Clear all queue items */
   clear: () => void;
+  /** Return queued content in order and clear the queue for editing */
+  recall: () => CommandQueueItem[];
   /** Reorder items (drag-and-drop) */
   reorder: (activeId: string, overId: string) => void;
   /** Pause auto-execution */

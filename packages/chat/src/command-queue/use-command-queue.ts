@@ -80,6 +80,31 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
     });
   }, [enabled, isBusy, state.isPaused, state.items.length, onSend, onError]);
 
+  const enqueue = useCallback(
+    (content: string, attachments?: MessageAttachment[]): CommandQueueItem | null => {
+      const trimmed = content.slice(0, MAX_INPUT_LENGTH);
+      let queuedItem: CommandQueueItem | null = null;
+
+      setState((prev) => {
+        if (!enabled || prev.items.length >= MAX_QUEUED_COMMANDS) return prev;
+        queuedItem = {
+          id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          content: trimmed,
+          attachments: attachments && attachments.length > 0 ? attachments : undefined,
+          createdAt: Date.now(),
+        };
+        return {
+          ...prev,
+          items: [...prev.items, queuedItem],
+        };
+      });
+
+      if (queuedItem) onQueued?.(queuedItem);
+      return queuedItem;
+    },
+    [enabled, onQueued]
+  );
+
   const send = useCallback(
     (content: string, attachments?: MessageAttachment[]) => {
       if (!enabled) return;
@@ -101,23 +126,9 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
         return;
       }
 
-      // Otherwise → enqueue
-      if (state.items.length >= MAX_QUEUED_COMMANDS) return;
-
-      const item: CommandQueueItem = {
-        id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        content: trimmed,
-        attachments: attachments && attachments.length > 0 ? attachments : undefined,
-        createdAt: Date.now(),
-      };
-
-      setState((prev) => ({
-        ...prev,
-        items: [...prev.items, item],
-      }));
-      onQueued?.(item);
+      enqueue(trimmed, attachments);
     },
-    [enabled, isBusy, supportsSteer, state.items.length, onSend, onSteer, onQueued]
+    [enabled, isBusy, supportsSteer, state.items.length, onSend, onSteer, enqueue]
   );
 
   const update = useCallback((itemId: string, content: string) => {
@@ -139,6 +150,12 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
   const clear = useCallback(() => {
     setState((prev) => ({ ...prev, items: [] }));
   }, []);
+
+  const recall = useCallback((): CommandQueueItem[] => {
+    const recalled = state.items;
+    setState((prev) => ({ ...prev, items: [] }));
+    return recalled;
+  }, [state.items]);
 
   const reorder = useCallback((activeId: string, overId: string) => {
     setState((prev) => {
@@ -165,9 +182,11 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
     isPaused: state.isPaused,
     hasPendingCommands: state.items.length > 0,
     send,
+    enqueue,
     update,
     remove,
     clear,
+    recall,
     reorder,
     pause,
     resume,
