@@ -179,6 +179,7 @@ export default function PetWindowPage() {
     let saveTimeoutId: ReturnType<typeof setTimeout>;
 
     const unlisten = listen<{ x: number; y: number }>("tauri://move", (event) => {
+      console.log("[PetWindow] tauri://move event:", event.payload);
       const { x, y } = event.payload;
       const lastPos = lastPosRef.current;
 
@@ -195,9 +196,13 @@ export default function PetWindowPage() {
 
         if (absX >= DRAG_GESTURE_MIN_PX || absY >= DRAG_GESTURE_MIN_PX) {
           if (absX >= absY * DRAG_AXIS_BIAS) {
-            setInteraction(dx > 0 ? "drag-right" : "drag-left");
+            const newInteraction = dx > 0 ? "drag-right" : "drag-left";
+            console.log("[PetWindow] Setting interaction:", newInteraction);
+            setInteraction(newInteraction);
           } else if (absY >= absX * DRAG_AXIS_BIAS) {
-            setInteraction(dy > 0 ? "drag-down" : "drag-up");
+            const newInteraction = dy > 0 ? "drag-down" : "drag-up";
+            console.log("[PetWindow] Setting interaction:", newInteraction);
+            setInteraction(newInteraction);
           }
         }
       }

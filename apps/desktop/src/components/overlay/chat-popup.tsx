@@ -21,12 +21,15 @@ import {
 } from 'lucide-react';
 import {
   AttachmentPreview,
-  type MessageAttachment,
-  type SlashCommand,
-  type SlashCommandHandler,
   SlashCommandMenu,
+  findSlashCommand,
   parseSlashCommandInput,
   useSlashCommandMenu
+} from '@viben/chat';
+import type {
+  MessageAttachment,
+  SlashCommand,
+  SlashCommandHandler,
 } from '@viben/chat';
 import { cn } from '@/lib/utils';
 import { openAndReadFiles } from '@/lib/tauri-file-attach';
@@ -60,6 +63,7 @@ import { filterModelsByExecutor } from '@/lib/executor-constraints';
 import { useModelAutoCorrect } from '@/hooks/use-model-auto-correct';
 import { useScreenshot } from '@/hooks/use-screenshot';
 import { useVoiceAgent } from '@/hooks/use-voice-agent';
+import { useToast } from '@/hooks/use-toast';
 import { getGatewayUrl } from '@/lib/gateway';
 import { startBackgroundTask } from '@/lib/gateway/modules/agent-execution';
 import { ChatCapsule } from './chat-capsule';
@@ -181,10 +185,27 @@ function ChatPopup({
     handleKeyDown: slashHandleKeyDown,
     handleContentChange: slashHandleContentChange,
     handleSelect: slashHandleSelect,
+    handleHover: slashHandleHover,
     query: slashQuery,
   } = useSlashCommandMenu({
     commands: slashCommands,
-    onSelect: (cmd) => onSlashCommand?.(cmd, { command: cmd, args: '', value: `/${cmd.name}` }),
+    onSelect: (cmd) => {
+      const commandText = `/${cmd.name}`;
+      if (cmd.input) {
+        const hint = typeof cmd.input.hint === "string" ? cmd.input.hint : "";
+        const nextContent = `${commandText}${hint ? ` ${hint}` : " "}`;
+        setContent(nextContent);
+        slashHandleContentChange(nextContent);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+        return;
+      }
+      onSlashCommand?.(cmd, {
+        command: cmd,
+        args: '',
+        value: commandText,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+    },
     enabled: slashCommands.length > 0 && !!onSlashCommand,
   });
 
@@ -315,9 +336,7 @@ function ChatPopup({
     if (!text && attachments.length === 0) return;
 
     const parsedCommand = parseSlashCommandInput(text);
-    const slashCommand = parsedCommand
-      ? slashCommands.find((command) => command.name === parsedCommand.name)
-      : undefined;
+    const slashCommand = parsedCommand ? findSlashCommand(slashCommands, parsedCommand.name) : undefined;
     if (slashCommand && onSlashCommand) {
       setContent('');
       setAttachments([]);
@@ -328,6 +347,7 @@ function ChatPopup({
         command: slashCommand,
         args: parsedCommand?.args ?? '',
         value: text,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
       setTimeout(() => {
         if (!isStreaming) handleClose();
@@ -586,7 +606,7 @@ function ChatPopup({
             commands={filteredCommands}
             selectedIndex={slashSelectedIndex}
             onSelect={slashHandleSelect}
-            onHover={() => {}}
+            onHover={slashHandleHover}
             isOpen={slashMenuOpen}
             query={slashQuery}
             className="relative z-[10001]"
@@ -876,6 +896,8 @@ function ChatPopup({
 
 export function ChatPopupLayer(): ReactElement | null {
   const activeWorkspace = useWorkspaceStore((s) => s.getActiveWorkspace());
+  const toast = useToast();
+  const { t } = useTranslation();
   const workspacePath = activeWorkspace?.path || '';
 
   // Hide chat capsule/popup during onboarding
@@ -892,7 +914,7 @@ export function ChatPopupLayer(): ReactElement | null {
     phase,
     cancel,
   } = useAgentConversation(workspacePath, {
-    agentConfig: { mcp_servers: ["gui_action"] },
+    agentConfig: { mcp_servers: ["gui_action", "client_side_bash"] },
     useWebSocket: true,
   });
 
@@ -942,19 +964,47 @@ export function ChatPopupLayer(): ReactElement | null {
       clearMessages: () => {},
       sendMessage: (msg: string) => handleSend(msg),
       workspacePath,
-      openDialog: () => {},
-      showToast: () => {},
-      navigate: () => {},
-      t: (key: string) => key,
+      openDialog: (name) => {
+        if (name === "login") {
+          handleSend("/login");
+          return;
+        }
+        toast.info(t("chat.commandExecuted", "Command executed"), {
+          description: name,
+        });
+      },
+      showToast: (message, type) => {
+        if (type === "error") toast.error(message);
+        else if (type === "success") toast.success(message);
+        else toast.info(message);
+      },
+      navigate: (path) => toast.info(path),
+      t,
     };
     const result = await executeSlashCommand(command, {
       args: selection.args,
       value: selection.value,
+      attachments: selection.attachments,
     }, context);
-    if (result?.type === "prompt" && result.prompt) {
+    if (!result) return;
+    if (result.type === "prompt" && result.prompt) {
       handleSend(result.prompt);
+    } else if (result.type === "message" && result.content) {
+      toast.info(typeof result.content === "string" ? result.content : t("chat.commandExecuted", "Command executed"), {
+        description: `/${command.name}`,
+      });
+    } else if (result.type === "action" && result.toast) {
+      const message = result.toast.i18n
+        ? t(result.toast.message, result.toast.params)
+        : result.toast.message;
+      if (result.toast.type === "error") toast.error(message);
+      else if (result.toast.type === "success") toast.success(message);
+      else toast.info(message);
+    } else if (result.type === "ui") {
+      if (result.dialog) context.openDialog(result.dialog.name, result.dialog.props);
+      if (result.navigateTo) context.navigate(result.navigateTo);
     }
-  }, [messages, executeSlashCommand, workspacePath, handleSend]);
+  }, [messages, executeSlashCommand, workspacePath, handleSend, t, toast]);
 
   const handleCancel = useCallback(() => {
     cancel();

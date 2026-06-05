@@ -45,7 +45,12 @@ import { toast } from "sonner";
 import { perfStart, perfMark, perfEnd } from "@/lib/perf-logger";
 import { useCommandQueue } from "@viben/chat";
 import type { MessageAttachment as ChatMessageAttachment } from "@viben/chat";
-import { isGUIExecuteTool, handleGUIExecute } from "@/lib/action-system";
+import {
+  handleClientSideBash,
+  handleGUIExecute,
+  isClientSideBashTool,
+  isGUIExecuteTool,
+} from "@/lib/action-system";
 
 /**
  * Generate a unique ID
@@ -595,6 +600,12 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
             payload: (toolInput as { payload?: unknown }).payload,
           }).catch((err) => {
             console.error("[GUI_execute] Failed:", err);
+          });
+        } else if (isClientSideBashTool(toolName)) {
+          handleClientSideBash(data.id || toolId, sessionIdRef.current || "", {
+            script: typeof toolInput.script === "string" ? toolInput.script : "",
+          }).catch((err) => {
+            console.error("[ClientSideBash] Failed:", err);
           });
         }
         break;

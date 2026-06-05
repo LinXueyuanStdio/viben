@@ -10,6 +10,18 @@ import {
   withoutNewTabRequest,
 } from "@/navigation/new-tab-request";
 
+function canonicalizeNewTabUrl(url: string): string {
+  const strippedUrl = withoutNewTabRequest(url);
+  return strippedUrl === "/workspace" ? "/workspace/global" : strippedUrl;
+}
+
+function normalizeUrlPreservingHash(url: string): string {
+  const hashIndex = url.indexOf("#");
+  const pathAndSearch = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
+  const hash = hashIndex >= 0 ? url.slice(hashIndex) : "";
+  return `${registry.normalizeUrl(pathAndSearch)}${hash}`;
+}
+
 /**
  * Tab-Router Bridge
  *
@@ -24,6 +36,7 @@ export function TabRouterBridge() {
   // Track the last URL we pushed to each direction to deduplicate
   const lastPushedToRouterRef = useRef<string | null>(null);
   const lastPushedToStoreRef = useRef<string | null>(null);
+  const handledNewTabRequestRef = useRef<string | null>(null);
 
   // Get the active tab's current URL from the store
   const storeUrl = useTabStore((s) => {
@@ -39,20 +52,20 @@ export function TabRouterBridge() {
   useEffect(() => {
     if (!hasNewTabRequest(location.search)) return;
 
-    const requestedUrl = withoutNewTabRequest(
-      location.pathname + location.search
-    );
-    const normalizedUrl = registry.normalizeUrl(requestedUrl);
+    const currentRouterUrl =
+      location.pathname + location.search + location.hash;
+    if (handledNewTabRequestRef.current === currentRouterUrl) return;
+    handledNewTabRequestRef.current = currentRouterUrl;
+
+    const requestedUrl = canonicalizeNewTabUrl(currentRouterUrl);
+    const normalizedUrl = normalizeUrlPreservingHash(requestedUrl);
     const match = registry.match(normalizedUrl);
 
     if (!match) {
-      routerNavigate(withoutNewTabRequest(location.pathname + location.search), {
-        replace: true,
-      });
+      routerNavigate(requestedUrl, { replace: true });
       return;
     }
 
-    lastPushedToStoreRef.current = normalizedUrl;
     lastPushedToRouterRef.current = normalizedUrl;
 
     openTab({
@@ -64,15 +77,15 @@ export function TabRouterBridge() {
     });
 
     routerNavigate(normalizedUrl, { replace: true });
-  }, [location.pathname, location.search, openTab, routerNavigate]);
+  }, [location.pathname, location.search, location.hash, openTab, routerNavigate]);
 
   // Store -> Router: when store URL changes, update React Router
   useEffect(() => {
     if (!storeUrl) return;
     if (hasNewTabRequest(location.search)) return;
 
-    const currentRouterPath = location.pathname + location.search;
-    const normalizedStoreUrl = registry.normalizeUrl(storeUrl);
+    const currentRouterPath = location.pathname + location.search + location.hash;
+    const normalizedStoreUrl = normalizeUrlPreservingHash(storeUrl);
 
     // Sync workspace store whenever the active tab's URL changes
     const match = registry.match(normalizedStoreUrl);
@@ -94,7 +107,7 @@ export function TabRouterBridge() {
 
     lastPushedToRouterRef.current = normalizedStoreUrl;
     routerNavigate(normalizedStoreUrl, { replace: true });
-  }, [storeUrl, routerNavigate, location.pathname, location.search]);
+  }, [storeUrl, routerNavigate, location.pathname, location.search, location.hash]);
 
   // Router -> Store: when React Router URL changes externally, update store
   // NOTE: Neither storeUrl nor activeTabId are in deps. This effect must only
@@ -109,8 +122,8 @@ export function TabRouterBridge() {
     const { activeTabId: currentTabId } = useTabStore.getState();
     if (!currentTabId) return;
 
-    const currentRouterUrl = location.pathname + location.search;
-    const normalizedUrl = registry.normalizeUrl(currentRouterUrl);
+    const currentRouterUrl = location.pathname + location.search + location.hash;
+    const normalizedUrl = normalizeUrlPreservingHash(currentRouterUrl);
 
     // Skip if this router URL was set by our Store->Router sync
     if (normalizedUrl === lastPushedToRouterRef.current) {
@@ -124,7 +137,7 @@ export function TabRouterBridge() {
 
     // Skip if URLs already match
     const currentStoreUrl = currentState?.url ?? null;
-    if (currentStoreUrl && registry.normalizeUrl(currentStoreUrl) === normalizedUrl) return;
+    if (currentStoreUrl && normalizeUrlPreservingHash(currentStoreUrl) === normalizedUrl) return;
 
     // Match against registry
     const match = registry.match(normalizedUrl);
@@ -147,7 +160,7 @@ export function TabRouterBridge() {
       resetNavigation(currentTabId, normalizedUrl, stack);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, pushNavigation, resetNavigation]);
+  }, [location.pathname, location.search, location.hash, pushNavigation, resetNavigation]);
 
   return null;
 }

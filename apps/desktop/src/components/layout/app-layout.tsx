@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { GlobalTabBar } from "@/components/global-tab-bar";
 import { useTrayStatusSync } from "@/hooks/use-tray-status";
@@ -15,8 +16,11 @@ import {
 } from "@/components/navigation/navigation-shell";
 import { ActionNavigationHandlerProvider } from "@/components/action-system";
 import { TabRouterBridge } from "@/components/navigation/tab-router-bridge";
+import { installTabStoreStorageSync } from "@/stores/tab-store";
 
 export function AppLayout() {
+  useEffect(() => installTabStoreStorageSync(), []);
+
   // Initialize global keyboard shortcuts (Ctrl+Shift+J for create task, etc.)
   useGlobalShortcuts();
 

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { homeDir } from "@tauri-apps/api/path";
-import { getGatewayClient, type ExecutorUIMessage, type MemberType, type MemberRole, type AgentResponse } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
+import type { ExecutorUIMessage, MemberType, MemberRole, AgentResponse } from "@/lib/gateway";
 import { filterModelsByExecutor } from "@/lib/executor-constraints";
 import {
   useAgents,
@@ -24,7 +25,8 @@ import { useTasks } from "@/hooks/use-kanban";
 import { useVitePreview } from "@/hooks/use-vite-preview";
 import type { AgentMessage, Artifact } from "@/types";
 import { useChatConfigStore } from "@/stores/chat-config-store";
-import { useSlashCommands, type CommandContext } from "@/features/slash-commands";
+import { useSlashCommands } from "@/features/slash-commands";
+import type { CommandContext } from "@/features/slash-commands";
 import type { SlashCommandHandler } from "@viben/chat";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1041,6 +1043,7 @@ export function useWorkspaceChat() {
       const result = await executeSlashCommand(command, {
         args: selection.args,
         value: selection.value,
+        attachments: selection.attachments,
       }, context);
       if (result) {
         if (result.type === "message" && result.content) {
@@ -1049,8 +1052,12 @@ export function useWorkspaceChat() {
         } else if (result.type === "prompt" && result.prompt) {
           handleSendMessage(result.prompt);
         } else if (result.type === "action" && result.toast) {
-          if (result.toast.type === "error") toast.error(result.toast.message);
-          else toast.success(result.toast.message);
+          const message = result.toast.i18n
+            ? t(result.toast.message, result.toast.params)
+            : result.toast.message;
+          if (result.toast.type === "error") toast.error(message);
+          else if (result.toast.type === "success") toast.success(message);
+          else toast.info(message);
         } else if (result.type === "ui") {
           if (result.dialog) context.openDialog(result.dialog.name, result.dialog.props);
           if (result.navigateTo) {

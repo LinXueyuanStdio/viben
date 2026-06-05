@@ -18,11 +18,11 @@ use tauri::{
 use tauri_plugin_deep_link::DeepLinkExt;
 
 #[cfg(target_os = "macos")]
-use cocoa::appkit::{NSApp, NSWindow, NSWindowCollectionBehavior};
+#[allow(deprecated)]
+use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
 #[cfg(target_os = "macos")]
+#[allow(deprecated)]
 use cocoa::base::id;
-#[cfg(target_os = "macos")]
-use cocoa::foundation::NSInteger;
 #[cfg(target_os = "macos")]
 use objc::{msg_send, sel, sel_impl};
 
@@ -353,9 +353,11 @@ pub fn run() {
                     });
                 }
 
-                // Configure pet-window as a non-activating panel on macOS
-                // This prevents the main window from coming to foreground when pet is dragged
+                // Configure pet-window on macOS
+                // Note: focusable: false in tauri.conf.json should prevent focus stealing
+                // We only set collection behavior here for proper workspace handling
                 #[cfg(target_os = "macos")]
+                #[allow(deprecated, unexpected_cfgs)]
                 if let Some(pet_window) = app.get_webview_window("pet-window") {
                     if let Ok(ns_win_ptr) = pet_window.ns_window() {
                         let ns_window: id = ns_win_ptr as id;
@@ -368,27 +370,10 @@ pub fn run() {
                                     | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
                             );
 
-                            // Set window level to floating (above normal windows)
-                            // NSFloatingWindowLevel = 3
-                            let _: () = msg_send![ns_window, setLevel: 3 as NSInteger];
-
                             // Make the window not hide when app deactivates
                             let _: () = msg_send![ns_window, setHidesOnDeactivate: false];
                         }
                     }
-
-                    // Listen for focus events and immediately deactivate the app
-                    // This allows other apps to remain in foreground when pet is clicked
-                    pet_window.on_window_event(move |event| {
-                        if let tauri::WindowEvent::Focused(true) = event {
-                            #[cfg(target_os = "macos")]
-                            unsafe {
-                                let ns_app: id = NSApp();
-                                // Deactivate the application to let other apps stay focused
-                                let _: () = msg_send![ns_app, deactivate];
-                            }
-                        }
-                    });
                 }
 
                 // Register deep link handler.

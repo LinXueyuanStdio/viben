@@ -20,4 +20,10 @@ describe("new tab request URLs", () => {
       "/workspace/global?source=preview"
     );
   });
+
+  it("replaces an existing new-tab marker", () => {
+    expect(withNewTabRequest("/workspace/global?viben_new_tab=0")).toBe(
+      "/workspace/global?viben_new_tab=1"
+    );
+  });
 });

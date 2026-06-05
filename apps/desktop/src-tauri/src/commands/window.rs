@@ -15,8 +15,30 @@ fn with_new_tab_request(url: &str) -> String {
         .split_once('#')
         .map(|(prefix, suffix)| (prefix, Some(suffix)))
         .unwrap_or((url, None));
-    let separator = if path_and_search.contains('?') { "&" } else { "?" };
-    let mut next_url = format!("{}{}{}", path_and_search, separator, NEW_TAB_REQUEST_PARAM);
+    let (path, search) = path_and_search
+        .split_once('?')
+        .map(|(prefix, suffix)| (prefix, Some(suffix)))
+        .unwrap_or((path_and_search, None));
+    let filtered_params: Vec<&str> = search
+        .map(|value| {
+            value
+                .split('&')
+                .filter(|param| {
+                    param
+                        .split_once('=')
+                        .map(|(name, _)| name != "viben_new_tab")
+                        .unwrap_or(*param != "viben_new_tab")
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut next_url = path.to_string();
+    next_url.push('?');
+    if !filtered_params.is_empty() {
+        next_url.push_str(&filtered_params.join("&"));
+        next_url.push('&');
+    }
+    next_url.push_str(NEW_TAB_REQUEST_PARAM);
 
     if let Some(hash) = hash {
         next_url.push('#');
@@ -24,6 +46,27 @@ fn with_new_tab_request(url: &str) -> String {
     }
 
     next_url
+}
+
+#[cfg(test)]
+mod tests {
+    use super::with_new_tab_request;
+
+    #[test]
+    fn new_tab_request_preserves_query_and_hash() {
+        assert_eq!(
+            with_new_tab_request("/workspace/global?source=preview#top"),
+            "/workspace/global?source=preview&viben_new_tab=1#top"
+        );
+    }
+
+    #[test]
+    fn new_tab_request_replaces_existing_marker() {
+        assert_eq!(
+            with_new_tab_request("/workspace/global?viben_new_tab=0"),
+            "/workspace/global?viben_new_tab=1"
+        );
+    }
 }
 
 /// Open a workspace in a new window
@@ -53,7 +96,7 @@ pub async fn open_workspace_in_new_window<R: Runtime>(
         format!("/{}", route)
     };
 
-    if !url.starts_with("/workspace/") {
+    if url != "/workspace" && !url.starts_with("/workspace/") {
         return Err("Only workspace routes can be opened in a workspace window".to_string());
     }
 
@@ -70,6 +113,13 @@ pub async fn open_workspace_in_new_window<R: Runtime>(
     .inner_size(1200.0, 800.0)
     .min_inner_size(900.0, 600.0)
     .center();
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .title_bar_style(TitleBarStyle::Overlay)
+            .hidden_title(true);
+    }
 
     // On Windows, remove the native title bar so the custom tab bar is at the top
     #[cfg(target_os = "windows")]

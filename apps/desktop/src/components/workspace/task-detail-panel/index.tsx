@@ -37,7 +37,8 @@ import {
 } from "@/hooks";
 import { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
 import type { SlashCommand, SlashCommandHandler } from "@viben/chat";
-import { getGatewayClient, type UIMessage } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
+import type { UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
 import { useStuckDetection } from "@/hooks/use-stuck-detection";
 import { useWorktreeExists } from "@/hooks/use-worktree-exists";
