@@ -3,6 +3,7 @@ import type { InstallContext, TerminalIO, SettingsAPI } from '@viben/kernel'
 export interface TestInstallContextOpts {
   pluginName: string
   terminalResponses?: Record<string, unknown[]>
+  legacyConfig?: unknown
 }
 
 interface TerminalCall {
@@ -18,6 +19,7 @@ interface TerminalCall {
 export function createTestInstallContext(opts: TestInstallContextOpts): InstallContext & {
   terminalCalls: TerminalCall[]
   settingsData: Map<string, unknown>
+  legacyConfig?: unknown
 } {
   const settingsData = new Map<string, unknown>()
   const terminalCalls: TerminalCall[] = []
@@ -124,6 +126,7 @@ export function createTestInstallContext(opts: TestInstallContextOpts): InstallC
     settings,
     dataDir: '/tmp/viben-test-data',
     log: silentLog,
+    legacyConfig: opts.legacyConfig,
     // Test-specific
     terminalCalls,
     settingsData,
