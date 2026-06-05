@@ -7,7 +7,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, Trash2, Loader2, AlertCircle, X, Settings2, HelpCircle } from "lucide-react";
+import { Bot, Trash2, Loader2, AlertCircle, X, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -489,22 +489,20 @@ export function DebugChatPanel({
   // Slash commands for debug chat
   const slashCommands = useMemo<SlashCommand[]>(() => [
     {
-      id: "clear",
-      name: t("chat.slashCommands.clear", "clear"),
+      name: "clear",
       description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
-      icon: <Trash2 className="h-4 w-4" />,
+      input: null,
     },
     {
-      id: "help",
-      name: t("chat.slashCommands.help", "help"),
+      name: "help",
       description: t("chat.slashCommands.helpDesc", "Show available commands"),
-      icon: <HelpCircle className="h-4 w-4" />,
+      input: null,
     },
   ], [t]);
 
   // Handle slash command execution
   const handleSlashCommand = useCallback((command: SlashCommand) => {
-    switch (command.id) {
+    switch (command.name) {
       case "clear":
         handleClearMessages();
         break;

@@ -7,8 +7,6 @@ import {
   MessageSquare,
   Activity,
   Bot,
-  Trash2,
-  HelpCircle,
   FileText,
   Terminal,
   FolderOpen,
@@ -427,22 +425,20 @@ You are helping the user work on this task. Provide relevant suggestions, code e
   // Slash commands for agent chat
   const agentSlashCommands = useMemo<SlashCommand[]>(() => [
     {
-      id: "clear",
-      name: t("chat.slashCommands.clear", "clear"),
+      name: "clear",
       description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
-      icon: <Trash2 className="h-4 w-4" />,
+      input: null,
     },
     {
-      id: "help",
-      name: t("chat.slashCommands.help", "help"),
+      name: "help",
       description: t("chat.slashCommands.helpDesc", "Show available commands"),
-      icon: <HelpCircle className="h-4 w-4" />,
+      input: null,
     },
   ], [t]);
 
   // Handle slash command execution
   const handleSlashCommand = useCallback<SlashCommandHandler>((command) => {
-    switch (command.id) {
+    switch (command.name) {
       case "clear":
         agentClearMessages?.();
         break;

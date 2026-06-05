@@ -25,7 +25,7 @@ import { useVitePreview } from "@/hooks/use-vite-preview";
 import type { AgentMessage, Artifact } from "@/types";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useSlashCommands, type CommandContext } from "@/features/slash-commands";
-import type { SlashCommand, SlashCommandHandler } from "@viben/chat";
+import type { SlashCommandHandler } from "@viben/chat";
 import { useToast } from "@/hooks/use-toast";
 import {
   type Conversation,
@@ -1038,7 +1038,10 @@ export function useWorkspaceChat() {
         t,
       };
 
-      const result = await executeSlashCommand(command, context, selection?.args);
+      const result = await executeSlashCommand(command, {
+        args: selection.args,
+        value: selection.value,
+      }, context);
       if (result) {
         if (result.type === "message" && result.content) {
           const description = typeof result.content === "string" ? result.content : t("chat.commandExecuted");

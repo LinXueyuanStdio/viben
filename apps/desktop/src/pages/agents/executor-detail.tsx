@@ -225,16 +225,15 @@ export function ExecutorDetailPage() {
   // Slash commands for executor chat
   const slashCommands = useMemo<SlashCommand[]>(() => [
     {
-      id: "clear",
-      name: t("chat.slashCommands.clear", "clear"),
+      name: "clear",
       description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
-      icon: <Trash2 className="h-4 w-4" />,
+      input: null,
     },
   ], [t]);
 
   // Handle slash command execution
   const handleSlashCommand = useCallback((command: SlashCommand) => {
-    if (command.id === "clear") {
+    if (command.name === "clear") {
       clearMessages();
     }
   }, [clearMessages]);

@@ -316,7 +316,7 @@ function ChatPopup({
 
     const parsedCommand = parseSlashCommandInput(text);
     const slashCommand = parsedCommand
-      ? slashCommands.find((command) => command.name === parsedCommand.name || command.id === parsedCommand.name)
+      ? slashCommands.find((command) => command.name === parsedCommand.name)
       : undefined;
     if (slashCommand && onSlashCommand) {
       setContent('');
@@ -947,7 +947,10 @@ export function ChatPopupLayer(): ReactElement | null {
       navigate: () => {},
       t: (key: string) => key,
     };
-    const result = await executeSlashCommand(command, context, selection?.args);
+    const result = await executeSlashCommand(command, {
+      args: selection.args,
+      value: selection.value,
+    }, context);
     if (result?.type === "prompt" && result.prompt) {
       handleSend(result.prompt);
     }

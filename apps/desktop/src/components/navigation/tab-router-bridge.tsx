@@ -5,6 +5,10 @@ import { buildColdStartBreadcrumb, buildBreadcrumbItem } from "@/navigation/brea
 import { isStackPrefixOf } from "@/navigation/navigate";
 import { useTabStore, selectActiveTab } from "@/stores/tab-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import {
+  hasNewTabRequest,
+  withoutNewTabRequest,
+} from "@/navigation/new-tab-request";
 
 /**
  * Tab-Router Bridge
@@ -28,12 +32,44 @@ export function TabRouterBridge() {
   });
 
   // Store actions
+  const openTab = useTabStore((s) => s.openTab);
   const pushNavigation = useTabStore((s) => s.pushNavigation);
   const resetNavigation = useTabStore((s) => s.resetNavigation);
+
+  useEffect(() => {
+    if (!hasNewTabRequest(location.search)) return;
+
+    const requestedUrl = withoutNewTabRequest(
+      location.pathname + location.search
+    );
+    const normalizedUrl = registry.normalizeUrl(requestedUrl);
+    const match = registry.match(normalizedUrl);
+
+    if (!match) {
+      routerNavigate(withoutNewTabRequest(location.pathname + location.search), {
+        replace: true,
+      });
+      return;
+    }
+
+    lastPushedToStoreRef.current = normalizedUrl;
+    lastPushedToRouterRef.current = normalizedUrl;
+
+    openTab({
+      navigationState: {
+        url: normalizedUrl,
+        breadcrumbStack: buildColdStartBreadcrumb(normalizedUrl),
+      },
+      pinned: false,
+    });
+
+    routerNavigate(normalizedUrl, { replace: true });
+  }, [location.pathname, location.search, openTab, routerNavigate]);
 
   // Store -> Router: when store URL changes, update React Router
   useEffect(() => {
     if (!storeUrl) return;
+    if (hasNewTabRequest(location.search)) return;
 
     const currentRouterPath = location.pathname + location.search;
     const normalizedStoreUrl = registry.normalizeUrl(storeUrl);
@@ -68,6 +104,8 @@ export function TabRouterBridge() {
   // overwrites the new tab's URL with the old tab's URL. All store reads happen
   // via getState() inside the effect to get fresh values without dep coupling.
   useEffect(() => {
+    if (hasNewTabRequest(location.search)) return;
+
     const { activeTabId: currentTabId } = useTabStore.getState();
     if (!currentTabId) return;
 

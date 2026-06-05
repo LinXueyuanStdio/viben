@@ -11,6 +11,7 @@ import {
   Loader2,
   MoreHorizontal,
   MonitorUp,
+  Plus,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -52,10 +53,17 @@ import { useTheme } from "@/hooks/use-theme";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import type { PageConfig, ProxyPageConfig, ServerPageConfig } from "@/lib/gateway/types/page";
 import { cn } from "@/lib/utils";
+import { withNewTabRequest } from "@/navigation/new-tab-request";
+
+const NEW_TAB_URL = "/workspace";
 
 function getSearchParam(name: string): string | undefined {
   const value = new URLSearchParams(window.location.search).get(name);
   return value?.trim() || undefined;
+}
+
+function navigateCurrentWindow(url: string) {
+  window.location.assign(url);
 }
 
 function normalizeViewMode(value: string | undefined): PageViewMode {
@@ -73,6 +81,19 @@ function getStaticPageServeUrl(
     theme,
   });
   return `${getGatewayUrl()}/api/page/serve?${params.toString()}`;
+}
+
+function normalizeHttpUrl(value: string | undefined): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function getPreviewExternalUrl({
@@ -93,17 +114,23 @@ function getPreviewExternalUrl({
   }
 
   if (page.type === "proxy") {
-    return (page as ProxyPageConfig).url;
+    return normalizeHttpUrl((page as ProxyPageConfig).url);
   }
 
   if (page.type === "server") {
-    return livePreviewUrl ?? null;
+    return normalizeHttpUrl(livePreviewUrl ?? undefined);
   }
 
   return getStaticPageServeUrl(workspacePath, page.slug, resolvedTheme);
 }
 
-export function PagePreviewWindow() {
+export interface PagePreviewWindowProps {
+  navigateToWorkspace?: (url: string) => void;
+}
+
+export function PagePreviewWindow({
+  navigateToWorkspace = navigateCurrentWindow,
+}: PagePreviewWindowProps = {}) {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const workspaceId = getSearchParam("workspace_id");
@@ -244,6 +271,10 @@ export function PagePreviewWindow() {
     }
   }, []);
 
+  const handleNewTab = useCallback(() => {
+    navigateToWorkspace(withNewTabRequest(NEW_TAB_URL));
+  }, [navigateToWorkspace]);
+
   if (!workspaceId || !workspacePath || !slug) {
     return (
       <WindowState
@@ -288,6 +319,7 @@ export function PagePreviewWindow() {
         onCopyLink={() => void handleCopyLink()}
         onOpenExternal={() => void handleOpenExternal()}
         onCloseTab={() => void handleCloseWindow()}
+        onNewTab={handleNewTab}
       />
       <PagePreview
         page={page}
@@ -315,6 +347,7 @@ function PagePreviewWindowTabBar({
   onCopyLink,
   onOpenExternal,
   onCloseTab,
+  onNewTab,
 }: {
   page: PageConfig;
   isMacOS: boolean;
@@ -324,9 +357,13 @@ function PagePreviewWindowTabBar({
   onCopyLink: () => void;
   onOpenExternal: () => void;
   onCloseTab: () => void;
+  onNewTab: () => void;
 }) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const refreshShortcut = isMacOS ? "⌘R" : "Ctrl+R";
+  const actualSizeShortcut = isMacOS ? "⌘0" : "Ctrl+0";
+  const closeTabsShortcut = isMacOS ? "⌥⌘W" : "Alt+Ctrl+W";
   const tabIcon = page.icon ? (
     <IconDisplay icon={page.icon} size="sm" className="text-muted-foreground" />
   ) : (
@@ -335,7 +372,10 @@ function PagePreviewWindowTabBar({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.metaKey || event.ctrlKey) return;
+      const primaryModifier = isMacOS
+        ? event.metaKey && !event.ctrlKey
+        : event.ctrlKey && !event.metaKey;
+      if (!primaryModifier) return;
 
       const key = event.key.toLowerCase();
       if (!event.altKey && !event.shiftKey && (key === "r" || key === "0")) {
@@ -354,7 +394,7 @@ function PagePreviewWindowTabBar({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onCloseTab, onRefresh]);
+  }, [isMacOS, onCloseTab, onRefresh]);
 
   return (
     <ContextMenu>
@@ -390,13 +430,22 @@ function PagePreviewWindowTabBar({
               </>
             }
             tabs={
-              <BrowserTabFrameTab
-                label={page.name || page.slug}
-                icon={tabIcon}
-                active
-                closable
-                onClose={onCloseTab}
-              />
+              <>
+                <BrowserTabFrameTab
+                  label={page.name || page.slug}
+                  icon={tabIcon}
+                  active
+                  closable
+                  onClose={onCloseTab}
+                />
+                <BrowserTabFrameIconButton
+                  aria-label={t("common.newTab", "New Tab")}
+                  tooltip={t("common.newTab", "New Tab")}
+                  icon={<Plus className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  onClick={onNewTab}
+                  isMacOS={isMacOS}
+                />
+              </>
             }
             rightControls={
               <>
@@ -428,6 +477,9 @@ function PagePreviewWindowTabBar({
                   <DropdownMenuContent align="end" className="w-64">
                     <PreviewDropdownMenuItems
                       canOpenExternal={canOpenExternal}
+                      refreshShortcut={refreshShortcut}
+                      actualSizeShortcut={actualSizeShortcut}
+                      closeTabsShortcut={closeTabsShortcut}
                       onRefresh={onRefresh}
                       onCopyLink={onCopyLink}
                       onOpenExternal={onOpenExternal}
@@ -443,6 +495,9 @@ function PagePreviewWindowTabBar({
       <ContextMenuContent className="w-64">
         <PreviewContextMenuItems
           canOpenExternal={canOpenExternal}
+          refreshShortcut={refreshShortcut}
+          actualSizeShortcut={actualSizeShortcut}
+          closeTabsShortcut={closeTabsShortcut}
           onRefresh={onRefresh}
           onCopyLink={onCopyLink}
           onOpenExternal={onOpenExternal}
@@ -455,12 +510,18 @@ function PagePreviewWindowTabBar({
 
 function PreviewDropdownMenuItems({
   canOpenExternal,
+  refreshShortcut,
+  actualSizeShortcut,
+  closeTabsShortcut,
   onRefresh,
   onCopyLink,
   onOpenExternal,
   onCloseTab,
 }: {
   canOpenExternal: boolean;
+  refreshShortcut: string;
+  actualSizeShortcut: string;
+  closeTabsShortcut: string;
   onRefresh: () => void;
   onCopyLink: () => void;
   onOpenExternal: () => void;
@@ -472,9 +533,9 @@ function PreviewDropdownMenuItems({
     <>
       <DropdownMenuItem onClick={onRefresh}>
         {t("common.refresh", "Refresh")}
-        <DropdownMenuShortcut>⌘R</DropdownMenuShortcut>
+        <DropdownMenuShortcut>{refreshShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={onCopyLink}>
+      <DropdownMenuItem onClick={onCopyLink} disabled={!canOpenExternal}>
         {t("tabBar.copyLink", "Copy Link")}
       </DropdownMenuItem>
       <DropdownMenuSub>
@@ -484,17 +545,15 @@ function PreviewDropdownMenuItems({
         <DropdownMenuSubContent className="w-52">
           <DropdownMenuCheckboxItem checked onCheckedChange={() => undefined}>
             {t("pagePreview.actualSize", "Actual Size")}
-            <DropdownMenuShortcut>⌘0</DropdownMenuShortcut>
+            <DropdownMenuShortcut>{actualSizeShortcut}</DropdownMenuShortcut>
           </DropdownMenuCheckboxItem>
           <DropdownMenuItem disabled>
             <span className="mr-6" />
             {t("pagePreview.zoomIn", "Zoom In")}
-            <DropdownMenuShortcut>⌘+</DropdownMenuShortcut>
           </DropdownMenuItem>
           <DropdownMenuItem disabled>
             <span className="mr-6" />
             {t("pagePreview.zoomOut", "Zoom Out")}
-            <DropdownMenuShortcut>⌘-</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
@@ -522,7 +581,7 @@ function PreviewDropdownMenuItems({
       </DropdownMenuItem>
       <DropdownMenuItem onClick={onCloseTab}>
         {t("tabBar.closeAllTabs", "Close All Tabs")}
-        <DropdownMenuShortcut>⌥⌘W</DropdownMenuShortcut>
+        <DropdownMenuShortcut>{closeTabsShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem disabled>
         {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
@@ -533,12 +592,18 @@ function PreviewDropdownMenuItems({
 
 function PreviewContextMenuItems({
   canOpenExternal,
+  refreshShortcut,
+  actualSizeShortcut,
+  closeTabsShortcut,
   onRefresh,
   onCopyLink,
   onOpenExternal,
   onCloseTab,
 }: {
   canOpenExternal: boolean;
+  refreshShortcut: string;
+  actualSizeShortcut: string;
+  closeTabsShortcut: string;
   onRefresh: () => void;
   onCopyLink: () => void;
   onOpenExternal: () => void;
@@ -550,9 +615,9 @@ function PreviewContextMenuItems({
     <>
       <ContextMenuItem onClick={onRefresh}>
         {t("common.refresh", "Refresh")}
-        <ContextMenuShortcut>⌘R</ContextMenuShortcut>
+        <ContextMenuShortcut>{refreshShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
-      <ContextMenuItem onClick={onCopyLink}>
+      <ContextMenuItem onClick={onCopyLink} disabled={!canOpenExternal}>
         {t("tabBar.copyLink", "Copy Link")}
       </ContextMenuItem>
       <ContextMenuSub>
@@ -562,17 +627,15 @@ function PreviewContextMenuItems({
         <ContextMenuSubContent className="w-52">
           <ContextMenuCheckboxItem checked onCheckedChange={() => undefined}>
             {t("pagePreview.actualSize", "Actual Size")}
-            <ContextMenuShortcut>⌘0</ContextMenuShortcut>
+            <ContextMenuShortcut>{actualSizeShortcut}</ContextMenuShortcut>
           </ContextMenuCheckboxItem>
           <ContextMenuItem disabled>
             <span className="mr-6" />
             {t("pagePreview.zoomIn", "Zoom In")}
-            <ContextMenuShortcut>⌘+</ContextMenuShortcut>
           </ContextMenuItem>
           <ContextMenuItem disabled>
             <span className="mr-6" />
             {t("pagePreview.zoomOut", "Zoom Out")}
-            <ContextMenuShortcut>⌘-</ContextMenuShortcut>
           </ContextMenuItem>
         </ContextMenuSubContent>
       </ContextMenuSub>
@@ -600,7 +663,7 @@ function PreviewContextMenuItems({
       </ContextMenuItem>
       <ContextMenuItem onClick={onCloseTab}>
         {t("tabBar.closeAllTabs", "Close All Tabs")}
-        <ContextMenuShortcut>⌥⌘W</ContextMenuShortcut>
+        <ContextMenuShortcut>{closeTabsShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem disabled>
         {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
