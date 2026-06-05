@@ -545,7 +545,7 @@ export async function startBackgroundTask(
           try {
             const data = JSON.parse(line.slice(6));
             if (data.type === "session") {
-              sessionId = data.sessionId;
+              sessionId = data.session_id || data.sessionId || "";
               break;
             }
           } catch {
