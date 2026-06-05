@@ -4,7 +4,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
   CornerUpRight,
@@ -21,6 +20,7 @@ import {
 } from "@/components/browser-tab-frame";
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/context-menu";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -86,9 +87,9 @@ function getPreviewExternalUrl({
   viewMode: PageViewMode;
   resolvedTheme: string;
   livePreviewUrl?: string | null;
-}): string {
+}): string | null {
   if (viewMode === "skill" || page.type === "markdown") {
-    return window.location.href;
+    return null;
   }
 
   if (page.type === "proxy") {
@@ -96,7 +97,7 @@ function getPreviewExternalUrl({
   }
 
   if (page.type === "server") {
-    return livePreviewUrl ?? window.location.href;
+    return livePreviewUrl ?? null;
   }
 
   return getStaticPageServeUrl(workspacePath, page.slug, resolvedTheme);
@@ -121,6 +122,7 @@ export function PagePreviewWindow() {
     data: page,
     isLoading,
     error,
+    refetch,
   } = usePage(workspacePath, slug);
 
   const pageId = useMemo(() => {
@@ -208,10 +210,11 @@ export function PagePreviewWindow() {
 
   const handleRefresh = useCallback(() => {
     setIframeKey((key) => key + 1);
+    void refetch();
     if (page?.type === "server" && previewStatus !== "running") {
       handleStartLivePreview();
     }
-  }, [handleStartLivePreview, page?.type, previewStatus]);
+  }, [handleStartLivePreview, page?.type, previewStatus, refetch]);
 
   const handleCopyLink = useCallback(async () => {
     if (!externalUrl) return;
@@ -330,6 +333,29 @@ function PagePreviewWindowTabBar({
     <IconDisplay icon={{ type: "lucide", value: "file-text" }} size="sm" className="text-muted-foreground" />
   );
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.metaKey || event.ctrlKey) return;
+
+      const key = event.key.toLowerCase();
+      if (!event.altKey && !event.shiftKey && (key === "r" || key === "0")) {
+        event.preventDefault();
+        if (key === "r") {
+          onRefresh();
+        }
+        return;
+      }
+
+      if (event.altKey && !event.shiftKey && key === "w") {
+        event.preventDefault();
+        onCloseTab();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onCloseTab, onRefresh]);
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -337,6 +363,7 @@ function PagePreviewWindowTabBar({
           <BrowserTabFrame
             isMacOS={isMacOS}
             reserveMacOSControlsSpace={reserveMacOSControlsSpace}
+            spacerMenu={<div data-tauri-drag-region className="h-full w-full" />}
             leadingControls={
               <>
                 <BrowserTabFrameIconButton
@@ -455,11 +482,10 @@ function PreviewDropdownMenuItems({
           {t("pagePreview.textSize", "Adjust Text Size")}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent className="w-52">
-          <DropdownMenuItem>
-            <Check className="mr-2 h-4 w-4" />
+          <DropdownMenuCheckboxItem checked onCheckedChange={() => undefined}>
             {t("pagePreview.actualSize", "Actual Size")}
             <DropdownMenuShortcut>⌘0</DropdownMenuShortcut>
-          </DropdownMenuItem>
+          </DropdownMenuCheckboxItem>
           <DropdownMenuItem disabled>
             <span className="mr-6" />
             {t("pagePreview.zoomIn", "Zoom In")}
@@ -474,11 +500,9 @@ function PreviewDropdownMenuItems({
       </DropdownMenuSub>
       <DropdownMenuItem disabled>
         {t("common.find", "Find...")}
-        <DropdownMenuShortcut>⌘F</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem disabled>
         {t("common.print", "Print")}
-        <DropdownMenuShortcut>⌘P</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem disabled>
@@ -495,7 +519,6 @@ function PreviewDropdownMenuItems({
       </DropdownMenuItem>
       <DropdownMenuItem disabled>
         {t("pagePreview.downloads", "Downloads")}
-        <DropdownMenuShortcut>⌥⌘L</DropdownMenuShortcut>
       </DropdownMenuItem>
       <DropdownMenuItem onClick={onCloseTab}>
         {t("tabBar.closeAllTabs", "Close All Tabs")}
@@ -503,7 +526,6 @@ function PreviewDropdownMenuItems({
       </DropdownMenuItem>
       <DropdownMenuItem disabled>
         {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
-        <DropdownMenuShortcut>⌘⇧T</DropdownMenuShortcut>
       </DropdownMenuItem>
     </>
   );
@@ -538,11 +560,10 @@ function PreviewContextMenuItems({
           {t("pagePreview.textSize", "Adjust Text Size")}
         </ContextMenuSubTrigger>
         <ContextMenuSubContent className="w-52">
-          <ContextMenuItem>
-            <Check className="mr-2 h-4 w-4" />
+          <ContextMenuCheckboxItem checked onCheckedChange={() => undefined}>
             {t("pagePreview.actualSize", "Actual Size")}
             <ContextMenuShortcut>⌘0</ContextMenuShortcut>
-          </ContextMenuItem>
+          </ContextMenuCheckboxItem>
           <ContextMenuItem disabled>
             <span className="mr-6" />
             {t("pagePreview.zoomIn", "Zoom In")}
@@ -557,11 +578,9 @@ function PreviewContextMenuItems({
       </ContextMenuSub>
       <ContextMenuItem disabled>
         {t("common.find", "Find...")}
-        <ContextMenuShortcut>⌘F</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem disabled>
         {t("common.print", "Print")}
-        <ContextMenuShortcut>⌘P</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem disabled>
@@ -578,7 +597,6 @@ function PreviewContextMenuItems({
       </ContextMenuItem>
       <ContextMenuItem disabled>
         {t("pagePreview.downloads", "Downloads")}
-        <ContextMenuShortcut>⌥⌘L</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem onClick={onCloseTab}>
         {t("tabBar.closeAllTabs", "Close All Tabs")}
@@ -586,7 +604,6 @@ function PreviewContextMenuItems({
       </ContextMenuItem>
       <ContextMenuItem disabled>
         {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
-        <ContextMenuShortcut>⌘⇧T</ContextMenuShortcut>
       </ContextMenuItem>
     </>
   );

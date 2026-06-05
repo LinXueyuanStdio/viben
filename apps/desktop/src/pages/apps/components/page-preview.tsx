@@ -178,6 +178,7 @@ export function PagePreview({
                 {/* Server pages - use VitePreview */}
                 {isServerType && (
                   <VitePreview
+                    key={iframeKey}
                     previewUrl={livePreviewUrl ?? null}
                     status={livePreviewStatus}
                     error={livePreviewError ?? null}

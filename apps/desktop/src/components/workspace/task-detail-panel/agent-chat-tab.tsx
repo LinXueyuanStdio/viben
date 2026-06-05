@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DesktopMessageList } from "@/components/conversation";
 import { DesktopChatInput } from "@/pages/conversation/components";
-import type { SlashCommand } from "@viben/chat";
+import type { SlashCommand, SlashCommandHandler } from "@viben/chat";
 import {
   SubagentSheet,
   PlanApproval,
@@ -42,7 +42,7 @@ export interface AgentChatTabProps {
   onRejectPlan: () => void;
   onAnswerQuestions: (answers: Record<string, string[]>) => void;
   onApproveExec?: (decision: string, feedback?: string) => void;
-  onSlashCommand: (command: SlashCommand) => void;
+  onSlashCommand: SlashCommandHandler;
 }
 
 export function AgentChatTab({

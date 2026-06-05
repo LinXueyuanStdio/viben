@@ -1,4 +1,3 @@
-import { type MouseEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import {
   Tooltip,
@@ -7,11 +6,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { MouseEvent, ReactNode } from "react";
 
 export interface BrowserTabFrameProps {
   isMacOS?: boolean;
   reserveMacOSControlsSpace?: boolean;
   leadingControls?: ReactNode;
+  tabsLeading?: ReactNode;
   tabs?: ReactNode;
   spacerMenu?: ReactNode;
   rightControls?: ReactNode;
@@ -23,6 +24,7 @@ export function BrowserTabFrame({
   isMacOS = false,
   reserveMacOSControlsSpace = false,
   leadingControls,
+  tabsLeading,
   tabs,
   spacerMenu,
   rightControls,
@@ -48,6 +50,8 @@ export function BrowserTabFrame({
         >
           {leadingControls}
         </div>
+
+        {tabsLeading}
 
         {tabs && (
           <div className="flex items-center gap-1 overflow-x-auto px-1 scrollbar-none">
@@ -169,6 +173,7 @@ export function BrowserTabFrameTab({
       <button
         type="button"
         onClick={onSelect}
+        aria-current={active ? "page" : undefined}
         className={cn(
           "flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-md px-2",
           closable && "pr-0.5",

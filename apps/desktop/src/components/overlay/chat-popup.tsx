@@ -19,7 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { AttachmentPreview, type MessageAttachment, type SlashCommand, SlashCommandMenu, useSlashCommands } from '@viben/chat';
+import { AttachmentPreview, type MessageAttachment, type SlashCommand, type SlashCommandSelection, SlashCommandMenu, parseSlashCommandInput, useSlashCommandMenu } from '@viben/chat';
 import { cn } from '@/lib/utils';
 import { openAndReadFiles } from '@/lib/tauri-file-attach';
 import {
@@ -95,7 +95,7 @@ function ChatPopup({
   onSteer: (message: string) => void;
   onCancel: () => void;
   onSendBackground: (content: string) => void;
-  onSlashCommand?: (command: SlashCommand) => void;
+  onSlashCommand?: (command: SlashCommand, selection: SlashCommandSelection) => void;
   slashCommands?: SlashCommand[];
   workspacePath?: string;
   workspaceName?: string;
@@ -174,9 +174,9 @@ function ChatPopup({
     handleContentChange: slashHandleContentChange,
     handleSelect: slashHandleSelect,
     query: slashQuery,
-  } = useSlashCommands({
+  } = useSlashCommandMenu({
     commands: slashCommands,
-    onSelect: (cmd) => onSlashCommand?.(cmd),
+    onSelect: (cmd) => onSlashCommand?.(cmd, { command: cmd, args: '', value: `/${cmd.name}` }),
     enabled: slashCommands.length > 0 && !!onSlashCommand,
   });
 
@@ -305,6 +305,28 @@ function ChatPopup({
   const handleSubmit = useCallback(() => {
     const text = content.trim();
     if (!text && attachments.length === 0) return;
+
+    const parsedCommand = parseSlashCommandInput(text);
+    const slashCommand = parsedCommand
+      ? slashCommands.find((command) => command.name === parsedCommand.name || command.id === parsedCommand.name)
+      : undefined;
+    if (slashCommand && onSlashCommand) {
+      setContent('');
+      setAttachments([]);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+      onSlashCommand(slashCommand, {
+        command: slashCommand,
+        args: parsedCommand?.args ?? '',
+        value: text,
+      });
+      setTimeout(() => {
+        if (!isStreaming) handleClose();
+      }, 150);
+      return;
+    }
+
     const currentAttachments = attachments.length > 0 ? [...attachments] : undefined;
     setContent('');
     setAttachments([]);
@@ -330,7 +352,7 @@ function ChatPopup({
       setIsSendAnimating(false);
       if (!isStreaming) handleClose();
     }, 300);
-  }, [content, attachments, backgroundTask, isStreaming, handleClose, onSend, onSteer, onSendBackground]);
+  }, [content, attachments, backgroundTask, isStreaming, handleClose, onSend, onSteer, onSendBackground, onSlashCommand, slashCommands]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Slash command menu handles arrow keys / Enter when open
@@ -903,7 +925,7 @@ export function ChatPopupLayer(): ReactElement | null {
     steerMessage(message);
   }, [steerMessage]);
 
-  const handleSlashCommand = useCallback(async (command: SlashCommand) => {
+  const handleSlashCommand = useCallback(async (command: SlashCommand, selection?: SlashCommandSelection) => {
     const context: CommandContext = {
       messages: messages.map((m) => ({
         role: m.type === "user" ? "user" : "assistant",
@@ -917,7 +939,7 @@ export function ChatPopupLayer(): ReactElement | null {
       navigate: () => {},
       t: (key: string) => key,
     };
-    const result = await executeSlashCommand(command, context);
+    const result = await executeSlashCommand(command, context, selection?.args);
     if (result?.type === "prompt" && result.prompt) {
       handleSend(result.prompt);
     }

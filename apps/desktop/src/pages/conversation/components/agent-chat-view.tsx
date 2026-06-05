@@ -13,7 +13,7 @@ import {
   CommandQueuePanel,
   SubagentSheet,
 } from "@viben/chat";
-import type { SlashCommand, CommandQueueItem, AgentMessage as ChatAgentMessage } from "@viben/chat";
+import type { SlashCommand, SlashCommandHandler, CommandQueueItem, AgentMessage as ChatAgentMessage } from "@viben/chat";
 import { DesktopChatInput, DesktopMessageList } from "./index";
 import { ChatHeader } from "./chat-header";
 import { ContextUsageIndicator } from "./context-usage-indicator";
@@ -87,7 +87,7 @@ interface AgentChatViewProps {
   onRejectPlan: (feedback?: string) => void;
   onAnswerQuestions: (answers: Record<string, string[]>) => void;
   onApproveExec?: (decision: string, feedback?: string) => void;
-  onSlashCommand: (command: SlashCommand) => void;
+  onSlashCommand: SlashCommandHandler;
   onArtifactClick: (artifactId: string) => void;
   onAgentAvatarClick: () => void;
 

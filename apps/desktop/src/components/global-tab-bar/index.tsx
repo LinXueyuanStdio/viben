@@ -507,13 +507,13 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
           </ContextMenu>
         </>
       }
+      tabsLeading={
+        tabs.length > 0 ? (
+          <div className="mx-1 h-5 w-px shrink-0 bg-border/50" />
+        ) : null
+      }
       tabs={
         <>
-          {/* Separator between nav and tabs */}
-          {tabs.length > 0 && (
-            <div className="mx-1 h-5 w-px shrink-0 bg-border/50" />
-          )}
-
           {/* Tabs with drag-and-drop */}
           <DndContext
             sensors={sensors}
@@ -586,7 +586,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       spacerMenu={
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <div className="h-full w-full" />
+            <div data-tauri-drag-region className="h-full w-full" />
           </ContextMenuTrigger>
           <ContextMenuContent className="w-52">
             <ContextMenuItem onClick={handleNewTab}>

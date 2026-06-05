@@ -1,10 +1,10 @@
 import { useMemo, useCallback, useState } from "react";
+import { useSlashCommands as useChatSlashCommands } from "@viben/chat";
 import type { SlashCommand } from "@viben/chat";
 import type { SlashCommandDefinition, CommandContext, CommandResult } from "../types";
 import { useBuiltinCommands } from "./use-builtin-commands";
 import { useWorkspaceCommands } from "./use-workspace-commands";
 import { useSkillCommands } from "./use-skill-commands";
-import { findCommand } from "../executor";
 import i18n from "@/i18n";
 
 export interface UseSlashCommandsOptions {
@@ -46,33 +46,22 @@ export function useSlashCommands(
   const workspaceCommands = useWorkspaceCommands(workspacePath);
   const skillCommands = useSkillCommands(workspacePath, agentId);
 
-  // Merge all commands, removing duplicates (builtin takes priority)
-  const definitions = useMemo(() => {
-    const commandMap = new Map<string, SlashCommandDefinition>();
+  const orderedDefinitions = useMemo(
+    () => [...skillCommands, ...workspaceCommands, ...builtinCommands],
+    [builtinCommands, workspaceCommands, skillCommands]
+  );
 
-    // Add in reverse priority order (later additions override earlier)
-    for (const cmd of skillCommands) {
-      commandMap.set(cmd.name, cmd);
-    }
-    for (const cmd of workspaceCommands) {
-      commandMap.set(cmd.name, cmd);
-    }
-    for (const cmd of builtinCommands) {
-      commandMap.set(cmd.name, cmd);
-    }
+  const registry = useChatSlashCommands<CommandContext, CommandResult>({
+    commands: orderedDefinitions,
+  });
 
-    return Array.from(commandMap.values());
-  }, [builtinCommands, workspaceCommands, skillCommands]);
-
-  // Convert to SlashCommand format for ChatInput component
-  const commands = useMemo<SlashCommand[]>(() => {
-    return definitions.map((def) => ({
-      id: def.id,
-      name: def.name,
-      description: def.description,
-      icon: def.icon,
-    }));
-  }, [definitions]);
+  const registryExecute = registry.execute;
+  const registryFind = registry.find;
+  const commands = useMemo<SlashCommand[]>(
+    () => registry.commands,
+    [registry.commands]
+  );
+  const definitions = registry.definitions;
 
   // Execute a command
   const execute = useCallback(
@@ -91,7 +80,8 @@ export function useSlashCommands(
       }
 
       try {
-        const result = await definition.execute(context, args);
+        const result = await registryExecute(command, context, args);
+        if (!result) return null;
         setLastResult(result);
         return result;
       } catch (error) {
@@ -107,14 +97,11 @@ export function useSlashCommands(
         return errorResult;
       }
     },
-    [definitions]
+    [definitions, registryExecute]
   );
 
   // Find a command by name
-  const find = useCallback(
-    (name: string) => findCommand(definitions, name),
-    [definitions]
-  );
+  const find = useCallback((name: string) => registryFind(name), [registryFind]);
 
   // Clear last result
   const clearLastResult = useCallback(() => {

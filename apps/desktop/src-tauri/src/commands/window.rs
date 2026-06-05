@@ -3,6 +3,8 @@
 //! Handles creating new windows for workspaces.
 
 use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 
 /// Counter for generating unique window labels
 static WINDOW_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
@@ -90,7 +92,8 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
         urlencoding::encode(&view_mode),
     );
 
-    let window = WebviewWindowBuilder::new(
+    #[allow(unused_mut)]
+    let mut builder = WebviewWindowBuilder::new(
         &app,
         &window_label,
         WebviewUrl::App(url.into()),
@@ -98,7 +101,21 @@ pub async fn open_workspace_page_preview_window<R: Runtime>(
     .title(title.as_deref().unwrap_or("Page Preview"))
     .inner_size(1200.0, 800.0)
     .min_inner_size(640.0, 420.0)
-    .center()
+    .center();
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .title_bar_style(TitleBarStyle::Overlay)
+            .hidden_title(true);
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.decorations(false);
+    }
+
+    let window = builder
     .build()
     .map_err(|e| format!("Failed to create page preview window: {}", e))?;
 

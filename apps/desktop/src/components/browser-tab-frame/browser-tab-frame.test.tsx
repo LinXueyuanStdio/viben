@@ -4,13 +4,14 @@
 
 import React from "react";
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BrowserTabFrame,
   BrowserTabFrameIconButton,
   BrowserTabFrameTab,
 } from "./browser-tab-frame";
+import type { Root } from "react-dom/client";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -47,21 +48,25 @@ describe("BrowserTabFrame", () => {
         isMacOS
         reserveMacOSControlsSpace
         leadingControls={<button>back</button>}
+        tabsLeading={<div>fixed separator</div>}
         tabs={<div>tab one</div>}
-        spacerMenu={<div>spacer menu</div>}
+        spacerMenu={<div data-tauri-drag-region>spacer menu</div>}
         rightControls={<button>open browser</button>}
         windowControls={<div>window controls</div>}
       />
     );
 
     expect(element.textContent).toBe(
-      "backtab onespacer menuopen browserwindow controls"
+      "backfixed separatortab onespacer menuopen browserwindow controls"
     );
     expect(
       element.querySelector("[data-browser-tab-frame-leading]")?.className
     ).toContain("pl-20");
     expect(
       element.querySelector("[data-browser-tab-frame-spacer]")
+    ).toBeTruthy();
+    expect(
+      element.querySelector("[data-browser-tab-frame-spacer] > [data-tauri-drag-region]")
     ).toBeTruthy();
   });
 
@@ -118,11 +123,15 @@ describe("BrowserTabFrame", () => {
     const closeButton = element.querySelector(
       'button[aria-label="Close Preview"]'
     ) as HTMLButtonElement;
+    const tabButton = element.querySelector(
+      'button[aria-current="page"]'
+    ) as HTMLButtonElement;
     act(() => {
       closeButton.click();
     });
 
     expect(close).toHaveBeenCalledTimes(1);
     expect(select).not.toHaveBeenCalled();
+    expect(tabButton.getAttribute("aria-current")).toBe("page");
   });
 });
