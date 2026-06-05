@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import type {
   MessageAttachment,
   SlashCommand,
-  SlashCommandSelection,
+  SlashCommandHandler,
   ToolConfig,
   SkillConfig,
   ContextTokenBreakdown,
@@ -182,7 +182,7 @@ export interface ChatInputProps {
   /** Available slash commands */
   slashCommands?: SlashCommand[];
   /** Callback when a slash command is selected */
-  onSlashCommand?: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  onSlashCommand?: SlashCommandHandler;
 }
 
 // ============================================================================

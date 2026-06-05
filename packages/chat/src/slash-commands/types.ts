@@ -33,6 +33,11 @@ export interface SlashCommandSelection<TCommand extends SlashCommand = SlashComm
   value: string;
 }
 
+export type SlashCommandHandler<TCommand extends SlashCommand = SlashCommand> = (
+  command: TCommand,
+  selection: SlashCommandSelection<TCommand>
+) => void;
+
 export interface ParsedSlashCommandInput {
   name: string;
   args: string;

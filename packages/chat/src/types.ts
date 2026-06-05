@@ -153,7 +153,7 @@ export type StreamingTextState = string | null;
 // Slash Command Types
 // ============================================================================
 
-export type { SlashCommand, SlashCommandSelection } from "./slash-commands";
+export type { SlashCommand, SlashCommandHandler, SlashCommandSelection } from "./slash-commands";
 
 // ============================================================================
 // Config Types
