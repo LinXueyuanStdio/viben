@@ -14,6 +14,7 @@ import {
   ExecApproval,
   SubagentSheet,
   useCommandQueue,
+  useCommandQueueInputRecall,
   getModelIcon,
 } from "@viben/chat"
 import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
@@ -202,6 +203,7 @@ export function App() {
   const [showCommandQueue, setShowCommandQueue] = useState(false)
   const [standaloneQueueItems, setStandaloneQueueItems] = useState<CommandQueueItem[]>(demoCommandQueueItems)
   const [standaloneQueuePaused, setStandaloneQueuePaused] = useState(false)
+  const [chatInputValue, setChatInputValue] = useState("")
 
   // ExecApproval cycling demo
   const [approvalDemoIdx, setApprovalDemoIdx] = useState(0)
@@ -345,6 +347,12 @@ export function App() {
     const suffix = selection.args ? ` ${selection.args}` : ""
     commandQueue.send(`/${command.name}${suffix}`)
   }, [commandQueue])
+
+  const commandQueueInputRecall = useCommandQueueInputRecall({
+    value: chatInputValue,
+    onValueChange: setChatInputValue,
+    recall: commandQueue.recall,
+  })
 
   const handleToggleTool = useCallback((toolId: string) => {
     setTools(prev => prev.map(t => t.id === toolId ? { ...t, enabled: !t.enabled } : t))
@@ -805,6 +813,9 @@ export function App() {
                     transition={{ duration: 0.15 }}
                   >
                     <ChatInput
+                      value={chatInputValue}
+                      onValueChange={setChatInputValue}
+                      onRecallQueuedInput={commandQueueInputRecall.onRecallQueuedInput}
                       onSend={handleSend}
                       onCancel={player.pause}
                       isLoading={player.isStreaming}
