@@ -88,6 +88,7 @@ const MAX_RECENTLY_CLOSED_TABS = 20;
 const MAX_NAVIGATION_HISTORY = 50;
 export const TAB_STORE_STORAGE_KEY = "viben-tab-store-v2";
 const TAB_STORE_VERSION = 2;
+let tabStoreStorageSyncUnsubscribe: (() => void) | null = null;
 
 function findLastPinnedIndex(tabs: PageTab[]): number {
   for (let index = tabs.length - 1; index >= 0; index -= 1) {
@@ -706,3 +707,33 @@ export const selectPinnedTabs = (state: TabState) =>
 
 export const selectUnpinnedTabs = (state: TabState) =>
   state.tabs.filter((tab) => !tab.pinned);
+
+export function installTabStoreStorageSync(): () => void {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  if (tabStoreStorageSyncUnsubscribe) {
+    return tabStoreStorageSyncUnsubscribe;
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (
+      event.storageArea !== localStorage ||
+      event.key !== TAB_STORE_STORAGE_KEY ||
+      event.newValue === event.oldValue
+    ) {
+      return;
+    }
+
+    void useTabStore.persist.rehydrate();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  tabStoreStorageSyncUnsubscribe = () => {
+    window.removeEventListener("storage", handleStorage);
+    tabStoreStorageSyncUnsubscribe = null;
+  };
+
+  return tabStoreStorageSyncUnsubscribe;
+}
