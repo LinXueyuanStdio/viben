@@ -510,10 +510,6 @@ export class ClientToolCompletionRegistry {
   }
 
   private getTrustedPrefixedToolOptions(toolName: string): ClientSideToolOptions | undefined {
-    if (toolName.startsWith("mcp__presentation__")) {
-      return this.toolOptions.get(toolName.slice("mcp__presentation__".length));
-    }
-
     if (toolName.startsWith("mcp__gui_action__")) {
       return this.toolOptions.get(toolName.slice("mcp__gui_action__".length));
     }

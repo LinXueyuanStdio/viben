@@ -56,18 +56,15 @@ describe("ClientToolCompletionRegistry", () => {
       expect(registry.isClientSideTool("write_file")).toBe(false);
     });
 
-    it("should handle mcp__ prefix by checking suffix after last __", () => {
-      expect(registry.isClientSideTool("mcp__myserver__screenshot")).toBe(true);
-      expect(registry.isClientSideTool("mcp__tools__user_confirm")).toBe(true);
+    it("should trust only known built-in MCP server prefixes", () => {
+      registry.registerToolOptions("GUI_execute");
+
+      expect(registry.isClientSideTool("mcp__gui_action__GUI_execute")).toBe(true);
+      expect(registry.isClientSideTool("mcp__myserver__screenshot")).toBe(false);
     });
 
     it("should return false for mcp__ prefixed tools with unregistered suffix", () => {
-      expect(registry.isClientSideTool("mcp__myserver__read_file")).toBe(false);
-    });
-
-    it("should handle tool names with multiple __ segments", () => {
-      // mcp__my__nested__server__screenshot → last __ → "screenshot"
-      expect(registry.isClientSideTool("mcp__my__nested__server__screenshot")).toBe(true);
+      expect(registry.isClientSideTool("mcp__gui_action__read_file")).toBe(false);
     });
   });
 
@@ -95,15 +92,21 @@ describe("ClientToolCompletionRegistry", () => {
   });
 
   describe("waitForClient", () => {
-    it("should return error CallToolResult if session has no queued items", async () => {
-      const result = await registry.waitForClient("nonexistent-session");
-      expect(result).toEqual({
-        content: [{ type: "text", text: "No pending client tool call found." }],
-        isError: true,
-      });
+    it("should wait for the next queued item when session has no queued items", async () => {
+      const promise = registry.waitForClient("session-1");
+      expect(registry.getWaiterCount("session-1")).toBe(1);
+
+      const callToolResult: CallToolResult = {
+        content: [{ type: "text", text: "done" }],
+      };
+      registry.enqueue("session-1", "tool-use-1", "screenshot");
+      registry.complete("tool-use-1", "session-1", callToolResult);
+
+      await expect(promise).resolves.toEqual(callToolResult);
+      expect(registry.getWaiterCount("session-1")).toBe(0);
     });
 
-    it("should return error CallToolResult for empty queue", async () => {
+    it("should wait for the next queued item after an existing queue is consumed", async () => {
       registry.registerToolOptions("screenshot");
       registry.enqueue("session-1", "tool-use-1", "screenshot");
 
@@ -115,12 +118,17 @@ describe("ClientToolCompletionRegistry", () => {
       registry.complete("tool-use-1", "session-1", callToolResult);
       await promise;
 
-      // Now queue is empty
-      const result = await registry.waitForClient("session-1");
-      expect(result).toEqual({
-        content: [{ type: "text", text: "No pending client tool call found." }],
-        isError: true,
-      });
+      const secondPromise = registry.waitForClient("session-1");
+      expect(registry.getWaiterCount("session-1")).toBe(1);
+
+      const secondResult: CallToolResult = {
+        content: [{ type: "text", text: "done-2" }],
+      };
+      registry.enqueue("session-1", "tool-use-2", "screenshot");
+      registry.complete("tool-use-2", "session-1", secondResult);
+
+      await expect(secondPromise).resolves.toEqual(secondResult);
+      expect(registry.getWaiterCount("session-1")).toBe(0);
     });
 
     it("should dequeue items in FIFO order", async () => {
@@ -232,9 +240,9 @@ describe("ClientToolCompletionRegistry", () => {
       });
     });
 
-    it("should resolve with mcp__ prefixed tool name using registered base tool timeout", async () => {
-      registry.registerToolOptions("screenshot", { timeoutMs: 3000 });
-      registry.enqueue("session-1", "tool-use-1", "mcp__myserver__screenshot");
+    it("should resolve with mcp__gui_action__ prefixed tool name using registered base tool timeout", async () => {
+      registry.registerToolOptions("GUI_execute", { timeoutMs: 3000 });
+      registry.enqueue("session-1", "tool-use-1", "mcp__gui_action__GUI_execute");
 
       const promise = registry.waitForClient("session-1");
 
@@ -244,7 +252,7 @@ describe("ClientToolCompletionRegistry", () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toEqual({
         type: "text",
-        text: `Client-side tool "mcp__myserver__screenshot" timed out after 3s. The client may be unresponsive. You may retry or skip this step.`,
+        text: `Client-side tool "mcp__gui_action__GUI_execute" timed out after 3s. The client may be unresponsive. You may retry or skip this step.`,
       });
     });
 

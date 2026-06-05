@@ -53,7 +53,7 @@ describe("Client-Tools Routes", () => {
     it("should return 404 for session mismatch", async () => {
       const sessionId = "session-" + Date.now();
       const toolUseId = "tool-" + Date.now();
-      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "presentation_draw");
+      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "GUI_execute");
 
       const res = await app.inject({
         method: "POST",
@@ -75,7 +75,7 @@ describe("Client-Tools Routes", () => {
       const toolUseId = "tool-normal-" + Date.now();
 
       // 1. Enqueue (simulates stream loop)
-      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "presentation_draw");
+      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "GUI_execute");
 
       // 2. waitForClient (simulates MCP handler)
       const waitPromise = clientToolCompletionRegistry.waitForClient(sessionId);
@@ -110,11 +110,11 @@ describe("Client-Tools Routes", () => {
       const waitPromise = clientToolCompletionRegistry.waitForClient(
         sessionId,
         toolUseId,
-        "presentation_highlight"
+        "GUI_execute"
       );
 
       // 2. Enqueue AFTER (simulates stream loop arriving late)
-      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "presentation_highlight");
+      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "GUI_execute");
 
       // 3. POST complete
       const res = await app.inject({
@@ -140,7 +140,7 @@ describe("Client-Tools Routes", () => {
       const sessionId = "session-cancel-" + Date.now();
       const toolUseId = "tool-cancel-" + Date.now();
 
-      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "presentation_draw");
+      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "GUI_execute");
       const waitPromise = clientToolCompletionRegistry.waitForClient(sessionId);
 
       // Cancel session (simulates user stopping agent)
@@ -153,7 +153,7 @@ describe("Client-Tools Routes", () => {
       const sessionId = "session-err-" + Date.now();
       const toolUseId = "tool-err-" + Date.now();
 
-      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "presentation_draw");
+      clientToolCompletionRegistry.enqueue(sessionId, toolUseId, "GUI_execute");
       const waitPromise = clientToolCompletionRegistry.waitForClient(sessionId);
 
       const res = await app.inject({
@@ -163,7 +163,7 @@ describe("Client-Tools Routes", () => {
           tool_use_id: toolUseId,
           session_id: sessionId,
           result: {
-            content: [{ type: "text", text: "User exited presentation" }],
+            content: [{ type: "text", text: "User cancelled GUI action" }],
             isError: true,
           },
         },
@@ -172,7 +172,7 @@ describe("Client-Tools Routes", () => {
 
       const result = await waitPromise;
       expect(result.isError).toBe(true);
-      expect(result.content[0]).toEqual({ type: "text", text: "User exited presentation" });
+      expect(result.content[0]).toEqual({ type: "text", text: "User cancelled GUI action" });
     });
   });
 });

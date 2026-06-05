@@ -2,7 +2,7 @@
  * SDK MCP Server Registry
  *
  * A registry of in-process MCP servers that can be activated by name.
- * When an agent config includes mcpServers: ["presentation", ...],
+ * When an agent config includes mcpServers: ["gui_action", ...],
  * the SDK proxy looks up matching entries in this registry and creates
  * the corresponding SDK MCP server instances.
  *
@@ -18,7 +18,7 @@ export type McpServerFactory = (sdk: typeof ClaudeAgentSdk, context?: { sessionI
 
 // Use `var` to avoid TDZ (temporal dead zone) issues.
 // ES module `import` statements are hoisted and execute before any other code,
-// so side-effect imports (presentation.ts, gui-action.ts) at the bottom of this
+// so side-effect imports (gui-action.ts) at the bottom of this
 // file call registerSdkMcpServer() before `const`/`let` declarations are initialized.
 // `var` is function-scoped and hoisted with `undefined`, allowing the lazy getter
 // pattern to work correctly during module evaluation.
@@ -52,7 +52,7 @@ type SdkMcpServerConfig =
 /**
  * Look up and resolve MCP servers from a mixed array of names and entry objects.
  *
- * - String entries: looked up in the in-process registry (e.g., "presentation")
+ * - String entries: looked up in the in-process registry (e.g., "gui_action")
  * - McpServerEntry objects: converted directly to SDK-compatible configs
  *
  * Returns a Record suitable for passing to sdk.query({ mcpServers: ... }).
