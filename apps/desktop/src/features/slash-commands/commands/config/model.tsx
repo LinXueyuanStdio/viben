@@ -1,7 +1,8 @@
 import { createElement } from "react";
 import { Cpu } from "lucide-react";
 import i18n from "@/i18n";
-import { getSlashCommandArg, type DesktopSlashCommand } from "../../types";
+import { getSlashCommandArg } from "../../types";
+import type { DesktopSlashCommand } from "../../types";
 
 export const modelCommand: DesktopSlashCommand = {
   id: "model",

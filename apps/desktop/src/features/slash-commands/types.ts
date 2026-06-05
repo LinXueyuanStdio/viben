@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { SlashCommand as ChatSlashCommand } from "@viben/chat";
 
 /**
  * Command categories for grouping in UI
@@ -79,23 +78,24 @@ export function getSlashCommandArg(payload: SlashCommandPayload, key = "args"): 
 /**
  * Desktop slash command with execution logic.
  */
-export type DesktopSlashCommand = Omit<ChatSlashCommand, "input"> & {
+export interface DesktopSlashCommand {
+  name: string;
+  description: string;
+  input?: Record<string, unknown> | null;
   id: string;
   icon?: ReactNode;
-  input?: ChatSlashCommand["input"];
   args?: Array<{
     name: string;
     required?: boolean;
     description?: string;
   }>;
-  description: string;
   category: CommandCategory;
   source: CommandSource;
   execute: (
     payload: SlashCommandPayload,
     context: CommandContext
   ) => Promise<CommandResult>;
-};
+}
 
 /**
  * Workspace command loaded from .claude/commands/*.md

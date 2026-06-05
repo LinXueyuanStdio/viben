@@ -11,9 +11,6 @@ export type {
   UseSlashCommandsReturn,
 } from "./hooks/use-slash-commands";
 
-// Executor
-export { executeCommand, findCommand, filterCommands } from "./executor";
-
 // Parser
 export {
   parseWorkspaceCommand,

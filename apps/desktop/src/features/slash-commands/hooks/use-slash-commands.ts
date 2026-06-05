@@ -10,6 +10,7 @@ import type {
 import { useBuiltinCommands } from "./use-builtin-commands";
 import { useWorkspaceCommands } from "./use-workspace-commands";
 import { useSkillCommands } from "./use-skill-commands";
+import { toChatSlashCommandData } from "../slash-command-data";
 import i18n from "@/i18n";
 
 export interface UseSlashCommandsOptions {
@@ -51,11 +52,11 @@ export function useSlashCommands(
 
   const orderedDefinitions = useMemo(
     () => [...skillCommands, ...workspaceCommands, ...builtinCommands],
-    [builtinCommands, workspaceCommands, skillCommands]
+      [skillCommands, workspaceCommands, builtinCommands]
   );
 
   const commandData = useMemo<SlashCommand[]>(
-    () => orderedDefinitions.map(stripExecute),
+    () => orderedDefinitions.map(toChatSlashCommandData),
     [orderedDefinitions]
   );
 
@@ -126,20 +127,5 @@ export function useSlashCommands(
     find,
     lastResult,
     clearLastResult,
-  };
-}
-
-function stripExecute(command: DesktopSlashCommand): SlashCommand {
-  const { execute: _execute, id: _id, icon: _icon, category: _category, source: _source, args, input, ...data } = command;
-  return {
-    ...data,
-    input: input ?? argsToInput(args),
-  };
-}
-
-function argsToInput(args: DesktopSlashCommand["args"]): SlashCommand["input"] {
-  if (!args || args.length === 0) return null;
-  return {
-    hint: args.map((arg) => `[${arg.name}]`).join(" "),
   };
 }
