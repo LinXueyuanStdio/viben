@@ -79,7 +79,6 @@ interface UiSessionState {
   uiMessages: AgentMessage[];
   uiSteps: AcpUiStep[];
   uiStepQueue: AcpUiStep[];
-  queueDraining: boolean;
   pendingApproval: PendingExecApproval | null;
   pendingQuestion: PendingQuestion | null;
   clientToolCalls: ClientToolCall[];
@@ -186,6 +185,7 @@ export function App() {
   const [selectedActionId, setSelectedActionId] = useState(DEFAULT_ACTIONS[0]?.id ?? "");
   const [toolDialog, setToolDialog] = useState<ToolApprovalDialogState | null>(null);
   const [permissionDialog, setPermissionDialog] = useState<PermissionDialogState | null>(null);
+  const [elicitationDialog, setElicitationDialog] = useState<ElicitationDialogState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<AcpWebSocketClient | null>(null);
   const actionsRef = useRef(actions);
@@ -212,6 +212,28 @@ export function App() {
   useEffect(() => {
     actionsRef.current = actions;
   }, [actions]);
+
+  useEffect(() => {
+    const sessionEntries = Object.values(sessionsById);
+    const drainable = sessionEntries.find((session) => !session.pendingApproval && !session.pendingQuestion && session.uiStepQueue.length > 0);
+    if (!drainable) return;
+
+    const timer = window.setTimeout(() => {
+      setSessionsById((current) => {
+        const session = current[drainable.id];
+        if (!session || session.pendingApproval || session.pendingQuestion || session.uiStepQueue.length === 0) {
+          return current;
+        }
+        const [step, ...rest] = session.uiStepQueue;
+        return {
+          ...current,
+          [session.id]: applyQueuedUiStep(session, step, rest),
+        };
+      });
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [sessionsById]);
 
   const appendTraffic = useCallback((entry: TrafficEntry) => {
     setTraffic((current) => [entry, ...current].slice(0, 120));
@@ -366,11 +388,7 @@ export function App() {
       setSessionsById((current) => ({ ...current, [id]: record }));
       setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
       setActiveSessionId(id);
-      appendSessionMessages(setSessionsById, id, [{
-        id: `${Date.now()}-session`,
-        role: "system",
-        text: `Session ready: ${id}`,
-      }]);
+      enqueueUiSteps(setSessionsById, id, systemTextToUiSteps(`Session ready: ${id}`));
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
@@ -399,11 +417,7 @@ export function App() {
       }));
       setSessionOrder((current) => [loadedId, ...current.filter((item) => item !== loadedId)]);
       setActiveSessionId(loadedId);
-      appendSessionMessages(setSessionsById, loadedId, [{
-        id: `${Date.now()}-load-session`,
-        role: "system",
-        text: `Session loaded: ${loadedId}`,
-      }]);
+      enqueueUiSteps(setSessionsById, loadedId, systemTextToUiSteps(`Session loaded: ${loadedId}`));
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     }
@@ -420,11 +434,7 @@ export function App() {
     if (!text) return;
 
     setError(null);
-    appendSessionMessages(setSessionsById, sessionId, [{
-      id: `${Date.now()}-system`,
-      role: "system",
-      text: `Prompt sent: ${text}`,
-    }]);
+    enqueueUiSteps(setSessionsById, sessionId, userPromptToUiSteps(text));
     try {
       const result = await clientRef.current?.prompt(sessionId, text);
       updateSession(setSessionsById, sessionId, (session) => ({
@@ -490,14 +500,61 @@ export function App() {
       outcome: "selected",
       optionId: permissionDialog.selectedOptionId || "allow",
     });
+    resolveSessionApproval(setSessionsById, permissionDialog.request.sessionId);
     setPermissionDialog(null);
   }, [permissionDialog]);
 
   const cancelPermissionDialog = useCallback(() => {
     if (!permissionDialog) return;
     permissionDialog.resolve({ outcome: "cancelled" });
+    resolveSessionApproval(setSessionsById, permissionDialog.request.sessionId);
     setPermissionDialog(null);
   }, [permissionDialog]);
+
+  const submitElicitationDialog = useCallback(() => {
+    if (!elicitationDialog) return;
+    const parsed = parseJsonOrFallback(elicitationDialog.answersText, {});
+    const content = normalizeElicitationContent(parsed, elicitationDialog.formFields);
+    elicitationDialog.resolve({ action: { action: "accept", content } });
+    resolveSessionQuestion(setSessionsById, elicitationDialog.request.sessionId);
+    setElicitationDialog(null);
+  }, [elicitationDialog]);
+
+  const declineElicitationDialog = useCallback(() => {
+    if (!elicitationDialog) return;
+    elicitationDialog.resolve({ action: { action: "decline" } });
+    resolveSessionQuestion(setSessionsById, elicitationDialog.request.sessionId);
+    setElicitationDialog(null);
+  }, [elicitationDialog]);
+
+  const cancelElicitationDialog = useCallback(() => {
+    if (!elicitationDialog) return;
+    elicitationDialog.resolve({ action: { action: "cancel" } });
+    resolveSessionQuestion(setSessionsById, elicitationDialog.request.sessionId);
+    setElicitationDialog(null);
+  }, [elicitationDialog]);
+
+  const handleApprovalDecision = useCallback((decision: string) => {
+    const dialog = permissionDialog;
+    if (!dialog) return;
+    const selectedOptionId = resolvePermissionDecisionOption(dialog.request.options, decision);
+    dialog.resolve(
+      decision === "reject" || selectedOptionId.toLowerCase().includes("reject")
+        ? { outcome: "selected", optionId: selectedOptionId }
+        : { outcome: "selected", optionId: selectedOptionId }
+    );
+    resolveSessionApproval(setSessionsById, dialog.request.sessionId);
+    setPermissionDialog(null);
+  }, [permissionDialog]);
+
+  const handleQuestionAnswers = useCallback((answers: Record<string, string[]>) => {
+    const dialog = elicitationDialog;
+    if (!dialog) return;
+    const content = answersToElicitationContent(answers, dialog.formFields);
+    dialog.resolve({ action: { action: "accept", content } });
+    resolveSessionQuestion(setSessionsById, dialog.request.sessionId);
+    setElicitationDialog(null);
+  }, [elicitationDialog]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -828,7 +885,14 @@ export function App() {
                 </button>
                 <button className="btn-secondary" onClick={() => {
                   if (sessionId) {
-                    updateSession(setSessionsById, sessionId, (session) => ({ ...session, messages: [] }));
+                    updateSession(setSessionsById, sessionId, (session) => ({
+                      ...session,
+                      uiMessages: [],
+                      uiSteps: [],
+                      uiStepQueue: [],
+                      pendingApproval: null,
+                      pendingQuestion: null,
+                    }));
                   }
                 }}>
                   <Trash2 size={16} />
@@ -838,11 +902,22 @@ export function App() {
             </Panel>
 
             <Panel title="Session Stream" description="Agent text, thoughts, tool calls, and client-side tool callbacks.">
-              <div className="space-y-3">
-                {messages.length === 0 ? (
-                  <EmptyState text="No session/update frames yet." />
-                ) : (
-                  messages.map((message) => <MessageRow key={message.id} message={message} />)
+              <div className="min-h-[520px] overflow-hidden rounded-lg border border-border bg-surface">
+                <MessageList
+                  messages={messages}
+                  isStreaming={Boolean(activeSession?.uiStepQueue.length)}
+                  pendingQuestions={pendingQuestion}
+                  onAnswerQuestions={handleQuestionAnswers}
+                  simpleMode
+                  toolExpandedInline
+                  maxMessageWidth="100%"
+                  welcomeTitle="ACP Session"
+                  welcomeDescription="Create or load a session, then send a prompt."
+                />
+                {pendingApproval && (
+                  <div className="border-t border-border p-4">
+                    <ExecApproval approval={pendingApproval} onDecision={handleApprovalDecision} />
+                  </div>
                 )}
               </div>
             </Panel>
@@ -871,6 +946,16 @@ export function App() {
                   <EmptyState text="No permission requests yet." />
                 ) : (
                   permissionRequests.map((request) => <PermissionRow key={request.id} request={request} />)
+                )}
+              </div>
+            </Panel>
+
+            <Panel title="Elicitations" description="ACP session/elicitation requests answered by this client.">
+              <div className="max-h-56 space-y-2 overflow-auto pr-1">
+                {elicitationRequests.length === 0 ? (
+                  <EmptyState text="No elicitation requests yet." />
+                ) : (
+                  elicitationRequests.map((request) => <ElicitationRow key={request.id} request={request} />)
                 )}
               </div>
             </Panel>
@@ -947,6 +1032,15 @@ export function App() {
           onCancel={cancelPermissionDialog}
         />
       )}
+      {elicitationDialog && (
+        <ElicitationApprovalModal
+          dialog={elicitationDialog}
+          onChangeAnswers={(value) => setElicitationDialog((current) => current ? { ...current, answersText: value } : current)}
+          onSubmit={submitElicitationDialog}
+          onDecline={declineElicitationDialog}
+          onCancel={cancelElicitationDialog}
+        />
+      )}
     </div>
   );
 }
@@ -960,8 +1054,8 @@ function SessionRow({ session, active, onSelect }: { session: UiSessionState | u
         <div className="truncate text-xs text-muted-foreground">{session.id}</div>
       </div>
       <div className="shrink-0 text-right text-xs text-muted-foreground">
-        <div>{session.messages.length}</div>
-        <div>msgs</div>
+        <div>{session.uiMessages.length}</div>
+        <div>{session.uiStepQueue.length ? `${session.uiStepQueue.length} queued` : "steps"}</div>
       </div>
     </button>
   );
@@ -1075,6 +1169,60 @@ function PermissionApprovalModal({
   );
 }
 
+function ElicitationApprovalModal({
+  dialog,
+  onChangeAnswers,
+  onSubmit,
+  onDecline,
+  onCancel,
+}: {
+  dialog: ElicitationDialogState;
+  onChangeAnswers: (value: string) => void;
+  onSubmit: () => void;
+  onDecline: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <ModalFrame title="Elicitation" subtitle={dialog.request.message}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="space-y-4">
+          <QuestionInput questions={dialog.pendingQuestion} onSubmit={(answers) => onChangeAnswers(prettyJson(answersToElicitationContent(answers, dialog.formFields)))} />
+          {dialog.request.url && (
+            <button className="btn-secondary" onClick={() => window.open(dialog.request.url, "_blank")}>
+              Open URL
+            </button>
+          )}
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Response Content JSON</div>
+          <textarea
+            value={dialog.answersText}
+            onChange={(event) => onChangeAnswers(event.target.value)}
+            className="textarea min-h-72 font-mono text-xs"
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button className="btn-secondary" onClick={() => onChangeAnswers(normalizeJsonText(dialog.answersText))}>
+          <FileJson size={16} />
+          Format
+        </button>
+        <button className="btn-danger" onClick={onCancel}>
+          <X size={16} />
+          Cancel
+        </button>
+        <button className="btn-secondary" onClick={onDecline}>
+          Decline
+        </button>
+        <button className="btn-primary" onClick={onSubmit}>
+          <Send size={16} />
+          Send Response
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
 function ModalFrame({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="modal-backdrop">
@@ -1129,27 +1277,6 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function MessageRow({ message }: { message: ChatMessage }) {
-  const tone = message.role === "agent"
-    ? "border-primary/30 bg-primary/5"
-    : message.role === "thought"
-      ? "border-warning/35 bg-warning/10"
-      : message.role === "tool"
-        ? "border-info/35 bg-info/10"
-        : message.role === "error"
-          ? "border-destructive/35 bg-destructive/10 text-destructive"
-          : "border-border bg-muted/50";
-  return (
-    <div className={`rounded-lg border px-3 py-2 text-sm ${tone}`}>
-      <div className="mb-1 flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        <span>{message.role}</span>
-        {message.status && <span>{message.status}</span>}
-      </div>
-      <div className="whitespace-pre-wrap break-words leading-6">{message.text}</div>
-    </div>
-  );
-}
-
 function ClientToolRow({ call }: { call: ClientToolCall }) {
   return (
     <details className="rounded-lg border border-info/35 bg-info/10 p-3 text-xs">
@@ -1185,6 +1312,27 @@ function PermissionRow({ request }: { request: PermissionRequestLog }) {
       </summary>
       <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
         <JsonCode value={{ rawInput: request.rawInput, options: request.options }} />
+      </pre>
+    </details>
+  );
+}
+
+function ElicitationRow({ request }: { request: ElicitationRequestLog }) {
+  return (
+    <details className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate font-semibold">{request.message}</div>
+            <div className="truncate text-muted-foreground">{new Date(request.at).toLocaleTimeString()}</div>
+          </div>
+          <span className="shrink-0 rounded-full bg-card px-2 py-1 font-semibold text-foreground">
+            answered
+          </span>
+        </div>
+      </summary>
+      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
+        <JsonCode value={{ rawInput: request.rawInput, action: request.action }} />
       </pre>
     </details>
   );
@@ -1408,9 +1556,14 @@ function createUiSession(
     lastActiveAt: now,
     sessionResult,
     promptResult: existing?.promptResult ?? null,
-    messages: existing?.messages ?? [],
+    uiMessages: existing?.uiMessages ?? [],
+    uiSteps: existing?.uiSteps ?? [],
+    uiStepQueue: existing?.uiStepQueue ?? [],
+    pendingApproval: existing?.pendingApproval ?? null,
+    pendingQuestion: existing?.pendingQuestion ?? null,
     clientToolCalls: existing?.clientToolCalls ?? [],
     permissionRequests: existing?.permissionRequests ?? [],
+    elicitationRequests: existing?.elicitationRequests ?? [],
   };
 }
 
@@ -1432,25 +1585,59 @@ function updateSession(
   });
 }
 
-function updateSessionMessages(
+function enqueueUiSteps(
   setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
   sessionId: string,
-  updater: (messages: ChatMessage[]) => ChatMessage[]
+  steps: AcpUiStep[]
 ): void {
+  if (steps.length === 0) return;
   updateSession(setSessionsById, sessionId, (session) => ({
     ...session,
-    messages: updater(session.messages),
+    uiStepQueue: [...session.uiStepQueue, ...steps],
     lastActiveAt: new Date().toISOString(),
   }));
 }
 
-function appendSessionMessages(
+function applyQueuedUiStep(session: UiSessionState, step: AcpUiStep, rest: AcpUiStep[]): UiSessionState {
+  if (step.kind === "approval") {
+    return {
+      ...session,
+      uiSteps: [...session.uiSteps, step],
+      uiStepQueue: rest,
+      pendingApproval: step.approval,
+      lastActiveAt: new Date().toISOString(),
+    };
+  }
+  if (step.kind === "question") {
+    return {
+      ...session,
+      uiSteps: [...session.uiSteps, step],
+      uiStepQueue: rest,
+      pendingQuestion: step.question,
+      lastActiveAt: new Date().toISOString(),
+    };
+  }
+  return {
+    ...session,
+    uiSteps: [...session.uiSteps, step],
+    uiStepQueue: rest,
+    uiMessages: applyAcpUiStep(session.uiMessages, step),
+    lastActiveAt: new Date().toISOString(),
+  };
+}
+
+function resolveSessionApproval(
   setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
-  sessionId: string,
-  messages: ChatMessage[],
-  merge?: (current: ChatMessage[], incoming: ChatMessage[]) => ChatMessage[]
+  sessionId: string
 ): void {
-  updateSessionMessages(setSessionsById, sessionId, (current) => merge ? merge(current, messages) : [...current, ...messages]);
+  updateSession(setSessionsById, sessionId, (session) => ({ ...session, pendingApproval: null }));
+}
+
+function resolveSessionQuestion(
+  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  sessionId: string
+): void {
+  updateSession(setSessionsById, sessionId, (session) => ({ ...session, pendingQuestion: null }));
 }
 
 function textResult(text: string, meta: Record<string, unknown>): CallToolResult {
@@ -1501,6 +1688,100 @@ function permissionOptionId(option: PermissionOption, index: number): string {
 
 function isCallToolResult(value: unknown): value is CallToolResult {
   return isRecord(value) && Array.isArray(value.content);
+}
+
+function resolvePermissionDecisionOption(options: PermissionOption[], decision: string): string {
+  if (decision === "reject") {
+    const rejectOption = options.find((option) => option.kind === "reject_once")
+      ?? options.find((option) => option.kind === "reject_always")
+      ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("reject"));
+    return permissionOptionId(rejectOption, 0);
+  }
+  if (decision === "allow_always") {
+    const alwaysOption = options.find((option) => option.kind === "allow_always");
+    return permissionOptionId(alwaysOption, 0);
+  }
+  const allowOnce = options.find((option) => option.kind === "allow_once")
+    ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("allow"))
+    ?? options[0];
+  return permissionOptionId(allowOnce, 0);
+}
+
+function buildDefaultElicitationContent(fields: ElicitationFormField[]): Record<string, ElicitationContentValue> {
+  const content: Record<string, ElicitationContentValue> = {};
+  for (const field of fields) {
+    const value = field.schema.default;
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || isStringArray(value)) {
+      content[field.key] = value;
+      continue;
+    }
+    if (field.schema.type === "boolean") content[field.key] = false;
+    else if (field.schema.type === "number" || field.schema.type === "integer") content[field.key] = 0;
+    else if (field.schema.type === "array") content[field.key] = [];
+    else content[field.key] = "";
+  }
+  return content;
+}
+
+function answersToElicitationContent(
+  answers: Record<string, string[]>,
+  fields: ElicitationFormField[]
+): Record<string, ElicitationContentValue> {
+  if (fields.length === 0) {
+    return {
+      answer: Object.values(answers).flat().join("\n"),
+    };
+  }
+  const content: Record<string, ElicitationContentValue> = {};
+  fields.forEach((field, index) => {
+    const values = answers[String(index)] ?? [];
+    content[field.key] = coerceElicitationValue(field.schema, values);
+  });
+  return content;
+}
+
+function normalizeElicitationContent(value: unknown, fields: ElicitationFormField[]): Record<string, ElicitationContentValue> {
+  if (!isRecord(value)) return buildDefaultElicitationContent(fields);
+  const content: Record<string, ElicitationContentValue> = {};
+  if (fields.length === 0) {
+    for (const [key, item] of Object.entries(value)) {
+      if (isElicitationContentValue(item)) content[key] = item;
+    }
+    return content;
+  }
+  for (const field of fields) {
+    content[field.key] = coerceElicitationUnknownValue(field.schema, value[field.key]);
+  }
+  return content;
+}
+
+function coerceElicitationValue(schema: ElicitationPropertySchema, values: string[]): ElicitationContentValue {
+  if (schema.type === "array") return values;
+  const value = values[0] ?? "";
+  if (schema.type === "boolean") return value === "true";
+  if (schema.type === "number" || schema.type === "integer") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return value;
+}
+
+function coerceElicitationUnknownValue(schema: ElicitationPropertySchema, value: unknown): ElicitationContentValue {
+  if (schema.type === "array") return isStringArray(value) ? value : [];
+  if (schema.type === "boolean") return typeof value === "boolean" ? value : value === "true";
+  if (schema.type === "number" || schema.type === "integer") {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return typeof value === "string" ? value : String(value ?? "");
+}
+
+function isElicitationContentValue(value: unknown): value is ElicitationContentValue {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean" || isStringArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function actionToDetail(action: GuiActionDefinition) {
@@ -1621,51 +1902,6 @@ function stringifyDiagnostic(value: unknown): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function mergeTextChunk(current: ChatMessage[], role: "agent" | "thought", text: string): ChatMessage[] {
-  const previous = current[current.length - 1];
-  if (previous?.role === role && !previous.status) {
-    return [
-      ...current.slice(0, -1),
-      {
-        ...previous,
-        text: `${previous.text}${text}`,
-      },
-    ];
-  }
-  return [
-    ...current,
-    {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      role,
-      text,
-    },
-  ];
-}
-
-function updateToolStatus(current: ChatMessage[], toolCallId: string | undefined, status: string | undefined): ChatMessage[] {
-  if (!toolCallId) return current;
-  let updated = false;
-  const next = current.map((message) => {
-    if (message.toolCallId !== toolCallId) return message;
-    updated = true;
-    return {
-      ...message,
-      status,
-    };
-  });
-  if (updated) return next;
-  return [
-    ...current,
-    {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      role: "tool",
-      text: toolCallId,
-      status,
-      toolCallId,
-    },
-  ];
 }
 
 function readSessionId(value: unknown): string | null {

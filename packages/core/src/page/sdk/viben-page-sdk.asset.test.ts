@@ -44,6 +44,8 @@ declare global {
   }
 }
 
+const sdkMessages: Array<{ type: string; listener: EventListenerOrEventListenerObject }> = [];
+
 function loadSdk(): PageSdk {
   const sdkPath = resolve(process.cwd(), "assets/viben-page-sdk.js");
   window.eval(readFileSync(sdkPath, "utf8"));
@@ -62,10 +64,10 @@ function useIframeParent(): { postMessage: (message: unknown, targetOrigin: stri
   return parent;
 }
 
-function dispatchFromParent(data: Record<string, unknown>): void {
+function dispatchFromParent(data: Record<string, unknown>, origin = "http://localhost:1549"): void {
   window.dispatchEvent(
     new MessageEvent("message", {
-      origin: location.origin,
+      origin,
       source: window.parent,
       data,
     })
@@ -85,6 +87,16 @@ function messageOfType(posted: unknown[], type: string): PostedMessage {
 describe("viben-page-sdk action provider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    for (const { type, listener } of sdkMessages.splice(0)) {
+      window.removeEventListener(type, listener);
+    }
+    const originalAddEventListener = window.addEventListener.bind(window);
+    vi.spyOn(window, "addEventListener").mockImplementation((type, listener, options) => {
+      if (type === "message" || type === "beforeunload") {
+        sdkMessages.push({ type, listener });
+      }
+      return originalAddEventListener(type, listener, options);
+    });
     document.documentElement.className = "";
     history.replaceState(null, "", "/page.html?theme=light");
     Object.defineProperty(window, "parent", {
@@ -97,6 +109,32 @@ describe("viben-page-sdk action provider", () => {
       removeEventListener: vi.fn(),
     });
     delete window.VibenPage;
+  });
+
+  it("sends ready to any parent origin then locks to the init origin", () => {
+    const parent = useIframeParent();
+    const posted: Array<{ message: unknown; targetOrigin: string }> = [];
+    vi.mocked(parent.postMessage).mockImplementation((message: unknown, targetOrigin: string) => {
+      posted.push({ message, targetOrigin });
+    });
+
+    loadSdk();
+    expect(posted).toContainEqual({
+      message: { type: "viben-page-ready" },
+      targetOrigin: "*",
+    });
+
+    dispatchFromParent({
+      type: "viben-page-init",
+      theme: "dark",
+      workspace_path: "/workspace",
+    });
+    dispatchFromParent({
+      type: "viben-page-theme",
+      theme: "light",
+    }, "http://evil.local");
+
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
   it("keeps early registrations locally and syncs them after init", () => {
@@ -263,7 +301,13 @@ describe("viben-page-sdk action provider", () => {
     });
   });
 
-  it("rejects standalone approval without keeping pending requests", async () => {
+  it("rejects approval when the bridge is unavailable", async () => {
+    const parent = useIframeParent();
+    const posted: unknown[] = [];
+    vi.mocked(parent.postMessage).mockImplementation((message: unknown) => {
+      posted.push(message);
+    });
+
     const sdk = loadSdk();
     sdk.actions.register("todo", {
       guarded: {
@@ -293,6 +337,13 @@ describe("viben-page-sdk action provider", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(true).toBe(true);
+    expect(posted).toContainEqual({
+      type: "viben-page-action-result",
+      request_id: "exec-3",
+      result: {
+        content: [{ type: "text", text: "execution_error: page_action_bridge_unavailable" }],
+        isError: true,
+      },
+    });
   });
 });

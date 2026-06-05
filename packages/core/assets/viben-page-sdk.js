@@ -8,7 +8,10 @@
   var initialized = false;
   var actionRegistry = {};
   var pendingApprovals = {};
+  var seenExecuteRequests = {};
   var readyResolve = null;
+  var parentOrigin = null;
+  var approvalTimeoutMs = 30000;
 
   // 1. 防 FOUC：立即从 URL 读取主题
   var params = new URLSearchParams(location.search);
@@ -34,13 +37,13 @@
 
   function postToParent(message) {
     if (!embedded) return false;
-    window.parent.postMessage(message, location.origin);
+    window.parent.postMessage(message, parentOrigin || "*");
     return true;
   }
 
   function isParentMessage(e) {
-    if (e.origin !== location.origin) return false;
     if (embedded && e.source !== window.parent) return false;
+    if (parentOrigin && e.origin !== parentOrigin) return false;
     return true;
   }
 
@@ -118,6 +121,15 @@
     return result;
   }
 
+  function toJsonObject(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_err) {
+      return null;
+    }
+  }
+
   function normalizeResult(value) {
     if (
       value &&
@@ -125,12 +137,9 @@
       Array.isArray(value.content)
     ) {
       var normalized = { content: value.content };
-      if (
-        value.structuredContent &&
-        typeof value.structuredContent === "object" &&
-        !Array.isArray(value.structuredContent)
-      ) {
-        normalized.structuredContent = value.structuredContent;
+      var structuredContent = toJsonObject(value.structuredContent);
+      if (structuredContent) {
+        normalized.structuredContent = structuredContent;
       }
       if (value.isError === true) normalized.isError = true;
       return normalized;
@@ -148,16 +157,16 @@
     }
 
     if (typeof value === "object") {
+      var jsonValue = toJsonObject(value);
       var text;
       try {
-        text = JSON.stringify(value);
+        text = JSON.stringify(jsonValue || value);
       } catch (_err) {
         text = String(value);
       }
-      return {
-        content: [{ type: "text", text: text }],
-        structuredContent: value,
-      };
+      var objectResult = { content: [{ type: "text", text: text }] };
+      if (jsonValue) objectResult.structuredContent = jsonValue;
+      return objectResult;
     }
 
     return { content: [{ type: "text", text: String(value) }] };
@@ -176,6 +185,7 @@
       var pending = pendingApprovals[requestId];
       if (pending.executeRequestId !== executeRequestId) return;
       delete pendingApprovals[requestId];
+      clearTimeout(pending.timer);
       pending.reject(error);
     });
   }
@@ -187,8 +197,15 @@
 
     return new Promise(function (resolve, reject) {
       var requestId = createRequestId();
+      var timer = setTimeout(function () {
+        var pending = pendingApprovals[requestId];
+        if (!pending) return;
+        delete pendingApprovals[requestId];
+        pending.reject(new Error("page_action_approval_timeout"));
+      }, approvalTimeoutMs);
       pendingApprovals[requestId] = {
         executeRequestId: executeRequestId,
+        timer: timer,
         resolve: resolve,
         reject: reject,
       };
@@ -206,6 +223,12 @@
     var namespace = data.namespace;
     var action = data.action;
     var requestId = data.request_id;
+    if (!requestId || seenExecuteRequests[requestId]) return;
+    seenExecuteRequests[requestId] = true;
+    setTimeout(function () {
+      delete seenExecuteRequests[requestId];
+    }, 60000);
+
     var def = actionRegistry[namespace] && actionRegistry[namespace][action];
     var result;
 
@@ -250,6 +273,7 @@
     var pending = pendingApprovals[data.request_id];
     if (!pending || pending.executeRequestId !== data.execute_request_id) return;
     delete pendingApprovals[data.request_id];
+    clearTimeout(pending.timer);
     if (data.error) {
       pending.reject(new Error(data.error));
       return;
@@ -275,6 +299,7 @@
     var data = e.data;
     if (!data || typeof data.type !== "string") return;
     if (data.type === "viben-page-init") {
+      if (!parentOrigin) parentOrigin = e.origin;
       applyTheme(data.theme);
       VP.workspacePath = data.workspace_path || null;
       initialized = true;
