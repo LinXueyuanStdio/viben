@@ -26,7 +26,7 @@ export {
   SlashCommandMenu,
   WritingMode,
   useAttachments,
-  useSlashCommands,
+  useSlashCommandMenu,
   useResizableHeight,
   useIMEComposition,
   useAutoFocus,
@@ -39,6 +39,27 @@ export type {
   GlobalChatConfig,
   ChatConfigVisibility,
 } from "./chat-input";
+
+// Slash Commands
+export {
+  filterSlashCommands,
+  findSlashCommand,
+  getSlashCommandQuery,
+  mergeSlashCommands,
+  parseSlashCommandInput,
+  useSlashCommands,
+} from "./slash-commands";
+export type {
+  ParsedSlashCommandInput,
+  SlashCommand,
+  SlashCommandArgument,
+  SlashCommandDefinition,
+  SlashCommandProvider,
+  SlashCommandProviderContext,
+  SlashCommandSelection,
+  UseSlashCommandsOptions,
+  UseSlashCommandsReturn,
+} from "./slash-commands";
 
 // Auxiliary components
 export { EmojiPicker } from "./emoji-picker";

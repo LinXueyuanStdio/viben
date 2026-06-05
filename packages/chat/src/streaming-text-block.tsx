@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Streamdown } from "streamdown";
 import { Bot } from "lucide-react";
 import { cn } from "@viben/ui";
+import { ASSISTANT_MARKDOWN_TYPOGRAPHY } from "./message-typography";
 
 export interface StreamingTextBlockProps {
   /** The accumulated streaming text. When null, nothing renders. */
@@ -22,7 +23,10 @@ export interface StreamingTextBlockProps {
 const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-code-block max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
+      className={cn(
+        "bg-code-block my-2 max-w-full overflow-x-auto rounded-md p-3 [&>code]:block",
+        ASSISTANT_MARKDOWN_TYPOGRAPHY.codeBlock
+      )}
       {...props}
     >
       {children}
@@ -37,7 +41,10 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     if (isInline) {
       return (
         <code
-          className="bg-code-block rounded px-1.5 py-0.5 text-sm font-mono"
+          className={cn(
+            "bg-code-block rounded px-1 py-0.5 font-mono",
+            ASSISTANT_MARKDOWN_TYPOGRAPHY.inlineCode
+          )}
           {...props}
         >
           {children}
@@ -74,18 +81,18 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     </a>
   ),
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="my-1 leading-relaxed" {...props}>
+    <p className={cn("my-1", ASSISTANT_MARKDOWN_TYPOGRAPHY.paragraph)} {...props}>
       {children}
     </p>
   ),
   h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h1 className="text-xl font-bold mt-4 mb-2" {...props}>{children}</h1>
+    <h1 className={cn("mt-3 mb-1.5 font-semibold", ASSISTANT_MARKDOWN_TYPOGRAPHY.h1)} {...props}>{children}</h1>
   ),
   h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="text-lg font-semibold mt-3 mb-2" {...props}>{children}</h2>
+    <h2 className={cn("mt-2.5 mb-1.5 font-semibold", ASSISTANT_MARKDOWN_TYPOGRAPHY.h2)} {...props}>{children}</h2>
   ),
   h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3 className="text-base font-semibold mt-2 mb-1" {...props}>{children}</h3>
+    <h3 className={cn("mt-2 mb-1 font-semibold", ASSISTANT_MARKDOWN_TYPOGRAPHY.h3)} {...props}>{children}</h3>
   ),
   ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => (
     <ul className="list-disc ml-4 my-2 space-y-1" {...props}>{children}</ul>
@@ -94,7 +101,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     <ol className="list-decimal ml-4 my-2 space-y-1" {...props}>{children}</ol>
   ),
   li: ({ children, ...props }: React.LiHTMLAttributes<HTMLLIElement>) => (
-    <li className="text-sm" {...props}>{children}</li>
+    <li className={ASSISTANT_MARKDOWN_TYPOGRAPHY.listItem} {...props}>{children}</li>
   ),
   blockquote: ({
     children,
@@ -170,7 +177,12 @@ export function StreamingTextBlock({
       </div>
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 overflow-hidden">
-          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground overflow-hidden break-words">
+          <div
+            className={cn(
+              "prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words text-foreground",
+              ASSISTANT_MARKDOWN_TYPOGRAPHY.container
+            )}
+          >
             {stablePrefix && (
               <Streamdown
                 mode="static"

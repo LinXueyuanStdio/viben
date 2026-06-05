@@ -153,13 +153,7 @@ export type StreamingTextState = string | null;
 // Slash Command Types
 // ============================================================================
 
-/** Slash command definition */
-export interface SlashCommand {
-  id: string;
-  name: string;
-  description: string;
-  icon?: React.ReactNode;
-}
+export type { SlashCommand, SlashCommandSelection } from "./slash-commands";
 
 // ============================================================================
 // Config Types

@@ -8,6 +8,7 @@ import * as React from "react";
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import type { MessageAttachment, SlashCommand } from "../types";
 import { isImageFile } from "../utils";
+import { filterSlashCommands, getSlashCommandQuery } from "../slash-commands";
 
 // ============================================================================
 // useAttachments Hook
@@ -138,13 +139,13 @@ export function useAttachments(
 // useSlashCommands Hook
 // ============================================================================
 
-export interface UseSlashCommandsOptions {
+export interface UseSlashCommandMenuOptions {
   commands: SlashCommand[];
   onSelect: (command: SlashCommand) => void;
   enabled?: boolean;
 }
 
-export interface UseSlashCommandsReturn {
+export interface UseSlashCommandMenuReturn {
   isOpen: boolean;
   query: string;
   selectedIndex: number;
@@ -158,9 +159,9 @@ export interface UseSlashCommandsReturn {
 /**
  * Hook for managing slash command autocomplete
  */
-export function useSlashCommands(
-  options: UseSlashCommandsOptions
-): UseSlashCommandsReturn {
+export function useSlashCommandMenu(
+  options: UseSlashCommandMenuOptions
+): UseSlashCommandMenuReturn {
   const { commands, onSelect, enabled = true } = options;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -168,13 +169,7 @@ export function useSlashCommands(
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {
-    if (!query) return commands;
-    const lowerQuery = query.toLowerCase();
-    return commands.filter(
-      (cmd) =>
-        cmd.name.toLowerCase().includes(lowerQuery) ||
-        cmd.description.toLowerCase().includes(lowerQuery)
-    );
+    return filterSlashCommands(commands, query);
   }, [commands, query]);
 
   // Reset selected index when filtered commands change
@@ -190,24 +185,11 @@ export function useSlashCommands(
         return;
       }
 
-      if (content.startsWith("/")) {
-        // Extract the command part (before any space)
-        const cmdQuery = content.slice(1).split(/\s/)[0];
-
-        // Close menu if:
-        // 1. User typed space right after "/" (e.g., "/ ")
-        // 2. User typed space after command (e.g., "/help ")
-        const hasSpaceAfterSlash = content.length > 1 && content[1] === " ";
-        const hasSpaceAfterCommand = content.includes(" ");
-
-        if (hasSpaceAfterSlash || hasSpaceAfterCommand) {
-          setIsOpen(false);
-          setQuery("");
-        } else {
-          setQuery(cmdQuery);
-          setIsOpen(true);
-          setSelectedIndex(0);
-        }
+      const cmdQuery = getSlashCommandQuery(content);
+      if (cmdQuery !== null) {
+        setQuery(cmdQuery);
+        setIsOpen(true);
+        setSelectedIndex(0);
       } else {
         setIsOpen(false);
         setQuery("");
@@ -283,6 +265,9 @@ export function useSlashCommands(
     close,
   };
 }
+
+/** @deprecated Use useSlashCommandMenu for input autocomplete, or useSlashCommands from ../slash-commands for registry/execution. */
+export const useSlashCommands = useSlashCommandMenu;
 
 // ============================================================================
 // useResizableHeight Hook

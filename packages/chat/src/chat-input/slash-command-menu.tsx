@@ -178,9 +178,11 @@ export function SlashCommandMenu({
                   <div className="font-medium text-foreground">
                     /<HighlightedText text={command.name} query={query} />
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    <HighlightedText text={command.description} query={query} />
-                  </div>
+                  {command.description && (
+                    <div className="truncate text-xs text-muted-foreground">
+                      <HighlightedText text={command.description} query={query} />
+                    </div>
+                  )}
                 </div>
               </button>
             ))}

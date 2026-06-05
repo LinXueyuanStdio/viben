@@ -45,12 +45,13 @@ import { WritingMode } from "./writing-mode";
 import { HighlightedInput } from "./highlighted-input";
 import {
   useAttachments,
-  useSlashCommands,
+  useSlashCommandMenu,
   useResizableHeight,
   useIMEComposition,
   useAutoFocus,
 } from "./hooks";
 import type { ChatInputProps } from "./types";
+import { parseSlashCommandInput } from "../slash-commands";
 
 export function ChatInput({
   // Basic Props
@@ -137,11 +138,17 @@ export function ChatInput({
     handleContentChange: handleSlashContentChange,
     handleSelect: handleSlashSelect,
     handleKeyDown: handleSlashKeyDown,
-  } = useSlashCommands({
+  } = useSlashCommandMenu({
     commands: slashCommands,
     onSelect: (command) => {
+      const value = content;
+      const parsedInput = parseSlashCommandInput(value);
       setContent("");
-      onSlashCommand?.(command);
+      onSlashCommand?.(command, {
+        command,
+        args: parsedInput?.args ?? "",
+        value,
+      });
       textareaRef.current?.focus();
     },
     enabled: slashCommands.length > 0 && !!onSlashCommand,
@@ -644,6 +651,7 @@ export { WritingMode } from "./writing-mode";
 export { HighlightedInput } from "./highlighted-input";
 export {
   useAttachments,
+  useSlashCommandMenu,
   useSlashCommands,
   useResizableHeight,
   useIMEComposition,

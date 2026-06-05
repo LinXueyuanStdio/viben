@@ -9,6 +9,7 @@ import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanSummary } from "./plan-approval";
 import { QuestionInput } from "./question-input";
 import { CachedStreamdown } from "./cached-markdown";
+import { ASSISTANT_MARKDOWN_TYPOGRAPHY } from "./message-typography";
 
 export interface MessageItemProps {
   message: AgentMessage;
@@ -39,7 +40,10 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   // Code blocks
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-code-block max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
+      className={cn(
+        "bg-code-block my-2 max-w-full overflow-x-auto rounded-md p-3 [&>code]:block",
+        ASSISTANT_MARKDOWN_TYPOGRAPHY.codeBlock
+      )}
       {...props}
     >
       {children}
@@ -55,7 +59,10 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     if (isInline) {
       return (
         <code
-          className="bg-code-block rounded px-1.5 py-0.5 text-sm font-mono"
+          className={cn(
+            "bg-code-block rounded px-1 py-0.5 font-mono",
+            ASSISTANT_MARKDOWN_TYPOGRAPHY.inlineCode
+          )}
           {...props}
         >
           {children}
@@ -102,36 +109,42 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   ),
   th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
     <th
-      className="border-border bg-muted border px-3 py-2 text-left text-sm font-semibold"
+      className={cn(
+        "border-border bg-muted border px-2 py-1.5 text-left font-semibold",
+        ASSISTANT_MARKDOWN_TYPOGRAPHY.tableText
+      )}
       {...props}
     >
       {children}
     </th>
   ),
   td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
-    <td className="border-border border px-3 py-2 text-sm" {...props}>
+    <td
+      className={cn("border-border border px-2 py-1.5", ASSISTANT_MARKDOWN_TYPOGRAPHY.tableText)}
+      {...props}
+    >
       {children}
     </td>
   ),
   // Paragraphs
   p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-    <p className="my-1 leading-relaxed" {...props}>
+    <p className={cn("my-1", ASSISTANT_MARKDOWN_TYPOGRAPHY.paragraph)} {...props}>
       {children}
     </p>
   ),
   // Headers
   h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h1 className="text-xl font-bold mt-4 mb-2" {...props}>
+    <h1 className={cn("mt-3 mb-1.5 font-semibold", ASSISTANT_MARKDOWN_TYPOGRAPHY.h1)} {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="text-lg font-semibold mt-3 mb-2" {...props}>
+    <h2 className={cn("mt-2.5 mb-1.5 font-semibold", ASSISTANT_MARKDOWN_TYPOGRAPHY.h2)} {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3 className="text-base font-semibold mt-2 mb-1" {...props}>
+    <h3 className={cn("mt-2 mb-1 font-semibold", ASSISTANT_MARKDOWN_TYPOGRAPHY.h3)} {...props}>
       {children}
     </h3>
   ),
@@ -147,7 +160,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
     </ol>
   ),
   li: ({ children, ...props }: React.LiHTMLAttributes<HTMLLIElement>) => (
-    <li className="text-sm" {...props}>
+    <li className={ASSISTANT_MARKDOWN_TYPOGRAPHY.listItem} {...props}>
       {children}
     </li>
   ),
@@ -405,7 +418,12 @@ function AssistantMessage({
             isResult && "border-primary/30 bg-primary/5"
           )}
         >
-          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground overflow-hidden break-words">
+          <div
+            className={cn(
+              "prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words text-foreground",
+              ASSISTANT_MARKDOWN_TYPOGRAPHY.container
+            )}
+          >
             <CachedStreamdown
               content={content || ""}
               mode={isStreaming ? "streaming" : "static"}
