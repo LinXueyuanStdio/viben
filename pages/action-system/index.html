@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desktop Action System</title>
+  <script>
+  (function(){
+    var t = new URLSearchParams(location.search).get('theme');
+    if (t === 'dark') document.documentElement.classList.add('dark');
+  })();
+  </script>
+  <link rel="stylesheet" href="/api/page/_sdk/v1/viben-page-tokens.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #root { width: 100%; min-height: 100%; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: "IBM Plex Sans", var(--font-sans);
+      background:
+        linear-gradient(135deg, color-mix(in oklch, var(--primary) 6%, transparent), transparent 34%),
+        linear-gradient(215deg, color-mix(in oklch, var(--accent) 14%, transparent), transparent 38%),
+        var(--background);
+      color: var(--foreground);
+      overflow: auto;
+    }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 3px;
+    }
+    .shell {
+      width: min(1480px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 28px 0 48px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+    .brand-mark,
+    .icon-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      background: color-mix(in oklch, var(--primary) 10%, var(--background));
+      border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--border));
+      flex: 0 0 auto;
+    }
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+    }
+    .icon-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+    }
+    .brand h1 {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: clamp(22px, 3vw, 42px);
+      line-height: 1.02;
+      letter-spacing: 0;
+      font-weight: 700;
+    }
+    .brand p,
+    .hero-copy,
+    .muted,
+    .detail-text {
+      color: var(--muted-foreground);
+      line-height: 1.65;
+    }
+    .brand p {
+      font-size: 13px;
+      margin-top: 3px;
+    }
+    .tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .search {
+      position: relative;
+      min-width: min(360px, 42vw);
+    }
+    .search svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted-foreground);
+      pointer-events: none;
+    }
+    .search input {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px 0 38px;
+      color: var(--foreground);
+      background: color-mix(in oklch, var(--card) 86%, transparent);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .search input::placeholder { color: color-mix(in oklch, var(--muted-foreground) 72%, transparent); }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--card) 80%, transparent);
+      color: var(--muted-foreground);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .chip strong {
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    .hero {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in oklch, var(--card) 82%, transparent);
+      box-shadow: 0 20px 70px color-mix(in oklch, var(--foreground) 8%, transparent);
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .hero-inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: 0;
+    }
+    .hero-main {
+      padding: clamp(24px, 4vw, 44px);
+      border-right: 1px solid var(--border);
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 18px;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 5px color-mix(in oklch, var(--primary) 16%, transparent);
+    }
+    .hero h2 {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: clamp(34px, 5vw, 72px);
+      line-height: 1.04;
+      letter-spacing: 0;
+      font-weight: 700;
+      max-width: 780px;
+    }
+    .hero-copy {
+      font-size: 16px;
+      max-width: 760px;
+      margin-top: 18px;
+    }
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 24px;
+    }
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      background: color-mix(in oklch, var(--background) 72%, transparent);
+      min-height: 86px;
+    }
+    .stat b {
+      display: block;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 24px;
+      line-height: 1.1;
+      color: var(--foreground);
+    }
+    .stat span {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted-foreground);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .hero-side {
+      padding: clamp(18px, 3vw, 30px);
+      background:
+        linear-gradient(180deg, color-mix(in oklch, var(--muted) 74%, transparent), transparent),
+        color-mix(in oklch, var(--background) 42%, transparent);
+    }
+    .terminal {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in oklch, var(--popover) 92%, var(--background));
+      overflow: hidden;
+    }
+    .terminal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+    .dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .dots span {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--muted-foreground);
+      opacity: .45;
+    }
+    .terminal-body {
+      padding: 14px;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      line-height: 1.7;
+      overflow: auto;
+    }
+    .terminal-line {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px solid color-mix(in oklch, var(--border) 56%, transparent);
+    }
+    .terminal-line:last-child { border-bottom: 0; }
+    .terminal-line code,
+    code,
+    .file,
+    .func {
+      font-family: "JetBrains Mono", var(--font-mono);
+      letter-spacing: 0;
+    }
+    .terminal-line code { color: var(--primary); }
+    .terminal-line span { color: var(--muted-foreground); min-width: 0; overflow-wrap: anywhere; }
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .mode-tab,
+    .flow-node,
+    .small-btn {
+      border: 1px solid var(--border);
+      background: color-mix(in oklch, var(--card) 84%, transparent);
+      color: var(--foreground);
+      border-radius: 8px;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+    }
+    .mode-tab {
+      min-height: 40px;
+      padding: 0 14px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mode-tab:hover,
+    .flow-node:hover,
+    .small-btn:hover {
+      transform: translateY(-1px);
+      border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+      background: color-mix(in oklch, var(--primary) 8%, var(--card));
+    }
+    .mode-tab.active,
+    .flow-node.active {
+      border-color: var(--primary);
+      background: color-mix(in oklch, var(--primary) 13%, var(--card));
+      color: var(--foreground);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr) 330px;
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in oklch, var(--card) 86%, transparent);
+      overflow: hidden;
+    }
+    .panel.pad { padding: 16px; }
+    .panel-head {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .panel-title {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+    .nav-list {
+      display: grid;
+      gap: 6px;
+      padding: 10px;
+    }
+    .nav-button {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--foreground);
+      text-align: left;
+      display: grid;
+      grid-template-columns: 30px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 8px;
+      transition: background 180ms ease, border-color 180ms ease;
+    }
+    .nav-button:hover {
+      background: color-mix(in oklch, var(--muted) 60%, transparent);
+    }
+    .nav-button.active {
+      border-color: color-mix(in oklch, var(--primary) 46%, var(--border));
+      background: color-mix(in oklch, var(--primary) 10%, transparent);
+    }
+    .step-num {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 7px;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      border: 1px solid color-mix(in oklch, var(--primary) 28%, var(--border));
+      background: color-mix(in oklch, var(--primary) 8%, transparent);
+    }
+    .nav-button span:last-child {
+      display: block;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+    .flow-wrap {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      position: relative;
+    }
+    .flow-node {
+      min-height: 116px;
+      padding: 12px;
+      text-align: left;
+      position: relative;
+    }
+    .flow-node::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -10px;
+      width: 10px;
+      height: 1px;
+      background: var(--border);
+    }
+    .flow-node:nth-child(5)::after,
+    .flow-node:nth-child(10)::after { display: none; }
+    .flow-node b {
+      display: block;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .flow-node strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.25;
+      margin-bottom: 7px;
+    }
+    .flow-node span {
+      display: block;
+      color: var(--muted-foreground);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .detail {
+      padding: 18px;
+    }
+    .detail-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .detail h3 {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: clamp(20px, 2vw, 30px);
+      line-height: 1.15;
+      letter-spacing: 0;
+      margin-bottom: 8px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 9px;
+      border: 1px solid color-mix(in oklch, var(--accent) 45%, var(--border));
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--accent) 16%, transparent);
+      color: var(--foreground);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .mini-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in oklch, var(--background) 58%, transparent);
+      padding: 14px;
+    }
+    .mini-card h4,
+    .section-title {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0;
+      margin-bottom: 9px;
+    }
+    .list {
+      display: grid;
+      gap: 8px;
+      list-style: none;
+    }
+    .list li {
+      color: var(--muted-foreground);
+      line-height: 1.55;
+      font-size: 13px;
+      position: relative;
+      padding-left: 15px;
+    }
+    .list li::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--primary);
+      position: absolute;
+      left: 0;
+      top: .7em;
+    }
+    .file-list,
+    .func-list {
+      display: grid;
+      gap: 8px;
+    }
+    .file,
+    .func {
+      display: block;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 10px;
+      background: color-mix(in oklch, var(--popover) 72%, transparent);
+      color: var(--foreground);
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .func {
+      color: var(--primary);
+      background: color-mix(in oklch, var(--primary) 7%, transparent);
+    }
+    .callout {
+      margin-top: 14px;
+      border: 1px solid color-mix(in oklch, var(--primary) 36%, var(--border));
+      background: color-mix(in oklch, var(--primary) 8%, transparent);
+      border-radius: 8px;
+      padding: 13px;
+      color: var(--foreground);
+      line-height: 1.6;
+      font-size: 13px;
+    }
+    .side-stack {
+      display: grid;
+      gap: 18px;
+    }
+    .kv {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+    }
+    .kv-row {
+      display: grid;
+      gap: 5px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    }
+    .kv-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .kv-row b {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      color: var(--foreground);
+    }
+    .kv-row span {
+      color: var(--muted-foreground);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .accordion {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    details {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: color-mix(in oklch, var(--card) 78%, transparent);
+      overflow: hidden;
+    }
+    summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 13px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary svg { transition: transform 180ms ease; color: var(--muted-foreground); }
+    details[open] summary svg { transform: rotate(180deg); }
+    .details-body {
+      border-top: 1px solid var(--border);
+      padding: 14px;
+      color: var(--muted-foreground);
+      line-height: 1.65;
+      font-size: 13px;
+    }
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+    .path-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      background: color-mix(in oklch, var(--background) 52%, transparent);
+    }
+    .path-card h4 {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .path-card p {
+      color: var(--muted-foreground);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .source-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .source-table th,
+    .source-table td {
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+      padding: 11px 12px;
+      line-height: 1.5;
+    }
+    .source-table th {
+      font-family: "JetBrains Mono", var(--font-mono);
+      font-size: 12px;
+      color: var(--muted-foreground);
+      background: color-mix(in oklch, var(--muted) 46%, transparent);
+    }
+    .source-table tr:last-child td { border-bottom: 0; }
+    .hidden { display: none !important; }
+    .empty-state {
+      padding: 18px;
+      color: var(--muted-foreground);
+      font-size: 13px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    @media (max-width: 1180px) {
+      .grid { grid-template-columns: 230px minmax(0, 1fr); }
+      .side-stack { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-main { border-right: 0; border-bottom: 1px solid var(--border); }
+    }
+    @media (max-width: 840px) {
+      .shell { width: min(100vw - 24px, 1480px); padding-top: 16px; }
+      .topbar { align-items: stretch; flex-direction: column; }
+      .tools { justify-content: stretch; }
+      .search { min-width: 100%; }
+      .hero-stats,
+      .two-col,
+      .matrix,
+      .side-stack { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .flow-node::after { display: none; }
+      .panel.nav-panel { position: static; }
+      .source-table { display: block; overflow-x: auto; }
+    }
+    @media (max-width: 520px) {
+      .brand { align-items: flex-start; }
+      .brand-mark { width: 38px; height: 38px; }
+      .flow { grid-template-columns: 1fr; }
+      .detail-top { flex-direction: column; }
+      .terminal-line { grid-template-columns: 1fr; gap: 2px; }
+      .chip { width: 100%; justify-content: center; }
+      .mode-tab { flex: 1 1 auto; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <main class="shell">
+      <section class="topbar" aria-label="页面标题和搜索">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6h6v6H4z"></path><path d="M14 12h6v6h-6z"></path><path d="M10 9h4"></path><path d="M17 12V6h3"></path>
+            </svg>
+          </div>
+          <div>
+            <h1>Desktop Action System</h1>
+            <p>从 chat popup query 到 GUI_execute、本地 action、tool result、agent 回答的完整链路</p>
+          </div>
+        </div>
+        <div class="tools">
+          <label class="search">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <input id="searchInput" type="search" placeholder="搜索函数、文件、阶段..." aria-label="搜索函数、文件、阶段">
+          </label>
+          <span class="chip"><strong>主路径</strong> WebSocket</span>
+          <span class="chip"><strong>工具名</strong> GUI_execute</span>
+        </div>
+      </section>
+
+      <section class="hero" aria-label="总体说明">
+        <div class="hero-inner">
+          <div class="hero-main">
+            <div class="eyebrow">STANDARD PATH</div>
+            <h2>Action system 是一个 client-side MCP tool handshake。</h2>
+            <p class="hero-copy">
+              agent 以为自己调用的是 MCP tool `GUI_execute`；gateway 把这次 tool_use 标记为“需要桌面端完成”；
+              desktop 拦截该 tool_use，执行内置或注册的 GUI action，再把结果 POST 回 gateway。等待中的 MCP handler 被 resolve 后，
+              agent 收到 tool_result 并继续生成最终回答。
+            </p>
+            <div class="hero-stats" aria-label="关键数字">
+              <div class="stat"><b>10</b><span>主链路阶段，从输入到回答。</span></div>
+              <div class="stat"><b>60s</b><span>`GUI_execute` client-side completion 默认超时。</span></div>
+              <div class="stat"><b>4+N</b><span>4 个内置 action，加上前端 provider/page 注册的 action。</span></div>
+            </div>
+          </div>
+          <div class="hero-side">
+            <div class="terminal" aria-label="核心数据流">
+              <div class="terminal-head">
+                <span>core handshake</span>
+                <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+              </div>
+              <div class="terminal-body">
+                <div class="terminal-line"><code>user</code><span>query + attachments</span></div>
+                <div class="terminal-line"><code>desktop</code><span>ChatPopupLayer.handleSend -> useAgentConversation.sendMessage</span></div>
+                <div class="terminal-line"><code>gateway</code><span>/ws/agent/run start -> SdkChatProxy.executeStreaming</span></div>
+                <div class="terminal-line"><code>agent</code><span>mcp__gui_action__GUI_execute({ action, payload })</span></div>
+                <div class="terminal-line"><code>desktop</code><span>handleGUIExecute -> executeBuiltin 或 useActionStore.execute</span></div>
+                <div class="terminal-line"><code>gateway</code><span>/api/client-tools/complete -> registry.complete</span></div>
+                <div class="terminal-line"><code>agent</code><span>tool_result -> text/result/done</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="mode-tabs" role="tablist" aria-label="链路视图">
+        <button class="mode-tab active" data-view="happy" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+          主链路
+        </button>
+        <button class="mode-tab" data-view="actions" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20"></path><path d="M2 12h20"></path></svg>
+          action 来源
+        </button>
+        <button class="mode-tab" data-view="backend" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="2"></rect><rect x="3" y="14" width="18" height="6" rx="2"></rect></svg>
+          gateway/ACP
+        </button>
+      </div>
+
+      <section class="grid" aria-label="交互式链路说明">
+        <aside class="panel nav-panel" aria-label="阶段导航">
+          <div class="panel-head">
+            <div class="panel-title">阶段导航</div>
+            <span class="badge" id="visibleCount">10 steps</span>
+          </div>
+          <div class="nav-list" id="stepNav"></div>
+        </aside>
+
+        <section class="panel" aria-label="阶段详情">
+          <div class="flow-wrap">
+            <div class="flow" id="flowNodes"></div>
+          </div>
+          <div class="detail" id="detailPanel"></div>
+        </section>
+
+        <aside class="side-stack" aria-label="关键对象和结论">
+          <section class="panel">
+            <div class="panel-head">
+              <div class="panel-title">关键对象</div>
+            </div>
+            <div class="kv">
+              <div class="kv-row"><b>session_id</b><span>gateway 为一次 agent run 分配的会话 ID；前端完成 tool 时必须带回。</span></div>
+              <div class="kv-row"><b>tool_use_id</b><span>agent tool_use 的关联 ID；desktop 执行完成后用它 resolve 等待中的 tool。</span></div>
+              <div class="kv-row"><b>action</b><span>`GUI_execute` 输入里的 action 名称，内置 action 无前缀，扩展 action 使用 namespace.name。</span></div>
+              <div class="kv-row"><b>payload</b><span>action 输入参数，由 `get_action_detail` 返回的 input_schema 约束。</span></div>
+              <div class="kv-row"><b>ClientToolResult</b><span>前端 action 返回的 MCP CallToolResult 等效结构，支持 text/image。</span></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div class="panel-title">不变量</div>
+            </div>
+            <div class="kv">
+              <div class="kv-row"><b>工具名白名单</b><span>desktop 只接受 `GUI_execute` 和 `mcp__gui_action__GUI_execute`，避免第三方 MCP suffix 误触发本地 GUI action。</span></div>
+              <div class="kv-row"><b>先内置后注册</b><span>`handleGUIExecute` 总是先尝试 builtin，再交给 `useActionStore.execute`。</span></div>
+              <div class="kv-row"><b>一次完成</b><span>`completeClientSideToolOnce` 用本地 Set 防止同一个 tool_use_id 重复 POST。</span></div>
+              <div class="kv-row"><b>人工确认</b><span>`read_window` 和 `navigate_to` 会通过全局 approval dialog 请求用户确认。</span></div>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="accordion" aria-label="扩展说明">
+        <details open>
+          <summary>
+            三条相关路径的区别
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </summary>
+          <div class="details-body">
+            <div class="matrix">
+              <div class="path-card">
+                <h4>Chat popup 主路径</h4>
+                <p>`ChatPopupLayer` 使用 `useAgentConversation(..., { agentConfig: { mcp_servers: ["gui_action"] }, useWebSocket: true })`。这是本页主链路。</p>
+              </div>
+              <div class="path-card">
+                <h4>SSE fallback</h4>
+                <p>`useAgentConversation` 也有 `sendMessageReal`，走 `POST /api/agent/run` 读取 SSE。`handleSSEMessage` 和 GUI_execute 拦截逻辑是同一套。</p>
+              </div>
+              <div class="path-card">
+                <h4>ACP bridge</h4>
+                <p>`createGuiActionMcpServer` 是 stdio MCP server；它会通过 `/api/client-tools/request` 让 gateway/ACP session 请求客户端执行 GUI action。</p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>
+            内置 action 能做什么
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </summary>
+          <div class="details-body">
+            <table class="source-table">
+              <thead><tr><th>action</th><th>处理函数</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td><code>list_actions</code></td><td><code>handleListActions</code></td><td>返回 builtin + `useActionStore.listActions()` 当前可用 action 列表。</td></tr>
+                <tr><td><code>get_action_detail</code></td><td><code>handleGetActionDetail</code></td><td>返回指定 action 的 description、input_schema、output_schema。</td></tr>
+                <tr><td><code>read_window</code></td><td><code>handleReadWindow</code></td><td>用户确认后用 `html-to-image` 把 desktop root 截成 PNG，作为 image tool result 返回。</td></tr>
+                <tr><td><code>navigate_to</code></td><td><code>handleNavigateTo</code></td><td>校验相对路由和 route registry，用户确认后通过桌面 tab/breadcrumb navigation 跳转。</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details>
+          <summary>
+            action provider 和 page action 如何接入
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </summary>
+          <div class="details-body">
+            React provider 通过 `useActionProvider(namespace, actions)` 注册到 `useActionStore`，例如 `PresentationActionProvider` 注册 `presentation.*`。
+            静态 page 通过 `VibenPage.actions.register()` 发 postMessage，desktop 的 `PageActionBridge` 校验 namespace/schema 后注册为 `page.<workspace>.<page>.<iframe>.<namespace>.<action>`。
+            agent 可以先 `list_actions` 发现这些 action，再 `get_action_detail` 获取参数结构，最后调用 `GUI_execute`。
+          </div>
+        </details>
+      </section>
+
+      <section class="panel" style="margin-top:18px" aria-label="文件索引">
+        <div class="panel-head">
+          <div class="panel-title">文件与函数索引</div>
+          <span class="badge">source map</span>
+        </div>
+        <table class="source-table" id="sourceTable">
+          <thead>
+            <tr>
+              <th>层</th>
+              <th>文件</th>
+              <th>关键函数/职责</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty-state hidden" id="emptyState">没有匹配的函数或文件。</div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/api/page/_sdk/v1/viben-page-sdk.js"></script>
+  <script>
+    const stages = [
+      {
+        id: "popup-input",
+        view: "happy",
+        title: "Chat popup 收集用户 query",
+        short: "输入与发送",
+        tag: "desktop UI",
+        summary: "用户在底部 ChatPopup 输入 query，`handleSubmit` 判断是 slash command、background task、steering，还是普通 agent message。",
+        inbound: ["textarea content", "MessageAttachment[]", "agent/model/sandbox/worktree/background task UI state"],
+        outbound: ["普通消息调用 `onSend(text, attachments)`", "运行中输入调用 `onSteer(text)`", "后台任务调用 `onSendBackground(text)`"],
+        functions: ["ChatPopup", "handleSubmit", "handleKeyDown", "handleInput", "ChatPopupLayer.handleSend"],
+        files: ["/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:89", "/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:313", "/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:877", "/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:926"],
+        note: "chat popup 自己不执行 agent，只负责把用户输入送到 `ChatPopupLayer` 注入的 handler。"
+      },
+      {
+        id: "conversation-hook",
+        view: "happy",
+        title: "ChatPopupLayer 绑定 useAgentConversation",
+        short: "会话 hook",
+        tag: "desktop state",
+        summary: "`ChatPopupLayer` 取 active workspace path，调用 `useAgentConversation(workspacePath, { agentConfig: { mcp_servers: [\"gui_action\"] }, useWebSocket: true })`。",
+        inbound: ["workspacePath", "agentConfig.mcp_servers = [\"gui_action\"]", "useWebSocket = true"],
+        outbound: ["sendMessage", "steerMessage", "cancel", "messages/isStreaming/phase"],
+        functions: ["ChatPopupLayer", "useAgentConversation", "handleSend", "handleSteer", "handleCancel"],
+        files: ["/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:877", "/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:894", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:260"],
+        note: "这个 inline agentConfig 是让本次 agent run 挂载 `gui_action` MCP server 的关键。"
+      },
+      {
+        id: "ws-start",
+        view: "happy",
+        title: "desktop 通过 WebSocket 启动 agent run",
+        short: "WS start",
+        tag: "transport",
+        summary: "因为 chat popup 传入 `useWebSocket: true`，`sendMessage` 走 `sendMessageWebSocket`，连接 `/ws/agent/run` 并发送 `type: \"start\"`。",
+        inbound: ["prompt", "agent_config", "resume sdkSessionId", "cwd query param"],
+        outbound: ["WebSocket start message", "UI 添加 user message", "phase = running, isStreaming = true"],
+        functions: ["connectWebSocket", "sendMessageWebSocket", "sendWebSocketMessage", "formatAttachmentsForPrompt"],
+        files: ["/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:785", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:966", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:1303"],
+        note: "SSE 模式的 `sendMessageReal` 也存在，但 chat popup 默认主路径是 WebSocket。"
+      },
+      {
+        id: "gateway-run",
+        view: "happy",
+        title: "gateway 路由启动 SdkChatProxy",
+        short: "gateway 执行",
+        tag: "packages/core",
+        summary: "`registerAgentWsRoutes` 注册 `/ws/agent/run`。收到 start 后加载 agent config，并调用 `executeAgent` 或 OpenClaw 分支。",
+        inbound: ["ClientMessage type=start", "query.cwd / agent_config_path / session_id", "agent_config.mcp_servers"],
+        outbound: ["session event", "SdkChatProxy.executeStreaming stream", "agentService.registerSession"],
+        functions: ["registerAgentWsRoutes", "executeAgent", "loadAgentConfigFromPath", "SdkChatProxy.executeStreaming"],
+        files: ["/root/viben/packages/core/src/gateway/routes/agent-ws.ts:788", "/root/viben/packages/core/src/gateway/routes/agent-ws.ts:813", "/root/viben/packages/core/src/gateway/routes/agent-ws.ts:533", "/root/viben/packages/core/src/gateway/routes/agent-ws.ts:601"],
+        note: "标准 SDK executor 会把 `mcpServers: agentConfig?.mcp_servers` 传给 SDK proxy。"
+      },
+      {
+        id: "mcp-tool",
+        view: "happy",
+        title: "gui_action MCP server 暴露 GUI_execute",
+        short: "MCP tool",
+        tag: "tool registration",
+        summary: "`registerSdkMcpServer(\"gui_action\", ...)` 创建 in-process MCP server，注册 `GUI_execute`。tool handler 不在后端执行 GUI，而是等待 desktop 完成。",
+        inbound: ["action: string", "payload?: object", "context.sessionId"],
+        outbound: ["clientToolCompletionRegistry.waitForClient(sessionId, undefined, \"GUI_execute\")"],
+        functions: ["registerSdkMcpServer(\"gui_action\")", "tool(\"GUI_execute\")", "safeWaitForClient", "clientToolCompletionRegistry.registerToolOptions"],
+        files: ["/root/viben/packages/core/src/executors/chat/sdk-mcp-servers/gui-action.ts:14", "/root/viben/packages/core/src/executors/chat/sdk-mcp-servers/gui-action.ts:25", "/root/viben/packages/core/src/executors/chat/sdk-mcp-servers/gui-action.ts:35"],
+        note: "这里设置 `GUI_execute` timeout 为 60 秒，因为 action 可能需要用户确认。"
+      },
+      {
+        id: "enqueue-stream",
+        view: "happy",
+        title: "gateway stream 发现 client-side tool_use",
+        short: "enqueue",
+        tag: "handshake",
+        summary: "agent stream 产出 `tool_use` 时，gateway 判断 tool name 是否是 registered client-side tool；如果是，就把 tool_use_id 放入 `ClientToolCompletionRegistry`。",
+        inbound: ["message.type = tool_use", "toolMsg.id", "toolMsg.name"],
+        outbound: ["clientToolCompletionRegistry.enqueue(session.id, toolMsg.id, toolMsg.name)", "WebSocket 向 desktop 发送原始 tool_use event"],
+        functions: ["ClientToolCompletionRegistry.isClientSideTool", "ClientToolCompletionRegistry.enqueue", "sendMessage(socket, message)"],
+        files: ["/root/viben/packages/core/src/gateway/routes/agent-ws.ts:704", "/root/viben/packages/core/src/gateway/routes/agent-ws.ts:707", "/root/viben/packages/core/src/services/client-tool-completion.ts:147", "/root/viben/packages/core/src/services/client-tool-completion.ts:166"],
+        note: "`waitForClient` 和 `enqueue` 谁先发生都能工作；registry 里有队列、pending promise 和 waiter。"
+      },
+      {
+        id: "desktop-intercept",
+        view: "happy",
+        title: "desktop 拦截 GUI_execute tool_use",
+        short: "前端拦截",
+        tag: "desktop stream",
+        summary: "`handleSSEMessage` 处理 WebSocket/SSE event。对普通 tool_use 会加入消息列表；如果 tool name 命中 GUI_execute 白名单，则调用 `handleGUIExecute`。",
+        inbound: ["SSEMessageData type=tool_use", "name", "id", "input.action", "input.payload"],
+        outbound: ["messages += tool_use", "toolUsages += item", "handleGUIExecute(toolUseId, sessionId, { action, payload })"],
+        functions: ["handleSSEMessage", "case \"tool_use\"", "isGUIExecuteTool", "handleGUIExecute"],
+        files: ["/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:367", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:495", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:592", "/root/viben/apps/desktop/src/lib/action-system/action-executor.ts:50"],
+        note: "命名检查是 exact match：`GUI_execute` 或 `mcp__gui_action__GUI_execute`。"
+      },
+      {
+        id: "execute-action",
+        view: "happy",
+        title: "执行 builtin 或注册 action",
+        short: "本地执行",
+        tag: "action runtime",
+        summary: "`handleGUIExecute` 创建 ExecutionContext，先尝试 `executeBuiltin`，未命中再走 `useActionStore.execute`。store 会做 input/output schema 校验。",
+        inbound: ["action name", "payload", "ExecutionContext(sessionId, toolUseId)"],
+        outbound: ["ClientToolResult", "UserCancelledException -> user_cancelled", "execution_error text result"],
+        functions: ["handleGUIExecute", "createExecutionContext", "executeBuiltin", "useActionStore.execute", "validateAgainstSchema"],
+        files: ["/root/viben/apps/desktop/src/lib/action-system/action-executor.ts:12", "/root/viben/apps/desktop/src/lib/action-system/execution-context.ts:35", "/root/viben/apps/desktop/src/lib/action-system/builtins.ts:11", "/root/viben/apps/desktop/src/stores/action-store.ts:83"],
+        note: "内置 `read_window` 和 `navigate_to` 会通过 `ctx.requireApproval` 打开全局确认弹窗。"
+      },
+      {
+        id: "complete-tool",
+        view: "happy",
+        title: "desktop 把 action result 回填给 gateway",
+        short: "complete",
+        tag: "result bridge",
+        summary: "action 完成后，`handleGUIExecute` 调用 `completeClientSideToolOnce`。它 POST `/api/client-tools/complete`，gateway route 调用 `clientToolCompletionRegistry.complete` resolve pending promise。",
+        inbound: ["tool_use_id", "session_id", "ClientToolResult"],
+        outbound: ["POST /api/client-tools/complete", "registry.complete(toolUseId, sessionId, result)", "等待中的 MCP tool handler 返回 result"],
+        functions: ["completeClientSideToolOnce", "completeClientTool", "registerClientToolRoutes", "ClientToolCompletionRegistry.complete"],
+        files: ["/root/viben/apps/desktop/src/lib/action-system/action-executor.ts:39", "/root/viben/apps/desktop/src/lib/client-side-tool/complete.ts:6", "/root/viben/apps/desktop/src/lib/gateway/modules/client-tools.ts:34", "/root/viben/packages/core/src/gateway/routes/client-tools.ts:26", "/root/viben/packages/core/src/services/client-tool-completion.ts:265"],
+        note: "如果 gateway 找不到 pending tool 或 session mismatch，会返回 404；前端会允许后续重试同一个 completion。"
+      },
+      {
+        id: "agent-answer",
+        view: "happy",
+        title: "agent 获得 tool_result 并继续回答",
+        short: "回答",
+        tag: "agent output",
+        summary: "MCP handler resolve 后，agent SDK 把结果作为 tool_result 纳入上下文。模型继续生成 text/result/done，desktop 通过同一个 `handleSSEMessage` 更新 UI。",
+        inbound: ["tool_result", "text chunks", "result", "done"],
+        outbound: ["messages += tool_result/text/result", "ChatCapsule 显示 streaming/phase", "isStreaming=false on result/done"],
+        functions: ["handleSSEMessage case \"tool_result\"", "handleSSEMessage case \"text\"", "handleSSEMessage case \"result\"", "handleSSEMessage case \"done\""],
+        files: ["/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:607", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:410", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:700", "/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx:1005"],
+        note: "这就是用户看到“agent 执行 GUI action 后继续自然回答”的原因。"
+      },
+      {
+        id: "builtin-actions",
+        view: "actions",
+        title: "builtin action 集合",
+        short: "内置 action",
+        tag: "builtins",
+        summary: "`executeBuiltin` 支持 `list_actions`、`get_action_detail`、`read_window`、`navigate_to`。agent 通常先 list/detail，再执行具体 action。",
+        inbound: ["action", "payload", "ctx"],
+        outbound: ["action metadata", "image result", "navigation result", "validation_error"],
+        functions: ["executeBuiltin", "handleListActions", "handleGetActionDetail", "handleReadWindow", "handleNavigateTo", "normalizeNavigationPath"],
+        files: ["/root/viben/apps/desktop/src/lib/action-system/builtins.ts:11", "/root/viben/apps/desktop/src/lib/action-system/builtins.ts:30", "/root/viben/apps/desktop/src/lib/action-system/builtins.ts:38", "/root/viben/apps/desktop/src/lib/action-system/builtins.ts:68", "/root/viben/apps/desktop/src/lib/action-system/builtins.ts:220"],
+        note: "`navigate_to` 还会把 route registry 的可用 route patterns 放进 action detail，方便 agent 选择合法路径。"
+      },
+      {
+        id: "providers",
+        view: "actions",
+        title: "React action provider 注册扩展 action",
+        short: "provider",
+        tag: "extension",
+        summary: "`useActionProvider(namespace, actions)` 把 React 组件提供的 action 注册进 `useActionStore`，组件卸载时自动 unregister。",
+        inbound: ["namespace", "Record<actionName, ActionProviderEntry>"],
+        outbound: ["providerId = namespace:reactId", "useActionStore.register(providerId, namespace, defs)"],
+        functions: ["useActionProvider", "useActionStore.register", "useActionStore.unregister", "PresentationActionProvider", "createPresentationActions"],
+        files: ["/root/viben/apps/desktop/src/hooks/use-action-provider.ts:23", "/root/viben/apps/desktop/src/stores/action-store.ts:33", "/root/viben/apps/desktop/src/components/overlay/layers/presentation-action-provider.tsx:20", "/root/viben/apps/desktop/src/App.tsx:282"],
+        note: "示例：`PresentationActionProvider` 常驻 app root，注册 `presentation.draw`、`presentation.stop` 等 action。"
+      },
+      {
+        id: "page-actions",
+        view: "actions",
+        title: "static page action bridge",
+        short: "page action",
+        tag: "iframe bridge",
+        summary: "页面里的 `VibenPage.actions.register()` 通过 postMessage 告诉 desktop 可用 action。`PageActionBridge` 校验后把它们挂到 `page.*` 命名空间下。",
+        inbound: ["viben-page-actions-register", "namespace", "actions metadata", "iframe origin/source"],
+        outbound: ["useActionStore.register(providerId, \"page\", defs)", "viben-page-action-execute postMessage", "viben-page-action-result"],
+        functions: ["PageActionBridge.handleRegister", "executePageAction", "handleActionResult", "handleApprovalRequest", "buildShortName"],
+        files: ["/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts:162", "/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts:193", "/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts:238", "/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts:257", "/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts:326"],
+        note: "page action 名称会编码 workspace/page/iframe instance，避免不同页面之间 action 冲突。"
+      },
+      {
+        id: "approval-navigation",
+        view: "actions",
+        title: "审批与导航桥",
+        short: "审批/导航",
+        tag: "safety",
+        summary: "`ActionApprovalDialog` 在 app root 挂载，注册 module-level approval handler。`ActionNavigationHandlerProvider` 把非 React action 接到 canonical desktop navigation API。",
+        inbound: ["ctx.requireApproval(message, options)", "navigateToPath(path)"],
+        outbound: ["用户 confirm/cancel", "openPath 或 tab-store fallback"],
+        functions: ["ActionApprovalDialog", "setApprovalHandler", "createExecutionContext.requireApproval", "ActionNavigationHandlerProvider", "navigateToPath"],
+        files: ["/root/viben/apps/desktop/src/components/action-system/approval-dialog.tsx:24", "/root/viben/apps/desktop/src/lib/action-system/execution-context.ts:19", "/root/viben/apps/desktop/src/lib/action-system/execution-context.ts:35", "/root/viben/apps/desktop/src/components/action-system/navigation-handler-provider.tsx:12", "/root/viben/apps/desktop/src/lib/action-system/navigation-handler.ts:19"],
+        note: "没有 approval handler 时，`requireApproval` 会 reject，action executor 会转成 error tool result。"
+      },
+      {
+        id: "sse-path",
+        view: "backend",
+        title: "SSE 路径复用同一拦截逻辑",
+        short: "SSE fallback",
+        tag: "transport",
+        summary: "当 `useWebSocket` 为 false 且 gateway connected 时，`sendMessageReal` POST `/api/agent/run`，读取 SSE lines。收到 event 后仍调用同一个 `handleSSEMessage`。",
+        inbound: ["POST body prompt/cwd/agent_config/session_id/task_id", "text/event-stream"],
+        outbound: ["handleSSEMessage(data)", "clientToolCompletionRegistry.enqueue in agent-run route"],
+        functions: ["sendMessageReal", "registerAgentRunRoutes", "clientToolCompletionRegistry.enqueue", "sendSSE"],
+        files: ["/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts:1303", "/root/viben/packages/core/src/gateway/routes/agent-run.ts:366", "/root/viben/packages/core/src/gateway/routes/agent-run.ts:714"],
+        note: "所以 GUI_execute 的 desktop 执行逻辑不依赖传输层；WebSocket 和 SSE 共享前端拦截器。"
+      },
+      {
+        id: "registry",
+        view: "backend",
+        title: "ClientToolCompletionRegistry 是握手核心",
+        short: "registry",
+        tag: "gateway service",
+        summary: "registry 管理 per-session FIFO queue、pending promise、waiters、timeout、cancel。`enqueue` 与 `waitForClient` 支持任意先后顺序。",
+        inbound: ["sessionId", "toolUseId", "toolName", "CallToolResult"],
+        outbound: ["pending promise", "timeout fallback", "complete accepted/denied"],
+        functions: ["registerToolOptions", "isClientSideTool", "enqueue", "waitForClient", "complete", "cancelSession"],
+        files: ["/root/viben/packages/core/src/services/client-tool-completion.ts:135", "/root/viben/packages/core/src/services/client-tool-completion.ts:147", "/root/viben/packages/core/src/services/client-tool-completion.ts:166", "/root/viben/packages/core/src/services/client-tool-completion.ts:204", "/root/viben/packages/core/src/services/client-tool-completion.ts:265"],
+        note: "trusted prefix 目前只接受 `mcp__gui_action__`，避免任意 MCP server 伪造同名 suffix。"
+      },
+      {
+        id: "acp",
+        view: "backend",
+        title: "ACP GUI action MCP bridge",
+        short: "ACP",
+        tag: "alternate entry",
+        summary: "ACP 路径里 `createGuiActionMcpServer` 运行 stdio MCP server。它生成 `gui-*` toolUseId，并通过 `/api/client-tools/request` 让 gateway 请求客户端执行。",
+        inbound: ["VIBEN_ACP_SESSION_ID", "VIBEN_GATEWAY_URL", "GUI_execute args"],
+        outbound: ["/api/client-tools/request", "acpSessionManager.requestClientTool", "_viben/client_tool_call"],
+        functions: ["createGuiActionMcpServer", "requestClientTool", "handleBackendSessionUpdate", "dispatchClientToolRequest"],
+        files: ["/root/viben/packages/core/src/acp/ops/gui-action-mcp-server.ts:26", "/root/viben/packages/core/src/acp/ops/session-manager.ts:179", "/root/viben/packages/core/src/acp/ops/session-manager.ts:475", "/root/viben/packages/core/src/acp/ops/session-manager.ts:499", "/root/viben/packages/core/src/gateway/routes/client-tools.ts:41"],
+        note: "这不是 chat popup 主路径，但复用同一个 client tool completion service。"
+      }
+    ];
+
+    const sourceRows = [
+      ["desktop popup", "/root/viben/apps/desktop/src/components/overlay/chat-popup.tsx", "ChatPopup, handleSubmit, ChatPopupLayer, handleSend, handleSteer, handleSendBackground"],
+      ["desktop hook", "/root/viben/apps/desktop/src/pages/conversation/hooks/use-agent-conversation.ts", "useAgentConversation, connectWebSocket, sendMessageWebSocket, sendMessageReal, handleSSEMessage"],
+      ["desktop action", "/root/viben/apps/desktop/src/lib/action-system/action-executor.ts", "handleGUIExecute, isGUIExecuteTool, GUI_EXECUTE_TOOL_NAME"],
+      ["desktop action", "/root/viben/apps/desktop/src/lib/action-system/builtins.ts", "executeBuiltin, list_actions, get_action_detail, read_window, navigate_to"],
+      ["desktop action", "/root/viben/apps/desktop/src/stores/action-store.ts", "register, unregister, listActions, getActionDetail, execute, schema validation"],
+      ["desktop action", "/root/viben/apps/desktop/src/lib/action-system/execution-context.ts", "createExecutionContext, setApprovalHandler, clearApprovalHandler"],
+      ["desktop UI", "/root/viben/apps/desktop/src/components/action-system/approval-dialog.tsx", "ActionApprovalDialog"],
+      ["desktop navigation", "/root/viben/apps/desktop/src/components/action-system/navigation-handler-provider.tsx", "ActionNavigationHandlerProvider"],
+      ["desktop navigation", "/root/viben/apps/desktop/src/lib/action-system/navigation-handler.ts", "navigateToPath, navigateToPathFromTabStore"],
+      ["desktop provider", "/root/viben/apps/desktop/src/hooks/use-action-provider.ts", "useActionProvider"],
+      ["desktop provider", "/root/viben/apps/desktop/src/components/overlay/layers/presentation-action-provider.tsx", "PresentationActionProvider, createPresentationActions"],
+      ["desktop page", "/root/viben/apps/desktop/src/pages/apps/components/page-action-bridge.ts", "PageActionBridge, handleRegister, executePageAction, handleActionResult"],
+      ["desktop client tool", "/root/viben/apps/desktop/src/lib/client-side-tool/complete.ts", "completeClientSideToolOnce, hasCompletedClientSideTool"],
+      ["desktop gateway client", "/root/viben/apps/desktop/src/lib/gateway/modules/client-tools.ts", "completeClientTool -> POST /api/client-tools/complete"],
+      ["core websocket", "/root/viben/packages/core/src/gateway/routes/agent-ws.ts", "registerAgentWsRoutes, executeAgent, stream loop, clientToolCompletionRegistry.enqueue"],
+      ["core SSE", "/root/viben/packages/core/src/gateway/routes/agent-run.ts", "registerAgentRunRoutes, POST /api/agent/run, stream loop enqueue"],
+      ["core MCP", "/root/viben/packages/core/src/executors/chat/sdk-mcp-servers/gui-action.ts", "registerSdkMcpServer('gui_action'), GUI_execute, waitForClient"],
+      ["core service", "/root/viben/packages/core/src/services/client-tool-completion.ts", "ClientToolCompletionRegistry, registerToolOptions, enqueue, waitForClient, complete, cancelSession"],
+      ["core route", "/root/viben/packages/core/src/gateway/routes/client-tools.ts", "registerClientToolRoutes, /api/client-tools/complete, /api/client-tools/request"],
+      ["core ACP", "/root/viben/packages/core/src/acp/ops/gui-action-mcp-server.ts", "createGuiActionMcpServer, stdio MCP GUI_execute"],
+      ["core ACP", "/root/viben/packages/core/src/acp/ops/session-manager.ts", "requestClientTool, handleBackendSessionUpdate, dispatchClientToolRequest"]
+    ];
+
+    let currentView = "happy";
+    let selectedId = "popup-input";
+
+    const stepNav = document.getElementById("stepNav");
+    const flowNodes = document.getElementById("flowNodes");
+    const detailPanel = document.getElementById("detailPanel");
+    const sourceBody = document.querySelector("#sourceTable tbody");
+    const emptyState = document.getElementById("emptyState");
+    const visibleCount = document.getElementById("visibleCount");
+    const searchInput = document.getElementById("searchInput");
+
+    function iconSvg(name) {
+      const icons = {
+        arrow: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>',
+        file: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>',
+        code: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 18 6-6-6-6"></path><path d="m8 6-6 6 6 6"></path></svg>'
+      };
+      return icons[name] || icons.arrow;
+    }
+
+    function byView() {
+      return stages.filter((stage) => stage.view === currentView);
+    }
+
+    function renderNav() {
+      const items = byView();
+      visibleCount.textContent = items.length + " steps";
+      stepNav.innerHTML = items.map((stage, index) => `
+        <button class="nav-button ${stage.id === selectedId ? "active" : ""}" type="button" data-stage="${stage.id}">
+          <span class="step-num">${String(index + 1).padStart(2, "0")}</span>
+          <span><strong>${stage.short}</strong><span>${stage.tag}</span></span>
+        </button>
+      `).join("");
+    }
+
+    function renderFlow() {
+      const items = byView();
+      flowNodes.innerHTML = items.map((stage, index) => `
+        <button class="flow-node ${stage.id === selectedId ? "active" : ""}" type="button" data-stage="${stage.id}">
+          <b>${String(index + 1).padStart(2, "0")} / ${stage.tag}</b>
+          <strong>${stage.short}</strong>
+          <span>${stage.summary}</span>
+        </button>
+      `).join("");
+    }
+
+    function listMarkup(items) {
+      return `<ul class="list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+    }
+
+    function codeList(items, kind) {
+      return `<div class="${kind === "file" ? "file-list" : "func-list"}">${items.map((item) => `<span class="${kind}">${escapeHtml(item)}</span>`).join("")}</div>`;
+    }
+
+    function renderDetail() {
+      const stage = stages.find((item) => item.id === selectedId) || byView()[0];
+      if (!stage) return;
+      selectedId = stage.id;
+      detailPanel.innerHTML = `
+        <div class="detail-top">
+          <div>
+            <span class="badge">${stage.tag}</span>
+            <h3>${stage.title}</h3>
+            <p class="detail-text">${stage.summary}</p>
+          </div>
+          <div class="icon-box" aria-hidden="true">${iconSvg("arrow")}</div>
+        </div>
+        <div class="two-col">
+          <div class="mini-card">
+            <h4>输入</h4>
+            ${listMarkup(stage.inbound)}
+          </div>
+          <div class="mini-card">
+            <h4>输出</h4>
+            ${listMarkup(stage.outbound)}
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="mini-card">
+            <h4>${iconSvg("code")} 关键函数</h4>
+            ${codeList(stage.functions, "func")}
+          </div>
+          <div class="mini-card">
+            <h4>${iconSvg("file")} 文件位置</h4>
+            ${codeList(stage.files, "file")}
+          </div>
+        </div>
+        <div class="callout">${stage.note}</div>
+      `;
+    }
+
+    function renderSources() {
+      const query = searchInput.value.trim().toLowerCase();
+      const rows = sourceRows.filter((row) => {
+        if (!query) return true;
+        return row.join(" ").toLowerCase().includes(query);
+      });
+      sourceBody.innerHTML = rows.map((row) => `
+        <tr>
+          <td><span class="badge">${escapeHtml(row[0])}</span></td>
+          <td><code>${escapeHtml(row[1])}</code></td>
+          <td>${escapeHtml(row[2])}</td>
+        </tr>
+      `).join("");
+      emptyState.classList.toggle("hidden", rows.length > 0);
+      document.getElementById("sourceTable").classList.toggle("hidden", rows.length === 0);
+    }
+
+    function applySearchToStages() {
+      const query = searchInput.value.trim().toLowerCase();
+      const idsToShow = new Set();
+      if (query) {
+        stages.forEach((stage) => {
+          const haystack = [
+            stage.title,
+            stage.short,
+            stage.tag,
+            stage.summary,
+            stage.note,
+            ...stage.inbound,
+            ...stage.outbound,
+            ...stage.functions,
+            ...stage.files
+          ].join(" ").toLowerCase();
+          if (haystack.includes(query)) idsToShow.add(stage.id);
+        });
+      }
+      document.querySelectorAll("[data-stage]").forEach((el) => {
+        const shouldHide = query && !idsToShow.has(el.getAttribute("data-stage"));
+        el.classList.toggle("hidden", shouldHide);
+      });
+    }
+
+    function selectStage(id) {
+      selectedId = id;
+      renderNav();
+      renderFlow();
+      renderDetail();
+      applySearchToStages();
+    }
+
+    function setView(view) {
+      currentView = view;
+      const first = stages.find((stage) => stage.view === view);
+      selectedId = first ? first.id : selectedId;
+      document.querySelectorAll(".mode-tab").forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === view);
+      });
+      renderAll();
+    }
+
+    function renderAll() {
+      renderNav();
+      renderFlow();
+      renderDetail();
+      renderSources();
+      applySearchToStages();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    document.addEventListener("click", (event) => {
+      const stageButton = event.target.closest("[data-stage]");
+      if (stageButton) {
+        selectStage(stageButton.getAttribute("data-stage"));
+        return;
+      }
+      const tab = event.target.closest("[data-view]");
+      if (tab) {
+        setView(tab.getAttribute("data-view"));
+      }
+    });
+
+    searchInput.addEventListener("input", () => {
+      renderSources();
+      applySearchToStages();
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
