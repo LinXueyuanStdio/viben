@@ -102,6 +102,8 @@
     "retrying": "Retrying...",
     "skip": "Skip",
     "forward": "Forward",
+    "find": "Find...",
+    "print": "Print",
     "developer": "Developer",
     "loadingWorkspace": "Loading workspace...",
     "submit": "Submit",
@@ -6049,9 +6051,18 @@
     "editConfig": "Edit Page Settings",
     "openInNewWindow": "Open in New Window",
     "openExternal": "Open in Browser",
+    "openExternalDefault": "Open with Default Browser",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit Fullscreen",
     "stopServer": "Stop Server"
+  },
+  "pagePreview": {
+    "textSize": "Adjust Text Size",
+    "actualSize": "Actual Size",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "history": "History",
+    "downloads": "Downloads"
   },
   "emojiPicker": {
     "categories": {
