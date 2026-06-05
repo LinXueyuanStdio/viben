@@ -1,7 +1,10 @@
 export { useCommandQueue } from "./use-command-queue";
+export { useCommandQueueInputRecall } from "./use-command-queue-input-recall";
 export { CommandQueuePanel } from "./command-queue-panel";
 export type {
   CommandQueueItem,
+  UseCommandQueueInputRecallOptions,
+  UseCommandQueueInputRecallReturn,
   UseCommandQueueOptions,
   UseCommandQueueReturn,
 } from "./types";

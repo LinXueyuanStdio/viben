@@ -89,9 +89,11 @@ export { CollapsedToolGroup } from "./collapsed-tool-group";
 export type { CollapsedToolGroupProps } from "./collapsed-tool-group";
 
 // Command Queue
-export { useCommandQueue, CommandQueuePanel } from "./command-queue";
+export { useCommandQueue, useCommandQueueInputRecall, CommandQueuePanel } from "./command-queue";
 export type {
   CommandQueueItem,
+  UseCommandQueueInputRecallOptions,
+  UseCommandQueueInputRecallReturn,
   UseCommandQueueOptions,
   UseCommandQueueReturn,
   CommandQueuePanelProps,
