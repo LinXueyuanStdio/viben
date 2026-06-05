@@ -439,6 +439,7 @@ export class AcpSessionManager {
     });
 
     const backend = await this.ensureBackend(session, request);
+    await this.consumeQueuedSteerPrompts(session.id);
     const response = await backend.prompt({
       ...request,
       sessionId: backend.backendSessionId,
@@ -488,11 +489,16 @@ export class AcpSessionManager {
 
   private async handleBackendSessionUpdate(
     session: AcpSession,
-    notification: { update: { sessionUpdate?: string; toolCallId?: string; title?: string | null; rawInput?: unknown } }
+    notification: { update: { sessionUpdate?: string; toolCallId?: string; title?: string | null; rawInput?: unknown; status?: string | null } }
   ): Promise<void> {
     await this.persistSessionUpdate(session, notification);
 
     const update = notification.update;
+    if (update.sessionUpdate === "tool_call_update" && isFinishedToolStatus(update.status)) {
+      await this.consumeQueuedSteerPrompts(session.id);
+      return;
+    }
+
     if (update.sessionUpdate !== "tool_call") return;
     const toolName = update.title ?? "";
     const toolUseId = update.toolCallId;
@@ -858,6 +864,10 @@ function parseSteerCursor(cursor: string | undefined): number {
   if (!cursor) return 0;
   const offset = Number.parseInt(cursor, 10);
   return Number.isFinite(offset) && offset > 0 ? offset : 0;
+}
+
+function isFinishedToolStatus(status: string | null | undefined): boolean {
+  return status === "completed" || status === "failed";
 }
 
 function toSummary(session: AcpSession): AcpSessionSummary {
