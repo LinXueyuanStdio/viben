@@ -57,3 +57,21 @@ export interface UseCommandQueueReturn {
   /** Resume auto-execution */
   resume: () => void;
 }
+
+export interface UseCommandQueueInputRecallOptions {
+  /** Current input value. Recall only runs when this is empty after trim. */
+  value: string;
+  /** Update the input value with recalled queue content. */
+  onValueChange: (value: string) => void;
+  /** Return queued items and clear the backing queue. */
+  recall: () => CommandQueueItem[];
+  /** Join recalled queue item content. Defaults to a blank line between items. */
+  joiner?: string;
+  /** Called after items have been recalled and merged into the input. */
+  onRecalled?: (items: CommandQueueItem[], value: string) => void;
+}
+
+export interface UseCommandQueueInputRecallReturn {
+  /** Pass directly to ChatInput.onRecallQueuedInput. */
+  onRecallQueuedInput: (currentValue?: string) => void;
+}
