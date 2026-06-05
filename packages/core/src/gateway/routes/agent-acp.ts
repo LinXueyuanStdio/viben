@@ -138,7 +138,7 @@ function createVibenAcpAgent(
         return await acpSessionManager.prompt(request) as unknown as PromptResponse;
       } catch (error) {
         const detail = getAcpErrorDetail(error);
-        throw new Error(JSON.stringify(detail));
+        throw RequestError.internalError(detail, detail.message);
       }
     },
 
