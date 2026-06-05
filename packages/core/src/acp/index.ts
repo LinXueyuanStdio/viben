@@ -14,6 +14,7 @@ export {
   type AcpInitializeResponse,
   type AcpLoadSessionRequest,
   type AcpLoadSessionResponse,
+  type AcpMcpServer,
   type AcpNewSessionRequest,
   type AcpNewSessionResponse,
   type AcpPromptRequest,

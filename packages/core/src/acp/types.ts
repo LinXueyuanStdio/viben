@@ -21,6 +21,7 @@ import type {
   SessionUpdate,
   StopReason,
   TextContent,
+  McpServer,
 } from "@agentclientprotocol/sdk";
 import type { AgentMcpServerEntry } from "../types";
 
@@ -32,6 +33,7 @@ export type AcpInitializeRequest = InitializeRequest;
 export type AcpInitializeResponse = InitializeResponse;
 export type AcpAgentCapabilities = AgentCapabilities & Record<string, unknown>;
 export type AcpContentBlock = ContentBlock;
+export type AcpMcpServer = McpServer;
 
 export type AcpNewSessionRequest = NewSessionRequest & AcpSessionBootstrapFields;
 export type AcpNewSessionResponse = NewSessionResponse;
@@ -153,6 +155,7 @@ export interface AcpSessionSummary {
   sdkSessionId?: string;
   agentCapabilities: AcpAgentCapabilities;
   configOptions?: AcpConfigOption[];
+  lastError?: AcpErrorDetail;
 }
 
 export interface AcpConnection {

@@ -3,6 +3,7 @@ import {
   Activity,
   Bot,
   CircleStop,
+  ClipboardList,
   Copy,
   FileJson,
   EthernetPort,
@@ -17,6 +18,7 @@ import {
   SquareTerminal,
   Trash2,
   Unplug,
+  X,
 } from "lucide-react";
 import {
   AcpWebSocketClient,
@@ -26,6 +28,9 @@ import {
   type ClientToolCall,
   type ClientToolExecutionRequest,
   type ConnectionStatus,
+  type PermissionDecisionRequest,
+  type PermissionDecisionResult,
+  type PermissionOption,
   type PermissionRequestLog,
   type TrafficEntry,
 } from "./acp-client";
@@ -66,6 +71,28 @@ interface TrafficFilters {
   type: "all" | TrafficEntry["type"] | "error";
 }
 
+interface ToolApprovalDialogState {
+  request: ClientToolExecutionRequest;
+  draft: CallToolResult;
+  responseText: string;
+  resolve: (result: CallToolResult) => void;
+}
+
+interface PermissionDialogState {
+  request: PermissionDecisionRequest;
+  selectedOptionId: string;
+  resolve: (result: PermissionDecisionResult) => void;
+}
+
+const BACKEND_OPTIONS = [
+  { value: "CLAUDE_CODE", label: "Claude ACP" },
+  { value: "OPENCLAW", label: "OpenClaw ACP" },
+  { value: "OPENCODE", label: "OpenCode" },
+  { value: "CODEX", label: "Codex ACP" },
+  { value: "GEMINI", label: "Gemini" },
+  { value: "QWEN_CODE", label: "Qwen Code" },
+];
+
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 const DEFAULT_PROMPT = "Call GUI_execute exactly once now. Use action get_action_detail with payload {\"action\":\"app.open_settings\"}. Do not use Bash. After the tool result, summarize the action name and available input schema.";
@@ -105,9 +132,13 @@ export function App() {
   const [wsUrl, setWsUrl] = useState(DEFAULT_WS_URL);
   const [cwd, setCwd] = useState("/root/viben");
   const [agentConfigPath, setAgentConfigPath] = useState("");
+  const [executorType, setExecutorType] = useState("CLAUDE_CODE");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [permissionMode, setPermissionMode] = useState("default");
   const [useInlineAgentConfig, setUseInlineAgentConfig] = useState(true);
+  const [requestMcpServersText, setRequestMcpServersText] = useState("[]");
+  const [executorConfigText, setExecutorConfigText] = useState("{}");
+  const [sessionListResult, setSessionListResult] = useState<unknown>(null);
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -123,6 +154,8 @@ export function App() {
   });
   const [actions, setActions] = useState<GuiActionDefinition[]>(DEFAULT_ACTIONS);
   const [selectedActionId, setSelectedActionId] = useState(DEFAULT_ACTIONS[0]?.id ?? "");
+  const [toolDialog, setToolDialog] = useState<ToolApprovalDialogState | null>(null);
+  const [permissionDialog, setPermissionDialog] = useState<PermissionDialogState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<AcpWebSocketClient | null>(null);
   const actionsRef = useRef(actions);
@@ -140,6 +173,8 @@ export function App() {
   const promptResult = activeSession?.promptResult ?? null;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
   const actionSummaries = useMemo(() => buildActionSummaries(actions), [actions]);
+  const requestMcpServers = useMemo(() => parseJsonOrFallback(requestMcpServersText, []), [requestMcpServersText]);
+  const executorConfig = useMemo(() => parseJsonOrFallback(executorConfigText, {}), [executorConfigText]);
 
   useEffect(() => {
     actionsRef.current = actions;
@@ -242,6 +277,28 @@ export function App() {
     []
   );
 
+  const requestClientToolResult = useCallback((request: ClientToolExecutionRequest, draft: CallToolResult): Promise<CallToolResult> => {
+    return new Promise((resolve) => {
+      setToolDialog({
+        request,
+        draft,
+        responseText: prettyJson(draft),
+        resolve,
+      });
+    });
+  }, []);
+
+  const requestPermissionDecision = useCallback((request: PermissionDecisionRequest): Promise<PermissionDecisionResult> => {
+    return new Promise((resolve) => {
+      const selected = selectInitialPermissionOption(request.options);
+      setPermissionDialog({
+        request,
+        selectedOptionId: selected?.optionId ?? selected?.name ?? "",
+        resolve,
+      });
+    });
+  }, []);
+
   const ensureClient = useCallback(() => {
     if (!clientRef.current) {
       clientRef.current = new AcpWebSocketClient({
@@ -250,23 +307,28 @@ export function App() {
         onClientToolCall: appendClientToolCall,
         onPermissionRequest: appendPermissionRequest,
         executeClientTool,
+        requestClientToolResult,
+        requestPermissionDecision,
         onStatus: setStatus,
         onError: setError,
       });
     }
     return clientRef.current;
-  }, [appendClientToolCall, appendPermissionRequest, appendSessionUpdate, appendTraffic, executeClientTool]);
+  }, [appendClientToolCall, appendPermissionRequest, appendSessionUpdate, appendTraffic, executeClientTool, requestClientToolResult, requestPermissionDecision]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload | undefined => {
     if (!useInlineAgentConfig) return undefined;
+    const parsedExecutorConfig = isRecord(executorConfig) ? executorConfig : {};
+    const mcpServers = requestMcpServersToAgentConfig(requestMcpServers);
     return {
-      executor_type: "CLAUDE_CODE",
-      model: model.trim() || DEFAULT_MODEL,
+      executor_type: executorType,
+      model: model.trim() || undefined,
       permission_mode: permissionMode,
-      mcp_servers: ["gui_action"],
+      mcp_servers: mcpServers.includes("gui_action") ? mcpServers : ["gui_action", ...mcpServers],
       append_prompt: DEFAULT_APPEND_PROMPT,
+      executor_config: parsedExecutorConfig,
     };
-  }, [model, permissionMode, useInlineAgentConfig]);
+  }, [executorConfig, executorType, model, permissionMode, requestMcpServers, useInlineAgentConfig]);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -293,6 +355,7 @@ export function App() {
         cwd,
         agent_config_path: agentConfigPath.trim() || undefined,
         agent_config: buildAgentConfig(),
+        mcpServers: requestMcpServersToRequest(requestMcpServers),
       });
       const id = readSessionId(session);
       if (!id) throw new Error("session/new did not return sessionId");
@@ -308,7 +371,7 @@ export function App() {
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
-  }, [agentConfigPath, buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl]);
+  }, [agentConfigPath, buildAgentConfig, cwd, ensureClient, initializeResult, requestMcpServers, wsUrl]);
 
   const loadSession = useCallback(async () => {
     const id = loadSessionId.trim();
@@ -320,7 +383,12 @@ export function App() {
       if (!initializeResult) {
         setInitializeResult(await client.initialize());
       }
-      const session = await client.loadSession({ session_id: id, cwd, agent_config: buildAgentConfig() });
+      const session = await client.loadSession({
+        session_id: id,
+        cwd,
+        agent_config: buildAgentConfig(),
+        mcpServers: requestMcpServersToRequest(requestMcpServers),
+      });
       const loadedId = readSessionId(session) ?? id;
       setSessionsById((current) => ({
         ...current,
@@ -336,7 +404,7 @@ export function App() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     }
-  }, [buildAgentConfig, cwd, ensureClient, initializeResult, loadSessionId, wsUrl]);
+  }, [buildAgentConfig, cwd, ensureClient, initializeResult, loadSessionId, requestMcpServers, wsUrl]);
 
   const disconnect = useCallback(() => {
     clientRef.current?.disconnect();
@@ -370,6 +438,64 @@ export function App() {
     if (sessionId) clientRef.current?.cancel(sessionId);
   }, [sessionId]);
 
+  const listSessions = useCallback(async () => {
+    setError(null);
+    try {
+      const result = await clientRef.current?.listSessions();
+      setSessionListResult(result ?? null);
+    } catch (listError) {
+      setError(listError instanceof Error ? listError.message : String(listError));
+    }
+  }, []);
+
+  const closeActiveSession = useCallback(async () => {
+    if (!sessionId) return;
+    setError(null);
+    try {
+      await clientRef.current?.closeSession(sessionId);
+      setSessionsById((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setSessionOrder((current) => current.filter((id) => id !== sessionId));
+      setActiveSessionId((current) => (current === sessionId ? null : current));
+    } catch (closeError) {
+      setError(closeError instanceof Error ? closeError.message : String(closeError));
+    }
+  }, [sessionId]);
+
+  const submitToolDialog = useCallback(() => {
+    if (!toolDialog) return;
+    const parsed = parseJsonOrFallback(toolDialog.responseText, null);
+    const result = isCallToolResult(parsed)
+      ? parsed
+      : textErrorResult(toolDialog.responseText);
+    toolDialog.resolve(result);
+    setToolDialog(null);
+  }, [toolDialog]);
+
+  const rejectToolDialog = useCallback(() => {
+    if (!toolDialog) return;
+    toolDialog.resolve(textErrorResult("Rejected by ACP client user."));
+    setToolDialog(null);
+  }, [toolDialog]);
+
+  const submitPermissionDialog = useCallback(() => {
+    if (!permissionDialog) return;
+    permissionDialog.resolve({
+      outcome: "selected",
+      optionId: permissionDialog.selectedOptionId || "allow",
+    });
+    setPermissionDialog(null);
+  }, [permissionDialog]);
+
+  const cancelPermissionDialog = useCallback(() => {
+    if (!permissionDialog) return;
+    permissionDialog.resolve({ outcome: "cancelled" });
+    setPermissionDialog(null);
+  }, [permissionDialog]);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 hidden w-80 border-r border-border bg-sidebar px-4 py-5 lg:block">
@@ -394,6 +520,16 @@ export function App() {
           <button className="btn-secondary" onClick={loadSession} disabled={!connected || !loadSessionId.trim()}>
             <RotateCcw size={16} />
             Load
+          </button>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button className="btn-secondary" onClick={listSessions} disabled={!connected}>
+            <ClipboardList size={16} />
+            List
+          </button>
+          <button className="btn-secondary" onClick={closeActiveSession} disabled={!connected || !sessionId}>
+            <X size={16} />
+            Close
           </button>
         </div>
 
@@ -585,6 +721,13 @@ export function App() {
                 <Field label="Working Directory">
                   <input value={cwd} onChange={(event) => setCwd(event.target.value)} className="input" />
                 </Field>
+                <Field label="ACP Backend">
+                  <select value={executorType} onChange={(event) => setExecutorType(event.target.value)} className="input">
+                    {BACKEND_OPTIONS.map((backend) => (
+                      <option key={backend.value} value={backend.value}>{backend.label}</option>
+                    ))}
+                  </select>
+                </Field>
                 <Field label="Model">
                   <input value={model} onChange={(event) => setModel(event.target.value)} className="input" />
                 </Field>
@@ -609,6 +752,24 @@ export function App() {
                   <input value={sessionId ?? ""} readOnly className="input text-muted-foreground" />
                 </Field>
               </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Field label="Request MCP Servers JSON">
+                  <textarea
+                    value={requestMcpServersText}
+                    onChange={(event) => setRequestMcpServersText(event.target.value)}
+                    className="textarea font-mono text-xs"
+                    rows={5}
+                  />
+                </Field>
+                <Field label="Executor Config JSON">
+                  <textarea
+                    value={executorConfigText}
+                    onChange={(event) => setExecutorConfigText(event.target.value)}
+                    className="textarea font-mono text-xs"
+                    rows={5}
+                  />
+                </Field>
+              </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm">
                   <input
@@ -616,8 +777,16 @@ export function App() {
                     checked={useInlineAgentConfig}
                     onChange={(event) => setUseInlineAgentConfig(event.target.checked)}
                   />
-                  Inline Claude ACP + gui_action
+                  Inline agent config + gui_action
                 </label>
+                <button className="btn-secondary" onClick={() => setRequestMcpServersText(normalizeJsonText(requestMcpServersText))}>
+                  <FileJson size={16} />
+                  Format MCP
+                </button>
+                <button className="btn-secondary" onClick={() => setExecutorConfigText(normalizeJsonText(executorConfigText))}>
+                  <FileJson size={16} />
+                  Format Config
+                </button>
                 <button className="btn-secondary" onClick={createSession} disabled={!connected}>
                   <FolderPlus size={16} />
                   New Session
@@ -625,6 +794,14 @@ export function App() {
                 <button className="btn-secondary" onClick={loadSession} disabled={!connected || !loadSessionId.trim()}>
                   <RotateCcw size={16} />
                   Load Session
+                </button>
+                <button className="btn-secondary" onClick={listSessions} disabled={!connected}>
+                  <ClipboardList size={16} />
+                  List Sessions
+                </button>
+                <button className="btn-secondary" onClick={closeActiveSession} disabled={!connected || !sessionId}>
+                  <X size={16} />
+                  Close Active
                 </button>
               </div>
               {error && <div className="mt-4 rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
@@ -698,6 +875,7 @@ export function App() {
             <Panel title="ACP Results">
               <JsonBlock title="initialize" value={initializeResult} />
               <JsonBlock title="session/new" value={sessionResult} />
+              <JsonBlock title="session/list" value={sessionListResult} />
               <JsonBlock title="session/prompt" value={promptResult} />
             </Panel>
 
@@ -750,6 +928,22 @@ export function App() {
           </section>
         </div>
       </main>
+      {toolDialog && (
+        <ToolApprovalModal
+          dialog={toolDialog}
+          onChangeResponse={(value) => setToolDialog((current) => current ? { ...current, responseText: value } : current)}
+          onSubmit={submitToolDialog}
+          onReject={rejectToolDialog}
+        />
+      )}
+      {permissionDialog && (
+        <PermissionApprovalModal
+          dialog={permissionDialog}
+          onSelect={(optionId) => setPermissionDialog((current) => current ? { ...current, selectedOptionId: optionId } : current)}
+          onSubmit={submitPermissionDialog}
+          onCancel={cancelPermissionDialog}
+        />
+      )}
     </div>
   );
 }
@@ -767,6 +961,128 @@ function SessionRow({ session, active, onSelect }: { session: UiSessionState | u
         <div>msgs</div>
       </div>
     </button>
+  );
+}
+
+function ToolApprovalModal({
+  dialog,
+  onChangeResponse,
+  onSubmit,
+  onReject,
+}: {
+  dialog: ToolApprovalDialogState;
+  onChangeResponse: (value: string) => void;
+  onSubmit: () => void;
+  onReject: () => void;
+}) {
+  return (
+    <ModalFrame title="Client Tool Call" subtitle={`${dialog.request.toolName} / ${dialog.request.toolUseId}`}>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</div>
+          <pre className="max-h-72 overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
+            <JsonCode value={dialog.request.input} />
+          </pre>
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Response JSON</div>
+          <textarea
+            value={dialog.responseText}
+            onChange={(event) => onChangeResponse(event.target.value)}
+            className="textarea min-h-72 font-mono text-xs"
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button className="btn-secondary" onClick={() => onChangeResponse(normalizeJsonText(dialog.responseText))}>
+          <FileJson size={16} />
+          Format
+        </button>
+        <button className="btn-danger" onClick={onReject}>
+          <X size={16} />
+          Reject
+        </button>
+        <button className="btn-primary" onClick={onSubmit}>
+          <Send size={16} />
+          Send Result
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function PermissionApprovalModal({
+  dialog,
+  onSelect,
+  onSubmit,
+  onCancel,
+}: {
+  dialog: PermissionDialogState;
+  onSelect: (optionId: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <ModalFrame title="Permission Request" subtitle={dialog.request.title}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Tool Input</div>
+          <pre className="max-h-72 overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
+            <JsonCode value={dialog.request.rawInput} />
+          </pre>
+        </div>
+        <div>
+          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Options</div>
+          <div className="space-y-2">
+            {dialog.request.options.length === 0 ? (
+              <EmptyState text="No options provided." compact />
+            ) : (
+              dialog.request.options.map((option, index) => {
+                const optionId = permissionOptionId(option, index);
+                return (
+                  <label key={optionId} className="permission-option">
+                    <input
+                      type="radio"
+                      name="permission-option"
+                      checked={dialog.selectedOptionId === optionId}
+                      onChange={() => onSelect(optionId)}
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold">{option.name ?? option.optionId ?? option.kind ?? optionId}</span>
+                      <span className="block truncate text-muted-foreground">{option.kind ?? optionId}</span>
+                    </span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button className="btn-danger" onClick={onCancel}>
+          <X size={16} />
+          Cancel
+        </button>
+        <button className="btn-primary" onClick={onSubmit} disabled={!dialog.selectedOptionId}>
+          <Send size={16} />
+          Send Decision
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function ModalFrame({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-panel" role="dialog" aria-modal="true" aria-labelledby="acp-modal-title">
+        <div className="mb-4 border-b border-border pb-3">
+          <h2 id="acp-modal-title" className="text-base font-semibold">{title}</h2>
+          {subtitle && <p className="mt-1 break-words text-sm text-muted-foreground">{subtitle}</p>}
+        </div>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -1147,6 +1463,34 @@ function buildActionSummaries(actions: GuiActionDefinition[]) {
     description: action.description,
     input_schema: parseJsonOrFallback(action.inputSchemaText, { type: "object", properties: {} }),
   }));
+}
+
+function requestMcpServersToRequest(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function requestMcpServersToAgentConfig(value: unknown): unknown[] {
+  return requestMcpServersToRequest(value).map((entry) => {
+    if (isRecord(entry) && typeof entry.name === "string") {
+      return entry.name;
+    }
+    return entry;
+  });
+}
+
+function selectInitialPermissionOption(options: PermissionOption[]): PermissionOption | undefined {
+  return options.find((option) => option.kind === "allow_once")
+    ?? options.find((option) => option.kind === "allow_always")
+    ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("allow"))
+    ?? options[0];
+}
+
+function permissionOptionId(option: PermissionOption, index: number): string {
+  return option.optionId ?? option.name ?? option.kind ?? `option-${index}`;
+}
+
+function isCallToolResult(value: unknown): value is CallToolResult {
+  return isRecord(value) && Array.isArray(value.content);
 }
 
 function actionToDetail(action: GuiActionDefinition) {

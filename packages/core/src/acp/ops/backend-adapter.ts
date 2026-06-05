@@ -93,6 +93,18 @@ const BUILTIN_ACP_BACKENDS: Record<string, AcpBackendTemplate> = {
     command: "opencode",
     args: ["acp"],
   },
+  OPENCLAW: {
+    id: "openclaw",
+    registryId: "openclaw",
+    command: "openclaw",
+    args: ["acp"],
+  },
+  OPENCLAW_ACP: {
+    id: "openclaw",
+    registryId: "openclaw",
+    command: "openclaw",
+    args: ["acp"],
+  },
   QWEN_CODE: {
     id: "qwen-code",
     registryId: "qwen-code",
@@ -309,6 +321,8 @@ interface AcpBackendProcess {
   child: ChildProcessWithoutNullStreams;
   command: string;
   args: string[];
+  cwd: string;
+  cwdExists: boolean;
   stdoutTransform: Transform;
   stderr: RingBuffer;
   claudeConfigDir?: string;
@@ -1048,6 +1062,8 @@ async function spawnBackendProcess(
     child,
     command: resolvedCommand.command,
     args,
+    cwd: context.cwd,
+    cwdExists: fs.existsSync(context.cwd),
     stdoutTransform,
     stderr,
     claudeConfigDir: definition.env.CLAUDE_CONFIG_DIR,
@@ -1122,6 +1138,8 @@ function addProcessDiagnostics(error: unknown, processHandle: AcpBackendProcess,
   diagnostic.signal = diagnostic.signal ?? processHandle.child.signalCode ?? undefined;
   diagnostic.command = diagnostic.command ?? processHandle.command;
   diagnostic.args = diagnostic.args ?? processHandle.args;
+  diagnostic.cwd = diagnostic.cwd ?? processHandle.cwd;
+  diagnostic.cwdExists = diagnostic.cwdExists ?? processHandle.cwdExists;
   diagnostic.claudeConfigDir = diagnostic.claudeConfigDir ?? processHandle.claudeConfigDir;
   diagnostic.resolution = diagnostic.resolution ?? processHandle.resolutionDiagnostics;
   diagnostic.hint = diagnostic.hint ?? createBackendFailureHint(processHandle);
@@ -1133,6 +1151,13 @@ function createBackendError(message: string, processHandle: AcpBackendProcess): 
 }
 
 function createSpawnFailureMessage(definition: AcpBackendDefinition, processHandle: AcpBackendProcess): string {
+  if (!processHandle.cwdExists) {
+    return [
+      "Failed to start ACP backend.",
+      `Working directory does not exist: ${processHandle.cwd}.`,
+      "If the path came from a client, pass an absolute path or a path beginning with ~/ so Viben can expand it before spawning the backend.",
+    ].join(" ");
+  }
   if (definition.registryId === "claude-acp" && processHandle.command === OFFICIAL_CLAUDE_ACP_COMMAND) {
     return [
       "Failed to start Claude ACP backend.",
@@ -1144,10 +1169,20 @@ function createSpawnFailureMessage(definition: AcpBackendDefinition, processHand
 }
 
 function createBackendFailureHint(processHandle: AcpBackendProcess): string | undefined {
+  if (!processHandle.cwdExists) {
+    return `Create the working directory or pass an existing cwd. Current cwd resolved to: ${processHandle.cwd}`;
+  }
   const resolution = processHandle.resolutionDiagnostics;
   if (resolution?.installHint) return resolution.installHint;
   if (processHandle.command === OFFICIAL_CLAUDE_ACP_COMMAND) {
     return "Install @agentclientprotocol/claude-agent-acp or ensure claude-agent-acp is on PATH for the gateway process.";
+  }
+  if (resolution && !resolution.localBinExists && !path.isAbsolute(processHandle.command)) {
+    return [
+      `Install the ACP backend command "${processHandle.command}",`,
+      "ensure it is on PATH for the gateway process,",
+      "or configure agent_config.executor_config.command with an absolute command path.",
+    ].join(" ");
   }
   return undefined;
 }

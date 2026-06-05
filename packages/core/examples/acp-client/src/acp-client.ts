@@ -91,6 +91,8 @@ export interface AcpClientCallbacks {
   onClientToolCall: (call: ClientToolCall) => void;
   onPermissionRequest: (request: PermissionRequestLog) => void;
   executeClientTool?: (request: ClientToolExecutionRequest) => Promise<CallToolResult> | CallToolResult;
+  requestClientToolResult?: (request: ClientToolExecutionRequest, draft: CallToolResult) => Promise<CallToolResult>;
+  requestPermissionDecision?: (request: PermissionDecisionRequest) => Promise<PermissionDecisionResult>;
   onStatus: (status: ConnectionStatus) => void;
   onError: (message: string) => void;
 }
@@ -104,6 +106,25 @@ export interface ClientToolExecutionRequest {
   input: unknown;
 }
 
+export interface PermissionDecisionRequest {
+  sessionId: string;
+  toolCallId: string;
+  title: string;
+  options: PermissionOption[];
+  rawInput: unknown;
+}
+
+export interface PermissionOption {
+  optionId?: string;
+  kind?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+export type PermissionDecisionResult =
+  | { outcome: "selected"; optionId: string }
+  | { outcome: "cancelled" };
+
 export interface CallToolResult {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
@@ -115,7 +136,8 @@ export interface AgentConfigPayload {
   model?: string;
   permission_mode?: string;
   append_prompt?: string;
-  mcp_servers?: string[];
+  mcp_servers?: unknown[];
+  executor_config?: Record<string, unknown>;
 }
 
 export interface SessionCreateParams {
@@ -258,6 +280,14 @@ export class AcpWebSocketClient {
     });
   }
 
+  listSessions(): Promise<unknown> {
+    return this.request("session/list", {});
+  }
+
+  closeSession(sessionId: string): Promise<unknown> {
+    return this.request("unstable_closeSession", { sessionId });
+  }
+
   cancel(sessionId: string): void {
     this.notify("session/cancel", { sessionId });
   }
@@ -356,12 +386,16 @@ export class AcpWebSocketClient {
       const toolUseId = params?.toolUseId ?? "unknown id";
       const sessionId = params?.sessionId ?? "unknown session";
       const input = params?.input ?? null;
-      const result = await this.executeClientTool({
+      const request = {
         sessionId,
         toolName,
         toolUseId,
         input,
-      });
+      };
+      const draft = await this.executeClientTool(request);
+      const result = this.callbacks.requestClientToolResult
+        ? await this.callbacks.requestClientToolResult(request, draft)
+        : draft;
       const response: JsonRpcSuccess = { jsonrpc: "2.0", id: frame.id, result };
       this.recordTraffic("out", response, frame.method);
       this.send(response);
@@ -386,17 +420,25 @@ export class AcpWebSocketClient {
           title?: string;
           rawInput?: unknown;
         };
-        options?: Array<{ optionId?: string; kind?: string; name?: string }>;
+        options?: PermissionOption[];
       };
-      const selected = selectPermissionOption(params.options ?? []);
+      const request: PermissionDecisionRequest = {
+        sessionId: params.sessionId ?? "unknown session",
+        toolCallId: params.toolCall?.toolCallId ?? "unknown tool call",
+        title: params.toolCall?.title ?? "Permission request",
+        options: params.options ?? [],
+        rawInput: params.toolCall?.rawInput ?? null,
+      };
+      const decision = this.callbacks.requestPermissionDecision
+        ? await this.callbacks.requestPermissionDecision(request)
+        : selectPermissionOption(request.options);
       const response: JsonRpcSuccess = {
         jsonrpc: "2.0",
         id: frame.id,
         result: {
-          outcome: {
-            outcome: "selected",
-            optionId: selected.optionId,
-          },
+          outcome: decision.outcome === "cancelled"
+            ? { outcome: "cancelled" }
+            : { outcome: "selected", optionId: decision.optionId },
         },
       };
       this.recordTraffic("out", response, frame.method);
@@ -404,12 +446,12 @@ export class AcpWebSocketClient {
       this.callbacks.onPermissionRequest({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         at: new Date().toISOString(),
-        sessionId: params.sessionId ?? "unknown session",
-        toolCallId: params.toolCall?.toolCallId ?? "unknown tool call",
-        title: params.toolCall?.title ?? "Permission request",
-        selectedOptionId: selected.optionId,
-        options: params.options ?? [],
-        rawInput: params.toolCall?.rawInput ?? null,
+        sessionId: request.sessionId,
+        toolCallId: request.toolCallId,
+        title: request.title,
+        selectedOptionId: decision.outcome === "selected" ? decision.optionId : "cancelled",
+        options: request.options,
+        rawInput: request.rawInput,
       });
       return;
     }
@@ -587,10 +629,10 @@ function readGuiAction(input: unknown): string | undefined {
   return typeof action === "string" ? action : undefined;
 }
 
-function selectPermissionOption(options: Array<{ optionId?: string; kind?: string; name?: string }>): { optionId: string } {
+function selectPermissionOption(options: PermissionOption[]): PermissionDecisionResult {
   const selected = options.find((option) => option.kind === "allow_always")
     ?? options.find((option) => option.kind === "allow_once")
     ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("allow"))
     ?? options[0];
-  return { optionId: selected?.optionId ?? selected?.name ?? "allow" };
+  return { outcome: "selected", optionId: selected?.optionId ?? selected?.name ?? "allow" };
 }

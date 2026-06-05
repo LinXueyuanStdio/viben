@@ -10,13 +10,43 @@ The UI is adapted from the OpenACP dashboard shape, but targets Viben's ACP rout
 
 - `initialize`
 - `session/new`
+- `session/load`
+- `session/list`
 - `session/prompt`
 - `session/cancel`
+- `unstable_closeSession`
 - `session/update` stream rendering
 - `_viben/client_tool_call` responses for client-side tools
 - client-side tool call history with echoed input/result payloads
 - `GUI_execute` simulation with editable actions
+- backend selection through `agent_config.executor_type`, including `OPENCLAW`
+- request-level `mcpServers` and inline `agent_config.mcp_servers`
 - JSON-RPC traffic inspection
+
+## ACP Backends
+
+The backend selector writes `agent_config.executor_type` into `session/new` and
+`session/load`. Useful values:
+
+- `CLAUDE_CODE` -> official Claude ACP package or `claude-agent-acp`
+- `OPENCLAW` -> `openclaw acp`
+- `OPENCODE` -> `opencode acp`
+- `CODEX` -> `npx @zed-industries/codex-acp`
+- `GEMINI` -> `npx @google/gemini-cli --acp`
+
+Use the Executor Config JSON field to override the backend command if needed:
+
+```json
+{
+  "command": "/absolute/path/to/custom-acp-backend",
+  "args": [],
+  "init_timeout_ms": 120000
+}
+```
+
+The Request MCP Servers JSON field is sent as ACP `mcpServers`. The inline agent
+config also includes `mcp_servers: ["gui_action"]` so backend agents can call the
+GUI action bridge exposed by Viben.
 
 ## GUI_execute Actions
 

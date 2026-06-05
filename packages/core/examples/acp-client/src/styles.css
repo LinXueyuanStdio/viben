@@ -256,3 +256,42 @@ pre code.json-code {
   color: var(--color-muted-foreground);
   font-weight: 700;
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklch, var(--color-foreground) 42%, transparent);
+  padding: 20px;
+}
+
+.modal-panel {
+  width: min(920px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: 0 24px 80px color-mix(in oklch, var(--color-foreground) 22%, transparent);
+  padding: 20px;
+}
+
+.permission-option {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  border-radius: 7px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.permission-option:has(input:checked) {
+  border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-border));
+  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-card));
+}
