@@ -76,6 +76,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 | 可观测性 | `/api/telemetry` | [telemetry.md](./telemetry.md) |
 | 事件流 | `/api/events` | [events.md](./events.md) |
 | WebSocket | `/ws`, `/terminal/ws` | [websocket.md](./websocket.md) |
+| ACP WebSocket | `/ws/agent/acp` | [acp.md](./acp.md) |
 
 ## 工作空间作用域
 
