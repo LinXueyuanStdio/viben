@@ -1,11 +1,55 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, FileQuestion } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { platform } from "@tauri-apps/plugin-os";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CornerUpRight,
+  FileQuestion,
+  Loader2,
+  MoreHorizontal,
+  MonitorUp,
+  RefreshCw,
+} from "lucide-react";
+import {
+  BrowserTabFrame,
+  BrowserTabFrameIconButton,
+  BrowserTabFrameTab,
+} from "@/components/browser-tab-frame";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { IconDisplay } from "@/components/ui/icon-picker";
 import { PagePreview } from "./components";
 import type { PageViewMode } from "./components/page-preview";
 import { usePage } from "@/hooks/use-pages";
+import { toast } from "@/hooks/use-toast";
 import { useVitePreview } from "@/hooks/use-vite-preview";
-import type { ServerPageConfig } from "@/lib/gateway/types/page";
+import { useTheme } from "@/hooks/use-theme";
+import { getGatewayUrl } from "@/lib/gateway/config";
+import type { PageConfig, ProxyPageConfig, ServerPageConfig } from "@/lib/gateway/types/page";
 import { cn } from "@/lib/utils";
 
 function getSearchParam(name: string): string | undefined {
@@ -17,8 +61,50 @@ function normalizeViewMode(value: string | undefined): PageViewMode {
   return value === "skill" ? "skill" : "page";
 }
 
+function getStaticPageServeUrl(
+  workspacePath: string,
+  slug: string,
+  theme: string
+): string {
+  const params = new URLSearchParams({
+    workspace_path: workspacePath,
+    slug,
+    theme,
+  });
+  return `${getGatewayUrl()}/api/page/serve?${params.toString()}`;
+}
+
+function getPreviewExternalUrl({
+  page,
+  workspacePath,
+  viewMode,
+  resolvedTheme,
+  livePreviewUrl,
+}: {
+  page: PageConfig;
+  workspacePath: string;
+  viewMode: PageViewMode;
+  resolvedTheme: string;
+  livePreviewUrl?: string | null;
+}): string {
+  if (viewMode === "skill" || page.type === "markdown") {
+    return window.location.href;
+  }
+
+  if (page.type === "proxy") {
+    return (page as ProxyPageConfig).url;
+  }
+
+  if (page.type === "server") {
+    return livePreviewUrl ?? window.location.href;
+  }
+
+  return getStaticPageServeUrl(workspacePath, page.slug, resolvedTheme);
+}
+
 export function PagePreviewWindow() {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const workspaceId = getSearchParam("workspace_id");
   const workspacePath = getSearchParam("workspace_path");
   const slug = getSearchParam("slug");
@@ -27,7 +113,9 @@ export function PagePreviewWindow() {
     []
   );
   const [viewMode] = useState<PageViewMode>(initialViewMode);
-  const [iframeKey] = useState(0);
+  const [iframeKey, setIframeKey] = useState(0);
+  const [isMacOS, setIsMacOS] = useState(false);
+  const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] = useState(false);
 
   const {
     data: page,
@@ -48,6 +136,51 @@ export function PagePreviewWindow() {
     stopPreview,
   } = useVitePreview(pageId);
 
+  useEffect(() => {
+    let mounted = true;
+    let unlisten: (() => void) | null = null;
+
+    const detectPlatform = async () => {
+      try {
+        if (!mounted) return;
+
+        const isMac = platform() === "macos";
+        setIsMacOS(isMac);
+
+        const appWindow = getCurrentWindow();
+
+        if (!isMac) {
+          setShouldReserveMacOSControlsSpace(false);
+          return;
+        }
+
+        const updateWindowState = async () => {
+          const isFullscreen = await appWindow.isFullscreen();
+          if (mounted) {
+            setShouldReserveMacOSControlsSpace(!isFullscreen);
+          }
+        };
+
+        await updateWindowState();
+        unlisten = await appWindow.onResized(() => {
+          void updateWindowState();
+        });
+      } catch {
+        setIsMacOS(false);
+        setShouldReserveMacOSControlsSpace(false);
+      }
+    };
+
+    void detectPlatform();
+
+    return () => {
+      mounted = false;
+      if (unlisten) {
+        unlisten();
+      }
+    };
+  }, []);
+
   const handleStartLivePreview = useCallback(() => {
     if (!workspacePath || !page) return;
     const pageDir = `${workspacePath}/pages/${page.slug}`;
@@ -61,6 +194,52 @@ export function PagePreviewWindow() {
       : undefined;
     startPreview(pageDir, options);
   }, [page, startPreview, workspacePath]);
+
+  const externalUrl = useMemo(() => {
+    if (!workspacePath || !page) return null;
+    return getPreviewExternalUrl({
+      page,
+      workspacePath,
+      viewMode,
+      resolvedTheme,
+      livePreviewUrl: previewUrl,
+    });
+  }, [previewUrl, page, resolvedTheme, viewMode, workspacePath]);
+
+  const handleRefresh = useCallback(() => {
+    setIframeKey((key) => key + 1);
+    if (page?.type === "server" && previewStatus !== "running") {
+      handleStartLivePreview();
+    }
+  }, [handleStartLivePreview, page?.type, previewStatus]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!externalUrl) return;
+    try {
+      await navigator.clipboard.writeText(externalUrl);
+      toast.success(t("pageSection.linkCopied", "Link copied to clipboard"));
+    } catch (error) {
+      console.error("Failed to copy preview link:", error);
+      toast.error(t("common.copyFailed", "Failed to copy"));
+    }
+  }, [externalUrl, t]);
+
+  const handleOpenExternal = useCallback(async () => {
+    if (!externalUrl) return;
+    try {
+      await openUrl(externalUrl);
+    } catch {
+      window.open(externalUrl, "_blank");
+    }
+  }, [externalUrl]);
+
+  const handleCloseWindow = useCallback(async () => {
+    try {
+      await getCurrentWindow().close();
+    } catch (error) {
+      console.error("Failed to close preview window:", error);
+    }
+  }, []);
 
   if (!workspaceId || !workspacePath || !slug) {
     return (
@@ -96,7 +275,17 @@ export function PagePreviewWindow() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
+      <PagePreviewWindowTabBar
+        page={page}
+        isMacOS={isMacOS}
+        reserveMacOSControlsSpace={shouldReserveMacOSControlsSpace}
+        canOpenExternal={!!externalUrl}
+        onRefresh={handleRefresh}
+        onCopyLink={() => void handleCopyLink()}
+        onOpenExternal={() => void handleOpenExternal()}
+        onCloseTab={() => void handleCloseWindow()}
+      />
       <PagePreview
         page={page}
         workspacePath={workspacePath}
@@ -108,9 +297,298 @@ export function PagePreviewWindow() {
         livePreviewError={previewError}
         onStartLivePreview={handleStartLivePreview}
         onStopLivePreview={stopPreview}
-        className="h-full"
+        className="min-h-0 flex-1"
       />
     </div>
+  );
+}
+
+function PagePreviewWindowTabBar({
+  page,
+  isMacOS,
+  reserveMacOSControlsSpace,
+  canOpenExternal,
+  onRefresh,
+  onCopyLink,
+  onOpenExternal,
+  onCloseTab,
+}: {
+  page: PageConfig;
+  isMacOS: boolean;
+  reserveMacOSControlsSpace: boolean;
+  canOpenExternal: boolean;
+  onRefresh: () => void;
+  onCopyLink: () => void;
+  onOpenExternal: () => void;
+  onCloseTab: () => void;
+}) {
+  const { t } = useTranslation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const tabIcon = page.icon ? (
+    <IconDisplay icon={page.icon} size="sm" className="text-muted-foreground" />
+  ) : (
+    <IconDisplay icon={{ type: "lucide", value: "file-text" }} size="sm" className="text-muted-foreground" />
+  );
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div>
+          <BrowserTabFrame
+            isMacOS={isMacOS}
+            reserveMacOSControlsSpace={reserveMacOSControlsSpace}
+            leadingControls={
+              <>
+                <BrowserTabFrameIconButton
+                  aria-label={t("common.back", "Go Back")}
+                  tooltip={t("common.back", "Go Back")}
+                  icon={<ChevronLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  disabled
+                  isMacOS={isMacOS}
+                />
+                <BrowserTabFrameIconButton
+                  aria-label={t("common.forward", "Go Forward")}
+                  tooltip={t("common.forward", "Go Forward")}
+                  icon={<ChevronRight className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  disabled
+                  isMacOS={isMacOS}
+                />
+                <BrowserTabFrameIconButton
+                  aria-label={t("common.refresh", "Refresh")}
+                  tooltip={t("common.refresh", "Refresh")}
+                  icon={<RefreshCw className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  onClick={onRefresh}
+                  isMacOS={isMacOS}
+                />
+              </>
+            }
+            tabs={
+              <BrowserTabFrameTab
+                label={page.name || page.slug}
+                icon={tabIcon}
+                active
+                closable
+                onClose={onCloseTab}
+              />
+            }
+            rightControls={
+              <>
+                <BrowserTabFrameIconButton
+                  aria-label={t("page.openExternal", "Open in Browser")}
+                  tooltip={t("page.openExternal", "Open in Browser")}
+                  icon={<MonitorUp className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  onClick={onOpenExternal}
+                  disabled={!canOpenExternal}
+                  isMacOS={isMacOS}
+                />
+                <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t("common.more", "More")}
+                      className={cn(
+                        "inline-flex shrink-0 items-center justify-center rounded-md",
+                        "text-muted-foreground transition-colors duration-150",
+                        "hover:bg-accent hover:text-accent-foreground",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        menuOpen && "bg-accent text-accent-foreground",
+                        isMacOS ? "h-6 w-6" : "h-7 w-7"
+                      )}
+                    >
+                      <MoreHorizontal className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <PreviewDropdownMenuItems
+                      canOpenExternal={canOpenExternal}
+                      onRefresh={onRefresh}
+                      onCopyLink={onCopyLink}
+                      onOpenExternal={onOpenExternal}
+                      onCloseTab={onCloseTab}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
+          />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-64">
+        <PreviewContextMenuItems
+          canOpenExternal={canOpenExternal}
+          onRefresh={onRefresh}
+          onCopyLink={onCopyLink}
+          onOpenExternal={onOpenExternal}
+          onCloseTab={onCloseTab}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+function PreviewDropdownMenuItems({
+  canOpenExternal,
+  onRefresh,
+  onCopyLink,
+  onOpenExternal,
+  onCloseTab,
+}: {
+  canOpenExternal: boolean;
+  onRefresh: () => void;
+  onCopyLink: () => void;
+  onOpenExternal: () => void;
+  onCloseTab: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <DropdownMenuItem onClick={onRefresh}>
+        {t("common.refresh", "Refresh")}
+        <DropdownMenuShortcut>⌘R</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={onCopyLink}>
+        {t("tabBar.copyLink", "Copy Link")}
+      </DropdownMenuItem>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          {t("pagePreview.textSize", "Adjust Text Size")}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-52">
+          <DropdownMenuItem>
+            <Check className="mr-2 h-4 w-4" />
+            {t("pagePreview.actualSize", "Actual Size")}
+            <DropdownMenuShortcut>⌘0</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled>
+            <span className="mr-6" />
+            {t("pagePreview.zoomIn", "Zoom In")}
+            <DropdownMenuShortcut>⌘+</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled>
+            <span className="mr-6" />
+            {t("pagePreview.zoomOut", "Zoom Out")}
+            <DropdownMenuShortcut>⌘-</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuItem disabled>
+        {t("common.find", "Find...")}
+        <DropdownMenuShortcut>⌘F</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled>
+        {t("common.print", "Print")}
+        <DropdownMenuShortcut>⌘P</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem disabled>
+        <CornerUpRight className="mr-2 h-4 w-4" />
+        {t("common.forward", "Forward")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={onOpenExternal} disabled={!canOpenExternal}>
+        {t("page.openExternalDefault", "Open with Default Browser")}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem disabled>
+        {t("pagePreview.history", "History")}
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled>
+        {t("pagePreview.downloads", "Downloads")}
+        <DropdownMenuShortcut>⌥⌘L</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={onCloseTab}>
+        {t("tabBar.closeAllTabs", "Close All Tabs")}
+        <DropdownMenuShortcut>⌥⌘W</DropdownMenuShortcut>
+      </DropdownMenuItem>
+      <DropdownMenuItem disabled>
+        {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+        <DropdownMenuShortcut>⌘⇧T</DropdownMenuShortcut>
+      </DropdownMenuItem>
+    </>
+  );
+}
+
+function PreviewContextMenuItems({
+  canOpenExternal,
+  onRefresh,
+  onCopyLink,
+  onOpenExternal,
+  onCloseTab,
+}: {
+  canOpenExternal: boolean;
+  onRefresh: () => void;
+  onCopyLink: () => void;
+  onOpenExternal: () => void;
+  onCloseTab: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <ContextMenuItem onClick={onRefresh}>
+        {t("common.refresh", "Refresh")}
+        <ContextMenuShortcut>⌘R</ContextMenuShortcut>
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onCopyLink}>
+        {t("tabBar.copyLink", "Copy Link")}
+      </ContextMenuItem>
+      <ContextMenuSub>
+        <ContextMenuSubTrigger>
+          {t("pagePreview.textSize", "Adjust Text Size")}
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent className="w-52">
+          <ContextMenuItem>
+            <Check className="mr-2 h-4 w-4" />
+            {t("pagePreview.actualSize", "Actual Size")}
+            <ContextMenuShortcut>⌘0</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem disabled>
+            <span className="mr-6" />
+            {t("pagePreview.zoomIn", "Zoom In")}
+            <ContextMenuShortcut>⌘+</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem disabled>
+            <span className="mr-6" />
+            {t("pagePreview.zoomOut", "Zoom Out")}
+            <ContextMenuShortcut>⌘-</ContextMenuShortcut>
+          </ContextMenuItem>
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+      <ContextMenuItem disabled>
+        {t("common.find", "Find...")}
+        <ContextMenuShortcut>⌘F</ContextMenuShortcut>
+      </ContextMenuItem>
+      <ContextMenuItem disabled>
+        {t("common.print", "Print")}
+        <ContextMenuShortcut>⌘P</ContextMenuShortcut>
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem disabled>
+        <CornerUpRight className="mr-2 h-4 w-4" />
+        {t("common.forward", "Forward")}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={onOpenExternal} disabled={!canOpenExternal}>
+        {t("page.openExternalDefault", "Open with Default Browser")}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem disabled>
+        {t("pagePreview.history", "History")}
+      </ContextMenuItem>
+      <ContextMenuItem disabled>
+        {t("pagePreview.downloads", "Downloads")}
+        <ContextMenuShortcut>⌥⌘L</ContextMenuShortcut>
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onCloseTab}>
+        {t("tabBar.closeAllTabs", "Close All Tabs")}
+        <ContextMenuShortcut>⌥⌘W</ContextMenuShortcut>
+      </ContextMenuItem>
+      <ContextMenuItem disabled>
+        {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
+        <ContextMenuShortcut>⌘⇧T</ContextMenuShortcut>
+      </ContextMenuItem>
+    </>
   );
 }
 

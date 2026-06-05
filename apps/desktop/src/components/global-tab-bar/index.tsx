@@ -13,6 +13,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Plus, PanelLeftClose, PanelLeft } from "lucide-react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { platform } from "@tauri-apps/plugin-os";
 import { useUiStore } from "@/stores";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -43,9 +45,9 @@ import { IconDisplay } from "@/components/ui/icon-picker";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { BrowserTabFrame } from "@/components/browser-tab-frame";
 import { cn } from "@/lib/utils";
 import { useTabList, useActiveTabState, useTabActions, useTabNavigation } from "@/hooks/use-page-tabs";
 import { useTabStore } from "@/stores/tab-store";
@@ -73,11 +75,6 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
     const detectPlatform = async () => {
       try {
-        const [{ platform }, { getCurrentWindow }] = await Promise.all([
-          import("@tauri-apps/plugin-os"),
-          import("@tauri-apps/api/window"),
-        ]);
-
         if (!mounted) return;
 
         const isMac = platform() === "macos";
@@ -364,42 +361,32 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const tabIds = tabs.map((t) => t.id);
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div
-        className={cn(
-          "flex items-center border-b bg-muted/30",
-          isMacOS ? "h-8" : "h-10",
-          className
-        )}
-      >
-        {/* Left side: macOS traffic light space + Sidebar toggle + Navigation buttons */}
-        <div
-          data-tauri-drag-region
-          className={cn(
-            "flex items-center gap-1 px-2 shrink-0",
-            shouldReserveMacOSControlsSpace && "pl-20"
-          )}
-        >
-          {/* Sidebar toggle button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
-                onClick={toggleSidebar}
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                ) : (
-                  <PanelLeftClose className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              {sidebarCollapsed ? t("sidebar.expand", "Expand sidebar") : t("sidebar.collapse", "Collapse sidebar")}
-            </TooltipContent>
-          </Tooltip>
+    <BrowserTabFrame
+      isMacOS={isMacOS}
+      reserveMacOSControlsSpace={shouldReserveMacOSControlsSpace}
+      className={className}
+      leadingControls={
+        <>
+        {/* Sidebar toggle button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+              onClick={toggleSidebar}
+            >
+              {sidebarCollapsed ? (
+                <PanelLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+              ) : (
+                <PanelLeftClose className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {sidebarCollapsed ? t("sidebar.expand", "Expand sidebar") : t("sidebar.collapse", "Collapse sidebar")}
+          </TooltipContent>
+        </Tooltip>
 
           {/* Back button */}
           <ContextMenu>
@@ -518,15 +505,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               )}
             </ContextMenuContent>
           </ContextMenu>
-        </div>
+        </>
+      }
+      tabs={
+        <>
+          {/* Separator between nav and tabs */}
+          {tabs.length > 0 && (
+            <div className="mx-1 h-5 w-px shrink-0 bg-border/50" />
+          )}
 
-        {/* Separator between nav and tabs */}
-        {tabs.length > 0 && (
-          <div className="h-5 w-px bg-border/50 mx-1 shrink-0" />
-        )}
-
-        {/* Tabs with drag-and-drop */}
-        <div className="flex items-center gap-1 px-1 overflow-x-auto scrollbar-none">
+          {/* Tabs with drag-and-drop */}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -566,7 +554,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                 const dragTab = tabs.find((t) => t.id === activeId);
                 if (!dragTab) return null;
                 return (
-                  <div className="flex items-center gap-1.5 px-2 h-7 rounded-md bg-background text-foreground shadow-lg ring-1 ring-border/50 text-[13px] max-w-[180px]">
+                  <div className="flex max-w-[180px] items-center gap-1.5 rounded-md bg-background px-2 h-7 text-[13px] text-foreground shadow-lg ring-1 ring-border/50">
                     {dragTab.icon && <IconDisplay icon={dragTab.icon} size="sm" className="shrink-0" />}
                     {!dragTab.pinned && (
                       <span className="truncate">{dragTab.titleKey ? t(dragTab.titleKey, dragTab.label) : dragTab.label}</span>
@@ -593,15 +581,12 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
               {t("common.newTab", "New Tab")}
             </TooltipContent>
           </Tooltip>
-        </div>
-
-        {/* Spacer: drag region for window dragging + empty-space context menu */}
+        </>
+      }
+      spacerMenu={
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <div
-              data-tauri-drag-region
-              className="flex-1 self-stretch"
-            />
+            <div className="h-full w-full" />
           </ContextMenuTrigger>
           <ContextMenuContent className="w-52">
             <ContextMenuItem onClick={handleNewTab}>
@@ -616,13 +601,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-
-        {/* Right side: Window Controls only */}
-        <div className="flex items-center shrink-0">
-          <WindowControls />
-        </div>
-      </div>
-    </TooltipProvider>
+      }
+      windowControls={<WindowControls />}
+    />
   );
 }
 
