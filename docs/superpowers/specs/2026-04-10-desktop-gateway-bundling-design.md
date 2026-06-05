@@ -4,7 +4,7 @@
 
 ## 问题背景
 
-当前桌面端 (`apps/desktop`) 依赖用户系统已安装的 `viben` CLI 来启动 Gateway 服务。用户下载安装桌面端后，必须先执行 `npm install -g @viben/cli` 才能使用，这破坏了开箱即用的体验。
+当前桌面端 (`apps/desktop`) 依赖用户系统已安装的 `viben` CLI 来启动 Gateway 服务。用户下载安装桌面端后，必须先执行 `npm install -g viben` 才能使用，这破坏了开箱即用的体验。
 
 ## 目标
 

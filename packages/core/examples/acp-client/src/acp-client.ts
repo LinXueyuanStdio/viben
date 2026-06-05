@@ -72,6 +72,15 @@ export interface PermissionRequestLog {
   rawInput: unknown;
 }
 
+export interface ElicitationRequestLog {
+  id: string;
+  at: string;
+  sessionId: string;
+  message: string;
+  action: unknown;
+  rawInput: unknown;
+}
+
 export interface AcpSessionUpdate {
   sessionId: string;
   update: {
@@ -90,9 +99,11 @@ export interface AcpClientCallbacks {
   onSessionUpdate: (update: AcpSessionUpdate) => void;
   onClientToolCall: (call: ClientToolCall) => void;
   onPermissionRequest: (request: PermissionRequestLog) => void;
+  onElicitationRequest: (request: ElicitationRequestLog) => void;
   executeClientTool?: (request: ClientToolExecutionRequest) => Promise<CallToolResult> | CallToolResult;
   requestClientToolResult?: (request: ClientToolExecutionRequest, draft: CallToolResult) => Promise<CallToolResult>;
   requestPermissionDecision?: (request: PermissionDecisionRequest) => Promise<PermissionDecisionResult>;
+  requestElicitationResponse?: (request: ElicitationRequest) => Promise<ElicitationResponse>;
   onStatus: (status: ConnectionStatus) => void;
   onError: (message: string) => void;
 }
@@ -124,6 +135,44 @@ export interface PermissionOption {
 export type PermissionDecisionResult =
   | { outcome: "selected"; optionId: string }
   | { outcome: "cancelled" };
+
+export interface ElicitationRequest {
+  sessionId: string;
+  message: string;
+  mode: "form" | "url";
+  requestedSchema?: ElicitationSchema;
+  elicitationId?: string;
+  url?: string;
+  rawInput: unknown;
+}
+
+export interface ElicitationSchema {
+  title?: string | null;
+  description?: string | null;
+  type?: "object";
+  properties?: Record<string, ElicitationPropertySchema>;
+  required?: string[] | null;
+}
+
+export interface ElicitationPropertySchema {
+  type?: "string" | "number" | "integer" | "boolean" | "array";
+  title?: string | null;
+  description?: string | null;
+  default?: string | number | boolean | string[] | null;
+  enum?: string[] | null;
+  oneOf?: Array<{ const: string; title: string }> | null;
+  items?: {
+    enum?: string[];
+    anyOf?: Array<{ const: string; title: string }>;
+  };
+}
+
+export type ElicitationContentValue = string | number | boolean | string[];
+
+export type ElicitationResponse =
+  | { action: { action: "accept"; content?: Record<string, ElicitationContentValue> | null } }
+  | { action: { action: "decline" } }
+  | { action: { action: "cancel" } };
 
 export interface CallToolResult {
   content: Array<{ type: "text"; text: string }>;
@@ -240,6 +289,10 @@ export class AcpWebSocketClient {
           writeTextFile: false,
         },
         terminal: false,
+        elicitation: {
+          form: {},
+          url: {},
+        },
         _vibenClientTools: {
           enabled: true,
           tools: ["GUI_execute", "mcp__gui_action__GUI_execute"],
@@ -392,6 +445,16 @@ export class AcpWebSocketClient {
         toolUseId,
         input,
       };
+      this.callbacks.onClientToolCall({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        at: new Date().toISOString(),
+        sessionId,
+        toolName,
+        toolUseId,
+        action: readGuiAction(input),
+        input,
+        result: { pending: true },
+      });
       const draft = await this.executeClientTool(request);
       const result = this.callbacks.requestClientToolResult
         ? await this.callbacks.requestClientToolResult(request, draft)
@@ -451,6 +514,41 @@ export class AcpWebSocketClient {
         title: request.title,
         selectedOptionId: decision.outcome === "selected" ? decision.optionId : "cancelled",
         options: request.options,
+        rawInput: request.rawInput,
+      });
+      return;
+    }
+
+    if (frame.method === "session/elicitation") {
+      const params = frame.params as {
+        sessionId?: string;
+        message?: string;
+        mode?: "form" | "url";
+        requestedSchema?: ElicitationSchema;
+        elicitationId?: string;
+        url?: string;
+      };
+      const request: ElicitationRequest = {
+        sessionId: params.sessionId ?? "unknown session",
+        message: params.message ?? "Agent needs input",
+        mode: params.mode === "url" ? "url" : "form",
+        requestedSchema: params.requestedSchema,
+        elicitationId: params.elicitationId,
+        url: params.url,
+        rawInput: frame.params ?? null,
+      };
+      const result = this.callbacks.requestElicitationResponse
+        ? await this.callbacks.requestElicitationResponse(request)
+        : { action: { action: "cancel" as const } };
+      const response: JsonRpcSuccess = { jsonrpc: "2.0", id: frame.id, result };
+      this.recordTraffic("out", response, frame.method);
+      this.send(response);
+      this.callbacks.onElicitationRequest({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        at: new Date().toISOString(),
+        sessionId: request.sessionId,
+        message: request.message,
+        action: result.action,
         rawInput: request.rawInput,
       });
       return;

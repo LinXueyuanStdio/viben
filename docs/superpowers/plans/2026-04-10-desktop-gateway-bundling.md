@@ -758,7 +758,7 @@ Add after the Configuration Card section (before the closing `</div>`):
       </div>
     ) : vibenClis.length === 0 ? (
       <div className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-        {t("settings.noVibenFound", "未检测到 Viben CLI，请手动指定路径或安装: npm install -g @viben/cli")}
+        {t("settings.noVibenFound", "未检测到 Viben CLI，请手动指定路径或安装: npm install -g viben")}
       </div>
     ) : (
       <div className="space-y-1">
@@ -980,7 +980,7 @@ pub async fn start_gateway(
         viben_path.as_deref(),
         Some(&app_handle),
     ).ok_or_else(|| {
-        "Gateway binary not found. Please install viben CLI: npm install -g @viben/cli".to_string()
+        "Gateway binary not found. Please install viben CLI: npm install -g @viben/kernel".to_string()
     })?;
 
     // ... rest of existing start logic ...
