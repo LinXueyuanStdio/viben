@@ -924,10 +924,10 @@ export const demoSkills: SkillConfig[] = [
 ]
 
 export const demoSlashCommands: SlashCommand[] = [
-  { id: "commit", name: "/commit", description: "Create a git commit" },
-  { id: "review", name: "/review", description: "Review current changes" },
-  { id: "test", name: "/test", description: "Run test suite" },
-  { id: "plan", name: "/plan", description: "Create implementation plan" },
+  { name: "commit", description: "Create a git commit", input: null },
+  { name: "review", description: "Review current changes", input: null },
+  { name: "test", description: "Run test suite", input: null },
+  { name: "plan", description: "Create implementation plan", input: null },
 ]
 
 export const demoContextBreakdown: ContextTokenBreakdown = {

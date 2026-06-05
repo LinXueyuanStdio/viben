@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp src/emoji-picker/emoji-mart.css dist/emoji-picker/emoji-mart.css",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -29,14 +29,14 @@
     "streamdown": "^2.5.0",
     "tailwind-merge": "^3.5.0"
   },
-  "peerDependencies": {
-    "react": "^19.2.4"
-  },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": "^19.2.4"
   }
 }
