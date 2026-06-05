@@ -129,6 +129,10 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 | `session/list` | request | 是 | 列出当前 Gateway 进程内 ACP 会话 |
 | `session/close` | request | 是 | 关闭外层会话并释放后端进程 |
 | `session/prompt` | request | 是 | 发送一轮用户 prompt，响应在该轮结束后返回 |
+| `session/prompt/steer` | request | Viben 扩展 | 会话忙碌时立即入队一条 steer prompt |
+| `session/prompt/cancel` | request | Viben 扩展 | 取消尚未消费的 steer prompt |
+| `session/prompt/view` | request | Viben 扩展 | 查看 steer prompt 队列记录 |
+| `session/prompt/consumed` | request | Viben 扩展 | 检查 steer prompt 是否已经被后端消费 |
 | `session/cancel` | notification | 是 | 取消指定会话当前运行 prompt 和排队 prompt |
 | `session/set_mode` | request | 否 | 未在 Gateway Agent 接口实现，返回 `-32601` |
 | `session/set_model` | request | 否 | 未在 Gateway Agent 接口实现，返回 `-32601` |
@@ -143,6 +147,7 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 | 方法 | JSON-RPC 类型 | 触发条件 | 说明 |
 |------|---------------|----------|------|
 | `session/update` | notification | 后端产生流式内容、工具调用、计划、用量等更新 | 客户端必须按 `sessionId` 归并到对应会话 |
+| `session/elicitation` | request | 后端需要结构化用户输入、问题回答或计划确认 | 客户端返回 accept/decline/cancel 和表单内容 |
 | `session/request_permission` | request | 后端执行敏感工具前需要用户授权 | 客户端必须返回 selected 或 cancelled |
 | `_viben/client_tool_call` | request | 后端请求客户端侧工具，或 Viben 拦截到客户端侧 MCP 工具 | Viben 扩展方法，结果使用 MCP `CallToolResult` 形态 |
 | `fs/read_text_file` | request | 后端直接请求客户端文件读取 | 仅客户端声明并实现 `fs.readTextFile` 时可用 |
@@ -537,7 +542,7 @@ Gateway 当前声明 `authMethods: []`，通常客户端不需要调用 `authent
 - `sessionId` 必须存在。
 - `prompt` 必须是数组。
 - Viben 当前只把 `type: "text"` 且含 `text` 的内容块拼接为纯文本；其他内容块不会进入底层 prompt 文本。
-- 若同一会话已有 `session/prompt` 正在运行，后续 prompt 会进入 FIFO 队列，前一轮结束后自动执行。
+- `session/prompt` 表示开启一轮完整 prompt turn。客户端如果检测到会话正在流式输出或工具执行中，不应再发起新的 `session/prompt`；应使用 `session/prompt/steer` 追加运行中指令。
 - 用户 prompt 会持久化为 UI 消息；后端 `session/update` 会按可识别类型持久化为 UI 消息和 raw ACP 消息。
 
 **错误 case**:
@@ -560,9 +565,336 @@ Gateway 当前声明 `authMethods: []`，通常客户端不需要调用 `authent
 
 ---
 
+## session/prompt/steer
+
+`session/prompt/steer` 是 Viben ACP 扩展方法，用于在 Agent 正在流式输出、执行工具或处理当前 turn 时追加用户指令。它的参数与 `session/prompt` 基本一致，但处理逻辑不同：
+
+- `session/prompt` 是长请求，等待当前 turn 完成并返回 `PromptResponse`。
+- `session/prompt/steer` 是短请求，只负责把 steer prompt 立即写入 SQL 队列并返回队列记录。
+- steer prompt 是否被 Agent 消费，通过 `session/prompt/consumed`、`session/prompt/view` 或 `session/update` 扩展更新确认。
+
+**请求**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "session/prompt/steer",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "prompt": [
+      {
+        "type": "text",
+        "text": "先不要改样式，优先补测试。"
+      }
+    ],
+    "agent_id": "coder",
+    "user_id": "u_123",
+    "_meta": {
+      "source": "desktop-chat"
+    }
+  }
+}
+```
+
+**响应**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "result": {
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "agentId": "coder",
+    "userId": "u_123",
+    "status": "queued",
+    "createdAt": "2026-06-05T12:00:00.000Z"
+  }
+}
+```
+
+**字段**:
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `sessionId` | string | 是 | 外层 ACP 会话 ID |
+| `prompt` | ContentBlock[] | 是 | 与 `session/prompt` 相同的 prompt 内容块 |
+| `agent_id` | string | 是 | Viben 智能体 ID，用于 SQL 过滤、审计和后端消费 |
+| `user_id` | string | 是 | 发起 steer 的用户 ID |
+| `_meta` | object | 否 | 客户端自定义元信息 |
+
+> 兼容性：新客户端必须使用 snake_case 的 `agent_id`、`user_id`。实现可以临时接受 camelCase，但不能写入规范示例。
+
+**状态机**:
+
+```text
+queued -> consumed -> completed
+queued -> consumed -> failed
+queued -> cancelled
+queued -> expired
+```
+
+| 状态 | 含义 |
+|------|------|
+| `queued` | 已入队，尚未被后端消费 |
+| `consumed` | 后端已取走并注入或准备注入给 Agent |
+| `completed` | 已消费，且后端确认处理完成 |
+| `failed` | 已消费，但注入或处理失败 |
+| `cancelled` | 尚未消费时被客户端取消 |
+| `expired` | 超过保留时间或会话结束后被系统过期 |
+
+**SQL 存储**:
+
+steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存中。建议表名为 `acp_steer_prompts`：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | string | steer prompt ID，例如 `sp_...` |
+| `session_id` | string | 外层 ACP 会话 ID |
+| `agent_id` | string | Viben 智能体 ID |
+| `user_id` | string | 发起用户 ID |
+| `prompt_json` | text/json | 原始 `ContentBlock[]` |
+| `status` | string | `queued`、`consumed`、`cancelled`、`expired`、`completed`、`failed` |
+| `created_at` | datetime | 入队时间 |
+| `consumed_at` | datetime | 消费时间 |
+| `cancelled_at` | datetime | 取消时间 |
+| `completed_at` | datetime | 处理完成时间 |
+| `error` | text/json | 失败详情 |
+| `meta_json` | text/json | `_meta` 扩展字段 |
+
+**消费规则**:
+
+1. 后端只消费 `status = "queued"` 且匹配 `session_id + agent_id` 的记录。
+2. 后端按 `created_at ASC` 获取最早一条或一批 steer prompt。
+3. 消费必须使用 SQL 条件更新或事务，确保只有一个 worker 能把记录从 `queued` 改为 `consumed`。
+4. 如果底层执行器支持运行中 steer，后端在消费后立即注入。
+5. 如果底层执行器不支持运行中 steer，后端可以在当前 turn 的安全检查点消费，或作为下一轮 prompt 的前置上下文。
+6. 已 `consumed` 的 steer prompt 不能通过 `session/prompt/cancel` 撤销；客户端应发新的 steer 修正指令，或用 `session/cancel` 取消当前 active prompt。
+
+**消费通知**:
+
+后端消费 steer prompt 后，Gateway 应发送 Viben 扩展 `session/update`：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "update": {
+      "sessionUpdate": "steer_consumed",
+      "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+      "consumedAt": "2026-06-05T12:00:05.000Z"
+    }
+  }
+}
+```
+
+如果处理完成或失败，也可以发送：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "update": {
+      "sessionUpdate": "steer_completed",
+      "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+      "completedAt": "2026-06-05T12:00:08.000Z"
+    }
+  }
+}
+```
+
+## session/prompt/cancel
+
+取消一条尚未消费的 steer prompt。该方法只影响 `session/prompt/steer` 入队记录，不等同于 ACP 标准 `session/cancel`。
+
+**请求**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "session/prompt/cancel",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA"
+  }
+}
+```
+
+**响应 - 成功取消**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+    "cancelled": true,
+    "status": "cancelled",
+    "cancelledAt": "2026-06-05T12:00:03.000Z"
+  }
+}
+```
+
+**响应 - 已消费，不能取消**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+    "cancelled": false,
+    "status": "consumed",
+    "consumedAt": "2026-06-05T12:00:05.000Z"
+  }
+}
+```
+
+**规则**:
+
+- 如果记录不存在，返回 `-32002 Resource not found`。
+- 如果 `sessionId` 与记录不匹配，返回 `-32602 Invalid params` 或 `-32002`，实现应避免泄露其他会话记录。
+- 对已消费记录不建议返回错误；返回 `cancelled: false` 更利于前端展示“已被 Agent 接收”。
+
+## session/prompt/consumed
+
+检查一条 steer prompt 是否已经被后端消费。
+
+**请求**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "session/prompt/consumed",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA"
+  }
+}
+```
+
+**响应**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "result": {
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+    "consumed": true,
+    "status": "consumed",
+    "consumedAt": "2026-06-05T12:00:05.000Z"
+  }
+}
+```
+
+`status` 为 `consumed`、`completed` 或 `failed` 时，`consumed` 为 `true`；`queued`、`cancelled`、`expired` 时为 `false`。
+
+## session/prompt/view
+
+查看单条或多条 steer prompt 队列记录。
+
+**查看单条**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "method": "session/prompt/view",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA"
+  }
+}
+```
+
+**响应**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "result": {
+    "prompt": {
+      "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+      "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+      "agentId": "coder",
+      "userId": "u_123",
+      "status": "queued",
+      "prompt": [
+        {
+          "type": "text",
+          "text": "先不要改样式，优先补测试。"
+        }
+      ],
+      "createdAt": "2026-06-05T12:00:00.000Z"
+    }
+  }
+}
+```
+
+**查看列表**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "method": "session/prompt/view",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "status": "queued",
+    "limit": 20,
+    "cursor": "opaque-cursor"
+  }
+}
+```
+
+**响应**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 12,
+  "result": {
+    "prompts": [
+      {
+        "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+        "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+        "agentId": "coder",
+        "userId": "u_123",
+        "status": "queued",
+        "createdAt": "2026-06-05T12:00:00.000Z"
+      }
+    ],
+    "nextCursor": null
+  }
+}
+```
+
+**过滤字段**:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `sessionId` | string | 必需，限定当前 ACP 会话 |
+| `promptId` | string | 可选；存在时返回单条 |
+| `agent_id` | string | 可选；按智能体过滤 |
+| `user_id` | string | 可选；按用户过滤 |
+| `status` | string | 可选；按状态过滤 |
+| `limit` | number | 可选；默认 20，最大 100 |
+| `cursor` | string | 可选；分页游标 |
+
+---
+
 ## session/cancel
 
-取消指定会话的当前 prompt 和排队 prompt。
+取消指定会话的当前 active prompt turn。
 
 **通知**:
 
@@ -580,9 +912,9 @@ Gateway 当前声明 `authMethods: []`，通常客户端不需要调用 `authent
 
 - 这是通知，没有响应。
 - Gateway 会将会话状态置为 `cancelled`。
-- 排队中的 prompt 会立即以 `{ "stopReason": "cancelled" }` 完成。
 - 如果内层后端已经启动，Gateway 会继续转发 cancel 给内层 ACP Backend。
 - 客户端在发送取消后仍应继续接收最终的 `session/update`，直到原 `session/prompt` 请求收到 `stopReason: "cancelled"` 或错误响应。
+- `session/cancel` 不取消 SQL 中已入队的 steer prompt；客户端需要取消未消费 steer 时必须调用 `session/prompt/cancel`。
 
 ---
 
@@ -814,6 +1146,210 @@ Viben 扩展更新。当后端启动或执行失败时，Gateway 会先尝试发
   }
 }
 ```
+
+### steer_consumed
+
+Viben 扩展更新，表示某条 `session/prompt/steer` 入队记录已经被后端消费。
+
+```json
+{
+  "sessionUpdate": "steer_consumed",
+  "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+  "consumedAt": "2026-06-05T12:00:05.000Z"
+}
+```
+
+### steer_completed
+
+Viben 扩展更新，表示某条已消费 steer prompt 已处理完成。
+
+```json
+{
+  "sessionUpdate": "steer_completed",
+  "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+  "completedAt": "2026-06-05T12:00:08.000Z"
+}
+```
+
+### steer_failed
+
+Viben 扩展更新，表示某条已消费 steer prompt 注入或处理失败。
+
+```json
+{
+  "sessionUpdate": "steer_failed",
+  "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+  "error": {
+    "message": "No active query to steer"
+  }
+}
+```
+
+---
+
+## session/elicitation
+
+`session/elicitation` 是 ACP 标准客户端请求，用于结构化用户输入。Viben 在迁移 `/ws/agent/run` 时使用它替代旧协议中的 `answer`、`approve`、`reject`：
+
+| 旧消息 | ACP 映射 |
+|--------|----------|
+| `answer` | `session/elicitation` form |
+| `approve` | `session/elicitation` form，`decision = approve` |
+| `reject` | `session/elicitation` form，`decision = reject`，可附带 `feedback` |
+
+### 问题回答
+
+**请求**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "elicitation-question-1",
+  "method": "session/elicitation",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "mode": "form",
+    "message": "请选择配置方式",
+    "requestedSchema": {
+      "type": "object",
+      "properties": {
+        "question_0": {
+          "type": "string",
+          "title": "配置方式",
+          "oneOf": [
+            { "const": "default", "title": "默认配置" },
+            { "const": "custom", "title": "自定义配置" }
+          ]
+        },
+        "question_1": {
+          "type": "array",
+          "title": "附加功能",
+          "items": {
+            "type": "string",
+            "oneOf": [
+              { "const": "tests", "title": "测试" },
+              { "const": "docs", "title": "文档" }
+            ]
+          }
+        }
+      },
+      "required": ["question_0"]
+    }
+  }
+}
+```
+
+**响应**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "elicitation-question-1",
+  "result": {
+    "action": {
+      "action": "accept",
+      "content": {
+        "question_0": "default",
+        "question_1": ["tests"]
+      }
+    }
+  }
+}
+```
+
+### 计划确认
+
+**请求**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "elicitation-plan-1",
+  "method": "session/elicitation",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "mode": "form",
+    "message": "请确认是否执行该计划",
+    "requestedSchema": {
+      "type": "object",
+      "title": "Plan Approval",
+      "description": "1. 检查现有实现\n2. 修改 ACP adapter\n3. 补充测试",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "title": "操作",
+          "oneOf": [
+            { "const": "approve", "title": "批准" },
+            { "const": "reject", "title": "拒绝" }
+          ]
+        },
+        "feedback": {
+          "type": "string",
+          "title": "反馈",
+          "description": "拒绝时可填写修改建议"
+        }
+      },
+      "required": ["decision"]
+    }
+  }
+}
+```
+
+**响应 - 批准**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "elicitation-plan-1",
+  "result": {
+    "action": {
+      "action": "accept",
+      "content": {
+        "decision": "approve",
+        "feedback": ""
+      }
+    }
+  }
+}
+```
+
+**响应 - 拒绝**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "elicitation-plan-1",
+  "result": {
+    "action": {
+      "action": "accept",
+      "content": {
+        "decision": "reject",
+        "feedback": "先补测试，再改 UI。"
+      }
+    }
+  }
+}
+```
+
+**响应 - 取消**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "elicitation-plan-1",
+  "result": {
+    "action": {
+      "action": "cancel"
+    }
+  }
+}
+```
+
+**规则**:
+
+- 客户端在 `initialize.clientCapabilities` 中声明 `elicitation.form` 后，后端才应使用 form elicitation。
+- 问题回答、计划确认都必须使用 `session/elicitation`，不要再定义 `answer`、`approve`、`reject` 自定义消息。
+- `decision`、`feedback` 等字段是 Viben UI 约定；后端应通过 `_meta` 或 schema title/description 携带足够上下文，让客户端能渲染旧的 question/plan UI。
 
 ---
 
@@ -1232,6 +1768,90 @@ sequenceDiagram
 }
 ```
 
+### Case 7: 忙碌时追加 steer prompt
+
+```mermaid
+sequenceDiagram
+  participant C as ACP Client
+  participant G as Viben Gateway
+  participant DB as SQL acp_steer_prompts
+  participant B as ACP Backend
+
+  C->>G: request session/prompt id=7
+  G->>B: session/prompt
+  B-->>G: session/update agent_message_chunk
+  G-->>C: session/update agent_message_chunk
+  C->>G: request session/prompt/steer id=8
+  G->>DB: insert queued steer prompt
+  G-->>C: response id=8 promptId,status=queued
+  B->>G: check steer queue
+  G->>DB: update queued -> consumed
+  G-->>C: session/update steer_consumed
+  G->>B: inject steer prompt
+  B-->>G: session/update ...
+  G-->>C: session/update ...
+  B-->>G: prompt result
+  G-->>C: response id=7 prompt result
+```
+
+关键点：
+
+- 客户端只在会话非空闲时使用 `session/prompt/steer`；空闲时使用普通 `session/prompt`。
+- steer 请求返回的是队列记录，不代表 Agent 已经读取或执行。
+- 后端消费 steer 后必须更新 SQL 状态，并应发送 `steer_consumed`。
+
+### Case 8: 取消未消费 steer prompt
+
+```mermaid
+sequenceDiagram
+  participant C as ACP Client
+  participant G as Viben Gateway
+  participant DB as SQL acp_steer_prompts
+
+  C->>G: request session/prompt/steer
+  G->>DB: insert queued
+  G-->>C: promptId,status=queued
+  C->>G: request session/prompt/cancel promptId
+  G->>DB: update queued -> cancelled
+  G-->>C: cancelled=true,status=cancelled
+```
+
+如果记录已经被消费：
+
+```mermaid
+sequenceDiagram
+  participant C as ACP Client
+  participant G as Viben Gateway
+  participant DB as SQL acp_steer_prompts
+
+  C->>G: request session/prompt/cancel promptId
+  G->>DB: read status=consumed
+  G-->>C: cancelled=false,status=consumed
+```
+
+### Case 9: 问题回答和计划确认
+
+```mermaid
+sequenceDiagram
+  participant C as ACP Client
+  participant G as Viben Gateway
+  participant B as ACP Backend
+
+  C->>G: request session/prompt
+  G->>B: session/prompt
+  B->>G: request session/elicitation question or plan
+  G->>C: request session/elicitation
+  C-->>G: action=accept content={...}
+  G-->>B: action=accept content={...}
+  B-->>G: continue prompt turn
+  G-->>C: session/update ...
+```
+
+关键点：
+
+- 旧协议中的 `answer`、`approve`、`reject` 全部收敛到 `session/elicitation`。
+- `session/request_permission` 只用于工具、命令、文件修改等权限授权，不用于普通问题或计划确认。
+
 ---
 
 ## 会话状态与持久化
@@ -1255,7 +1875,10 @@ Gateway 内部外层会话状态：
 - `tool_call_update` 写入 UI `tool_result`。
 - `plan` 写入 UI `plan`。
 - `usage_update` 写入 UI `context_usage`。
+- `steer_consumed`、`steer_completed`、`steer_failed` 可写入 UI 状态事件或 raw ACP 消息；是否展示为可见消息由客户端决定。
 - 所有可持久化的 ACP 原始更新会作为 raw agent message 写入，`source` 为 `acp`。
+
+steer prompt 使用 SQL 表 `acp_steer_prompts` 持久化。该表独立于 UI 消息存储；UI 消息用于展示，SQL steer 队列用于跨 WebSocket 连接、跨 worker 的可靠消费。
 
 ---
 
@@ -1264,7 +1887,11 @@ Gateway 内部外层会话状态：
 1. 连接后先 `initialize`，根据 `agentCapabilities` 决定是否展示加载、关闭和配置 UI。
 2. 新建会话使用 `session/new`，恢复会话使用 `session/load`。
 3. `session/prompt` 期间按 `session/update` 逐步渲染输出；不要等待 prompt 响应后再展示。
-4. 所有 Gateway -> Client 的 request 都必须响应，包括权限请求和 `_viben/client_tool_call`。不支持的方法返回 `-32601`。
-5. 使用 snake_case 的 Viben 扩展字段：`agent_config`、`agent_config_path`、`persist_session_id`、`persist_task_id`、`gateway_url`。
-6. WebSocket 断开后重新连接并重新 `initialize`；不要假设旧连接上的 in-flight request 会自动恢复。
-7. 客户端如果实现心跳，使用无 `id` 的 `$/ping` 通知，不要把心跳当作需要响应的请求。
+4. 客户端检测当前会话是否空闲：空闲时发送 `session/prompt`；非空闲时发送 `session/prompt/steer`。
+5. 客户端需要保存 `session/prompt/steer` 返回的 `promptId`，用于取消、查看和消费状态轮询。
+6. 旧协议中的问题回答和计划确认都通过 `session/elicitation` 处理；客户端应复用现有 question/plan UI 渲染 form schema。
+7. 工具、命令、文件修改等权限授权通过 `session/request_permission` 处理。
+8. 所有 Gateway -> Client 的 request 都必须响应，包括 elicitation、权限请求和 `_viben/client_tool_call`。不支持的方法返回 `-32601`。
+9. 使用 snake_case 的 Viben 扩展字段：`agent_config`、`agent_config_path`、`persist_session_id`、`persist_task_id`、`gateway_url`、`agent_id`、`user_id`。
+10. WebSocket 断开后重新连接并重新 `initialize`；不要假设旧连接上的 in-flight request 会自动恢复。
+11. 客户端如果实现心跳，使用无 `id` 的 `$/ping` 通知，不要把心跳当作需要响应的请求。
