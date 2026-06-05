@@ -18,8 +18,8 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { ExecApproval, MessageList, QuestionInput } from "@viben/chat";
-import type { AgentMessage, PendingQuestion } from "@viben/chat";
+import { ChatInput, ExecApproval, MessageList, QuestionInput } from "@viben/chat";
+import type { AgentMessage, PendingQuestion, SlashCommand, SlashCommandSelection } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -79,6 +79,7 @@ interface UiSessionState {
   uiStepQueue: AcpUiStep[];
   pendingApproval: PendingExecApproval | null;
   pendingQuestion: PendingQuestion | null;
+  slashCommands: SlashCommand[];
   clientToolCalls: ClientToolCall[];
   permissionRequests: PermissionRequestLog[];
   elicitationRequests: ElicitationRequestLog[];
@@ -167,6 +168,9 @@ export function App() {
   const [executorConfigText, setExecutorConfigText] = useState("{}");
   const [sessionListResult, setSessionListResult] = useState<unknown>(null);
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [steerPromptText, setSteerPromptText] = useState("Use the latest user instruction as steering context for the current turn.");
+  const [steerPromptId, setSteerPromptId] = useState("");
+  const [steerResult, setSteerResult] = useState<unknown>(null);
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
@@ -200,6 +204,7 @@ export function App() {
   const elicitationRequests = activeSession?.elicitationRequests ?? [];
   const pendingApproval = activeSession?.pendingApproval ?? null;
   const pendingQuestion = activeSession?.pendingQuestion ?? null;
+  const slashCommands = activeSession?.slashCommands ?? [];
   const sessionResult = activeSession?.sessionResult ?? null;
   const promptResult = activeSession?.promptResult ?? null;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
@@ -426,9 +431,9 @@ export function App() {
     clientRef.current = null;
   }, []);
 
-  const sendPrompt = useCallback(async () => {
+  const sendPromptText = useCallback(async (content: string) => {
     if (!sessionId) return;
-    const text = prompt.trim();
+    const text = content.trim();
     if (!text) return;
 
     setError(null);
@@ -443,7 +448,74 @@ export function App() {
     } catch (promptError) {
       setError(promptError instanceof Error ? promptError.message : String(promptError));
     }
-  }, [prompt, sessionId]);
+  }, [sessionId]);
+
+  const sendPrompt = useCallback(async () => {
+    await sendPromptText(prompt);
+  }, [prompt, sendPromptText]);
+
+  const handleSlashCommand = useCallback((command: SlashCommand, selection: SlashCommandSelection) => {
+    const args = selection.args.trim();
+    const text = `/${command.name}${args ? ` ${args}` : ""}`;
+    void sendPromptText(text);
+  }, [sendPromptText]);
+
+  const sendSteerPrompt = useCallback(async () => {
+    if (!sessionId) return;
+    const text = steerPromptText.trim();
+    if (!text) return;
+
+    setError(null);
+    enqueueUiSteps(setSessionsById, sessionId, systemTextToUiSteps(`Steer queued: ${text}`));
+    try {
+      const result = await clientRef.current?.steerPrompt({
+        sessionId,
+        text,
+        agentId: executorType,
+        userId: "example-client",
+        meta: { source: "core-acp-client-example" },
+      });
+      setSteerResult(result ?? null);
+      if (result?.promptId) {
+        setSteerPromptId(result.promptId);
+      }
+    } catch (steerError) {
+      setError(steerError instanceof Error ? steerError.message : String(steerError));
+    }
+  }, [executorType, sessionId, steerPromptText]);
+
+  const cancelSteerPrompt = useCallback(async () => {
+    if (!sessionId || !steerPromptId.trim()) return;
+    setError(null);
+    try {
+      const result = await clientRef.current?.cancelSteerPrompt(sessionId, steerPromptId.trim());
+      setSteerResult(result ?? null);
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
+    }
+  }, [sessionId, steerPromptId]);
+
+  const checkSteerPromptConsumed = useCallback(async () => {
+    if (!sessionId || !steerPromptId.trim()) return;
+    setError(null);
+    try {
+      const result = await clientRef.current?.isSteerPromptConsumed(sessionId, steerPromptId.trim());
+      setSteerResult(result ?? null);
+    } catch (consumedError) {
+      setError(consumedError instanceof Error ? consumedError.message : String(consumedError));
+    }
+  }, [sessionId, steerPromptId]);
+
+  const viewSteerPrompt = useCallback(async () => {
+    if (!sessionId) return;
+    setError(null);
+    try {
+      const result = await clientRef.current?.viewSteerPrompt(sessionId, steerPromptId.trim() || undefined);
+      setSteerResult(result ?? null);
+    } catch (viewError) {
+      setError(viewError instanceof Error ? viewError.message : String(viewError));
+    }
+  }, [sessionId, steerPromptId]);
 
   const cancel = useCallback(() => {
     if (sessionId) clientRef.current?.cancel(sessionId);
@@ -866,11 +938,20 @@ export function App() {
             </Panel>
 
             <Panel title="Prompt Turn" description="Send session/prompt and watch session/update notifications stream back.">
-              <textarea
+              <ChatInput
                 value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                className="textarea"
-                rows={5}
+                onValueChange={setPrompt}
+                onSend={(content) => void sendPromptText(content)}
+                onCancel={cancel}
+                isLoading={Boolean(activeSession?.uiStepQueue.length)}
+                disabled={!connected || !sessionId}
+                blockedReason={!connected ? "Connect first." : !sessionId ? "Create or load a session first." : undefined}
+                placeholder="Send an ACP prompt, or type / for backend commands"
+                slashCommands={slashCommands}
+                onSlashCommand={handleSlashCommand}
+                showTopToolbar
+                showResizeHandle
+                enableWritingMode
               />
               <div className="mt-3 flex gap-2">
                 <button className="btn-primary" onClick={sendPrompt} disabled={!connected || !sessionId || !prompt.trim()}>
@@ -892,10 +973,45 @@ export function App() {
                       pendingQuestion: null,
                     }));
                   }
-                }}>
+                }} disabled={!sessionId}>
                   <Trash2 size={16} />
                   Clear
                 </button>
+              </div>
+            </Panel>
+
+            <Panel title="Steer Queue" description="Send and inspect Viben ACP session/prompt/* extension requests.">
+              <textarea
+                value={steerPromptText}
+                onChange={(event) => setSteerPromptText(event.target.value)}
+                className="textarea"
+                rows={3}
+              />
+              <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                <input
+                  value={steerPromptId}
+                  onChange={(event) => setSteerPromptId(event.target.value)}
+                  className="input font-mono text-xs"
+                  placeholder="prompt id"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button className="btn-primary" onClick={sendSteerPrompt} disabled={!connected || !sessionId || !steerPromptText.trim()}>
+                    <Send size={16} />
+                    Steer
+                  </button>
+                  <button className="btn-secondary" onClick={viewSteerPrompt} disabled={!connected || !sessionId}>
+                    <Search size={16} />
+                    View
+                  </button>
+                  <button className="btn-secondary" onClick={checkSteerPromptConsumed} disabled={!connected || !sessionId || !steerPromptId.trim()}>
+                    <ClipboardList size={16} />
+                    Consumed
+                  </button>
+                  <button className="btn-danger" onClick={cancelSteerPrompt} disabled={!connected || !sessionId || !steerPromptId.trim()}>
+                    <X size={16} />
+                    Cancel
+                  </button>
+                </div>
               </div>
             </Panel>
 
@@ -938,6 +1054,16 @@ export function App() {
               </div>
             </Panel>
 
+            <Panel title="Slash Commands" description="Commands advertised by the active ACP backend.">
+              <div className="max-h-72 space-y-2 overflow-auto pr-1">
+                {slashCommands.length === 0 ? (
+                  <EmptyState text="No slash commands announced yet." />
+                ) : (
+                  slashCommands.map((command) => <SlashCommandRow key={command.name} command={command} />)
+                )}
+              </div>
+            </Panel>
+
             <Panel title="Permission Requests" description="ACP session/request_permission calls auto-approved by this example client.">
               <div className="max-h-56 space-y-2 overflow-auto pr-1">
                 {permissionRequests.length === 0 ? (
@@ -963,6 +1089,7 @@ export function App() {
               <JsonBlock title="session/new" value={sessionResult} />
               <JsonBlock title="session/list" value={sessionListResult} />
               <JsonBlock title="session/prompt" value={promptResult} />
+              <JsonBlock title="session/prompt/*" value={steerResult} />
             </Panel>
 
             <Panel title="Traffic Monitor" description="Connection-level JSON-RPC frames.">
@@ -1294,6 +1421,27 @@ function ClientToolRow({ call }: { call: ClientToolCall }) {
   );
 }
 
+function SlashCommandRow({ command }: { command: SlashCommand }) {
+  return (
+    <details className="rounded-lg border border-border bg-surface p-3 text-xs">
+      <summary className="cursor-pointer list-none">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="truncate font-semibold">/{command.name}</div>
+            <div className="truncate text-muted-foreground">{command.description || "No description"}</div>
+          </div>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-1 font-semibold text-muted-foreground">
+            {command.input ? "input" : "plain"}
+          </span>
+        </div>
+      </summary>
+      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
+        <JsonCode value={command} />
+      </pre>
+    </details>
+  );
+}
+
 function PermissionRow({ request }: { request: PermissionRequestLog }) {
   return (
     <details className="rounded-lg border border-warning/35 bg-warning/10 p-3 text-xs">
@@ -1559,6 +1707,7 @@ function createUiSession(
     uiStepQueue: existing?.uiStepQueue ?? [],
     pendingApproval: existing?.pendingApproval ?? null,
     pendingQuestion: existing?.pendingQuestion ?? null,
+    slashCommands: existing?.slashCommands ?? [],
     clientToolCalls: existing?.clientToolCalls ?? [],
     permissionRequests: existing?.permissionRequests ?? [],
     elicitationRequests: existing?.elicitationRequests ?? [],
@@ -1612,6 +1761,15 @@ function applyQueuedUiStep(session: UiSessionState, step: AcpUiStep, rest: AcpUi
       uiSteps: [...session.uiSteps, step],
       uiStepQueue: rest,
       pendingQuestion: step.question,
+      lastActiveAt: new Date().toISOString(),
+    };
+  }
+  if (step.kind === "slash_commands") {
+    return {
+      ...session,
+      uiSteps: [...session.uiSteps, step],
+      uiStepQueue: rest,
+      slashCommands: step.commands,
       lastActiveAt: new Date().toISOString(),
     };
   }
@@ -1693,15 +1851,18 @@ function resolvePermissionDecisionOption(options: PermissionOption[], decision: 
     const rejectOption = options.find((option) => option.kind === "reject_once")
       ?? options.find((option) => option.kind === "reject_always")
       ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("reject"));
+    if (!rejectOption) return "reject_once";
     return permissionOptionId(rejectOption, 0);
   }
   if (decision === "allow_always") {
     const alwaysOption = options.find((option) => option.kind === "allow_always");
+    if (!alwaysOption) return "allow_always";
     return permissionOptionId(alwaysOption, 0);
   }
   const allowOnce = options.find((option) => option.kind === "allow_once")
     ?? options.find((option) => String(option.optionId ?? option.name ?? "").toLowerCase().includes("allow"))
     ?? options[0];
+  if (!allowOnce) return "allow_once";
   return permissionOptionId(allowOnce, 0);
 }
 
@@ -1890,12 +2051,6 @@ function getJsonTokenClass(token: string): string {
   if (token === "true" || token === "false") return "json-boolean";
   if (token === "null") return "json-null";
   return "json-punctuation";
-}
-
-function stringifyDiagnostic(value: unknown): string {
-  if (value === undefined || value === null) return "Unknown ACP error";
-  if (typeof value === "string") return value;
-  return prettyJson(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

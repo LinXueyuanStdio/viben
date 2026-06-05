@@ -9,6 +9,10 @@ export {
   type AcpConfigOption,
   type AcpConnection,
   type AcpContentBlock,
+  type AcpCancelSteerPromptRequest,
+  type AcpCancelSteerPromptResponse,
+  type AcpConsumedSteerPromptRequest,
+  type AcpConsumedSteerPromptResponse,
   type AcpErrorDetail,
   type AcpInitializeRequest,
   type AcpInitializeResponse,
@@ -27,8 +31,15 @@ export {
   type AcpSessionStatus,
   type AcpSessionSummary,
   type AcpSessionUpdate,
+  type AcpSteerPromptRecord,
+  type AcpSteerPromptRequest,
+  type AcpSteerPromptResponse,
+  type AcpSteerPromptStatus,
+  type AcpSteerPromptView,
   type AcpStopReason,
   type AcpTextContent,
+  type AcpViewSteerPromptRequest,
+  type AcpViewSteerPromptResponse,
   type AgentConfigPayload,
 } from "./types";
 export {
@@ -42,4 +53,12 @@ export {
   resolveBuiltinAcpBackend,
   type AcpBackendInfo,
 } from "./ops/backend-adapter";
+export {
+  createDefaultAcpSteerPromptStore,
+  InMemoryAcpSteerPromptStore,
+  SqliteAcpSteerPromptStore,
+  type AcpSteerPromptStore,
+  type CreateSteerPromptInput,
+  type ListSteerPromptInput,
+} from "./ops/steer-prompt-store";
 export { AcpSessionManager, acpSessionManager } from "./ops/session-manager";

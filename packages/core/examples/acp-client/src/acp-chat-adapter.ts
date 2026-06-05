@@ -1,4 +1,4 @@
-import type { AgentMessage, PendingQuestion, TaskPlan, TaskPlanStep } from "@viben/chat";
+import type { AgentMessage, PendingQuestion, SlashCommand, TaskPlan, TaskPlanStep } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import type {
   AcpSessionUpdate,
@@ -16,7 +16,10 @@ import type {
 export type AcpUiStep =
   | { kind: "message"; message: AgentMessage; merge?: "text_chunk" | "thinking_chunk" | "tool_use" | "tool_result" }
   | { kind: "approval"; approval: PendingExecApproval }
-  | { kind: "question"; question: PendingQuestion };
+  | { kind: "question"; question: PendingQuestion }
+  | { kind: "slash_commands"; commands: SlashCommand[] };
+
+type MessageStepMerge = Extract<AcpUiStep, { kind: "message" }>["merge"];
 
 export interface ElicitationFormField {
   key: string;
@@ -108,6 +111,8 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
     }
     case "usage_update":
       return systemTextToUiSteps(`Usage update: ${safeJson(update)}`);
+    case "available_commands_update":
+      return [{ kind: "slash_commands", commands: availableCommandsToSlashCommands(update.availableCommands) }];
     case "error":
       return [{
         kind: "message",
@@ -247,6 +252,18 @@ function propertyOptions(schema: ElicitationPropertySchema): Array<{ label: stri
   return [];
 }
 
+function availableCommandsToSlashCommands(value: unknown): SlashCommand[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((command) => {
+    if (!isRecord(command) || typeof command.name !== "string" || !command.name.trim()) return [];
+    return [{
+      name: command.name,
+      description: typeof command.description === "string" ? command.description : "",
+      input: isRecord(command.input) ? command.input : null,
+    }];
+  });
+}
+
 function appendTextChunk(current: AgentMessage[], type: "text" | "thinking", text: string): AgentMessage[] {
   if (!text) return current;
   const previous = current[current.length - 1];
@@ -270,7 +287,7 @@ function upsertToolResult(current: AgentMessage[], toolResult: AgentMessage): Ag
   return current.map((step, index) => (index === existingIndex ? { ...step, ...toolResult } : step));
 }
 
-function messageStep(merge: AcpUiStep["merge"], message: AgentMessage): AcpUiStep[] {
+function messageStep(merge: MessageStepMerge, message: AgentMessage): AcpUiStep[] {
   return [{ kind: "message", merge, message }];
 }
 

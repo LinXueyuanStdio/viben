@@ -47,13 +47,113 @@ export type AcpPromptResponse = Omit<PromptResponse, "stopReason"> & {
 export type AcpCancelNotification = CancelNotification;
 export type AcpStopReason = StopReason | "error";
 export type AcpTextContent = TextContent & { type: "text" };
-export type AcpSessionUpdate = SessionUpdate | AcpErrorSessionUpdate;
+export type AcpSessionUpdate = SessionUpdate | AcpErrorSessionUpdate | AcpSteerSessionUpdate;
 export type AcpSessionNotification = Omit<SessionNotification, "update"> & {
   update: AcpSessionUpdate;
 };
 export type AcpConfigOption = SessionConfigOption;
 export type AcpRequestPermissionRequest = RequestPermissionRequest;
 export type AcpRequestPermissionResponse = RequestPermissionResponse;
+
+export type AcpSteerPromptStatus =
+  | "queued"
+  | "consumed"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "expired";
+
+export interface AcpSteerPromptRecord {
+  id: string;
+  session_id: string;
+  agent_id: string;
+  user_id: string;
+  prompt_json: AcpContentBlock[];
+  status: AcpSteerPromptStatus;
+  created_at: string;
+  consumed_at?: string;
+  cancelled_at?: string;
+  completed_at?: string;
+  error?: string;
+  meta_json?: Record<string, unknown>;
+}
+
+export interface AcpSteerPromptRequest {
+  sessionId: string;
+  agentId?: string;
+  agent_id?: string;
+  userId?: string;
+  user_id?: string;
+  prompt: AcpContentBlock[];
+  meta?: Record<string, unknown>;
+  _meta?: Record<string, unknown>;
+}
+
+export interface AcpSteerPromptResponse {
+  promptId: string;
+  sessionId: string;
+  agentId: string;
+  userId: string;
+  status: AcpSteerPromptStatus;
+  createdAt: string;
+}
+
+export interface AcpCancelSteerPromptRequest {
+  sessionId: string;
+  promptId: string;
+}
+
+export interface AcpCancelSteerPromptResponse {
+  promptId: string;
+  cancelled: boolean;
+  status: AcpSteerPromptStatus;
+  consumedAt?: string;
+  cancelledAt?: string;
+}
+
+export interface AcpConsumedSteerPromptRequest {
+  sessionId: string;
+  promptId: string;
+}
+
+export interface AcpConsumedSteerPromptResponse {
+  promptId: string;
+  consumed: boolean;
+  status: AcpSteerPromptStatus;
+  consumedAt?: string;
+  completedAt?: string;
+}
+
+export interface AcpViewSteerPromptRequest {
+  sessionId: string;
+  promptId?: string;
+  agent_id?: string;
+  agentId?: string;
+  user_id?: string;
+  userId?: string;
+  status?: AcpSteerPromptStatus;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface AcpSteerPromptView {
+  promptId: string;
+  sessionId: string;
+  agentId: string;
+  userId: string;
+  prompt: AcpContentBlock[];
+  status: AcpSteerPromptStatus;
+  createdAt: string;
+  consumedAt?: string;
+  cancelledAt?: string;
+  completedAt?: string;
+  error?: string;
+  meta?: Record<string, unknown>;
+}
+
+export type AcpViewSteerPromptResponse =
+  | { prompt: AcpSteerPromptView }
+  | { prompts: AcpSteerPromptView[]; nextCursor: string | null };
 
 export interface AcpSessionBootstrapFields {
   agentConfig?: AgentConfigPayload;
@@ -134,6 +234,16 @@ export interface AcpErrorDetail {
 export interface AcpErrorSessionUpdate {
   sessionUpdate: "error";
   error: AcpErrorDetail;
+  _meta?: Record<string, unknown> | null;
+}
+
+export interface AcpSteerSessionUpdate {
+  sessionUpdate: "steer_consumed" | "steer_completed" | "steer_failed";
+  promptId: string;
+  status: AcpSteerPromptStatus;
+  consumedAt?: string;
+  completedAt?: string;
+  error?: string;
   _meta?: Record<string, unknown> | null;
 }
 

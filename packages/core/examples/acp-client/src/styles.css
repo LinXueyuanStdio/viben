@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@import "streamdown/styles.css";
+
+@source "./**/*.tsx";
+@source "../../../../../packages/chat/src/**/*.tsx";
+@source "../../../../../packages/ui/src/**/*.tsx";
 
 @theme {
   --color-background: oklch(0.982 0.002 250);

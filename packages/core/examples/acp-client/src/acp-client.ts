@@ -204,6 +204,58 @@ export interface SessionLoadParams {
   mcpServers?: unknown[];
 }
 
+export interface SteerPromptParams {
+  sessionId: string;
+  text: string;
+  agentId?: string;
+  userId?: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface SteerPromptResult {
+  promptId: string;
+  sessionId: string;
+  agentId: string;
+  userId: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface CancelSteerPromptResult {
+  promptId: string;
+  cancelled: boolean;
+  status: string;
+  consumedAt?: string;
+  cancelledAt?: string;
+}
+
+export interface ConsumedSteerPromptResult {
+  promptId: string;
+  consumed: boolean;
+  status: string;
+  consumedAt?: string;
+  completedAt?: string;
+}
+
+export interface SteerPromptView {
+  promptId: string;
+  sessionId: string;
+  agentId: string;
+  userId: string;
+  prompt: unknown[];
+  status: string;
+  createdAt: string;
+  consumedAt?: string;
+  cancelledAt?: string;
+  completedAt?: string;
+  error?: string;
+  meta?: Record<string, unknown>;
+}
+
+export type ViewSteerPromptResult =
+  | { prompt: SteerPromptView }
+  | { prompts: SteerPromptView[]; nextCursor: string | null };
+
 interface PendingRequest {
   method: string;
   startedAt: number;
@@ -333,12 +385,37 @@ export class AcpWebSocketClient {
     });
   }
 
+  async steerPrompt(params: SteerPromptParams): Promise<SteerPromptResult> {
+    return await this.request("session/prompt/steer", {
+      sessionId: params.sessionId,
+      agentId: params.agentId || undefined,
+      userId: params.userId || undefined,
+      prompt: [{ type: "text", text: params.text }],
+      meta: params.meta,
+    }) as SteerPromptResult;
+  }
+
+  async cancelSteerPrompt(sessionId: string, promptId: string): Promise<CancelSteerPromptResult> {
+    return await this.request("session/prompt/cancel", { sessionId, promptId }) as CancelSteerPromptResult;
+  }
+
+  async isSteerPromptConsumed(sessionId: string, promptId: string): Promise<ConsumedSteerPromptResult> {
+    return await this.request("session/prompt/consumed", { sessionId, promptId }) as ConsumedSteerPromptResult;
+  }
+
+  async viewSteerPrompt(sessionId: string, promptId?: string): Promise<ViewSteerPromptResult> {
+    return await this.request("session/prompt/view", {
+      sessionId,
+      promptId: promptId || undefined,
+    }) as ViewSteerPromptResult;
+  }
+
   listSessions(): Promise<unknown> {
     return this.request("session/list", {});
   }
 
   closeSession(sessionId: string): Promise<unknown> {
-    return this.request("unstable_closeSession", { sessionId });
+    return this.request("session/close", { sessionId });
   }
 
   cancel(sessionId: string): void {

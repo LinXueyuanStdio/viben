@@ -28,11 +28,15 @@ import {
   acpSessionManager,
   getAcpErrorDetail,
   type AcpConnection,
+  type AcpCancelSteerPromptRequest,
+  type AcpConsumedSteerPromptRequest,
   type AcpLoadSessionRequest,
   type AcpNewSessionRequest,
   type AcpPromptRequest,
   type AcpSessionContext,
   type AcpSessionNotification,
+  type AcpSteerPromptRequest,
+  type AcpViewSteerPromptRequest,
 } from "../../acp";
 import { logger as globalLogger } from "../../telemetry";
 
@@ -165,6 +169,21 @@ function createVibenAcpAgent(
         ownedSessionIds.delete(request.sessionId);
       }
       return {};
+    },
+
+    async extMethod(method: string, params: Record<string, unknown>) {
+      switch (method) {
+        case "session/prompt/steer":
+          return await acpSessionManager.steerPrompt(params as unknown as AcpSteerPromptRequest) as unknown as Record<string, unknown>;
+        case "session/prompt/cancel":
+          return await acpSessionManager.cancelSteerPrompt(params as unknown as AcpCancelSteerPromptRequest) as unknown as Record<string, unknown>;
+        case "session/prompt/consumed":
+          return await acpSessionManager.isSteerPromptConsumed(params as unknown as AcpConsumedSteerPromptRequest) as unknown as Record<string, unknown>;
+        case "session/prompt/view":
+          return await acpSessionManager.viewSteerPrompt(params as unknown as AcpViewSteerPromptRequest) as unknown as Record<string, unknown>;
+        default:
+          throw RequestError.methodNotFound(method);
+      }
     },
 
     async authenticate() {
