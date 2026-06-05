@@ -174,6 +174,11 @@ export function SlashCommandMenu({
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground">
                     /<HighlightedText text={command.name} query={query} />
+                    {typeof command.input?.hint === "string" && command.input.hint && (
+                      <span className="ml-1 font-normal text-muted-foreground">
+                        {command.input.hint}
+                      </span>
+                    )}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
                     <HighlightedText text={command.description} query={query} />

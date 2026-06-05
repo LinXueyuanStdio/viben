@@ -32,7 +32,12 @@ export {
   useAutoFocus,
 } from "./chat-input";
 export type {
+  UseSlashCommandMenuOptions,
+  UseSlashCommandMenuReturn,
+} from "./chat-input";
+export type {
   ChatInputProps,
+  SlashCommandMenuProps,
   AgentOption,
   ModelOption,
   ExecutorOption,

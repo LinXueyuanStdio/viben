@@ -18,7 +18,11 @@ export function findSlashCommand<TCommand extends SlashCommand>(
   commands: TCommand[],
   name: string
 ): TCommand | undefined {
-  return commands.find((command) => command.name === name);
+  const exact = commands.find((command) => command.name === name);
+  if (exact) return exact;
+
+  const normalizedName = name.toLowerCase();
+  return commands.find((command) => command.name.toLowerCase() === normalizedName);
 }
 
 export function filterSlashCommands<TCommand extends SlashCommand>(

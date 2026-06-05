@@ -16,7 +16,7 @@ import {
   useCommandQueue,
   getModelIcon,
 } from "@viben/chat"
-import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment } from "@viben/chat"
+import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
@@ -28,6 +28,7 @@ import {
   demoModels,
   demoTools,
   demoSkills,
+  demoSlashCommands,
   demoContextBreakdown,
   demoCommandQueueItems,
   demoExecApprovals,
@@ -338,6 +339,11 @@ export function App() {
   const handleSend = useCallback((content: string, attachments?: MessageAttachment[]) => {
     // Route through command queue: if busy, it queues; if idle, it sends immediately
     commandQueue.send(content, attachments)
+  }, [commandQueue])
+
+  const handleSlashCommand = useCallback((command: SlashCommand, selection: SlashCommandSelection) => {
+    const suffix = selection.args ? ` ${selection.args}` : ""
+    commandQueue.send(`/${command.name}${suffix}`)
   }, [commandQueue])
 
   const handleToggleTool = useCallback((toolId: string) => {
@@ -820,6 +826,8 @@ export function App() {
                       enabledSkillsCount={skills.filter(s => s.enabled).length}
                       contextTokens={20000}
                       contextBreakdown={demoContextBreakdown}
+                      slashCommands={demoSlashCommands}
+                      onSlashCommand={handleSlashCommand}
                     />
                   </motion.div>
                 )}

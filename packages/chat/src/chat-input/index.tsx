@@ -51,7 +51,7 @@ import {
   useAutoFocus,
 } from "./hooks";
 import type { ChatInputProps } from "./types";
-import { parseSlashCommandInput } from "../slash-commands";
+import { findSlashCommand, parseSlashCommandInput } from "../slash-commands";
 
 export function ChatInput({
   // Basic Props
@@ -153,17 +153,29 @@ export function ChatInput({
     filteredCommands,
     handleContentChange: handleSlashContentChange,
     handleSelect: handleSlashSelect,
+    handleHover: handleSlashHover,
     handleKeyDown: handleSlashKeyDown,
   } = useSlashCommandMenu({
     commands: slashCommands,
     onSelect: (command) => {
-      const value = content;
-      const parsedInput = parseSlashCommandInput(value);
+      const commandText = `/${command.name}`;
+      if (command.input) {
+        const hint = typeof command.input.hint === "string" ? command.input.hint : "";
+        const nextValue = `${commandText}${hint ? ` ${hint}` : " "}`;
+        setContent(nextValue);
+        handleSlashContentChange(nextValue);
+        requestAnimationFrame(() => textareaRef.current?.focus());
+        return;
+      }
+
+      const selectedValue = content;
+      const parsedInput = parseSlashCommandInput(selectedValue);
       setContent("");
       onSlashCommand?.(command, {
         command,
         args: parsedInput?.args ?? "",
-        value,
+        value: selectedValue,
+        attachments: attachments.length > 0 ? attachments : undefined,
       });
       textareaRef.current?.focus();
     },
@@ -224,6 +236,10 @@ export function ChatInput({
     },
     [handleSlashContentChange]
   );
+
+  useEffect(() => {
+    handleSlashContentChange(content);
+  }, [content, handleSlashContentChange]);
 
   // Paste handler
   const handlePaste = useCallback(
@@ -348,9 +364,7 @@ export function ChatInput({
     const text = content.trim();
     const messageAttachments = attachments.length > 0 ? attachments : undefined;
     const parsedCommand = parseSlashCommandInput(text);
-    const slashCommand = parsedCommand
-      ? slashCommands.find((command) => command.name === parsedCommand.name)
-      : undefined;
+    const slashCommand = parsedCommand ? findSlashCommand(slashCommands, parsedCommand.name) : undefined;
 
     // Clear state first
     setContent("");
@@ -366,6 +380,7 @@ export function ChatInput({
         command: slashCommand,
         args: parsedCommand?.args ?? "",
         value: text,
+        attachments: messageAttachments,
       });
       return;
     }
@@ -526,7 +541,7 @@ export function ChatInput({
             commands: filteredCommands,
             selectedIndex: slashSelectedIndex,
             onSelect: handleSlashSelect,
-            onHover: () => {},
+            onHover: handleSlashHover,
             isOpen: isSlashMenuOpen,
             query: slashQuery,
             anchorRef: containerRef as React.RefObject<HTMLElement>,
@@ -536,7 +551,7 @@ export function ChatInput({
             commands={filteredCommands}
             selectedIndex={slashSelectedIndex}
             onSelect={handleSlashSelect}
-            onHover={() => {}}
+            onHover={handleSlashHover}
             isOpen={isSlashMenuOpen}
             query={slashQuery}
             anchorRef={containerRef as React.RefObject<HTMLElement>}
@@ -681,7 +696,15 @@ export function ChatInput({
 }
 
 // Re-export types and sub-components for consumers
-export type { ChatInputProps, AgentOption, ModelOption, ExecutorOption, GlobalChatConfig, ChatConfigVisibility } from "./types";
+export type {
+  ChatInputProps,
+  SlashCommandMenuProps,
+  AgentOption,
+  ModelOption,
+  ExecutorOption,
+  GlobalChatConfig,
+  ChatConfigVisibility,
+} from "./types";
 export { ChatInputToolbar } from "./toolbar";
 export { ChatInputConfigBar } from "./config-bar";
 export { AttachmentPreview } from "./attachment-preview";
@@ -695,4 +718,8 @@ export {
   useResizableHeight,
   useIMEComposition,
   useAutoFocus,
+} from "./hooks";
+export type {
+  UseSlashCommandMenuOptions,
+  UseSlashCommandMenuReturn,
 } from "./hooks";

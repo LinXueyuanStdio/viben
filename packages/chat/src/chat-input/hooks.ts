@@ -152,6 +152,7 @@ export interface UseSlashCommandMenuReturn {
   filteredCommands: SlashCommand[];
   handleContentChange: (content: string) => void;
   handleSelect: (command: SlashCommand) => void;
+  handleHover: (index: number) => void;
   handleKeyDown: (e: React.KeyboardEvent) => boolean;
   close: () => void;
 }
@@ -206,6 +207,15 @@ export function useSlashCommandMenu(
       onSelect(command);
     },
     [onSelect]
+  );
+
+  const handleHover = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < filteredCommands.length) {
+        setSelectedIndex(index);
+      }
+    },
+    [filteredCommands.length]
   );
 
   // Handle keyboard navigation
@@ -264,6 +274,7 @@ export function useSlashCommandMenu(
     filteredCommands,
     handleContentChange,
     handleSelect,
+    handleHover,
     handleKeyDown,
     close,
   };

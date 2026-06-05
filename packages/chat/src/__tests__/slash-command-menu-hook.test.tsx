@@ -30,4 +30,29 @@ describe("useSlashCommandMenu", () => {
     expect(onSelect).toHaveBeenCalledWith({ name: "review", description: "Review target", input: null });
     expect(result.current.isOpen).toBe(false);
   });
+
+  test("updates selected index on hover", () => {
+    const { result } = renderHook(() =>
+      useSlashCommandMenu({
+        commands: [
+          { name: "review", description: "Review target", input: null },
+          { name: "status", description: "Show status", input: null },
+        ],
+        onSelect: vi.fn(),
+      })
+    );
+
+    act(() => {
+      result.current.handleContentChange("/");
+      result.current.handleHover(1);
+    });
+
+    expect(result.current.selectedIndex).toBe(1);
+
+    act(() => {
+      result.current.handleHover(5);
+    });
+
+    expect(result.current.selectedIndex).toBe(1);
+  });
 });
