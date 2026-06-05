@@ -59,6 +59,7 @@ export function ChatInput({
   value,
   defaultValue = "",
   onValueChange,
+  onRecallQueuedInput,
   onCancel,
   isLoading,
   allowSendWhileLoading,
@@ -394,6 +395,12 @@ export function ChatInput({
         return;
       }
 
+      if (e.key === "ArrowUp" && !isComposing && content.trim().length === 0) {
+        e.preventDefault();
+        onRecallQueuedInput?.(content);
+        return;
+      }
+
       // Don't send on Enter during IME composition
       if (e.key === "Enter" && !e.shiftKey && !isComposing) {
         e.preventDefault();
@@ -405,7 +412,7 @@ export function ChatInput({
         setIsWritingMode(false);
       }
     },
-    [handleSlashKeyDown, isComposing, handleSend, isWritingMode]
+    [content, handleSlashKeyDown, isComposing, handleSend, isWritingMode, onRecallQueuedInput]
   );
 
   // Render fullscreen writing mode

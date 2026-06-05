@@ -135,6 +135,19 @@ interface OtherMessageGroup {
 
 type MessageGroup = TaskMessageGroup | OtherMessageGroup;
 
+function isRenderableSimpleMessage(message: AgentMessage): boolean {
+  if (message.type === "result" || message.type === "text" || message.type === "thinking") {
+    return typeof message.content === "string" && message.content.trim().length > 0;
+  }
+  if (message.type === "tool_result") {
+    if (message.isError) return true;
+    return typeof message.output === "string"
+      ? message.output.trim().length > 0
+      : Array.isArray(message.output) && message.output.length > 0;
+  }
+  return true;
+}
+
 /**
  * Get artifact info for a tool_use message if it created/modified a file
  */
@@ -1165,7 +1178,9 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   // 2. Expensive groupMessages — only re-runs when structure actually changes
   const groups = useMemo(
     () => simpleMode
-      ? messages.map((msg): OtherMessageGroup => ({ type: "other", message: msg }))
+      ? messages
+        .filter(isRenderableSimpleMessage)
+        .map((msg): OtherMessageGroup => ({ type: "other", message: msg }))
       : groupMessages(messages, isStreaming || false, t),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [messageStructureKey, isStreaming, t]

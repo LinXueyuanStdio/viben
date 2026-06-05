@@ -79,6 +79,8 @@ export interface ChatInputProps {
   defaultValue?: string;
   /** Callback when textarea value changes. */
   onValueChange?: (value: string) => void;
+  /** Callback when ArrowUp is pressed while the input is empty. */
+  onRecallQueuedInput?: (currentValue: string) => void;
 
   // === Custom Content Slots ===
   /** Extra content to render at the left side of the config bar (after built-in selectors) */

@@ -127,6 +127,7 @@ export function SlashCommandMenu({
   return (
     <div
       ref={menuRef}
+      data-viben-slash-command-menu
       className={cn(
         "rounded-lg border border-border bg-card text-foreground overflow-hidden",
         "absolute left-0 right-0 bottom-[calc(100%+8px)] z-[9999]",
