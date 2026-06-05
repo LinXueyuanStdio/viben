@@ -63,6 +63,13 @@ describe("ClientToolCompletionRegistry", () => {
       expect(registry.isClientSideTool("mcp__myserver__screenshot")).toBe(false);
     });
 
+    it("should trust the built-in ClientSideBash MCP server prefix", () => {
+      registry.registerToolOptions("ClientSideBash");
+
+      expect(registry.isClientSideTool("mcp__client_side_bash__ClientSideBash")).toBe(true);
+      expect(registry.isClientSideTool("mcp__other__ClientSideBash")).toBe(false);
+    });
+
     it("should return false for mcp__ prefixed tools with unregistered suffix", () => {
       expect(registry.isClientSideTool("mcp__gui_action__read_file")).toBe(false);
     });
@@ -151,6 +158,27 @@ describe("ClientToolCompletionRegistry", () => {
       const result2: CallToolResult = { content: [{ type: "text", text: "result-2" }] };
       registry.complete("tool-use-2", "session-1", result2);
       expect(await p2).toEqual(result2);
+    });
+
+    it("should dequeue the next matching tool when a toolName is provided", async () => {
+      registry.registerToolOptions("GUI_execute");
+      registry.registerToolOptions("ClientSideBash");
+      registry.enqueue("session-1", "tool-use-gui", "GUI_execute");
+      registry.enqueue("session-1", "tool-use-bash", "ClientSideBash");
+
+      const bashPromise = registry.waitForClient("session-1", undefined, "ClientSideBash");
+      expect(registry.getQueueLength("session-1")).toBe(1);
+
+      const bashResult: CallToolResult = { content: [{ type: "text", text: "bash" }] };
+      registry.complete("tool-use-bash", "session-1", bashResult);
+
+      await expect(bashPromise).resolves.toEqual(bashResult);
+
+      const guiPromise = registry.waitForClient("session-1", undefined, "GUI_execute");
+      const guiResult: CallToolResult = { content: [{ type: "text", text: "gui" }] };
+      registry.complete("tool-use-gui", "session-1", guiResult);
+
+      await expect(guiPromise).resolves.toEqual(guiResult);
     });
 
     it("should resolve when complete is called", async () => {
@@ -534,21 +562,15 @@ describe("ClientToolCompletionRegistry", () => {
       registry.registerToolOptions("screenshot");
       registry.enqueue("session-1", "tool-use-1", "screenshot");
 
-      // Complete before waiting — the entry exists in pending but has dummy resolve
+      // Complete before waiting — the registry should retain the resolved value
+      // until the MCP handler consumes this queued tool.
       const result: CallToolResult = { content: [{ type: "text", text: "early" }] };
-      // complete checks entry exists and sessionId matches
       const accepted = registry.complete("tool-use-1", "session-1", result);
       expect(accepted).toBe(true);
 
-      // Now waitForClient should return error CallToolResult since the entry was removed
-      // from pending and the queue item was consumed
-      // The toolUseId is still in the queue but the pending entry is gone
       const waitResult = await registry.waitForClient("session-1");
-      // waitForClient dequeues the toolUseId but finds no pending entry → returns error result
-      expect(waitResult).toEqual({
-        content: [{ type: "text", text: "No pending client tool call found." }],
-        isError: true,
-      });
+      expect(waitResult).toEqual(result);
+      expect(registry.pendingCount).toBe(0);
     });
 
     it("should handle concurrent waits on different sessions", async () => {

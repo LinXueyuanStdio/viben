@@ -15,8 +15,9 @@
  * - POST /api/page/update-config - Update page config (name, description, icon)
  * - POST /api/page/templates - List available page templates
  */
-import { join } from "node:path";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import {
   // CRUD operations
@@ -54,6 +55,26 @@ import type {
   ServePageResult,
   ListTemplatesResult,
 } from "../../page/ops";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+
+function readPageSdkAsset(filename: string): string {
+  const candidates = [
+    join(currentDir, "assets", filename),
+    join(currentDir, "../assets", filename),
+    join(currentDir, "../../assets", filename),
+    join(currentDir, "../../../assets", filename),
+    join(process.cwd(), "assets", filename),
+    join(process.cwd(), "packages/core/assets", filename),
+  ];
+
+  const assetPath = candidates.find((candidate) => existsSync(candidate));
+  if (!assetPath) {
+    throw new Error(`Page SDK asset not found: ${filename}`);
+  }
+
+  return readFileSync(assetPath, "utf-8");
+}
 
 // ============================================================================
 // Schema Definitions
@@ -909,8 +930,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       tags: ["page"],
     },
   }, async (_request, reply) => {
-    const sdkPath = join(__dirname, "../../../assets/viben-page-sdk.js");
-    const content = readFileSync(sdkPath, "utf-8");
+    const content = readPageSdkAsset("viben-page-sdk.js");
     reply.type("application/javascript; charset=utf-8");
     reply.header("Cache-Control", "public, max-age=3600");
     return reply.send(content);
@@ -925,8 +945,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       tags: ["page"],
     },
   }, async (_request, reply) => {
-    const cssPath = join(__dirname, "../../../assets/viben-page-tokens.css");
-    const content = readFileSync(cssPath, "utf-8");
+    const content = readPageSdkAsset("viben-page-tokens.css");
     reply.type("text/css; charset=utf-8");
     reply.header("Cache-Control", "public, max-age=3600");
     return reply.send(content);

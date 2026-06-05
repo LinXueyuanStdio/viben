@@ -1,5 +1,7 @@
 import { defineConfig } from "tsup";
 import { readFileSync } from "fs";
+import * as fs from "fs/promises";
+import * as path from "path";
 
 // Read version from package.json at build time
 const packageJson = JSON.parse(readFileSync("./package.json", "utf-8"));
@@ -36,9 +38,6 @@ export default defineConfig({
     __VERSION__: JSON.stringify(VERSION),
   },
   onSuccess: async () => {
-    const fs = await import("fs/promises");
-    const path = await import("path");
-
     // Add shebang to bin.js after build
     const binFiles = [
       "dist/cli/bin.js",
@@ -57,6 +56,12 @@ export default defineConfig({
         // File might not exist (cjs/esm depending on format)
       }
     }
+
+    await fs.cp(
+      path.resolve(process.cwd(), "assets"),
+      path.resolve(process.cwd(), "dist/assets"),
+      { recursive: true },
+    );
 
     // Note: idea-types and reward-types are loaded directly from templates/viben/
     // at runtime, no need to copy to dist/

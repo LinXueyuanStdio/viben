@@ -47,11 +47,13 @@ interface PendingEntry {
   resolve: (result: CallToolResult) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout> | null;
+  completedResult?: CallToolResult;
 }
 
 interface WaitingConsumer {
   sessionId: string;
-  toolName: string;
+  toolName?: string;
+  timeoutToolName: string;
   createdAt: number;
   resolve: (result: CallToolResult) => void;
   reject: (err: Error) => void;
@@ -206,17 +208,19 @@ export class ClientToolCompletionRegistry {
 
     const queue = this.sessionQueues.get(sessionId);
     if (queue && queue.length > 0) {
-      resolvedToolUseId = queue.shift()!;
+      resolvedToolUseId = this.takeNextQueuedToolUseId(sessionId, toolName);
       if (queue.length === 0) {
         this.sessionQueues.delete(sessionId);
       }
-    } else if (toolUseId) {
+    }
+
+    if (!resolvedToolUseId && toolUseId) {
       // Called before enqueue — create the entry eagerly so the caller can await it.
       resolvedToolUseId = toolUseId;
       if (!this.pending.has(toolUseId)) {
         this.createPendingEntry(sessionId, toolUseId, toolName ?? "");
       }
-    } else {
+    } else if (!resolvedToolUseId) {
       return await this.waitForNextClientTool(sessionId, toolName);
     }
 
@@ -227,6 +231,12 @@ export class ClientToolCompletionRegistry {
         content: [{ type: "text", text: "No pending client tool call found." }],
         isError: true,
       };
+    }
+
+    if (entry.completedResult) {
+      const result = entry.completedResult;
+      this.pending.delete(entry.toolUseId);
+      return result;
     }
 
     // Arm timeout if not already armed
@@ -282,9 +292,15 @@ export class ClientToolCompletionRegistry {
       clearTimeout(entry.timer);
     }
 
-    // Resolve the promise
-    entry.resolve(result);
-    this.pending.delete(toolUseId);
+    // Resolve active waiters immediately. If the tool was completed before its
+    // MCP handler consumed the queue item, retain the result until waitForClient
+    // picks it up.
+    if (entry.timer) {
+      entry.resolve(result);
+      this.pending.delete(toolUseId);
+    } else {
+      entry.completedResult = result;
+    }
 
     logger.debug({ toolUseId, sessionId }, "Client tool completed");
     return true;
@@ -443,7 +459,8 @@ export class ClientToolCompletionRegistry {
     return new Promise<CallToolResult>((resolve, reject) => {
       const waiter: WaitingConsumer = {
         sessionId,
-        toolName: effectiveToolName,
+        toolName,
+        timeoutToolName: effectiveToolName,
         createdAt: Date.now(),
         resolve,
         reject,
@@ -477,7 +494,10 @@ export class ClientToolCompletionRegistry {
     const waiters = this.sessionWaiters.get(sessionId);
     if (!queue?.length || !waiters?.length) return;
 
-    const waiter = waiters.shift()!;
+    const waiterIndex = waiters.findIndex((item) => this.hasQueuedToolUseForName(sessionId, item.toolName));
+    if (waiterIndex === -1) return;
+
+    const [waiter] = waiters.splice(waiterIndex, 1);
     if (waiters.length === 0) {
       this.sessionWaiters.delete(sessionId);
     }
@@ -489,6 +509,26 @@ export class ClientToolCompletionRegistry {
     void this.waitForClient(sessionId, undefined, waiter.toolName)
       .then(waiter.resolve)
       .catch(waiter.reject);
+  }
+
+  private takeNextQueuedToolUseId(sessionId: string, toolName?: string): string | undefined {
+    const queue = this.sessionQueues.get(sessionId);
+    if (!queue?.length) return undefined;
+
+    const index = toolName
+      ? queue.findIndex((toolUseId) => this.pending.get(toolUseId)?.toolName === toolName)
+      : 0;
+    if (index === -1) return undefined;
+
+    const [toolUseId] = queue.splice(index, 1);
+    return toolUseId;
+  }
+
+  private hasQueuedToolUseForName(sessionId: string, toolName?: string): boolean {
+    const queue = this.sessionQueues.get(sessionId);
+    if (!queue?.length) return false;
+    if (!toolName) return true;
+    return queue.some((toolUseId) => this.pending.get(toolUseId)?.toolName === toolName);
   }
 
   private removeSessionWaiter(sessionId: string, waiter: WaitingConsumer): void {
@@ -512,6 +552,9 @@ export class ClientToolCompletionRegistry {
   private getTrustedPrefixedToolOptions(toolName: string): ClientSideToolOptions | undefined {
     if (toolName.startsWith("mcp__gui_action__")) {
       return this.toolOptions.get(toolName.slice("mcp__gui_action__".length));
+    }
+    if (toolName.startsWith("mcp__client_side_bash__")) {
+      return this.toolOptions.get(toolName.slice("mcp__client_side_bash__".length));
     }
 
     return undefined;
