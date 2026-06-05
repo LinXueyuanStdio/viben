@@ -28,6 +28,11 @@ import {
   type FilePreviewType,
 } from "../utils/file-type-detector";
 import { useTheme } from "@/hooks/use-theme";
+import { useActionStore } from "@/stores/action-store";
+import {
+  createPageActionBridge,
+  type PageActionBridge,
+} from "./page-action-bridge";
 
 interface StaticPagePreviewProps {
   page: StaticPageConfig;
@@ -106,6 +111,9 @@ export function StaticPagePreview({
   );
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const bridgeRef = useRef<PageActionBridge | null>(null);
+  const registerActions = useActionStore((s) => s.register);
+  const unregisterActions = useActionStore((s) => s.unregister);
   const gatewayOrigin = useMemo(() => {
     try {
       return new URL(getGatewayUrl()).origin;
@@ -114,36 +122,41 @@ export function StaticPagePreview({
     }
   }, []);
 
-  // Listen for viben-page-ready and send init
-  const handleMessage = useCallback(
-    (e: MessageEvent) => {
-      if (e.origin !== gatewayOrigin) return;
-      if (e.data?.type === "viben-page-ready") {
-        iframeRef.current?.contentWindow?.postMessage(
-          {
-            type: "viben-page-init",
-            theme: resolvedTheme,
-            workspace_path: workspacePath,
-          },
-          gatewayOrigin
-        );
-      }
-    },
-    [resolvedTheme, workspacePath, gatewayOrigin]
-  );
-
   useEffect(() => {
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [handleMessage]);
+    return () => {
+      bridgeRef.current?.dispose("page_action_unavailable");
+      bridgeRef.current = null;
+    };
+  }, [page.slug, workspacePath, filePreviewType]);
 
   // Send theme updates when resolvedTheme changes
   useEffect(() => {
-    iframeRef.current?.contentWindow?.postMessage(
-      { type: "viben-page-theme", theme: resolvedTheme },
-      gatewayOrigin
-    );
-  }, [resolvedTheme, gatewayOrigin]);
+    bridgeRef.current?.updateTheme(resolvedTheme);
+  }, [resolvedTheme]);
+
+  const handleIframeLoad = useCallback(
+    (iframe: HTMLIFrameElement) => {
+      iframeRef.current = iframe;
+      bridgeRef.current?.dispose("page_action_cancelled");
+      bridgeRef.current = createPageActionBridge({
+        iframe,
+        gatewayOrigin,
+        workspacePath,
+        pageSlug: page.slug,
+        theme: resolvedTheme,
+        registerActions,
+        unregisterActions,
+      });
+    },
+    [
+      gatewayOrigin,
+      workspacePath,
+      page.slug,
+      resolvedTheme,
+      registerActions,
+      unregisterActions,
+    ]
+  );
 
   // For HTML and fallback: use iframe with gateway serve
   if (filePreviewType === "html" || filePreviewType === "iframe-fallback") {
@@ -156,7 +169,7 @@ export function StaticPagePreview({
           className="h-full w-full border-0"
           title={page.name}
           onLoad={(e) => {
-            iframeRef.current = e.currentTarget;
+            handleIframeLoad(e.currentTarget);
           }}
         />
       </div>

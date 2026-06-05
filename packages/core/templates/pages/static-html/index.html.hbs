@@ -19,5 +19,31 @@
 <body>
   <h1>{{name}}</h1>
   <p>{{description}}</p>
+  <div id="status" aria-live="polite"></div>
+
+  <script src="/api/page/_sdk/v1/viben-page-sdk.js"></script>
+  <script>
+    const statusEl = document.getElementById("status");
+
+    VibenPage.actions.register("page", {
+      set_status: {
+        description: "Set the page status text",
+        input_schema: {
+          type: "object",
+          properties: {
+            text: { type: "string" }
+          },
+          required: ["text"]
+        },
+        execute: async (payload) => {
+          statusEl.textContent = payload.text;
+          return {
+            content: [{ type: "text", text: "status updated" }],
+            structuredContent: { ok: true, text: payload.text }
+          };
+        }
+      }
+    });
+  </script>
 </body>
 </html>

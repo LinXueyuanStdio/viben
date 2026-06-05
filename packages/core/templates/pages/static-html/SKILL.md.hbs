@@ -10,3 +10,18 @@ description: "{{description}}"
 # {{name}}
 
 {{description}}
+
+## Page Actions
+
+This page can expose GUI actions to the Desktop agent through `VibenPage.actions.register()`:
+
+```js
+VibenPage.actions.register("page", {
+  refresh: {
+    description: "Refresh page data",
+    execute: async (payload, context) => {
+      return { content: [{ type: "text", text: "refreshed" }] };
+    }
+  }
+});
+```
