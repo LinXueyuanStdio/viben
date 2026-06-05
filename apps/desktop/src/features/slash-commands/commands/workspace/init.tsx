@@ -1,16 +1,16 @@
 import { createElement } from "react";
 import { FolderPlus } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import type { DesktopSlashCommand } from "../../types";
 
-export const initCommand: SlashCommandDefinition = {
+export const initCommand: DesktopSlashCommand = {
   id: "init",
   name: "init",
   get description() { return i18n.t("chat.slashCommands.initDesc"); },
   icon: createElement(FolderPlus, { className: "h-4 w-4" }),
   category: "workspace",
   source: "builtin",
-  execute: async (context) => {
+  execute: async (_payload, context) => {
     const { t } = context;
 
     if (!context.workspacePath) {

@@ -233,7 +233,7 @@ export function useSlashCommandMenu(
           if (!e.shiftKey) {
             e.preventDefault();
             const command = filteredCommands[selectedIndex];
-            if (command && !command.disabled) {
+            if (command) {
               handleSelect(command);
             }
             return true;

@@ -4,7 +4,7 @@ import { Zap } from "lucide-react";
 import { getGatewayClient } from "@/lib/gateway";
 import i18n from "@/i18n";
 import type {
-  SlashCommandDefinition,
+  DesktopSlashCommand,
   SkillCommandFile,
   SkillCommandsResponse,
 } from "../types";
@@ -15,7 +15,7 @@ import type {
 export function useSkillCommands(
   workspacePath?: string,
   agentId?: string
-): SlashCommandDefinition[] {
+): DesktopSlashCommand[] {
   const [skills, setSkills] = useState<SkillCommandFile[]>([]);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export function useSkillCommands(
   }, [workspacePath, agentId]);
 
   return useMemo(() => {
-    const commandDefs: SlashCommandDefinition[] = [];
+    const commandDefs: DesktopSlashCommand[] = [];
 
     for (const skill of skills) {
       // Create a command for each trigger
@@ -67,7 +67,7 @@ export function useSkillCommands(
           icon: createElement(Zap, { className: "h-4 w-4" }),
           category: "workspace" as const,
           source: "skill" as const,
-          execute: async (_context) => {
+          execute: async () => {
             return {
               type: "prompt" as const,
               prompt: `[Skill: ${skill.name}]\n\n${skill.content}`,

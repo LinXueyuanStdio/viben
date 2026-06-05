@@ -1,41 +1,18 @@
-import type { ReactNode } from "react";
-
 export interface SlashCommand {
-  id: string;
   name: string;
-  description?: string;
-  icon?: ReactNode;
-  keywords?: string[];
-  group?: string;
-  source?: string;
-  disabled?: boolean;
-  metadata?: Record<string, unknown>;
+  description: string;
+  input: Record<string, unknown> | null;
 }
 
-export interface SlashCommandArgument {
-  name: string;
-  required?: boolean;
-  description?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface SlashCommandDefinition<
-  TContext = unknown,
-  TResult = unknown
-> extends SlashCommand {
-  args?: SlashCommandArgument[];
-  execute?: (context: TContext, args: string, command: SlashCommandDefinition<TContext, TResult>) => TResult | Promise<TResult>;
-}
-
-export interface SlashCommandSelection<TCommand extends SlashCommand = SlashCommand> {
-  command: TCommand;
+export interface SlashCommandSelection {
+  command: SlashCommand;
   args: string;
   value: string;
 }
 
-export type SlashCommandHandler<TCommand extends SlashCommand = SlashCommand> = (
-  command: TCommand,
-  selection: SlashCommandSelection<TCommand>
+export type SlashCommandHandler = (
+  command: SlashCommand,
+  selection: SlashCommandSelection
 ) => void;
 
 export interface ParsedSlashCommandInput {
@@ -43,12 +20,6 @@ export interface ParsedSlashCommandInput {
   args: string;
 }
 
-export type SlashCommandProvider<
-  TProviderContext = unknown,
-  TContext = unknown,
-  TResult = unknown
-> = (
-  context: TProviderContext
-) =>
-  | SlashCommandDefinition<TContext, TResult>[]
-  | Promise<SlashCommandDefinition<TContext, TResult>[]>;
+export type SlashCommandProvider = (
+  context: unknown
+) => SlashCommand[] | Promise<SlashCommand[]>;

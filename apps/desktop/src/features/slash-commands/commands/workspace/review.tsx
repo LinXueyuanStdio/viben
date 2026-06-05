@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { FileSearch } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import { getSlashCommandArg, type DesktopSlashCommand } from "../../types";
 
-export const reviewCommand: SlashCommandDefinition = {
+export const reviewCommand: DesktopSlashCommand = {
   id: "review",
   name: "review",
   get description() { return i18n.t("chat.slashCommands.reviewDesc"); },
@@ -17,7 +17,7 @@ export const reviewCommand: SlashCommandDefinition = {
       get description() { return i18n.t("chat.slashCommands.reviewArgDesc"); },
     },
   ],
-  execute: async (context, args) => {
+  execute: async (payload, context) => {
     const { t } = context;
 
     if (!context.workspacePath) {
@@ -27,7 +27,7 @@ export const reviewCommand: SlashCommandDefinition = {
       };
     }
 
-    const target = args?.trim();
+    const target = getSlashCommandArg(payload).trim();
 
     if (target) {
       return {

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   SlashCommand,
-  SlashCommandDefinition,
   SlashCommandProvider,
 } from "./types";
 
@@ -9,9 +8,6 @@ function commandSearchText(command: SlashCommand): string {
   return [
     command.name,
     command.description,
-    command.group,
-    command.source,
-    ...(command.keywords ?? []),
   ]
     .filter(Boolean)
     .join(" ")
@@ -20,9 +16,9 @@ function commandSearchText(command: SlashCommand): string {
 
 export function findSlashCommand<TCommand extends SlashCommand>(
   commands: TCommand[],
-  nameOrId: string
+  name: string
 ): TCommand | undefined {
-  return commands.find((command) => command.name === nameOrId || command.id === nameOrId);
+  return commands.find((command) => command.name === name);
 }
 
 export function filterSlashCommands<TCommand extends SlashCommand>(
@@ -48,42 +44,28 @@ export function mergeSlashCommands<TCommand extends SlashCommand>(
   return Array.from(commandMap.values());
 }
 
-export interface UseSlashCommandsOptions<
-  TProviderContext = unknown,
-  TContext = unknown,
-  TResult = unknown
-> {
-  commands?: SlashCommandDefinition<TContext, TResult>[];
-  providers?: SlashCommandProvider<TProviderContext, TContext, TResult>[];
-  providerContext?: TProviderContext;
+export interface UseSlashCommandsOptions {
+  commands?: SlashCommand[];
+  providers?: SlashCommandProvider[];
+  providerContext?: unknown;
   onError?: (error: Error) => void;
 }
 
-export interface UseSlashCommandsReturn<TContext = unknown, TResult = unknown> {
+export interface UseSlashCommandsReturn {
   commands: SlashCommand[];
-  definitions: SlashCommandDefinition<TContext, TResult>[];
   isLoading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
-  find: (nameOrId: string) => SlashCommandDefinition<TContext, TResult> | undefined;
-  execute: (
-    command: SlashCommand,
-    context: TContext,
-    args?: string
-  ) => Promise<TResult | undefined>;
+  find: (nameOrId: string) => SlashCommand | undefined;
 }
 
-export function useSlashCommands<
-  TProviderContext = unknown,
-  TContext = unknown,
-  TResult = unknown
->({
+export function useSlashCommands({
   commands = [],
   providers = [],
   providerContext,
   onError,
-}: UseSlashCommandsOptions<TProviderContext, TContext, TResult> = {}): UseSlashCommandsReturn<TContext, TResult> {
-  const [providedCommands, setProvidedCommands] = useState<SlashCommandDefinition<TContext, TResult>[]>([]);
+}: UseSlashCommandsOptions = {}): UseSlashCommandsReturn {
+  const [providedCommands, setProvidedCommands] = useState<SlashCommand[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -98,7 +80,7 @@ export function useSlashCommands<
     setError(null);
     try {
       const loaded = await Promise.all(
-        providers.map((provider) => Promise.resolve(provider(providerContext as TProviderContext)))
+        providers.map((provider) => Promise.resolve(provider(providerContext)))
       );
       setProvidedCommands(mergeSlashCommands(loaded));
     } catch (unknownError) {
@@ -125,7 +107,7 @@ export function useSlashCommands<
       setError(null);
       try {
         const loaded = await Promise.all(
-          providers.map((provider) => Promise.resolve(provider(providerContext as TProviderContext)))
+          providers.map((provider) => Promise.resolve(provider(providerContext)))
         );
         if (!cancelled) setProvidedCommands(mergeSlashCommands(loaded));
       } catch (unknownError) {
@@ -146,37 +128,21 @@ export function useSlashCommands<
     };
   }, [onError, providerContext, providers]);
 
-  const definitions = useMemo(
+  const mergedCommands = useMemo(
     () => mergeSlashCommands([providedCommands, commands]),
     [commands, providedCommands]
   );
 
-  const publicCommands = useMemo<SlashCommand[]>(
-    () => definitions.map(({ execute: _execute, args: _args, ...command }) => command),
-    [definitions]
-  );
-
   const find = useCallback(
-    (nameOrId: string) => findSlashCommand(definitions, nameOrId),
-    [definitions]
-  );
-
-  const execute = useCallback(
-    async (command: SlashCommand, context: TContext, args = "") => {
-      const definition = find(command.id) ?? find(command.name);
-      if (definition?.disabled) return undefined;
-      return definition?.execute?.(context, args, definition);
-    },
-    [find]
+    (nameOrId: string) => findSlashCommand(mergedCommands, nameOrId),
+    [mergedCommands]
   );
 
   return {
-    commands: publicCommands,
-    definitions,
+    commands: mergedCommands,
     isLoading,
     error,
     refresh,
     find,
-    execute,
   };
 }

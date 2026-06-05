@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { Minimize2 } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import { getSlashCommandArg, type DesktopSlashCommand } from "../../types";
 
-export const compactCommand: SlashCommandDefinition = {
+export const compactCommand: DesktopSlashCommand = {
   id: "compact",
   name: "compact",
   get description() { return i18n.t("chat.slashCommands.compactDesc"); },
@@ -17,8 +17,9 @@ export const compactCommand: SlashCommandDefinition = {
       get description() { return i18n.t("chat.slashCommands.compactArgDesc"); },
     },
   ],
-  execute: async (context, args) => {
+  execute: async (payload, context) => {
     const { t } = context;
+    const args = getSlashCommandArg(payload).trim();
     const prompt = args
       ? t("chat.slashCommands.compactPromptWithFocus", { focus: args })
       : t("chat.slashCommands.compactPromptDefault");

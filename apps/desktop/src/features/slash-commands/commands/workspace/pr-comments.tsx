@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { MessageSquare } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import { getSlashCommandArg, type DesktopSlashCommand } from "../../types";
 
-export const prCommentsCommand: SlashCommandDefinition = {
+export const prCommentsCommand: DesktopSlashCommand = {
   id: "pr-comments",
   name: "pr-comments",
   get description() { return i18n.t("chat.slashCommands.prCommentsDesc"); },
@@ -17,7 +17,7 @@ export const prCommentsCommand: SlashCommandDefinition = {
       get description() { return i18n.t("chat.slashCommands.prCommentsArgDesc"); },
     },
   ],
-  execute: async (context, args) => {
+  execute: async (payload, context) => {
     const { t } = context;
 
     if (!context.workspacePath) {
@@ -27,7 +27,7 @@ export const prCommentsCommand: SlashCommandDefinition = {
       };
     }
 
-    const prNumber = args?.trim();
+    const prNumber = getSlashCommandArg(payload).trim();
 
     if (prNumber) {
       return {

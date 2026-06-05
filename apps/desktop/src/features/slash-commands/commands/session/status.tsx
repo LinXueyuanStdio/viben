@@ -1,16 +1,16 @@
 import { createElement } from "react";
 import { Activity } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import type { DesktopSlashCommand } from "../../types";
 
-export const statusCommand: SlashCommandDefinition = {
+export const statusCommand: DesktopSlashCommand = {
   id: "status",
   name: "status",
   get description() { return i18n.t("chat.slashCommands.statusDesc"); },
   icon: createElement(Activity, { className: "h-4 w-4" }),
   category: "session",
   source: "builtin",
-  execute: async (context) => {
+  execute: async (_payload, context) => {
     const { t } = context;
     const messageCount = context.messages.length;
     const model = context.currentModel || t("chat.slashCommands.statusUnknown");

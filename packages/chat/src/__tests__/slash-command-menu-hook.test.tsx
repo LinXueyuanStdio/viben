@@ -9,8 +9,8 @@ describe("useSlashCommandMenu", () => {
     const { result } = renderHook(() =>
       useSlashCommandMenu({
         commands: [
-          { id: "review", name: "review", description: "Review target" },
-          { id: "status", name: "status", description: "Show status" },
+          { name: "review", description: "Review target", input: null },
+          { name: "status", description: "Show status", input: null },
         ],
         onSelect,
       })
@@ -27,7 +27,7 @@ describe("useSlashCommandMenu", () => {
       result.current.handleSelect(result.current.filteredCommands[0]);
     });
 
-    expect(onSelect).toHaveBeenCalledWith({ id: "review", name: "review", description: "Review target" });
+    expect(onSelect).toHaveBeenCalledWith({ name: "review", description: "Review target", input: null });
     expect(result.current.isOpen).toBe(false);
   });
 });

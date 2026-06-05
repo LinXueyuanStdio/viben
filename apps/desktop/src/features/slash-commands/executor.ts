@@ -1,19 +1,20 @@
 import type {
-  SlashCommandDefinition,
+  DesktopSlashCommand,
   CommandContext,
   CommandResult,
+  SlashCommandPayload,
 } from "./types";
 
 /**
  * Execute a slash command and handle its result
  */
 export async function executeCommand(
-  command: SlashCommandDefinition,
-  context: CommandContext,
-  args?: string
+  command: DesktopSlashCommand,
+  payload: SlashCommandPayload,
+  context: CommandContext
 ): Promise<void> {
   try {
-    const result = await command.execute(context, args);
+    const result = await command.execute(payload, context);
     handleCommandResult(result, context);
   } catch (error) {
     console.error(`Failed to execute command /${command.name}:`, error);
@@ -73,9 +74,9 @@ function handleCommandResult(result: CommandResult, context: CommandContext) {
  * Find a command by name from the list
  */
 export function findCommand(
-  commands: SlashCommandDefinition[],
+  commands: DesktopSlashCommand[],
   name: string
-): SlashCommandDefinition | undefined {
+): DesktopSlashCommand | undefined {
   // Exact match first
   const exact = commands.find((cmd) => cmd.name === name);
   if (exact) return exact;
@@ -88,9 +89,9 @@ export function findCommand(
  * Filter commands by search query
  */
 export function filterCommands(
-  commands: SlashCommandDefinition[],
+  commands: DesktopSlashCommand[],
   query: string
-): SlashCommandDefinition[] {
+): DesktopSlashCommand[] {
   const lowerQuery = query.toLowerCase();
   return commands.filter(
     (cmd) =>
@@ -103,9 +104,9 @@ export function filterCommands(
  * Group commands by category
  */
 export function groupCommandsByCategory(
-  commands: SlashCommandDefinition[]
-): Map<string, SlashCommandDefinition[]> {
-  const groups = new Map<string, SlashCommandDefinition[]>();
+  commands: DesktopSlashCommand[]
+): Map<string, DesktopSlashCommand[]> {
+  const groups = new Map<string, DesktopSlashCommand[]>();
 
   for (const cmd of commands) {
     const category = cmd.category;
@@ -122,9 +123,9 @@ export function groupCommandsByCategory(
  * Group commands by source
  */
 export function groupCommandsBySource(
-  commands: SlashCommandDefinition[]
-): Map<string, SlashCommandDefinition[]> {
-  const groups = new Map<string, SlashCommandDefinition[]>();
+  commands: DesktopSlashCommand[]
+): Map<string, DesktopSlashCommand[]> {
+  const groups = new Map<string, DesktopSlashCommand[]>();
 
   for (const cmd of commands) {
     const source = cmd.source;

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { SlashCommand as ChatSlashCommand } from "@viben/chat";
 
 /**
  * Command categories for grouping in UI
@@ -23,15 +24,6 @@ export type CommandResultType = "message" | "ui" | "action" | "prompt";
  * Command source indicates where the command comes from
  */
 export type CommandSource = "builtin" | "workspace" | "skill";
-
-/**
- * Command argument definition
- */
-export interface CommandArg {
-  name: string;
-  required: boolean;
-  description: string;
-}
 
 /**
  * Context available to command execution
@@ -77,20 +69,33 @@ export interface CommandResult {
   navigateTo?: string;
 }
 
+export type SlashCommandPayload = Record<string, unknown>;
+
+export function getSlashCommandArg(payload: SlashCommandPayload, key = "args"): string {
+  const value = payload[key];
+  return typeof value === "string" ? value : "";
+}
+
 /**
- * Slash command definition with execution logic
+ * Desktop slash command with execution logic.
  */
-export interface SlashCommandDefinition {
+export type DesktopSlashCommand = Omit<ChatSlashCommand, "input"> & {
   id: string;
-  name: string;
-  description: string;
   icon?: ReactNode;
+  input?: ChatSlashCommand["input"];
+  args?: Array<{
+    name: string;
+    required?: boolean;
+    description?: string;
+  }>;
+  description: string;
   category: CommandCategory;
   source: CommandSource;
-  args?: CommandArg[];
-  /** Execute the command */
-  execute: (context: CommandContext, args?: string) => Promise<CommandResult>;
-}
+  execute: (
+    payload: SlashCommandPayload,
+    context: CommandContext
+  ) => Promise<CommandResult>;
+};
 
 /**
  * Workspace command loaded from .claude/commands/*.md

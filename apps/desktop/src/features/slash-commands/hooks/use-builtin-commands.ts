@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { SlashCommandDefinition } from "../types";
+import type { DesktopSlashCommand } from "../types";
 
 // Import command implementations
 import { helpCommand } from "../commands/session/help";
@@ -58,7 +58,7 @@ const COMMAND_ARGS_I18N_KEYS: Record<string, string> = {
 /**
  * Hook that provides all builtin slash commands with translated descriptions
  */
-export function useBuiltinCommands(): SlashCommandDefinition[] {
+export function useBuiltinCommands(): DesktopSlashCommand[] {
   const { t } = useTranslation();
 
   return useMemo(
@@ -103,7 +103,7 @@ export function useBuiltinCommands(): SlashCommandDefinition[] {
           if (argKey) {
             return {
               ...arg,
-              description: t(argKey, arg.description),
+              description: t(argKey, arg.description ?? arg.name),
             };
           }
           return arg;

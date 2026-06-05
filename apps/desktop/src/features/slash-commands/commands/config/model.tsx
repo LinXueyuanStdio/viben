@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { Cpu } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import { getSlashCommandArg, type DesktopSlashCommand } from "../../types";
 
-export const modelCommand: SlashCommandDefinition = {
+export const modelCommand: DesktopSlashCommand = {
   id: "model",
   name: "model",
   get description() { return i18n.t("chat.slashCommands.modelDesc"); },
@@ -17,13 +17,14 @@ export const modelCommand: SlashCommandDefinition = {
       get description() { return i18n.t("chat.slashCommands.modelArgDesc"); },
     },
   ],
-  execute: async (context, args) => {
+  execute: async (payload, context) => {
+    const args = getSlashCommandArg(payload).trim();
     if (args && context.setModel) {
       // Switch to specified model
-      context.setModel(args.trim());
+      context.setModel(args);
       return {
         type: "action",
-        toast: { message: "chat.slashCommands.modelSwitched", type: "success", i18n: true, params: { model: args.trim() } },
+        toast: { message: "chat.slashCommands.modelSwitched", type: "success", i18n: true, params: { model: args } },
       };
     }
 

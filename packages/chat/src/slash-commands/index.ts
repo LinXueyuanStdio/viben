@@ -1,8 +1,6 @@
 export type {
   ParsedSlashCommandInput,
   SlashCommand,
-  SlashCommandArgument,
-  SlashCommandDefinition,
   SlashCommandHandler,
   SlashCommandProvider,
   SlashCommandSelection,

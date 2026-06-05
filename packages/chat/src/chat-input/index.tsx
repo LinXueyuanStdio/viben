@@ -56,6 +56,9 @@ import { parseSlashCommandInput } from "../slash-commands";
 export function ChatInput({
   // Basic Props
   onSend,
+  value,
+  defaultValue = "",
+  onValueChange,
   onCancel,
   isLoading,
   allowSendWhileLoading,
@@ -104,13 +107,26 @@ export function ChatInput({
   // Slash Commands
   slashCommands = [],
   onSlashCommand,
+  renderSlashCommandMenu,
   // Custom Content Slots
   configBarLeftExtra,
 }: ChatInputProps) {
   const { t } = useTranslation();
 
   // State
-  const [content, setContent] = useState("");
+  const isControlled = value !== undefined;
+  const [uncontrolledContent, setUncontrolledContent] = useState(defaultValue);
+  const content = isControlled ? value : uncontrolledContent;
+  const setContent = useCallback(
+    (nextValue: string | ((previousValue: string) => string)) => {
+      const resolvedValue = typeof nextValue === "function" ? nextValue(content) : nextValue;
+      if (!isControlled) {
+        setUncontrolledContent(resolvedValue);
+      }
+      onValueChange?.(resolvedValue);
+    },
+    [content, isControlled, onValueChange]
+  );
   const [isWritingMode, setIsWritingMode] = useState(false);
   const [isScreenshotCapturing, setIsScreenshotCapturing] = useState(false);
 
@@ -333,7 +349,7 @@ export function ChatInput({
     const messageAttachments = attachments.length > 0 ? attachments : undefined;
     const parsedCommand = parseSlashCommandInput(text);
     const slashCommand = parsedCommand
-      ? slashCommands.find((command) => !command.disabled && (command.name === parsedCommand.name || command.id === parsedCommand.name))
+      ? slashCommands.find((command) => command.name === parsedCommand.name)
       : undefined;
 
     // Clear state first
@@ -505,17 +521,27 @@ export function ChatInput({
         style={hasToolbar ? { height: inputHeight } : undefined}
       >
         {/* Slash Command Menu */}
-        <SlashCommandMenu
-          commands={filteredCommands}
-          selectedIndex={slashSelectedIndex}
-          onSelect={handleSlashSelect}
-          onHover={() => {
-            // Update selected index on hover - handled internally by slash command hook
-          }}
-          isOpen={isSlashMenuOpen}
-          query={slashQuery}
-          anchorRef={containerRef as React.RefObject<HTMLElement>}
-        />
+        {renderSlashCommandMenu ? (
+          renderSlashCommandMenu({
+            commands: filteredCommands,
+            selectedIndex: slashSelectedIndex,
+            onSelect: handleSlashSelect,
+            onHover: () => {},
+            isOpen: isSlashMenuOpen,
+            query: slashQuery,
+            anchorRef: containerRef as React.RefObject<HTMLElement>,
+          })
+        ) : (
+          <SlashCommandMenu
+            commands={filteredCommands}
+            selectedIndex={slashSelectedIndex}
+            onSelect={handleSlashSelect}
+            onHover={() => {}}
+            isOpen={isSlashMenuOpen}
+            query={slashQuery}
+            anchorRef={containerRef as React.RefObject<HTMLElement>}
+          />
+        )}
 
         <HighlightedInput
           ref={textareaRef}

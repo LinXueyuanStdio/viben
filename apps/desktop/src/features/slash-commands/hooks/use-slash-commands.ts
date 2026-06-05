@@ -1,7 +1,12 @@
 import { useMemo, useCallback, useState } from "react";
 import { useSlashCommands as useChatSlashCommands } from "@viben/chat";
 import type { SlashCommand } from "@viben/chat";
-import type { SlashCommandDefinition, CommandContext, CommandResult } from "../types";
+import type {
+  DesktopSlashCommand,
+  CommandContext,
+  CommandResult,
+  SlashCommandPayload,
+} from "../types";
 import { useBuiltinCommands } from "./use-builtin-commands";
 import { useWorkspaceCommands } from "./use-workspace-commands";
 import { useSkillCommands } from "./use-skill-commands";
@@ -15,16 +20,14 @@ export interface UseSlashCommandsOptions {
 export interface UseSlashCommandsReturn {
   /** All available commands as SlashCommand for ChatInput */
   commands: SlashCommand[];
-  /** All command definitions with full execution logic */
-  definitions: SlashCommandDefinition[];
   /** Execute a command by SlashCommand */
   execute: (
     command: SlashCommand,
-    context: CommandContext,
-    args?: string
+    payload: SlashCommandPayload,
+    context: CommandContext
   ) => Promise<CommandResult | null>;
-  /** Find a command definition by name */
-  find: (name: string) => SlashCommandDefinition | undefined;
+  /** Find a desktop command by name or id */
+  find: (name: string) => DesktopSlashCommand | undefined;
   /** Last command result for display */
   lastResult: CommandResult | null;
   /** Clear last result */
@@ -51,28 +54,35 @@ export function useSlashCommands(
     [builtinCommands, workspaceCommands, skillCommands]
   );
 
-  const registry = useChatSlashCommands<CommandContext, CommandResult>({
-    commands: orderedDefinitions,
+  const commandData = useMemo<SlashCommand[]>(
+    () => orderedDefinitions.map(stripExecute),
+    [orderedDefinitions]
+  );
+
+  const registry = useChatSlashCommands({
+    commands: commandData,
   });
 
-  const registryExecute = registry.execute;
-  const registryFind = registry.find;
   const commands = useMemo<SlashCommand[]>(
     () => registry.commands,
     [registry.commands]
   );
-  const definitions = registry.definitions;
+  const commandIndex = useMemo(() => {
+    const byName = new Map<string, DesktopSlashCommand>();
+    for (const command of orderedDefinitions) {
+      byName.set(command.name, command);
+    }
+    return { byName };
+  }, [orderedDefinitions]);
 
   // Execute a command
   const execute = useCallback(
     async (
       command: SlashCommand,
-      context: CommandContext,
-      args?: string
+      payload: SlashCommandPayload,
+      context: CommandContext
     ): Promise<CommandResult | null> => {
-      const definition = definitions.find(
-        (def) => def.id === command.id || def.name === command.name
-      );
+      const definition = commandIndex.byName.get(command.name);
 
       if (!definition) {
         console.warn(`Command not found: ${command.name}`);
@@ -80,8 +90,7 @@ export function useSlashCommands(
       }
 
       try {
-        const result = await registryExecute(command, context, args);
-        if (!result) return null;
+        const result = await definition.execute(payload, context);
         setLastResult(result);
         return result;
       } catch (error) {
@@ -97,11 +106,14 @@ export function useSlashCommands(
         return errorResult;
       }
     },
-    [definitions, registryExecute]
+    [commandIndex]
   );
 
   // Find a command by name
-  const find = useCallback((name: string) => registryFind(name), [registryFind]);
+  const find = useCallback(
+    (name: string) => commandIndex.byName.get(name),
+    [commandIndex]
+  );
 
   // Clear last result
   const clearLastResult = useCallback(() => {
@@ -110,10 +122,24 @@ export function useSlashCommands(
 
   return {
     commands,
-    definitions,
     execute,
     find,
     lastResult,
     clearLastResult,
+  };
+}
+
+function stripExecute(command: DesktopSlashCommand): SlashCommand {
+  const { execute: _execute, id: _id, icon: _icon, category: _category, source: _source, args, input, ...data } = command;
+  return {
+    ...data,
+    input: input ?? argsToInput(args),
+  };
+}
+
+function argsToInput(args: DesktopSlashCommand["args"]): SlashCommand["input"] {
+  if (!args || args.length === 0) return null;
+  return {
+    hint: args.map((arg) => `[${arg.name}]`).join(" "),
   };
 }

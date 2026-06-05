@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { FileText } from "lucide-react";
 import { getGatewayClient } from "@/lib/gateway";
 import type {
-  SlashCommandDefinition,
+  DesktopSlashCommand,
   WorkspaceCommandFile,
   WorkspaceCommandsResponse,
 } from "../types";
@@ -13,7 +13,7 @@ import type {
  */
 export function useWorkspaceCommands(
   workspacePath?: string
-): SlashCommandDefinition[] {
+): DesktopSlashCommand[] {
   const [commands, setCommands] = useState<WorkspaceCommandFile[]>([]);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function useWorkspaceCommands(
       icon: createElement(FileText, { className: "h-4 w-4" }),
       category: "workspace" as const,
       source: "workspace" as const,
-      execute: async (_context) => {
+      execute: async () => {
         return {
           type: "prompt" as const,
           prompt: cmd.content,

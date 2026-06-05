@@ -1,16 +1,16 @@
 import { createElement } from "react";
 import { Stethoscope } from "lucide-react";
 import i18n from "@/i18n";
-import type { SlashCommandDefinition } from "../../types";
+import type { DesktopSlashCommand } from "../../types";
 
-export const doctorCommand: SlashCommandDefinition = {
+export const doctorCommand: DesktopSlashCommand = {
   id: "doctor",
   name: "doctor",
   get description() { return i18n.t("chat.slashCommands.doctorDesc"); },
   icon: createElement(Stethoscope, { className: "h-4 w-4" }),
   category: "info",
   source: "builtin",
-  execute: async (context) => {
+  execute: async (_payload, context) => {
     const { t } = context;
     // Collect diagnostic information
     const diagnostics = [

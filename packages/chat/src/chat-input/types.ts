@@ -73,6 +73,12 @@ export interface ChatInputProps {
   // === Basic Props ===
   /** Callback when message is sent */
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
+  /** Controlled textarea value. */
+  value?: string;
+  /** Initial textarea value for uncontrolled usage. */
+  defaultValue?: string;
+  /** Callback when textarea value changes. */
+  onValueChange?: (value: string) => void;
 
   // === Custom Content Slots ===
   /** Extra content to render at the left side of the config bar (after built-in selectors) */
@@ -183,6 +189,8 @@ export interface ChatInputProps {
   slashCommands?: SlashCommand[];
   /** Callback when a slash command is selected */
   onSlashCommand?: SlashCommandHandler;
+  /** Custom slash command menu renderer. If omitted, ChatInput renders the default menu. */
+  renderSlashCommandMenu?: (props: SlashCommandMenuProps) => ReactNode;
 }
 
 // ============================================================================
@@ -254,4 +262,5 @@ export interface SlashCommandMenuProps {
   onHover: (index: number) => void;
   isOpen: boolean;
   query: string;
+  anchorRef?: React.RefObject<HTMLElement>;
 }
