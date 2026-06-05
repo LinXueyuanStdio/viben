@@ -654,9 +654,13 @@ export class SdkChatProxy implements ChatProxy {
       let perfFirstMsgTime = 0;
       for await (const message of queryResult) {
         perfMsgCount++;
+        const msgType = (message as Record<string, unknown>).type;
         if (perfMsgCount === 1) {
           perfFirstMsgTime = Date.now() - perfQueryStart;
-          log.info({ firstMsgMs: perfFirstMsgTime, type: (message as Record<string, unknown>).type }, "[perf] First SDK message received");
+          log.info({ firstMsgMs: perfFirstMsgTime, type: msgType }, "[perf] First SDK message received");
+        } else if (perfMsgCount <= 10 || perfMsgCount % 10 === 0) {
+          // Log first 10 messages and then every 10th to avoid log spam
+          log.info({ msgNum: perfMsgCount, type: msgType, elapsed: Date.now() - perfQueryStart }, "[perf] SDK message");
         }
         for (const sseMessage of this.convertToSSEMessages(message)) {
           yield sseMessage;

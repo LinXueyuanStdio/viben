@@ -23,6 +23,3 @@ export interface ParsedSlashCommandInput {
   args: string;
 }
 
-export type SlashCommandProvider = (
-  context: unknown
-) => SlashCommand[] | Promise<SlashCommand[]>;

@@ -114,6 +114,7 @@ function ChatPopup({
   /** Context token usage percentage (0-100), estimated from message content */
   contextProgress: number;
 }): ReactElement {
+
   const { t } = useTranslation();
   const { isChatPopupOpen, closeChatPopup } = useUiStore();
 

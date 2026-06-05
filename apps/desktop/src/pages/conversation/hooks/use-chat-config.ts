@@ -13,8 +13,9 @@
  * useChatConfig can be used outside of a <Router> context.
  */
 
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation, useParams } from "react-router-dom";
+
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useAgents, useExecutors } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
@@ -133,6 +134,7 @@ export interface UseChatConfigReturn {
 // ============================================================================
 
 export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigReturn {
+
   const context = options?.context ?? DEFAULT_CONTEXT;
   const workspacePath = options?.workspacePath;
   const workspaceName = options?.workspaceName;
@@ -180,46 +182,68 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
     error: executorsError,
   } = useExecutors();
 
+  // Refs to track previous values and avoid redundant store updates
+  const prevAgentIdsRef = useRef<string>("");
+  const prevModelIdsRef = useRef<string>("");
+
   // Sync viben agents to store (with source info)
+  // Only update store if agent IDs actually changed to prevent infinite re-render loops
   useEffect(() => {
     if (!agentsLoading && vibenAgents.length > 0) {
-      const chatAgents: ChatAgentConfig[] = vibenAgents.map((a) => ({
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        model: a.model,
-        executor_type: a.executor_type,
-        source: a.source,
-      }));
-      setGlobalAgents(chatAgents);
+      const agentIds = vibenAgents.map((a) => a.id).join(",");
+      if (agentIds !== prevAgentIdsRef.current) {
+        prevAgentIdsRef.current = agentIds;
+        const chatAgents: ChatAgentConfig[] = vibenAgents.map((a) => ({
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          model: a.model,
+          executor_type: a.executor_type,
+          source: a.source,
+        }));
+        setGlobalAgents(chatAgents);
+      }
     }
   }, [vibenAgents, agentsLoading, setGlobalAgents]);
 
   // Sync viben models to store
+  // Only update store if model IDs actually changed to prevent infinite re-render loops
   useEffect(() => {
     if (!modelsLoading && vibenModels.length > 0) {
-      const chatModels: ChatModelConfig[] = vibenModels
-        .filter((m) => m.is_available) // Only show available models
-        .map((m) => ({
+      const availableModels = vibenModels.filter((m) => m.is_available);
+      const modelIds = availableModels.map((m) => m.id).join(",");
+      if (modelIds !== prevModelIdsRef.current) {
+        prevModelIdsRef.current = modelIds;
+        const chatModels: ChatModelConfig[] = availableModels.map((m) => ({
           id: m.id,
           name: m.name,
           provider: m.provider_id,
           provider_id: m.provider_id,
         }));
-      setGlobalModels(chatModels);
+        setGlobalModels(chatModels);
+      }
     }
   }, [vibenModels, modelsLoading, setGlobalModels]);
 
-  // Update loading state
+  // Update loading state - only update if value actually changed to prevent infinite loops
+  const combinedLoading = agentsLoading || modelsLoading || executorsLoading;
+  const prevLoadingRef = useRef<boolean | null>(null);
   useEffect(() => {
-    setLoading(agentsLoading || modelsLoading || executorsLoading);
-  }, [agentsLoading, modelsLoading, executorsLoading, setLoading]);
+    if (prevLoadingRef.current !== combinedLoading) {
+      prevLoadingRef.current = combinedLoading;
+      setLoading(combinedLoading);
+    }
+  }, [combinedLoading, setLoading]);
 
-  // Update error state
+  // Update error state - only update if value actually changed to prevent infinite loops
+  const combinedError = agentsError || modelsError || executorsError || null;
+  const prevErrorRef = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    const errorMsg = agentsError || modelsError || executorsError || null;
-    setError(errorMsg);
-  }, [agentsError, modelsError, executorsError, setError]);
+    if (prevErrorRef.current !== combinedError) {
+      prevErrorRef.current = combinedError;
+      setError(combinedError);
+    }
+  }, [combinedError, setError]);
 
   // Filter agents based on context
   const filteredAgents = useMemo((): ChatAgentConfig[] => {

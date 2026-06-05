@@ -263,6 +263,7 @@ export interface UseAgentConversationOptions {
  * Manages SSE streaming conversation with AI agents via Gateway
  */
 export function useAgentConversation(workspaceId: string, options?: UseAgentConversationOptions) {
+
   const {
     agentConfigPath,
     agentDir,

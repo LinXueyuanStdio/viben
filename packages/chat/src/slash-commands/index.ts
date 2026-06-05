@@ -2,7 +2,6 @@ export type {
   ParsedSlashCommandInput,
   SlashCommand,
   SlashCommandHandler,
-  SlashCommandProvider,
   SlashCommandSelection,
 } from "./types";
 export {

@@ -58,7 +58,6 @@ export type {
   ParsedSlashCommandInput,
   SlashCommand,
   SlashCommandHandler,
-  SlashCommandProvider,
   SlashCommandSelection,
   UseSlashCommandsOptions,
   UseSlashCommandsReturn,
