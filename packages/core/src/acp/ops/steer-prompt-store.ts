@@ -51,6 +51,7 @@ export interface AcpSteerPromptStore {
   count?(input: Omit<ListSteerPromptInput, "limit" | "cursor">): Promise<number>;
   cancel(sessionId: string, promptId: string): Promise<AcpSteerPromptRecord | undefined>;
   consumeNext(sessionId: string): Promise<AcpSteerPromptRecord | undefined>;
+  consumeQueued(sessionId: string): Promise<AcpSteerPromptRecord[]>;
   markCompleted(sessionId: string, promptId: string): Promise<AcpSteerPromptRecord | undefined>;
   markFailed(sessionId: string, promptId: string, error: string): Promise<AcpSteerPromptRecord | undefined>;
 }
@@ -122,6 +123,18 @@ export class InMemoryAcpSteerPromptStore implements AcpSteerPromptStore {
     record.status = "consumed";
     record.consumed_at = new Date().toISOString();
     return cloneRecord(record);
+  }
+
+  async consumeQueued(sessionId: string): Promise<AcpSteerPromptRecord[]> {
+    const records = Array.from(this.records.values())
+      .filter((item) => item.session_id === sessionId && item.status === "queued")
+      .sort((left, right) => left.created_at.localeCompare(right.created_at));
+    const now = new Date().toISOString();
+    for (const record of records) {
+      record.status = "consumed";
+      record.consumed_at = now;
+    }
+    return records.map((record) => cloneRecord(record));
   }
 
   async markCompleted(sessionId: string, promptId: string): Promise<AcpSteerPromptRecord | undefined> {
@@ -265,6 +278,33 @@ export class SqliteAcpSteerPromptStore implements AcpSteerPromptStore {
     `).run(now, sessionId, row.id);
     const record = await this.get(sessionId, row.id);
     return record?.status === "consumed" ? record : undefined;
+  }
+
+  async consumeQueued(sessionId: string): Promise<AcpSteerPromptRecord[]> {
+    const rows = this.db.prepare(`
+      SELECT id FROM acp_steer_prompts
+      WHERE session_id = ? AND status = 'queued'
+      ORDER BY created_at ASC
+    `).all(sessionId);
+    const ids = rows
+      .map((row) => isRecord(row) && typeof row.id === "string" ? row.id : undefined)
+      .filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return [];
+
+    const now = new Date().toISOString();
+    const consumed: AcpSteerPromptRecord[] = [];
+    for (const id of ids) {
+      this.db.prepare(`
+        UPDATE acp_steer_prompts
+        SET status = 'consumed', consumed_at = ?
+        WHERE session_id = ? AND id = ? AND status = 'queued'
+      `).run(now, sessionId, id);
+      const record = await this.get(sessionId, id);
+      if (record?.status === "consumed") {
+        consumed.push(record);
+      }
+    }
+    return consumed;
   }
 
   async markCompleted(sessionId: string, promptId: string): Promise<AcpSteerPromptRecord | undefined> {

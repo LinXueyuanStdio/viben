@@ -4,12 +4,13 @@ import * as path from "node:path";
 import type { PromptRequest, PromptResponse } from "@agentclientprotocol/sdk";
 import { resolveBuiltinAcpBackend } from "./backend-adapter";
 import { AcpSessionManager } from "./session-manager";
+import { InMemoryAcpSteerPromptStore } from "./steer-prompt-store";
 import type {
   AcpBackendAdapter,
   AcpBackendSession,
   AcpBackendStartContext,
 } from "./backend-adapter";
-import type { AcpConnection } from "../types";
+import type { AcpConnection, AcpSessionNotification } from "../types";
 
 class FakeBackendSession implements AcpBackendSession {
   constructor(readonly backendSessionId = "backend-session") {}
@@ -42,6 +43,32 @@ function createConnection(): AcpConnection {
     },
     async requestClient() {
       return { content: [{ type: "text", text: "ok" }] };
+    },
+    async notifyClient() {},
+  };
+}
+
+function createCapturingConnection(): AcpConnection & { updates: AcpSessionNotification[] } {
+  const updates: AcpSessionNotification[] = [];
+  return {
+    updates,
+    async sessionUpdate(notification) {
+      updates.push(notification);
+    },
+    async requestPermission() {
+      return { outcome: { outcome: "selected", optionId: "allow_once" } };
+    },
+    async requestClient() {
+      return { content: [{ type: "text", text: "ok" }] };
+    },
+    async notifyClient(method, params) {
+      updates.push({
+        sessionId: typeof params?.sessionId === "string" ? params.sessionId : "unknown",
+        update: {
+          sessionUpdate: method,
+          ...params,
+        },
+      } as AcpSessionNotification);
     },
   };
 }
@@ -122,7 +149,7 @@ describe("AcpSessionManager", () => {
   });
 
   it("queues a steer prompt with session, agent, user, and prompt payload", async () => {
-    const manager = new AcpSessionManager(new CapturingBackendAdapter());
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
     const session = await manager.createSession(
       { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
       createConnection()
@@ -156,7 +183,7 @@ describe("AcpSessionManager", () => {
   });
 
   it("lists queued steer prompts for a session", async () => {
-    const manager = new AcpSessionManager(new CapturingBackendAdapter());
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
     const session = await manager.createSession(
       { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
       createConnection()
@@ -183,8 +210,8 @@ describe("AcpSessionManager", () => {
     expect(viewed.nextCursor).toBeNull();
   });
 
-  it("cancels queued steer prompts and reports consumed status", async () => {
-    const manager = new AcpSessionManager(new CapturingBackendAdapter());
+  it("cancels queued steer prompts and preserves cancelled status in view", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
     const session = await manager.createSession(
       { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
       createConnection()
@@ -196,11 +223,6 @@ describe("AcpSessionManager", () => {
       prompt: [{ type: "text", text: "cancel this" }],
     });
 
-    expect(await manager.isSteerPromptConsumed({
-      sessionId: session.sessionId,
-      promptId: queued.promptId,
-    })).toEqual({ promptId: queued.promptId, consumed: false, status: "queued" });
-
     expect(await manager.cancelSteerPrompt({
       sessionId: session.sessionId,
       promptId: queued.promptId,
@@ -211,14 +233,54 @@ describe("AcpSessionManager", () => {
       cancelledAt: expect.any(String),
     });
 
-    expect(await manager.isSteerPromptConsumed({
+    const viewed = await manager.viewSteerPrompt({
       sessionId: session.sessionId,
       promptId: queued.promptId,
-    })).toEqual({ promptId: queued.promptId, consumed: false, status: "cancelled" });
+    });
+    if (!("prompt" in viewed)) {
+      throw new Error("Expected single steer prompt view");
+    }
+    expect(viewed.prompt.status).toBe("cancelled");
   });
 
-  it("marks steer prompts consumed once dequeued and does not cancel consumed prompts", async () => {
-    const manager = new AcpSessionManager(new CapturingBackendAdapter());
+  it("consumes all queued steer prompts before completing a client tool result", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+    const first = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "consume first" }],
+    });
+    const second = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "consume second" }],
+    });
+
+    await manager.requestClientTool(session.sessionId, "GUI_execute", { action: "test" }, "tool-1");
+
+    const viewed = await manager.viewSteerPrompt({
+      sessionId: session.sessionId,
+    });
+
+    if (!("prompts" in viewed)) {
+      throw new Error("Expected steer prompt list view");
+    }
+    expect(viewed.prompts.map((item) => item.status)).toEqual(["consumed", "consumed"]);
+    expect(connection.updates.map((notification) => notification.update)).toEqual([
+      expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: first.promptId }),
+      expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: second.promptId }),
+    ]);
+  });
+
+  it("does not cancel steer prompts after they were consumed for a client tool result", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
     const session = await manager.createSession(
       { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
       createConnection()
@@ -229,27 +291,11 @@ describe("AcpSessionManager", () => {
       userId: "user-1",
       prompt: [{ type: "text", text: "consume this" }],
     });
+    await manager.requestClientTool(session.sessionId, "GUI_execute", { action: "test" }, "tool-1");
 
-    const consumed = await manager.consumeNextSteerPrompt(session.sessionId);
-
-    expect(consumed?.promptId).toBe(queued.promptId);
-    expect(await manager.isSteerPromptConsumed({
-      sessionId: session.sessionId,
-      promptId: queued.promptId,
-    })).toMatchObject({
-      promptId: queued.promptId,
-      consumed: true,
-      status: "consumed",
-      consumedAt: expect.any(String),
-    });
     expect(await manager.cancelSteerPrompt({
       sessionId: session.sessionId,
       promptId: queued.promptId,
-    })).toMatchObject({
-      promptId: queued.promptId,
-      cancelled: false,
-      status: "consumed",
-      consumedAt: expect.any(String),
-    });
+    })).toMatchObject({ promptId: queued.promptId, cancelled: false, status: "consumed" });
   });
 });

@@ -167,6 +167,36 @@ pre code.json-code {
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 16%, transparent);
 }
 
+.acp-prompt-input {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-card);
+  box-shadow: 0 1px 2px color-mix(in oklch, var(--color-foreground) 6%, transparent);
+}
+
+.acp-prompt-input:focus-within {
+  border-color: color-mix(in oklch, var(--color-primary) 58%, var(--color-border));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 14%, transparent);
+}
+
+.acp-prompt-input .viben-chat-input-editor {
+  padding-inline: 14px;
+}
+
+.acp-prompt-input textarea {
+  line-height: 1.55;
+}
+
+.acp-prompt-input .h-1.cursor-ns-resize {
+  height: 6px;
+  background: var(--color-muted);
+}
+
+.acp-prompt-input .h-1.cursor-ns-resize:hover {
+  background: color-mix(in oklch, var(--color-primary) 18%, var(--color-muted));
+}
+
 .session-row {
   display: flex;
   min-height: 58px;

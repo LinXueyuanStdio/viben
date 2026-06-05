@@ -111,17 +111,10 @@ export interface AcpCancelSteerPromptResponse {
   cancelledAt?: string;
 }
 
-export interface AcpConsumedSteerPromptRequest {
-  sessionId: string;
+export interface AcpSteerPromptConsumedNotification {
   promptId: string;
-}
-
-export interface AcpConsumedSteerPromptResponse {
-  promptId: string;
-  consumed: boolean;
   status: AcpSteerPromptStatus;
   consumedAt?: string;
-  completedAt?: string;
 }
 
 export interface AcpViewSteerPromptRequest {
@@ -272,4 +265,5 @@ export interface AcpConnection {
   sessionUpdate(params: AcpSessionNotification): void | Promise<void>;
   requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequestPermissionResponse>;
   requestClient(method: string, params?: Record<string, unknown>): Promise<unknown>;
+  notifyClient(method: string, params?: Record<string, unknown>): void | Promise<void>;
 }

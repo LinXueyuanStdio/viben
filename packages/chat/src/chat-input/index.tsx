@@ -51,7 +51,7 @@ import {
   useAutoFocus,
 } from "./hooks";
 import type { ChatInputProps } from "./types";
-import { findSlashCommand, parseSlashCommandInput } from "../slash-commands";
+import { findSlashCommand, formatSlashCommandInput, parseSlashCommandInput } from "../slash-commands";
 
 export function ChatInput({
   // Basic Props
@@ -71,6 +71,10 @@ export function ChatInput({
   showTopToolbar = false,
   showConfigBar = false,
   showResizeHandle = false,
+  defaultHeight,
+  minHeight,
+  maxHeight,
+  heightStorageKey,
   enableWritingMode = false,
   // Selector Visibility Override
   hideAgentSelector = false,
@@ -158,32 +162,22 @@ export function ChatInput({
   } = useSlashCommandMenu({
     commands: slashCommands,
     onSelect: (command) => {
-      const commandText = `/${command.name}`;
-      if (command.input) {
-        const hint = typeof command.input.hint === "string" ? command.input.hint : "";
-        const nextValue = `${commandText}${hint ? ` ${hint}` : " "}`;
-        setContent(nextValue);
-        handleSlashContentChange(nextValue);
-        requestAnimationFrame(() => textareaRef.current?.focus());
-        return;
-      }
-
-      const selectedValue = content;
-      const parsedInput = parseSlashCommandInput(selectedValue);
-      setContent("");
-      onSlashCommand?.(command, {
-        command,
-        args: parsedInput?.args ?? "",
-        value: selectedValue,
-        attachments: attachments.length > 0 ? attachments : undefined,
-      });
-      textareaRef.current?.focus();
+      const parsedInput = parseSlashCommandInput(content);
+      const args = parsedInput?.args || (typeof command.input?.hint === "string" ? command.input.hint : "");
+      const nextValue = formatSlashCommandInput(command, args);
+      setContent(nextValue);
+      handleSlashContentChange(nextValue);
+      requestAnimationFrame(() => textareaRef.current?.focus());
     },
     enabled: slashCommands.length > 0 && !!onSlashCommand,
   });
 
   const { height: inputHeight, handleResizeStart } = useResizableHeight({
     enabled: showResizeHandle,
+    defaultHeight,
+    minHeight,
+    maxHeight,
+    storageKey: heightStorageKey,
   });
 
   const {
@@ -532,7 +526,7 @@ export function ChatInput({
 
       {/* Textarea with Slash Command Menu */}
       <div
-        className={cn("px-3 relative", !hasToolbar && "py-3")}
+        className={cn("viben-chat-input-editor px-3 relative", !hasToolbar && "py-3")}
         style={hasToolbar ? { height: inputHeight } : undefined}
       >
         {/* Slash Command Menu */}
@@ -570,8 +564,12 @@ export function ChatInput({
           highlightSlashCommand={slashCommands.length > 0}
           isSlashMenuOpen={isSlashMenuOpen}
           className={cn(
-            "w-full resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none",
-            hasToolbar ? "h-full py-3 text-base" : "text-base"
+            "w-full text-base",
+            hasToolbar && "h-full"
+          )}
+          textareaClassName={cn(
+            "resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none",
+            hasToolbar ? "py-3" : undefined
           )}
           style={
             !hasToolbar

@@ -5,6 +5,7 @@ function commandSearchText(command: SlashCommand): string {
   return [
     command.name,
     command.description,
+    typeof command.input?.hint === "string" ? command.input.hint : "",
   ]
     .filter(Boolean)
     .join(" ")

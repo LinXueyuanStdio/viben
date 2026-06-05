@@ -107,6 +107,14 @@ export interface ChatInputProps {
   showConfigBar?: boolean;
   /** Show resize handle for adjustable height */
   showResizeHandle?: boolean;
+  /** Initial height in pixels when resize handle is enabled */
+  defaultHeight?: number;
+  /** Minimum height in pixels when resize handle is enabled */
+  minHeight?: number;
+  /** Maximum height in pixels when resize handle is enabled */
+  maxHeight?: number;
+  /** Optional localStorage key for persisted resize height */
+  heightStorageKey?: string;
   /** Enable fullscreen writing mode */
   enableWritingMode?: boolean;
 

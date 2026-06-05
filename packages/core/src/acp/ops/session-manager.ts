@@ -21,8 +21,6 @@ import type {
   AcpNewSessionResponse,
   AcpCancelSteerPromptRequest,
   AcpCancelSteerPromptResponse,
-  AcpConsumedSteerPromptRequest,
-  AcpConsumedSteerPromptResponse,
   AcpPromptRequest,
   AcpPromptResponse,
   AcpSandboxConfig,
@@ -30,6 +28,7 @@ import type {
   AcpSessionStatus,
   AcpSessionSummary,
   AcpSteerPromptRecord,
+  AcpSteerPromptConsumedNotification,
   AcpSteerPromptRequest,
   AcpSteerPromptResponse,
   AcpSteerPromptView,
@@ -283,21 +282,6 @@ export class AcpSessionManager {
     };
   }
 
-  async isSteerPromptConsumed(request: AcpConsumedSteerPromptRequest): Promise<AcpConsumedSteerPromptResponse> {
-    this.requireSession(request.sessionId);
-    const record = await this.steerPromptStore.get(request.sessionId, request.promptId);
-    if (!record) {
-      throw new Error(`ACP steer prompt not found: ${request.promptId}`);
-    }
-    return {
-      promptId: record.id,
-      consumed: isConsumedSteerStatus(record.status),
-      status: record.status,
-      consumedAt: record.consumed_at,
-      completedAt: record.completed_at,
-    };
-  }
-
   async viewSteerPrompt(request: AcpViewSteerPromptRequest): Promise<AcpViewSteerPromptResponse> {
     this.requireSession(request.sessionId);
     if (request.promptId) {
@@ -337,8 +321,17 @@ export class AcpSessionManager {
     const session = this.requireSession(sessionId);
     const record = await this.steerPromptStore.consumeNext(sessionId);
     if (!record) return undefined;
-    await this.dispatchSteerUpdate(session, record, "steer_consumed");
+    await this.dispatchSteerConsumed(session, record);
     return steerRecordToView(record);
+  }
+
+  async consumeQueuedSteerPrompts(sessionId: string): Promise<AcpSteerPromptView[]> {
+    const session = this.requireSession(sessionId);
+    const records = await this.steerPromptStore.consumeQueued(sessionId);
+    for (const record of records) {
+      await this.dispatchSteerConsumed(session, record);
+    }
+    return records.map((record) => steerRecordToView(record));
   }
 
   async markSteerPromptCompleted(sessionId: string, promptId: string): Promise<AcpSteerPromptView | undefined> {
@@ -529,6 +522,7 @@ export class AcpSessionManager {
       input,
     });
     const result = normalizeClientToolResponse(response);
+    await this.consumeQueuedSteerPrompts(session.id);
     const accepted = clientToolCompletionRegistry.complete(toolUseId, session.id, result);
     if (!accepted) {
       log.warn({ sessionId: session.id, toolUseId }, "ACP client tool completion was not accepted");
@@ -568,6 +562,23 @@ export class AcpSessionManager {
       });
     } catch (error) {
       log.warn({ err: error, sessionId: session.id, promptId: record.id }, "Failed to dispatch ACP steer update");
+    }
+  }
+
+  private async dispatchSteerConsumed(
+    session: AcpSession,
+    record: AcpSteerPromptRecord
+  ): Promise<void> {
+    const params: AcpSteerPromptConsumedNotification & { sessionId: string } = {
+      sessionId: session.id,
+      promptId: record.id,
+      status: record.status,
+      consumedAt: record.consumed_at,
+    };
+    try {
+      await session.connection.notifyClient("session/prompt/consumed", { ...params });
+    } catch (error) {
+      log.warn({ err: error, sessionId: session.id, promptId: record.id }, "Failed to dispatch ACP steer consumed notification");
     }
   }
 
@@ -835,10 +846,6 @@ function steerRecordToView(record: AcpSteerPromptRecord): AcpSteerPromptView {
     error: record.error,
     meta: record.meta_json,
   };
-}
-
-function isConsumedSteerStatus(status: AcpSteerPromptRecord["status"]): boolean {
-  return status === "consumed" || status === "completed" || status === "failed";
 }
 
 function normalizeSteerLimit(limit: number | undefined): number {

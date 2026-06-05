@@ -29,7 +29,6 @@ import {
   getAcpErrorDetail,
   type AcpConnection,
   type AcpCancelSteerPromptRequest,
-  type AcpConsumedSteerPromptRequest,
   type AcpLoadSessionRequest,
   type AcpNewSessionRequest,
   type AcpPromptRequest,
@@ -177,8 +176,6 @@ function createVibenAcpAgent(
           return await acpSessionManager.steerPrompt(params as unknown as AcpSteerPromptRequest) as unknown as Record<string, unknown>;
         case "session/prompt/cancel":
           return await acpSessionManager.cancelSteerPrompt(params as unknown as AcpCancelSteerPromptRequest) as unknown as Record<string, unknown>;
-        case "session/prompt/consumed":
-          return await acpSessionManager.isSteerPromptConsumed(params as unknown as AcpConsumedSteerPromptRequest) as unknown as Record<string, unknown>;
         case "session/prompt/view":
           return await acpSessionManager.viewSteerPrompt(params as unknown as AcpViewSteerPromptRequest) as unknown as Record<string, unknown>;
         default:
@@ -232,6 +229,10 @@ class SdkAcpConnection implements AcpConnection {
 
   async requestClient(method: string, params?: Record<string, unknown>): Promise<unknown> {
     return this.sdkConnection.extMethod(method, params ?? {});
+  }
+
+  async notifyClient(method: string, params?: Record<string, unknown>): Promise<void> {
+    await this.sdkConnection.extNotification(method, params ?? {});
   }
 }
 

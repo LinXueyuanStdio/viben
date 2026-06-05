@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  CircleStop,
   ClipboardList,
   Copy,
   FileJson,
@@ -28,6 +27,7 @@ import {
   type CallToolResult,
   type ClientToolCall,
   type ClientToolExecutionRequest,
+  type ConsumedSteerPromptResult,
   type ConnectionStatus,
   type ElicitationContentValue,
   type ElicitationPropertySchema,
@@ -273,6 +273,16 @@ export function App() {
     enqueueUiSteps(setSessionsById, request.sessionId, elicitationResultToUiSteps(request));
   }, []);
 
+  const appendSteerPromptConsumed = useCallback((result: ConsumedSteerPromptResult & { sessionId: string }) => {
+    setSteerResult(result);
+    setSteerPromptId((current) => current || result.promptId);
+    enqueueUiSteps(
+      setSessionsById,
+      result.sessionId,
+      systemTextToUiSteps(`Steer prompt consumed: ${result.promptId}`)
+    );
+  }, []);
+
   const executeClientTool = useCallback(
     (request: ClientToolExecutionRequest): CallToolResult => {
       if (!isGuiExecuteTool(request.toolName)) {
@@ -333,6 +343,7 @@ export function App() {
         onClientToolCall: appendClientToolCall,
         onPermissionRequest: appendPermissionRequest,
         onElicitationRequest: appendElicitationRequest,
+        onSteerPromptConsumed: appendSteerPromptConsumed,
         executeClientTool,
         requestClientToolResult,
         requestPermissionDecision,
@@ -342,7 +353,7 @@ export function App() {
       });
     }
     return clientRef.current;
-  }, [appendClientToolCall, appendElicitationRequest, appendPermissionRequest, appendSessionUpdate, appendTraffic, executeClientTool, requestClientToolResult, requestElicitationResponse, requestPermissionDecision]);
+  }, [appendClientToolCall, appendElicitationRequest, appendPermissionRequest, appendSessionUpdate, appendSteerPromptConsumed, appendTraffic, executeClientTool, requestClientToolResult, requestElicitationResponse, requestPermissionDecision]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload | undefined => {
     if (!useInlineAgentConfig) return undefined;
@@ -492,17 +503,6 @@ export function App() {
       setSteerResult(result ?? null);
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
-    }
-  }, [sessionId, steerPromptId]);
-
-  const checkSteerPromptConsumed = useCallback(async () => {
-    if (!sessionId || !steerPromptId.trim()) return;
-    setError(null);
-    try {
-      const result = await clientRef.current?.isSteerPromptConsumed(sessionId, steerPromptId.trim());
-      setSteerResult(result ?? null);
-    } catch (consumedError) {
-      setError(consumedError instanceof Error ? consumedError.message : String(consumedError));
     }
   }, [sessionId, steerPromptId]);
 
@@ -949,19 +949,29 @@ export function App() {
                 placeholder="Send an ACP prompt, or type / for backend commands"
                 slashCommands={slashCommands}
                 onSlashCommand={handleSlashCommand}
+                className="acp-prompt-input"
                 showTopToolbar
                 showResizeHandle
+                defaultHeight={190}
+                minHeight={150}
+                maxHeight={420}
+                heightStorageKey="viben_acp_prompt_input_height"
                 enableWritingMode
               />
-              <div className="mt-3 flex gap-2">
-                <button className="btn-primary" onClick={sendPrompt} disabled={!connected || !sessionId || !prompt.trim()}>
-                  <Send size={16} />
-                  Send Prompt
-                </button>
-                <button className="btn-secondary" onClick={cancel} disabled={!connected || !sessionId}>
-                  <CircleStop size={16} />
-                  Cancel Turn
-                </button>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 py-1">
+                    {sessionId ? `session ${shortId(sessionId)}` : "no session"}
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-1">
+                    {slashCommands.length} commands
+                  </span>
+                  {activeSession?.uiStepQueue.length ? (
+                    <span className="rounded-full bg-warning/15 px-2 py-1 text-warning">
+                      {activeSession.uiStepQueue.length} queued
+                    </span>
+                  ) : null}
+                </div>
                 <button className="btn-secondary" onClick={() => {
                   if (sessionId) {
                     updateSession(setSessionsById, sessionId, (session) => ({
@@ -1002,10 +1012,6 @@ export function App() {
                   <button className="btn-secondary" onClick={viewSteerPrompt} disabled={!connected || !sessionId}>
                     <Search size={16} />
                     View
-                  </button>
-                  <button className="btn-secondary" onClick={checkSteerPromptConsumed} disabled={!connected || !sessionId || !steerPromptId.trim()}>
-                    <ClipboardList size={16} />
-                    Consumed
                   </button>
                   <button className="btn-danger" onClick={cancelSteerPrompt} disabled={!connected || !sessionId || !steerPromptId.trim()}>
                     <X size={16} />

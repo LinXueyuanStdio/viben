@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   filterSlashCommands,
   findSlashCommand,
+  formatSlashCommandInput,
   mergeSlashCommands,
   parseSlashCommandInput,
 } from "../slash-commands";
@@ -19,12 +20,13 @@ describe("slash command utilities", () => {
     const commands = [
       { name: "review", description: "Review code", input: null },
       { name: "status", description: "Show session details", input: null },
-      { name: "skill:test", description: "Run a skill", input: { hint: "" } },
+      { name: "skill:test", description: "Run a skill", input: { hint: "[target]" } },
     ];
 
     expect(filterSlashCommands(commands, "review").map((command) => command.name)).toEqual(["review"]);
     expect(filterSlashCommands(commands, "session").map((command) => command.name)).toEqual(["status"]);
     expect(filterSlashCommands(commands, "skill").map((command) => command.name)).toEqual(["skill:test"]);
+    expect(filterSlashCommands(commands, "target").map((command) => command.name)).toEqual(["skill:test"]);
   });
 
   test("merges commands by name with later lists taking priority", () => {
@@ -44,6 +46,11 @@ describe("slash command utilities", () => {
     };
 
     expect(findSlashCommand([command], "custom")).toBe(command);
-    expect(filterSlashCommands([command], "target")).toEqual([]);
+    expect(filterSlashCommands([command], "target")).toEqual([command]);
+  });
+
+  test("formats slash command input for autocomplete", () => {
+    expect(formatSlashCommandInput({ name: "debug", description: "Debug", input: null })).toBe("/debug ");
+    expect(formatSlashCommandInput({ name: "debug", description: "Debug", input: null }, "[issue]")).toBe("/debug [issue]");
   });
 });

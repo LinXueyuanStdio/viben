@@ -100,6 +100,7 @@ export interface AcpClientCallbacks {
   onClientToolCall: (call: ClientToolCall) => void;
   onPermissionRequest: (request: PermissionRequestLog) => void;
   onElicitationRequest: (request: ElicitationRequestLog) => void;
+  onSteerPromptConsumed: (result: ConsumedSteerPromptResult & { sessionId: string }) => void;
   executeClientTool?: (request: ClientToolExecutionRequest) => Promise<CallToolResult> | CallToolResult;
   requestClientToolResult?: (request: ClientToolExecutionRequest, draft: CallToolResult) => Promise<CallToolResult>;
   requestPermissionDecision?: (request: PermissionDecisionRequest) => Promise<PermissionDecisionResult>;
@@ -231,10 +232,8 @@ export interface CancelSteerPromptResult {
 
 export interface ConsumedSteerPromptResult {
   promptId: string;
-  consumed: boolean;
   status: string;
   consumedAt?: string;
-  completedAt?: string;
 }
 
 export interface SteerPromptView {
@@ -500,7 +499,16 @@ export class AcpWebSocketClient {
     }
 
     if (isNotification(frame) && frame.method === "session/update") {
-      this.callbacks.onSessionUpdate(frame.params as AcpSessionUpdate);
+      const params = frame.params as AcpSessionUpdate;
+      this.callbacks.onSessionUpdate(params);
+      const consumed = steerConsumedFromSessionUpdate(params);
+      if (consumed) this.callbacks.onSteerPromptConsumed(consumed);
+      return;
+    }
+
+    if (isNotification(frame) && frame.method === "session/prompt/consumed") {
+      const consumed = steerConsumedFromParams(frame.params);
+      if (consumed) this.callbacks.onSteerPromptConsumed(consumed);
     }
   }
 
@@ -788,6 +796,47 @@ function summarizeFrame(frame: JsonRpcFrame): string {
     if (typeof result.sessionId === "string") return `sessionId: ${result.sessionId}`;
   }
   return "response";
+}
+
+function steerConsumedFromSessionUpdate(notification: AcpSessionUpdate): (ConsumedSteerPromptResult & { sessionId: string }) | null {
+  const update = notification.update;
+  if (update.sessionUpdate !== "steer_consumed") return null;
+  const promptId = typeof update.promptId === "string" ? update.promptId : undefined;
+  if (!promptId) return null;
+  const status = typeof update.status === "string" ? update.status : "consumed";
+  return {
+    sessionId: notification.sessionId,
+    promptId,
+    status,
+    consumedAt: typeof update.consumedAt === "string" ? update.consumedAt : undefined,
+  };
+}
+
+function steerConsumedFromParams(params: unknown): (ConsumedSteerPromptResult & { sessionId: string }) | null {
+  if (typeof params !== "object" || params === null) return null;
+  const value = params as Record<string, unknown>;
+  const sessionId = typeof value.sessionId === "string"
+    ? value.sessionId
+    : typeof value.session_id === "string"
+      ? value.session_id
+      : undefined;
+  const promptId = typeof value.promptId === "string"
+    ? value.promptId
+    : typeof value.prompt_id === "string"
+      ? value.prompt_id
+      : undefined;
+  if (!sessionId || !promptId) return null;
+  const status = typeof value.status === "string" ? value.status : "consumed";
+  return {
+    sessionId,
+    promptId,
+    status,
+    consumedAt: typeof value.consumedAt === "string"
+      ? value.consumedAt
+      : typeof value.consumed_at === "string"
+        ? value.consumed_at
+        : undefined,
+  };
 }
 
 function safeJson(value: unknown): string {

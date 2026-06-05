@@ -14,6 +14,8 @@ export interface HighlightedInputProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   /** Current content value */
   value: string;
+  /** Additional CSS class for the underlying textarea only. */
+  textareaClassName?: string;
   /** Whether slash command highlighting is enabled */
   highlightSlashCommand?: boolean;
   /** Whether there's an active slash command menu */
@@ -42,6 +44,7 @@ export const HighlightedInput = React.forwardRef<
     highlightSlashCommand = true,
     isSlashMenuOpen = false,
     className,
+    textareaClassName,
     style,
     ...props
   },
@@ -88,7 +91,7 @@ export const HighlightedInput = React.forwardRef<
   };
 
   return (
-    <div className="relative w-full">
+    <div className={cn("relative w-full", className)}>
       {/* Backdrop layer for highlighting */}
       <div
         ref={backdropRef}
@@ -96,7 +99,7 @@ export const HighlightedInput = React.forwardRef<
         className={cn(
           "absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-hidden",
           "text-transparent", // Text is invisible, only highlights show
-          className
+          textareaClassName
         )}
         style={{
           ...style,
@@ -115,7 +118,7 @@ export const HighlightedInput = React.forwardRef<
         ref={ref}
         value={value}
         onScroll={handleScroll}
-        className={cn("bg-transparent relative z-10", className)}
+        className={cn("bg-transparent relative z-10 h-full w-full", textareaClassName)}
         style={style}
         {...props}
       />

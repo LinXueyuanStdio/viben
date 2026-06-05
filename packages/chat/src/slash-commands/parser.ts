@@ -1,4 +1,4 @@
-import type { ParsedSlashCommandInput } from "./types";
+import type { ParsedSlashCommandInput, SlashCommand } from "./types";
 
 export function parseSlashCommandInput(input: string): ParsedSlashCommandInput | null {
   const trimmed = input.trim();
@@ -23,4 +23,9 @@ export function getSlashCommandQuery(input: string): string | null {
   if (input.length > 1 && input[1] === " ") return null;
   if (/\s/.test(input)) return null;
   return input.slice(1);
+}
+
+export function formatSlashCommandInput(command: SlashCommand, args = ""): string {
+  const trimmedArgs = args.trim();
+  return trimmedArgs ? `/${command.name} ${trimmedArgs}` : `/${command.name} `;
 }

@@ -132,7 +132,6 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 | `session/prompt/steer` | request | Viben 扩展 | 会话忙碌时立即入队一条 steer prompt |
 | `session/prompt/cancel` | request | Viben 扩展 | 取消尚未消费的 steer prompt |
 | `session/prompt/view` | request | Viben 扩展 | 查看 steer prompt 队列记录 |
-| `session/prompt/consumed` | request | Viben 扩展 | 检查 steer prompt 是否已经被后端消费 |
 | `session/cancel` | notification | 是 | 取消指定会话当前运行 prompt 和排队 prompt |
 | `session/set_mode` | request | 否 | 未在 Gateway Agent 接口实现，返回 `-32601` |
 | `session/set_model` | request | 否 | 未在 Gateway Agent 接口实现，返回 `-32601` |
@@ -571,7 +570,7 @@ Gateway 当前声明 `authMethods: []`，通常客户端不需要调用 `authent
 
 - `session/prompt` 是长请求，等待当前 turn 完成并返回 `PromptResponse`。
 - `session/prompt/steer` 是短请求，只负责把 steer prompt 立即写入 SQL 队列并返回队列记录。
-- steer prompt 是否被 Agent 消费，通过 `session/prompt/consumed`、`session/prompt/view` 或 `session/update` 扩展更新确认。
+- steer prompt 是否被 Agent 消费，通过 Gateway 主动发送的 `session/prompt/consumed` 通知、`session/prompt/view` 或 `session/update` 扩展更新确认。
 
 **请求**:
 
@@ -668,30 +667,29 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 1. 后端只消费 `status = "queued"` 且匹配 `session_id + agent_id` 的记录。
 2. 后端按 `created_at ASC` 获取最早一条或一批 steer prompt。
 3. 消费必须使用 SQL 条件更新或事务，确保只有一个 worker 能把记录从 `queued` 改为 `consumed`。
-4. 如果底层执行器支持运行中 steer，后端在消费后立即注入。
-5. 如果底层执行器不支持运行中 steer，后端可以在当前 turn 的安全检查点消费，或作为下一轮 prompt 的前置上下文。
-6. 已 `consumed` 的 steer prompt 不能通过 `session/prompt/cancel` 撤销；客户端应发新的 steer 修正指令，或用 `session/cancel` 取消当前 active prompt。
+4. Gateway 在把客户端工具结果传回 Agent 前，必须消费当前会话下所有 `queued` steer prompt，并向客户端发送 `session/prompt/consumed` 通知。
+5. 如果底层执行器支持运行中 steer，后端在消费后立即注入。
+6. 如果底层执行器不支持运行中 steer，后端可以在当前 turn 的安全检查点消费，或作为下一轮 prompt 的前置上下文。
+7. 已 `consumed` 的 steer prompt 不能通过 `session/prompt/cancel` 撤销；客户端应发新的 steer 修正指令，或用 `session/cancel` 取消当前 active prompt。
 
 **消费通知**:
 
-后端消费 steer prompt 后，Gateway 应发送 Viben 扩展 `session/update`：
+后端消费 steer prompt 后，Gateway 应发送 Viben 扩展通知 `session/prompt/consumed`。这是 Gateway -> Client notification，不是 Client -> Gateway request：
 
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "session/update",
+  "method": "session/prompt/consumed",
   "params": {
     "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
-    "update": {
-      "sessionUpdate": "steer_consumed",
-      "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
-      "consumedAt": "2026-06-05T12:00:05.000Z"
-    }
+    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
+    "status": "consumed",
+    "consumedAt": "2026-06-05T12:00:05.000Z"
   }
 }
 ```
 
-如果处理完成或失败，也可以发送：
+如果处理完成或失败，也可以发送 `session/update`：
 
 ```json
 {
@@ -764,38 +762,28 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 
 ## session/prompt/consumed
 
-检查一条 steer prompt 是否已经被后端消费。
+`session/prompt/consumed` 是 Gateway -> Client notification，表示某条 steer prompt 已被后端从队列取走。客户端不能用它查询状态；查询状态应使用 `session/prompt/view`。
 
-**请求**:
+**通知**:
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": 10,
   "method": "session/prompt/consumed",
   "params": {
     "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
-    "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA"
-  }
-}
-```
-
-**响应**:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 10,
-  "result": {
     "promptId": "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA",
-    "consumed": true,
     "status": "consumed",
     "consumedAt": "2026-06-05T12:00:05.000Z"
   }
 }
 ```
 
-`status` 为 `consumed`、`completed` 或 `failed` 时，`consumed` 为 `true`；`queued`、`cancelled`、`expired` 时为 `false`。
+**触发点**:
+
+- Gateway 在把客户端工具结果传回 Agent 前，消费当前会话下所有 `queued` steer prompt。
+- 每条被成功消费的 steer prompt 都会触发一条 `session/prompt/consumed` 通知。
+- 已通知的记录状态为 `consumed`，不能再被 `session/prompt/cancel` 撤销。
 
 ## session/prompt/view
 

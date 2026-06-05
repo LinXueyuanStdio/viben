@@ -14,4 +14,4 @@ export type {
   UseSlashCommandsOptions,
   UseSlashCommandsReturn,
 } from "./registry";
-export { getSlashCommandQuery, parseSlashCommandInput } from "./parser";
+export { formatSlashCommandInput, getSlashCommandQuery, parseSlashCommandInput } from "./parser";

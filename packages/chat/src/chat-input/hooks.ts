@@ -362,6 +362,7 @@ export function useResizableHeight(
       isDraggingRef.current = true;
       startYRef.current = e.clientY;
       startHeightRef.current = height;
+      let latestHeight = height;
 
       const handleMouseMove = (e: MouseEvent) => {
         if (!isDraggingRef.current) return;
@@ -370,13 +371,14 @@ export function useResizableHeight(
           Math.max(startHeightRef.current + delta, minHeight),
           maxHeight
         );
+        latestHeight = newHeight;
         setHeight(newHeight);
       };
 
       const handleMouseUp = () => {
         if (isDraggingRef.current) {
           isDraggingRef.current = false;
-          saveHeight(height);
+          saveHeight(latestHeight);
         }
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
