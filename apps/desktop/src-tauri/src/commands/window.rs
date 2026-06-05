@@ -8,6 +8,23 @@ use tauri::TitleBarStyle;
 
 /// Counter for generating unique window labels
 static WINDOW_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+const NEW_TAB_REQUEST_PARAM: &str = "viben_new_tab=1";
+
+fn with_new_tab_request(url: &str) -> String {
+    let (path_and_search, hash) = url
+        .split_once('#')
+        .map(|(prefix, suffix)| (prefix, Some(suffix)))
+        .unwrap_or((url, None));
+    let separator = if path_and_search.contains('?') { "&" } else { "?" };
+    let mut next_url = format!("{}{}{}", path_and_search, separator, NEW_TAB_REQUEST_PARAM);
+
+    if let Some(hash) = hash {
+        next_url.push('#');
+        next_url.push_str(hash);
+    }
+
+    next_url
+}
 
 /// Open a workspace in a new window
 ///
@@ -39,6 +56,8 @@ pub async fn open_workspace_in_new_window<R: Runtime>(
     if !url.starts_with("/workspace/") {
         return Err("Only workspace routes can be opened in a workspace window".to_string());
     }
+
+    let url = with_new_tab_request(&url);
 
     // Create new window with similar settings to main window
     #[allow(unused_mut)]
