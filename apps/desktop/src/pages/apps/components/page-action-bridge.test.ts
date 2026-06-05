@@ -76,9 +76,9 @@ describe("page-action-bridge", () => {
   });
 
   it("encodes page action segments into stable identifier-safe keys", () => {
-    expect(encodePageActionSegment("reports/daily")).toBe("reports_daily");
-    expect(encodePageActionSegment("Revenue 2026")).toBe("Revenue_2026");
-    expect(encodePageActionSegment("")).toBe("page");
+    expect(encodePageActionSegment("reports/daily")).toBe("reports_2Fdaily");
+    expect(encodePageActionSegment("Revenue 2026")).toBe("Revenue_202026");
+    expect(encodePageActionSegment("")).toBe("empty");
   });
 
   it("accepts only messages from the current iframe source and gateway origin", () => {
@@ -173,6 +173,80 @@ describe("page-action-bridge", () => {
     });
 
     await expect(executePromise).resolves.toEqual({ content: [{ type: "text", text: "added" }] });
+  });
+
+  it("cleans an existing namespace provider when a re-register has no valid actions", () => {
+    const { dispatch, providers } = createHarness();
+
+    dispatch({
+      type: "viben-page-actions-register",
+      request_id: "reg-1",
+      namespace: "todo",
+      actions: { add_item: { description: "Add item" } },
+    });
+    expect(providers.size).toBe(1);
+
+    dispatch({
+      type: "viben-page-actions-register",
+      request_id: "reg-2",
+      namespace: "todo",
+      actions: {},
+    });
+
+    expect(providers.size).toBe(0);
+  });
+
+  it("does not post approval results after execute is cancelled", async () => {
+    let resolveApproval: ((value: boolean) => void) | null = null;
+    const { bridge, dispatch, providers, posted } = createHarness();
+    const ctx: ExecutionContext = {
+      sessionId: "session-1",
+      toolUseId: "tool-1",
+      requireApproval: vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveApproval = resolve;
+          })
+      ),
+    };
+
+    dispatch({
+      type: "viben-page-actions-register",
+      request_id: "reg-1",
+      namespace: "todo",
+      actions: { guarded: { description: "Guarded" } },
+    });
+
+    const executePromise = firstRegisteredAction(providers).execute({}, ctx);
+    const executeMessage = posted.find(
+      (entry) => (entry.message as { type?: string }).type === "viben-page-action-execute"
+    );
+    const executeRequestId = (executeMessage?.message as { request_id: string }).request_id;
+    dispatch({
+      type: "viben-page-action-approval-request",
+      request_id: "approval-1",
+      execute_request_id: executeRequestId,
+      message: "Allow?",
+    });
+    await Promise.resolve();
+
+    bridge.dispose("page_action_cancelled");
+    resolveApproval?.(true);
+    await Promise.resolve();
+
+    expect(posted).not.toContainEqual({
+      message: {
+        type: "viben-page-action-approval-result",
+        request_id: "approval-1",
+        execute_request_id: executeRequestId,
+        approved: true,
+      },
+      targetOrigin: "http://127.0.0.1:18790",
+    });
+    await expect(executePromise).resolves.toEqual({
+      content: [{ type: "text", text: "page_action_cancelled" }],
+      isError: true,
+    });
   });
 
   it("binds approval requests to an active execute request", async () => {

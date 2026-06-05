@@ -91,6 +91,7 @@ export class PageActionBridge {
   private readonly setTimeoutFn: typeof setTimeout;
   private readonly clearTimeoutFn: typeof clearTimeout;
   private readonly iframeInstanceId = createRequestId();
+  private readonly iframeInstanceKey: string;
   private theme: "light" | "dark";
   private disposed = false;
   private registeredProviders = new Map<string, string>();
@@ -109,6 +110,7 @@ export class PageActionBridge {
     this.executeTimeoutMs = options.executeTimeoutMs ?? DEFAULT_EXECUTE_TIMEOUT_MS;
     this.setTimeoutFn = options.setTimeoutFn ?? setTimeout;
     this.clearTimeoutFn = options.clearTimeoutFn ?? clearTimeout;
+    this.iframeInstanceKey = encodePageActionSegment(this.iframeInstanceId).slice(0, 12);
     const addWindowMessageListener =
       options.addWindowMessageListener ??
       ((handler: (event: MessageEvent) => void) => {
@@ -122,6 +124,14 @@ export class PageActionBridge {
     this.cleanupProviders();
     this.cancelPending("page_action_cancelled");
     this.iframe = iframe;
+  }
+
+  sendInit(): void {
+    this.postToIframe({
+      type: "viben-page-init",
+      theme: this.theme,
+      workspace_path: this.workspacePath,
+    });
   }
 
   updateTheme(theme: "light" | "dark"): void {
@@ -166,14 +176,6 @@ export class PageActionBridge {
     }
   }
 
-  private sendInit(): void {
-    this.postToIframe({
-      type: "viben-page-init",
-      theme: this.theme,
-      workspace_path: this.workspacePath,
-    });
-  }
-
   private handleRegister(message: PageActionsRegisterMessage): void {
     const rejected: Array<{ action: string; reason: string }> = [];
     const accepted: string[] = [];
@@ -207,6 +209,11 @@ export class PageActionBridge {
     }
 
     const providerId = this.providerIdFor(message.namespace);
+    const existingProviderId = this.registeredProviders.get(message.namespace);
+    if (existingProviderId) {
+      this.unregisterActions(existingProviderId);
+      this.registeredProviders.delete(message.namespace);
+    }
     if (defs.length > 0) {
       this.registeredProviders.set(message.namespace, providerId);
       this.registerActions(providerId, PAGE_NAMESPACE, defs);
@@ -241,6 +248,7 @@ export class PageActionBridge {
       const pending = this.pendingExecutes.get(requestId);
       if (!pending) return;
       this.pendingExecutes.delete(requestId);
+      this.postApprovalCancellations(requestId, "page_action_timeout");
       pending.resolve(errorResult("page_action_timeout: iframe action did not finish within timeout"));
     }, this.executeTimeoutMs);
 
@@ -287,14 +295,16 @@ export class PageActionBridge {
     if (!pending) return;
 
     try {
-      await pending.context.requireApproval(message.message, message.options);
+      const approved = await pending.context.requireApproval(message.message, message.options);
+      if (!this.pendingExecutes.has(message.execute_request_id)) return;
       this.postToIframe({
         type: "viben-page-action-approval-result",
         request_id: message.request_id,
         execute_request_id: message.execute_request_id,
-        approved: true,
+        approved: approved === true,
       });
     } catch (err) {
+      if (!this.pendingExecutes.has(message.execute_request_id)) return;
       this.postToIframe({
         type: "viben-page-action-approval-result",
         request_id: message.request_id,
@@ -323,7 +333,7 @@ export class PageActionBridge {
   }
 
   private buildShortName(namespace: string, action: string): string {
-    return `${this.workspaceKey}.${this.pageKey}.${namespace}.${action}`;
+    return `${this.workspaceKey}.${this.pageKey}.${this.iframeInstanceKey}.${namespace}.${action}`;
   }
 
   private providerIdFor(namespace: string): string {
@@ -340,9 +350,20 @@ export class PageActionBridge {
   private cancelPending(reason: string): void {
     for (const pending of this.pendingExecutes.values()) {
       this.clearTimeoutFn(pending.timer);
+      this.postApprovalCancellations(pending.requestId, reason);
       pending.resolve(errorResult(reason));
     }
     this.pendingExecutes.clear();
+  }
+
+  private postApprovalCancellations(executeRequestId: string, reason: string): void {
+    this.postToIframe({
+      type: "viben-page-action-approval-result",
+      request_id: `cancel_${executeRequestId}`,
+      execute_request_id: executeRequestId,
+      approved: false,
+      error: reason,
+    });
   }
 }
 
@@ -351,8 +372,18 @@ export function createPageActionBridge(options: PageActionBridgeOptions): PageAc
 }
 
 export function encodePageActionSegment(value: string): string {
-  const encoded = value.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, MAX_SEGMENT_LENGTH);
-  return encoded || "page";
+  if (!value) return "empty";
+  var encoded = "";
+  for (const char of value) {
+    if (/^[a-zA-Z0-9_-]$/.test(char)) {
+      encoded += char;
+      continue;
+    }
+    const hex = char.codePointAt(0)?.toString(16).toUpperCase() ?? "0";
+    encoded += `_${hex}`;
+  }
+  if (encoded.length <= MAX_SEGMENT_LENGTH) return encoded;
+  return `${encoded.slice(0, MAX_SEGMENT_LENGTH - 9)}_${shortHash(value)}`;
 }
 
 function createRequestId(): string {

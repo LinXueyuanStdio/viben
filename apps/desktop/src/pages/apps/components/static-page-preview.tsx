@@ -37,6 +37,7 @@ import {
 interface StaticPagePreviewProps {
   page: StaticPageConfig;
   workspacePath: string;
+  workspaceId?: string;
   iframeKey?: number;
   className?: string;
 }
@@ -73,6 +74,7 @@ function toArtifactType(previewType: FilePreviewType): ArtifactType {
 export function StaticPagePreview({
   page,
   workspacePath,
+  workspaceId,
   iframeKey = 0,
   className,
 }: StaticPagePreviewProps) {
@@ -112,6 +114,7 @@ export function StaticPagePreview({
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bridgeRef = useRef<PageActionBridge | null>(null);
+  const currentBridgeKeyRef = useRef<string | null>(null);
   const registerActions = useActionStore((s) => s.register);
   const unregisterActions = useActionStore((s) => s.unregister);
   const gatewayOrigin = useMemo(() => {
@@ -122,35 +125,50 @@ export function StaticPagePreview({
     }
   }, []);
 
+  const disposeBridge = useCallback((reason: string) => {
+    bridgeRef.current?.dispose(reason);
+    bridgeRef.current = null;
+    currentBridgeKeyRef.current = null;
+  }, []);
+
   useEffect(() => {
-    return () => {
-      bridgeRef.current?.dispose("page_action_unavailable");
-      bridgeRef.current = null;
-    };
-  }, [page.slug, workspacePath, filePreviewType]);
+    return () => disposeBridge("page_action_unavailable");
+  }, [disposeBridge]);
+
+  useEffect(() => {
+    disposeBridge("page_action_cancelled");
+  }, [iframeKey, gatewayServeUrl, filePreviewType, disposeBridge]);
 
   // Send theme updates when resolvedTheme changes
   useEffect(() => {
     bridgeRef.current?.updateTheme(resolvedTheme);
   }, [resolvedTheme]);
 
-  const handleIframeLoad = useCallback(
-    (iframe: HTMLIFrameElement) => {
+  const bindIframe = useCallback(
+    (iframe: HTMLIFrameElement | null) => {
+      if (!iframe) return;
       iframeRef.current = iframe;
+      const bridgeKey = `${iframeKey}:${gatewayServeUrl}`;
+      if (currentBridgeKeyRef.current === bridgeKey && bridgeRef.current) return;
       bridgeRef.current?.dispose("page_action_cancelled");
       bridgeRef.current = createPageActionBridge({
         iframe,
         gatewayOrigin,
         workspacePath,
+        workspaceId,
         pageSlug: page.slug,
         theme: resolvedTheme,
         registerActions,
         unregisterActions,
       });
+      currentBridgeKeyRef.current = bridgeKey;
     },
     [
+      iframeKey,
+      gatewayServeUrl,
       gatewayOrigin,
       workspacePath,
+      workspaceId,
       page.slug,
       resolvedTheme,
       registerActions,
@@ -164,12 +182,12 @@ export function StaticPagePreview({
       <div className={cn("h-full w-full bg-white", className)}>
         <iframe
           key={iframeKey}
-          ref={iframeRef}
+          ref={bindIframe}
           src={gatewayServeUrl}
           className="h-full w-full border-0"
           title={page.name}
           onLoad={(e) => {
-            handleIframeLoad(e.currentTarget);
+            bridgeRef.current?.sendInit();
           }}
         />
       </div>

@@ -170,6 +170,7 @@ export function PagePreview({
                   <StaticPagePreview
                     page={page as StaticPageConfig}
                     workspacePath={workspacePath}
+                    workspaceId={workspaceId}
                     iframeKey={iframeKey}
                     className="h-full"
                   />
