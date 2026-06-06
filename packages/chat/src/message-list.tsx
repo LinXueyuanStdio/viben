@@ -14,7 +14,7 @@ import { isMessageStatic } from "./utils/is-message-static";
 import { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
 import { StreamingTextBlock } from "./streaming-text-block";
 import { useVirtualScroll } from "./hooks/use-virtual-scroll";
-import type { AgentMessage, ExpandSubagentHandler, PendingQuestion, TaskPlan } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, PendingQuestion, SummaryMessageData, TaskPlan } from "./types";
 
 /** Artifact definition for linking with tool_use messages */
 export interface Artifact {
@@ -111,6 +111,10 @@ export interface MessageListProps {
    * Callback to expand subagent messages in a side panel.
    */
   onExpandSubagent?: ExpandSubagentHandler;
+  /**
+   * Custom renderer for summary messages. Defaults to a compact generic key/value card.
+   */
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
 }
 
 // Types for message grouping
@@ -746,6 +750,13 @@ function groupMessages(
       }
       pushCurrentGroup(true);
       groups.push({ type: "other", message });
+    } else if (message.type === "summary") {
+      if (pendingTextMessage) {
+        groups.push({ type: "other", message: pendingTextMessage });
+        pendingTextMessage = null;
+      }
+      pushCurrentGroup(true);
+      groups.push({ type: "other", message });
     } else if (message.type === "thinking") {
       // Thinking messages are rendered as standalone collapsible items
       if (pendingTextMessage) {
@@ -994,6 +1005,7 @@ interface MessageRowProps {
   maxMessageWidth?: string;
   toolExpandedInline?: boolean;
   onExpandSubagent?: ExpandSubagentHandler;
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
   // Ref callback for scroll-to-message
   registerRef?: (id: string, el: HTMLDivElement | null) => void;
 }
@@ -1012,6 +1024,7 @@ const MessageRow = React.memo(function MessageRow({
   maxMessageWidth,
   toolExpandedInline,
   onExpandSubagent,
+  renderSummary,
   registerRef,
 }: MessageRowProps) {
   const message = useMemo(() => {
@@ -1054,6 +1067,7 @@ const MessageRow = React.memo(function MessageRow({
           toolExpandedInline={toolExpandedInline}
           onExpandSubagent={onExpandSubagent}
           isLatestThinking={index === lastThinkingIdx}
+          renderSummary={renderSummary}
         />
       </div>
     </React.Fragment>
@@ -1083,7 +1097,8 @@ const MessageRow = React.memo(function MessageRow({
       prev.index === next.index &&
       prev.lastThinkingIdx === next.lastThinkingIdx &&
       prev.maxMessageWidth === next.maxMessageWidth &&
-      prev.toolExpandedInline === next.toolExpandedInline
+      prev.toolExpandedInline === next.toolExpandedInline &&
+      prev.renderSummary === next.renderSummary
     );
   }
   // Non-static: always re-render
@@ -1109,6 +1124,7 @@ function areMessageListPropsEqual(prev: MessageListProps, next: MessageListProps
   if (prev.highlightedMessageId !== next.highlightedMessageId) return false;
   if (prev.artifacts !== next.artifacts) return false;
   if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
+  if (prev.renderSummary !== next.renderSummary) return false;
   if (prev.autoScroll !== next.autoScroll) return false;
   if (prev.welcomeTitle !== next.welcomeTitle) return false;
   if (prev.welcomeDescription !== next.welcomeDescription) return false;
@@ -1144,6 +1160,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   pendingApproval: _pendingApproval,
   onApprovalDecision: _onApprovalDecision,
   onExpandSubagent,
+  renderSummary,
 }, ref) {
   const { t } = useTranslation();
 
@@ -1599,6 +1616,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                     maxMessageWidth={maxMessageWidth}
                     toolExpandedInline={toolExpandedInline}
                     onExpandSubagent={stableOnExpandSubagent}
+                    renderSummary={renderSummary}
                     registerRef={registerRef}
                   />
                 </MessageWidthShell>

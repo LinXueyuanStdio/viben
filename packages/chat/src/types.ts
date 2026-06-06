@@ -29,10 +29,14 @@ export type AgentMessageType =
   | "tool_use"
   | "tool_result"
   | "plan"
+  | "summary"
   | "result"
   | "error"
   | "ask_question"  // AskUserQuestion tool call
   | "plan_mode";    // EnterPlanMode/ExitPlanMode tool calls
+
+/** Generic summary card data for usage, cost, debug metadata, etc. */
+export type SummaryMessageData = Record<string, unknown>;
 
 /** Task plan step */
 export interface TaskPlanStep {
@@ -99,6 +103,7 @@ export interface AgentMessage {
   isError?: boolean;
   message?: string; // Error message
   plan?: TaskPlan; // For plan type
+  summary?: SummaryMessageData; // For summary type
   attachments?: MessageAttachment[]; // For user messages with attachments
   questions?: AgentQuestion[]; // For ask_question type (AskUserQuestion tool)
   planModeAction?: "enter" | "exit"; // For plan_mode type

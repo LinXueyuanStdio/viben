@@ -45,6 +45,16 @@ export interface ExecutorOption {
   icon?: ReactNode;
 }
 
+/** Minimal queued input item shape used by ChatInput ArrowUp recall. */
+export interface QueuedInputRecallItem {
+  id?: string;
+  /** Text content to merge back into the input for editing. */
+  content: string;
+  /** Optional attachments carried by queue implementations. */
+  attachments?: MessageAttachment[];
+  createdAt?: number;
+}
+
 // ============================================================================
 // Global Config Types
 // ============================================================================
@@ -79,8 +89,17 @@ export interface ChatInputProps {
   defaultValue?: string;
   /** Callback when textarea value changes. */
   onValueChange?: (value: string) => void;
-  /** Callback when ArrowUp is pressed while the input is empty. */
+  /**
+   * Callback when ArrowUp is pressed while the input is empty.
+   * Prefer queuedInputRecallItems/onQueuedInputRecall for built-in queue recall.
+   */
   onRecallQueuedInput?: (currentValue: string) => void;
+  /** Queued input items to recall into the editor when ArrowUp is pressed on empty input. */
+  queuedInputRecallItems?: QueuedInputRecallItem[];
+  /** Joiner used when multiple queued inputs are recalled. Defaults to a blank line. */
+  queuedInputRecallJoiner?: string;
+  /** Called after queued inputs are merged into the editor. Use this to clear/cancel the backing queue. */
+  onQueuedInputRecall?: (items: QueuedInputRecallItem[], value: string) => void;
 
   // === Custom Content Slots ===
   /** Extra content to render at the left side of the config bar (after built-in selectors) */

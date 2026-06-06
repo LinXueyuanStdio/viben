@@ -52,6 +52,9 @@ import {
 } from "./hooks";
 import type { ChatInputProps } from "./types";
 import { findSlashCommand, formatSlashCommandInput, parseSlashCommandInput } from "../slash-commands";
+import { mergeQueuedInputRecallItems } from "../command-queue/merge-queued-content";
+
+const DEFAULT_QUEUE_RECALL_JOINER = "\n\n";
 
 export function ChatInput({
   // Basic Props
@@ -60,6 +63,9 @@ export function ChatInput({
   defaultValue = "",
   onValueChange,
   onRecallQueuedInput,
+  queuedInputRecallItems = [],
+  queuedInputRecallJoiner = DEFAULT_QUEUE_RECALL_JOINER,
+  onQueuedInputRecall,
   onCancel,
   isLoading,
   allowSendWhileLoading,
@@ -397,6 +403,21 @@ export function ChatInput({
 
       if (e.key === "ArrowUp" && !isComposing && content.trim().length === 0) {
         e.preventDefault();
+        if (queuedInputRecallItems.length > 0) {
+          const recalledValue = mergeQueuedInputRecallItems(queuedInputRecallItems, queuedInputRecallJoiner);
+          if (recalledValue) {
+            setContent(recalledValue);
+            requestAnimationFrame(() => {
+              const textarea = textareaRef.current;
+              if (!textarea) return;
+              const nextCursorPosition = recalledValue.length;
+              textarea.focus();
+              textarea.setSelectionRange(nextCursorPosition, nextCursorPosition);
+            });
+            onQueuedInputRecall?.(queuedInputRecallItems, recalledValue);
+            return;
+          }
+        }
         onRecallQueuedInput?.(content);
         return;
       }
@@ -412,7 +433,18 @@ export function ChatInput({
         setIsWritingMode(false);
       }
     },
-    [content, handleSlashKeyDown, isComposing, handleSend, isWritingMode, onRecallQueuedInput]
+    [
+      content,
+      handleSlashKeyDown,
+      isComposing,
+      handleSend,
+      isWritingMode,
+      onRecallQueuedInput,
+      onQueuedInputRecall,
+      queuedInputRecallItems,
+      queuedInputRecallJoiner,
+      setContent,
+    ]
   );
 
   // Render fullscreen writing mode
@@ -712,6 +744,7 @@ export type {
   ExecutorOption,
   GlobalChatConfig,
   ChatConfigVisibility,
+  QueuedInputRecallItem,
 } from "./types";
 export { ChatInputToolbar } from "./toolbar";
 export { ChatInputConfigBar } from "./config-bar";

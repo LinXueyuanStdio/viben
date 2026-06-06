@@ -2,9 +2,9 @@ import * as React from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit } from "lucide-react";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit, BarChart3 } from "lucide-react";
 import { cn } from "@viben/ui";
-import type { AgentMessage, ExpandSubagentHandler, MessageAttachment } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, MessageAttachment, SummaryMessageData } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanSummary } from "./plan-approval";
 import { QuestionInput } from "./question-input";
@@ -31,6 +31,8 @@ export interface MessageItemProps {
   onExpandSubagent?: ExpandSubagentHandler;
   /** Whether this is the latest thinking message (starts expanded) */
   isLatestThinking?: boolean;
+  /** Custom renderer for summary messages. */
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
 }
 
 /**
@@ -437,6 +439,94 @@ function AssistantMessage({
   );
 }
 
+function SummaryMessage({
+  data,
+  message,
+  renderSummary,
+  skipAnimation,
+}: {
+  data: SummaryMessageData;
+  message: AgentMessage;
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  skipAnimation?: boolean;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+  const customContent = renderSummary?.(data, message);
+  const entries = useMemo(() => buildSummaryEntries(data), [data]);
+
+  return (
+    <motion.div
+      initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+      className="flex gap-3 w-full min-w-0"
+    >
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+        <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="w-fit max-w-full rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {customContent ?? (
+            entries.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {entries.map((entry) => (
+                  <div key={entry.key} className="min-w-0">
+                    <span className="text-muted-foreground/70">{entry.label}</span>
+                    <span className="ml-1 font-medium text-foreground/80">{entry.value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <pre className="max-w-[min(100%,32rem)] overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed">
+                {safeStringify(data)}
+              </pre>
+            )
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function buildSummaryEntries(data: SummaryMessageData): Array<{ key: string; label: string; value: string }> {
+  return Object.entries(data).flatMap(([key, value]) => {
+    const formatted = formatSummaryValue(key, value);
+    return formatted ? [{ key, label: formatSummaryLabel(key), value: formatted }] : [];
+  });
+}
+
+function formatSummaryLabel(key: string): string {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatSummaryValue(key: string, value: unknown): string | null {
+  if (value == null) return null;
+  if (key === "cost" && isRecord(value)) {
+    const amount = typeof value.amount === "number" ? value.amount : undefined;
+    const currency = typeof value.currency === "string" ? value.currency : "";
+    if (amount !== undefined) return `${amount.toFixed(amount < 1 ? 4 : 2)} ${currency}`.trim();
+  }
+  if (typeof value === "number") return Number.isInteger(value) ? value.toLocaleString() : value.toFixed(4);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "string") return value;
+  return safeStringify(value);
+}
+
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 
 /**
  * Plan mode indicator - shows when agent enters/exits plan mode
@@ -496,6 +586,7 @@ function MessageItemImpl({
   toolExpandedInline,
   onExpandSubagent,
   isLatestThinking,
+  renderSummary,
 }: MessageItemProps) {
   const { t } = useTranslation();
 
@@ -576,6 +667,17 @@ function MessageItemImpl({
   else if (message.type === "plan" && message.plan) {
     content = <PlanSummary plan={message.plan} />;
   }
+  // Summary message
+  else if (message.type === "summary") {
+    content = (
+      <SummaryMessage
+        data={message.summary ?? {}}
+        message={message}
+        renderSummary={renderSummary}
+        skipAnimation={isStatic}
+      />
+    );
+  }
   // AskUserQuestion message - displayed as read-only QuestionInput
   else if (message.type === "ask_question" && message.questions) {
     content = (
@@ -638,6 +740,7 @@ export function areMessageItemPropsEqual(
   if (prev.className !== next.className) return false;
   if (prev.maxWidth !== next.maxWidth) return false;
   if (prev.isLatestThinking !== next.isLatestThinking) return false;
+  if (prev.renderSummary !== next.renderSummary) return false;
   if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
 
   // If both are static, safe to skip re-render — content is frozen

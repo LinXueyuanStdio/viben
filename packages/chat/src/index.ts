@@ -43,6 +43,7 @@ export type {
   ExecutorOption,
   GlobalChatConfig,
   ChatConfigVisibility,
+  QueuedInputRecallItem,
 } from "./chat-input";
 
 // Slash Commands
@@ -78,7 +79,7 @@ export type { ContextDetailsPopoverProps } from "./context-details-popover";
 
 // Message components
 export { MessageList } from "./message-list";
-export type { MessageListProps, MessageListHandle } from "./message-list";
+export type { Artifact, MessageListProps, MessageListHandle } from "./message-list";
 export { MessageItem } from "./message-item";
 export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
@@ -89,7 +90,7 @@ export { CollapsedToolGroup } from "./collapsed-tool-group";
 export type { CollapsedToolGroupProps } from "./collapsed-tool-group";
 
 // Command Queue
-export { useCommandQueue, useCommandQueueInputRecall, CommandQueuePanel } from "./command-queue";
+export { useCommandQueue, useCommandQueueInputRecall, mergeQueuedInputRecallItems, CommandQueuePanel } from "./command-queue";
 export type {
   CommandQueueItem,
   UseCommandQueueInputRecallOptions,
