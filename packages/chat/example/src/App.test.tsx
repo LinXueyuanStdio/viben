@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { App } from "./App";
 
@@ -116,5 +116,22 @@ describe("App overlay layout", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
     expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
+  });
+
+  test("selected demo session title is reflected in expanded and fullscreen headers", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
+    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Claude Code: 2e83fc8b session replay/ }).at(-1)!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Claude Code: 2e83fc8b session replay");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Claude Code: 2e83fc8b session replay");
+    });
   });
 });

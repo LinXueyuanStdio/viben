@@ -205,6 +205,7 @@ export function App() {
   const [standaloneQueuePaused, setStandaloneQueuePaused] = useState(false)
   const [chatInputValue, setChatInputValue] = useState("")
   const [overlayMode, setOverlayMode] = useState<OverlayMode>("floating")
+  const [selectedOverlaySessionTitle, setSelectedOverlaySessionTitle] = useState("Viben session")
 
   // ExecApproval cycling demo
   const [approvalDemoIdx, setApprovalDemoIdx] = useState(0)
@@ -316,6 +317,7 @@ export function App() {
   )
 
   const handleOverlaySessionSelect = useCallback((session: OverlaySessionItem) => {
+    setSelectedOverlaySessionTitle(session.title)
     const claudeSession = CLAUDE_CODE_SESSIONS.find((item) => item.id === session.id)
     if (claudeSession) {
       void handleClaudeSessionLoad(claudeSession)
@@ -817,6 +819,7 @@ export function App() {
           <ChatApp
             contained
             mode={overlayMode}
+            title={selectedOverlaySessionTitle}
             messages={player.messages}
             isStreaming={player.isStreaming}
             playerStatus={player.status}
