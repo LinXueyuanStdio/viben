@@ -1236,6 +1236,11 @@ function PagePreviewWindowTabBar({
                   active
                   closable
                   onClose={onCloseTab}
+                  data-preview-window-tab="true"
+                  className={cn(
+                    "border border-primary/25 bg-primary/10 text-foreground",
+                    "shadow-none ring-0 hover:bg-primary/15"
+                  )}
                 />
                 <BrowserTabFrameIconButton
                   aria-label={t("common.newTab", "New Tab")}
