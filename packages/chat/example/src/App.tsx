@@ -19,7 +19,7 @@ import {
 } from "@viben/chat"
 import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2 } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
 import "react-json-view-lite/dist/index.css"
 import {
@@ -48,6 +48,8 @@ import {
   type ParseStats,
   type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
+import { OverlayDemo } from "./overlay-demo"
+import type { OverlayMode } from "./overlay-demo"
 
 // ============================================================================
 // Agent Busy Detection
@@ -204,6 +206,7 @@ export function App() {
   const [standaloneQueueItems, setStandaloneQueueItems] = useState<CommandQueueItem[]>(demoCommandQueueItems)
   const [standaloneQueuePaused, setStandaloneQueuePaused] = useState(false)
   const [chatInputValue, setChatInputValue] = useState("")
+  const [overlayMode, setOverlayMode] = useState<OverlayMode>("floating")
 
   // ExecApproval cycling demo
   const [approvalDemoIdx, setApprovalDemoIdx] = useState(0)
@@ -366,9 +369,8 @@ export function App() {
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
 
-  return (
+  const fullScreenDemo = (
     <div className="flex h-screen flex-col">
-      {/* Subagent Sheet (side panel) */}
       <SubagentSheet
         open={!!sheetData}
         onClose={() => setSheetData(null)}
@@ -380,10 +382,7 @@ export function App() {
         loadSubagentDetails={loadSubagentDetails}
         onExpandSubagent={handleExpandSubagent}
       />
-
-      {/* ===== Main row ===== */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ===== Sidebar ===== */}
         <aside className="flex h-full w-[280px] shrink-0 flex-col border-r bg-card">
           {/* Sidebar header */}
           <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
@@ -444,6 +443,21 @@ export function App() {
                     </span>
                   </button>
                 ))}
+              </div>
+
+              <div className="space-y-1.5">
+                <SectionLabel>Overlay Mode</SectionLabel>
+                <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                  <ModeButton active={overlayMode === "floating"} onClick={() => setOverlayMode("floating")} title="Floating">
+                    <Bot className="size-3.5" />
+                  </ModeButton>
+                  <ModeButton active={overlayMode === "compact"} onClick={() => setOverlayMode("compact")} title="Compact">
+                    <MessageSquare className="size-3.5" />
+                  </ModeButton>
+                  <ModeButton active={overlayMode === "full"} onClick={() => setOverlayMode("full")} title="Full">
+                    <Maximize2 className="size-3.5" />
+                  </ModeButton>
+                </div>
               </div>
 
               {/* Status badge */}
@@ -849,6 +863,75 @@ export function App() {
       </div>
     </div>
   )
+
+  if (overlayMode === "full") {
+    return (
+      <OverlayDemo
+        mode="full"
+        messages={player.messages}
+        isStreaming={player.isStreaming}
+        playerStatus={player.status}
+        pendingUserMessageCount={commandQueue.items.length}
+        inputValue={chatInputValue}
+        onInputValueChange={setChatInputValue}
+        onModeChange={setOverlayMode}
+        onSend={handleSend}
+        onCancel={player.pause}
+        renderFullScreen={() => fullScreenDemo}
+      />
+    )
+  }
+
+  return (
+    <div className="relative h-screen overflow-hidden bg-background">
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="max-w-xl text-center">
+          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl border border-border bg-card">
+            <Bot className="size-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground">Viben overlay demo</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Floating mode starts as a single assistant pet avatar. Open compact mode to see the agent popup above the two-row idle chat input. Full mode shows the original session player.
+          </p>
+          <div className="mt-5 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setOverlayMode("floating")}
+              className={`rounded-lg border px-3 py-2 text-sm ${overlayMode === "floating" ? "bg-primary text-primary-foreground" : "bg-card text-foreground hover:bg-accent"}`}
+            >
+              Floating
+            </button>
+            <button
+              type="button"
+              onClick={() => setOverlayMode("compact")}
+              className={`rounded-lg border px-3 py-2 text-sm ${overlayMode === "compact" ? "bg-primary text-primary-foreground" : "bg-card text-foreground hover:bg-accent"}`}
+            >
+              Compact
+            </button>
+            <button
+              type="button"
+              onClick={() => setOverlayMode("full")}
+              className="rounded-lg border bg-card px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              Full screen
+            </button>
+          </div>
+        </div>
+      </div>
+      <OverlayDemo
+        mode={overlayMode}
+        messages={player.messages}
+        isStreaming={player.isStreaming}
+        playerStatus={player.status}
+        pendingUserMessageCount={commandQueue.items.length}
+        inputValue={chatInputValue}
+        onInputValueChange={setChatInputValue}
+        onModeChange={setOverlayMode}
+        onSend={handleSend}
+        onCancel={player.pause}
+      />
+    </div>
+  )
 }
 
 // ============================================================================
@@ -887,6 +970,24 @@ function NavButton({ active, onClick, children }: { active: boolean; onClick: ()
         active
           ? "bg-accent text-foreground"
           : "text-foreground/70 hover:bg-accent hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ModeButton({ active, onClick, title, children }: { active: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className={`flex h-8 items-center justify-center rounded-md transition-colors ${
+        active
+          ? "bg-background text-foreground shadow-sm"
+          : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
       }`}
     >
       {children}
