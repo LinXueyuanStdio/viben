@@ -109,6 +109,128 @@ describe("OverlayDemo", () => {
 
     expect(onModeChange).toHaveBeenCalledWith("compact");
   });
+
+  test("compact capsule expands to expanded mode when clicked", () => {
+    const onModeChange = vi.fn();
+    render(
+      <OverlayDemo
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("agent-popup"));
+
+    expect(onModeChange).toHaveBeenCalledWith("expanded");
+  });
+
+  test("expanded mode renders header, message list, and chat input", () => {
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create new session" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New session menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
+    expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
+    expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
+  });
+
+  test("expanded session title menu shows search and session samples", () => {
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
+
+    expect(screen.getByRole("searchbox", { name: "Search sessions" })).toBeInTheDocument();
+    expect(screen.getByText("Claude Code: breadcrumb navigation debug")).toBeInTheDocument();
+    expect(screen.getByText("2c88f85a...jsonl")).toBeInTheDocument();
+  });
+
+  test("expanded new-session menu shows creation actions and agent samples", () => {
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "New session menu" }));
+
+    expect(screen.getByText("新建聊天")).toBeInTheDocument();
+    expect(screen.getByText("新建聊天窗口")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code")).toBeInTheDocument();
+    expect(screen.getByText("OpenAI · Browser")).toBeInTheDocument();
+  });
+
+  test("expanded more menu shows sample navigation and debug actions", () => {
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+
+    expect(screen.getByText("上一步")).toBeInTheDocument();
+    expect(screen.getByText("下一步")).toBeInTheDocument();
+    expect(screen.getByText("将聊天移动到新窗口")).toBeInTheDocument();
+    expect(screen.getByText("显示调试视图")).toBeInTheDocument();
+    expect(screen.getByText("显示调试日志")).toBeInTheDocument();
+  });
+
+  test("expanded header buttons use configurable callbacks", () => {
+    const onCreateSession = vi.fn();
+    const onSettingsClick = vi.fn();
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        headerActions={{ onCreateSession, onSettingsClick }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Create new session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    expect(onCreateSession).toHaveBeenCalledTimes(1);
+    expect(onSettingsClick).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("getAssistantPetState", () => {

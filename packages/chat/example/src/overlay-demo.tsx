@@ -1,19 +1,51 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Maximize2, Minimize2, Paperclip, Send, Smile, Square } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Paperclip, Plus, Search, Send, Settings, Smile, Square } from "lucide-react";
 import type { AgentMessage, MessageAttachment } from "@viben/chat";
 
-export type OverlayMode = "floating" | "compact" | "full";
+export type OverlayMode = "floating" | "compact" | "expanded" | "full";
 export type AssistantPetState = "idle" | "thinking" | "speaking" | "done";
 export type AssistantPetAvatarMap = Partial<Record<AssistantPetState, React.ReactNode>>;
+
+export interface OverlaySessionItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  avatar?: React.ReactNode;
+}
+
+export interface OverlayAgentItem {
+  id: string;
+  name: string;
+  type: string;
+  avatar?: React.ReactNode;
+}
+
+export interface OverlayHeaderActions {
+  onCreateSession?: () => void;
+  onNewChat?: () => void;
+  onNewChatWindow?: () => void;
+  onSettingsClick?: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  onMoveToWindow?: () => void;
+  onShowDebugView?: () => void;
+  onShowDebugLog?: () => void;
+  onSelectSession?: (session: OverlaySessionItem) => void;
+  onSelectAgent?: (agent: OverlayAgentItem) => void;
+}
 
 export interface OverlayDemoProps {
   mode: OverlayMode;
   messages: AgentMessage[];
   isStreaming: boolean;
+  title?: string;
   playerStatus?: "idle" | "playing" | "paused";
   pendingUserMessageCount?: number;
   assistantAvatars?: AssistantPetAvatarMap;
+  sessions?: OverlaySessionItem[];
+  agents?: OverlayAgentItem[];
+  headerActions?: OverlayHeaderActions;
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
   onModeChange: (mode: OverlayMode) => void;
@@ -21,6 +53,19 @@ export interface OverlayDemoProps {
   onCancel: () => void;
   renderFullScreen?: () => React.ReactNode;
 }
+
+const DEFAULT_SESSIONS: OverlaySessionItem[] = [
+  {
+    id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8",
+    title: "Claude Code: breadcrumb navigation debug",
+    subtitle: "2c88f85a...jsonl",
+  },
+];
+
+const DEFAULT_AGENTS: OverlayAgentItem[] = [
+  { id: "claude-code", name: "Claude Code", type: "agent & executor" },
+  { id: "openai-browser", name: "OpenAI · Browser", type: "agent & executor" },
+];
 
 export function getAssistantPetState(
   messages: AgentMessage[],
@@ -37,9 +82,13 @@ export function OverlayDemo({
   mode,
   messages,
   isStreaming,
+  title = "Viben session",
   playerStatus = "idle",
   pendingUserMessageCount = 0,
   assistantAvatars,
+  sessions = DEFAULT_SESSIONS,
+  agents = DEFAULT_AGENTS,
+  headerActions,
   inputValue,
   onInputValueChange,
   onModeChange,
@@ -97,26 +146,62 @@ export function OverlayDemo({
     );
   }
 
+  if (mode === "compact") {
+    return (
+      <div
+        className="fixed bottom-5 right-5 z-50 flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2"
+        data-testid="compact-overlay"
+      >
+        <AgentPopup
+          avatar={assistantAvatar}
+          petState={petState}
+          text={latestText}
+          isStreaming={isStreaming}
+          onExpand={() => onModeChange("expanded")}
+          onMinimize={() => onModeChange("floating")}
+          onFullScreen={() => onModeChange("full")}
+        />
+        <CompactChatInput
+          value={content}
+          isStreaming={isStreaming}
+          onValueChange={setContent}
+          onSend={handleSubmit}
+          onCancel={onCancel}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
-      className="fixed bottom-5 right-5 z-50 flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2"
-      data-testid="compact-overlay"
+      className="flex h-full min-h-0 w-full flex-col bg-background"
+      data-testid="expanded-overlay"
     >
-      <AgentPopup
-        avatar={assistantAvatar}
-        petState={petState}
-        text={latestText}
-        isStreaming={isStreaming}
-        onMinimize={() => onModeChange("floating")}
-        onFullScreen={() => onModeChange("full")}
+      <ExpandedHeader
+        title={title}
+        sessions={sessions}
+        agents={agents}
+        assistantAvatar={assistantAvatar}
+        headerActions={headerActions}
+        onCreateSession={headerActions?.onCreateSession}
+        onSettingsClick={headerActions?.onSettingsClick}
       />
-      <CompactChatInput
-        value={content}
-        isStreaming={isStreaming}
-        onValueChange={setContent}
-        onSend={handleSubmit}
-        onCancel={onCancel}
-      />
+      <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
+        <ExpandedMessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          assistantAvatar={assistantAvatar}
+        />
+      </div>
+      <div className="shrink-0 p-3">
+        <CompactChatInput
+          value={content}
+          isStreaming={isStreaming}
+          onValueChange={setContent}
+          onSend={handleSubmit}
+          onCancel={onCancel}
+        />
+      </div>
     </div>
   );
 }
@@ -126,6 +211,7 @@ function AgentPopup({
   petState,
   text,
   isStreaming,
+  onExpand,
   onMinimize,
   onFullScreen,
 }: {
@@ -133,6 +219,7 @@ function AgentPopup({
   petState: AssistantPetState;
   text: string;
   isStreaming: boolean;
+  onExpand: () => void;
   onMinimize: () => void;
   onFullScreen: () => void;
 }) {
@@ -143,6 +230,7 @@ function AgentPopup({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.18 }}
       className="overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
+      onClick={onExpand}
     >
       <div className="flex items-start gap-3 p-3">
         <div className="size-14 shrink-0">{avatar}</div>
@@ -158,7 +246,10 @@ function AgentPopup({
               <button
                 type="button"
                 aria-label="Minimize chat"
-                onClick={onMinimize}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onMinimize();
+                }}
                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Minimize2 className="size-3.5" />
@@ -166,7 +257,10 @@ function AgentPopup({
               <button
                 type="button"
                 aria-label="Open full screen chat"
-                onClick={onFullScreen}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFullScreen();
+                }}
                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Maximize2 className="size-3.5" />
@@ -181,6 +275,220 @@ function AgentPopup({
       </div>
     </motion.section>
   );
+}
+
+function ExpandedMessageList({
+  messages,
+  isStreaming,
+  assistantAvatar,
+}: {
+  messages: AgentMessage[];
+  isStreaming: boolean;
+  assistantAvatar: React.ReactNode;
+}) {
+  if (messages.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center px-6 text-center">
+        <div>
+          <div className="mx-auto mb-3 size-14">{assistantAvatar}</div>
+          <p className="text-sm font-medium text-foreground">Viben expanded chat</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Select a session or send a message from the compact input.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto px-4 py-4">
+      <div className="mx-auto flex max-w-[720px] flex-col gap-3">
+        {messages.map((message, index) => {
+          const isUser = message.type === "user";
+          const text = message.content || message.message || (message.type === "tool_use" ? `${message.name ?? "Tool"} is running...` : "");
+          if (!text) return null;
+          return (
+            <div key={message.id ?? index} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+              {!isUser && <div className="mt-1 size-8 shrink-0">{assistantAvatar}</div>}
+              <div
+                className={`max-w-[78%] rounded-xl px-3 py-2 text-sm leading-6 ${
+                  isUser
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-card text-foreground"
+                }`}
+              >
+                {text}
+              </div>
+            </div>
+          );
+        })}
+        {isStreaming && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="size-2 animate-pulse rounded-full bg-primary" />
+            Viben is thinking
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ExpandedHeader({
+  title,
+  sessions,
+  agents,
+  assistantAvatar,
+  headerActions,
+  onCreateSession,
+  onSettingsClick,
+}: {
+  title: string;
+  sessions: OverlaySessionItem[];
+  agents: OverlayAgentItem[];
+  assistantAvatar: React.ReactNode;
+  headerActions?: OverlayHeaderActions;
+  onCreateSession?: () => void;
+  onSettingsClick?: () => void;
+}) {
+  const [sessionOpen, setSessionOpen] = React.useState(false);
+  const [newOpen, setNewOpen] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
+
+  return (
+    <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3">
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="Session menu"
+          onClick={() => setSessionOpen((open) => !open)}
+          className="flex h-8 max-w-[220px] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+        >
+          <span className="truncate">{title}</span>
+          {sessionOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        </button>
+        {sessionOpen && (
+          <div className="absolute left-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-2 shadow-xl">
+            <label className="flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-2">
+              <Search className="size-4 text-muted-foreground" />
+              <input
+                type="search"
+                aria-label="Search sessions"
+                placeholder="Search sessions"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </label>
+            <div className="mt-2 space-y-1">
+              {sessions.map((session) => (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => headerActions?.onSelectSession?.(session)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent"
+                >
+                  <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
+                    {session.avatar ?? assistantAvatar}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-foreground">{session.title}</span>
+                    {session.subtitle && <span className="block truncate text-[11px] text-muted-foreground">{session.subtitle}</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1" />
+
+      <button
+        type="button"
+        aria-label="Create new session"
+        onClick={onCreateSession}
+        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Plus className="size-4" />
+      </button>
+
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="New session menu"
+          onClick={() => setNewOpen((open) => !open)}
+          className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <ChevronUp className="size-4" />
+        </button>
+        {newOpen && (
+          <div className="absolute right-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
+            <MenuButton onClick={headerActions?.onNewChat}>新建聊天</MenuButton>
+            <MenuButton onClick={headerActions?.onNewChatWindow}>新建聊天窗口</MenuButton>
+            <MenuDivider />
+            {agents.map((agent) => (
+              <MenuButton key={agent.id} onClick={() => headerActions?.onSelectAgent?.(agent)}>
+                <span className="flex items-center gap-2">
+                  <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
+                    {agent.avatar ?? <Bot className="size-4" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate">{agent.name}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{agent.type}</span>
+                  </span>
+                </span>
+              </MenuButton>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        aria-label="Settings"
+        onClick={onSettingsClick}
+        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Settings className="size-4" />
+      </button>
+
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="More actions"
+          onClick={() => setMoreOpen((open) => !open)}
+          className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+        {moreOpen && (
+          <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
+            <MenuButton onClick={headerActions?.onPrevious}>上一步</MenuButton>
+            <MenuButton onClick={headerActions?.onNext}>下一步</MenuButton>
+            <MenuDivider />
+            <MenuButton onClick={headerActions?.onMoveToWindow}>将聊天移动到新窗口</MenuButton>
+            <MenuDivider />
+            <MenuButton onClick={headerActions?.onShowDebugView}>显示调试视图</MenuButton>
+            <MenuButton onClick={headerActions?.onShowDebugLog}>显示调试日志</MenuButton>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function MenuButton({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center rounded-md px-2.5 py-2 text-left text-sm text-foreground hover:bg-accent"
+    >
+      {children}
+    </button>
+  );
+}
+
+function MenuDivider() {
+  return <div className="my-1 border-t border-border/70" />;
 }
 
 function CompactChatInput({
