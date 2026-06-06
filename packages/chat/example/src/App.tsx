@@ -398,12 +398,15 @@ export function App() {
         loadSubagentDetails={loadSubagentDetails}
         onExpandSubagent={handleExpandSubagent}
       />
-      <div className="relative flex flex-1 overflow-hidden">
-        <aside className={`flex h-full w-[280px] shrink-0 flex-col border-r bg-card transition-transform duration-300 ${
+      <div className="relative flex flex-1 overflow-hidden" data-testid="chat-example-shell">
+        <aside
+          data-testid="control-panel"
+          className={`flex h-full w-[280px] shrink-0 flex-col bg-card transition-all duration-300 ${
           isOverlayFull
-            ? ""
+            ? "order-2 border-l"
             : "absolute left-1/2 top-1/2 z-10 max-h-[min(760px,calc(100vh-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border shadow-2xl"
-        }`}>
+        }`}
+        >
           {/* Sidebar header */}
           <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
             <span className="text-sm font-semibold">@viben/chat</span>
@@ -662,9 +665,12 @@ export function App() {
         </aside>
 
         {/* ===== Chat Column ===== */}
-        <div className={`relative flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
-          isOverlayFull ? "w-0 flex-1 overflow-hidden opacity-100" : "absolute inset-0 overflow-visible opacity-100"
-        }`}>
+        <div
+          data-testid="chat-app-stage"
+          className={`relative order-1 flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
+            isOverlayFull ? "flex-1 overflow-hidden opacity-100" : "absolute inset-0 overflow-visible opacity-100"
+          }`}
+        >
           {/* Content area */}
           <div className="flex min-h-0 flex-1 flex-col">
             {showPlan ? (
