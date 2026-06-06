@@ -38,19 +38,19 @@ export interface ActiveTabState {
 export function useActiveTabState(): ActiveTabState {
   const tabStore = useCurrentTabStore();
   const activeTabId = tabStore((state) => state.activeTabId);
-  const activeTabRaw = tabStore((state) =>
-    state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
+  const activeTabRaw = tabStore(
+    (state) => state.tabs.find((tab) => tab.id === state.activeTabId) ?? null,
   );
   const canGoBackFn = tabStore((state) => state.canGoBack);
   const canGoForwardFn = tabStore((state) => state.canGoForward);
   const getCurrentUrl = tabStore((state) => state.getCurrentUrl);
   const getCurrentNavigationState = tabStore(
-    (state) => state.getCurrentNavigationState
+    (state) => state.getCurrentNavigationState,
   );
 
   const activeTab = useMemo(
     () => (activeTabRaw ? getTabViewModel(activeTabRaw) : null),
-    [activeTabRaw]
+    [activeTabRaw],
   );
 
   const canGoBack = activeTabId ? canGoBackFn(activeTabId) : false;
@@ -69,7 +69,14 @@ export function useActiveTabState(): ActiveTabState {
       currentUrl,
       currentNavigationState,
     }),
-    [activeTabId, activeTab, canGoBack, canGoForward, currentUrl, currentNavigationState]
+    [
+      activeTabId,
+      activeTab,
+      canGoBack,
+      canGoForward,
+      currentUrl,
+      currentNavigationState,
+    ],
   );
 }
 
@@ -81,32 +88,54 @@ export function useActiveTabState(): ActiveTabState {
 export interface TabActions {
   openUrl: (
     url: string,
-    options?: { breadcrumbStack?: BreadcrumbStackItem[]; openInNewTab?: boolean }
+    options?: {
+      breadcrumbStack?: BreadcrumbStackItem[];
+      openInNewTab?: boolean;
+    },
   ) => string;
   replaceUrl: (
     url: string,
-    patch?: Partial<TabNavigationState>
+    patch?: Partial<TabNavigationState>,
   ) => string | undefined;
   pushUrl: (
     url: string,
-    patch?: Partial<TabNavigationState>
+    patch?: Partial<TabNavigationState>,
   ) => string | undefined;
-  pushPage: (
-    item: BreadcrumbStackItem,
-    url: string
-  ) => string | undefined;
+  pushPage: (item: BreadcrumbStackItem, url: string) => string | undefined;
   popTo: (index: number) => void;
   resetStack: (next: TabNavigationState) => string | undefined;
   navigateTo: (
     url: string,
-    input: { label: string; icon?: IconData; descriptorId?: string; meta?: BreadcrumbStackItem["meta"] }
+    input: {
+      label: string;
+      icon?: IconData;
+      descriptorId?: string;
+      meta?: BreadcrumbStackItem["meta"];
+    },
   ) => string | undefined;
-  openPageTab: (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => string;
-  openPageInNewTab: (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => string;
-  openWorkspaceView: (workspaceId: string, viewPath: string, viewName: string, icon: IconData) => string;
+  openPageTab: (
+    page: PageConfig,
+    workspaceId: string,
+    breadcrumbStack?: BreadcrumbStackItem[],
+  ) => string;
+  openPageInNewTab: (
+    page: PageConfig,
+    workspaceId: string,
+    breadcrumbStack?: BreadcrumbStackItem[],
+  ) => string;
+  openWorkspaceView: (
+    workspaceId: string,
+    viewPath: string,
+    viewName: string,
+    icon: IconData,
+  ) => string;
   openGlobalView: (path: string, name: string, icon: IconData) => string;
   openWebUrl: (url: string, title?: string, workspaceId?: string) => string;
-  openChatTab: (chatId: string, chatName: string, workspaceId: string) => string;
+  openChatTab: (
+    chatId: string,
+    chatName: string,
+    workspaceId: string,
+  ) => string;
   switchToTab: (tabId: string) => string | null;
   closeTab: (tabId: string) => void;
   detachTabToNewWindow: (tabId: string) => Promise<boolean>;
@@ -126,7 +155,7 @@ export function useTabActions(): TabActions {
   const pushLocationStore = tabStore((state) => state.pushLocation);
   const getCurrentUrl = tabStore((state) => state.getCurrentUrl);
   const getCurrentNavigationState = tabStore(
-    (state) => state.getCurrentNavigationState
+    (state) => state.getCurrentNavigationState,
   );
 
   const openUrl = useCallback(
@@ -135,12 +164,11 @@ export function useTabActions(): TabActions {
       options?: {
         breadcrumbStack?: BreadcrumbStackItem[];
         openInNewTab?: boolean;
-      }
+      },
     ) => {
-      const breadcrumbStack =
-        options?.breadcrumbStack?.length
-          ? options.breadcrumbStack
-          : buildColdStartBreadcrumb(url);
+      const breadcrumbStack = options?.breadcrumbStack?.length
+        ? options.breadcrumbStack
+        : buildColdStartBreadcrumb(url);
 
       const navigationState: TabNavigationState = {
         url,
@@ -157,14 +185,11 @@ export function useTabActions(): TabActions {
       replaceLocationStore(activeTabId, navigationState);
       return activeTabId;
     },
-    [activeTabId, openTab, replaceLocationStore]
+    [activeTabId, openTab, replaceLocationStore],
   );
 
   const replaceUrl = useCallback(
-    (
-      url: string,
-      patch?: Partial<TabNavigationState>
-    ) => {
+    (url: string, patch?: Partial<TabNavigationState>) => {
       if (!activeTabId) {
         return openUrl(url, {
           breadcrumbStack: patch?.breadcrumbStack,
@@ -172,10 +197,9 @@ export function useTabActions(): TabActions {
         });
       }
 
-      const breadcrumbStack =
-        patch?.breadcrumbStack?.length
-          ? patch.breadcrumbStack
-          : buildColdStartBreadcrumb(url);
+      const breadcrumbStack = patch?.breadcrumbStack?.length
+        ? patch.breadcrumbStack
+        : buildColdStartBreadcrumb(url);
 
       replaceLocationStore(activeTabId, {
         url,
@@ -185,14 +209,11 @@ export function useTabActions(): TabActions {
       });
       return activeTabId;
     },
-    [activeTabId, openUrl, replaceLocationStore]
+    [activeTabId, openUrl, replaceLocationStore],
   );
 
   const pushUrl = useCallback(
-    (
-      url: string,
-      patch?: Partial<TabNavigationState>
-    ) => {
+    (url: string, patch?: Partial<TabNavigationState>) => {
       if (!activeTabId) {
         return openUrl(url, {
           breadcrumbStack: patch?.breadcrumbStack,
@@ -200,10 +221,9 @@ export function useTabActions(): TabActions {
         });
       }
 
-      const breadcrumbStack =
-        patch?.breadcrumbStack?.length
-          ? patch.breadcrumbStack
-          : buildColdStartBreadcrumb(url);
+      const breadcrumbStack = patch?.breadcrumbStack?.length
+        ? patch.breadcrumbStack
+        : buildColdStartBreadcrumb(url);
 
       pushLocationStore(activeTabId, {
         url,
@@ -213,14 +233,11 @@ export function useTabActions(): TabActions {
       });
       return activeTabId;
     },
-    [activeTabId, openUrl, pushLocationStore]
+    [activeTabId, openUrl, pushLocationStore],
   );
 
   const pushPage = useCallback(
-    (
-      item: BreadcrumbStackItem,
-      url: string
-    ) => {
+    (item: BreadcrumbStackItem, url: string) => {
       if (!activeTabId) {
         const stack = buildColdStartBreadcrumb(url);
         return openUrl(url, {
@@ -238,7 +255,7 @@ export function useTabActions(): TabActions {
       });
       return activeTabId;
     },
-    [activeTabId, getCurrentNavigationState, openUrl, pushLocationStore]
+    [activeTabId, getCurrentNavigationState, openUrl, pushLocationStore],
   );
 
   const popTo = useCallback(
@@ -256,7 +273,7 @@ export function useTabActions(): TabActions {
         breadcrumbStack: currentState.breadcrumbStack.slice(0, index + 1),
       });
     },
-    [activeTabId, getCurrentNavigationState, replaceLocationStore]
+    [activeTabId, getCurrentNavigationState, replaceLocationStore],
   );
 
   const resetStack = useCallback(
@@ -271,12 +288,21 @@ export function useTabActions(): TabActions {
       replaceLocationStore(activeTabId, next);
       return activeTabId;
     },
-    [activeTabId, openUrl, replaceLocationStore]
+    [activeTabId, openUrl, replaceLocationStore],
   );
 
   const navigateTo = useCallback(
-    (url: string, input: { label: string; icon?: IconData; descriptorId?: string; meta?: BreadcrumbStackItem["meta"] }) => {
-      const isExternal = url.startsWith("http://") || url.startsWith("https://");
+    (
+      url: string,
+      input: {
+        label: string;
+        icon?: IconData;
+        descriptorId?: string;
+        meta?: BreadcrumbStackItem["meta"];
+      },
+    ) => {
+      const isExternal =
+        url.startsWith("http://") || url.startsWith("https://");
       if (isExternal) {
         const workspaceId = input.meta?.workspaceId ?? "global";
         const params = new URLSearchParams({ url, title: input.label });
@@ -306,49 +332,64 @@ export function useTabActions(): TabActions {
         },
       });
     },
-    [activeTabId, openUrl, openTab, replaceLocationStore]
+    [activeTabId, openUrl, openTab, replaceLocationStore],
   );
 
   const openPageTab = useCallback(
-    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => {
+    (
+      page: PageConfig,
+      workspaceId: string,
+      breadcrumbStack?: BreadcrumbStackItem[],
+    ) => {
       const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
         workspaceId,
         pageSlug: page.slug,
       });
       return openUrl(url, { breadcrumbStack });
     },
-    [openUrl]
+    [openUrl],
   );
 
   const openPageInNewTab = useCallback(
-    (page: PageConfig, workspaceId: string, breadcrumbStack?: BreadcrumbStackItem[]) => {
+    (
+      page: PageConfig,
+      workspaceId: string,
+      breadcrumbStack?: BreadcrumbStackItem[],
+    ) => {
       const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
         workspaceId,
         pageSlug: page.slug,
       });
       return openUrl(url, { openInNewTab: true, breadcrumbStack });
     },
-    [openUrl]
+    [openUrl],
   );
 
   const openWorkspaceView = useCallback(
-    (workspaceId: string, viewPath: string, _viewName: string, _icon: IconData) => {
+    (
+      workspaceId: string,
+      viewPath: string,
+      _viewName: string,
+      _icon: IconData,
+    ) => {
       if (!viewPath) {
         const url = registry.build("/workspace/:workspaceId", { workspaceId });
         return openUrl(url);
       }
       const section = normalizeWorkspaceSection(viewPath);
-      const url = registry.build(`/workspace/:workspaceId/${section}`, { workspaceId });
+      const url = registry.build(`/workspace/:workspaceId/${section}`, {
+        workspaceId,
+      });
       return openUrl(url);
     },
-    [openUrl]
+    [openUrl],
   );
 
   const openGlobalView = useCallback(
     (path: string, _name: string, _icon: IconData) => {
       return openUrl(path);
     },
-    [openUrl]
+    [openUrl],
   );
 
   const openWebUrl = useCallback(
@@ -356,10 +397,7 @@ export function useTabActions(): TabActions {
       // Derive workspaceId from current tab URL via registry match
       const currentTabUrl = activeTabId ? getCurrentUrl(activeTabId) : null;
       const routeMatch = currentTabUrl ? registry.match(currentTabUrl) : null;
-      const wsId =
-        workspaceId ??
-        routeMatch?.params.workspaceId ??
-        "global";
+      const wsId = workspaceId ?? routeMatch?.params.workspaceId ?? "global";
       const params = new URLSearchParams({
         url,
         title: title ?? safeHostname(url),
@@ -367,15 +405,17 @@ export function useTabActions(): TabActions {
       const webUrl = `/workspace/${encodeURIComponent(wsId)}/web?${params.toString()}`;
       return openUrl(webUrl);
     },
-    [activeTabId, getCurrentUrl, openUrl]
+    [activeTabId, getCurrentUrl, openUrl],
   );
 
   const openChatTab = useCallback(
     (_chatId: string, _chatName: string, workspaceId: string) => {
-      const url = registry.build("/workspace/:workspaceId/chat", { workspaceId });
+      const url = registry.build("/workspace/:workspaceId/chat", {
+        workspaceId,
+      });
       return openUrl(url);
     },
-    [openUrl]
+    [openUrl],
   );
 
   const switchToTab = useCallback(
@@ -383,14 +423,14 @@ export function useTabActions(): TabActions {
       setActiveTab(tabId);
       return getCurrentUrl(tabId);
     },
-    [getCurrentUrl, setActiveTab]
+    [getCurrentUrl, setActiveTab],
   );
 
   const closeTab = useCallback(
     (tabId: string) => {
       closeTabStore(tabId);
     },
-    [closeTabStore]
+    [closeTabStore],
   );
 
   const getTabLink = useCallback(
@@ -398,7 +438,7 @@ export function useTabActions(): TabActions {
       const state = getCurrentNavigationState(tabId);
       return state?.url ?? null;
     },
-    [getCurrentNavigationState]
+    [getCurrentNavigationState],
   );
 
   const detachTabToNewWindow = useCallback(
@@ -419,7 +459,8 @@ export function useTabActions(): TabActions {
       }
 
       const pageSlug = match?.params.pageSlug;
-      const isPageRoute = match?.pattern === "/workspace/:workspaceId/page/:pageSlug+";
+      const isPageRoute =
+        match?.pattern === "/workspace/:workspaceId/page/:pageSlug+";
 
       if (isPageRoute && pageSlug) {
         const workspace = getWorkspace(workspaceId);
@@ -446,7 +487,7 @@ export function useTabActions(): TabActions {
       closeTabStore(tabId);
       return true;
     },
-    [closeTabStore, getCurrentNavigationState, getWorkspace, rawTabs]
+    [closeTabStore, getCurrentNavigationState, getWorkspace, rawTabs],
   );
 
   return useMemo(
@@ -487,7 +528,7 @@ export function useTabActions(): TabActions {
       closeTab,
       detachTabToNewWindow,
       getTabLink,
-    ]
+    ],
   );
 }
 
@@ -528,7 +569,7 @@ export function useTabNavigation(): TabNavigationActions {
       if (!activeTabId) return;
       jumpToHistoryStore(activeTabId, historyIndex);
     },
-    [activeTabId, jumpToHistoryStore]
+    [activeTabId, jumpToHistoryStore],
   );
 
   const navigateInTab = useCallback(
@@ -536,12 +577,12 @@ export function useTabNavigation(): TabNavigationActions {
       if (!activeTabId) return;
       navigate(activeTabId, url);
     },
-    [activeTabId, navigate]
+    [activeTabId, navigate],
   );
 
   return useMemo(
     () => ({ goBackInTab, goForwardInTab, jumpToHistory, navigateInTab }),
-    [goBackInTab, goForwardInTab, jumpToHistory, navigateInTab]
+    [goBackInTab, goForwardInTab, jumpToHistory, navigateInTab],
   );
 }
 
@@ -562,7 +603,7 @@ export function usePageTabs() {
       ...actions,
       ...navigation,
     }),
-    [tabs, activeState, actions, navigation]
+    [tabs, activeState, actions, navigation],
   );
 }
 
