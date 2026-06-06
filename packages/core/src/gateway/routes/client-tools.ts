@@ -18,6 +18,7 @@ interface CompleteBody {
 
 interface RequestBody {
   session_id: string;
+  tool_call_id?: string;
   tool_use_id?: string;
   tool_name: string;
   input: unknown;
@@ -39,13 +40,13 @@ export function registerClientToolRoutes(fastify: FastifyInstance): void {
   });
 
   fastify.post<{ Body: RequestBody }>("/api/client-tools/request", async (request, reply) => {
-    const { session_id, tool_use_id, tool_name, input } = request.body;
+    const { session_id, tool_call_id, tool_use_id, tool_name, input } = request.body;
 
     if (!session_id || !tool_name) {
       return reply.status(400).send({ success: false, error: "Missing required fields: session_id, tool_name" });
     }
 
-    const result = await acpSessionManager.requestClientTool(session_id, tool_name, input, tool_use_id);
+    const result = await acpSessionManager.requestClientTool(session_id, tool_name, input, tool_call_id ?? tool_use_id);
     return reply.send({ success: true, result });
   });
 }
