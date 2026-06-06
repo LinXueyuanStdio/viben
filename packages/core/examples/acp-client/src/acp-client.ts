@@ -74,7 +74,10 @@ export interface PermissionRequestLog {
   selectedOptionId: string;
   options: unknown[];
   rawInput: unknown;
+  toolCall: unknown;
+  rawParams: unknown;
   rawRequest: unknown;
+  decision: unknown;
 }
 
 export interface ElicitationRequestLog {
@@ -129,6 +132,8 @@ export interface PermissionDecisionRequest {
   title: string;
   options: PermissionOption[];
   rawInput: unknown;
+  toolCall: unknown;
+  rawParams: unknown;
   rawRequest: unknown;
 }
 
@@ -594,18 +599,21 @@ export class AcpWebSocketClient {
         title: params.toolCall?.title ?? "Permission request",
         options: params.options ?? [],
         rawInput: params.toolCall?.rawInput ?? null,
-        rawRequest: frame.params ?? null,
+        toolCall: params.toolCall ?? null,
+        rawParams: frame.params ?? null,
+        rawRequest: frame,
       };
       const decision = this.callbacks.requestPermissionDecision
         ? await this.callbacks.requestPermissionDecision(request)
         : selectPermissionOption(request.options);
+      const outcome = decision.outcome === "cancelled"
+        ? { outcome: "cancelled" }
+        : { outcome: "selected", optionId: decision.optionId };
       const response: JsonRpcSuccess = {
         jsonrpc: "2.0",
         id: frame.id,
         result: {
-          outcome: decision.outcome === "cancelled"
-            ? { outcome: "cancelled" }
-            : { outcome: "selected", optionId: decision.optionId },
+          outcome,
         },
       };
       this.recordTraffic("out", response, frame.method);
@@ -619,7 +627,10 @@ export class AcpWebSocketClient {
         selectedOptionId: decision.outcome === "selected" ? decision.optionId : "cancelled",
         options: request.options,
         rawInput: request.rawInput,
+        toolCall: request.toolCall,
+        rawParams: request.rawParams,
         rawRequest: request.rawRequest,
+        decision: response.result,
       });
       return;
     }

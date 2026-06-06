@@ -50,7 +50,8 @@ code {
 }
 
 .json-panel {
-  min-height: 360px;
+  height: 360px;
+  min-height: 0;
   max-height: min(560px, calc(100vh - 260px));
   overflow: hidden;
   border-radius: 7px;
@@ -64,20 +65,41 @@ code {
   --jse-theme-color-highlight: color-mix(in oklch, var(--color-primary) 18%, transparent);
   --jse-background-color: var(--color-code-block);
   --jse-panel-background: color-mix(in oklch, var(--color-code-block) 92%, white);
-  --jse-main-border: color-mix(in oklch, var(--color-code-foreground) 12%, transparent);
+  --jse-main-border: 1px solid color-mix(in oklch, var(--color-code-foreground) 12%, transparent);
   --jse-menu-color: var(--color-code-foreground);
   --jse-text-color: var(--color-code-foreground);
   --jse-contents-background-color: var(--color-code-block);
   --jse-selection-background-color: color-mix(in oklch, var(--color-primary) 28%, transparent);
 }
 
+.json-panel-default {
+  height: 360px;
+}
+
+.json-panel-compact {
+  height: 176px;
+}
+
+.json-panel-inline {
+  height: 192px;
+}
+
+.json-panel-row {
+  height: 224px;
+}
+
 .json-panel-permission {
+  height: min(560px, calc(100vh - 260px));
   min-height: 420px;
+}
+
+.json-panel-borderless {
+  border: 0;
 }
 
 .json-editor-host {
   height: 100%;
-  min-height: inherit;
+  min-height: 0;
 }
 
 .json-panel .jse-main {

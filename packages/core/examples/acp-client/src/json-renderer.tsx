@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   createJSONEditor,
   Mode,
@@ -9,6 +9,7 @@ import {
 import "vanilla-jsoneditor/themes/jse-theme-dark.css";
 
 type JsonEditorInstance = ReturnType<typeof createJSONEditor>;
+export type JsonPanelSize = "default" | "compact" | "inline" | "row" | "permission";
 
 export interface JsonPanelProps {
   value: unknown;
@@ -16,6 +17,8 @@ export interface JsonPanelProps {
   preClassName?: string;
   mode?: "tree" | "text";
   nullishValue?: unknown;
+  size?: JsonPanelSize;
+  lazyMount?: boolean;
 }
 
 export interface JsonBlockProps extends JsonPanelProps {
@@ -29,15 +32,43 @@ export function JsonPanel({
   preClassName,
   mode = "tree",
   nullishValue,
+  size = "default",
+  lazyMount = false,
 }: JsonPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<JsonEditorInstance | null>(null);
+  const [canMount, setCanMount] = useState(!lazyMount);
   const normalizedValue = value ?? nullishValue ?? null;
   const content = useMemo(() => valueToEditorContent(normalizedValue), [normalizedValue]);
   const editorMode = contentHasJson(content) && mode === "tree" ? Mode.tree : Mode.text;
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!lazyMount || canMount) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const checkVisibility = () => {
+      const rect = panel.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        setCanMount(true);
+      }
+    };
+
+    checkVisibility();
+
+    const observer = new ResizeObserver(checkVisibility);
+    observer.observe(panel);
+    const frame = window.requestAnimationFrame(checkVisibility);
+
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
+  }, [canMount, lazyMount]);
+
+  useEffect(() => {
+    if (!containerRef.current || !canMount) return;
 
     const props: JSONEditorPropsOptional = {
       content,
@@ -57,7 +88,7 @@ export function JsonPanel({
       editorRef.current?.destroy();
       editorRef.current = null;
     };
-  }, []);
+  }, [canMount]);
 
   useEffect(() => {
     if (!editorRef.current) return;
@@ -66,7 +97,7 @@ export function JsonPanel({
   }, [content, editorMode]);
 
   return (
-    <div className={classNames("json-panel jse-theme-dark", preClassName)}>
+    <div ref={panelRef} className={classNames("json-panel jse-theme-dark", `json-panel-${size}`, preClassName)}>
       <div ref={containerRef} className={classNames("json-editor-host", className)} />
     </div>
   );
@@ -80,6 +111,8 @@ export function JsonBlock({
   preClassName,
   mode,
   nullishValue,
+  size,
+  lazyMount,
 }: JsonBlockProps) {
   return (
     <div className={classNames("mb-3 last:mb-0", className)}>
@@ -88,9 +121,11 @@ export function JsonBlock({
       </div>
       <JsonPanel
         value={value}
-        preClassName={classNames("max-h-44 text-code-foreground", preClassName)}
+        preClassName={classNames("text-code-foreground", preClassName)}
         mode={mode}
         nullishValue={nullishValue}
+        size={size ?? "compact"}
+        lazyMount={lazyMount}
       />
     </div>
   );

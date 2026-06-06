@@ -361,7 +361,7 @@ export function App() {
       const selected = selectInitialPermissionOption(request.options);
       setPermissionDialog({
         request,
-        selectedOptionId: selected?.optionId ?? selected?.name ?? "",
+        selectedOptionId: selected ? permissionOptionId(selected, request.options.indexOf(selected)) : "",
         resolve,
       });
     });
@@ -1406,7 +1406,8 @@ export function App() {
                 <div className="mb-2 font-semibold">Available GUI actions</div>
                 <JsonPanel
                   value={actionSummaries}
-                  preClassName="max-h-48 min-h-48 border-0 p-0"
+                  size="compact"
+                  preClassName="json-panel-borderless"
                 />
               </div>
               <div className="max-h-80 space-y-2 overflow-auto pr-1">
@@ -1449,11 +1450,11 @@ export function App() {
             </Panel>
 
             <Panel title="ACP Results">
-              <JsonBlock title="initialize" value={initializeResult} />
-              <JsonBlock title="session/new" value={sessionResult} />
-              <JsonBlock title="session/list" value={sessionListResult} />
-              <JsonBlock title="session/prompt" value={promptResult} />
-              <JsonBlock title="session/prompt/*" value={steerResult} />
+              <JsonBlock title="initialize" value={initializeResult} size="compact" lazyMount />
+              <JsonBlock title="session/new" value={sessionResult} size="compact" lazyMount />
+              <JsonBlock title="session/list" value={sessionListResult} size="compact" lazyMount />
+              <JsonBlock title="session/prompt" value={promptResult} size="compact" lazyMount />
+              <JsonBlock title="session/prompt/*" value={steerResult} size="compact" lazyMount />
             </Panel>
 
             <Panel title="Traffic Monitor" description="Connection-level JSON-RPC frames.">
@@ -1911,7 +1912,7 @@ function ArtifactModal({
           </div>
           <JsonPanel
             value={dialog.message ?? dialog.artifact}
-            preClassName="max-h-[560px] text-xs"
+            preClassName="text-xs"
           />
         </div>
       </div>
@@ -1930,17 +1931,19 @@ function PermissionApprovalModal({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
-  const requestJson = permissionRequestToJson(dialog.request);
+  const requestJson = permissionRequestToJson(dialog.request, dialog.selectedOptionId);
+  const selectedOption = findPermissionOption(dialog.request.options, dialog.selectedOptionId);
+  const decisionJson = permissionDecisionPreview(dialog.selectedOptionId);
   return (
     <ModalFrame title="Permission Request" subtitle={dialog.request.title}>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="json-modal-section">
-          <div className="json-modal-header">Request JSON</div>
+          <div className="json-modal-header">Full Request JSON</div>
           <JsonPanel value={requestJson} preClassName="json-panel-permission" />
         </div>
         <div className="permission-side">
           <div className="json-modal-header">Options</div>
-          <div className="space-y-2">
+          <div className="max-h-48 space-y-2 overflow-auto pr-1">
             {dialog.request.options.length === 0 ? (
               <EmptyState text="No options provided." compact />
             ) : (
@@ -1963,6 +1966,24 @@ function PermissionApprovalModal({
               })
             )}
           </div>
+          <div className="mt-4">
+            <div className="json-modal-header">Selected Option</div>
+            <JsonPanel
+              value={selectedOption ?? null}
+              size="inline"
+              preClassName="rounded-md"
+              lazyMount
+            />
+          </div>
+          <div className="mt-4">
+            <div className="json-modal-header">Response Decision</div>
+            <JsonPanel
+              value={decisionJson}
+              size="compact"
+              preClassName="rounded-md"
+              lazyMount
+            />
+          </div>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap justify-end gap-2">
@@ -1979,13 +2000,15 @@ function PermissionApprovalModal({
   );
 }
 
-function permissionRequestToJson(request: PermissionDecisionRequest): Record<string, unknown> {
+function permissionRequestToJson(request: PermissionDecisionRequest, selectedOptionId: string): Record<string, unknown> {
   return {
-    sessionId: request.sessionId,
-    toolCallId: request.toolCallId,
-    title: request.title,
+    rawRequest: request.rawRequest,
+    params: request.rawParams,
+    toolCall: request.toolCall,
     input: request.rawInput,
     options: request.options,
+    selectedOption: findPermissionOption(request.options, selectedOptionId),
+    decision: permissionDecisionPreview(selectedOptionId),
   };
 }
 
@@ -2099,8 +2122,9 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 function ClientToolRow({ call }: { call: ClientToolCall }) {
   return (
-    <details className="rounded-lg border border-info/35 bg-info/10 p-3 text-xs">
-      <summary className="cursor-pointer list-none">
+    <LazyJsonDetails
+      className="rounded-lg border border-info/35 bg-info/10 p-3 text-xs"
+      summary={(
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate font-semibold">{call.toolName}</div>
@@ -2108,19 +2132,18 @@ function ClientToolRow({ call }: { call: ClientToolCall }) {
           </div>
           <span className="shrink-0 text-muted-foreground">{new Date(call.at).toLocaleTimeString()}</span>
         </div>
-      </summary>
-      <JsonPanel
-        value={{ input: call.input, result: call.result }}
-        preClassName="mt-3 max-h-72 rounded-md text-code-foreground"
-      />
-    </details>
+      )}
+      value={{ input: call.input, result: call.result }}
+      size="row"
+    />
   );
 }
 
 function SlashCommandRow({ command }: { command: SlashCommand }) {
   return (
-    <details className="rounded-lg border border-border bg-surface p-3 text-xs">
-      <summary className="cursor-pointer list-none">
+    <LazyJsonDetails
+      className="rounded-lg border border-border bg-surface p-3 text-xs"
+      summary={(
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate font-semibold">/{command.name}</div>
@@ -2130,19 +2153,18 @@ function SlashCommandRow({ command }: { command: SlashCommand }) {
             {command.input ? "input" : "plain"}
           </span>
         </div>
-      </summary>
-      <JsonPanel
-        value={command}
-        preClassName="mt-3 max-h-56 rounded-md text-code-foreground"
-      />
-    </details>
+      )}
+      value={command}
+      size="row"
+    />
   );
 }
 
 function PermissionRow({ request }: { request: PermissionRequestLog }) {
   return (
-    <details className="rounded-lg border border-warning/35 bg-warning/10 p-3 text-xs">
-      <summary className="cursor-pointer list-none">
+    <LazyJsonDetails
+      className="rounded-lg border border-warning/35 bg-warning/10 p-3 text-xs"
+      summary={(
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate font-semibold">{request.title}</div>
@@ -2152,19 +2174,25 @@ function PermissionRow({ request }: { request: PermissionRequestLog }) {
             {request.selectedOptionId}
           </span>
         </div>
-      </summary>
-      <JsonPanel
-        value={{ rawInput: request.rawInput, options: request.options }}
-        preClassName="mt-3 max-h-56 rounded-md text-code-foreground"
-      />
-    </details>
+      )}
+      value={{
+        rawRequest: request.rawRequest,
+        params: request.rawParams,
+        toolCall: request.toolCall,
+        input: request.rawInput,
+        options: request.options,
+        decision: request.decision,
+      }}
+      size="row"
+    />
   );
 }
 
 function ElicitationRow({ request }: { request: ElicitationRequestLog }) {
   return (
-    <details className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs">
-      <summary className="cursor-pointer list-none">
+    <LazyJsonDetails
+      className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs"
+      summary={(
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate font-semibold">{request.message}</div>
@@ -2174,11 +2202,34 @@ function ElicitationRow({ request }: { request: ElicitationRequestLog }) {
             answered
           </span>
         </div>
+      )}
+      value={{ rawInput: request.rawInput, action: request.action }}
+      size="row"
+    />
+  );
+}
+
+function LazyJsonDetails({
+  className,
+  summary,
+  value,
+  size = "row",
+}: {
+  className: string;
+  summary: React.ReactNode;
+  value: unknown;
+  size?: "compact" | "inline" | "row" | "default" | "permission";
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      className={className}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="cursor-pointer list-none">
+        {summary}
       </summary>
-      <JsonPanel
-        value={{ rawInput: request.rawInput, action: request.action }}
-        preClassName="mt-3 max-h-56 rounded-md text-code-foreground"
-      />
+      {open && <JsonPanel value={value} size={size} preClassName="mt-3 rounded-md text-code-foreground" lazyMount />}
     </details>
   );
 }
@@ -2214,8 +2265,9 @@ function promptResultToSummary(result: unknown): Record<string, unknown> | null 
 
 function TrafficRow({ entry }: { entry: TrafficEntry }) {
   return (
-    <details className={entry.error ? "rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs" : "rounded-lg border border-border bg-surface p-3 text-xs"}>
-      <summary className="cursor-pointer list-none">
+    <LazyJsonDetails
+      className={entry.error ? "rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs" : "rounded-lg border border-border bg-surface p-3 text-xs"}
+      summary={(
         <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex min-w-0 items-center gap-2">
             <span className={entry.direction === "in" ? "badge-in" : "badge-out"}>{entry.direction}</span>
@@ -2234,12 +2286,10 @@ function TrafficRow({ entry }: { entry: TrafficEntry }) {
             {entry.requestId !== undefined && <span className="ml-2">id {String(entry.requestId)}</span>}
           </div>
         </div>
-      </summary>
-      <JsonPanel
-        value={entry.payload}
-        preClassName="mt-3 max-h-72 rounded-md"
-      />
-    </details>
+      )}
+      value={entry.payload}
+      size="row"
+    />
   );
 }
 
@@ -2438,6 +2488,18 @@ function selectInitialPermissionOption(options: PermissionOption[]): PermissionO
 
 function permissionOptionId(option: PermissionOption, index: number): string {
   return option.optionId ?? option.name ?? option.kind ?? `option-${index}`;
+}
+
+function findPermissionOption(options: PermissionOption[], optionId: string): PermissionOption | null {
+  return options.find((option, index) => permissionOptionId(option, index) === optionId) ?? null;
+}
+
+function permissionDecisionPreview(optionId: string): Record<string, unknown> {
+  return {
+    outcome: optionId
+      ? { outcome: "selected", optionId }
+      : { outcome: "cancelled" },
+  };
 }
 
 function isCallToolResult(value: unknown): value is CallToolResult {
