@@ -109,7 +109,11 @@ class RpcPeer {
       const response = {
         jsonrpc: "2.0",
         id: frame.id,
-        result,
+        result: {
+          sessionId: frame.params?.sessionId,
+          toolCallId: frame.params?.toolCallId,
+          result,
+        },
       };
       log(this.name, "OUT client-call response", response);
       this.sendFrame(response);
@@ -591,7 +595,7 @@ function executeClientTool(params) {
       action,
       payload: input.payload ?? {},
       sessionId: params?.sessionId,
-      toolUseId: params?.toolUseId,
+      toolCallId: params?.toolCallId,
     },
   };
 }

@@ -85,12 +85,12 @@ function handleRequest(message) {
       const promptText = Array.isArray(params?.prompt) && params.prompt[0]?.text ? params.prompt[0].text : 'unknown';
 
       if (process.env.FAKE_ACP_TRIGGER_GUI_EXECUTE === '1') {
-        const toolUseId = 'fake-gui-tool-1';
+        const toolCallId = 'fake-gui-tool-1';
         sendNotification('session/update', {
           sessionId,
           update: {
             sessionUpdate: 'tool_call',
-            toolCallId: toolUseId,
+            toolCallId,
             title: 'GUI_execute',
             kind: 'other',
             status: 'in_progress',
@@ -99,7 +99,7 @@ function handleRequest(message) {
         sendRequest('_viben/client_tool_call', {
           sessionId,
           toolName: 'GUI_execute',
-          toolUseId,
+          toolCallId,
           input: {
             action: 'get_action_detail',
             payload: { action: 'app.open_settings' },
@@ -109,7 +109,7 @@ function handleRequest(message) {
             sessionId,
             update: {
               sessionUpdate: 'tool_call_update',
-              toolCallId: toolUseId,
+              toolCallId,
               status: response.error ? 'failed' : 'completed',
             },
           });
