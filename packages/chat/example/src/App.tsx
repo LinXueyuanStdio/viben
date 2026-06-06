@@ -835,7 +835,10 @@ export function App() {
                       isLoading={player.isStreaming}
                       allowSendWhileLoading
                       placeholder={player.isStreaming ? "Type to queue a message..." : "Type a message..."}
+                      layoutVariant="expanded"
+                      showTopToolbar
                       showConfigBar
+                      renderEmojiPicker={(props) => <EmojiPicker {...props} />}
                       hideExecutorSelector
                       agents={demoAgents.map(a => ({ ...a, model: undefined }))}
                       selectedAgentId={selectedAgentId}

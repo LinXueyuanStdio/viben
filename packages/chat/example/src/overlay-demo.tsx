@@ -121,7 +121,8 @@ export function OverlayDemo({
   renderFullScreen,
 }: OverlayDemoProps) {
   const petState = getAssistantPetState(messages, isStreaming, playerStatus);
-  const assistantAvatar = assistantAvatars?.[petState] ?? <VibenPetAvatar state={petState} />;
+  const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
+  const assistantAvatar = assistantAvatars?.[petState] ?? <VibenPetAvatar state={petState} interaction={petInteraction} />;
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
   const content = inputValue ?? uncontrolledInput;
   const setContent = React.useCallback((value: string) => {
@@ -585,54 +586,148 @@ function CompactChatInput({
   );
 }
 
-function VibenPetAvatar({ state }: { state: AssistantPetState }) {
-  const stateColor = {
-    idle: "oklch(0.74 0.12 190)",
-    thinking: "oklch(0.78 0.16 75)",
-    speaking: "oklch(0.7 0.18 145)",
-    done: "oklch(0.72 0.16 125)",
-  }[state];
+const PET_STATE_META: Record<AssistantPetState, {
+  label: string;
+  halo: string;
+  eye: string;
+  mouth: string;
+  statusFill: string;
+}> = {
+  idle: {
+    label: "Idle",
+    halo: "oklch(0.78 0.13 188)",
+    eye: "M27 42 Q31 39 35 42",
+    mouth: "M31 55 Q40 59 49 55",
+    statusFill: "oklch(0.78 0.13 188)",
+  },
+  waiting: {
+    label: "Waiting",
+    halo: "oklch(0.82 0.16 82)",
+    eye: "M27 41 H35",
+    mouth: "M32 56 Q40 54 48 56",
+    statusFill: "oklch(0.82 0.16 82)",
+  },
+  review: {
+    label: "Review",
+    halo: "oklch(0.75 0.15 172)",
+    eye: "M27 42 Q31 39 35 42",
+    mouth: "M31 55 Q40 52 49 55",
+    statusFill: "oklch(0.75 0.15 172)",
+  },
+  waving: {
+    label: "Waving",
+    halo: "oklch(0.78 0.15 132)",
+    eye: "M27 41 Q31 44 35 41",
+    mouth: "M31 54 Q40 61 49 54",
+    statusFill: "oklch(0.78 0.15 132)",
+  },
+  failed: {
+    label: "Failed",
+    halo: "oklch(0.66 0.2 28)",
+    eye: "M27 39 L35 45 M35 39 L27 45",
+    mouth: "M31 58 Q40 53 49 58",
+    statusFill: "oklch(0.66 0.2 28)",
+  },
+};
+
+const PET_FLOAT_ANIMATION: Record<PetInteractionState, { y?: number[]; rotate?: number[]; x?: number[]; scale?: number[] }> = {
+  idle: { y: [0, -1.5, 0] },
+  hover: { rotate: [-2, 2, -2] },
+  "drag-right": { x: [0, 2, 0] },
+  "drag-left": { x: [0, -2, 0] },
+  "drag-up": { y: [0, -5, 0] },
+  "drag-down": { y: [0, 3, 0] },
+  waiting: { y: [0, -3, 0], scale: [1, 1.02, 1] },
+};
+
+function VibenPetAvatar({ state, interaction }: { state: AssistantPetState; interaction: PetInteractionState }) {
+  const meta = PET_STATE_META[state];
+  const gradientId = React.useId().replace(/:/g, "");
+  const warmGradientId = `${gradientId}-warm`;
+  const bodyGradientId = `${gradientId}-body`;
+  const glowId = `${gradientId}-glow`;
+  const movement = PET_FLOAT_ANIMATION[interaction];
+  const shouldLoop = interaction !== "idle" || state === "review" || state === "waiting";
 
   return (
     <svg
       viewBox="0 0 80 80"
       role="img"
-      aria-label={`Viben pet ${state}`}
+      aria-label={`Viben pet ${meta.label}`}
       className="size-full"
     >
       <defs>
-        <filter id={`pet-shadow-${state}`} x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="6" stdDeviation="5" floodOpacity="0.25" />
+        <linearGradient id={warmGradientId} x1="13" y1="13" x2="67" y2="67" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FDB813" />
+          <stop offset="100%" stopColor="#38B2AC" />
+        </linearGradient>
+        <radialGradient id={bodyGradientId} cx="33%" cy="24%" r="68%">
+          <stop offset="0%" stopColor="oklch(0.99 0.02 95)" />
+          <stop offset="52%" stopColor="oklch(0.93 0.04 102)" />
+          <stop offset="100%" stopColor="oklch(0.86 0.05 176)" />
+        </radialGradient>
+        <filter id={glowId} x="-24%" y="-24%" width="148%" height="148%">
+          <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#0f172a" floodOpacity="0.28" />
+          <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#38B2AC" floodOpacity="0.25" />
         </filter>
       </defs>
       <motion.g
-        filter={`url(#pet-shadow-${state})`}
-        animate={state === "thinking" ? { y: [0, -3, 0] } : state === "speaking" ? { rotate: [-2, 2, -2] } : { y: 0 }}
-        transition={{ duration: state === "thinking" ? 1.1 : 0.8, repeat: state === "idle" || state === "done" ? 0 : Infinity }}
+        filter={`url(#${glowId})`}
+        animate={movement}
+        transition={{ duration: interaction === "waiting" ? 1.1 : 1.6, repeat: shouldLoop ? Infinity : 0, ease: "easeInOut" }}
+        style={{ transformOrigin: "40px 43px" }}
       >
-        <circle cx="40" cy="40" r="30" fill={stateColor} />
-        <path d="M19 32 9 19l17 5" fill={stateColor} opacity="0.9" />
-        <path d="M61 32 71 19l-17 5" fill={stateColor} opacity="0.9" />
-        <circle cx="30" cy="38" r="4" fill="oklch(0.16 0.01 75)" />
-        <circle cx="50" cy="38" r="4" fill="oklch(0.16 0.01 75)" />
         <motion.path
-          d={state === "speaking" ? "M32 52 Q40 58 48 52" : "M32 52 Q40 55 48 52"}
-          stroke="oklch(0.16 0.01 75)"
+          d="M18 31 L8 20 L24 24"
+          fill="none"
+          stroke="#FDB813"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          animate={state === "waving" ? { rotate: [-7, 7, -7] } : undefined}
+          transition={{ duration: 0.7, repeat: state === "waving" ? Infinity : 0 }}
+          style={{ transformOrigin: "21px 28px" }}
+        />
+        <motion.path
+          d="M62 31 L72 20 L56 24"
+          fill="none"
+          stroke="#38B2AC"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          animate={state === "waving" ? { rotate: [7, -7, 7] } : undefined}
+          transition={{ duration: 0.7, repeat: state === "waving" ? Infinity : 0 }}
+          style={{ transformOrigin: "59px 28px" }}
+        />
+        <circle cx="40" cy="41" r="29" fill={`url(#${bodyGradientId})`} stroke={`url(#${warmGradientId})`} strokeWidth="3" />
+        <path d="M28 25 L40 35 L52 25" fill="none" stroke={`url(#${warmGradientId})`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+        <path d="M31 33 L40 55 L49 33" fill="none" stroke="oklch(0.22 0.04 220)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M21 36 L12 43 L21 50" fill="none" stroke="#FDB813" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
+        <path d="M59 36 L68 43 L59 50" fill="none" stroke="#38B2AC" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
+        <path d={meta.eye} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <path d={meta.eye.replace(/27/g, "45").replace(/35/g, "53")} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <motion.path
+          d={meta.mouth}
+          stroke="oklch(0.19 0.03 230)"
           strokeWidth="3"
           strokeLinecap="round"
           fill="none"
-          animate={state === "speaking" ? { d: ["M32 52 Q40 58 48 52", "M32 52 Q40 50 48 52", "M32 52 Q40 58 48 52"] } : undefined}
-          transition={{ duration: 0.6, repeat: state === "speaking" ? Infinity : 0 }}
+          animate={state === "review" ? { d: ["M31 55 Q40 52 49 55", "M31 55 Q40 58 49 55", "M31 55 Q40 52 49 55"] } : undefined}
+          transition={{ duration: 0.7, repeat: state === "review" ? Infinity : 0 }}
         />
         <motion.circle
-          cx="58"
-          cy="22"
-          r="4"
-          fill="oklch(0.98 0.02 95)"
-          animate={state === "thinking" ? { scale: [1, 1.45, 1], opacity: [0.7, 1, 0.7] } : undefined}
-          transition={{ duration: 1, repeat: state === "thinking" ? Infinity : 0 }}
+          cx="61"
+          cy="20"
+          r="5"
+          fill={meta.statusFill}
+          stroke="oklch(0.99 0.01 95)"
+          strokeWidth="2"
+          animate={state === "waiting" || state === "review" ? { scale: [0.85, 1.18, 0.85], opacity: [0.75, 1, 0.75] } : undefined}
+          transition={{ duration: 0.9, repeat: state === "waiting" || state === "review" ? Infinity : 0 }}
         />
-        <path d="M28 21 Q40 10 52 21" stroke="oklch(0.98 0.02 95)" strokeWidth="4" strokeLinecap="round" fill="none" opacity="0.8" />
+        {state === "failed" && (
+          <path d="M23 64 H57" stroke="oklch(0.66 0.2 28)" strokeWidth="4" strokeLinecap="round" opacity="0.75" />
+        )}
       </motion.g>
     </svg>
   );
