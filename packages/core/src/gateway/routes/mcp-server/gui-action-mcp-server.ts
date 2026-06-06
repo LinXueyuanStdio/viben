@@ -4,7 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { createGuiActionMcpServer } from "../../../acp/ops/gui-action-mcp-server";
+import { createClientSideMcpServer } from "../../../acp/ops/client-side-mcp-server";
 import { acpSessionManager } from "../../../acp";
 import { logger as globalLogger } from "../../../telemetry";
 
@@ -70,7 +70,7 @@ export function registerGuiActionMcpServerRoutes(
   options: GuiActionMcpRoutesOptions = {},
 ): void {
   const createServer = options.createServer ?? ((sessionId: string) =>
-    createGuiActionMcpServer({
+    createClientSideMcpServer({
       sessionId,
       requestClientTool: ({ sessionId: sid, toolName, input, toolCallId }) =>
         acpSessionManager.requestClientTool(sid, toolName, input, toolCallId),
