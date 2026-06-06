@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
@@ -8,12 +7,6 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
   }),
-}));
-
-vi.mock("@emoji-mart/data", () => ({ default: {} }));
-vi.mock("@emoji-mart/data/sets/15/native.json", () => ({ default: {} }));
-vi.mock("@emoji-mart/react", () => ({
-  default: () => React.createElement("div", { "data-testid": "emoji-picker" }),
 }));
 
 describe("ChatInput layout", () => {
