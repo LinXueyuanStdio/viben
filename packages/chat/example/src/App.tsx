@@ -369,8 +369,9 @@ export function App() {
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
 
-  const fullScreenDemo = (
-    <div className="flex h-full min-h-0 flex-col">
+  return (
+    <LayoutGroup id="viben-chat-overlay-demo">
+    <div className="flex h-screen flex-col">
       <SubagentSheet
         open={!!sheetData}
         onClose={() => setSheetData(null)}
@@ -447,12 +448,15 @@ export function App() {
 
               <div className="space-y-1.5">
                 <SectionLabel>Overlay Mode</SectionLabel>
-                <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
                   <ModeButton active={overlayMode === "floating"} onClick={() => setOverlayMode("floating")} title="Floating">
                     <Bot className="size-3.5" />
                   </ModeButton>
                   <ModeButton active={overlayMode === "compact"} onClick={() => setOverlayMode("compact")} title="Compact">
                     <MessageSquare className="size-3.5" />
+                  </ModeButton>
+                  <ModeButton active={overlayMode === "expanded"} onClick={() => setOverlayMode("expanded")} title="Expanded">
+                    <ChevronDown className="size-3.5 rotate-180" />
                   </ModeButton>
                   <ModeButton active={overlayMode === "full"} onClick={() => setOverlayMode("full")} title="Full">
                     <Maximize2 className="size-3.5" />
@@ -639,7 +643,7 @@ export function App() {
         </aside>
 
         {/* ===== Chat Column ===== */}
-        <div className="flex flex-1 w-0 flex-col min-w-0 overflow-hidden bg-background">
+        <div className="relative flex flex-1 w-0 flex-col min-w-0 overflow-hidden bg-background">
           {/* Content area */}
           <div className="flex min-h-0 flex-1 flex-col">
             {showPlan ? (
@@ -862,30 +866,22 @@ export function App() {
               </AnimatePresence>
             </div>
           </div>
+          <OverlayDemo
+            contained
+            mode={overlayMode}
+            messages={player.messages}
+            isStreaming={player.isStreaming}
+            playerStatus={player.status}
+            pendingUserMessageCount={commandQueue.items.length}
+            inputValue={chatInputValue}
+            onInputValueChange={setChatInputValue}
+            onModeChange={setOverlayMode}
+            onSend={handleSend}
+            onCancel={player.pause}
+          />
         </div>
       </div>
     </div>
-  )
-
-  return (
-    <LayoutGroup id="viben-chat-overlay-demo">
-      <div className="relative h-screen overflow-hidden bg-background">
-        {fullScreenDemo}
-        <OverlayDemo
-          contained
-          mode={overlayMode}
-          messages={player.messages}
-          isStreaming={player.isStreaming}
-          playerStatus={player.status}
-          pendingUserMessageCount={commandQueue.items.length}
-          inputValue={chatInputValue}
-          onInputValueChange={setChatInputValue}
-          onModeChange={setOverlayMode}
-          onSend={handleSend}
-          onCancel={player.pause}
-          renderFullScreen={() => fullScreenDemo}
-        />
-      </div>
     </LayoutGroup>
   )
 }
