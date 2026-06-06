@@ -73,6 +73,10 @@ pre code.json-code {
   line-height: 1.55;
 }
 
+.json-panel-permission {
+  min-height: 420px;
+}
+
 .json-modal-section {
   min-width: 0;
 }
@@ -99,28 +103,32 @@ pre code.json-code {
   white-space: pre;
 }
 
+.permission-side {
+  min-width: 0;
+}
+
 .json-key {
-  color: oklch(0.82 0.11 80);
+  color: oklch(0.84 0.13 82);
 }
 
 .json-string {
-  color: oklch(0.78 0.12 155);
+  color: oklch(0.8 0.13 154);
 }
 
 .json-number {
-  color: oklch(0.78 0.12 250);
+  color: oklch(0.82 0.12 252);
 }
 
 .json-boolean {
-  color: oklch(0.8 0.12 35);
+  color: oklch(0.82 0.15 38);
 }
 
 .json-null {
-  color: oklch(0.72 0.04 250);
+  color: oklch(0.76 0.05 250);
 }
 
 .json-punctuation {
-  color: oklch(0.64 0.02 250);
+  color: oklch(0.7 0.025 250);
 }
 
 .btn-primary,

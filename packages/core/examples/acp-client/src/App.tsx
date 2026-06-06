@@ -71,6 +71,13 @@ import {
   type SubagentSheetState,
   type UiSessionState,
 } from "./acp-chat-state";
+import {
+  formatJson,
+  JsonBlock,
+  JsonCode,
+  JsonPanel,
+  normalizeJsonText,
+} from "./json-renderer";
 
 interface GuiActionDefinition {
   id: string;
@@ -399,7 +406,7 @@ export function App() {
       executor_type: executorType,
       model: model.trim() || undefined,
       permission_mode: permissionMode,
-      mcp_servers: mcpServers.includes("gui_action") ? mcpServers : ["gui_action", ...mcpServers],
+      mcp_servers: mcpServers.includes("client_side") ? mcpServers : ["client_side", ...mcpServers],
       append_prompt: DEFAULT_APPEND_PROMPT,
       executor_config: parsedExecutorConfig,
     };
@@ -1222,7 +1229,7 @@ export function App() {
                     checked={useInlineAgentConfig}
                     onChange={(event) => setUseInlineAgentConfig(event.target.checked)}
                   />
-                  Inline agent config + gui_action
+                  Inline agent config + client_side
                 </label>
                 <button className="btn-secondary" onClick={() => setRequestMcpServersText(normalizeJsonText(requestMcpServersText))}>
                   <FileJson size={16} />
@@ -1901,17 +1908,18 @@ function PermissionApprovalModal({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const requestJson = permissionRequestToJson(dialog.request);
   return (
     <ModalFrame title="Permission Request" subtitle={dialog.request.title}>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Tool Input</div>
-          <pre className="max-h-72 overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
-            <JsonCode value={dialog.request.rawInput} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="json-modal-section">
+          <div className="json-modal-header">Request JSON</div>
+          <pre className="json-panel json-panel-permission">
+            <JsonCode value={requestJson} />
           </pre>
         </div>
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Options</div>
+        <div className="permission-side">
+          <div className="json-modal-header">Options</div>
           <div className="space-y-2">
             {dialog.request.options.length === 0 ? (
               <EmptyState text="No options provided." compact />
@@ -1949,6 +1957,16 @@ function PermissionApprovalModal({
       </div>
     </ModalFrame>
   );
+}
+
+function permissionRequestToJson(request: PermissionDecisionRequest): Record<string, unknown> {
+  return {
+    sessionId: request.sessionId,
+    toolCallId: request.toolCallId,
+    title: request.title,
+    input: request.rawInput,
+    options: request.options,
+  };
 }
 
 function ElicitationApprovalModal({
@@ -2275,7 +2293,9 @@ function shortId(id: string): string {
 }
 
 function isGuiExecuteTool(toolName: string): boolean {
-  return toolName === "GUI_execute" || toolName === "mcp__gui_action__GUI_execute";
+  return toolName === "GUI_execute"
+    || toolName === "mcp__client_side__GUI_execute"
+    || toolName === "mcp__gui_action__GUI_execute";
 }
 
 function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActionDefinition[]): CallToolResult {

@@ -265,10 +265,11 @@ interface PendingRequest {
   startedAt: number;
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
+  timer?: ReturnType<typeof setTimeout>;
 }
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
+const LONG_RUNNING_REQUEST_METHODS = new Set(["session/prompt"]);
 
 export class AcpWebSocketClient {
   private ws: WebSocket | null = null;
@@ -351,7 +352,7 @@ export class AcpWebSocketClient {
         },
         _vibenClientTools: {
           enabled: true,
-          tools: ["GUI_execute", "mcp__gui_action__GUI_execute"],
+          tools: ["GUI_execute", "mcp__client_side__GUI_execute", "mcp__gui_action__GUI_execute"],
           actionRegistry: "editable",
         },
       },
@@ -440,11 +441,13 @@ export class AcpWebSocketClient {
     this.recordTraffic("out", frame);
 
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        this.pendingMethods.delete(id);
-        reject(new Error(`Request timeout: ${method}`));
-      }, DEFAULT_REQUEST_TIMEOUT_MS);
+      const timer = shouldTimeoutRequest(method)
+        ? setTimeout(() => {
+            this.pending.delete(id);
+            this.pendingMethods.delete(id);
+            reject(new Error(`Request timeout: ${method}`));
+          }, DEFAULT_REQUEST_TIMEOUT_MS)
+        : undefined;
 
       this.pending.set(id, { method, startedAt: Date.now(), resolve, reject, timer });
       this.send(frame);
@@ -477,7 +480,7 @@ export class AcpWebSocketClient {
       const pending = this.pending.get(frame.id);
       this.pendingMethods.delete(frame.id);
       if (!pending) return;
-      clearTimeout(pending.timer);
+      if (pending.timer) clearTimeout(pending.timer);
       this.pending.delete(frame.id);
       if ("error" in frame) {
         pending.reject(new Error(formatJsonRpcError(frame.error)));
@@ -697,7 +700,7 @@ export class AcpWebSocketClient {
 
   private rejectAll(error: Error): void {
     for (const pending of this.pending.values()) {
-      clearTimeout(pending.timer);
+      if (pending.timer) clearTimeout(pending.timer);
       pending.reject(error);
     }
     this.pending.clear();
@@ -727,6 +730,10 @@ export class AcpWebSocketClient {
     this.status = status;
     this.callbacks.onStatus(status);
   }
+}
+
+function shouldTimeoutRequest(method: string): boolean {
+  return !LONG_RUNNING_REQUEST_METHODS.has(method);
 }
 
 function formatJsonRpcError(error: JsonRpcFailure["error"]): string {

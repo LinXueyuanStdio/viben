@@ -156,14 +156,14 @@ describe("acp chat adapter", () => {
     const pending = acpSessionUpdateToUiSteps(update({
       sessionUpdate: "tool_call",
       toolCallId,
-      title: "mcp__gui_action__GUI_execute",
+      title: "mcp__client_side__GUI_execute",
       status: "pending",
       rawInput: {},
     }));
     const inputUpdate = acpSessionUpdateToUiSteps(update({
       sessionUpdate: "tool_call_update",
       toolCallId,
-      title: "mcp__gui_action__GUI_execute",
+      title: "mcp__client_side__GUI_execute",
       rawInput: {
         action: "get_action_detail",
         payload: { action: "app.open_settings" },
