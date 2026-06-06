@@ -16,14 +16,11 @@ type RegisteredTool = {
 };
 
 type InspectableMcpServer = ReturnType<typeof createClientSideMcpServer> & {
-  _registeredTools?: Record<string, RegisteredTool>;
-  server: {
-    _serverInfo?: { name?: string };
-  };
 };
 
 function getTool(server: InspectableMcpServer, toolName: string): RegisteredTool {
-  const tool = server._registeredTools?.[toolName];
+  const inspectable = server as unknown as { _registeredTools?: Record<string, RegisteredTool> };
+  const tool = inspectable._registeredTools?.[toolName];
   if (!tool) {
     throw new Error(`Tool was not registered: ${toolName}`);
   }
@@ -34,7 +31,8 @@ describe("ACP client-side MCP server", () => {
   it("registers GUI_execute and ClientSideBash on the client_side server", () => {
     const server = createClientSideMcpServer() as InspectableMcpServer;
 
-    expect(server.server._serverInfo?.name).toBe(CLIENT_SIDE_MCP_SERVER_NAME);
+    const inspectableServer = server as unknown as { server: { _serverInfo?: { name?: string } } };
+    expect(inspectableServer.server._serverInfo?.name).toBe(CLIENT_SIDE_MCP_SERVER_NAME);
     expect(getTool(server, GUI_EXECUTE_TOOL_NAME).description).toContain("GUI action");
     expect(getTool(server, CLIENT_SIDE_BASH_TOOL_NAME).description).toContain("The only input is `script`");
   });
