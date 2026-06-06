@@ -1,7 +1,13 @@
 import { useEffect, useRef } from "react";
-import { useLocation, useNavigate as useRouterNavigate } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate as useRouterNavigate,
+} from "react-router-dom";
 import { registry } from "@/navigation/route-registry";
-import { buildColdStartBreadcrumb, buildBreadcrumbItem } from "@/navigation/breadcrumb-builder";
+import {
+  buildColdStartBreadcrumb,
+  buildBreadcrumbItem,
+} from "@/navigation/breadcrumb-builder";
 import { isStackPrefixOf } from "@/navigation/navigate";
 import { getCurrentWindowTabStore, selectActiveTab } from "@/stores/tab-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -78,14 +84,21 @@ export function TabRouterBridge() {
     });
 
     routerNavigate(normalizedUrl, { replace: true });
-  }, [location.pathname, location.search, location.hash, openTab, routerNavigate]);
+  }, [
+    location.pathname,
+    location.search,
+    location.hash,
+    openTab,
+    routerNavigate,
+  ]);
 
   // Store -> Router: when store URL changes, update React Router
   useEffect(() => {
     if (!storeUrl) return;
     if (hasNewTabRequest(location.search)) return;
 
-    const currentRouterPath = location.pathname + location.search + location.hash;
+    const currentRouterPath =
+      location.pathname + location.search + location.hash;
     const normalizedStoreUrl = normalizeUrlPreservingHash(storeUrl);
 
     // Sync workspace store whenever the active tab's URL changes
@@ -108,7 +121,13 @@ export function TabRouterBridge() {
 
     lastPushedToRouterRef.current = normalizedStoreUrl;
     routerNavigate(normalizedStoreUrl, { replace: true });
-  }, [storeUrl, routerNavigate, location.pathname, location.search, location.hash]);
+  }, [
+    storeUrl,
+    routerNavigate,
+    location.pathname,
+    location.search,
+    location.hash,
+  ]);
 
   // Router -> Store: when React Router URL changes externally, update store
   // NOTE: Neither storeUrl nor activeTabId are in deps. This effect must only
@@ -123,7 +142,8 @@ export function TabRouterBridge() {
     const { activeTabId: currentTabId } = tabStore.getState();
     if (!currentTabId) return;
 
-    const currentRouterUrl = location.pathname + location.search + location.hash;
+    const currentRouterUrl =
+      location.pathname + location.search + location.hash;
     const normalizedUrl = normalizeUrlPreservingHash(currentRouterUrl);
 
     // Skip if this router URL was set by our Store->Router sync
@@ -138,7 +158,11 @@ export function TabRouterBridge() {
 
     // Skip if URLs already match
     const currentStoreUrl = currentState?.url ?? null;
-    if (currentStoreUrl && normalizeUrlPreservingHash(currentStoreUrl) === normalizedUrl) return;
+    if (
+      currentStoreUrl &&
+      normalizeUrlPreservingHash(currentStoreUrl) === normalizedUrl
+    )
+      return;
 
     // Match against registry
     const match = registry.match(normalizedUrl);
@@ -160,8 +184,15 @@ export function TabRouterBridge() {
       const stack = buildColdStartBreadcrumb(normalizedUrl);
       resetNavigation(currentTabId, normalizedUrl, stack);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, location.hash, pushNavigation, resetNavigation, tabStore]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    location.pathname,
+    location.search,
+    location.hash,
+    pushNavigation,
+    resetNavigation,
+    tabStore,
+  ]);
 
   return null;
 }
