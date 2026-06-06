@@ -76,8 +76,9 @@ import type { ChatListItem } from "@/lib/gateway/types/workspace";
 import type { FileSession } from "@/lib/gateway/types/session";
 import type { GroupChatSession } from "@/lib/gateway/types/group-chat";
 import { cn } from "@/lib/utils";
+import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
 import { withNewTabRequest } from "@/navigation/new-tab-request";
-import { useTabStore } from "@/stores/tab-store";
+import { getScopedTabStore } from "@/stores/tab-store";
 import type { TabNavigationState } from "@/stores/tab-store";
 
 const NEW_TAB_URL = "/workspace";
@@ -336,6 +337,14 @@ export interface PagePreviewWindowProps {
   navigateToWorkspace?: (url: string) => void;
 }
 
+function getCurrentWindowStoreScope(): string {
+  try {
+    return getCurrentWindow().label || window.name || "page-preview";
+  } catch {
+    return window.name || "page-preview";
+  }
+}
+
 export function PagePreviewWindow({
   navigateToWorkspace = navigateCurrentWindow,
 }: PagePreviewWindowProps = {}) {
@@ -360,18 +369,23 @@ export function PagePreviewWindow({
   const [forwardMessage, setForwardMessage] = useState("");
   const [forwardTargetId, setForwardTargetId] = useState<string | null>(null);
   const [isForwarding, setIsForwarding] = useState(false);
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const activeTab = useTabStore((state) =>
+  const previewTabStore = useMemo(
+    () => getScopedTabStore(getCurrentWindowStoreScope()),
+    []
+  );
+  const activeTabId = previewTabStore((state) => state.activeTabId);
+  const activeTab = previewTabStore((state) =>
     activeTabId ? state.tabs.find((tab) => tab.id === activeTabId) : null
   );
-  const canReopenClosedTab = useTabStore(
+  const canReopenClosedTab = previewTabStore(
     (state) => state.recentlyClosedTabs.length > 0
   );
-  const goBackInStore = useTabStore((state) => state.goBack);
-  const goForwardInStore = useTabStore((state) => state.goForward);
-  const jumpToHistoryInStore = useTabStore((state) => state.jumpToHistory);
-  const closeAllTabsInStore = useTabStore((state) => state.closeAllTabs);
-  const reopenClosedTabInStore = useTabStore((state) => state.reopenClosedTab);
+  const openTabInStore = previewTabStore((state) => state.openTab);
+  const goBackInStore = previewTabStore((state) => state.goBack);
+  const goForwardInStore = previewTabStore((state) => state.goForward);
+  const jumpToHistoryInStore = previewTabStore((state) => state.jumpToHistory);
+  const closeAllTabsInStore = previewTabStore((state) => state.closeAllTabs);
+  const reopenClosedTabInStore = previewTabStore((state) => state.reopenClosedTab);
   const chatList = useChatList({ workspacePath, includeGlobal: true });
 
   const {
@@ -553,36 +567,43 @@ export function PagePreviewWindow({
   }, []);
 
   const handleNewTab = useCallback(() => {
+    openTabInStore({
+      navigationState: {
+        url: NEW_TAB_URL,
+        breadcrumbStack: buildColdStartBreadcrumb(NEW_TAB_URL),
+      },
+      pinned: false,
+    });
     navigateToWorkspace(withNewTabRequest(NEW_TAB_URL));
-  }, [navigateToWorkspace]);
+  }, [navigateToWorkspace, openTabInStore]);
 
   const navigateToStoreTab = useCallback(
     (tabId: string) => {
-      const url = useTabStore.getState().getCurrentUrl(tabId);
+      const url = previewTabStore.getState().getCurrentUrl(tabId);
       if (url) {
         navigateToWorkspace(url);
       }
     },
-    [navigateToWorkspace]
+    [navigateToWorkspace, previewTabStore]
   );
 
   const handleGoBack = useCallback(() => {
-    if (activeTabId && useTabStore.getState().canGoBack(activeTabId)) {
+    if (activeTabId && previewTabStore.getState().canGoBack(activeTabId)) {
       goBackInStore(activeTabId);
       navigateToStoreTab(activeTabId);
       return;
     }
     runPreviewHistory(previewSurfaceRef.current, "back");
-  }, [activeTabId, goBackInStore, navigateToStoreTab]);
+  }, [activeTabId, goBackInStore, navigateToStoreTab, previewTabStore]);
 
   const handleGoForward = useCallback(() => {
-    if (activeTabId && useTabStore.getState().canGoForward(activeTabId)) {
+    if (activeTabId && previewTabStore.getState().canGoForward(activeTabId)) {
       goForwardInStore(activeTabId);
       navigateToStoreTab(activeTabId);
       return;
     }
     runPreviewHistory(previewSurfaceRef.current, "forward");
-  }, [activeTabId, goForwardInStore, navigateToStoreTab]);
+  }, [activeTabId, goForwardInStore, navigateToStoreTab, previewTabStore]);
 
   const handleOpenForwardDialog = useCallback(() => {
     setForwardDialogOpen(true);
