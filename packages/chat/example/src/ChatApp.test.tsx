@@ -23,6 +23,12 @@ vi.mock("@viben/chat", async () => {
       React.createElement("span", { "data-testid": "min-height" }, String(props.minHeight)),
       React.createElement("span", { "data-testid": "max-height" }, String(props.maxHeight)),
       React.createElement("span", { "data-testid": "input-class-name" }, String(props.className)),
+      props.showConfigBar && !props.renderBottomToolbar
+        ? React.createElement("div", { "data-testid": "chat-input-config-controls" })
+        : null,
+      typeof props.renderBottomToolbar === "function"
+        ? React.createElement("div", { "data-testid": "custom-bottom-toolbar" })
+        : null,
       React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
     ),
     CommandQueuePanel: (props: Record<string, unknown>) => React.createElement(
@@ -35,7 +41,10 @@ vi.mock("@viben/chat", async () => {
     MessageList: React.forwardRef((props: Record<string, unknown>, _ref) => React.createElement(
       "div",
       { "data-testid": "message-list" },
-      String((props.messages as unknown[] | undefined)?.length ?? 0)
+      React.createElement("span", { "data-testid": "message-list-count" }, String((props.messages as unknown[] | undefined)?.length ?? 0)),
+      React.createElement("span", { "data-testid": "message-list-streaming" }, String(props.isStreaming)),
+      React.createElement("span", { "data-testid": "message-list-updates" }, String(Object.keys((props.messageUpdates as Record<string, unknown> | undefined) ?? {}).length)),
+      React.createElement("span", { "data-testid": "message-list-width" }, String(props.maxMessageWidth))
     )),
     PlanApproval: () => React.createElement("div", { "data-testid": "plan-approval" }, "PlanApproval"),
     QuestionInput: () => React.createElement("div", { "data-testid": "question-input" }, "QuestionInput"),
@@ -49,7 +58,9 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("streamdown", () => ({
-  Streamdown: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Streamdown: ({ children, mode, caret }: { children: React.ReactNode; mode?: string; caret?: string }) => (
+    <span data-testid={`streamdown-${mode ?? "default"}`} data-caret={caret}>{children}</span>
+  ),
 }));
 
 const messages: AgentMessage[] = [
@@ -101,7 +112,42 @@ describe("ChatApp", () => {
     expect(screen.queryByText("Skills")).not.toBeInTheDocument();
   });
 
-  test("floating and compact share the same avatar size during minimize animation", () => {
+  test("floating and compact keep avatar stable while the surface morphs", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("agent-popup-avatar")).toHaveClass("size-14", "shrink-0");
+    expect(screen.getByTestId("agent-popup-avatar")).toHaveAttribute("data-shared-element", "overlay-avatar");
+
+    rerender(
+      <ChatApp
+        contained
+        mode="floating"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("floating-overlay-surface")).toHaveClass("size-20");
+    expect(screen.getByTestId("floating-overlay-surface")).not.toHaveClass("hover:scale-[1.03]");
+    expect(screen.getByTestId("floating-overlay-avatar")).toHaveClass("size-14");
+    expect(screen.getByTestId("floating-overlay-avatar")).not.toHaveClass("size-full");
+    expect(screen.getByTestId("floating-overlay-avatar")).toHaveAttribute("data-shared-element", "overlay-avatar");
+  });
+
+  test("floating and compact do not share the outer surface morph", () => {
     const { rerender } = render(
       <ChatApp
         contained
@@ -114,7 +160,9 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("floating-overlay-avatar")).toHaveClass("size-14");
+    expect(screen.getByTestId("floating-overlay-surface")).toHaveAttribute("data-transition-role", "float-fade");
+    expect(screen.getByTestId("floating-overlay-surface")).not.toHaveAttribute("data-shared-surface", "overlay");
+    expect(screen.getByTestId("floating-overlay-avatar")).toHaveAttribute("data-transition-role", "avatar-fade");
 
     rerender(
       <ChatApp
@@ -128,7 +176,9 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("agent-popup-avatar")).toHaveClass("size-14");
+    expect(screen.getByTestId("compact-overlay")).toHaveAttribute("data-transition-role", "panel-fade");
+    expect(screen.getByTestId("compact-overlay")).toHaveAttribute("data-shared-surface", "overlay");
+    expect(screen.getByTestId("agent-popup-avatar")).toHaveAttribute("data-transition-role", "avatar-fade");
   });
 
   test("full mode fills the overlay container with the expanded chat surface", () => {
@@ -147,8 +197,8 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to fullscreen mode" })).toBeInTheDocument();
-    expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Switch to fullscreen mode" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("message-list")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
 
@@ -228,8 +278,75 @@ describe("ChatApp", () => {
     expect(screen.getByRole("button", { name: "Switch to fullscreen mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
-    expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
+    expect(screen.getByTestId("message-list")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
+  });
+
+  test("expanded message list uses the same reusable message panel as fullscreen", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={[
+          {
+            id: "read-1",
+            type: "tool_use",
+            name: "Read",
+            toolUseId: "tool-read-1",
+            input: { file_path: "/root/viben/packages/chat/example/src/ChatApp.tsx" },
+          },
+        ]}
+        messageUpdates={{ "read-1": { content: "updated" } }}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("message-list-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("message-list-streaming")).toHaveTextContent("true");
+    expect(screen.getByTestId("message-list-updates")).toHaveTextContent("1");
+    expect(screen.queryByText("Read is running...")).not.toBeInTheDocument();
+  });
+
+  test("compact summary describes active tools with context", () => {
+    render(
+      <ChatApp
+        mode="compact"
+        messages={[
+          {
+            id: "read-1",
+            type: "tool_use",
+            name: "Read",
+            toolUseId: "tool-read-1",
+            input: { file_path: "/root/viben/packages/chat/example/src/ChatApp.tsx" },
+          },
+        ]}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("agent-popup-description")).toHaveTextContent("Reading packages/chat/example/src/ChatApp.tsx...");
+    expect(screen.queryByText("Read is working...")).not.toBeInTheDocument();
+  });
+
+  test("compact thinking summary renders with streaming markdown", () => {
+    render(
+      <ChatApp
+        mode="compact"
+        messages={[{ id: "think-1", type: "thinking", content: "I am checking the active session." }]}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("agent-popup-thinking-stream")).toContainElement(screen.getByTestId("streamdown-streaming"));
+    expect(screen.getByTestId("streamdown-streaming")).toHaveAttribute("data-caret", "block");
   });
 
   test("expanded mode keeps the same floating width as compact mode and uses viewport height when contained", () => {
@@ -255,6 +372,39 @@ describe("ChatApp", () => {
     expect(overlay).toHaveClass("overlay-shared-surface");
     expect(overlay).not.toHaveClass("h-full");
     expect(overlay).not.toHaveClass("w-full");
+  });
+
+  test("expanded to fullscreen uses a fixed fullscreen width target for the shared surface", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-overlay")).toHaveAttribute("data-transition-role", "expand-to-full");
+    expect(screen.getByTestId("expanded-overlay")).toHaveClass("w-[min(440px,calc(100dvw_-_2rem))]");
+
+    rerender(
+      <ChatApp
+        contained
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("full-overlay")).toHaveAttribute("data-transition-role", "expand-to-full");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("w-[calc(100dvw_-_280px)]");
+    expect(screen.getByTestId("full-overlay")).not.toHaveClass("w-full");
   });
 
   test("expanded mode is a viewport anchored floating panel when not contained", () => {
@@ -507,6 +657,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("default-height")).toHaveTextContent("48");
     expect(screen.getByTestId("min-height")).toHaveTextContent("48");
     expect(screen.getByTestId("max-height")).toHaveTextContent("48");
+    expect(screen.queryByTestId("chat-input-config-controls")).not.toBeInTheDocument();
 
     rerender(
       <ChatApp
@@ -523,6 +674,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
     expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
+    expect(screen.getByTestId("chat-input-config-controls")).toBeInTheDocument();
     expect(screen.getByTestId("default-height")).toHaveTextContent("undefined");
     expect(screen.getByTestId("min-height")).toHaveTextContent("undefined");
     expect(screen.getByTestId("max-height")).toHaveTextContent("undefined");
@@ -586,7 +738,9 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("full-overlay")).toHaveClass("min-h-0");
     expect(screen.getByTestId("full-overlay")).toHaveClass("flex-col");
     expect(screen.getByTestId("full-overlay")).toHaveClass("absolute");
-    expect(screen.getByTestId("full-overlay")).toHaveClass("inset-0");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("inset-y-0");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("right-0");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("w-[calc(100dvw_-_280px)]");
     expect(screen.getByTestId("full-overlay")).toHaveClass("shadow-none");
     expect(screen.getByTestId("custom-fullscreen-panel")).toBeInTheDocument();
   });
@@ -608,7 +762,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("new-session-split-button")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByTestId("compact-mode-button")).toBeInTheDocument();
-    expect(screen.getByTestId("full-mode-button")).toBeInTheDocument();
+    expect(screen.queryByTestId("full-mode-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("settings-button")).toBeInTheDocument();
     expect(screen.getByTestId("more-actions-menu")).toBeInTheDocument();
   });
@@ -629,7 +783,7 @@ describe("ChatAppFullscreenPanel", () => {
       />
     );
 
-    expect(screen.getByTestId("message-list")).toHaveTextContent("2");
+    expect(screen.getByTestId("message-list-count")).toHaveTextContent("2");
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
@@ -672,6 +826,17 @@ describe("getAssistantPetState", () => {
     expect(getAssistantPetState(messages, false, "playing")).toBe("waiting");
     expect(getAssistantPetState(messages, false, "paused")).toBe("waving");
     expect(getAssistantPetState(messages, false, "idle")).toBe("idle");
+  });
+
+  test("does not stay failed after later successful activity", () => {
+    expect(getAssistantPetState([
+      { id: "error-1", type: "error", message: "API error" },
+      { id: "text-1", type: "text", content: "Recovered and continuing." },
+    ], false, "idle")).toBe("idle");
+    expect(getAssistantPetState([
+      { id: "text-1", type: "text", content: "Working." },
+      { id: "error-1", type: "error", message: "API error" },
+    ], false, "idle")).toBe("failed");
   });
 });
 

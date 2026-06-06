@@ -1,6 +1,7 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
+import { Streamdown } from "streamdown";
 import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput } from "@viben/chat";
 import type {
   AgentMessage,
@@ -51,6 +52,7 @@ export interface OverlayHeaderActions {
 export interface ChatAppProps {
   mode: OverlayMode;
   messages: AgentMessage[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   isStreaming: boolean;
   contained?: boolean;
   title?: string;
@@ -122,10 +124,24 @@ const DEFAULT_AGENTS: OverlayAgentItem[] = [
 ];
 
 const OVERLAY_TRANSITION = {
-  type: "spring",
-  stiffness: 430,
-  damping: 34,
-  mass: 0.9,
+  type: "tween",
+  duration: 0.34,
+  ease: [0.4, 0, 0.2, 1],
+} as const;
+
+const OVERLAY_AVATAR_TRANSITION = {
+  duration: 0.22,
+  ease: [0.4, 0, 0.2, 1],
+} as const;
+
+const FLOAT_OVERLAY_TRANSITION = {
+  duration: 0.2,
+  ease: [0.4, 0, 0.2, 1],
+} as const;
+
+const PANEL_FADE_TRANSITION = {
+  duration: 0.18,
+  ease: [0.4, 0, 0.2, 1],
 } as const;
 
 const OVERLAY_RADIUS = {
@@ -136,7 +152,13 @@ const OVERLAY_RADIUS = {
 } as const;
 
 const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
+const FULLSCREEN_PANEL_WIDTH_CLASS = "w-[calc(100dvw_-_280px)]";
 const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
+
+type CompactActivitySummary = {
+  kind: "plain" | "thinking";
+  text: string;
+};
 
 export function getAssistantPetState(
   messages: AgentMessage[],
@@ -144,8 +166,11 @@ export function getAssistantPetState(
   playerStatus: SessionPlayerStatus = "idle"
 ): AssistantPetState {
   if (messages.length === 0) return "idle";
-  if (messages.some((message) => message.type === "error" || message.isError)) return "failed";
   if (isStreaming) return "review";
+  const latestStatefulMessage = [...messages].reverse().find((message) =>
+    message.type !== "summary" && message.type !== "plan_mode"
+  );
+  if (latestStatefulMessage && (latestStatefulMessage.type === "error" || latestStatefulMessage.isError)) return "failed";
   if (playerStatus === "playing") return "waiting";
   if (playerStatus === "paused") return "waving";
   return "idle";
@@ -164,6 +189,7 @@ export function getPetInteractionForSessionStatus(
 export function ChatApp({
   mode,
   messages,
+  messageUpdates,
   isStreaming,
   contained = false,
   title = "Viben session",
@@ -191,15 +217,7 @@ export function ChatApp({
     onInputValueChange?.(value);
   }, [inputValue, onInputValueChange]);
 
-  const latestText = React.useMemo(() => {
-    const latest = [...messages].reverse().find((message) =>
-      (message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error") &&
-      (message.content || message.message || message.name)
-    );
-    if (!latest) return "Ready when you are.";
-    if (latest.type === "tool_use") return `${latest.name ?? "Tool"} is working...`;
-    return latest.content || latest.message || "Working...";
-  }, [messages]);
+  const compactActivity = React.useMemo(() => getCompactActivitySummary(messages), [messages]);
 
   const handleSubmit = React.useCallback(() => {
     const trimmed = content.trim();
@@ -211,10 +229,11 @@ export function ChatApp({
   const defaultExpandedBody = (
     <>
       <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
-        <ExpandedMessageList
+        <ChatAppMessagePanel
           messages={messages}
+          messageUpdates={messageUpdates}
           isStreaming={isStreaming}
-          assistantAvatar={assistantAvatar}
+          maxMessageWidth="100%"
         />
       </div>
       <div className="w-full shrink-0 border-t border-border" data-testid="expanded-chat-input-container">
@@ -241,6 +260,7 @@ export function ChatApp({
         headerActions={headerActions}
         onCreateSession={headerActions?.onCreateSession}
         onSettingsClick={headerActions?.onSettingsClick}
+        mode={mode}
         onModeChange={onModeChange}
       />
       {mode === "full" && fullscreenContent ? fullscreenContent : defaultExpandedBody}
@@ -253,8 +273,9 @@ export function ChatApp({
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
-        className={`overlay-shared-surface flex min-h-0 flex-col overflow-hidden bg-background shadow-none ${
-          contained ? "absolute inset-0 z-30 h-full w-full" : "fixed inset-0 z-50 h-full w-full"
+        data-transition-role="expand-to-full"
+        className={`overlay-shared-surface flex min-h-0 ${FULLSCREEN_PANEL_WIDTH_CLASS} flex-col overflow-hidden bg-background shadow-none ${
+          contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.full }}
         data-testid="full-overlay"
@@ -268,15 +289,27 @@ export function ChatApp({
     return (
       <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
         <motion.button
-          layoutId="viben-overlay-surface"
           type="button"
           aria-label="Open compact chat"
           onClick={() => onModeChange("compact")}
-          transition={OVERLAY_TRANSITION}
-          className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          initial={{ opacity: 0, x: 10, y: -10 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          exit={{ opacity: 0, x: 14, y: -14 }}
+          transition={FLOAT_OVERLAY_TRANSITION}
+          data-transition-role="float-fade"
+          data-testid="floating-overlay-surface"
+          className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           style={{ borderRadius: OVERLAY_RADIUS.floating }}
         >
-          <motion.div layoutId="viben-overlay-avatar" className="size-14" data-testid="floating-overlay-avatar">
+          <motion.div
+            className="size-14"
+            data-testid="floating-overlay-avatar"
+            data-shared-element="overlay-avatar"
+            data-transition-role="avatar-fade"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={OVERLAY_AVATAR_TRANSITION}
+          >
             {assistantAvatar}
           </motion.div>
           {pendingUserMessageCount > 0 && (
@@ -294,7 +327,11 @@ export function ChatApp({
       <motion.div
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
-        initial={false}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        data-shared-surface="overlay"
+        data-transition-role="panel-fade"
         className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
           contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
         }`}
@@ -304,7 +341,7 @@ export function ChatApp({
         <AgentPopup
           avatar={assistantAvatar}
           petState={petState}
-          text={latestText}
+          activity={compactActivity}
           isStreaming={isStreaming}
           onExpand={() => onModeChange("expanded")}
           onMinimize={() => onModeChange("floating")}
@@ -328,6 +365,7 @@ export function ChatApp({
       layoutId="viben-overlay-surface"
       transition={OVERLAY_TRANSITION}
       initial={false}
+      data-transition-role="expand-to-full"
       className={`overlay-shared-surface flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
@@ -369,14 +407,14 @@ export function ChatAppFullscreenPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col">
-        <MessageList
-          ref={messageListRef}
+        <ChatAppMessagePanel
+          messageListRef={messageListRef}
           messages={messages}
           messageUpdates={messageUpdates}
           isStreaming={isStreaming}
           pendingPlan={pendingPlan}
           pendingApproval={pendingApproval}
-          pendingQuestions={pendingQuestion}
+          pendingQuestion={pendingQuestion}
           welcomeTitle={welcomeTitle}
           welcomeDescription={welcomeDescription}
           maxMessageWidth={maxMessageWidth}
@@ -451,7 +489,7 @@ export function ChatAppFullscreenPanel({
 function AgentPopup({
   avatar,
   petState,
-  text,
+  activity,
   isStreaming,
   onExpand,
   onMinimize,
@@ -459,7 +497,7 @@ function AgentPopup({
 }: {
   avatar: React.ReactNode;
   petState: AssistantPetState;
-  text: string;
+  activity: CompactActivitySummary;
   isStreaming: boolean;
   onExpand: () => void;
   onMinimize: () => void;
@@ -475,7 +513,17 @@ function AgentPopup({
       onClick={onExpand}
     >
       <div className="flex items-start gap-3 p-3">
-        <motion.div layoutId="viben-overlay-avatar" className="size-14 shrink-0" data-testid="agent-popup-avatar">{avatar}</motion.div>
+        <motion.div
+          className="size-14 shrink-0"
+          data-testid="agent-popup-avatar"
+          data-shared-element="overlay-avatar"
+          data-transition-role="avatar-fade"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={OVERLAY_AVATAR_TRANSITION}
+        >
+          {avatar}
+        </motion.div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
@@ -509,70 +557,139 @@ function AgentPopup({
               </button>
             </div>
           </div>
-          <p className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-foreground/85">
-            {text}
-            {isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
-          </p>
+          {activity.kind === "thinking" ? (
+            <div
+              className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-foreground/85"
+              data-testid="agent-popup-thinking-stream"
+            >
+              <Streamdown mode={isStreaming ? "streaming" : "static"} caret={isStreaming ? "block" : undefined}>
+                {activity.text}
+              </Streamdown>
+            </div>
+          ) : (
+            <p className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-foreground/85" data-testid="agent-popup-description">
+              {activity.text}
+              {isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
+            </p>
+          )}
         </div>
       </div>
     </motion.section>
   );
 }
 
-function ExpandedMessageList({
+function ChatAppMessagePanel({
   messages,
+  messageUpdates,
   isStreaming,
-  assistantAvatar,
+  pendingPlan,
+  pendingApproval,
+  pendingQuestion,
+  messageListRef,
+  welcomeTitle = "@viben/chat Session Player",
+  welcomeDescription = "Press Play to replay the demo session, or load a .jsonl file.",
+  maxMessageWidth = "760px",
+  onExpandSubagent,
+  onApprovePlan,
+  onRejectPlan,
+  onApprovalDecision,
+  onAnswerQuestions,
 }: {
   messages: AgentMessage[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   isStreaming: boolean;
-  assistantAvatar: React.ReactNode;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
+  messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
+  welcomeTitle?: string;
+  welcomeDescription?: string;
+  maxMessageWidth?: string;
+  onExpandSubagent?: ExpandSubagentHandler;
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
+  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }) {
-  if (messages.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center px-6 text-center">
-        <div>
-          <div className="mx-auto mb-3 size-14">{assistantAvatar}</div>
-          <p className="text-sm font-medium text-foreground">Viben expanded chat</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Select a session or send a message from the compact input.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full overflow-y-auto px-4 py-4">
-      <div className="mx-auto flex max-w-[720px] flex-col gap-3">
-        {messages.map((message, index) => {
-          const isUser = message.type === "user";
-          const text = message.content || message.message || (message.type === "tool_use" ? `${message.name ?? "Tool"} is running...` : "");
-          if (!text) return null;
-          return (
-            <div key={message.id ?? index} className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
-              {!isUser && <div className="mt-1 size-8 shrink-0">{assistantAvatar}</div>}
-              <div
-                className={`max-w-[78%] rounded-xl px-3 py-2 text-sm leading-6 ${
-                  isUser
-                    ? "bg-primary text-primary-foreground"
-                    : "border border-border bg-card text-foreground"
-                }`}
-              >
-                {text}
-              </div>
-            </div>
-          );
-        })}
-        {isStreaming && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="size-2 animate-pulse rounded-full bg-primary" />
-            Viben is thinking
-          </div>
-        )}
-      </div>
-    </div>
+    <MessageList
+      ref={messageListRef}
+      messages={messages}
+      messageUpdates={messageUpdates}
+      isStreaming={isStreaming}
+      pendingPlan={pendingPlan}
+      pendingApproval={pendingApproval}
+      pendingQuestions={pendingQuestion}
+      welcomeTitle={welcomeTitle}
+      welcomeDescription={welcomeDescription}
+      maxMessageWidth={maxMessageWidth}
+      onExpandSubagent={onExpandSubagent}
+      onApprovePlan={onApprovePlan}
+      onRejectPlan={onRejectPlan}
+      onApprovalDecision={onApprovalDecision}
+      onAnswerQuestions={onAnswerQuestions}
+    />
   );
+}
+
+function getCompactActivitySummary(messages: AgentMessage[]): CompactActivitySummary {
+  const latest = [...messages].reverse().find((message) =>
+    (message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error") &&
+    (message.content || message.message || message.name)
+  );
+  if (!latest) return { kind: "plain", text: "Ready when you are." };
+  if (latest.type === "thinking") return { kind: "thinking", text: latest.content || "Thinking..." };
+  if (latest.type === "tool_use") return { kind: "plain", text: getToolActivityText(latest) };
+  if (latest.type === "error") return { kind: "plain", text: latest.message || latest.content || "Something needs attention." };
+  return { kind: "plain", text: latest.content || latest.message || "Working..." };
+}
+
+function getToolActivityText(message: AgentMessage): string {
+  const input = message.input;
+  switch (message.name) {
+    case "Bash": {
+      const command = input?.command ? truncateText(String(input.command).trim(), 72) : "";
+      return command ? `Running ${command}` : "Running command...";
+    }
+    case "Read": {
+      return `Reading ${getToolPath(input?.file_path, "file")}...`;
+    }
+    case "Write": {
+      return `Writing ${getToolPath(input?.file_path, "file")}...`;
+    }
+    case "Edit":
+    case "MultiEdit": {
+      return `Editing ${getToolPath(input?.file_path, "file")}...`;
+    }
+    case "Grep": {
+      const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
+      return pattern ? `Searching for "${pattern}"...` : "Searching workspace...";
+    }
+    case "Glob": {
+      const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
+      return pattern ? `Finding ${pattern}...` : "Finding files...";
+    }
+    case "WebSearch":
+      return "Searching the web...";
+    case "WebFetch":
+      return "Fetching page content...";
+    case "Task":
+    case "Agent":
+      return "Running a delegated agent task...";
+    default:
+      return message.name ? `Running ${message.name}...` : "Working...";
+  }
+}
+
+function getToolPath(value: unknown, fallback: string): string {
+  if (!value) return fallback;
+  const raw = String(value);
+  const packageIndex = raw.indexOf("packages/");
+  return packageIndex >= 0 ? raw.slice(packageIndex) : raw.split("/").filter(Boolean).slice(-3).join("/") || fallback;
+}
+
+function truncateText(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
 }
 
 function ExpandedHeader({
@@ -583,6 +700,7 @@ function ExpandedHeader({
   headerActions,
   onCreateSession,
   onSettingsClick,
+  mode,
   onModeChange,
 }: {
   title: string;
@@ -592,6 +710,7 @@ function ExpandedHeader({
   headerActions?: OverlayHeaderActions;
   onCreateSession?: () => void;
   onSettingsClick?: () => void;
+  mode: OverlayMode;
   onModeChange: (mode: OverlayMode) => void;
 }) {
   const [sessionOpen, setSessionOpen] = React.useState(false);
@@ -710,15 +829,17 @@ function ExpandedHeader({
         <Minimize2 className="size-4" />
       </button>
 
-      <button
-        type="button"
-        aria-label="Switch to fullscreen mode"
-        onClick={() => onModeChange("full")}
-        data-testid="full-mode-button"
-        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      >
-        <Maximize2 className="size-4" />
-      </button>
+      {mode !== "full" && (
+        <button
+          type="button"
+          aria-label="Switch to fullscreen mode"
+          onClick={() => onModeChange("full")}
+          data-testid="full-mode-button"
+          className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Maximize2 className="size-4" />
+        </button>
+      )}
 
       <button
         type="button"
@@ -817,6 +938,12 @@ function CompactChatInput({
         showTopToolbar={variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false}
         showConfigBar={variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true}
         renderEmojiPicker={inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
+        renderBottomToolbar={variant === "compact" ? (({ editor, submitControl }) => (
+          <>
+            {editor}
+            {submitControl}
+          </>
+        )) : inputProps?.renderBottomToolbar}
         defaultHeight={variant === "compact" ? 48 : inputProps?.defaultHeight}
         minHeight={variant === "compact" ? 48 : inputProps?.minHeight}
         maxHeight={variant === "compact" ? 48 : inputProps?.maxHeight}
