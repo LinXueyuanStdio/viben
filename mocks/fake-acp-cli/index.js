@@ -191,6 +191,11 @@ function handleRequest(message) {
         break;
       }
 
+      if (process.env.FAKE_ACP_TRIGGER_CHAT_VIEW === '1') {
+        runChatViewScenario(id, sessionId);
+        break;
+      }
+
       // Send streaming chunks via session/update notifications
       const responseText = `Fake response to: ${promptText}`;
       const chunks = [responseText.slice(0, 10), responseText.slice(10)];
@@ -241,6 +246,212 @@ function handleRequest(message) {
       break;
     }
   }
+}
+
+function runChatViewScenario(requestId, sessionId) {
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'available_commands_update',
+      availableCommands: [
+        {
+          name: 'debug',
+          description: 'Enable debug logging for this fake ACP session',
+          input: { hint: '[issue]' },
+        },
+        {
+          name: 'review',
+          description: 'Review the current fake change set',
+          input: null,
+        },
+      ],
+    },
+  });
+
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'plan',
+      planId: 'fake-plan-1',
+      goal: 'Exercise the ACP chat view',
+      entries: [
+        { id: 'step-1', content: 'Ask for permission', priority: 'high', status: 'pending' },
+        { id: 'step-2', content: 'Request user input', priority: 'medium', status: 'pending' },
+        { id: 'step-3', content: 'Run subagent and emit artifact', priority: 'medium', status: 'pending' },
+      ],
+    },
+  });
+
+  const permissionToolId = 'fake-chat-permission-1';
+  const permissionToolCall = {
+    sessionUpdate: 'tool_call',
+    toolCallId: permissionToolId,
+    title: 'Fake Permission Tool',
+    kind: 'execute',
+    status: 'pending',
+    rawInput: { command: 'fake-chat-view-command' },
+  };
+  sendNotification('session/update', {
+    sessionId,
+    update: permissionToolCall,
+  });
+
+  sendRequest('session/request_permission', {
+    sessionId,
+    toolCall: permissionToolCall,
+    options: [
+      { kind: 'allow_once', name: 'Allow once', optionId: 'allow' },
+      { kind: 'reject_once', name: 'Reject', optionId: 'reject' },
+    ],
+  }, (permissionResponse) => {
+    sendNotification('session/update', {
+      sessionId,
+      update: {
+        sessionUpdate: 'tool_call_update',
+        toolCallId: permissionToolId,
+        status: permissionResponse.error ? 'failed' : 'completed',
+        rawOutput: permissionResponse.result,
+      },
+    });
+
+    sendRequest('session/elicitation', {
+      sessionId,
+      message: 'Pick an implementation mode',
+      mode: 'form',
+      requestedSchema: {
+        type: 'object',
+        title: 'Implementation mode',
+        properties: {
+          mode: {
+            type: 'string',
+            title: 'Mode',
+            enum: ['fast', 'careful'],
+          },
+          include_artifact: {
+            type: 'boolean',
+            title: 'Include artifact',
+          },
+        },
+        required: ['mode'],
+      },
+    }, (elicitationResponse) => {
+      sendChatViewTail(requestId, sessionId, elicitationResponse);
+    });
+  });
+}
+
+function sendChatViewTail(requestId, sessionId, elicitationResponse) {
+  const taskToolId = 'fake-task-tool-1';
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'tool_call',
+      toolCallId: taskToolId,
+      title: 'Task',
+      status: 'in_progress',
+      rawInput: {
+        title: 'Fake subagent investigation',
+        agentType: 'debugger',
+        instructions: 'Inspect fake chat view behavior',
+      },
+      _meta: { subagentId: 'fake-subagent-1' },
+    },
+  });
+  const subagentReadToolId = 'fake-subagent-read-1';
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'tool_call',
+      toolCallId: subagentReadToolId,
+      title: 'Read',
+      status: 'in_progress',
+      rawInput: {
+        file_path: '/tmp/fake-subagent-source.ts',
+      },
+      _meta: { subagentId: 'fake-subagent-1' },
+    },
+  });
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'tool_call_update',
+      toolCallId: subagentReadToolId,
+      status: 'completed',
+      rawOutput: 'export const fake = true;',
+    },
+  });
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'tool_call_update',
+      toolCallId: taskToolId,
+      status: 'completed',
+      rawOutput: {
+        summary: 'Fake subagent completed',
+      },
+    },
+  });
+
+  const writeToolId = 'fake-write-tool-1';
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'tool_call',
+      toolCallId: writeToolId,
+      title: 'Write',
+      status: 'in_progress',
+      rawInput: {
+        file_path: '/tmp/fake-acp-chat-artifact.md',
+        content: '# Fake ACP artifact\n',
+      },
+    },
+  });
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'tool_call_update',
+      toolCallId: writeToolId,
+      status: 'completed',
+      artifacts: [
+        {
+          id: 'fake-artifact-1',
+          name: 'fake-acp-chat-artifact.md',
+          path: '/tmp/fake-acp-chat-artifact.md',
+          type: 'text',
+        },
+      ],
+      rawOutput: {
+        artifacts: [
+          {
+            id: 'fake-artifact-1',
+            name: 'fake-acp-chat-artifact.md',
+            path: '/tmp/fake-acp-chat-artifact.md',
+            type: 'text',
+          },
+        ],
+      },
+    },
+  });
+
+  sendNotification('session/update', {
+    sessionId,
+    update: {
+      sessionUpdate: 'agent_message_chunk',
+      content: {
+        type: 'text',
+        text: `Fake chat view complete. Elicitation: ${JSON.stringify(elicitationResponse.result ?? elicitationResponse.error)}`,
+      },
+    },
+  });
+
+  sendResponse(requestId, {
+    stopReason: 'end_turn',
+    usage: {
+      inputTokens: 32,
+      outputTokens: 64,
+      totalTokens: 96,
+    },
+  });
 }
 
 // Read JSON-RPC messages from stdin, one per line

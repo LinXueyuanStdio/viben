@@ -128,6 +128,18 @@ class RpcPeer {
       return;
     }
 
+    if (frame.method === "session/elicitation") {
+      const result = selectElicitationOutcome(frame.params);
+      const response = {
+        jsonrpc: "2.0",
+        id: frame.id,
+        result,
+      };
+      log(this.name, "OUT elicitation response", response);
+      this.sendFrame(response);
+      return;
+    }
+
     const response = {
       jsonrpc: "2.0",
       id: frame.id,
@@ -287,10 +299,163 @@ async function runPermissionCase() {
   return result;
 }
 
+async function runChatViewCase() {
+  const result = await runFakeCliControl({ FAKE_ACP_TRIGGER_CHAT_VIEW: "1" });
+  const summary = summarizeResult(result);
+  log("case", "chat-view summary", summary);
+  if (summary.stopReason !== "end_turn") {
+    throw new Error(`chat-view case expected end_turn, got ${summary.stopReason ?? "missing"}`);
+  }
+  const requiredUpdates = [
+    "available_commands_update",
+    "plan",
+    "tool_call",
+    "tool_call_update",
+    "agent_message_chunk",
+  ];
+  for (const updateType of requiredUpdates) {
+    if (!summary.updateTypes.includes(updateType)) {
+      throw new Error(`chat-view case missing update type: ${updateType}`);
+    }
+  }
+  if (!summary.permissionRequests.length) {
+    throw new Error("chat-view case expected a permission request");
+  }
+  if (!summary.elicitationRequests.length) {
+    throw new Error("chat-view case expected an elicitation request");
+  }
+  if (!summary.toolTitles.includes("Task")) {
+    throw new Error(`chat-view case expected Task tool call, got ${summary.toolTitles.join(", ")}`);
+  }
+  if (!summary.toolTitles.includes("Read")) {
+    throw new Error(`chat-view case expected subagent Read tool call, got ${summary.toolTitles.join(", ")}`);
+  }
+  if (!summary.subagentToolCallIds.includes("fake-subagent-read-1")) {
+    throw new Error(`chat-view case expected fake-subagent-read-1, got ${summary.subagentToolCallIds.join(", ")}`);
+  }
+  if (!summary.artifactIds.includes("fake-artifact-1")) {
+    throw new Error(`chat-view case expected fake-artifact-1, got ${summary.artifactIds.join(", ")}`);
+  }
+  return result;
+}
+
+async function runSteerQueueCase() {
+  const result = await runWebSocketSteerQueueCase();
+  log("case", "steer-queue summary", result);
+  if (!result.queuedPromptId) {
+    throw new Error("steer-queue case expected queued prompt id");
+  }
+  if (result.cancelled?.cancelled !== true) {
+    throw new Error(`steer-queue case expected cancelled=true, got ${JSON.stringify(result.cancelled)}`);
+  }
+  if (!result.consumedPromptId || !result.consumedNotifications.includes(result.consumedPromptId)) {
+    throw new Error(`steer-queue case expected consumed notification for ${result.consumedPromptId}`);
+  }
+  return result;
+}
+
 async function runRealAcpCase() {
   const result = await runWebSocketEndpoint("real-acp");
   log("case", "real-acp summary", summarizeResult(result));
   return result;
+}
+
+async function runWebSocketSteerQueueCase() {
+  log("steer-queue", "connecting", { wsUrl });
+
+  const ws = new WebSocket(wsUrl, ["acp.v1"]);
+  const peer = new RpcPeer("steer-queue", (frame) => {
+    ws.send(`${JSON.stringify(frame)}\n`);
+  });
+  let buffer = "";
+
+  ws.on("message", (data) => {
+    buffer = splitFrames(buffer + data.toString("utf8"), (frame) => peer.handle(frame));
+  });
+
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`websocket connect timeout: ${wsUrl}`)), 10_000);
+    ws.once("open", () => {
+      clearTimeout(timer);
+      log("steer-queue", "open");
+      resolve();
+    });
+    ws.once("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+
+  try {
+    const initialize = await peer.request("initialize", {
+      protocolVersion: 1,
+      clientCapabilities: {
+        fs: { readTextFile: false, writeTextFile: false },
+      },
+      clientInfo: {
+        name: "fake-acp-client",
+        title: "Fake ACP Client",
+        version: "1.0.0",
+      },
+    });
+
+    const session = await peer.request("session/new", {
+      cwd,
+      mcpServers: [],
+      agent_config: agentConfig ?? undefined,
+      agent_config_path: args.agentConfigPath,
+    });
+
+    const queued = await peer.request("session/prompt/steer", {
+      sessionId: session.sessionId,
+      agentId: "fake-agent",
+      userId: "fake-user",
+      prompt: [{ type: "text", text: "queued then cancelled" }],
+      meta: { testCase: "steer-queue-cancel" },
+    });
+    const viewedQueued = await peer.request("session/prompt/view", {
+      sessionId: session.sessionId,
+      promptId: queued.promptId,
+    });
+    const cancelled = await peer.request("session/prompt/cancel", {
+      sessionId: session.sessionId,
+      promptId: queued.promptId,
+    });
+
+    const consumedCandidate = await peer.request("session/prompt/steer", {
+      sessionId: session.sessionId,
+      agentId: "fake-agent",
+      userId: "fake-user",
+      prompt: [{ type: "text", text: "consume before prompt" }],
+      meta: { testCase: "steer-queue-consume" },
+    });
+    const prompt = await peer.request("session/prompt", {
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: promptText }],
+    });
+
+    const consumedNotifications = peer.notifications
+      .filter((frame) => frame.method === "session/prompt/consumed")
+      .map((frame) => frame.params?.promptId)
+      .filter(Boolean);
+
+    return {
+      initialize,
+      sessionId: session.sessionId,
+      queuedPromptId: queued.promptId,
+      viewedQueued,
+      cancelled,
+      consumedPromptId: consumedCandidate.promptId,
+      consumedNotifications,
+      prompt,
+      updateTypes: peer.notifications
+        .filter((frame) => frame.method === "session/update")
+        .map((frame) => frame.params?.update?.sessionUpdate),
+    };
+  } finally {
+    peer.rejectAll(new Error("websocket closed"));
+    ws.close(1000, "fake steer client finished");
+  }
 }
 
 function splitFrames(buffer, onFrame) {
@@ -330,6 +495,14 @@ function summarizeResult(result) {
         rawInput: frame.params?.toolCall?.rawInput,
         options: frame.params?.options,
       })),
+    elicitationRequests: (result.clientRequests ?? [])
+      .filter((frame) => frame.method === "session/elicitation")
+      .map((frame) => ({
+        sessionId: frame.params?.sessionId,
+        message: frame.params?.message,
+        mode: frame.params?.mode,
+        schemaTitle: frame.params?.requestedSchema?.title,
+      })),
     clientToolNames: (result.clientRequests ?? [])
       .filter((frame) => frame.method === "_viben/client_tool_call")
       .map((frame) => frame.params?.toolName),
@@ -340,6 +513,26 @@ function summarizeResult(result) {
     updateTypes: result.notifications
       .filter((frame) => frame.method === "session/update")
       .map((frame) => frame.params?.update?.sessionUpdate),
+    toolTitles: result.notifications
+      .filter((frame) => frame.method === "session/update" && frame.params?.update?.sessionUpdate === "tool_call")
+      .map((frame) => frame.params?.update?.title)
+      .filter(Boolean),
+    subagentToolCallIds: result.notifications
+      .filter((frame) => frame.method === "session/update" && frame.params?.update?.sessionUpdate === "tool_call")
+      .filter((frame) => frame.params?.update?._meta?.subagentId)
+      .map((frame) => frame.params?.update?.toolCallId)
+      .filter(Boolean),
+    artifactIds: result.notifications
+      .filter((frame) => frame.method === "session/update" && frame.params?.update?.sessionUpdate === "tool_call_update")
+      .flatMap((frame) => {
+        const update = frame.params?.update ?? {};
+        const artifacts = Array.isArray(update.artifacts)
+          ? update.artifacts
+          : Array.isArray(update.rawOutput?.artifacts)
+            ? update.rawOutput.artifacts
+            : [];
+        return artifacts.map((artifact) => artifact?.id).filter(Boolean);
+      }),
   };
 }
 
@@ -429,6 +622,36 @@ function selectPermissionOutcome(params) {
   };
 }
 
+function selectElicitationOutcome(params) {
+  log("elicitation", "request detail", {
+    sessionId: params?.sessionId,
+    message: params?.message,
+    mode: params?.mode,
+    requestedSchema: params?.requestedSchema,
+  });
+
+  const properties = params?.requestedSchema?.properties ?? {};
+  const content = {};
+  for (const [key, schema] of Object.entries(properties)) {
+    if (Array.isArray(schema?.enum) && schema.enum.length > 0) {
+      content[key] = schema.enum[0];
+    } else if (schema?.type === "boolean") {
+      content[key] = true;
+    } else if (schema?.type === "number" || schema?.type === "integer") {
+      content[key] = 1;
+    } else {
+      content[key] = schema?.default ?? "fake-answer";
+    }
+  }
+
+  return {
+    action: {
+      action: "accept",
+      content,
+    },
+  };
+}
+
 function getFakeActions() {
   return [
     {
@@ -511,6 +734,30 @@ async function main() {
       await runPermissionCase();
     } catch (error) {
       log("case", "permission failed", error instanceof Error ? error.stack ?? error.message : String(error));
+      process.exitCode = 1;
+    }
+    log("main", "fake ACP client finished");
+    await new Promise((resolve) => logStream.end(resolve));
+    return;
+  }
+
+  if (testCase === "chat-view") {
+    try {
+      await runChatViewCase();
+    } catch (error) {
+      log("case", "chat-view failed", error instanceof Error ? error.stack ?? error.message : String(error));
+      process.exitCode = 1;
+    }
+    log("main", "fake ACP client finished");
+    await new Promise((resolve) => logStream.end(resolve));
+    return;
+  }
+
+  if (testCase === "steer-queue") {
+    try {
+      await runSteerQueueCase();
+    } catch (error) {
+      log("case", "steer-queue failed", error instanceof Error ? error.stack ?? error.message : String(error));
       process.exitCode = 1;
     }
     log("main", "fake ACP client finished");
