@@ -150,6 +150,7 @@ export function flushSessionStreamingText(
 export function drainSessionUiStepQueue(session: UiSessionState): UiSessionState {
   let next = session;
   while (
+    !next.pendingPlan &&
     !next.pendingApproval &&
     !next.pendingQuestion &&
     next.uiStepQueue.length > 0
