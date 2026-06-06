@@ -6,10 +6,19 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import {
+  CLIENT_SIDE_BASH_MCP_TOOL_NAME,
+  CLIENT_SIDE_BASH_TOOL_NAME,
+  CLIENT_SIDE_GUI_EXECUTE_TOOL_NAME,
+  CLIENT_SIDE_MCP_SERVER_NAME,
+  GUI_EXECUTE_TOOL_NAME,
+} from "./client-side-mcp-constants";
 
-export const CLIENT_SIDE_MCP_SERVER_NAME = "client_side";
-export const GUI_EXECUTE_TOOL_NAME = "GUI_execute";
-export const CLIENT_SIDE_BASH_TOOL_NAME = "ClientSideBash";
+export {
+  CLIENT_SIDE_BASH_TOOL_NAME,
+  CLIENT_SIDE_MCP_SERVER_NAME,
+  GUI_EXECUTE_TOOL_NAME,
+};
 
 export interface ClientSideMcpServerOptions {
   sessionId?: string;
@@ -59,7 +68,7 @@ export function createClientSideMcpServer(options: ClientSideMcpServerOptions = 
         gatewayUrl,
         sessionId,
         toolCallId: `gui-${randomUUID()}`,
-        toolName: `mcp__${CLIENT_SIDE_MCP_SERVER_NAME}__${GUI_EXECUTE_TOOL_NAME}`,
+        toolName: CLIENT_SIDE_GUI_EXECUTE_TOOL_NAME,
         input,
         errorLabel: GUI_EXECUTE_TOOL_NAME,
       });
@@ -94,7 +103,7 @@ export function createClientSideMcpServer(options: ClientSideMcpServerOptions = 
         gatewayUrl,
         sessionId,
         toolCallId: `bash-${randomUUID()}`,
-        toolName: `mcp__${CLIENT_SIDE_MCP_SERVER_NAME}__${CLIENT_SIDE_BASH_TOOL_NAME}`,
+        toolName: CLIENT_SIDE_BASH_MCP_TOOL_NAME,
         input: { script: input.script },
         errorLabel: CLIENT_SIDE_BASH_TOOL_NAME,
       });
