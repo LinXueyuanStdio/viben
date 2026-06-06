@@ -19,6 +19,8 @@ export interface SubagentSheetProps {
   isLoading?: boolean;
   error?: string | null;
   onExpandSubagent?: ExpandSubagentHandler;
+  /** Render inside a relatively positioned parent instead of the viewport. */
+  contained?: boolean;
   className?: string;
 }
 
@@ -59,6 +61,7 @@ export function SubagentSheet({
   isLoading = false,
   error,
   onExpandSubagent,
+  contained = false,
   className,
 }: SubagentSheetProps) {
   const { t } = useTranslation();
@@ -135,7 +138,8 @@ export function SubagentSheet({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/20"
+            data-testid="subagent-sheet-backdrop"
+            className={contained ? "absolute inset-0 z-40 bg-black/20" : "fixed inset-0 z-40 bg-black/20"}
             onClick={onClose}
           />
           {/* Panel */}
@@ -145,8 +149,11 @@ export function SubagentSheet({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            data-testid="subagent-sheet-panel"
             className={cn(
-              "fixed right-0 top-0 bottom-0 z-50 flex w-[480px] max-w-[85vw] flex-col border-l bg-background shadow-xl",
+              contained
+                ? "absolute right-0 top-0 bottom-0 z-50 flex w-[480px] max-w-[85%] flex-col border-l bg-background shadow-xl"
+                : "fixed right-0 top-0 bottom-0 z-50 flex w-[480px] max-w-[85vw] flex-col border-l bg-background shadow-xl",
               className
             )}
           >

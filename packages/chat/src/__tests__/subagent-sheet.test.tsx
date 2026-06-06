@@ -92,4 +92,26 @@ describe("SubagentSheet", () => {
 
     expect(screen.queryByText("loaded transcript")).not.toBeInTheDocument();
   });
+
+  test("can render as a contained sliding sheet inside an overlay panel", () => {
+    render(
+      <div data-testid="overlay-panel" className="relative">
+        <SubagentSheet
+          contained
+          open
+          onClose={vi.fn()}
+          title="Contained subagent"
+          messages={[
+            { id: "m1", type: "text", content: "contained transcript" },
+          ]}
+        />
+      </div>
+    );
+
+    expect(screen.getByTestId("subagent-sheet-backdrop")).toHaveClass("absolute");
+    expect(screen.getByTestId("subagent-sheet-backdrop")).not.toHaveClass("fixed");
+    expect(screen.getByTestId("subagent-sheet-panel")).toHaveClass("absolute");
+    expect(screen.getByTestId("subagent-sheet-panel")).not.toHaveClass("fixed");
+    expect(screen.getByTestId("overlay-panel")).toContainElement(screen.getByTestId("subagent-sheet-panel"));
+  });
 });
