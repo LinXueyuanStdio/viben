@@ -188,8 +188,9 @@ describe("ChatApp", () => {
 
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByTestId("new-session-split-button")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create new session" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "New session menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open new session menu" })).toBeInTheDocument();
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to full mode" })).toBeInTheDocument();
@@ -282,6 +283,28 @@ describe("ChatApp", () => {
     expect(screen.queryByText("session-1.jsonl")).not.toBeInTheDocument();
   });
 
+  test("expanded session menu shows the selected session title after selection", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        sessions={[
+          { id: "session-1", title: "Session one", subtitle: "session-1.jsonl" },
+          { id: "session-2", title: "Session two", subtitle: "session-2.jsonl" },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
+    fireEvent.click(screen.getByText("Session two"));
+
+    expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Session two");
+  });
+
   test("expanded new-session menu shows creation actions and agent samples", () => {
     render(
       <ChatApp
@@ -294,7 +317,7 @@ describe("ChatApp", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "New session menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open new session menu" }));
 
     expect(screen.getByText("新建聊天")).toBeInTheDocument();
     expect(screen.getByText("新建聊天窗口")).toBeInTheDocument();
@@ -343,6 +366,30 @@ describe("ChatApp", () => {
 
     expect(onCreateSession).toHaveBeenCalledTimes(1);
     expect(onSettingsClick).toHaveBeenCalledTimes(1);
+  });
+
+  test("expanded header keeps compact and fullscreen buttons after the drag area", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const header = screen.getByTestId("expanded-header");
+    expect(Array.from(header.children).map((child) => child.getAttribute("data-testid"))).toEqual([
+      "session-title-menu",
+      "new-session-split-button",
+      "expanded-header-drag-area",
+      "compact-mode-button",
+      "full-mode-button",
+      "settings-button",
+      "more-actions-menu",
+    ]);
   });
 
   test("compact and expanded inputs reuse chat input capabilities without config selectors", () => {
