@@ -52,12 +52,11 @@ describe("client-side SDK MCP server", () => {
     expect(tool?.description).toContain("gui execute --json");
   });
 
-  it("keeps legacy server names registered as compatibility aliases", () => {
+  it("does not register old split server names", () => {
     const servers = resolveSdkMcpServers(createSdkStub(), ["gui_action", "client_side_bash"], {
       sessionId: "session-1",
     });
 
-    expect((servers.gui_action as unknown as CapturedServer).tools.map((tool) => tool.name)).toContain("GUI_execute");
-    expect((servers.client_side_bash as unknown as CapturedServer).tools.map((tool) => tool.name)).toContain("ClientSideBash");
+    expect(servers).toEqual({});
   });
 });

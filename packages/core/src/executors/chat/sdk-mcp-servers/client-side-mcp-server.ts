@@ -93,7 +93,3 @@ const createClientSideMcpServer: McpServerFactory = (sdk, context) => {
 };
 
 registerSdkMcpServer(CLIENT_SIDE_MCP_SERVER_NAME, createClientSideMcpServer);
-
-// Compatibility aliases for existing configs and persisted sessions.
-registerSdkMcpServer("gui_action", createClientSideMcpServer);
-registerSdkMcpServer("client_side_bash", createClientSideMcpServer);
