@@ -1038,6 +1038,7 @@ export function App() {
             onApprovePlan={handleApprovePlan}
             onRejectPlan={handleRejectPlan}
             onApprovalDecision={handleApprovalDecision}
+            onOpenPermissionDetails={() => setViewMode("inspector")}
             onQuestionAnswers={handleQuestionAnswers}
             onSteerSend={(content) => void handleSteerInputSend(content)}
             onRecallSteerQueue={(items, value) => {
@@ -1515,7 +1516,7 @@ export function App() {
           onReject={rejectToolDialog}
         />
       )}
-      {permissionDialog && viewMode === "inspector" && (
+      {permissionDialog && (
         <PermissionApprovalModal
           dialog={permissionDialog}
           onSelect={(optionId) => setPermissionDialog((current) => current ? { ...current, selectedOptionId: optionId } : current)}
@@ -1591,6 +1592,7 @@ function AcpChatSurface({
   onApprovePlan,
   onRejectPlan,
   onApprovalDecision,
+  onOpenPermissionDetails,
   onQuestionAnswers,
   onSteerSend,
   onRecallSteerQueue,
@@ -1629,6 +1631,7 @@ function AcpChatSurface({
   onApprovePlan: () => void;
   onRejectPlan: () => void;
   onApprovalDecision: (decision: string) => void;
+  onOpenPermissionDetails: () => void;
   onQuestionAnswers: (answers: Record<string, string[]>) => void;
   onSteerSend: (content: string) => void;
   onRecallSteerQueue: (items: QueuedInputRecallItem[], value: string) => void;
@@ -1711,12 +1714,17 @@ function AcpChatSurface({
                 onReject={onRejectPlan}
               />
             ) : pendingApproval ? (
-              <ExecApproval
-                key="approval"
-                approval={pendingApproval}
-                onDecision={onApprovalDecision}
-                enableKeyboard
-              />
+              <div key="approval" className="space-y-2">
+                <ExecApproval
+                  approval={pendingApproval}
+                  onDecision={onApprovalDecision}
+                  enableKeyboard
+                />
+                <button className="btn-secondary w-full" onClick={onOpenPermissionDetails}>
+                  <FileJson size={16} />
+                  View Full Permission Request
+                </button>
+              </div>
             ) : pendingQuestion ? (
               <QuestionInput
                 key="question"
