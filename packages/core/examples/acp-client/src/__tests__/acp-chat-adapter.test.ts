@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import type { AgentMessage } from "@viben/chat";
 import {
   acpSessionUpdateToStreamingText,
   acpSessionUpdateToUiSteps,
@@ -175,7 +176,7 @@ describe("acp chat adapter", () => {
       rawOutput: [{ type: "text", text: "Settings panel opened." }],
     }));
 
-    const messages = [...pending, ...inputUpdate, ...resultUpdate].reduce(
+    const messages = [...pending, ...inputUpdate, ...resultUpdate].reduce<AgentMessage[]>(
       (current, step) => applyAcpUiStep(current, step),
       []
     );
