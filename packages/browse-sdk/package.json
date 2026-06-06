@@ -5,15 +5,15 @@
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./providers": {
-      "types": "./dist/providers/index.d.ts",
+      "types": "./src/providers/index.ts",
       "import": "./dist/providers/index.js",
       "require": "./dist/providers/index.cjs"
     }
