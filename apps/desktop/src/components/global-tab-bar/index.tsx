@@ -12,7 +12,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Plus, PanelLeftClose, PanelLeft } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  PanelLeftClose,
+  PanelLeft,
+} from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import { useUiStore } from "@/stores";
@@ -49,7 +55,12 @@ import {
 } from "@/components/ui/tooltip";
 import { BrowserTabFrame } from "@/components/browser-tab-frame";
 import { cn } from "@/lib/utils";
-import { useTabList, useActiveTabState, useTabActions, useTabNavigation } from "@/hooks/use-page-tabs";
+import {
+  useTabList,
+  useActiveTabState,
+  useTabActions,
+  useTabNavigation,
+} from "@/hooks/use-page-tabs";
 import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import { SortableTabItem } from "./sortable-tab-item";
 import { WindowControls } from "./window-controls";
@@ -63,7 +74,8 @@ export interface GlobalTabBarProps {
 export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const { t } = useTranslation();
   const [isMacOS, setIsMacOS] = useState(false);
-  const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] = useState(false);
+  const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] =
+    useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newTabIds, setNewTabIds] = useState<Set<string>>(new Set());
   const prevTabIdsRef = useRef<string[]>([]);
@@ -122,7 +134,8 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   // Get tab data from granular hooks
   const tabs = useTabList();
   const { activeTabId, canGoBack, canGoForward } = useActiveTabState();
-  const { switchToTab, closeTab, detachTabToNewWindow, getTabLink } = useTabActions();
+  const { switchToTab, closeTab, detachTabToNewWindow, getTabLink } =
+    useTabActions();
   const { goBackInTab, goForwardInTab, jumpToHistory } = useTabNavigation();
 
   // Get additional store actions
@@ -134,7 +147,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const reopenClosedTab = tabStore((state) => state.reopenClosedTab);
   const closeAllTabs = tabStore((state) => state.closeAllTabs);
   const moveTab = tabStore((state) => state.moveTab);
-  const hasRecentlyClosedTabs = tabStore((state) => state.recentlyClosedTabs.length > 0);
+  const hasRecentlyClosedTabs = tabStore(
+    (state) => state.recentlyClosedTabs.length > 0,
+  );
 
   // Track newly added tabs for entrance animation
   useEffect(() => {
@@ -176,7 +191,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // DnD handlers
@@ -199,7 +214,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         }
       }
     },
-    [moveTab, tabStore]
+    [moveTab, tabStore],
   );
 
   // Handlers for tab actions
@@ -207,35 +222,35 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     (tabId: string) => {
       pinTab(tabId);
     },
-    [pinTab]
+    [pinTab],
   );
 
   const handleUnpinTab = useCallback(
     (tabId: string) => {
       unpinTab(tabId);
     },
-    [unpinTab]
+    [unpinTab],
   );
 
   const handleCloseOthers = useCallback(
     (tabId: string) => {
       closeOtherTabs(tabId);
     },
-    [closeOtherTabs]
+    [closeOtherTabs],
   );
 
   const handleCloseRight = useCallback(
     (tabId: string) => {
       closeTabsToRight(tabId);
     },
-    [closeTabsToRight]
+    [closeTabsToRight],
   );
 
   const handleDuplicateTab = useCallback(
     (tabId: string) => {
       duplicateTab(tabId);
     },
-    [duplicateTab]
+    [duplicateTab],
   );
 
   const handleMoveTabToStart = useCallback(
@@ -244,7 +259,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       if (fromIndex <= 0) return;
       moveTab(fromIndex, 0);
     },
-    [moveTab, tabs]
+    [moveTab, tabs],
   );
 
   const handleMoveTabToEnd = useCallback(
@@ -253,7 +268,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       if (fromIndex === -1 || fromIndex >= tabs.length - 1) return;
       moveTab(fromIndex, tabs.length - 1);
     },
-    [moveTab, tabs]
+    [moveTab, tabs],
   );
 
   const handleReopenClosedTab = useCallback(() => {
@@ -277,7 +292,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         toast.error(t("common.copyFailed", "Failed to copy"));
       }
     },
-    [getTabLink, t]
+    [getTabLink, t],
   );
 
   const handleDetachTab = useCallback(
@@ -285,14 +300,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       try {
         const detached = await detachTabToNewWindow(tabId);
         if (!detached) {
-          toast.error(t("tabBar.detachUnavailable", "This tab cannot be detached"));
+          toast.error(
+            t("tabBar.detachUnavailable", "This tab cannot be detached"),
+          );
         }
       } catch (error) {
         console.error("Failed to detach tab:", error);
         toast.error(t("common.error"));
       }
     },
-    [detachTabToNewWindow, t]
+    [detachTabToNewWindow, t],
   );
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
@@ -303,9 +320,11 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   // Build current page item for context display in history menus
   const currentPageItem = activeTab
     ? (() => {
-        const currentState = activeTab.navigationHistory[activeTab.historyIndex];
+        const currentState =
+          activeTab.navigationHistory[activeTab.historyIndex];
         if (!currentState) return null;
-        const leaf = currentState.breadcrumbStack[currentState.breadcrumbStack.length - 1];
+        const leaf =
+          currentState.breadcrumbStack[currentState.breadcrumbStack.length - 1];
         return {
           historyIndex: activeTab.historyIndex,
           label: leaf?.label ?? currentState.url,
@@ -352,11 +371,13 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const handleNewTab = useCallback(() => {
     const url = "/workspace";
     openTab({
-      navigationState: createTabNavigationState(url, buildColdStartBreadcrumb(url)),
+      navigationState: createTabNavigationState(
+        url,
+        buildColdStartBreadcrumb(url),
+      ),
       pinned: false,
     });
   }, [openTab]);
-
 
   // Tab IDs for sortable context
   const tabIds = tabs.map((t) => t.id);
@@ -368,26 +389,32 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
       className={className}
       leadingControls={
         <>
-        {/* Sidebar toggle button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
-              onClick={toggleSidebar}
-            >
-              {sidebarCollapsed ? (
-                <PanelLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-              ) : (
-                <PanelLeftClose className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-              )}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {sidebarCollapsed ? t("sidebar.expand", "Expand sidebar") : t("sidebar.collapse", "Collapse sidebar")}
-          </TooltipContent>
-        </Tooltip>
+          {/* Sidebar toggle button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                onClick={toggleSidebar}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeft
+                    className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                  />
+                ) : (
+                  <PanelLeftClose
+                    className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                  />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {sidebarCollapsed
+                ? t("sidebar.expand", "Expand sidebar")
+                : t("sidebar.collapse", "Collapse sidebar")}
+            </TooltipContent>
+          </Tooltip>
 
           {/* Back button */}
           <ContextMenu>
@@ -401,7 +428,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                     onClick={goBackInTab}
                     disabled={!canGoBack}
                   >
-                    <ChevronLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                    <ChevronLeft
+                      className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                    />
                   </Button>
                 </ContextMenuTrigger>
               </TooltipTrigger>
@@ -419,10 +448,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                       className="gap-2"
                     >
                       {item.icon && (
-                        <IconDisplay icon={item.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                        <IconDisplay
+                          icon={item.icon}
+                          size="sm"
+                          className="shrink-0 text-muted-foreground"
+                        />
                       )}
                       <span className="truncate max-w-[220px]">
-                        {item.titleKey ? t(item.titleKey, item.label) : item.label}
+                        {item.titleKey
+                          ? t(item.titleKey, item.label)
+                          : item.label}
                       </span>
                     </ContextMenuItem>
                   ))}
@@ -431,10 +466,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                       <ContextMenuSeparator />
                       <ContextMenuItem disabled className="gap-2 font-medium">
                         {currentPageItem.icon && (
-                          <IconDisplay icon={currentPageItem.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                          <IconDisplay
+                            icon={currentPageItem.icon}
+                            size="sm"
+                            className="shrink-0 text-muted-foreground"
+                          />
                         )}
                         <span className="truncate max-w-[220px]">
-                          {currentPageItem.titleKey ? t(currentPageItem.titleKey, currentPageItem.label) : currentPageItem.label}
+                          {currentPageItem.titleKey
+                            ? t(currentPageItem.titleKey, currentPageItem.label)
+                            : currentPageItem.label}
                         </span>
                       </ContextMenuItem>
                     </>
@@ -460,7 +501,9 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                     onClick={goForwardInTab}
                     disabled={!canGoForward}
                   >
-                    <ChevronRight className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                    <ChevronRight
+                      className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                    />
                   </Button>
                 </ContextMenuTrigger>
               </TooltipTrigger>
@@ -475,10 +518,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                     <>
                       <ContextMenuItem disabled className="gap-2 font-medium">
                         {currentPageItem.icon && (
-                          <IconDisplay icon={currentPageItem.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                          <IconDisplay
+                            icon={currentPageItem.icon}
+                            size="sm"
+                            className="shrink-0 text-muted-foreground"
+                          />
                         )}
                         <span className="truncate max-w-[220px]">
-                          {currentPageItem.titleKey ? t(currentPageItem.titleKey, currentPageItem.label) : currentPageItem.label}
+                          {currentPageItem.titleKey
+                            ? t(currentPageItem.titleKey, currentPageItem.label)
+                            : currentPageItem.label}
                         </span>
                       </ContextMenuItem>
                       <ContextMenuSeparator />
@@ -491,10 +540,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                       className="gap-2"
                     >
                       {item.icon && (
-                        <IconDisplay icon={item.icon} size="sm" className="shrink-0 text-muted-foreground" />
+                        <IconDisplay
+                          icon={item.icon}
+                          size="sm"
+                          className="shrink-0 text-muted-foreground"
+                        />
                       )}
                       <span className="truncate max-w-[220px]">
-                        {item.titleKey ? t(item.titleKey, item.label) : item.label}
+                        {item.titleKey
+                          ? t(item.titleKey, item.label)
+                          : item.label}
                       </span>
                     </ContextMenuItem>
                   ))}
@@ -523,7 +578,10 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
             onDragEnd={handleDragEnd}
             onDragCancel={() => setActiveId(null)}
           >
-            <SortableContext items={tabIds} strategy={horizontalListSortingStrategy}>
+            <SortableContext
+              items={tabIds}
+              strategy={horizontalListSortingStrategy}
+            >
               {tabs.map((tab) => (
                 <SortableTabItem
                   key={tab.id}
@@ -545,24 +603,41 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
                   onMoveToStart={() => handleMoveTabToStart(tab.id)}
                   onMoveToEnd={() => handleMoveTabToEnd(tab.id)}
                   canReopenClosed={hasRecentlyClosedTabs}
-                  canMoveToStart={tabs.findIndex((item) => item.id === tab.id) > 0}
-                  canMoveToEnd={tabs.findIndex((item) => item.id === tab.id) < tabs.length - 1}
+                  canMoveToStart={
+                    tabs.findIndex((item) => item.id === tab.id) > 0
+                  }
+                  canMoveToEnd={
+                    tabs.findIndex((item) => item.id === tab.id) <
+                    tabs.length - 1
+                  }
                 />
               ))}
             </SortableContext>
             <DragOverlay dropAnimation={null}>
-              {activeId ? (() => {
-                const dragTab = tabs.find((t) => t.id === activeId);
-                if (!dragTab) return null;
-                return (
-                  <div className="flex max-w-[180px] items-center gap-1.5 rounded-md bg-background px-2 h-7 text-[13px] text-foreground shadow-lg ring-1 ring-border/50">
-                    {dragTab.icon && <IconDisplay icon={dragTab.icon} size="sm" className="shrink-0" />}
-                    {!dragTab.pinned && (
-                      <span className="truncate">{dragTab.titleKey ? t(dragTab.titleKey, dragTab.label) : dragTab.label}</span>
-                    )}
-                  </div>
-                );
-              })() : null}
+              {activeId
+                ? (() => {
+                    const dragTab = tabs.find((t) => t.id === activeId);
+                    if (!dragTab) return null;
+                    return (
+                      <div className="flex max-w-[180px] items-center gap-1.5 rounded-md bg-background px-2 h-7 text-[13px] text-foreground shadow-lg ring-1 ring-border/50">
+                        {dragTab.icon && (
+                          <IconDisplay
+                            icon={dragTab.icon}
+                            size="sm"
+                            className="shrink-0"
+                          />
+                        )}
+                        {!dragTab.pinned && (
+                          <span className="truncate">
+                            {dragTab.titleKey
+                              ? t(dragTab.titleKey, dragTab.label)
+                              : dragTab.label}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()
+                : null}
             </DragOverlay>
           </DndContext>
 
@@ -593,11 +668,17 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
             <ContextMenuItem onClick={handleNewTab}>
               {t("common.newTab", "New Tab")}
             </ContextMenuItem>
-            <ContextMenuItem onClick={handleReopenClosedTab} disabled={!hasRecentlyClosedTabs}>
+            <ContextMenuItem
+              onClick={handleReopenClosedTab}
+              disabled={!hasRecentlyClosedTabs}
+            >
               {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={handleCloseAllTabs} disabled={tabs.every((tab) => tab.pinned)}>
+            <ContextMenuItem
+              onClick={handleCloseAllTabs}
+              disabled={tabs.every((tab) => tab.pinned)}
+            >
               {t("tabBar.closeAllUnpinned", "Close All Unpinned Tabs")}
             </ContextMenuItem>
           </ContextMenuContent>
