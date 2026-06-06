@@ -761,8 +761,8 @@ export function ChatInput({
             })
           ) : (
             <>
-              {showConfigBar && configControls}
               {editor}
+              {showConfigBar && configControls}
               {submitControl}
             </>
           )}

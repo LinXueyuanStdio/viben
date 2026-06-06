@@ -40,6 +40,9 @@ describe("ChatInput layout", () => {
     expect(compactToolbar).toContainElement(configControls);
     expect(compactToolbar).toContainElement(editor as HTMLElement);
     expect(compactToolbar).toContainElement(submitControl);
+    expect(editor?.compareDocumentPosition(configControls) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(configControls.compareDocumentPosition(submitControl)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByRole("textbox")).toHaveAttribute("rows", "1");
     expect(screen.queryByTestId("chat-input-toolbar")).not.toBeInTheDocument();
   });
 
@@ -63,6 +66,28 @@ describe("ChatInput layout", () => {
 
     expect(topToolbar.compareDocumentPosition(editor as HTMLElement)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(editor?.compareDocumentPosition(bottomControls) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByRole("textbox")).toHaveAttribute("rows", "2");
+  });
+
+  test("top and bottom toolbars can both be hidden", async () => {
+    const { ChatInput } = await import("../index");
+
+    const { container } = render(
+      <ChatInput
+        value=""
+        onValueChange={() => {}}
+        onSend={() => {}}
+        layoutVariant="expanded"
+        showTopToolbar={false}
+        showConfigBar={false}
+      />
+    );
+
+    expect(screen.queryByTestId("chat-input-toolbar")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("chat-input-config-controls")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("chat-input-bottom-toolbar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("chat-input-basic-actions")).toBeInTheDocument();
+    expect(container.querySelector(".viben-chat-input-editor")).toBeInTheDocument();
   });
 
   test("custom toolbar renderers can replace default toolbar content", async () => {
