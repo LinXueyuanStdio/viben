@@ -7,7 +7,7 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 
 describe("built-in SDK MCP servers", () => {
   it("use static zod imports so ESM bundles do not emit dynamic require calls", async () => {
-    const serverFiles = ["gui-action.ts", "client-side-bash.ts"];
+    const serverFiles = ["client-side-mcp-server.ts"];
 
     for (const file of serverFiles) {
       const source = await readFile(resolve(currentDir, file), "utf-8");
