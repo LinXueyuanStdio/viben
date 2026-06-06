@@ -185,7 +185,7 @@ describe("ClientToolCompletionRegistry", () => {
 
     it("should match a prefixed queued GUI tool with an unprefixed waiter", async () => {
       registry.registerToolOptions("GUI_execute");
-      registry.enqueue("session-1", "tool-use-gui", "mcp__gui_action__GUI_execute");
+      registry.enqueue("session-1", "tool-use-gui", "mcp__client_side__GUI_execute");
 
       const promise = registry.waitForClient("session-1", undefined, "GUI_execute");
       const result: CallToolResult = { content: [{ type: "text", text: "gui" }] };
@@ -200,7 +200,7 @@ describe("ClientToolCompletionRegistry", () => {
       const promise = registry.waitForClient("session-1", undefined, "GUI_execute");
       expect(registry.getWaiterCount("session-1")).toBe(1);
 
-      registry.enqueue("session-1", "tool-use-gui", "mcp__gui_action__GUI_execute");
+      registry.enqueue("session-1", "tool-use-gui", "mcp__client_side__GUI_execute");
       const result: CallToolResult = { content: [{ type: "text", text: "gui-late" }] };
       registry.complete("tool-use-gui", "session-1", result);
 
@@ -210,7 +210,7 @@ describe("ClientToolCompletionRegistry", () => {
 
     it("should match a prefixed queued ClientSideBash tool with an unprefixed waiter", async () => {
       registry.registerToolOptions("ClientSideBash");
-      registry.enqueue("session-1", "tool-use-bash", "mcp__client_side_bash__ClientSideBash");
+      registry.enqueue("session-1", "tool-use-bash", "mcp__client_side__ClientSideBash");
 
       const promise = registry.waitForClient("session-1", undefined, "ClientSideBash");
       const result: CallToolResult = { content: [{ type: "text", text: "bash" }] };
@@ -307,9 +307,9 @@ describe("ClientToolCompletionRegistry", () => {
       });
     });
 
-    it("should resolve with mcp__gui_action__ prefixed tool name using registered base tool timeout", async () => {
+    it("should resolve with mcp__client_side__ prefixed tool name using registered base tool timeout", async () => {
       registry.registerToolOptions("GUI_execute", { timeoutMs: 3000 });
-      registry.enqueue("session-1", "tool-use-1", "mcp__gui_action__GUI_execute");
+      registry.enqueue("session-1", "tool-use-1", "mcp__client_side__GUI_execute");
 
       const promise = registry.waitForClient("session-1");
 
