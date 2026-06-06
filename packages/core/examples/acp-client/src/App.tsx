@@ -2102,9 +2102,10 @@ function ClientToolRow({ call }: { call: ClientToolCall }) {
           <span className="shrink-0 text-muted-foreground">{new Date(call.at).toLocaleTimeString()}</span>
         </div>
       </summary>
-      <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
-        <JsonCode value={{ input: call.input, result: call.result }} />
-      </pre>
+      <JsonPanel
+        value={{ input: call.input, result: call.result }}
+        preClassName="mt-3 max-h-72 rounded-md text-code-foreground"
+      />
     </details>
   );
 }
@@ -2123,9 +2124,10 @@ function SlashCommandRow({ command }: { command: SlashCommand }) {
           </span>
         </div>
       </summary>
-      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
-        <JsonCode value={command} />
-      </pre>
+      <JsonPanel
+        value={command}
+        preClassName="mt-3 max-h-56 rounded-md text-code-foreground"
+      />
     </details>
   );
 }
@@ -2144,9 +2146,10 @@ function PermissionRow({ request }: { request: PermissionRequestLog }) {
           </span>
         </div>
       </summary>
-      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
-        <JsonCode value={{ rawInput: request.rawInput, options: request.options }} />
-      </pre>
+      <JsonPanel
+        value={{ rawInput: request.rawInput, options: request.options }}
+        preClassName="mt-3 max-h-56 rounded-md text-code-foreground"
+      />
     </details>
   );
 }
@@ -2165,9 +2168,10 @@ function ElicitationRow({ request }: { request: ElicitationRequestLog }) {
           </span>
         </div>
       </summary>
-      <pre className="mt-3 max-h-56 overflow-auto rounded-md bg-code-block p-3 leading-5 text-code-foreground">
-        <JsonCode value={{ rawInput: request.rawInput, action: request.action }} />
-      </pre>
+      <JsonPanel
+        value={{ rawInput: request.rawInput, action: request.action }}
+        preClassName="mt-3 max-h-56 rounded-md text-code-foreground"
+      />
     </details>
   );
 }
@@ -2201,17 +2205,6 @@ function promptResultToSummary(result: unknown): Record<string, unknown> | null 
   return Object.keys(summary).length > 0 ? summary : null;
 }
 
-function JsonBlock({ title, value }: { title: string; value: unknown }) {
-  return (
-    <div className="mb-3 last:mb-0">
-      <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</div>
-      <pre className="max-h-44 overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5 text-code-foreground">
-        <JsonCode value={value ?? null} />
-      </pre>
-    </div>
-  );
-}
-
 function TrafficRow({ entry }: { entry: TrafficEntry }) {
   return (
     <details className={entry.error ? "rounded-lg border border-destructive/35 bg-destructive/10 p-3 text-xs" : "rounded-lg border border-border bg-surface p-3 text-xs"}>
@@ -2235,22 +2228,11 @@ function TrafficRow({ entry }: { entry: TrafficEntry }) {
           </div>
         </div>
       </summary>
-      <pre className="mt-3 max-h-72 overflow-auto rounded-md bg-code-block p-3 leading-5">
-        <JsonCode value={entry.payload} />
-      </pre>
+      <JsonPanel
+        value={entry.payload}
+        preClassName="mt-3 max-h-72 rounded-md"
+      />
     </details>
-  );
-}
-
-function JsonCode({ value }: { value: unknown }) {
-  return (
-    <code className="json-code">
-      {tokenizeJson(prettyJson(value)).map((token, index) => (
-        <span key={`${index}-${token.text}`} className={token.className}>
-          {token.text}
-        </span>
-      ))}
-    </code>
   );
 }
 
