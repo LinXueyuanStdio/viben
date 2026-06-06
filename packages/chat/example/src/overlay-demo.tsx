@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Maximize2, Minimize2, Paperclip, Send, Smile, Square } from "lucide-react";
 import type { AgentMessage, MessageAttachment } from "@viben/chat";
 
