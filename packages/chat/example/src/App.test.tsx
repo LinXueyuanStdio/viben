@@ -82,6 +82,27 @@ describe("App overlay layout", () => {
     expect(screen.getByTestId("control-panel")).toHaveClass("border-l");
   });
 
+  test("does not render the fullscreen session player content before fullscreen mode", () => {
+    render(<App />);
+
+    expect(screen.queryByText("@viben/chat Session Player")).not.toBeInTheDocument();
+    expect(screen.queryByText("Press Play to replay the demo session, or load a .jsonl file.")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("chat-input")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+
+    expect(screen.getByTestId("message-list")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-input")).toBeInTheDocument();
+  });
+
+  test("shows all bundled Claude Code session samples in the demo controls", () => {
+    render(<App />);
+
+    expect(screen.getByText("Claude Code: breadcrumb navigation debug")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code: 2e83fc8b session replay")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code: 3bbcc4d2 session replay")).toBeInTheDocument();
+  });
+
   test("shows the overlay stage background only behind the expanded floating panel", () => {
     render(<App />);
 

@@ -15,7 +15,7 @@ import {
   useCommandQueueInputRecall,
   getModelIcon,
 } from "@viben/chat"
-import type { AgentMessage, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
+import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2 } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
@@ -384,6 +384,37 @@ export function App() {
   const isAwaiting = player.isAwaiting
   const isOverlayFull = overlayMode === "full"
   const showOverlayStageBackground = overlayMode === "expanded"
+  const sharedChatInputProps: ChatInputProps = {
+    value: chatInputValue,
+    onValueChange: setChatInputValue,
+    onRecallQueuedInput: commandQueueInputRecall.onRecallQueuedInput,
+    onSend: handleSend,
+    onCancel: player.pause,
+    isLoading: player.isStreaming,
+    allowSendWhileLoading: true,
+    placeholder: player.isStreaming ? "Type to queue a message..." : "Type a message...",
+    layoutVariant: "expanded",
+    showTopToolbar: true,
+    showConfigBar: true,
+    renderEmojiPicker: (props) => <EmojiPicker {...props} />,
+    hideExecutorSelector: true,
+    agents: demoAgents.map(a => ({ ...a, model: undefined })),
+    selectedAgentId,
+    onAgentChange: setSelectedAgentId,
+    models: demoModels,
+    selectedModelId,
+    onModelChange: setSelectedModelId,
+    tools,
+    onToggleTool: handleToggleTool,
+    enabledToolsCount: tools.filter(t => t.enabled).length,
+    skills,
+    onToggleSkill: handleToggleSkill,
+    enabledSkillsCount: skills.filter(s => s.enabled).length,
+    contextTokens: 20000,
+    contextBreakdown: demoContextBreakdown,
+    slashCommands: demoSlashCommands,
+    onSlashCommand: handleSlashCommand,
+  }
 
   return (
     <LayoutGroup id="viben-chat-overlay-demo">
@@ -781,71 +812,7 @@ export function App() {
                   )}
                 </div>
               </div>
-            ) : (
-              <ChatAppFullscreenPanel
-                messages={player.messages}
-                messageUpdates={player.messageUpdates}
-                isStreaming={player.isStreaming}
-                pendingPlan={player.pendingPlan}
-                pendingApproval={player.pendingApproval}
-                pendingQuestion={player.pendingQuestion}
-                commandQueueItems={commandQueue.items}
-                commandQueuePaused={commandQueue.isPaused}
-                messageListRef={messageListRef}
-                onExpandSubagent={handleExpandSubagent}
-                onApprovePlan={() => {
-                  console.log("Plan approved")
-                  player.resolvePlan(true)
-                }}
-                onRejectPlan={() => {
-                  console.log("Plan rejected")
-                  player.resolvePlan(false)
-                }}
-                onApprovalDecision={(decision, feedback) => {
-                  console.log("Exec decision:", decision, "Feedback:", feedback)
-                  player.resolveApproval(decision, feedback)
-                }}
-                onAnswerQuestions={(answers) => {
-                  console.log("Answers:", answers)
-                  player.resolveQuestion(answers)
-                }}
-                onCommandQueueRemove={commandQueue.remove}
-                onCommandQueueClear={commandQueue.clear}
-                onCommandQueuePause={commandQueue.pause}
-                onCommandQueueResume={commandQueue.resume}
-                inputProps={{
-                  value: chatInputValue,
-                  onValueChange: setChatInputValue,
-                  onRecallQueuedInput: commandQueueInputRecall.onRecallQueuedInput,
-                  onSend: handleSend,
-                  onCancel: player.pause,
-                  isLoading: player.isStreaming,
-                  allowSendWhileLoading: true,
-                  placeholder: player.isStreaming ? "Type to queue a message..." : "Type a message...",
-                  layoutVariant: "expanded",
-                  showTopToolbar: true,
-                  showConfigBar: true,
-                  renderEmojiPicker: (props) => <EmojiPicker {...props} />,
-                  hideExecutorSelector: true,
-                  agents: demoAgents.map(a => ({ ...a, model: undefined })),
-                  selectedAgentId,
-                  onAgentChange: setSelectedAgentId,
-                  models: demoModels,
-                  selectedModelId,
-                  onModelChange: setSelectedModelId,
-                  tools,
-                  onToggleTool: handleToggleTool,
-                  enabledToolsCount: tools.filter(t => t.enabled).length,
-                  skills,
-                  onToggleSkill: handleToggleSkill,
-                  enabledSkillsCount: skills.filter(s => s.enabled).length,
-                  contextTokens: 20000,
-                  contextBreakdown: demoContextBreakdown,
-                  slashCommands: demoSlashCommands,
-                  onSlashCommand: handleSlashCommand,
-                }}
-              />
-            )}
+            ) : null}
           </div>
           <ChatApp
             contained
@@ -865,6 +832,7 @@ export function App() {
             onModeChange={setOverlayMode}
             onSend={handleSend}
             onCancel={player.pause}
+            inputProps={sharedChatInputProps}
             fullscreenContent={(
               <ChatAppFullscreenPanel
                 messages={player.messages}
@@ -897,37 +865,7 @@ export function App() {
                 onCommandQueueClear={commandQueue.clear}
                 onCommandQueuePause={commandQueue.pause}
                 onCommandQueueResume={commandQueue.resume}
-                inputProps={{
-                  value: chatInputValue,
-                  onValueChange: setChatInputValue,
-                  onRecallQueuedInput: commandQueueInputRecall.onRecallQueuedInput,
-                  onSend: handleSend,
-                  onCancel: player.pause,
-                  isLoading: player.isStreaming,
-                  allowSendWhileLoading: true,
-                  placeholder: player.isStreaming ? "Type to queue a message..." : "Type a message...",
-                  layoutVariant: "expanded",
-                  showTopToolbar: true,
-                  showConfigBar: true,
-                  renderEmojiPicker: (props) => <EmojiPicker {...props} />,
-                  hideExecutorSelector: true,
-                  agents: demoAgents.map(a => ({ ...a, model: undefined })),
-                  selectedAgentId,
-                  onAgentChange: setSelectedAgentId,
-                  models: demoModels,
-                  selectedModelId,
-                  onModelChange: setSelectedModelId,
-                  tools,
-                  onToggleTool: handleToggleTool,
-                  enabledToolsCount: tools.filter(t => t.enabled).length,
-                  skills,
-                  onToggleSkill: handleToggleSkill,
-                  enabledSkillsCount: skills.filter(s => s.enabled).length,
-                  contextTokens: 20000,
-                  contextBreakdown: demoContextBreakdown,
-                  slashCommands: demoSlashCommands,
-                  onSlashCommand: handleSlashCommand,
-                }}
+                inputProps={sharedChatInputProps}
               />
             )}
           />
