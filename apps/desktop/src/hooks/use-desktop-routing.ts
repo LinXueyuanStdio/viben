@@ -21,7 +21,7 @@ import {
 } from "@/navigation/navigate";
 import type { NavigateHeaders, BreadcrumbStackItem } from "@/navigation/navigate";
 import type { DesktopDeepLinkIntent } from "@/navigation/deep-link";
-import { useTabStore } from "@/stores/tab-store";
+import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import type { Workspace } from "@/types";
 
 export interface DesktopNavigationOptions {
@@ -186,8 +186,11 @@ function inferWorkspaceIdFromUrl(url: string | null): string | null {
   return match?.params?.workspaceId ?? null;
 }
 
-function buildTabStoreActions(activeTabId: string | null) {
-  const store = useTabStore.getState();
+function buildTabStoreActions(
+  tabStore: ReturnType<typeof getCurrentWindowTabStore>,
+  activeTabId: string | null
+) {
+  const store = tabStore.getState();
   return {
     activeTabId: activeTabId ?? "",
     pushNavigation: store.pushNavigation,
@@ -200,6 +203,7 @@ function buildTabStoreActions(activeTabId: string | null) {
 
 export function useDesktopRouting(): DesktopRoutingApi {
   const { t } = useTranslation();
+  const tabStore = useMemo(() => getCurrentWindowTabStore(), []);
   const tabState = useActiveTabState();
   const tabActions = useTabActions();
   const tabNav = useTabNavigation();
@@ -222,25 +226,40 @@ export function useDesktopRouting(): DesktopRoutingApi {
   const navigateReset = useCallback(
     (url: string, headers?: NavigateHeaders) => {
       if (!tabState.activeTabId) return;
-      navigate("reset", url, headers, buildTabStoreActions(tabState.activeTabId));
+      navigate(
+        "reset",
+        url,
+        headers,
+        buildTabStoreActions(tabStore, tabState.activeTabId)
+      );
     },
-    [tabState.activeTabId]
+    [tabState.activeTabId, tabStore]
   );
 
   const navigatePush = useCallback(
     (url: string, headers?: NavigateHeaders) => {
       if (!tabState.activeTabId) return;
-      navigate("push", url, headers, buildTabStoreActions(tabState.activeTabId));
+      navigate(
+        "push",
+        url,
+        headers,
+        buildTabStoreActions(tabStore, tabState.activeTabId)
+      );
     },
-    [tabState.activeTabId]
+    [tabState.activeTabId, tabStore]
   );
 
   const navigateReplace = useCallback(
     (url: string, headers?: NavigateHeaders) => {
       if (!tabState.activeTabId) return;
-      navigate("replace", url, headers, buildTabStoreActions(tabState.activeTabId));
+      navigate(
+        "replace",
+        url,
+        headers,
+        buildTabStoreActions(tabStore, tabState.activeTabId)
+      );
     },
-    [tabState.activeTabId]
+    [tabState.activeTabId, tabStore]
   );
 
   // ─── Open in new tab ────────────────────────────────────────────────────────
@@ -248,7 +267,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
   const openInNewTab = useCallback(
     (url: string, headers?: NavigateHeaders, breadcrumbStack?: BreadcrumbStackItem[]) => {
       const stack = breadcrumbStack ?? buildColdStartBreadcrumb(url, headers);
-      const store = useTabStore.getState();
+      const store = tabStore.getState();
       store.openTab({
         navigationState: { url, breadcrumbStack: stack },
       });
@@ -340,7 +359,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       }
 
       if (!tabState.activeTabId) return;
-      const store = useTabStore.getState();
+      const store = tabStore.getState();
       if (options?.mode === "replace") {
         store.replaceNavigation(tabState.activeTabId, url, item);
       } else {
@@ -407,7 +426,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -451,7 +470,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -494,7 +513,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -600,7 +619,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -642,7 +661,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -688,7 +707,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -734,7 +753,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -780,7 +799,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -826,7 +845,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
@@ -920,7 +939,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       if (options?.breadcrumbStack) {
         if (!tabState.activeTabId) return;
-        const store = useTabStore.getState();
+        const store = tabStore.getState();
         store.resetNavigation(tabState.activeTabId, url, options.breadcrumbStack);
         return;
       }
