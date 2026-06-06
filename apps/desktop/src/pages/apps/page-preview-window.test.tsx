@@ -339,7 +339,8 @@ describe("PagePreviewWindow", () => {
   });
 
   it("uses the tab store for close-all tabs", () => {
-    useTabStore.setState({
+    const previewStore = getScopedTabStore("page-preview-test");
+    previewStore.setState({
       tabs: [
         {
           id: "tab-current",
@@ -377,7 +378,8 @@ describe("PagePreviewWindow", () => {
     });
 
     expect(useTabStore.getState().tabs).toHaveLength(0);
-    expect(useTabStore.getState().recentlyClosedTabs).toHaveLength(1);
+    expect(previewStore.getState().tabs).toHaveLength(0);
+    expect(previewStore.getState().recentlyClosedTabs).toHaveLength(1);
     expect(mockClose).toHaveBeenCalled();
   });
 
@@ -397,7 +399,8 @@ describe("PagePreviewWindow", () => {
       ],
     };
 
-    useTabStore.setState({
+    const previewStore = getScopedTabStore("page-preview-test");
+    previewStore.setState({
       tabs: [],
       activeTabId: null,
       recentlyClosedTabs: [
@@ -421,7 +424,8 @@ describe("PagePreviewWindow", () => {
       );
     });
 
-    expect(useTabStore.getState().tabs).toHaveLength(1);
+    expect(useTabStore.getState().tabs).toHaveLength(0);
+    expect(previewStore.getState().tabs).toHaveLength(1);
     expect(mockAssign).toHaveBeenCalledWith("/workspace/global/chat");
   });
 
