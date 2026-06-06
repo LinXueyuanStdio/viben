@@ -49,32 +49,39 @@ code {
   color: var(--color-foreground);
 }
 
-pre code.json-code {
-  display: block;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-  color: var(--color-code-foreground);
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  white-space: pre;
-}
-
 .json-panel {
   min-height: 360px;
   max-height: min(560px, calc(100vh - 260px));
-  overflow: auto;
+  overflow: hidden;
   border-radius: 7px;
   border: 1px solid color-mix(in oklch, var(--color-code-foreground) 12%, transparent);
   background: var(--color-code-block);
-  padding: 12px;
+  padding: 0;
   color: var(--color-code-foreground);
   font-size: 12px;
   line-height: 1.55;
+  --jse-theme-color: var(--color-primary);
+  --jse-theme-color-highlight: color-mix(in oklch, var(--color-primary) 18%, transparent);
+  --jse-background-color: var(--color-code-block);
+  --jse-panel-background: color-mix(in oklch, var(--color-code-block) 92%, white);
+  --jse-main-border: color-mix(in oklch, var(--color-code-foreground) 12%, transparent);
+  --jse-menu-color: var(--color-code-foreground);
+  --jse-text-color: var(--color-code-foreground);
+  --jse-contents-background-color: var(--color-code-block);
+  --jse-selection-background-color: color-mix(in oklch, var(--color-primary) 28%, transparent);
 }
 
 .json-panel-permission {
   min-height: 420px;
+}
+
+.json-editor-host {
+  height: 100%;
+  min-height: inherit;
+}
+
+.json-panel .jse-main {
+  border: 0;
 }
 
 .json-modal-section {
@@ -105,30 +112,6 @@ pre code.json-code {
 
 .permission-side {
   min-width: 0;
-}
-
-.json-key {
-  color: oklch(0.84 0.13 82);
-}
-
-.json-string {
-  color: oklch(0.8 0.13 154);
-}
-
-.json-number {
-  color: oklch(0.82 0.12 252);
-}
-
-.json-boolean {
-  color: oklch(0.82 0.15 38);
-}
-
-.json-null {
-  color: oklch(0.76 0.05 250);
-}
-
-.json-punctuation {
-  color: oklch(0.7 0.025 250);
 }
 
 .btn-primary,
