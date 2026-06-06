@@ -3,7 +3,7 @@ import { useLocation, useNavigate as useRouterNavigate } from "react-router-dom"
 import { registry } from "@/navigation/route-registry";
 import { buildColdStartBreadcrumb, buildBreadcrumbItem } from "@/navigation/breadcrumb-builder";
 import { isStackPrefixOf } from "@/navigation/navigate";
-import { useTabStore, selectActiveTab } from "@/stores/tab-store";
+import { getCurrentWindowTabStore, selectActiveTab } from "@/stores/tab-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
   hasNewTabRequest,
@@ -32,6 +32,7 @@ function normalizeUrlPreservingHash(url: string): string {
 export function TabRouterBridge() {
   const routerNavigate = useRouterNavigate();
   const location = useLocation();
+  const tabStore = useRef(getCurrentWindowTabStore()).current;
 
   // Track the last URL we pushed to each direction to deduplicate
   const lastPushedToRouterRef = useRef<string | null>(null);
@@ -39,15 +40,15 @@ export function TabRouterBridge() {
   const handledNewTabRequestRef = useRef<string | null>(null);
 
   // Get the active tab's current URL from the store
-  const storeUrl = useTabStore((s) => {
+  const storeUrl = tabStore((s) => {
     const tab = selectActiveTab(s);
     return tab?.navigationHistory[tab.historyIndex]?.url ?? null;
   });
 
   // Store actions
-  const openTab = useTabStore((s) => s.openTab);
-  const pushNavigation = useTabStore((s) => s.pushNavigation);
-  const resetNavigation = useTabStore((s) => s.resetNavigation);
+  const openTab = tabStore((s) => s.openTab);
+  const pushNavigation = tabStore((s) => s.pushNavigation);
+  const resetNavigation = tabStore((s) => s.resetNavigation);
 
   useEffect(() => {
     if (!hasNewTabRequest(location.search)) return;
@@ -119,7 +120,7 @@ export function TabRouterBridge() {
   useEffect(() => {
     if (hasNewTabRequest(location.search)) return;
 
-    const { activeTabId: currentTabId } = useTabStore.getState();
+    const { activeTabId: currentTabId } = tabStore.getState();
     if (!currentTabId) return;
 
     const currentRouterUrl = location.pathname + location.search + location.hash;
@@ -132,7 +133,7 @@ export function TabRouterBridge() {
     }
 
     // Read fresh from store to avoid stale closure
-    const activeTab = selectActiveTab(useTabStore.getState());
+    const activeTab = selectActiveTab(tabStore.getState());
     const currentState = activeTab?.navigationHistory[activeTab.historyIndex];
 
     // Skip if URLs already match
@@ -160,7 +161,7 @@ export function TabRouterBridge() {
       resetNavigation(currentTabId, normalizedUrl, stack);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, location.search, location.hash, pushNavigation, resetNavigation]);
+  }, [location.pathname, location.search, location.hash, pushNavigation, resetNavigation, tabStore]);
 
   return null;
 }
