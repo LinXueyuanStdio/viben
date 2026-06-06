@@ -49,7 +49,7 @@ import {
   type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
 import { OverlayDemo } from "./overlay-demo"
-import type { OverlayMode } from "./overlay-demo"
+import type { OverlayMode, OverlaySessionItem } from "./overlay-demo"
 
 // ============================================================================
 // Agent Busy Detection
@@ -308,6 +308,22 @@ export function App() {
     }
   }, [formatStats, player.loadSteps])
 
+  const overlaySessions = useMemo<OverlaySessionItem[]>(
+    () => CLAUDE_CODE_SESSIONS.map((session) => ({
+      id: session.id,
+      title: session.label,
+      subtitle: `${session.id.slice(0, 8)}...jsonl`,
+    })),
+    []
+  )
+
+  const handleOverlaySessionSelect = useCallback((session: OverlaySessionItem) => {
+    const claudeSession = CLAUDE_CODE_SESSIONS.find((item) => item.id === session.id)
+    if (claudeSession) {
+      void handleClaudeSessionLoad(claudeSession)
+    }
+  }, [handleClaudeSessionLoad])
+
   const handleExpandSubagent = useCallback<ExpandSubagentHandler>((title, subagentType, messages, context) => {
     setSheetData({ title, subagentType, messages, context })
   }, [])
@@ -368,6 +384,7 @@ export function App() {
   const progress = player.totalSteps > 0 ? player.stepIndex / player.totalSteps : 0
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
+  const isOverlayFull = overlayMode === "full"
 
   return (
     <LayoutGroup id="viben-chat-overlay-demo">
@@ -383,8 +400,12 @@ export function App() {
         loadSubagentDetails={loadSubagentDetails}
         onExpandSubagent={handleExpandSubagent}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="flex h-full w-[280px] shrink-0 flex-col border-r bg-card">
+      <div className="relative flex flex-1 overflow-hidden">
+        <aside className={`flex h-full w-[280px] shrink-0 flex-col border-r bg-card transition-transform duration-300 ${
+          isOverlayFull
+            ? ""
+            : "absolute left-1/2 top-1/2 z-10 max-h-[min(760px,calc(100vh-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border shadow-2xl"
+        }`}>
           {/* Sidebar header */}
           <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
             <span className="text-sm font-semibold">@viben/chat</span>
@@ -643,7 +664,9 @@ export function App() {
         </aside>
 
         {/* ===== Chat Column ===== */}
-        <div className="relative flex flex-1 w-0 flex-col min-w-0 overflow-hidden bg-background">
+        <div className={`relative flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
+          isOverlayFull ? "w-0 flex-1 overflow-hidden opacity-100" : "absolute inset-0 overflow-visible opacity-100"
+        }`}>
           {/* Content area */}
           <div className="flex min-h-0 flex-1 flex-col">
             {showPlan ? (
@@ -873,6 +896,12 @@ export function App() {
             isStreaming={player.isStreaming}
             playerStatus={player.status}
             pendingUserMessageCount={commandQueue.items.length}
+            sessions={overlaySessions}
+            headerActions={{
+              onSelectSession: handleOverlaySessionSelect,
+              onCreateSession: () => setOverlayMode("expanded"),
+              onSettingsClick: () => setShowToolsPanel((open) => !open),
+            }}
             inputValue={chatInputValue}
             onInputValueChange={setChatInputValue}
             onModeChange={setOverlayMode}
