@@ -122,6 +122,7 @@ export interface AcpInterruptSessionResponse {
 }
 
 export interface AcpSteerPromptConsumedNotification {
+  sessionId: string;
   promptId: string;
   status: AcpSteerPromptStatus;
   consumedAt?: string;

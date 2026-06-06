@@ -705,7 +705,7 @@ export class AcpSessionManager {
     session: AcpSession,
     record: AcpSteerPromptRecord
   ): Promise<void> {
-    const params: AcpSteerPromptConsumedNotification & { sessionId: string } = {
+    const params: AcpSteerPromptConsumedNotification = {
       sessionId: session.id,
       promptId: record.id,
       status: record.status,
