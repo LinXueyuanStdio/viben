@@ -9,11 +9,13 @@
   "exports": {
     ".": {
       "types": "./src/index.ts",
+      "development": "./src/index.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./providers": {
       "types": "./src/providers/index.ts",
+      "development": "./src/providers/index.ts",
       "import": "./dist/providers/index.js",
       "require": "./dist/providers/index.cjs"
     }
