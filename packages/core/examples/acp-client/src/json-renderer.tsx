@@ -61,10 +61,8 @@ export function JsonPanel({
 
   useEffect(() => {
     if (!editorRef.current) return;
-    editorRef.current.update({
-      content,
-      mode: editorMode,
-    });
+    editorRef.current.updateProps({ mode: editorMode });
+    editorRef.current.update(content);
   }, [content, editorMode]);
 
   return (
