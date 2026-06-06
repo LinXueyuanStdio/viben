@@ -45,14 +45,14 @@ Use the Executor Config JSON field to override the backend command if needed:
 ```
 
 The Request MCP Servers JSON field is sent as ACP `mcpServers`. The inline agent
-config also includes `mcp_servers: ["gui_action"]` so backend agents can call the
-GUI action bridge exposed by Viben.
+config also includes `mcp_servers: ["client_side"]` so backend agents can call the
+client-side tool bridge exposed by Viben.
 
 ## GUI_execute Actions
 
-The example client handles both `GUI_execute` and
-`mcp__gui_action__GUI_execute`. Use the action editor to expose custom actions
-to backend agents.
+The example client handles `GUI_execute`, `mcp__client_side__GUI_execute`, and
+legacy `mcp__gui_action__GUI_execute`. Use the action editor to expose custom
+actions to backend agents.
 
 Supported built-in action names inside `GUI_execute`:
 
