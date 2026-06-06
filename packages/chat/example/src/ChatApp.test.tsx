@@ -22,6 +22,7 @@ vi.mock("@viben/chat", async () => {
       React.createElement("span", { "data-testid": "default-height" }, String(props.defaultHeight)),
       React.createElement("span", { "data-testid": "min-height" }, String(props.minHeight)),
       React.createElement("span", { "data-testid": "max-height" }, String(props.maxHeight)),
+      React.createElement("span", { "data-testid": "input-class-name" }, String(props.className)),
       React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
     ),
     CommandQueuePanel: (props: Record<string, unknown>) => React.createElement(
@@ -98,6 +99,36 @@ describe("ChatApp", () => {
     expect(screen.queryByText("Agent")).not.toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.queryByText("Skills")).not.toBeInTheDocument();
+  });
+
+  test("floating and compact share the same avatar size during minimize animation", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="floating"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("floating-overlay-avatar")).toHaveClass("size-14");
+
+    rerender(
+      <ChatApp
+        contained
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("agent-popup-avatar")).toHaveClass("size-14");
   });
 
   test("full mode fills the overlay container with the expanded chat surface", () => {
@@ -370,6 +401,7 @@ describe("ChatApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open new session menu" }));
 
+    expect(screen.getByTestId("new-session-menu-chevron")).toHaveClass("lucide-chevron-down");
     expect(screen.getByText("新建聊天")).toBeInTheDocument();
     expect(screen.getByText("新建聊天窗口")).toBeInTheDocument();
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
@@ -496,6 +528,44 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("max-height")).toHaveTextContent("undefined");
   });
 
+  test("expanded input is embedded without the compact rounded rectangle frame", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const input = screen.getByTestId("compact-chat-input");
+    expect(input).toHaveAttribute("data-variant", "expanded");
+    expect(input).not.toHaveClass("rounded-xl");
+    expect(input).not.toHaveClass("border");
+    expect(input).not.toHaveClass("shadow-2xl");
+  });
+
+  test("expanded input spans the panel without outer padding", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const inputContainer = screen.getByTestId("expanded-chat-input-container");
+    const input = screen.getByTestId("compact-chat-input");
+    expect(inputContainer).toHaveClass("w-full");
+    expect(inputContainer).not.toHaveClass("p-3");
+    expect(input).toHaveClass("w-full");
+  });
+
   test("full mode can render a reusable fullscreen panel under the shared expanded header", () => {
     render(
       <ChatApp
@@ -563,6 +633,35 @@ describe("ChatAppFullscreenPanel", () => {
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
+  });
+
+  test("uses the same expanded chat input configuration and full width container", () => {
+    const sharedInputProps = {
+      value: "hello",
+      onValueChange: () => {},
+      onSend: () => {},
+      onCancel: () => {},
+      slashCommands: [{ name: "plan", description: "Plan", input: null }],
+      queuedInputRecallItems: [{ content: "queued work" }],
+      className: "shared-expanded-input",
+    };
+
+    render(
+      <ChatAppFullscreenPanel
+        messages={messages}
+        isStreaming={false}
+        inputProps={sharedInputProps}
+      />
+    );
+
+    expect(screen.getByTestId("fullscreen-chat-input-container")).toHaveClass("w-full");
+    expect(screen.getByTestId("fullscreen-chat-input-container")).not.toHaveClass("max-w-[760px]");
+    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
+    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
+    expect(screen.getByTestId("slash-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("queued-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("input-class-name")).toHaveTextContent("shared-expanded-input");
   });
 });
 

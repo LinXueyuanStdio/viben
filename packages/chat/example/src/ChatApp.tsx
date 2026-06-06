@@ -217,7 +217,7 @@ export function ChatApp({
           assistantAvatar={assistantAvatar}
         />
       </div>
-      <div className="shrink-0 p-3">
+      <div className="w-full shrink-0 border-t border-border" data-testid="expanded-chat-input-container">
         <CompactChatInput
           variant="expanded"
           value={content}
@@ -225,7 +225,7 @@ export function ChatApp({
           onValueChange={setContent}
           onSend={handleSubmit}
           onCancel={onCancel}
-          inputProps={inputProps}
+          inputProps={getExpandedChatInputProps(inputProps)}
         />
       </div>
     </>
@@ -276,8 +276,8 @@ export function ChatApp({
           className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           style={{ borderRadius: OVERLAY_RADIUS.floating }}
         >
-          <motion.div layoutId="viben-overlay-avatar" className="size-full">
-          {assistantAvatar}
+          <motion.div layoutId="viben-overlay-avatar" className="size-14" data-testid="floating-overlay-avatar">
+            {assistantAvatar}
           </motion.div>
           {pendingUserMessageCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
@@ -387,7 +387,7 @@ export function ChatAppFullscreenPanel({
           onAnswerQuestions={onAnswerQuestions}
         />
         {commandQueueItems.length > 0 && (
-          <div className="mx-auto w-full max-w-[760px] px-4 pb-2">
+          <div className="w-full px-4 pb-2">
             <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <div className="size-1.5 animate-pulse rounded-full bg-amber-500" />
               <span>Will send when agent finishes...</span>
@@ -405,7 +405,7 @@ export function ChatAppFullscreenPanel({
       </div>
 
       <div className="border-t border-border px-4 py-2">
-        <div className="mx-auto max-w-[760px]">
+        <div className="w-full" data-testid="fullscreen-chat-input-container">
           <AnimatePresence mode="wait">
             {pendingPlan ? (
               <PlanApproval
@@ -437,11 +437,7 @@ export function ChatAppFullscreenPanel({
                 transition={{ duration: 0.15 }}
               >
                 <ChatInput
-                  {...inputProps}
-                  layoutVariant={inputProps.layoutVariant ?? "expanded"}
-                  showTopToolbar={inputProps.showTopToolbar ?? true}
-                  showConfigBar={inputProps.showConfigBar ?? true}
-                  renderEmojiPicker={inputProps.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
+                  {...getExpandedChatInputProps(inputProps)}
                 />
               </motion.div>
             )}
@@ -479,7 +475,7 @@ function AgentPopup({
       onClick={onExpand}
     >
       <div className="flex items-start gap-3 p-3">
-        <motion.div layoutId="viben-overlay-avatar" className="size-14 shrink-0">{avatar}</motion.div>
+        <motion.div layoutId="viben-overlay-avatar" className="size-14 shrink-0" data-testid="agent-popup-avatar">{avatar}</motion.div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
@@ -678,7 +674,7 @@ function ExpandedHeader({
           onClick={() => setNewOpen((open) => !open)}
           className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <ChevronUp className="size-4" />
+          <ChevronDown className="size-4" data-testid="new-session-menu-chevron" />
         </button>
         {newOpen && (
           <div className="absolute right-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
@@ -792,13 +788,18 @@ function CompactChatInput({
   onCancel: () => void;
   inputProps?: Partial<ChatInputProps>;
 }) {
+  const shellClassName = variant === "compact"
+    ? `overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`
+    : `overlay-input-shell w-full bg-transparent ${isStreaming ? "overlay-input-shell--running" : ""}`;
+
   return (
     <section
       data-testid="compact-chat-input"
-      className={`overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`}
+      data-variant={variant}
+      className={shellClassName}
     >
       <ChatInput
-        {...inputProps}
+        {...(variant === "expanded" ? getExpandedChatInputProps(inputProps) : inputProps)}
         value={value}
         onValueChange={onValueChange}
         onSend={(content, attachments) => {
@@ -812,9 +813,9 @@ function CompactChatInput({
         isLoading={isStreaming}
         allowSendWhileLoading
         placeholder={inputProps?.placeholder ?? (isStreaming ? "Queue a message..." : "Ask Viben...")}
-        layoutVariant={variant}
-        showTopToolbar={variant === "expanded"}
-        showConfigBar
+        layoutVariant={variant === "expanded" ? (inputProps?.layoutVariant ?? "expanded") : "compact"}
+        showTopToolbar={variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false}
+        showConfigBar={variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true}
         renderEmojiPicker={inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
         defaultHeight={variant === "compact" ? 48 : inputProps?.defaultHeight}
         minHeight={variant === "compact" ? 48 : inputProps?.minHeight}
@@ -828,6 +829,18 @@ function CompactChatInput({
       />
     </section>
   );
+}
+
+function getExpandedChatInputProps(inputProps: ChatInputProps): ChatInputProps;
+function getExpandedChatInputProps(inputProps?: Partial<ChatInputProps>): Partial<ChatInputProps>;
+function getExpandedChatInputProps(inputProps?: Partial<ChatInputProps>): Partial<ChatInputProps> {
+  return {
+    ...inputProps,
+    layoutVariant: inputProps?.layoutVariant ?? "expanded",
+    showTopToolbar: inputProps?.showTopToolbar ?? true,
+    showConfigBar: inputProps?.showConfigBar ?? true,
+    renderEmojiPicker: inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />),
+  };
 }
 
 const PET_STATE_META: Record<AssistantPetState, {
