@@ -2,15 +2,17 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
 import { Streamdown } from "streamdown";
-import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput } from "@viben/chat";
+import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
 import type {
   AgentMessage,
   ChatInputProps,
   CommandQueueItem,
   ExpandSubagentHandler,
+  LoadSubagentDetails,
   MessageAttachment,
   PendingExecApproval,
   PendingQuestion,
+  SubagentOpenContext,
   TaskPlan,
 } from "@viben/chat";
 
@@ -66,9 +68,23 @@ export interface ChatAppProps {
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
   fullscreenContent?: React.ReactNode;
+  messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
+  onExpandSubagent?: ExpandSubagentHandler;
+  subagentSheet?: ChatAppSubagentSheetState;
+  loadSubagentDetails?: LoadSubagentDetails;
   onModeChange: (mode: OverlayMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
+}
+
+export interface ChatAppSubagentSheetState {
+  open: boolean;
+  title: string;
+  subagentType?: string;
+  messages: AgentMessage[];
+  liveMessages?: AgentMessage[];
+  context?: SubagentOpenContext;
+  onClose: () => void;
 }
 
 export type ChatAppSessionItem = OverlaySessionItem;
@@ -203,6 +219,10 @@ export function ChatApp({
   onInputValueChange,
   inputProps,
   fullscreenContent,
+  messageListRef,
+  onExpandSubagent,
+  subagentSheet,
+  loadSubagentDetails,
   onModeChange,
   onSend,
   onCancel,
@@ -230,10 +250,12 @@ export function ChatApp({
     <>
       <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
         <ChatAppMessagePanel
+          messageListRef={messageListRef}
           messages={messages}
           messageUpdates={messageUpdates}
           isStreaming={isStreaming}
           maxMessageWidth="100%"
+          onExpandSubagent={onExpandSubagent}
         />
       </div>
       <div className="w-full shrink-0 border-t border-border" data-testid="expanded-chat-input-container">
@@ -267,6 +289,22 @@ export function ChatApp({
     </>
   );
 
+  const subagentSheetNode = subagentSheet ? (
+    <SubagentSheet
+      contained
+      open={subagentSheet.open}
+      onClose={subagentSheet.onClose}
+      title={subagentSheet.title}
+      subagentType={subagentSheet.subagentType}
+      messages={subagentSheet.messages}
+      liveMessages={subagentSheet.liveMessages}
+      context={subagentSheet.context}
+      loadSubagentDetails={loadSubagentDetails}
+      onExpandSubagent={onExpandSubagent}
+      className="w-[min(420px,85%)]"
+    />
+  ) : null;
+
   if (mode === "full") {
     return (
       <motion.div
@@ -274,13 +312,14 @@ export function ChatApp({
         transition={OVERLAY_TRANSITION}
         initial={false}
         data-transition-role="expand-to-full"
-        className={`overlay-shared-surface flex min-h-0 ${FULLSCREEN_PANEL_WIDTH_CLASS} flex-col overflow-hidden bg-background shadow-none ${
+        className={`overlay-shared-surface relative flex min-h-0 ${FULLSCREEN_PANEL_WIDTH_CLASS} flex-col overflow-hidden bg-background shadow-none ${
           contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.full }}
         data-testid="full-overlay"
       >
         {expandedContent}
+        {subagentSheetNode}
       </motion.div>
     );
   }
@@ -366,13 +405,14 @@ export function ChatApp({
       transition={OVERLAY_TRANSITION}
       initial={false}
       data-transition-role="expand-to-full"
-      className={`overlay-shared-surface flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+      className={`overlay-shared-surface relative flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
       data-testid="expanded-overlay"
     >
       {expandedContent}
+      {subagentSheetNode}
     </motion.div>
   );
 }
@@ -442,7 +482,7 @@ export function ChatAppFullscreenPanel({
         )}
       </div>
 
-      <div className="border-t border-border px-4 py-2">
+      <div className="w-full border-t border-border" data-testid="fullscreen-chat-input-shell">
         <div className="w-full" data-testid="fullscreen-chat-input-container">
           <AnimatePresence mode="wait">
             {pendingPlan ? (

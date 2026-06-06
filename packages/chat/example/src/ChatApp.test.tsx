@@ -44,10 +44,35 @@ vi.mock("@viben/chat", async () => {
       React.createElement("span", { "data-testid": "message-list-count" }, String((props.messages as unknown[] | undefined)?.length ?? 0)),
       React.createElement("span", { "data-testid": "message-list-streaming" }, String(props.isStreaming)),
       React.createElement("span", { "data-testid": "message-list-updates" }, String(Object.keys((props.messageUpdates as Record<string, unknown> | undefined) ?? {}).length)),
-      React.createElement("span", { "data-testid": "message-list-width" }, String(props.maxMessageWidth))
+      React.createElement("span", { "data-testid": "message-list-width" }, String(props.maxMessageWidth)),
+      React.createElement("span", { "data-testid": "message-list-has-expand-subagent" }, String(typeof props.onExpandSubagent === "function")),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => (props.onExpandSubagent as ((title: string, type: string, messages: unknown[], context: unknown) => void) | undefined)?.(
+            "Demo subagent",
+            "explorer",
+            [{ id: "sub-1", type: "text", content: "subagent detail" }],
+            { toolUseId: "tool-1" }
+          ),
+        },
+        "Open subagent"
+      )
     )),
     PlanApproval: () => React.createElement("div", { "data-testid": "plan-approval" }, "PlanApproval"),
     QuestionInput: () => React.createElement("div", { "data-testid": "question-input" }, "QuestionInput"),
+    SubagentSheet: (props: Record<string, unknown>) => props.open
+      ? React.createElement(
+        "div",
+        {
+          "data-testid": "subagent-sheet",
+          "data-contained": String(props.contained),
+          className: String(props.className ?? ""),
+        },
+        String(props.title)
+      )
+      : null,
   };
 });
 
@@ -283,6 +308,7 @@ describe("ChatApp", () => {
   });
 
   test("expanded message list uses the same reusable message panel as fullscreen", () => {
+    const onExpandSubagent = vi.fn();
     render(
       <ChatApp
         mode="expanded"
@@ -297,6 +323,7 @@ describe("ChatApp", () => {
         ]}
         messageUpdates={{ "read-1": { content: "updated" } }}
         isStreaming
+        onExpandSubagent={onExpandSubagent}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -306,7 +333,17 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("message-list-count")).toHaveTextContent("1");
     expect(screen.getByTestId("message-list-streaming")).toHaveTextContent("true");
     expect(screen.getByTestId("message-list-updates")).toHaveTextContent("1");
+    expect(screen.getByTestId("message-list-has-expand-subagent")).toHaveTextContent("true");
     expect(screen.queryByText("Read is running...")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open subagent" }));
+
+    expect(onExpandSubagent).toHaveBeenCalledWith(
+      "Demo subagent",
+      "explorer",
+      [{ id: "sub-1", type: "text", content: "subagent detail" }],
+      { toolUseId: "tool-1" }
+    );
   });
 
   test("compact summary describes active tools with context", () => {
@@ -745,6 +782,52 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("custom-fullscreen-panel")).toBeInTheDocument();
   });
 
+  test("expanded mode renders subagent sheet inside the floating panel", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        subagentSheet={{
+          open: true,
+          title: "Demo subagent",
+          subagentType: "explorer",
+          messages: [{ id: "sub-1", type: "text", content: "subagent detail" }],
+          onClose: () => {},
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("subagent-sheet")).toHaveAttribute("data-contained", "true");
+    expect(screen.getByTestId("subagent-sheet")).toHaveClass("w-[min(420px,85%)]");
+    expect(screen.getByTestId("expanded-overlay")).toContainElement(screen.getByTestId("subagent-sheet"));
+  });
+
+  test("full mode renders subagent sheet inside the fullscreen panel", () => {
+    render(
+      <ChatApp
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        subagentSheet={{
+          open: true,
+          title: "Demo subagent",
+          messages: [{ id: "sub-1", type: "text", content: "subagent detail" }],
+          onClose: () => {},
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("subagent-sheet")).toHaveAttribute("data-contained", "true");
+    expect(screen.getByTestId("full-overlay")).toContainElement(screen.getByTestId("subagent-sheet"));
+  });
+
   test("fullscreen mode reuses the expanded header controls", () => {
     render(
       <ChatApp
@@ -808,6 +891,9 @@ describe("ChatAppFullscreenPanel", () => {
       />
     );
 
+    expect(screen.getByTestId("fullscreen-chat-input-shell")).toHaveClass("w-full");
+    expect(screen.getByTestId("fullscreen-chat-input-shell")).not.toHaveClass("px-4");
+    expect(screen.getByTestId("fullscreen-chat-input-shell")).not.toHaveClass("py-2");
     expect(screen.getByTestId("fullscreen-chat-input-container")).toHaveClass("w-full");
     expect(screen.getByTestId("fullscreen-chat-input-container")).not.toHaveClass("max-w-[760px]");
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
