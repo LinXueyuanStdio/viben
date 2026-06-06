@@ -1,3 +1,5 @@
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
 export type JsonRpcId = string | number | null;
 
 export interface JsonRpcRequest {
@@ -174,16 +176,6 @@ export type ElicitationResponse =
   | { action: { action: "accept"; content?: Record<string, ElicitationContentValue> | null } }
   | { action: { action: "decline" } }
   | { action: { action: "cancel" } };
-
-export type CallToolContentBlock =
-  | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
-
-export interface CallToolResult {
-  content: CallToolContentBlock[];
-  isError?: boolean;
-  _meta?: Record<string, unknown>;
-}
 
 export interface AgentConfigPayload {
   executor_type?: string;

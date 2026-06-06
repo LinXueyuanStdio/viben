@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@viben/chat": "workspace:*",
     "@viben/ui": "workspace:*",
     "framer-motion": "^12.0.0",

@@ -2334,7 +2334,7 @@ function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActio
       action: detail,
       payload,
       sessionId: request.sessionId,
-      toolUseId: request.toolUseId,
+      toolCallId: request.toolCallId,
     },
   };
 }
@@ -2353,7 +2353,7 @@ function builtinListActionsDetail() {
 function runLocalGuiExecute(actionName: string, actions: GuiActionDefinition[]): ClientToolCall {
   const request: ClientToolExecutionRequest = {
     sessionId: "local-preview-session",
-    toolCallId: `local-${Date.now()}`,
+    toolCallId: `local-preview-${globalThis.crypto.randomUUID()}`,
     toolName: "GUI_execute",
     input: {
       action: actionName,
