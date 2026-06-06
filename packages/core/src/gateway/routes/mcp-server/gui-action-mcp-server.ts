@@ -72,8 +72,8 @@ export function registerGuiActionMcpServerRoutes(
   const createServer = options.createServer ?? ((sessionId: string) =>
     createGuiActionMcpServer({
       sessionId,
-      requestClientTool: ({ sessionId: sid, toolName, input, toolUseId }) =>
-        acpSessionManager.requestClientTool(sid, toolName, input, toolUseId),
+      requestClientTool: ({ sessionId: sid, toolName, input, toolCallId }) =>
+        acpSessionManager.requestClientTool(sid, toolName, input, toolCallId),
     }));
   const createTransport = options.createTransport ?? ((pendingSessionId: string) =>
     new StreamableHTTPServerTransport({

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -14,7 +15,7 @@ export interface GuiActionMcpServerOptions {
 
 export interface GuiActionClientToolRequest {
   sessionId: string;
-  toolCallId?: string;
+  toolCallId: string;
   toolName: string;
   input: {
     action?: string;
@@ -49,9 +50,11 @@ export function createGuiActionMcpServer(options: GuiActionMcpServerOptions = {}
       }
 
       const toolName = "mcp__gui_action__GUI_execute";
+      const toolCallId = `gui-${randomUUID()}`;
       if (options.requestClientTool) {
         return await options.requestClientTool({
           sessionId,
+          toolCallId,
           toolName,
           input,
         });
@@ -62,6 +65,7 @@ export function createGuiActionMcpServer(options: GuiActionMcpServerOptions = {}
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId,
+          tool_call_id: toolCallId,
           tool_name: toolName,
           input,
         }),
