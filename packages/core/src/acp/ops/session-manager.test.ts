@@ -100,12 +100,47 @@ class InterruptibleBackendSession implements AcpBackendSession {
   async close(): Promise<void> {}
 }
 
+class HangingInterruptBackendSession implements AcpBackendSession {
+  readonly prompts: PromptRequest[] = [];
+  cancelCount = 0;
+  releaseCurrentPrompt: (() => void) | undefined;
+
+  constructor(readonly backendSessionId = "backend-session") {}
+
+  async prompt(request: PromptRequest): Promise<PromptResponse> {
+    this.prompts.push(request);
+    if (this.prompts.length > 1) {
+      return { stopReason: "end_turn" };
+    }
+    await new Promise<void>((resolve) => {
+      this.releaseCurrentPrompt = resolve;
+    });
+    return { stopReason: "cancelled" };
+  }
+
+  async cancel(): Promise<void> {
+    this.cancelCount += 1;
+  }
+
+  async close(): Promise<void> {}
+}
+
 class InterruptibleBackendAdapter implements AcpBackendAdapter {
   readonly id = "interruptible";
   backendSession?: InterruptibleBackendSession;
 
   async start(_context: AcpBackendStartContext): Promise<AcpBackendSession> {
     this.backendSession = new InterruptibleBackendSession();
+    return this.backendSession;
+  }
+}
+
+class HangingInterruptBackendAdapter implements AcpBackendAdapter {
+  readonly id = "hanging-interruptible";
+  backendSession?: HangingInterruptBackendSession;
+
+  async start(_context: AcpBackendStartContext): Promise<AcpBackendSession> {
+    this.backendSession = new HangingInterruptBackendSession();
     return this.backendSession;
   }
 }
@@ -497,6 +532,126 @@ describe("AcpSessionManager", () => {
       expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: second.promptId }),
     ]);
   });
+
+  it("returns from interrupt without waiting for the active prompt to finish", async () => {
+    const adapter = new HangingInterruptBackendAdapter();
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      createConnection()
+    );
+
+    const runningPrompt = manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "initial prompt" }],
+    });
+    await waitFor(() => adapter.backendSession?.prompts.length === 1);
+    const queued = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "resume after interrupt" }],
+    });
+
+    const result = await Promise.race([
+      manager.interruptSession({ sessionId: session.sessionId }),
+      wait(25).then(() => "timed-out" as const),
+    ]);
+
+    expect(result).toEqual({
+      interrupted: true,
+      resumed: true,
+      promptIds: [queued.promptId],
+    });
+    expect(adapter.backendSession?.cancelCount).toBe(1);
+
+    adapter.backendSession?.releaseCurrentPrompt?.();
+    await expect(runningPrompt).resolves.toEqual({ stopReason: "cancelled" });
+  });
+
+  it("keeps interrupt steer prompts queued until the resume prompt starts", async () => {
+    const adapter = new HangingInterruptBackendAdapter();
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    const runningPrompt = manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "initial prompt" }],
+    });
+    await waitFor(() => adapter.backendSession?.prompts.length === 1);
+    const queued = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "resume after active prompt exits" }],
+    });
+
+    await manager.interruptSession({ sessionId: session.sessionId });
+
+    const beforeRelease = await manager.viewSteerPrompt({ sessionId: session.sessionId, promptId: queued.promptId });
+    if (!("prompt" in beforeRelease)) {
+      throw new Error("Expected single steer prompt view");
+    }
+    expect(beforeRelease.prompt.status).toBe("queued");
+    expect(connection.updates).toEqual([]);
+
+    adapter.backendSession?.releaseCurrentPrompt?.();
+    await expect(runningPrompt).resolves.toEqual({ stopReason: "cancelled" });
+    await waitFor(() => adapter.backendSession?.prompts.length === 2);
+
+    const afterRelease = await manager.viewSteerPrompt({ sessionId: session.sessionId, promptId: queued.promptId });
+    if (!("prompt" in afterRelease)) {
+      throw new Error("Expected single steer prompt view");
+    }
+    expect(afterRelease.prompt.status).toBe("consumed");
+    expect(connection.updates.map((notification) => notification.update)).toEqual([
+      expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: queued.promptId }),
+    ]);
+  });
+
+  it("runs an interrupt resume prompt before earlier queued normal prompts", async () => {
+    const adapter = new InterruptibleBackendAdapter();
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      createConnection()
+    );
+
+    const runningPrompt = manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "initial prompt" }],
+    });
+    await waitFor(() => adapter.backendSession?.prompts.length === 1);
+    const normalPrompt = manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "normal queued prompt" }],
+    });
+    const queued = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "interrupt resume prompt" }],
+    });
+
+    await manager.interruptSession({ sessionId: session.sessionId });
+    await expect(runningPrompt).resolves.toEqual({ stopReason: "cancelled" });
+    await expect(normalPrompt).resolves.toEqual({ stopReason: "end_turn" });
+
+    expect(adapter.backendSession?.prompts.map((request) => request.prompt)).toEqual([
+      [{ type: "text", text: "initial prompt" }],
+      [{ type: "text", text: "interrupt resume prompt" }],
+      [{ type: "text", text: "normal queued prompt" }],
+    ]);
+    const viewed = await manager.viewSteerPrompt({ sessionId: session.sessionId, promptId: queued.promptId });
+    if (!("prompt" in viewed)) {
+      throw new Error("Expected single steer prompt view");
+    }
+    expect(viewed.prompt.status).toBe("consumed");
+  });
 });
 
 async function waitFor(predicate: () => boolean): Promise<void> {
@@ -505,4 +660,8 @@ async function waitFor(predicate: () => boolean): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   throw new Error("Timed out waiting for condition");
+}
+
+async function wait(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
 }
