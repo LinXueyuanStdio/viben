@@ -662,6 +662,10 @@ function MessageItemImpl({
   onExpandSubagent,
   isLatestThinking,
   renderSummary,
+  userAvatar,
+  assistantAvatar,
+  onUserAvatarClick,
+  onAssistantAvatarClick,
 }: MessageItemProps) {
   const { t } = useTranslation();
 
@@ -672,9 +676,12 @@ function MessageItemImpl({
   if (message.type === "user") {
     content = (
       <UserMessage
+        message={message}
         content={message.content || ""}
         attachments={message.attachments}
         skipAnimation={isStatic}
+        avatar={userAvatar}
+        onAvatarClick={onUserAvatarClick}
       />
     );
   }
@@ -771,11 +778,14 @@ function MessageItemImpl({
   else {
     content = (
       <AssistantMessage
+        message={message}
         content={message.content || ""}
         isResult={message.type === "result"}
         isStreaming={isStreaming}
         onLinkClick={onLinkClick}
         skipAnimation={isStatic}
+        avatar={assistantAvatar}
+        onAvatarClick={onAssistantAvatarClick}
       />
     );
   }
@@ -817,6 +827,10 @@ export function areMessageItemPropsEqual(
   if (prev.isLatestThinking !== next.isLatestThinking) return false;
   if (prev.renderSummary !== next.renderSummary) return false;
   if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
+  if (prev.userAvatar !== next.userAvatar) return false;
+  if (prev.assistantAvatar !== next.assistantAvatar) return false;
+  if (prev.onUserAvatarClick !== next.onUserAvatarClick) return false;
+  if (prev.onAssistantAvatarClick !== next.onAssistantAvatarClick) return false;
 
   // If both are static, safe to skip re-render — content is frozen
   if (prev.isStatic && next.isStatic) return true;
