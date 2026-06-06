@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
+import { LayoutGroup } from "framer-motion"
 import {
-  ChatInput,
-  MessageList,
   PlanApproval,
   QuestionInput,
   EmojiPicker,
@@ -48,8 +46,8 @@ import {
   type ParseStats,
   type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
-import { OverlayDemo } from "./overlay-demo"
-import type { OverlayMode, OverlaySessionItem } from "./overlay-demo"
+import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
+import type { OverlayMode, OverlaySessionItem } from "./ChatApp"
 
 // ============================================================================
 // Agent Busy Detection
@@ -775,121 +773,72 @@ export function App() {
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <MessageList
-                  ref={messageListRef}
-                  messages={player.messages}
-                  messageUpdates={player.messageUpdates}
-                  isStreaming={player.isStreaming}
-                  pendingPlan={player.pendingPlan}
-                  welcomeTitle="@viben/chat Session Player"
-                  welcomeDescription="Press Play to replay the demo session, or load a .jsonl file."
-                  maxMessageWidth="760px"
-                  onExpandSubagent={handleExpandSubagent}
-                />
-                {/* Inline Command Queue (shows when items are queued) */}
-                {commandQueue.items.length > 0 && (
-                  <div className="mx-auto w-full max-w-[760px] px-4 pb-2">
-                    <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <div className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-                      <span>Will send when agent finishes...</span>
-                    </div>
-                    <CommandQueuePanel
-                      items={commandQueue.items}
-                      isPaused={commandQueue.isPaused}
-                      onRemove={commandQueue.remove}
-                      onClear={commandQueue.clear}
-                      onPause={commandQueue.pause}
-                      onResume={commandQueue.resume}
-                    />
-                  </div>
-                )}
-              </div>
+              <ChatAppFullscreenPanel
+                messages={player.messages}
+                messageUpdates={player.messageUpdates}
+                isStreaming={player.isStreaming}
+                pendingPlan={player.pendingPlan}
+                pendingApproval={player.pendingApproval}
+                pendingQuestion={player.pendingQuestion}
+                commandQueueItems={commandQueue.items}
+                commandQueuePaused={commandQueue.isPaused}
+                messageListRef={messageListRef}
+                onExpandSubagent={handleExpandSubagent}
+                onApprovePlan={() => {
+                  console.log("Plan approved")
+                  player.resolvePlan(true)
+                }}
+                onRejectPlan={() => {
+                  console.log("Plan rejected")
+                  player.resolvePlan(false)
+                }}
+                onApprovalDecision={(decision, feedback) => {
+                  console.log("Exec decision:", decision, "Feedback:", feedback)
+                  player.resolveApproval(decision, feedback)
+                }}
+                onAnswerQuestions={(answers) => {
+                  console.log("Answers:", answers)
+                  player.resolveQuestion(answers)
+                }}
+                onCommandQueueRemove={commandQueue.remove}
+                onCommandQueueClear={commandQueue.clear}
+                onCommandQueuePause={commandQueue.pause}
+                onCommandQueueResume={commandQueue.resume}
+                inputProps={{
+                  value: chatInputValue,
+                  onValueChange: setChatInputValue,
+                  onRecallQueuedInput: commandQueueInputRecall.onRecallQueuedInput,
+                  onSend: handleSend,
+                  onCancel: player.pause,
+                  isLoading: player.isStreaming,
+                  allowSendWhileLoading: true,
+                  placeholder: player.isStreaming ? "Type to queue a message..." : "Type a message...",
+                  layoutVariant: "expanded",
+                  showTopToolbar: true,
+                  showConfigBar: true,
+                  renderEmojiPicker: (props) => <EmojiPicker {...props} />,
+                  hideExecutorSelector: true,
+                  agents: demoAgents.map(a => ({ ...a, model: undefined })),
+                  selectedAgentId,
+                  onAgentChange: setSelectedAgentId,
+                  models: demoModels,
+                  selectedModelId,
+                  onModelChange: setSelectedModelId,
+                  tools,
+                  onToggleTool: handleToggleTool,
+                  enabledToolsCount: tools.filter(t => t.enabled).length,
+                  skills,
+                  onToggleSkill: handleToggleSkill,
+                  enabledSkillsCount: skills.filter(s => s.enabled).length,
+                  contextTokens: 20000,
+                  contextBreakdown: demoContextBreakdown,
+                  slashCommands: demoSlashCommands,
+                  onSlashCommand: handleSlashCommand,
+                }}
+              />
             )}
           </div>
-
-          {/* Bottom Input Area — animated transition between ChatInput / ExecApproval / QuestionInput */}
-          <div className="border-t border-border px-4 py-2">
-            <div className="mx-auto max-w-[760px]">
-              <AnimatePresence mode="wait">
-                {player.pendingPlan ? (
-                  <PlanApproval
-                    key="plan"
-                    plan={player.pendingPlan}
-                    isPending
-                    onApprove={() => {
-                      console.log("Plan approved")
-                      player.resolvePlan(true)
-                    }}
-                    onReject={() => {
-                      console.log("Plan rejected")
-                      player.resolvePlan(false)
-                    }}
-                  />
-                ) : player.pendingApproval ? (
-                  <ExecApproval
-                    key="approval"
-                    approval={player.pendingApproval}
-                    onDecision={(decision, feedback) => {
-                      console.log("Exec decision:", decision, "Feedback:", feedback)
-                      player.resolveApproval(decision, feedback)
-                    }}
-                    enableKeyboard
-                  />
-                ) : player.pendingQuestion ? (
-                  <QuestionInput
-                    key="question"
-                    questions={player.pendingQuestion}
-                    onSubmit={(answers) => {
-                      console.log("Answers:", answers)
-                      player.resolveQuestion(answers)
-                    }}
-                  />
-                ) : (
-                  <motion.div
-                    key="input"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    <ChatInput
-                      value={chatInputValue}
-                      onValueChange={setChatInputValue}
-                      onRecallQueuedInput={commandQueueInputRecall.onRecallQueuedInput}
-                      onSend={handleSend}
-                      onCancel={player.pause}
-                      isLoading={player.isStreaming}
-                      allowSendWhileLoading
-                      placeholder={player.isStreaming ? "Type to queue a message..." : "Type a message..."}
-                      layoutVariant="expanded"
-                      showTopToolbar
-                      showConfigBar
-                      renderEmojiPicker={(props) => <EmojiPicker {...props} />}
-                      hideExecutorSelector
-                      agents={demoAgents.map(a => ({ ...a, model: undefined }))}
-                      selectedAgentId={selectedAgentId}
-                      onAgentChange={setSelectedAgentId}
-                      models={demoModels}
-                      selectedModelId={selectedModelId}
-                      onModelChange={setSelectedModelId}
-                      tools={tools}
-                      onToggleTool={handleToggleTool}
-                      enabledToolsCount={tools.filter(t => t.enabled).length}
-                      skills={skills}
-                      onToggleSkill={handleToggleSkill}
-                      enabledSkillsCount={skills.filter(s => s.enabled).length}
-                      contextTokens={20000}
-                      contextBreakdown={demoContextBreakdown}
-                      slashCommands={demoSlashCommands}
-                      onSlashCommand={handleSlashCommand}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-          <OverlayDemo
+          <ChatApp
             contained
             mode={overlayMode}
             messages={player.messages}
@@ -907,6 +856,71 @@ export function App() {
             onModeChange={setOverlayMode}
             onSend={handleSend}
             onCancel={player.pause}
+            fullscreenContent={(
+              <ChatAppFullscreenPanel
+                messages={player.messages}
+                messageUpdates={player.messageUpdates}
+                isStreaming={player.isStreaming}
+                pendingPlan={player.pendingPlan}
+                pendingApproval={player.pendingApproval}
+                pendingQuestion={player.pendingQuestion}
+                commandQueueItems={commandQueue.items}
+                commandQueuePaused={commandQueue.isPaused}
+                messageListRef={messageListRef}
+                onExpandSubagent={handleExpandSubagent}
+                onApprovePlan={() => {
+                  console.log("Plan approved")
+                  player.resolvePlan(true)
+                }}
+                onRejectPlan={() => {
+                  console.log("Plan rejected")
+                  player.resolvePlan(false)
+                }}
+                onApprovalDecision={(decision, feedback) => {
+                  console.log("Exec decision:", decision, "Feedback:", feedback)
+                  player.resolveApproval(decision, feedback)
+                }}
+                onAnswerQuestions={(answers) => {
+                  console.log("Answers:", answers)
+                  player.resolveQuestion(answers)
+                }}
+                onCommandQueueRemove={commandQueue.remove}
+                onCommandQueueClear={commandQueue.clear}
+                onCommandQueuePause={commandQueue.pause}
+                onCommandQueueResume={commandQueue.resume}
+                inputProps={{
+                  value: chatInputValue,
+                  onValueChange: setChatInputValue,
+                  onRecallQueuedInput: commandQueueInputRecall.onRecallQueuedInput,
+                  onSend: handleSend,
+                  onCancel: player.pause,
+                  isLoading: player.isStreaming,
+                  allowSendWhileLoading: true,
+                  placeholder: player.isStreaming ? "Type to queue a message..." : "Type a message...",
+                  layoutVariant: "expanded",
+                  showTopToolbar: true,
+                  showConfigBar: true,
+                  renderEmojiPicker: (props) => <EmojiPicker {...props} />,
+                  hideExecutorSelector: true,
+                  agents: demoAgents.map(a => ({ ...a, model: undefined })),
+                  selectedAgentId,
+                  onAgentChange: setSelectedAgentId,
+                  models: demoModels,
+                  selectedModelId,
+                  onModelChange: setSelectedModelId,
+                  tools,
+                  onToggleTool: handleToggleTool,
+                  enabledToolsCount: tools.filter(t => t.enabled).length,
+                  skills,
+                  onToggleSkill: handleToggleSkill,
+                  enabledSkillsCount: skills.filter(s => s.enabled).length,
+                  contextTokens: 20000,
+                  contextBreakdown: demoContextBreakdown,
+                  slashCommands: demoSlashCommands,
+                  onSlashCommand: handleSlashCommand,
+                }}
+              />
+            )}
           />
         </div>
       </div>
