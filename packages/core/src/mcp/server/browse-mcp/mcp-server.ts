@@ -24,6 +24,8 @@ export interface BrowseMcpServerOptions extends BrowseClientOptions {
   client?: BrowseClient;
 }
 
+type StructuredContent = NonNullable<CallToolResult["structuredContent"]>;
+
 export function createBrowseMcpServer(options: BrowseMcpServerOptions = {}): McpServer {
   const client = options.client ?? new BrowseClient(options);
   const server = new McpServer({
@@ -39,8 +41,17 @@ export function createBrowseMcpServer(options: BrowseMcpServerOptions = {}): Mcp
     },
     async (args): Promise<CallToolResult> => {
       const input = args as { query_list?: BrowseSearchQueryInput[] };
-      const result = await client.browseSearch(input.query_list ?? []);
-      return textResult(result, result.startsWith("Error searching content"));
+      const queryList = input.query_list ?? [];
+      const content = await client.browseSearch(queryList);
+      return textResult(
+        content,
+        content.startsWith("Error searching content"),
+        {
+          content,
+          count: content === "No content found." || content.startsWith("Error searching content") ? 0 : content.split("\n\n").length,
+          queries: queryList,
+        }
+      );
     }
   );
 
@@ -52,8 +63,18 @@ export function createBrowseMcpServer(options: BrowseMcpServerOptions = {}): Mcp
     },
     async (args): Promise<CallToolResult> => {
       const input = args as { query_list?: BrowseDownloadQueryInput[] };
-      const result: string[] = await client.browseDownload(input.query_list ?? []);
-      return textResult(JSON.stringify(result, null, 2), result.some((item) => item.startsWith("Error")));
+      const queryList = input.query_list ?? [];
+      const paths: string[] = await client.browseDownload(queryList);
+      const hasError = paths.some((item) => item.startsWith("Error"));
+      return textResult(
+        hasError ? "One or more downloads failed." : `Downloaded ${paths.length} content item${paths.length === 1 ? "" : "s"}.`,
+        hasError,
+        {
+          paths,
+          count: paths.length,
+          queries: queryList,
+        }
+      );
     }
   );
 
@@ -69,17 +90,26 @@ export function createBrowseMcpServer(options: BrowseMcpServerOptions = {}): Mcp
     },
     async (args): Promise<CallToolResult> => {
       const input = args as BrowseReadQueryInput;
-      const result = await client.browseRead(input);
-      return textResult(result, result.startsWith("Error"));
+      const text = await client.browseRead(input);
+      return textResult(
+        text,
+        text.startsWith("Error"),
+        {
+          text,
+          length: text.length,
+          query: input,
+        }
+      );
     }
   );
 
   return server;
 }
 
-function textResult(text: string, isError = false): CallToolResult {
+function textResult(text: string, isError = false, structuredContent?: StructuredContent): CallToolResult {
   return {
     content: [{ type: "text", text }],
+    structuredContent,
     isError: isError || undefined,
   };
 }

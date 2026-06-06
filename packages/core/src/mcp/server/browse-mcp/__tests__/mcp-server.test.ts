@@ -1,5 +1,5 @@
 import { BrowseClient, BrowseSourceRegistry, Paper, type PaperSource, type SearchOptions } from "@viben/browse-sdk";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResultSchema, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it } from "vitest";
 import {
   BROWSE_DOWNLOAD_TOOL_NAME,
@@ -84,20 +84,42 @@ describe("browse MCP server", () => {
     const search = await getTool(server, BROWSE_SEARCH_TOOL_NAME).handler({
       query_list: [{ searcher: "arxiv", query: "agents", max_results: 2 }],
     });
+    expect(CallToolResultSchema.safeParse(search).success).toBe(true);
     expect(search.content[0]).toMatchObject({ type: "text" });
     expect(search.content[0]?.type === "text" ? search.content[0].text : "").toContain("Paper ID: 'agents:2'");
+    expect(search.structuredContent).toEqual({
+      content: "Source: 'arxiv'\nPaper ID: 'agents:2'\nTitle: Result\nPublished Date: 2024-01-01",
+      count: 1,
+      queries: [{ searcher: "arxiv", query: "agents", max_results: 2 }],
+    });
 
     const download = await getTool(server, BROWSE_DOWNLOAD_TOOL_NAME).handler({
       query_list: [{ searcher: "arxiv", content_id: "2106.12345" }],
     });
-    expect(download.content[0]?.type === "text" ? download.content[0].text : "").toContain("/tmp/downloads/2106.12345.pdf");
+    expect(CallToolResultSchema.safeParse(download).success).toBe(true);
+    expect(download.content[0]?.type === "text" ? download.content[0].text : "").toBe("Downloaded 1 content item.");
+    expect(download.structuredContent).toEqual({
+      paths: ["/tmp/downloads/2106.12345.pdf"],
+      count: 1,
+      queries: [{ searcher: "arxiv", content_id: "2106.12345" }],
+    });
 
     const read = await getTool(server, BROWSE_READ_TOOL_NAME).handler({
       searcher: "arxiv",
       content_id: "2106.12345",
       page: 1,
     });
+    expect(CallToolResultSchema.safeParse(read).success).toBe(true);
     expect(read.content[0]?.type === "text" ? read.content[0].text : "").toBe("read:2106.12345");
+    expect(read.structuredContent).toEqual({
+      text: "read:2106.12345",
+      length: 15,
+      query: {
+        searcher: "arxiv",
+        content_id: "2106.12345",
+        page: 1,
+      },
+    });
   });
 });
 
