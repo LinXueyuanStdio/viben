@@ -18,8 +18,8 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { ChatInput, CommandQueuePanel, ExecApproval, MessageList, QuestionInput } from "@viben/chat";
-import type { AgentMessage, CommandQueueItem, PendingQuestion, SlashCommand, SlashCommandSelection } from "@viben/chat";
+import { ChatInput, CommandQueuePanel, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
+import type { AgentMessage, Artifact, CommandQueueItem, ExpandSubagentHandler, PendingQuestion, QueuedInputRecallItem, SlashCommand, SlashCommandSelection, TaskPlan } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -42,8 +42,8 @@ import {
   type TrafficEntry,
 } from "./acp-client";
 import {
+  acpSessionUpdateToStreamingText,
   acpSessionUpdateToUiSteps,
-  applyAcpUiStep,
   clientToolCallToUiSteps,
   clientToolRequestedToUiSteps,
   elicitationRequestToPendingQuestion,
@@ -57,6 +57,20 @@ import {
   type AcpUiStep,
   type ElicitationFormField,
 } from "./acp-chat-adapter";
+import {
+  appendSessionStreamingText,
+  applyQueuedUiStep,
+  createUiSession,
+  drainSessionUiStepQueue,
+  enqueueUiSteps,
+  flushSessionStreamingText,
+  resolveLiveSubagentMessages,
+  resolveSessionApproval,
+  resolveSessionQuestion,
+  updateSession,
+  type SubagentSheetState,
+  type UiSessionState,
+} from "./acp-chat-state";
 
 interface GuiActionDefinition {
   id: string;
@@ -65,25 +79,6 @@ interface GuiActionDefinition {
   inputSchemaText: string;
   responseText: string;
   fail: boolean;
-}
-
-interface UiSessionState {
-  id: string;
-  title: string;
-  cwd: string;
-  createdAt: string;
-  lastActiveAt: string;
-  sessionResult: unknown;
-  promptResult: unknown;
-  uiMessages: AgentMessage[];
-  uiSteps: AcpUiStep[];
-  uiStepQueue: AcpUiStep[];
-  pendingApproval: PendingExecApproval | null;
-  pendingQuestion: PendingQuestion | null;
-  slashCommands: SlashCommand[];
-  clientToolCalls: ClientToolCall[];
-  permissionRequests: PermissionRequestLog[];
-  elicitationRequests: ElicitationRequestLog[];
 }
 
 interface TrafficFilters {
@@ -111,6 +106,11 @@ interface ElicitationDialogState {
   formFields: ElicitationFormField[];
   answersText: string;
   resolve: (result: ElicitationResponse) => void;
+}
+
+interface ArtifactDialogState {
+  artifact: Artifact;
+  message?: AgentMessage;
 }
 
 const BACKEND_OPTIONS = [
@@ -171,8 +171,8 @@ export function App() {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [steerPromptText, setSteerPromptText] = useState("Use the latest user instruction as steering context for the current turn.");
   const [steerPromptId, setSteerPromptId] = useState("");
-  const [steerQueueItems, setSteerQueueItems] = useState<CommandQueueItem[]>([]);
-  const [steerQueuePaused, setSteerQueuePaused] = useState(false);
+  const [steerQueuesBySessionId, setSteerQueuesBySessionId] = useState<Record<string, CommandQueueItem[]>>({});
+  const [steerQueuePausedBySessionId, setSteerQueuePausedBySessionId] = useState<Record<string, boolean>>({});
   const [steerResult, setSteerResult] = useState<unknown>(null);
   const [viewMode, setViewMode] = useState<"chat" | "inspector">("chat");
   const [status, setStatus] = useState<ConnectionStatus>("idle");
@@ -192,6 +192,8 @@ export function App() {
   const [toolDialog, setToolDialog] = useState<ToolApprovalDialogState | null>(null);
   const [permissionDialog, setPermissionDialog] = useState<PermissionDialogState | null>(null);
   const [elicitationDialog, setElicitationDialog] = useState<ElicitationDialogState | null>(null);
+  const [subagentSheet, setSubagentSheet] = useState<SubagentSheetState | null>(null);
+  const [artifactDialog, setArtifactDialog] = useState<ArtifactDialogState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<AcpWebSocketClient | null>(null);
   const actionsRef = useRef(actions);
@@ -203,14 +205,26 @@ export function App() {
   const activeSession = activeSessionId ? sessionsById[activeSessionId] : null;
   const sessionId = activeSession?.id ?? null;
   const messages = activeSession?.uiMessages ?? [];
+  const streamingText = activeSession?.streamingText ?? null;
+  const messageUpdates = activeSession?.messageUpdates ?? {};
   const clientToolCalls = activeSession?.clientToolCalls ?? [];
   const permissionRequests = activeSession?.permissionRequests ?? [];
   const elicitationRequests = activeSession?.elicitationRequests ?? [];
   const pendingApproval = activeSession?.pendingApproval ?? null;
   const pendingQuestion = activeSession?.pendingQuestion ?? null;
+  const pendingPlan = activeSession?.pendingPlan ?? null;
+  const artifacts = activeSession?.artifacts ?? [];
   const slashCommands = activeSession?.slashCommands ?? [];
   const sessionResult = activeSession?.sessionResult ?? null;
   const promptResult = activeSession?.promptResult ?? null;
+  const isTurnActive = Boolean(
+    activeSession?.promptInFlight ||
+    activeSession?.uiStepQueue.length ||
+    activeSession?.pendingApproval ||
+    activeSession?.pendingQuestion
+  );
+  const steerQueueItems = sessionId ? steerQueuesBySessionId[sessionId] ?? [] : [];
+  const steerQueuePaused = sessionId ? steerQueuePausedBySessionId[sessionId] ?? false : false;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
   const actionSummaries = useMemo(() => buildActionSummaries(actions), [actions]);
   const requestMcpServers = useMemo(() => parseJsonOrFallback(requestMcpServersText, []), [requestMcpServersText]);
@@ -222,13 +236,22 @@ export function App() {
 
   useEffect(() => {
     const sessionEntries = Object.values(sessionsById);
-    const drainable = sessionEntries.find((session) => !session.pendingApproval && !session.pendingQuestion && session.uiStepQueue.length > 0);
+    const drainable = sessionEntries.find((session) =>
+      !session.pendingApproval &&
+      !session.pendingQuestion &&
+      session.uiStepQueue.length > 0
+    );
     if (!drainable) return;
 
     const timer = window.setTimeout(() => {
       setSessionsById((current) => {
         const session = current[drainable.id];
-        if (!session || session.pendingApproval || session.pendingQuestion || session.uiStepQueue.length === 0) {
+        if (
+          !session ||
+          session.pendingApproval ||
+          session.pendingQuestion ||
+          session.uiStepQueue.length === 0
+        ) {
           return current;
         }
         const [step, ...rest] = session.uiStepQueue;
@@ -247,6 +270,11 @@ export function App() {
   }, []);
 
   const appendSessionUpdate = useCallback((notification: AcpSessionUpdate) => {
+    const text = acpSessionUpdateToStreamingText(notification);
+    if (text !== null) {
+      appendSessionStreamingText(setSessionsById, notification.sessionId, text);
+      return;
+    }
     enqueueUiSteps(setSessionsById, notification.sessionId, acpSessionUpdateToUiSteps(notification));
   }, []);
 
@@ -280,7 +308,10 @@ export function App() {
   const appendSteerPromptConsumed = useCallback((result: ConsumedSteerPromptResult & { sessionId: string }) => {
     setSteerResult(result);
     setSteerPromptId((current) => current || result.promptId);
-    setSteerQueueItems((current) => current.filter((item) => item.id !== result.promptId));
+    setSteerQueuesBySessionId((current) => ({
+      ...current,
+      [result.sessionId]: (current[result.sessionId] ?? []).filter((item) => item.id !== result.promptId),
+    }));
     enqueueUiSteps(
       setSessionsById,
       result.sessionId,
@@ -454,14 +485,26 @@ export function App() {
 
     setError(null);
     enqueueUiSteps(setSessionsById, sessionId, userPromptToUiSteps(text));
+    updateSession(setSessionsById, sessionId, (session) => ({
+      ...session,
+      promptInFlight: true,
+      promptResult: null,
+      lastActiveAt: new Date().toISOString(),
+    }));
     try {
       const result = await clientRef.current?.prompt(sessionId, text);
       updateSession(setSessionsById, sessionId, (session) => ({
-        ...session,
+        ...flushSessionStreamingText(drainSessionUiStepQueue(session), promptResultToSummaryMessages(result)),
+        promptInFlight: false,
         promptResult: result,
         lastActiveAt: new Date().toISOString(),
       }));
     } catch (promptError) {
+      updateSession(setSessionsById, sessionId, (session) => ({
+        ...flushSessionStreamingText(drainSessionUiStepQueue(session)),
+        promptInFlight: false,
+        lastActiveAt: new Date().toISOString(),
+      }));
       setError(promptError instanceof Error ? promptError.message : String(promptError));
     }
   }, [sessionId]);
@@ -502,26 +545,50 @@ export function App() {
     return null;
   }, [executorType, sessionId]);
 
+  const upsertSteerQueueItem = useCallback((targetSessionId: string, item: CommandQueueItem) => {
+    setSteerQueuesBySessionId((current) => ({
+      ...current,
+      [targetSessionId]: [
+        ...(current[targetSessionId] ?? []).filter((candidate) => candidate.id !== item.id),
+        item,
+      ],
+    }));
+  }, []);
+
+  const updateActiveSteerQueue = useCallback((updater: (items: CommandQueueItem[]) => CommandQueueItem[]) => {
+    if (!sessionId) return;
+    setSteerQueuesBySessionId((current) => ({
+      ...current,
+      [sessionId]: updater(current[sessionId] ?? []),
+    }));
+  }, [sessionId]);
+
+  const setActiveSteerQueuePaused = useCallback((paused: boolean) => {
+    if (!sessionId) return;
+    setSteerQueuePausedBySessionId((current) => ({
+      ...current,
+      [sessionId]: paused,
+    }));
+  }, [sessionId]);
+
   const sendSteerPrompt = useCallback(async () => {
+    const targetSessionId = sessionId;
+    if (!targetSessionId) return;
     const promptId = await sendSteerPromptText(steerPromptText);
     if (!promptId) return;
-    setSteerQueueItems((current) => [
-      ...current.filter((item) => item.id !== promptId),
-      { id: promptId, content: steerPromptText.trim(), createdAt: Date.now() },
-    ]);
+    upsertSteerQueueItem(targetSessionId, { id: promptId, content: steerPromptText.trim(), createdAt: Date.now() });
     setSteerPromptText("");
-  }, [sendSteerPromptText, steerPromptText]);
+  }, [sendSteerPromptText, sessionId, steerPromptText, upsertSteerQueueItem]);
 
   const handleSteerInputSend = useCallback(async (content: string) => {
+    const targetSessionId = sessionId;
+    if (!targetSessionId) return;
     const text = content.trim();
     if (!text) return;
     const promptId = await sendSteerPromptText(text);
     if (!promptId) return;
-    setSteerQueueItems((current) => [
-      ...current.filter((item) => item.id !== promptId),
-      { id: promptId, content: text, createdAt: Date.now() },
-    ]);
-  }, [sendSteerPromptText]);
+    upsertSteerQueueItem(targetSessionId, { id: promptId, content: text, createdAt: Date.now() });
+  }, [sendSteerPromptText, sessionId, upsertSteerQueueItem]);
 
   const cancelSteerPrompt = useCallback(async () => {
     if (!sessionId || !steerPromptId.trim()) return;
@@ -529,28 +596,63 @@ export function App() {
     try {
       const result = await clientRef.current?.cancelSteerPrompt(sessionId, steerPromptId.trim());
       setSteerResult(result ?? null);
-      setSteerQueueItems((current) => current.filter((item) => item.id !== steerPromptId.trim()));
+      updateActiveSteerQueue((current) => current.filter((item) => item.id !== steerPromptId.trim()));
     } catch (cancelError) {
       setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
     }
-  }, [sessionId, steerPromptId]);
+  }, [sessionId, steerPromptId, updateActiveSteerQueue]);
 
-  const recallSteerQueue = useCallback(async () => {
-    if (!sessionId || steerQueueItems.length === 0) return;
-    const recalledItems = steerQueueItems;
+  const cancelSteerQueueItems = useCallback(async (items: QueuedInputRecallItem[], reason: string) => {
+    if (!sessionId || items.length === 0) return;
+    const cancellableItems = items.filter(hasRecallItemId);
+    if (cancellableItems.length === 0) return;
     setError(null);
     try {
       const results = await Promise.all(
-        recalledItems.map((item) => clientRef.current?.cancelSteerPrompt(sessionId, item.id))
+        cancellableItems.map((item) => clientRef.current?.cancelSteerPrompt(sessionId, item.id))
       );
-      setSteerResult({ recalled: recalledItems.map((item) => item.id), cancelled: results });
-      setSteerQueueItems([]);
-      setSteerPromptText(recalledItems.map((item) => item.content).join("\n\n"));
+      setSteerResult({
+        action: reason,
+        cancelled: results,
+        promptIds: cancellableItems.map((item) => item.id),
+      });
+      updateActiveSteerQueue((current) => current.filter((item) => !cancellableItems.some((cancelled) => cancelled.id === item.id)));
+      if (cancellableItems.some((item) => item.id === steerPromptId)) {
+        setSteerPromptId("");
+      }
+    } catch (cancelError) {
+      setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
+    }
+  }, [sessionId, steerPromptId, updateActiveSteerQueue]);
+
+  const removeSteerQueueItem = useCallback((id: string) => {
+    const item = steerQueueItems.find((candidate) => candidate.id === id);
+    if (!item) return;
+    void cancelSteerQueueItems([item], "remove");
+  }, [cancelSteerQueueItems, steerQueueItems]);
+
+  const clearSteerQueue = useCallback(() => {
+    void cancelSteerQueueItems(steerQueueItems, "clear");
+  }, [cancelSteerQueueItems, steerQueueItems]);
+
+  const recallSteerQueue = useCallback(async (
+    items: QueuedInputRecallItem[] = steerQueueItems,
+    applyValue: (value: string) => void = setPrompt
+  ) => {
+    if (!sessionId || items.length === 0) return;
+    const recalledItems = items;
+    const recalledValue = recalledItems.map((item) => item.content.trim()).filter(Boolean).join("\n\n");
+    setError(null);
+    try {
+      await cancelSteerQueueItems(recalledItems, "recall");
+      if (recalledValue) {
+        applyValue(recalledValue);
+      }
       setSteerPromptId(recalledItems[0]?.id ?? "");
     } catch (recallError) {
       setError(recallError instanceof Error ? recallError.message : String(recallError));
     }
-  }, [sessionId, steerQueueItems]);
+  }, [cancelSteerQueueItems, sessionId, steerQueueItems]);
 
   const viewSteerPrompt = useCallback(async () => {
     if (!sessionId) return;
@@ -564,8 +666,45 @@ export function App() {
   }, [sessionId, steerPromptId]);
 
   const cancel = useCallback(() => {
-    if (sessionId) clientRef.current?.cancel(sessionId);
+    if (!sessionId) return;
+    clientRef.current?.cancel(sessionId);
+    updateSession(setSessionsById, sessionId, (session) => ({
+      ...session,
+      promptInFlight: false,
+      lastActiveAt: new Date().toISOString(),
+    }));
   }, [sessionId]);
+
+  const interrupt = useCallback(async () => {
+    if (!sessionId) return;
+    const pendingSteerText = prompt.trim();
+    if (isTurnActive && pendingSteerText) {
+      const promptId = await sendSteerPromptText(pendingSteerText);
+      if (promptId) {
+        upsertSteerQueueItem(sessionId, { id: promptId, content: pendingSteerText, createdAt: Date.now() });
+        setPrompt("");
+      }
+    }
+    clientRef.current?.interrupt(sessionId);
+    updateSession(setSessionsById, sessionId, (session) => ({
+      ...session,
+      promptInFlight: false,
+      lastActiveAt: new Date().toISOString(),
+    }));
+  }, [isTurnActive, prompt, sendSteerPromptText, sessionId, upsertSteerQueueItem]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !sessionId || !isTurnActive) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('[role="dialog"]')) return;
+      event.preventDefault();
+      void interrupt();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [interrupt, isTurnActive, sessionId]);
 
   const listSessions = useCallback(async () => {
     setError(null);
@@ -583,6 +722,16 @@ export function App() {
     try {
       await clientRef.current?.closeSession(sessionId);
       setSessionsById((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setSteerQueuesBySessionId((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setSteerQueuePausedBySessionId((current) => {
         const next = { ...current };
         delete next[sessionId];
         return next;
@@ -671,6 +820,45 @@ export function App() {
     resolveSessionQuestion(setSessionsById, dialog.request.sessionId);
     setElicitationDialog(null);
   }, [elicitationDialog]);
+
+  const handleApprovePlan = useCallback(() => {
+    if (!sessionId) return;
+    updateSession(setSessionsById, sessionId, (session) => ({
+      ...session,
+      pendingPlan: null,
+      uiMessages: session.uiMessages.map((message) =>
+        message.type === "plan" && message.plan
+          ? { ...message, plan: { ...message.plan, approvalStatus: "approved" } }
+          : message
+      ),
+    }));
+    void sendSteerPromptText("Plan approved. Continue.");
+  }, [sendSteerPromptText, sessionId]);
+
+  const handleRejectPlan = useCallback(() => {
+    if (!sessionId) return;
+    updateSession(setSessionsById, sessionId, (session) => ({
+      ...session,
+      pendingPlan: null,
+      uiMessages: session.uiMessages.map((message) =>
+        message.type === "plan" && message.plan
+          ? { ...message, plan: { ...message.plan, approvalStatus: "rejected" } }
+          : message
+      ),
+    }));
+    void sendSteerPromptText("Plan rejected. Stop and ask for revised instructions.");
+  }, [sendSteerPromptText, sessionId]);
+
+  const handleExpandSubagent = useCallback<ExpandSubagentHandler>((title, subagentType, subagentMessages, context) => {
+    setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
+  }, []);
+
+  const handleArtifactClick = useCallback((artifactId: string) => {
+    const artifact = artifacts.find((item) => item.id === artifactId);
+    if (!artifact) return;
+    const message = messages.find((item) => item.id === artifact.sourceMessageId);
+    setArtifactDialog({ artifact, message });
+  }, [artifacts, messages]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -798,27 +986,42 @@ export function App() {
             connected={connected}
             sessionId={sessionId}
             messages={messages}
+            streamingText={streamingText}
+            messageUpdates={messageUpdates}
+            pendingPlan={pendingPlan}
             pendingApproval={pendingApproval}
             pendingQuestion={pendingQuestion}
             slashCommands={slashCommands}
+            artifacts={artifacts}
+            error={error}
             steerQueueItems={steerQueueItems}
             steerQueuePaused={steerQueuePaused}
-            isStreaming={Boolean(activeSession?.uiStepQueue.length)}
+            isStreaming={isTurnActive}
             prompt={prompt}
             onPromptChange={setPrompt}
             onSendPrompt={(content) => void sendPromptText(content)}
-            onCancelTurn={cancel}
+            onCancelTurn={() => void interrupt()}
             onSlashCommand={handleSlashCommand}
+            onApprovePlan={handleApprovePlan}
+            onRejectPlan={handleRejectPlan}
             onApprovalDecision={handleApprovalDecision}
             onQuestionAnswers={handleQuestionAnswers}
             onSteerSend={(content) => void handleSteerInputSend(content)}
-            onRecallSteerQueue={() => void recallSteerQueue()}
-            onRemoveSteerQueueItem={(id) => setSteerQueueItems((current) => current.filter((item) => item.id !== id))}
-            onClearSteerQueue={() => setSteerQueueItems([])}
-            onPauseSteerQueue={() => setSteerQueuePaused(true)}
-            onResumeSteerQueue={() => setSteerQueuePaused(false)}
+            onRecallSteerQueue={(items, value) => {
+              setPrompt(value);
+              void recallSteerQueue(items, setPrompt);
+            }}
+            onExpandSubagent={handleExpandSubagent}
+            onArtifactClick={handleArtifactClick}
+            onRemoveSteerQueueItem={removeSteerQueueItem}
+            onClearSteerQueue={clearSteerQueue}
+            onPauseSteerQueue={() => setActiveSteerQueuePaused(true)}
+            onResumeSteerQueue={() => setActiveSteerQueuePaused(false)}
             onCreateSession={createSession}
             onConnect={connect}
+            onLoadSession={loadSession}
+            loadSessionId={loadSessionId}
+            onLoadSessionIdChange={setLoadSessionId}
             busy={busy}
           />
         ) : (
@@ -1032,8 +1235,8 @@ export function App() {
                 value={prompt}
                 onValueChange={setPrompt}
                 onSend={(content) => void sendPromptText(content)}
-                onCancel={cancel}
-                isLoading={Boolean(activeSession?.uiStepQueue.length)}
+                onCancel={() => void interrupt()}
+                isLoading={isTurnActive}
                 sendDisabled={!connected || !sessionId}
                 sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
                 placeholder="Send an ACP prompt, or type / for backend commands"
@@ -1067,10 +1270,15 @@ export function App() {
                     updateSession(setSessionsById, sessionId, (session) => ({
                       ...session,
                       uiMessages: [],
+                      streamingText: null,
+                      messageUpdates: {},
                       uiSteps: [],
                       uiStepQueue: [],
+                      pendingPlan: null,
                       pendingApproval: null,
                       pendingQuestion: null,
+                      artifacts: [],
+                      promptInFlight: false,
                     }));
                   }
                 }} disabled={!sessionId}>
@@ -1084,10 +1292,10 @@ export function App() {
               <CommandQueuePanel
                 items={steerQueueItems}
                 isPaused={steerQueuePaused}
-                onRemove={(id) => setSteerQueueItems((current) => current.filter((item) => item.id !== id))}
-                onClear={() => setSteerQueueItems([])}
-                onPause={() => setSteerQueuePaused(true)}
-                onResume={() => setSteerQueuePaused(false)}
+                onRemove={removeSteerQueueItem}
+                onClear={clearSteerQueue}
+                onPause={() => setActiveSteerQueuePaused(true)}
+                onResume={() => setActiveSteerQueuePaused(false)}
                 compact
                 className="mb-3 rounded-lg border border-border"
               />
@@ -1095,7 +1303,11 @@ export function App() {
                 value={steerPromptText}
                 onValueChange={setSteerPromptText}
                 onSend={(content) => void handleSteerInputSend(content)}
-                onRecallQueuedInput={() => void recallSteerQueue()}
+                queuedInputRecallItems={steerQueueItems}
+                onQueuedInputRecall={(items, value) => {
+                  setSteerPromptText(value);
+                  void recallSteerQueue(items, setSteerPromptText);
+                }}
                 sendDisabled={!connected || !sessionId}
                 sendBlockedReason={!connected ? "Connect first to steer." : !sessionId ? "Create or load a session before steering." : undefined}
                 placeholder="Queue a steering prompt. Press ArrowUp on empty input to recall queued prompts."
@@ -1130,10 +1342,17 @@ export function App() {
               <div className="min-h-[520px] overflow-hidden rounded-lg border border-border bg-surface">
                 <MessageList
                   messages={messages}
-                  isStreaming={Boolean(activeSession?.uiStepQueue.length)}
+                  streamingText={streamingText}
+                  messageUpdates={messageUpdates}
+                  isStreaming={isTurnActive}
+                  pendingPlan={pendingPlan}
                   pendingQuestions={pendingQuestion}
+                  artifacts={artifacts}
+                  onApprovePlan={handleApprovePlan}
+                  onRejectPlan={handleRejectPlan}
                   onAnswerQuestions={handleQuestionAnswers}
-                  simpleMode
+                  onArtifactClick={handleArtifactClick}
+                  onExpandSubagent={handleExpandSubagent}
                   toolExpandedInline
                   maxMessageWidth="100%"
                   welcomeTitle="ACP Session"
@@ -1261,7 +1480,7 @@ export function App() {
           onReject={rejectToolDialog}
         />
       )}
-      {permissionDialog && (
+      {permissionDialog && viewMode === "inspector" && (
         <PermissionApprovalModal
           dialog={permissionDialog}
           onSelect={(optionId) => setPermissionDialog((current) => current ? { ...current, selectedOptionId: optionId } : current)}
@@ -1269,13 +1488,29 @@ export function App() {
           onCancel={cancelPermissionDialog}
         />
       )}
-      {elicitationDialog && (
+      {elicitationDialog && viewMode === "inspector" && (
         <ElicitationApprovalModal
           dialog={elicitationDialog}
           onChangeAnswers={(value) => setElicitationDialog((current) => current ? { ...current, answersText: value } : current)}
           onSubmit={submitElicitationDialog}
           onDecline={declineElicitationDialog}
           onCancel={cancelElicitationDialog}
+        />
+      )}
+      <SubagentSheet
+        open={!!subagentSheet}
+        onClose={() => setSubagentSheet(null)}
+        title={subagentSheet?.title ?? ""}
+        subagentType={subagentSheet?.subagentType}
+        messages={subagentSheet?.messages ?? []}
+        liveMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
+        context={subagentSheet?.context}
+        onExpandSubagent={handleExpandSubagent}
+      />
+      {artifactDialog && (
+        <ArtifactModal
+          dialog={artifactDialog}
+          onClose={() => setArtifactDialog(null)}
         />
       )}
     </div>
@@ -1302,9 +1537,14 @@ function AcpChatSurface({
   connected,
   sessionId,
   messages,
+  streamingText,
+  messageUpdates,
+  pendingPlan,
   pendingApproval,
   pendingQuestion,
   slashCommands,
+  artifacts,
+  error,
   steerQueueItems,
   steerQueuePaused,
   isStreaming,
@@ -1313,24 +1553,36 @@ function AcpChatSurface({
   onSendPrompt,
   onCancelTurn,
   onSlashCommand,
+  onApprovePlan,
+  onRejectPlan,
   onApprovalDecision,
   onQuestionAnswers,
   onSteerSend,
   onRecallSteerQueue,
+  onExpandSubagent,
+  onArtifactClick,
   onRemoveSteerQueueItem,
   onClearSteerQueue,
   onPauseSteerQueue,
   onResumeSteerQueue,
   onCreateSession,
   onConnect,
+  onLoadSession,
+  loadSessionId,
+  onLoadSessionIdChange,
   busy,
 }: {
   connected: boolean;
   sessionId: string | null;
   messages: AgentMessage[];
+  streamingText?: string | null;
+  messageUpdates: Record<string, Partial<AgentMessage>>;
+  pendingPlan: TaskPlan | null;
   pendingApproval: PendingExecApproval | null;
   pendingQuestion: PendingQuestion | null;
   slashCommands: SlashCommand[];
+  artifacts: Artifact[];
+  error: string | null;
   steerQueueItems: CommandQueueItem[];
   steerQueuePaused: boolean;
   isStreaming: boolean;
@@ -1339,26 +1591,58 @@ function AcpChatSurface({
   onSendPrompt: (content: string) => void;
   onCancelTurn: () => void;
   onSlashCommand: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  onApprovePlan: () => void;
+  onRejectPlan: () => void;
   onApprovalDecision: (decision: string) => void;
   onQuestionAnswers: (answers: Record<string, string[]>) => void;
   onSteerSend: (content: string) => void;
-  onRecallSteerQueue: () => void;
+  onRecallSteerQueue: (items: QueuedInputRecallItem[], value: string) => void;
+  onExpandSubagent: ExpandSubagentHandler;
+  onArtifactClick: (artifactId: string) => void;
   onRemoveSteerQueueItem: (id: string) => void;
   onClearSteerQueue: () => void;
   onPauseSteerQueue: () => void;
   onResumeSteerQueue: () => void;
   onCreateSession: () => void;
   onConnect: () => void;
+  onLoadSession: () => void;
+  loadSessionId: string;
+  onLoadSessionIdChange: (value: string) => void;
   busy: boolean;
 }) {
+  const handleSend = useCallback((content: string) => {
+    if (isStreaming) {
+      onSteerSend(content);
+      return;
+    }
+    onSendPrompt(content);
+  }, [isStreaming, onSendPrompt, onSteerSend]);
+
+  const handleSlashCommand = useCallback((command: SlashCommand, selection: SlashCommandSelection) => {
+    if (isStreaming) {
+      const args = selection.args.trim();
+      onSteerSend(`/${command.name}${args ? ` ${args}` : ""}`);
+      return;
+    }
+    onSlashCommand(command, selection);
+  }, [isStreaming, onSlashCommand, onSteerSend]);
+
   return (
     <div className="flex h-[calc(100vh-81px)] min-h-0 flex-col bg-background">
       <div className="flex min-h-0 flex-1 flex-col">
         <MessageList
           messages={messages}
+          streamingText={streamingText}
+          messageUpdates={messageUpdates}
           isStreaming={isStreaming}
+          pendingPlan={pendingPlan}
           pendingQuestions={pendingQuestion}
+          artifacts={artifacts}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
           onAnswerQuestions={onQuestionAnswers}
+          onExpandSubagent={onExpandSubagent}
+          onArtifactClick={onArtifactClick}
           maxMessageWidth="780px"
           toolExpandedInline
           welcomeTitle="ACP Chat"
@@ -1368,6 +1652,11 @@ function AcpChatSurface({
 
       <div className="border-t border-border bg-background px-4 py-3">
         <div className="mx-auto max-w-[780px] space-y-3">
+          {error && (
+            <div className="rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           {steerQueueItems.length > 0 && (
             <CommandQueuePanel
               items={steerQueueItems}
@@ -1384,20 +1673,30 @@ function AcpChatSurface({
           {pendingApproval ? (
             <ExecApproval approval={pendingApproval} onDecision={onApprovalDecision} enableKeyboard />
           ) : pendingQuestion ? (
-            <QuestionInput questions={pendingQuestion.questions} onSubmit={onQuestionAnswers} />
+            <QuestionInput questions={pendingQuestion} onSubmit={onQuestionAnswers} />
+          ) : pendingPlan ? (
+            <PlanApproval
+              plan={pendingPlan}
+              isPending
+              onApprove={onApprovePlan}
+              onReject={onRejectPlan}
+            />
           ) : (
             <>
               <ChatInput
                 value={prompt}
                 onValueChange={onPromptChange}
-                onSend={onSendPrompt}
+                onSend={handleSend}
                 onCancel={onCancelTurn}
+                queuedInputRecallItems={steerQueueItems}
+                onQueuedInputRecall={onRecallSteerQueue}
                 isLoading={isStreaming}
+                allowSendWhileLoading
                 sendDisabled={!connected || !sessionId}
                 sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
-                placeholder="Type a message..."
+                placeholder={isStreaming ? "Type steering while the agent is running..." : "Type a message..."}
                 slashCommands={slashCommands}
-                onSlashCommand={onSlashCommand}
+                onSlashCommand={handleSlashCommand}
                 showTopToolbar
                 showResizeHandle
                 defaultHeight={120}
@@ -1412,6 +1711,11 @@ function AcpChatSurface({
                     {sessionId ? `session ${shortId(sessionId)}` : "no session"}
                   </span>
                   <span className="rounded-full bg-muted px-2 py-1">{slashCommands.length} slash commands</span>
+                  {isStreaming && (
+                    <span className="rounded-full bg-info/15 px-2 py-1 text-info">
+                      streaming: input sends steering
+                    </span>
+                  )}
                   {steerQueueItems.length > 0 && (
                     <span className="rounded-full bg-warning/15 px-2 py-1 text-warning">
                       ArrowUp recalls {steerQueueItems.length} queued steer prompt{steerQueueItems.length === 1 ? "" : "s"}
@@ -1426,27 +1730,35 @@ function AcpChatSurface({
                     </button>
                   )}
                   {connected && !sessionId && (
-                    <button className="btn-primary" onClick={onCreateSession}>
-                      <FolderPlus size={16} />
-                      New Session
-                    </button>
+                    <>
+                      <button className="btn-primary" onClick={onCreateSession}>
+                        <FolderPlus size={16} />
+                        New Session
+                      </button>
+                      <input
+                        value={loadSessionId}
+                        onChange={(event) => onLoadSessionIdChange(event.target.value)}
+                        className="input h-9 w-44 font-mono text-xs"
+                        placeholder="session id"
+                      />
+                      <button className="btn-secondary" onClick={onLoadSession} disabled={!loadSessionId.trim()}>
+                        <RotateCcw size={16} />
+                        Resume
+                      </button>
+                    </>
                   )}
-                  <button className="btn-secondary" onClick={onRecallSteerQueue} disabled={steerQueueItems.length === 0 || !sessionId}>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => onRecallSteerQueue(
+                      steerQueueItems,
+                      steerQueueItems.map((item) => item.content.trim()).filter(Boolean).join("\n\n")
+                    )}
+                    disabled={steerQueueItems.length === 0 || !sessionId}
+                  >
                     <RotateCcw size={16} />
                     Recall Queue
                   </button>
                 </div>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/25 p-2">
-                <ChatInput
-                  value=""
-                  onSend={onSteerSend}
-                  onRecallQueuedInput={onRecallSteerQueue}
-                  sendDisabled={!connected || !sessionId}
-                  sendBlockedReason={!connected ? "Connect first to steer." : !sessionId ? "Create or load a session before steering." : undefined}
-                  placeholder="Optional steering prompt. Empty + ArrowUp recalls queued steer prompts."
-                  className="acp-steer-input"
-                />
               </div>
             </>
           )}
@@ -1498,6 +1810,58 @@ function ToolApprovalModal({
           <Send size={16} />
           Send Result
         </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function ArtifactModal({
+  dialog,
+  onClose,
+}: {
+  dialog: ArtifactDialogState;
+  onClose: () => void;
+}) {
+  return (
+    <ModalFrame title="Artifact" subtitle={dialog.artifact.name}>
+      <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="rounded-lg border border-border bg-muted/35 p-3 text-sm">
+          <div className="mb-2 font-semibold">Details</div>
+          <dl className="space-y-2 text-xs">
+            <div>
+              <dt className="text-muted-foreground">ID</dt>
+              <dd className="break-all font-mono">{dialog.artifact.id}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Type</dt>
+              <dd>{dialog.artifact.type}</dd>
+            </div>
+            {dialog.artifact.toolName && (
+              <div>
+                <dt className="text-muted-foreground">Tool</dt>
+                <dd>{dialog.artifact.toolName}</dd>
+              </div>
+            )}
+            {dialog.artifact.sourceMessageId && (
+              <div>
+                <dt className="text-muted-foreground">Source</dt>
+                <dd className="break-all font-mono">{dialog.artifact.sourceMessageId}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Source Message</div>
+            <button className="btn-secondary" onClick={onClose}>
+              <X size={16} />
+              Close
+            </button>
+          </div>
+          <pre className="max-h-[560px] overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
+            <JsonCode value={dialog.message ?? dialog.artifact} />
+          </pre>
+        </div>
       </div>
     </ModalFrame>
   );
@@ -1754,6 +2118,35 @@ function ElicitationRow({ request }: { request: ElicitationRequestLog }) {
   );
 }
 
+function promptResultToSummaryMessages(result: unknown): AgentMessage[] {
+  const summary = promptResultToSummary(result);
+  if (!summary) return [];
+  return [{
+    id: `prompt-summary-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type: "summary",
+    summary,
+    timestamp: Date.now(),
+  }];
+}
+
+function promptResultToSummary(result: unknown): Record<string, unknown> | null {
+  if (!isRecord(result)) return null;
+  const summary: Record<string, unknown> = {};
+  const stopReason = readStringField(result.stopReason);
+  if (stopReason) summary.stop_reason = stopReason;
+  if (isRecord(result.usage)) {
+    const usage = result.usage;
+    const inputTokens = readNumberField(usage.inputTokens) ?? readNumberField(usage.input_tokens);
+    const outputTokens = readNumberField(usage.outputTokens) ?? readNumberField(usage.output_tokens);
+    const totalTokens = readNumberField(usage.totalTokens) ?? readNumberField(usage.total_tokens);
+    if (inputTokens !== undefined) summary.input_tokens = inputTokens;
+    if (outputTokens !== undefined) summary.output_tokens = outputTokens;
+    if (totalTokens !== undefined) summary.total_tokens = totalTokens;
+  }
+  if (isRecord(result.cost)) summary.cost = result.cost;
+  return Object.keys(summary).length > 0 ? summary : null;
+}
+
 function JsonBlock({ title, value }: { title: string; value: unknown }) {
   return (
     <div className="mb-3 last:mb-0">
@@ -1955,115 +2348,6 @@ function runLocalGuiExecute(actionName: string, actions: GuiActionDefinition[]):
     input: request.input,
     result: executeGuiAction(request, actions),
   };
-}
-
-function createUiSession(
-  id: string,
-  cwd: string,
-  sessionResult: unknown,
-  existing?: UiSessionState
-): UiSessionState {
-  const now = new Date().toISOString();
-  return {
-    id,
-    title: existing?.title ?? `Session ${shortId(id)}`,
-    cwd,
-    createdAt: existing?.createdAt ?? now,
-    lastActiveAt: now,
-    sessionResult,
-    promptResult: existing?.promptResult ?? null,
-    uiMessages: existing?.uiMessages ?? [],
-    uiSteps: existing?.uiSteps ?? [],
-    uiStepQueue: existing?.uiStepQueue ?? [],
-    pendingApproval: existing?.pendingApproval ?? null,
-    pendingQuestion: existing?.pendingQuestion ?? null,
-    slashCommands: existing?.slashCommands ?? [],
-    clientToolCalls: existing?.clientToolCalls ?? [],
-    permissionRequests: existing?.permissionRequests ?? [],
-    elicitationRequests: existing?.elicitationRequests ?? [],
-  };
-}
-
-function ensureUiSession(id: string): UiSessionState {
-  return createUiSession(id, "", { sessionId: id });
-}
-
-function updateSession(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
-  sessionId: string,
-  updater: (session: UiSessionState) => UiSessionState
-): void {
-  setSessionsById((current) => {
-    const existing = current[sessionId] ?? ensureUiSession(sessionId);
-    return {
-      ...current,
-      [sessionId]: updater(existing),
-    };
-  });
-}
-
-function enqueueUiSteps(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
-  sessionId: string,
-  steps: AcpUiStep[]
-): void {
-  if (steps.length === 0) return;
-  updateSession(setSessionsById, sessionId, (session) => ({
-    ...session,
-    uiStepQueue: [...session.uiStepQueue, ...steps],
-    lastActiveAt: new Date().toISOString(),
-  }));
-}
-
-function applyQueuedUiStep(session: UiSessionState, step: AcpUiStep, rest: AcpUiStep[]): UiSessionState {
-  if (step.kind === "approval") {
-    return {
-      ...session,
-      uiSteps: [...session.uiSteps, step],
-      uiStepQueue: rest,
-      pendingApproval: step.approval,
-      lastActiveAt: new Date().toISOString(),
-    };
-  }
-  if (step.kind === "question") {
-    return {
-      ...session,
-      uiSteps: [...session.uiSteps, step],
-      uiStepQueue: rest,
-      pendingQuestion: step.question,
-      lastActiveAt: new Date().toISOString(),
-    };
-  }
-  if (step.kind === "slash_commands") {
-    return {
-      ...session,
-      uiSteps: [...session.uiSteps, step],
-      uiStepQueue: rest,
-      slashCommands: step.commands,
-      lastActiveAt: new Date().toISOString(),
-    };
-  }
-  return {
-    ...session,
-    uiSteps: [...session.uiSteps, step],
-    uiStepQueue: rest,
-    uiMessages: applyAcpUiStep(session.uiMessages, step),
-    lastActiveAt: new Date().toISOString(),
-  };
-}
-
-function resolveSessionApproval(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
-  sessionId: string
-): void {
-  updateSession(setSessionsById, sessionId, (session) => ({ ...session, pendingApproval: null }));
-}
-
-function resolveSessionQuestion(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
-  sessionId: string
-): void {
-  updateSession(setSessionsById, sessionId, (session) => ({ ...session, pendingQuestion: null }));
 }
 
 function textResult(text: string, meta: Record<string, unknown>): CallToolResult {
@@ -2285,6 +2569,22 @@ function normalizeJsonText(text: string): string {
 
 function prettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
+}
+
+function readStringValue(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readStringField(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+function readNumberField(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function hasRecallItemId(item: QueuedInputRecallItem): item is QueuedInputRecallItem & { id: string } {
+  return typeof item.id === "string" && item.id.trim().length > 0;
 }
 
 interface JsonToken {
