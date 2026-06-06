@@ -52,6 +52,8 @@ export interface ChatInputToolbarProps {
   showExpand?: boolean;
   /** Extra action buttons to render after the built-in actions (emoji, file, screenshot) */
   extraActions?: ReactNode;
+  /** Extra action buttons to render at the trailing edge of the toolbar */
+  endActions?: ReactNode;
   /** Additional CSS class */
   className?: string;
 }
@@ -66,6 +68,7 @@ export function ChatInputToolbar({
   isScreenshotCapturing,
   showExpand,
   extraActions,
+  endActions,
   className,
 }: ChatInputToolbarProps) {
   const { t } = useTranslation();
@@ -81,6 +84,7 @@ export function ChatInputToolbar({
 
   return (
     <div
+      data-testid="chat-input-toolbar"
       className={cn(
         "flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/30",
         className
@@ -175,24 +179,28 @@ export function ChatInputToolbar({
         {extraActions}
       </div>
 
-      {/* Expand Button */}
-      {showExpand && onExpandClick && (
-        <TooltipProvider delayDuration={300}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={onExpandClick}
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{t("chat.expand", "Expand")}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
+      <div className="flex items-center gap-1">
+        {endActions}
+
+        {/* Expand Button */}
+        {showExpand && onExpandClick && (
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={onExpandClick}
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("chat.expand", "Expand")}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
     </div>
   );
 }

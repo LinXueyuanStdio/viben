@@ -17,6 +17,13 @@ vi.mock("../emoji-picker", () => ({
   ),
 }));
 
+vi.mock("@emoji-mart/data", () => ({ default: {} }));
+vi.mock("@emoji-mart/react", () => ({
+  default: ({ onEmojiSelect }: { onEmojiSelect: (emoji: { native: string }) => void }) => (
+    <button type="button" onClick={() => onEmojiSelect({ native: "🙂" })}>Pick emoji</button>
+  ),
+}));
+
 describe("ChatInput layout", () => {
   test("can render compact two-row layout with editor first and toolbar actions second", () => {
     const { container } = render(

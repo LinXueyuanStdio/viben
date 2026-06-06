@@ -78,6 +78,7 @@ export function ChatInput({
   autoFocus = false,
   // Layout Control
   showTopToolbar = false,
+  toolbarPosition = "top",
   showConfigBar = false,
   showResizeHandle = false,
   defaultHeight,
@@ -203,6 +204,8 @@ export function ChatInput({
 
   // Determine if we have toolbar/config bar features enabled
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
+  const showToolbarAtTop = showTopToolbar && toolbarPosition !== "bottom";
+  const showToolbarAtBottom = showTopToolbar && toolbarPosition === "bottom" && !showConfigBar;
 
   // Determine selector visibility
   const shouldShowAgentSelector = !hideAgentSelector;
@@ -393,6 +396,32 @@ export function ChatInput({
     onSend(text, messageAttachments);
   }, [canSubmit, isLoading, allowSendWhileLoading, content, attachments, slashCommands, clearAttachments, onSlashCommand, onSend]);
 
+  const submitControl = isLoading ? (
+    <button
+      type="button"
+      data-testid="chat-input-submit-control"
+      onClick={onCancel}
+      className="flex size-8 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
+    >
+      <Square className="size-3.5" />
+    </button>
+  ) : (
+    <button
+      type="button"
+      data-testid="chat-input-submit-control"
+      onClick={handleSend}
+      disabled={!canSubmit}
+      className={cn(
+        "flex size-8 items-center justify-center rounded-full transition-all",
+        canSubmit
+          ? "bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
+          : "bg-muted text-muted-foreground cursor-not-allowed"
+      )}
+    >
+      <Send className="size-4" />
+    </button>
+  );
+
   // Key down handler
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -539,7 +568,7 @@ export function ChatInput({
       )}
 
       {/* Top Toolbar */}
-      {showTopToolbar && (
+      {showToolbarAtTop && (
         <ChatInputToolbar
           onEmojiSelect={insertEmoji}
           onFileClick={handleFileClick}
@@ -627,6 +656,22 @@ export function ChatInput({
         />
       </div>
 
+      {/* Bottom Toolbar */}
+      {showToolbarAtBottom && (
+        <ChatInputToolbar
+          onEmojiSelect={insertEmoji}
+          onFileClick={handleFileClick}
+          onScreenshot={onScreenshot ? handleScreenshot : undefined}
+          onExpandClick={enableWritingMode ? () => setIsWritingMode(true) : undefined}
+          isLoading={isLoading && !allowSendWhileLoading}
+          disabled={disabled}
+          isScreenshotCapturing={isScreenshotCapturing}
+          showExpand={enableWritingMode}
+          endActions={submitControl}
+          className="border-b-0 border-t border-border/30"
+        />
+      )}
+
       {/* Bottom Config Bar (when enabled) */}
       {showConfigBar && (
         <ChatInputConfigBar
@@ -665,8 +710,9 @@ export function ChatInput({
       )}
 
       {/* Bottom Actions (when no config bar) */}
-      {!showConfigBar && (
+      {!showConfigBar && !showToolbarAtBottom && (
         <div
+          data-testid="chat-input-basic-actions"
           className={cn(
             "flex items-center justify-between px-4",
             hasToolbar ? "py-2" : "pb-3"
@@ -705,29 +751,7 @@ export function ChatInput({
 
           {/* Submit/Stop Button */}
           <div className="flex items-center gap-1">
-            {isLoading ? (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="flex size-8 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
-              >
-                <Square className="size-3.5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!canSubmit}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-full transition-all",
-                  canSubmit
-                    ? "bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                )}
-              >
-                <Send className="size-4" />
-              </button>
-            )}
+            {submitControl}
           </div>
         </div>
       )}
