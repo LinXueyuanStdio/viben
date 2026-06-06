@@ -76,6 +76,7 @@ export function ChatInput({
   autoFocus = false,
   // Layout Control
   showTopToolbar = false,
+  showBottomToolbar = true,
   showConfigBar = false,
   layoutVariant = "expanded",
   showResizeHandle = false,
@@ -204,7 +205,9 @@ export function ChatInput({
   });
 
   // Determine if we have toolbar/config bar features enabled
-  const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
+  const shouldShowBottomToolbar = showBottomToolbar;
+  const shouldShowConfigBar = shouldShowBottomToolbar && showConfigBar;
+  const hasToolbar = showTopToolbar || shouldShowBottomToolbar || showResizeHandle;
   const isCompactLayout = layoutVariant === "compact";
 
   // Determine selector visibility
@@ -504,7 +507,7 @@ export function ChatInput({
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
           onPaste={handlePaste}
-          showConfigBar={showConfigBar}
+          showConfigBar={shouldShowConfigBar}
           agents={agents}
           selectedAgentId={selectedAgentId}
           onAgentChange={onAgentChange}
@@ -700,7 +703,7 @@ export function ChatInput({
       {!isCompactLayout && editor}
 
       {/* Bottom Config Bar (when enabled) */}
-      {showConfigBar && !isCompactLayout && (
+      {shouldShowConfigBar && !isCompactLayout && (
         renderBottomToolbar ? (
           <div data-testid="chat-input-bottom-toolbar" className="flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30">
             {renderBottomToolbar({
@@ -748,7 +751,7 @@ export function ChatInput({
         )
       )}
 
-      {isCompactLayout && (
+      {shouldShowBottomToolbar && isCompactLayout && (
         <div data-testid="chat-input-compact-toolbar" className="flex min-w-0 items-center gap-2 border-t border-border/30 bg-muted/30 px-2 py-2">
           {renderBottomToolbar ? (
             renderBottomToolbar({
@@ -762,7 +765,7 @@ export function ChatInput({
           ) : (
             <>
               {editor}
-              {showConfigBar && configControls}
+              {shouldShowConfigBar && configControls}
               {submitControl}
             </>
           )}
@@ -770,7 +773,7 @@ export function ChatInput({
       )}
 
       {/* Bottom Actions (when no config bar) */}
-      {!showConfigBar && !isCompactLayout && (
+      {shouldShowBottomToolbar && !showConfigBar && !isCompactLayout && (
         <div
           data-testid="chat-input-basic-actions"
           className={cn(

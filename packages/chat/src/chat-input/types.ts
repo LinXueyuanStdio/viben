@@ -134,6 +134,11 @@ export interface ChatInputProps {
   // === Layout Control ===
   /** Show top toolbar (emoji, file/screenshot, expand) */
   showTopToolbar?: boolean;
+  /**
+   * Show the bottom toolbar. Defaults to true. When false, neither the config
+   * toolbar nor the basic attachment/send action row is rendered.
+   */
+  showBottomToolbar?: boolean;
   /** Show bottom toolbar/config bar (agent, model, tools, skills, context, send) */
   showConfigBar?: boolean;
   /**
