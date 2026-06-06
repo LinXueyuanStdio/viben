@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
+import { ChatInput } from "../index";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -10,46 +11,74 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("../toolbar", () => ({
-  ChatInputToolbar: ({ endActions }: { endActions?: React.ReactNode }) =>
-    React.createElement("div", { "data-testid": "chat-input-toolbar" }, endActions),
-}));
-vi.mock("/root/viben/packages/chat/src/chat-input/toolbar.tsx", () => ({
-  ChatInputToolbar: ({ endActions }: { endActions?: React.ReactNode }) =>
-    React.createElement("div", { "data-testid": "chat-input-toolbar" }, endActions),
-}));
-vi.mock("../writing-mode", () => ({
-  WritingMode: () => React.createElement("div", { "data-testid": "writing-mode" }),
-}));
-vi.mock("/root/viben/packages/chat/src/chat-input/writing-mode.tsx", () => ({
-  WritingMode: () => React.createElement("div", { "data-testid": "writing-mode" }),
-}));
-
 describe("ChatInput layout", () => {
-  test("can render compact two-row layout with editor first and toolbar actions second", async () => {
-    const { ChatInput } = await import("../index");
-
+  test("compact layout renders the editor inline inside the bottom toolbar", () => {
     const { container } = render(
       <ChatInput
         value=""
         onValueChange={() => {}}
         onSend={() => {}}
-        showTopToolbar
-        toolbarPosition="bottom"
-        showConfigBar={false}
-        defaultHeight={48}
-        minHeight={48}
-        maxHeight={48}
+        layoutVariant="compact"
+        showTopToolbar={false}
+        showConfigBar
+        agents={[{ id: "agent", name: "Agent" }]}
+        selectedAgentId="agent"
+        models={[{ id: "model", name: "Model" }]}
+        selectedModelId="model"
       />
     );
 
+    const compactToolbar = screen.getByTestId("chat-input-compact-toolbar");
     const editor = container.querySelector(".viben-chat-input-editor");
-    const toolbar = screen.getByTestId("chat-input-toolbar");
+    const configControls = screen.getByTestId("chat-input-config-controls");
     const submitControl = screen.getByTestId("chat-input-submit-control");
 
-    expect(editor).toBeInTheDocument();
-    expect(editor?.compareDocumentPosition(toolbar) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(toolbar).toContainElement(submitControl);
-    expect(screen.queryByTestId("chat-input-basic-actions")).not.toBeInTheDocument();
+    expect(compactToolbar).toContainElement(configControls);
+    expect(compactToolbar).toContainElement(editor as HTMLElement);
+    expect(compactToolbar).toContainElement(submitControl);
+    expect(screen.queryByTestId("chat-input-toolbar")).not.toBeInTheDocument();
+  });
+
+  test("expanded layout renders top toolbar, editor, and bottom toolbar as three rows", () => {
+    const { container } = render(
+      <ChatInput
+        value=""
+        onValueChange={() => {}}
+        onSend={() => {}}
+        layoutVariant="expanded"
+        showTopToolbar
+        showConfigBar
+      />
+    );
+
+    const topToolbar = screen.getByTestId("chat-input-toolbar");
+    const editor = container.querySelector(".viben-chat-input-editor");
+    const bottomControls = screen.getByTestId("chat-input-config-controls");
+
+    expect(topToolbar.compareDocumentPosition(editor as HTMLElement)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(editor?.compareDocumentPosition(bottomControls) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  test("custom toolbar renderers can replace default toolbar content", () => {
+    render(
+      <ChatInput
+        value=""
+        onValueChange={() => {}}
+        onSend={() => {}}
+        showTopToolbar
+        showConfigBar
+        renderTopToolbar={() => <div data-testid="custom-top">Top actions</div>}
+        renderBottomToolbar={({ leftContent, submitControl }) => (
+          <>
+            <div data-testid="custom-bottom-left">{leftContent}</div>
+            <div data-testid="custom-bottom-right">{submitControl}</div>
+          </>
+        )}
+      />
+    );
+
+    expect(screen.getByTestId("custom-top")).toBeInTheDocument();
+    expect(screen.getByTestId("custom-bottom-left")).toContainElement(screen.getByTestId("chat-input-config-controls"));
+    expect(screen.getByTestId("custom-bottom-right")).toContainElement(screen.getByTestId("chat-input-submit-control"));
   });
 });
