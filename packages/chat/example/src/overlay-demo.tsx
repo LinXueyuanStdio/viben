@@ -42,6 +42,7 @@ export interface OverlayDemoProps {
   mode: OverlayMode;
   messages: AgentMessage[];
   isStreaming: boolean;
+  contained?: boolean;
   title?: string;
   playerStatus?: SessionPlayerStatus;
   pendingUserMessageCount?: number;
@@ -78,6 +79,13 @@ const OVERLAY_TRANSITION = {
   mass: 0.9,
 } as const;
 
+const OVERLAY_RADIUS = {
+  floating: 999,
+  compact: 24,
+  expanded: 16,
+  full: 0,
+} as const;
+
 export function getAssistantPetState(
   messages: AgentMessage[],
   isStreaming: boolean,
@@ -105,6 +113,7 @@ export function OverlayDemo({
   mode,
   messages,
   isStreaming,
+  contained = false,
   title = "Viben session",
   playerStatus = "idle",
   pendingUserMessageCount = 0,
@@ -148,19 +157,33 @@ export function OverlayDemo({
   }, [content, onSend, setContent]);
 
   if (mode === "full") {
-    return <>{renderFullScreen?.()}</>;
+    return (
+      <motion.div
+        layoutId="viben-overlay-surface"
+        transition={OVERLAY_TRANSITION}
+        initial={false}
+        className={`overlay-shared-surface overflow-hidden bg-background ${
+          contained ? "absolute inset-0 z-30 h-full min-h-0 w-full" : "fixed inset-0 z-50"
+        }`}
+        style={{ borderRadius: OVERLAY_RADIUS.full }}
+        data-testid="full-overlay"
+      >
+        {renderFullScreen?.()}
+      </motion.div>
+    );
   }
 
   if (mode === "floating") {
     return (
-      <div className="fixed bottom-6 right-6 z-50" data-testid="floating-overlay">
+      <div className={contained ? "absolute bottom-6 right-6 z-20" : "fixed bottom-6 right-6 z-50"} data-testid="floating-overlay">
         <motion.button
           layoutId="viben-overlay-surface"
           type="button"
           aria-label="Open compact chat"
           onClick={() => onModeChange("compact")}
           transition={OVERLAY_TRANSITION}
-          className="relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          style={{ borderRadius: OVERLAY_RADIUS.floating }}
         >
           <motion.div layoutId="viben-overlay-avatar" className="size-full">
           {assistantAvatar}
@@ -181,7 +204,10 @@ export function OverlayDemo({
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
-        className="fixed bottom-5 right-5 z-50 flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2"
+        className={`overlay-shared-surface flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2 rounded-3xl ${
+          contained ? "absolute bottom-5 right-5 z-20" : "fixed bottom-5 right-5 z-50"
+        }`}
+        style={{ borderRadius: OVERLAY_RADIUS.compact }}
         data-testid="compact-overlay"
       >
         <AgentPopup
@@ -212,7 +238,12 @@ export function OverlayDemo({
       transition={OVERLAY_TRANSITION}
       initial={{ opacity: 0.94, scale: 0.985 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl bg-background shadow-2xl"
+      className={`overlay-shared-surface flex min-h-0 flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+        contained
+          ? "absolute bottom-4 right-4 z-20 h-[min(760px,calc(100%-2rem))] w-[min(720px,calc(100%-2rem))]"
+          : "h-full w-full"
+      }`}
+      style={{ borderRadius: OVERLAY_RADIUS.expanded }}
       data-testid="expanded-overlay"
     >
       <ExpandedHeader

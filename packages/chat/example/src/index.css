@@ -41,6 +41,14 @@
   position: relative;
 }
 
+.overlay-shared-surface {
+  will-change: transform, border-radius, opacity;
+}
+
+.overlay-breathing-surface {
+  animation: overlayBreathingSurface 2.8s ease-in-out infinite;
+}
+
 .overlay-input-shell--running::before {
   content: "";
   position: absolute;
@@ -68,10 +76,27 @@
   }
 }
 
+@keyframes overlayBreathingSurface {
+  0%,
+  100% {
+    box-shadow: 0 24px 60px color-mix(in oklch, black 22%, transparent);
+  }
+  50% {
+    box-shadow: 0 28px 70px color-mix(in oklch, black 28%, transparent);
+  }
+}
+
 @property --overlay-runner-angle {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-breathing-surface,
+  .overlay-input-shell--running::before {
+    animation: none;
+  }
 }
 
 :root {
