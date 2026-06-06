@@ -189,6 +189,10 @@ describe("OverlayDemo", () => {
     expect(screen.getByRole("searchbox", { name: "Search sessions" })).toBeInTheDocument();
     expect(screen.getByText("Claude Code: breadcrumb navigation debug")).toBeInTheDocument();
     expect(screen.getByText("2c88f85a...jsonl")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code: 2e83fc8b session replay")).toBeInTheDocument();
+    expect(screen.getByText("2e83fc8b...jsonl")).toBeInTheDocument();
+    expect(screen.getByText("Claude Code: 3bbcc4d2 session replay")).toBeInTheDocument();
+    expect(screen.getByText("3bbcc4d2...jsonl")).toBeInTheDocument();
   });
 
   test("expanded new-session menu shows creation actions and agent samples", () => {

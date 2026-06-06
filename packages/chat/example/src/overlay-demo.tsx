@@ -56,6 +56,7 @@ export interface OverlayDemoProps {
   onModeChange: (mode: OverlayMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
+  /** @deprecated Full mode is the expanded panel filling its container. */
   renderFullScreen?: () => React.ReactNode;
 }
 
@@ -64,6 +65,16 @@ const DEFAULT_SESSIONS: OverlaySessionItem[] = [
     id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8",
     title: "Claude Code: breadcrumb navigation debug",
     subtitle: "2c88f85a...jsonl",
+  },
+  {
+    id: "2e83fc8b-a852-4530-a5f3-497bcafa9da6",
+    title: "Claude Code: 2e83fc8b session replay",
+    subtitle: "2e83fc8b...jsonl",
+  },
+  {
+    id: "3bbcc4d2-0267-4938-98c3-c06a380828ba",
+    title: "Claude Code: 3bbcc4d2 session replay",
+    subtitle: "3bbcc4d2...jsonl",
   },
 ];
 
@@ -127,7 +138,6 @@ export function OverlayDemo({
   onModeChange,
   onSend,
   onCancel,
-  renderFullScreen,
 }: OverlayDemoProps) {
   const petState = getAssistantPetState(messages, isStreaming, playerStatus);
   const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
@@ -156,6 +166,38 @@ export function OverlayDemo({
     setContent("");
   }, [content, onSend, setContent]);
 
+  const expandedContent = (
+    <>
+      <ExpandedHeader
+        title={title}
+        sessions={sessions}
+        agents={agents}
+        assistantAvatar={assistantAvatar}
+        headerActions={headerActions}
+        onCreateSession={headerActions?.onCreateSession}
+        onSettingsClick={headerActions?.onSettingsClick}
+      />
+      <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
+        <ExpandedMessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          assistantAvatar={assistantAvatar}
+        />
+      </div>
+      <div className="shrink-0 p-3">
+        <CompactChatInput
+          variant="expanded"
+          value={content}
+          isStreaming={isStreaming}
+          onValueChange={setContent}
+          onSend={handleSubmit}
+          onCancel={onCancel}
+          inputProps={inputProps}
+        />
+      </div>
+    </>
+  );
+
   if (mode === "full") {
     return (
       <motion.div
@@ -168,7 +210,7 @@ export function OverlayDemo({
         style={{ borderRadius: OVERLAY_RADIUS.full }}
         data-testid="full-overlay"
       >
-        {renderFullScreen?.()}
+        {expandedContent}
       </motion.div>
     );
   }
@@ -246,33 +288,7 @@ export function OverlayDemo({
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
       data-testid="expanded-overlay"
     >
-      <ExpandedHeader
-        title={title}
-        sessions={sessions}
-        agents={agents}
-        assistantAvatar={assistantAvatar}
-        headerActions={headerActions}
-        onCreateSession={headerActions?.onCreateSession}
-        onSettingsClick={headerActions?.onSettingsClick}
-      />
-      <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
-        <ExpandedMessageList
-          messages={messages}
-          isStreaming={isStreaming}
-          assistantAvatar={assistantAvatar}
-        />
-      </div>
-      <div className="shrink-0 p-3">
-        <CompactChatInput
-          variant="expanded"
-          value={content}
-          isStreaming={isStreaming}
-          onValueChange={setContent}
-          onSend={handleSubmit}
-          onCancel={onCancel}
-          inputProps={inputProps}
-        />
-      </div>
+      {expandedContent}
     </motion.div>
   );
 }
@@ -608,9 +624,9 @@ function CompactChatInput({
         maxHeight={48}
         showResizeHandle={false}
         enableWritingMode={variant === "expanded"}
-        hideAgentSelector
-        hideModelSelector
-        hideExecutorSelector
+        hideAgentSelector={variant === "compact" ? true : inputProps?.hideAgentSelector}
+        hideModelSelector={variant === "compact" ? true : inputProps?.hideModelSelector}
+        hideExecutorSelector={variant === "compact" ? true : inputProps?.hideExecutorSelector}
         className={`bg-background ${inputProps?.className ?? ""}`}
       />
     </section>
