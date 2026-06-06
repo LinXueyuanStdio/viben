@@ -78,7 +78,7 @@ import type { GroupChatSession } from "@/lib/gateway/types/group-chat";
 import { cn } from "@/lib/utils";
 import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
 import { withNewTabRequest } from "@/navigation/new-tab-request";
-import { getScopedTabStore } from "@/stores/tab-store";
+import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import type { TabNavigationState } from "@/stores/tab-store";
 
 const NEW_TAB_URL = "/workspace";
@@ -336,14 +336,6 @@ export interface PagePreviewWindowProps {
   navigateToWorkspace?: (url: string) => void;
 }
 
-function getCurrentWindowStoreScope(): string {
-  try {
-    return getCurrentWindow().label || window.name || "page-preview";
-  } catch {
-    return window.name || "page-preview";
-  }
-}
-
 export function PagePreviewWindow({
   navigateToWorkspace = navigateCurrentWindow,
 }: PagePreviewWindowProps = {}) {
@@ -369,10 +361,7 @@ export function PagePreviewWindow({
   const [forwardMessage, setForwardMessage] = useState("");
   const [forwardTargetId, setForwardTargetId] = useState<string | null>(null);
   const [isForwarding, setIsForwarding] = useState(false);
-  const previewTabStore = useMemo(
-    () => getScopedTabStore(getCurrentWindowStoreScope()),
-    [],
-  );
+  const previewTabStore = useMemo(() => getCurrentWindowTabStore(), []);
   const activeTabId = previewTabStore((state) => state.activeTabId);
   const activeTab = previewTabStore((state) =>
     activeTabId ? state.tabs.find((tab) => tab.id === activeTabId) : null,

@@ -30,6 +30,9 @@ export {
 } from "./saved-configs-store";
 export {
   useTabStore,
+  getCurrentWindowTabStore,
+  getCurrentWindowTabStoreScope,
+  getScopedTabStore,
   selectActiveTab,
   selectPinnedTabs,
   selectUnpinnedTabs,
