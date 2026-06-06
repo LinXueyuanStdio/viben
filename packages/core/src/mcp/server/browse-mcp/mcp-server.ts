@@ -52,7 +52,7 @@ export function createBrowseMcpServer(options: BrowseMcpServerOptions = {}): Mcp
     },
     async (args): Promise<CallToolResult> => {
       const input = args as { query_list?: BrowseDownloadQueryInput[] };
-      const result = await client.browseDownload(input.query_list ?? []);
+      const result: string[] = await client.browseDownload(input.query_list ?? []);
       return textResult(JSON.stringify(result, null, 2), result.some((item) => item.startsWith("Error")));
     }
   );
