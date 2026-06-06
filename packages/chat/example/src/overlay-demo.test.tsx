@@ -106,12 +106,12 @@ describe("OverlayDemo", () => {
         onSend={() => {}}
         onCancel={() => {}}
         assistantAvatars={{
-          thinking: <span data-testid="custom-thinking-pet">Thinking pet</span>,
+          review: <span data-testid="custom-review-pet">Review pet</span>,
         }}
       />
     );
 
-    expect(screen.getByTestId("custom-thinking-pet")).toBeInTheDocument();
+    expect(screen.getByTestId("custom-review-pet")).toBeInTheDocument();
   });
 
   test("floating avatar expands to compact mode when clicked", () => {
