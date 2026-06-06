@@ -10,22 +10,14 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("../chat-input/toolbar", () => {
-  return {
-    ChatInputToolbar: ({ endActions }: { endActions?: React.ReactNode }) =>
-      React.createElement("div", { "data-testid": "chat-input-toolbar" }, endActions),
-  };
-});
-vi.mock("/root/viben/packages/chat/src/chat-input/toolbar.tsx", () => {
-  return {
-    ChatInputToolbar: ({ endActions }: { endActions?: React.ReactNode }) =>
-      React.createElement("div", { "data-testid": "chat-input-toolbar" }, endActions),
-  };
-});
+vi.mock("../toolbar", () => ({
+  ChatInputToolbar: ({ endActions }: { endActions?: React.ReactNode }) =>
+    React.createElement("div", { "data-testid": "chat-input-toolbar" }, endActions),
+}));
 
 describe("ChatInput layout", () => {
   test("can render compact two-row layout with editor first and toolbar actions second", async () => {
-    const { ChatInput } = await import("../chat-input");
+    const { ChatInput } = await import("../index");
 
     const { container } = render(
       <ChatInput
