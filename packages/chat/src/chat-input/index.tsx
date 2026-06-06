@@ -12,8 +12,8 @@
  * - Paste image support
  *
  * Features controlled by props:
- * - showTopToolbar: Emoji, File, Screenshot, Expand buttons above textarea
- * - showConfigBar: Agent, Model, Tools, Skills, Context selectors (replaces basic bottom bar)
+ * - showTopToolbar: Emoji/File/Screenshot/Expand toolbar
+ * - showConfigBar: Agent, Model, Tools, Skills, Context selectors and send button
  * - showResizeHandle: Draggable height adjustment
  * - enableWritingMode: Fullscreen writing mode
  */
@@ -22,11 +22,9 @@ import * as React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Send,
   Plus,
   Paperclip,
   Image,
-  Square,
   Shield,
 } from "lucide-react";
 import {
@@ -38,7 +36,7 @@ import {
 } from "@viben/ui";
 
 import { ChatInputToolbar } from "./toolbar";
-import { ChatInputConfigBar } from "./config-bar";
+import { ChatInputConfigBar, ChatInputConfigControls, ChatInputSubmitControl } from "./config-bar";
 import { AttachmentPreview } from "./attachment-preview";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { WritingMode } from "./writing-mode";
@@ -78,8 +76,8 @@ export function ChatInput({
   autoFocus = false,
   // Layout Control
   showTopToolbar = false,
-  toolbarPosition = "top",
   showConfigBar = false,
+  layoutVariant = "expanded",
   showResizeHandle = false,
   defaultHeight,
   minHeight,
@@ -124,6 +122,9 @@ export function ChatInput({
   renderSlashCommandMenu,
   // Custom Content Slots
   configBarLeftExtra,
+  renderEmojiPicker,
+  renderTopToolbar,
+  renderBottomToolbar,
 }: ChatInputProps) {
   const { t } = useTranslation();
 
@@ -204,8 +205,7 @@ export function ChatInput({
 
   // Determine if we have toolbar/config bar features enabled
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
-  const showToolbarAtTop = showTopToolbar && toolbarPosition !== "bottom";
-  const showToolbarAtBottom = showTopToolbar && toolbarPosition === "bottom" && !showConfigBar;
+  const isCompactLayout = layoutVariant === "compact";
 
   // Determine selector visibility
   const shouldShowAgentSelector = !hideAgentSelector;
@@ -396,30 +396,14 @@ export function ChatInput({
     onSend(text, messageAttachments);
   }, [canSubmit, isLoading, allowSendWhileLoading, content, attachments, slashCommands, clearAttachments, onSlashCommand, onSend]);
 
-  const submitControl = isLoading ? (
-    <button
-      type="button"
-      data-testid="chat-input-submit-control"
-      onClick={onCancel}
-      className="flex size-8 items-center justify-center rounded-full bg-red-500 text-white transition-colors hover:bg-red-600"
-    >
-      <Square className="size-3.5" />
-    </button>
-  ) : (
-    <button
-      type="button"
-      data-testid="chat-input-submit-control"
-      onClick={handleSend}
-      disabled={!canSubmit}
-      className={cn(
-        "flex size-8 items-center justify-center rounded-full transition-all",
-        canSubmit
-          ? "bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-          : "bg-muted text-muted-foreground cursor-not-allowed"
-      )}
-    >
-      <Send className="size-4" />
-    </button>
+  const submitControl = (
+    <ChatInputSubmitControl
+      onSend={handleSend}
+      onCancel={onCancel}
+      isLoading={isLoading}
+      canSubmit={canSubmit}
+      allowSendWhileLoading={allowSendWhileLoading}
+    />
   );
 
   // Key down handler
@@ -512,6 +496,7 @@ export function ChatInput({
           canSubmit={canSubmit}
           placeholder={placeholder}
           onEmojiSelect={insertEmoji}
+          renderEmojiPicker={renderEmojiPicker}
           onFileClick={handleFileClick}
           onScreenshot={onScreenshot ? handleScreenshot : undefined}
           isScreenshotCapturing={isScreenshotCapturing}
@@ -534,6 +519,122 @@ export function ChatInput({
       </>
     );
   }
+
+  const toolbarRenderProps = {
+    onEmojiSelect: insertEmoji,
+    onFileClick: handleFileClick,
+    onScreenshot: onScreenshot ? handleScreenshot : undefined,
+    onExpandClick: enableWritingMode ? () => setIsWritingMode(true) : undefined,
+    isLoading,
+    disabled,
+    isScreenshotCapturing,
+  };
+
+  const configControls = (
+    <ChatInputConfigControls
+      agents={agents}
+      selectedAgentId={selectedAgentId}
+      onAgentChange={onAgentChange}
+      onAgentSettings={onAgentSettings}
+      showAgentSelector={shouldShowAgentSelector}
+      models={models}
+      selectedModelId={selectedModelId}
+      onModelChange={onModelChange}
+      showModelSelector={shouldShowModelSelector}
+      executors={executors}
+      selectedExecutor={selectedExecutor}
+      onExecutorChange={onExecutorChange}
+      showExecutorSelector={shouldShowExecutorSelector}
+      tools={tools}
+      onToggleTool={onToggleTool}
+      enabledToolsCount={enabledToolsCount}
+      onToolsClick={onToolsClick}
+      skills={skills}
+      onToggleSkill={onToggleSkill}
+      enabledSkillsCount={enabledSkillsCount}
+      onSkillsClick={onSkillsClick}
+      contextTokens={contextTokens}
+      contextBreakdown={contextBreakdown}
+      onContextClick={onContextClick}
+      isLoading={isLoading}
+      disabled={disabled}
+      leftExtraContent={configBarLeftExtra}
+    />
+  );
+
+  const editor = (
+    <div
+      className={cn(
+        "viben-chat-input-editor px-3 relative",
+        !hasToolbar && "py-3",
+        isCompactLayout && "min-w-0 flex-1 px-0"
+      )}
+      style={hasToolbar && !isCompactLayout ? { height: inputHeight } : undefined}
+    >
+      {/* Slash Command Menu */}
+      {renderSlashCommandMenu ? (
+        renderSlashCommandMenu({
+          commands: filteredCommands,
+          selectedIndex: slashSelectedIndex,
+          onSelect: handleSlashSelect,
+          onHover: handleSlashHover,
+          isOpen: isSlashMenuOpen,
+          query: slashQuery,
+          anchorRef: containerRef as React.RefObject<HTMLElement>,
+        })
+      ) : (
+        <SlashCommandMenu
+          commands={filteredCommands}
+          selectedIndex={slashSelectedIndex}
+          onSelect={handleSlashSelect}
+          onHover={handleSlashHover}
+          isOpen={isSlashMenuOpen}
+          query={slashQuery}
+          anchorRef={containerRef as React.RefObject<HTMLElement>}
+        />
+      )}
+
+      <HighlightedInput
+        ref={textareaRef}
+        value={content}
+        onChange={handleContentChange}
+        onKeyDown={handleKeyDown}
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
+        onPaste={handlePaste}
+        placeholder={placeholder || t("chat.inputPlaceholder")}
+        highlightSlashCommand={slashCommands.length > 0}
+        isSlashMenuOpen={isSlashMenuOpen}
+        className={cn(
+          "w-full text-base",
+          hasToolbar && !isCompactLayout && "h-full",
+          isCompactLayout && "h-9"
+        )}
+        textareaClassName={cn(
+          "resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none",
+          hasToolbar && !isCompactLayout ? "py-3" : undefined,
+          isCompactLayout && "min-h-9 py-2 leading-5"
+        )}
+        style={
+          !hasToolbar
+            ? {
+                minHeight: "40px",
+                maxHeight: "200px",
+                overflowY: "hidden",
+              }
+            : isCompactLayout
+              ? {
+                  minHeight: "36px",
+                  maxHeight: "36px",
+                  overflowY: "hidden",
+                }
+              : undefined
+        }
+        rows={isCompactLayout ? 1 : 2}
+        disabled={(isLoading && !allowSendWhileLoading) || disabled}
+      />
+    </div>
+  );
 
   // Render unified input (with optional toolbar/config bar)
   return (
@@ -568,17 +669,18 @@ export function ChatInput({
       )}
 
       {/* Top Toolbar */}
-      {showToolbarAtTop && (
-        <ChatInputToolbar
-          onEmojiSelect={insertEmoji}
-          onFileClick={handleFileClick}
-          onScreenshot={onScreenshot ? handleScreenshot : undefined}
-          onExpandClick={enableWritingMode ? () => setIsWritingMode(true) : undefined}
-          isLoading={isLoading}
-          disabled={disabled}
-          isScreenshotCapturing={isScreenshotCapturing}
-          showExpand={enableWritingMode}
-        />
+      {showTopToolbar && !isCompactLayout && (
+        renderTopToolbar ? (
+          <ChatInputToolbar {...toolbarRenderProps} renderEmojiPicker={renderEmojiPicker}>
+            {renderTopToolbar(toolbarRenderProps)}
+          </ChatInputToolbar>
+        ) : (
+          <ChatInputToolbar
+            {...toolbarRenderProps}
+            renderEmojiPicker={renderEmojiPicker}
+            showExpand={enableWritingMode}
+          />
+        )
       )}
 
       {/* Attachment Preview */}
@@ -595,122 +697,80 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Textarea with Slash Command Menu */}
-      <div
-        className={cn("viben-chat-input-editor px-3 relative", !hasToolbar && "py-3")}
-        style={hasToolbar ? { height: inputHeight } : undefined}
-      >
-        {/* Slash Command Menu */}
-        {renderSlashCommandMenu ? (
-          renderSlashCommandMenu({
-            commands: filteredCommands,
-            selectedIndex: slashSelectedIndex,
-            onSelect: handleSlashSelect,
-            onHover: handleSlashHover,
-            isOpen: isSlashMenuOpen,
-            query: slashQuery,
-            anchorRef: containerRef as React.RefObject<HTMLElement>,
-          })
-        ) : (
-          <SlashCommandMenu
-            commands={filteredCommands}
-            selectedIndex={slashSelectedIndex}
-            onSelect={handleSlashSelect}
-            onHover={handleSlashHover}
-            isOpen={isSlashMenuOpen}
-            query={slashQuery}
-            anchorRef={containerRef as React.RefObject<HTMLElement>}
-          />
-        )}
-
-        <HighlightedInput
-          ref={textareaRef}
-          value={content}
-          onChange={handleContentChange}
-          onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-          onPaste={handlePaste}
-          placeholder={placeholder || t("chat.inputPlaceholder")}
-          highlightSlashCommand={slashCommands.length > 0}
-          isSlashMenuOpen={isSlashMenuOpen}
-          className={cn(
-            "w-full text-base",
-            hasToolbar && "h-full"
-          )}
-          textareaClassName={cn(
-            "resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none",
-            hasToolbar ? "py-3" : undefined
-          )}
-          style={
-            !hasToolbar
-              ? {
-                  minHeight: "40px",
-                  maxHeight: "200px",
-                  overflowY: "hidden",
-                }
-              : undefined
-          }
-          rows={1}
-          disabled={(isLoading && !allowSendWhileLoading) || disabled}
-        />
-      </div>
-
-      {/* Bottom Toolbar */}
-      {showToolbarAtBottom && (
-        <ChatInputToolbar
-          onEmojiSelect={insertEmoji}
-          onFileClick={handleFileClick}
-          onScreenshot={onScreenshot ? handleScreenshot : undefined}
-          onExpandClick={enableWritingMode ? () => setIsWritingMode(true) : undefined}
-          isLoading={isLoading && !allowSendWhileLoading}
-          disabled={disabled}
-          isScreenshotCapturing={isScreenshotCapturing}
-          showExpand={enableWritingMode}
-          endActions={submitControl}
-          className="border-b-0 border-t border-border/30"
-        />
-      )}
+      {!isCompactLayout && editor}
 
       {/* Bottom Config Bar (when enabled) */}
-      {showConfigBar && (
-        <ChatInputConfigBar
-          agents={agents}
-          selectedAgentId={selectedAgentId}
-          onAgentChange={onAgentChange}
-          onAgentSettings={onAgentSettings}
-          showAgentSelector={shouldShowAgentSelector}
-          models={models}
-          selectedModelId={selectedModelId}
-          onModelChange={onModelChange}
-          showModelSelector={shouldShowModelSelector}
-          executors={executors}
-          selectedExecutor={selectedExecutor}
-          onExecutorChange={onExecutorChange}
-          showExecutorSelector={shouldShowExecutorSelector}
-          tools={tools}
-          onToggleTool={onToggleTool}
-          enabledToolsCount={enabledToolsCount}
-          onToolsClick={onToolsClick}
-          skills={skills}
-          onToggleSkill={onToggleSkill}
-          enabledSkillsCount={enabledSkillsCount}
-          onSkillsClick={onSkillsClick}
-          contextTokens={contextTokens}
-          contextBreakdown={contextBreakdown}
-          onContextClick={onContextClick}
-          onSend={handleSend}
-          onCancel={onCancel}
-          isLoading={isLoading}
-          disabled={disabled}
-          canSubmit={canSubmit}
-          allowSendWhileLoading={allowSendWhileLoading}
-          leftExtraContent={configBarLeftExtra}
-        />
+      {showConfigBar && !isCompactLayout && (
+        renderBottomToolbar ? (
+          <div data-testid="chat-input-bottom-toolbar" className="flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30">
+            {renderBottomToolbar({
+              leftContent: configControls,
+              submitControl,
+              isLoading,
+              disabled,
+              canSubmit,
+            })}
+          </div>
+        ) : (
+          <ChatInputConfigBar
+            agents={agents}
+            selectedAgentId={selectedAgentId}
+            onAgentChange={onAgentChange}
+            onAgentSettings={onAgentSettings}
+            showAgentSelector={shouldShowAgentSelector}
+            models={models}
+            selectedModelId={selectedModelId}
+            onModelChange={onModelChange}
+            showModelSelector={shouldShowModelSelector}
+            executors={executors}
+            selectedExecutor={selectedExecutor}
+            onExecutorChange={onExecutorChange}
+            showExecutorSelector={shouldShowExecutorSelector}
+            tools={tools}
+            onToggleTool={handleToggleTool as never}
+            enabledToolsCount={enabledToolsCount}
+            onToolsClick={onToolsClick}
+            skills={skills}
+            onToggleSkill={onToggleSkill}
+            enabledSkillsCount={enabledSkillsCount}
+            onSkillsClick={onSkillsClick}
+            contextTokens={contextTokens}
+            contextBreakdown={contextBreakdown}
+            onContextClick={onContextClick}
+            onSend={handleSend}
+            onCancel={onCancel}
+            isLoading={isLoading}
+            disabled={disabled}
+            canSubmit={canSubmit}
+            allowSendWhileLoading={allowSendWhileLoading}
+            leftExtraContent={configBarLeftExtra}
+          />
+        )
+      )}
+
+      {isCompactLayout && (
+        <div data-testid="chat-input-compact-toolbar" className="flex min-w-0 items-center gap-2 border-t border-border/30 bg-muted/30 px-2 py-2">
+          {renderBottomToolbar ? (
+            renderBottomToolbar({
+              leftContent: configControls,
+              editor,
+              submitControl,
+              isLoading,
+              disabled,
+              canSubmit,
+            })
+          ) : (
+            <>
+              {showConfigBar && configControls}
+              {editor}
+              {submitControl}
+            </>
+          )}
+        </div>
       )}
 
       {/* Bottom Actions (when no config bar) */}
-      {!showConfigBar && !showToolbarAtBottom && (
+      {!showConfigBar && !isCompactLayout && (
         <div
           data-testid="chat-input-basic-actions"
           className={cn(

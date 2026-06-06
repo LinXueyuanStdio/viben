@@ -121,6 +121,87 @@ export function ChatInputConfigBar({
   className,
   leftExtraContent,
 }: ChatInputConfigBarProps) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30",
+        className
+      )}
+    >
+      <ChatInputConfigControls
+        agents={agents}
+        selectedAgentId={selectedAgentId}
+        onAgentChange={onAgentChange}
+        onAgentSettings={onAgentSettings}
+        showAgentSelector={showAgentSelector}
+        models={models}
+        selectedModelId={selectedModelId}
+        onModelChange={onModelChange}
+        showModelSelector={showModelSelector}
+        executors={executors}
+        selectedExecutor={selectedExecutor}
+        onExecutorChange={onExecutorChange}
+        showExecutorSelector={showExecutorSelector}
+        tools={tools}
+        onToggleTool={onToggleTool}
+        enabledToolsCount={enabledToolsCount}
+        onToolsClick={onToolsClick}
+        skills={skills}
+        onToggleSkill={onToggleSkill}
+        enabledSkillsCount={enabledSkillsCount}
+        onSkillsClick={onSkillsClick}
+        contextTokens={contextTokens}
+        contextBreakdown={contextBreakdown}
+        onContextClick={onContextClick}
+        isLoading={isLoading}
+        disabled={disabled}
+        leftExtraContent={leftExtraContent}
+      />
+      <ChatInputSubmitControl
+        onSend={onSend}
+        onCancel={onCancel}
+        isLoading={isLoading}
+        canSubmit={canSubmit}
+        allowSendWhileLoading={allowSendWhileLoading}
+      />
+    </div>
+  );
+}
+
+export type ChatInputConfigControlsProps = Omit<
+  ChatInputConfigBarProps,
+  "onSend" | "onCancel" | "canSubmit" | "allowSendWhileLoading" | "className"
+>;
+
+export function ChatInputConfigControls({
+  agents,
+  selectedAgentId,
+  onAgentChange,
+  onAgentSettings,
+  showAgentSelector,
+  models,
+  selectedModelId,
+  onModelChange,
+  showModelSelector,
+  executors,
+  selectedExecutor,
+  onExecutorChange,
+  showExecutorSelector,
+  tools,
+  onToggleTool,
+  enabledToolsCount,
+  onToolsClick,
+  skills,
+  onToggleSkill,
+  enabledSkillsCount,
+  onSkillsClick,
+  contextTokens,
+  contextBreakdown,
+  onContextClick,
+  isLoading,
+  disabled,
+  leftExtraContent,
+}: ChatInputConfigControlsProps) {
   const { t } = useTranslation();
   const [isToolsOpen, setIsToolsOpen] = useState(false);
   const [isContextOpen, setIsContextOpen] = useState(false);
@@ -144,13 +225,7 @@ export function ChatInputConfigBar({
   const selectedModel = models.find((m) => m.id === selectedModelId);
 
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30",
-        className
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+      <div data-testid="chat-input-config-controls" className="flex min-w-0 items-center gap-1 overflow-hidden">
         {/* 智能体 (Agent Selector) - shows agent name and configured model */}
         {showAgentSelector && (
           <Popover>
@@ -408,30 +483,38 @@ export function ChatInputConfigBar({
         {/* Extra content slot */}
         {leftExtraContent}
       </div>
+  );
+}
 
-      {/* Send/Stop Button */}
-      <div className="flex items-center gap-1">
-        {isLoading && (
-          <Button
-            size="sm"
-            variant="destructive"
-            className="h-8 w-8 p-0"
-            onClick={onCancel}
-          >
-            <Square className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        {(!isLoading || allowSendWhileLoading) && (
-          <Button
-            size="sm"
-            className="h-8 w-8 p-0"
-            disabled={!canSubmit}
-            onClick={onSend}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+export function ChatInputSubmitControl({
+  onSend,
+  onCancel,
+  isLoading,
+  canSubmit,
+  allowSendWhileLoading,
+}: Pick<ChatInputConfigBarProps, "onSend" | "onCancel" | "isLoading" | "canSubmit" | "allowSendWhileLoading">) {
+  return (
+    <div data-testid="chat-input-submit-control" className="flex items-center gap-1">
+      {isLoading && (
+        <Button
+          size="sm"
+          variant="destructive"
+          className="h-8 w-8 p-0"
+          onClick={onCancel}
+        >
+          <Square className="h-3.5 w-3.5" />
+        </Button>
+      )}
+      {(!isLoading || allowSendWhileLoading) && (
+        <Button
+          size="sm"
+          className="h-8 w-8 p-0"
+          disabled={!canSubmit}
+          onClick={onSend}
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
