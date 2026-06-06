@@ -532,6 +532,7 @@ function CompactChatInput({
         allowSendWhileLoading
         placeholder={inputProps?.placeholder ?? (isStreaming ? "Queue a message..." : "Ask Viben...")}
         showTopToolbar
+        toolbarPosition="bottom"
         showConfigBar={false}
         defaultHeight={48}
         minHeight={48}
