@@ -15,6 +15,33 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* Fallback CSS variables when viben-page-tokens.css is unavailable */
+    :root {
+      --background: oklch(98% 0 0);
+      --foreground: oklch(15% 0 0);
+      --card: oklch(100% 0 0);
+      --popover: oklch(100% 0 0);
+      --primary: oklch(55% 0.2 260);
+      --muted: oklch(95% 0.01 260);
+      --muted-foreground: oklch(45% 0.02 260);
+      --accent: oklch(60% 0.15 200);
+      --border: oklch(90% 0.01 260);
+      --ring: oklch(55% 0.2 260);
+      --font-sans: system-ui, -apple-system, sans-serif;
+      --font-mono: ui-monospace, monospace;
+    }
+    .dark {
+      --background: oklch(15% 0.01 260);
+      --foreground: oklch(95% 0 0);
+      --card: oklch(18% 0.01 260);
+      --popover: oklch(18% 0.01 260);
+      --primary: oklch(65% 0.2 260);
+      --muted: oklch(22% 0.02 260);
+      --muted-foreground: oklch(65% 0.02 260);
+      --accent: oklch(50% 0.15 200);
+      --border: oklch(25% 0.02 260);
+      --ring: oklch(65% 0.2 260);
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #root { width: 100%; min-height: 100%; }
     html { scroll-behavior: smooth; }
@@ -850,7 +877,7 @@
           </summary>
           <div class="details-body">
             React provider 通过 `useActionProvider(namespace, actions)` 注册到 `useActionStore`，例如 `PresentationActionProvider` 注册 `presentation.*`。
-            静态 page 通过 `VibenPage.actions.register()` 发 postMessage，desktop 的 `PageActionBridge` 校验 namespace/schema 后注册为 `page.<workspace>.<page>.<iframe>.<namespace>.<action>`。
+            静态 page 通过 `VibenPage.actions.register()` 发 postMessage，desktop 的 `PageActionBridge` 校验 namespace/schema 后注册为 `page.&lt;workspace&gt;.&lt;page&gt;.&lt;iframe&gt;.&lt;namespace&gt;.&lt;action&gt;`。
             agent 可以先 `list_actions` 发现这些 action，再 `get_action_detail` 获取参数结构，最后调用 `GUI_execute`。
           </div>
         </details>
@@ -876,7 +903,6 @@
     </main>
   </div>
 
-  <script src="/api/page/_sdk/v1/viben-page-sdk.js"></script>
   <script>
     const stages = [
       {
@@ -1150,8 +1176,37 @@
       return stages.filter((stage) => stage.view === currentView);
     }
 
+    function getFilteredStages() {
+      const query = (searchInput && searchInput.value || "").trim().toLowerCase();
+      const viewStages = byView();
+      if (!query) return viewStages;
+      return viewStages.filter((stage) => {
+        const haystack = [
+          stage.title,
+          stage.short,
+          stage.tag,
+          stage.summary,
+          stage.note,
+          ...stage.inbound,
+          ...stage.outbound,
+          ...stage.functions,
+          ...stage.files
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      });
+    }
+
+    function ensureValidSelection() {
+      const filtered = getFilteredStages();
+      if (filtered.length === 0) return;
+      const isSelectedVisible = filtered.some((stage) => stage.id === selectedId);
+      if (!isSelectedVisible) {
+        selectedId = filtered[0].id;
+      }
+    }
+
     function renderNav() {
-      const items = byView();
+      const items = getFilteredStages();
       visibleCount.textContent = items.length + " steps";
       stepNav.innerHTML = items.map((stage, index) => `
         <button class="nav-button ${stage.id === selectedId ? "active" : ""}" type="button" data-stage="${stage.id}">
@@ -1162,7 +1217,7 @@
     }
 
     function renderFlow() {
-      const items = byView();
+      const items = getFilteredStages();
       flowNodes.innerHTML = items.map((stage, index) => `
         <button class="flow-node ${stage.id === selectedId ? "active" : ""}" type="button" data-stage="${stage.id}">
           <b>${String(index + 1).padStart(2, "0")} / ${stage.tag}</b>
@@ -1181,8 +1236,12 @@
     }
 
     function renderDetail() {
-      const stage = stages.find((item) => item.id === selectedId) || byView()[0];
-      if (!stage) return;
+      const filtered = getFilteredStages();
+      const stage = filtered.find((item) => item.id === selectedId) || filtered[0];
+      if (!stage) {
+        detailPanel.innerHTML = `<div class="empty-state">没有匹配的阶段。</div>`;
+        return;
+      }
       selectedId = stage.id;
       detailPanel.innerHTML = `
         <div class="detail-top">
@@ -1218,7 +1277,7 @@
     }
 
     function renderSources() {
-      const query = searchInput.value.trim().toLowerCase();
+      const query = (searchInput && searchInput.value || "").trim().toLowerCase();
       const rows = sourceRows.filter((row) => {
         if (!query) return true;
         return row.join(" ").toLowerCase().includes(query);
@@ -1234,29 +1293,12 @@
       document.getElementById("sourceTable").classList.toggle("hidden", rows.length === 0);
     }
 
-    function applySearchToStages() {
-      const query = searchInput.value.trim().toLowerCase();
-      const idsToShow = new Set();
-      if (query) {
-        stages.forEach((stage) => {
-          const haystack = [
-            stage.title,
-            stage.short,
-            stage.tag,
-            stage.summary,
-            stage.note,
-            ...stage.inbound,
-            ...stage.outbound,
-            ...stage.functions,
-            ...stage.files
-          ].join(" ").toLowerCase();
-          if (haystack.includes(query)) idsToShow.add(stage.id);
-        });
-      }
-      document.querySelectorAll("[data-stage]").forEach((el) => {
-        const shouldHide = query && !idsToShow.has(el.getAttribute("data-stage"));
-        el.classList.toggle("hidden", shouldHide);
-      });
+    function applySearch() {
+      ensureValidSelection();
+      renderNav();
+      renderFlow();
+      renderDetail();
+      renderSources();
     }
 
     function selectStage(id) {
@@ -1264,25 +1306,26 @@
       renderNav();
       renderFlow();
       renderDetail();
-      applySearchToStages();
     }
 
     function setView(view) {
       currentView = view;
-      const first = stages.find((stage) => stage.view === view);
-      selectedId = first ? first.id : selectedId;
       document.querySelectorAll(".mode-tab").forEach((button) => {
         button.classList.toggle("active", button.dataset.view === view);
       });
-      renderAll();
-    }
-
-    function renderAll() {
+      ensureValidSelection();
       renderNav();
       renderFlow();
       renderDetail();
       renderSources();
-      applySearchToStages();
+    }
+
+    function renderAll() {
+      ensureValidSelection();
+      renderNav();
+      renderFlow();
+      renderDetail();
+      renderSources();
     }
 
     function escapeHtml(value) {
@@ -1294,24 +1337,46 @@
         .replaceAll("'", "&#039;");
     }
 
-    document.addEventListener("click", (event) => {
-      const stageButton = event.target.closest("[data-stage]");
-      if (stageButton) {
-        selectStage(stageButton.getAttribute("data-stage"));
+    function handleClick(event) {
+      const target = event.target;
+
+      // 检查是否点击了 mode-tab 按钮
+      const tab = target.closest(".mode-tab");
+      if (tab) {
+        const view = tab.dataset.view;
+        console.log("[action-system] Mode tab clicked:", view);
+        if (view) {
+          setView(view);
+        }
         return;
       }
-      const tab = event.target.closest("[data-view]");
-      if (tab) {
-        setView(tab.getAttribute("data-view"));
+
+      // 检查是否点击了 stage 按钮
+      const stageButton = target.closest("[data-stage]");
+      if (stageButton) {
+        const stageId = stageButton.dataset.stage;
+        console.log("[action-system] Stage clicked:", stageId);
+        if (stageId) {
+          selectStage(stageId);
+        }
+        return;
       }
-    });
+    }
+
+    document.addEventListener("click", handleClick);
 
     searchInput.addEventListener("input", () => {
-      renderSources();
-      applySearchToStages();
+      applySearch();
     });
 
-    renderAll();
+    // 初始化
+    try {
+      renderAll();
+    } catch (err) {
+      console.error("[action-system] Error:", err);
+      document.body.innerHTML = '<pre style="color:red;padding:20px;">Init error: ' + err.message + '\n' + err.stack + '</pre>';
+    }
   </script>
+  <script src="/api/page/_sdk/v1/viben-page-sdk.js" async onerror="console.warn('SDK load failed')"></script>
 </body>
 </html>
