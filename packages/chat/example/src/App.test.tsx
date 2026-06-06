@@ -69,14 +69,31 @@ describe("App overlay layout", () => {
   test("keeps control panel centered until fullscreen pushes it to the right", () => {
     render(<App />);
 
+    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
     expect(screen.getByTestId("control-panel")).toHaveClass("left-1/2");
     expect(screen.getByTestId("control-panel")).toHaveClass("-translate-x-1/2");
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
+    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("order-1");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-1");
     expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
     expect(screen.getByTestId("control-panel")).toHaveClass("border-l");
+  });
+
+  test("shows the overlay stage background only behind the expanded floating panel", () => {
+    render(<App />);
+
+    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
+
+    fireEvent.click(screen.getByRole("button", { name: "Compact" }));
+    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("overlay-stage-background");
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
   });
 });

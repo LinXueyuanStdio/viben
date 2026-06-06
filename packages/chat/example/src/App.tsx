@@ -383,6 +383,7 @@ export function App() {
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
   const isOverlayFull = overlayMode === "full"
+  const showOverlayStageBackground = overlayMode === "expanded"
 
   return (
     <LayoutGroup id="viben-chat-overlay-demo">
@@ -668,6 +669,8 @@ export function App() {
         <div
           data-testid="chat-app-stage"
           className={`relative order-1 flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
+            showOverlayStageBackground ? "overlay-stage-background " : ""
+          }${
             isOverlayFull ? "flex-1 overflow-hidden opacity-100" : "absolute inset-0 overflow-visible opacity-100"
           }`}
         >
