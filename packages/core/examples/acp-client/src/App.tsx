@@ -75,7 +75,6 @@ import {
 import {
   formatJson as prettyJson,
   JsonBlock,
-  JsonCode,
   JsonPanel,
   normalizeJsonText,
 } from "./json-renderer";
