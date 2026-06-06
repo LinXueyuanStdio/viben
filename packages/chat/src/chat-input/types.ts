@@ -104,6 +104,8 @@ export interface ChatInputProps {
   // === Custom Content Slots ===
   /** Extra content to render at the left side of the config bar (after built-in selectors) */
   configBarLeftExtra?: ReactNode;
+  /** Render an emoji picker UI when the toolbar emoji button is opened. */
+  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => ReactNode;
   /** Callback when cancel/stop button is clicked */
   onCancel?: () => void;
   /** Whether the chat is in loading/streaming state */

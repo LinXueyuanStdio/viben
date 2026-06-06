@@ -31,11 +31,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@viben/ui";
-import { EmojiPicker } from "../emoji-picker";
 
 export interface ChatInputToolbarProps {
   /** Callback when emoji is selected */
   onEmojiSelect: (emoji: string) => void;
+  /** Render the picker shown inside the emoji popover. Toolbar does not own a picker implementation. */
+  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => ReactNode;
   /** Callback when file button is clicked */
   onFileClick: () => void;
   /** Callback when screenshot is requested. If undefined, screenshot button is hidden */
@@ -60,6 +61,7 @@ export interface ChatInputToolbarProps {
 
 export function ChatInputToolbar({
   onEmojiSelect,
+  renderEmojiPicker,
   onFileClick,
   onScreenshot,
   onExpandClick,
@@ -91,7 +93,7 @@ export function ChatInputToolbar({
       )}
     >
       <div className="flex items-center gap-1">
-        {/* Emoji Picker */}
+        {/* Emoji */}
         <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
           <TooltipProvider delayDuration={300}>
             <Tooltip>
@@ -110,9 +112,11 @@ export function ChatInputToolbar({
               <TooltipContent>{t("chat.emoji", "Emoji")}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <PopoverContent className="w-auto p-2" align="start">
-            <EmojiPicker onSelect={handleEmojiSelect} />
-          </PopoverContent>
+          {renderEmojiPicker && (
+            <PopoverContent className="w-auto p-2" align="start">
+              {renderEmojiPicker({ onSelect: handleEmojiSelect })}
+            </PopoverContent>
+          )}
         </Popover>
 
         {/* File Attachment */}
