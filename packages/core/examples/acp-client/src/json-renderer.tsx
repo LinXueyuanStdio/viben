@@ -86,7 +86,7 @@ export function normalizeJsonText(text: string): string {
   return formatJson(parseJsonOrFallback(text, { type: "object", properties: {} }));
 }
 
-function parseJsonOrFallback(text: string, fallback: unknown): unknown {
+export function parseJsonOrFallback(text: string, fallback: unknown): unknown {
   try {
     return JSON.parse(text);
   } catch {

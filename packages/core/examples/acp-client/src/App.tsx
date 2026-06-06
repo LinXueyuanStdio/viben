@@ -77,6 +77,7 @@ import {
   JsonBlock,
   JsonPanel,
   normalizeJsonText,
+  parseJsonOrFallback,
 } from "./json-renderer";
 
 interface GuiActionDefinition {
