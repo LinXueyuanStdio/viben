@@ -28,7 +28,10 @@ export function parseShortcut(shortcut: string): {
 /**
  * Check if a keyboard event matches a shortcut configuration.
  */
-export function matchesShortcut(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">, shortcut: string): boolean {
+export function matchesShortcut(
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">,
+  shortcut: string,
+): boolean {
   if (!shortcut) return false;
 
   const parsed = parseShortcut(shortcut);
@@ -36,9 +39,9 @@ export function matchesShortcut(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "meta
   // For modifier keys (Ctrl/Cmd), we check if either is pressed
   // This allows cross-platform shortcuts to work
   const modifierMatch =
-    (parsed.ctrl || parsed.meta)
-      ? (e.ctrlKey || e.metaKey)
-      : (!e.ctrlKey && !e.metaKey);
+    parsed.ctrl || parsed.meta
+      ? e.ctrlKey || e.metaKey
+      : !e.ctrlKey && !e.metaKey;
 
   const shiftMatch = parsed.shift ? e.shiftKey : !e.shiftKey;
   const altMatch = parsed.alt ? e.altKey : !e.altKey;
@@ -49,13 +52,13 @@ export function matchesShortcut(e: Pick<KeyboardEvent, "key" | "ctrlKey" | "meta
 
 export function isShortcutPressed(
   e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">,
-  shortcut: string
+  shortcut: string,
 ): boolean {
   return matchesShortcut(e, shortcut);
 }
 
 export function getTabSwitchIndexFromShortcut(
-  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">
+  e: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey">,
 ): number | null {
   if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) {
     return null;
@@ -76,7 +79,7 @@ export type EditableTargetLike = {
 };
 
 export function isEditableShortcutTarget(
-  target: EventTarget | EditableTargetLike | null
+  target: EventTarget | EditableTargetLike | null,
 ): boolean {
   const element = target as EditableTargetLike | null;
   if (!element) return false;
@@ -97,8 +100,8 @@ export function isEditableShortcutTarget(
   try {
     return Boolean(
       element.closest?.(
-        'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable], [role="textbox"]'
-      )
+        'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable], [role="textbox"]',
+      ),
     );
   } catch {
     return false;
@@ -112,9 +115,13 @@ export function isEditableShortcutTarget(
  * - createTask: Open create task dialog (default: Shift+Cmd+J)
  */
 export function useGlobalShortcuts() {
-  const openCreateTaskDialog = useUiStore((state) => state.openCreateTaskDialog);
+  const openCreateTaskDialog = useUiStore(
+    (state) => state.openCreateTaskDialog,
+  );
   const shortcuts = useAppStore((state) => state.shortcuts);
-  const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
+  const activeWorkspaceId = useWorkspaceStore(
+    (state) => state.activeWorkspaceId,
+  );
   const tabStore = useMemo(() => getCurrentWindowTabStore(), []);
   const openTab = tabStore((state) => state.openTab);
   const closeTab = tabStore((state) => state.closeTab);
@@ -124,7 +131,11 @@ export function useGlobalShortcuts() {
   // Read tab state via ref to avoid recreating the callback on every tab change.
   // Using .map() in a zustand selector creates a new array each time, which
   // triggers infinite re-renders via useSyncExternalStore.
-  const tabStateRef = useRef({ activeTabId: null as string | null, tabIds: [] as string[], tabCount: 0 });
+  const tabStateRef = useRef({
+    activeTabId: null as string | null,
+    tabIds: [] as string[],
+    tabCount: 0,
+  });
   const activeTabId = tabStore((state) => state.activeTabId);
   const tabs = tabStore((state) => state.tabs);
   tabStateRef.current = {
@@ -153,13 +164,20 @@ export function useGlobalShortcuts() {
         e.preventDefault();
         const url = "/workspace";
         openTab({
-          navigationState: createTabNavigationState(url, buildColdStartBreadcrumb(url)),
+          navigationState: createTabNavigationState(
+            url,
+            buildColdStartBreadcrumb(url),
+          ),
           pinned: false,
         });
         return;
       }
 
-      const { activeTabId: currentTabId, tabIds, tabCount } = tabStateRef.current;
+      const {
+        activeTabId: currentTabId,
+        tabIds,
+        tabCount,
+      } = tabStateRef.current;
 
       if (isShortcutPressed(e, shortcuts.closeTab)) {
         if (!currentTabId || tabCount <= 1) {
@@ -203,7 +221,7 @@ export function useGlobalShortcuts() {
       closeTab,
       setActiveTab,
       reopenClosedTab,
-    ]
+    ],
   );
 
   useEffect(() => {
