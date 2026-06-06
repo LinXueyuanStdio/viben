@@ -48,6 +48,7 @@ import {
   createDefaultAcpSteerPromptStore,
   type AcpSteerPromptStore,
 } from "./steer-prompt-store";
+import { isAcpClientSideBridgeTool } from "./client-side-mcp-constants";
 
 const log = globalLogger.child({ module: "acp-session-manager" });
 
@@ -94,14 +95,14 @@ interface AcpSession {
   backend_load_session_id?: string;
   prompt_running: boolean;
   prompt_queue: AcpPromptQueueItem[];
-  pending_gui_tool_calls: PendingGuiToolCall[];
+  pending_client_side_bridge_tool_calls: PendingClientSideBridgeToolCall[];
   sdk_session_id?: string;
   last_error?: AcpErrorDetail;
   config_options?: AcpConfigOption[];
   agent_capabilities: AcpAgentCapabilities;
 }
 
-interface PendingGuiToolCall {
+interface PendingClientSideBridgeToolCall {
   toolCallId: string;
   toolName: string;
 }
@@ -181,7 +182,7 @@ export class AcpSessionManager {
       gateway_url: request.gateway_url ?? request.gatewayUrl ?? context.gateway_url,
       prompt_running: false,
       prompt_queue: [],
-      pending_gui_tool_calls: [],
+      pending_client_side_bridge_tool_calls: [],
       agent_capabilities: DEFAULT_AGENT_CAPABILITIES,
     };
     return session;
@@ -642,10 +643,10 @@ export class AcpSessionManager {
     if (update.sessionUpdate !== "tool_call") return;
     const toolName = update.title ?? "";
     const toolCallId = update.toolCallId;
-    if (toolName === "mcp__client_side__GUI_execute" || toolName === "mcp__gui_action__GUI_execute") {
+    if (isAcpClientSideBridgeTool(toolName)) {
       if (toolCallId) {
-        session.pending_gui_tool_calls.push({ toolCallId, toolName });
-        log.debug({ sessionId: session.id, toolCallId, toolName }, "Queued ACP GUI tool call id for MCP bridge");
+        session.pending_client_side_bridge_tool_calls.push({ toolCallId, toolName });
+        log.debug({ sessionId: session.id, toolCallId, toolName }, "Queued ACP client-side tool call id for MCP bridge");
       }
       return;
     }
@@ -682,8 +683,8 @@ export class AcpSessionManager {
   }
 
   private resolveClientToolCallId(session: AcpSession, toolName: string, fallbackToolCallId: string): string {
-    if (toolName !== "mcp__client_side__GUI_execute" && toolName !== "mcp__gui_action__GUI_execute") return fallbackToolCallId;
-    const pending = session.pending_gui_tool_calls.shift();
+    if (!isAcpClientSideBridgeTool(toolName)) return fallbackToolCallId;
+    const pending = session.pending_client_side_bridge_tool_calls.shift();
     if (!pending) return fallbackToolCallId;
     if (pending.toolCallId !== fallbackToolCallId) {
       log.debug({
@@ -691,7 +692,7 @@ export class AcpSessionManager {
         backendToolCallId: pending.toolCallId,
         bridgeToolCallId: fallbackToolCallId,
         toolName,
-      }, "Mapped GUI MCP bridge tool call to ACP backend tool call id");
+      }, "Mapped client-side MCP bridge tool call to ACP backend tool call id");
     }
     return pending.toolCallId;
   }

@@ -26,6 +26,12 @@ import type {
 import type { AgentMcpServerEntry } from "../../types";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
 import { logger as globalLogger } from "../../telemetry";
+import {
+  CLIENT_SIDE_BASH_TOOL_NAME,
+  CLIENT_SIDE_MCP_SERVER_NAME,
+  GUI_EXECUTE_TOOL_NAME,
+  LEGACY_GUI_ACTION_MCP_SERVER_NAME,
+} from "./client-side-mcp-constants";
 import type {
   AcpAgentCapabilities,
   AcpConfigOption,
@@ -41,8 +47,6 @@ const DEFAULT_BACKEND_INIT_TIMEOUT_MS = 120_000;
 const OFFICIAL_CLAUDE_ACP_COMMAND = "claude-agent-acp";
 const DEFAULT_ACP_EXECUTOR_TYPE = "CLAUDE_CODE";
 const DEFAULT_GATEWAY_URL = "http://127.0.0.1:18790";
-const GUI_ACTION_MCP_SERVER_NAME = "gui_action";
-const CLIENT_SIDE_MCP_SERVER_NAME = "client_side";
 const CLAUDE_PERMISSION_MODES = new Set([
   "default",
   "acceptEdits",
@@ -681,7 +685,7 @@ function normalizeMcpServer(
   entry: McpServer | string | AgentMcpServerEntry
 ): McpServer | null {
   if (typeof entry === "string") {
-    if (entry === CLIENT_SIDE_MCP_SERVER_NAME || entry === GUI_ACTION_MCP_SERVER_NAME) {
+    if (entry === CLIENT_SIDE_MCP_SERVER_NAME || entry === LEGACY_GUI_ACTION_MCP_SERVER_NAME) {
       return createClientSideMcpServer(context);
     }
     log.warn({ mcpServer: entry }, "Named in-process MCP server is not available through ACP backend adapters");
@@ -689,7 +693,7 @@ function normalizeMcpServer(
   }
 
   if ("type" in entry && entry.type === "builtin") {
-    if (entry.name === CLIENT_SIDE_MCP_SERVER_NAME || entry.name === GUI_ACTION_MCP_SERVER_NAME) {
+    if (entry.name === CLIENT_SIDE_MCP_SERVER_NAME || entry.name === LEGACY_GUI_ACTION_MCP_SERVER_NAME) {
       return createClientSideMcpServer(context);
     }
     log.warn({ mcpServer: entry.name }, "Named builtin MCP server is not available through ACP backend adapters");
@@ -743,8 +747,8 @@ function createClientSideMcpServer(context: AcpBackendStartContext): McpServer {
 function registerClientSideToolOptions(): void {
   // Kept local to avoid importing Claude SDK MCP registration into ACP adapters.
   // Trusted prefixed tool names resolve to these base tool options.
-  clientToolCompletionRegistry.registerToolOptions("GUI_execute", { timeoutMs: 60_000 });
-  clientToolCompletionRegistry.registerToolOptions("ClientSideBash", { timeoutMs: 60_000 });
+  clientToolCompletionRegistry.registerToolOptions(GUI_EXECUTE_TOOL_NAME, { timeoutMs: 60_000 });
+  clientToolCompletionRegistry.registerToolOptions(CLIENT_SIDE_BASH_TOOL_NAME, { timeoutMs: 60_000 });
 }
 
 function resolveClientSideMcpServerEntry(): string {
