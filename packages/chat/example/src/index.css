@@ -45,6 +45,20 @@
   will-change: transform, border-radius, opacity;
 }
 
+.overlay-stage-background {
+  background-color: var(--background);
+  background-image:
+    linear-gradient(90deg, color-mix(in oklch, var(--foreground) 2.5%, transparent) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in oklch, var(--foreground) 2%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--surface-elevated) 14%, var(--background) 86%) 0%,
+      var(--background) 58%,
+      color-mix(in oklch, var(--primary) 4%, var(--background) 96%) 100%
+    );
+  background-size: 80px 80px, 80px 80px, auto;
+}
+
 .overlay-breathing-surface {
   animation: overlayBreathingSurface 2.8s ease-in-out infinite;
 }
