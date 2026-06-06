@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getTabViewModel, useTabStore } from "@/stores/tab-store";
+import { getCurrentWindowTabStore, getTabViewModel } from "@/stores/tab-store";
 import type { TabNavigationState, TabViewModel } from "@/stores/tab-store";
 import type { IconData } from "@/components/ui/icon-picker";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
@@ -13,8 +13,13 @@ import type { PageConfig } from "@/hooks/use-pages";
 // ─── Hook 1: useTabList ─────────────────────────────────────────────────────
 // Returns the tab view model list. Only re-renders when the tabs array changes.
 
+function useCurrentTabStore() {
+  return useMemo(() => getCurrentWindowTabStore(), []);
+}
+
 export function useTabList(): TabViewModel[] {
-  const rawTabs = useTabStore((state) => state.tabs);
+  const tabStore = useCurrentTabStore();
+  const rawTabs = tabStore((state) => state.tabs);
   return useMemo(() => rawTabs.map(getTabViewModel), [rawTabs]);
 }
 
@@ -31,14 +36,15 @@ export interface ActiveTabState {
 }
 
 export function useActiveTabState(): ActiveTabState {
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const activeTabRaw = useTabStore((state) =>
+  const tabStore = useCurrentTabStore();
+  const activeTabId = tabStore((state) => state.activeTabId);
+  const activeTabRaw = tabStore((state) =>
     state.tabs.find((tab) => tab.id === state.activeTabId) ?? null
   );
-  const canGoBackFn = useTabStore((state) => state.canGoBack);
-  const canGoForwardFn = useTabStore((state) => state.canGoForward);
-  const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
-  const getCurrentNavigationState = useTabStore(
+  const canGoBackFn = tabStore((state) => state.canGoBack);
+  const canGoForwardFn = tabStore((state) => state.canGoForward);
+  const getCurrentUrl = tabStore((state) => state.getCurrentUrl);
+  const getCurrentNavigationState = tabStore(
     (state) => state.getCurrentNavigationState
   );
 
@@ -109,16 +115,17 @@ export interface TabActions {
 
 export function useTabActions(): TabActions {
   const { getWorkspace } = useLocalWorkspaces();
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const rawTabs = useTabStore((state) => state.tabs);
+  const tabStore = useCurrentTabStore();
+  const activeTabId = tabStore((state) => state.activeTabId);
+  const rawTabs = tabStore((state) => state.tabs);
 
-  const openTab = useTabStore((state) => state.openTab);
-  const closeTabStore = useTabStore((state) => state.closeTab);
-  const setActiveTab = useTabStore((state) => state.setActiveTab);
-  const replaceLocationStore = useTabStore((state) => state.replaceLocation);
-  const pushLocationStore = useTabStore((state) => state.pushLocation);
-  const getCurrentUrl = useTabStore((state) => state.getCurrentUrl);
-  const getCurrentNavigationState = useTabStore(
+  const openTab = tabStore((state) => state.openTab);
+  const closeTabStore = tabStore((state) => state.closeTab);
+  const setActiveTab = tabStore((state) => state.setActiveTab);
+  const replaceLocationStore = tabStore((state) => state.replaceLocation);
+  const pushLocationStore = tabStore((state) => state.pushLocation);
+  const getCurrentUrl = tabStore((state) => state.getCurrentUrl);
+  const getCurrentNavigationState = tabStore(
     (state) => state.getCurrentNavigationState
   );
 
@@ -495,13 +502,14 @@ export interface TabNavigationActions {
 }
 
 export function useTabNavigation(): TabNavigationActions {
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const navigate = useTabStore((state) => state.navigate);
-  const goBack = useTabStore((state) => state.goBack);
-  const goForward = useTabStore((state) => state.goForward);
-  const canGoBackFn = useTabStore((state) => state.canGoBack);
-  const canGoForwardFn = useTabStore((state) => state.canGoForward);
-  const jumpToHistoryStore = useTabStore((state) => state.jumpToHistory);
+  const tabStore = useCurrentTabStore();
+  const activeTabId = tabStore((state) => state.activeTabId);
+  const navigate = tabStore((state) => state.navigate);
+  const goBack = tabStore((state) => state.goBack);
+  const goForward = tabStore((state) => state.goForward);
+  const canGoBackFn = tabStore((state) => state.canGoBack);
+  const canGoForwardFn = tabStore((state) => state.canGoForward);
+  const jumpToHistoryStore = tabStore((state) => state.jumpToHistory);
 
   const goBackInTab = useCallback(() => {
     if (activeTabId && canGoBackFn(activeTabId)) {
