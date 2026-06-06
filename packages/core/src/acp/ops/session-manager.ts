@@ -14,6 +14,8 @@ import type {
   AcpConnection,
   AcpContentBlock,
   AcpErrorDetail,
+  AcpInterruptSessionRequest,
+  AcpInterruptSessionResponse,
   AcpLoadSessionRequest,
   AcpLoadSessionResponse,
   AcpMcpServer,
@@ -350,6 +352,40 @@ export class AcpSessionManager {
     return steerRecordToView(record);
   }
 
+  async interruptSession(request: AcpInterruptSessionRequest): Promise<AcpInterruptSessionResponse> {
+    const session = this.requireSession(request.sessionId);
+
+    await this.interruptCurrentExecution(session);
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    if (steerPrompts.length === 0) {
+      return {
+        interrupted: true,
+        resumed: false,
+        promptIds: [],
+      };
+    }
+
+    const prompt = mergeSteerPromptBlocks(steerPrompts);
+    if (prompt.length === 0) {
+      return {
+        interrupted: true,
+        resumed: false,
+        promptIds: steerPrompts.map((item) => item.promptId),
+      };
+    }
+
+    await this.prompt({
+      sessionId: session.id,
+      prompt,
+    });
+
+    return {
+      interrupted: true,
+      resumed: true,
+      promptIds: steerPrompts.map((item) => item.promptId),
+    };
+  }
+
   async cancelSession(sessionId: string): Promise<boolean> {
     const session = this.sessions.get(sessionId);
     if (!session) return false;
@@ -369,6 +405,16 @@ export class AcpSessionManager {
     }
     log.info({ sessionId }, "ACP session cancelled");
     return true;
+  }
+
+  private async interruptCurrentExecution(session: AcpSession): Promise<void> {
+    clientToolCompletionRegistry.cancelSession(session.id);
+    if (!session.backend) return;
+    try {
+      await session.backend.cancel();
+    } catch {
+      // The backend may already be ending its current prompt.
+    }
   }
 
   closeSession(sessionId: string): void {
@@ -695,6 +741,26 @@ function promptBlocksToText(blocks: AcpContentBlock[]): string {
     })
     .filter(Boolean)
     .join("\n");
+}
+
+function mergeSteerPromptBlocks(prompts: AcpSteerPromptView[]): AcpContentBlock[] {
+  const text = prompts
+    .flatMap((prompt) => prompt.prompt)
+    .map((block) => blockToPromptText(block))
+    .filter((content) => content.length > 0)
+    .join("\n\n");
+  return text ? [{ type: "text", text }] : [];
+}
+
+function blockToPromptText(block: AcpContentBlock): string {
+  if (block.type === "text" && typeof block.text === "string") {
+    return block.text.trim();
+  }
+  try {
+    return JSON.stringify(block);
+  } catch {
+    return "";
+  }
 }
 
 function normalizeClientToolResponse(response: unknown): AcpClientToolCallResponse {

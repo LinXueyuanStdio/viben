@@ -29,6 +29,7 @@ import {
   getAcpErrorDetail,
   type AcpConnection,
   type AcpCancelSteerPromptRequest,
+  type AcpInterruptSessionRequest,
   type AcpLoadSessionRequest,
   type AcpNewSessionRequest,
   type AcpPromptRequest,
@@ -178,6 +179,18 @@ function createVibenAcpAgent(
           return await acpSessionManager.cancelSteerPrompt(params as unknown as AcpCancelSteerPromptRequest) as unknown as Record<string, unknown>;
         case "session/prompt/view":
           return await acpSessionManager.viewSteerPrompt(params as unknown as AcpViewSteerPromptRequest) as unknown as Record<string, unknown>;
+        case "session/interrupt":
+          return await acpSessionManager.interruptSession(params as unknown as AcpInterruptSessionRequest) as unknown as Record<string, unknown>;
+        default:
+          throw RequestError.methodNotFound(method);
+      }
+    },
+
+    async extNotification(method: string, params: Record<string, unknown>) {
+      switch (method) {
+        case "session/interrupt":
+          await acpSessionManager.interruptSession(params as unknown as AcpInterruptSessionRequest);
+          return;
         default:
           throw RequestError.methodNotFound(method);
       }

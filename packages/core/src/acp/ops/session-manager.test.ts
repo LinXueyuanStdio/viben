@@ -13,13 +13,19 @@ import type {
 import type { AcpConnection, AcpSessionNotification } from "../types";
 
 class FakeBackendSession implements AcpBackendSession {
+  readonly prompts: PromptRequest[] = [];
+  cancelCount = 0;
+
   constructor(readonly backendSessionId = "backend-session") {}
 
-  async prompt(_request: PromptRequest): Promise<PromptResponse> {
+  async prompt(request: PromptRequest): Promise<PromptResponse> {
+    this.prompts.push(request);
     return { stopReason: "end_turn" };
   }
 
-  async cancel(): Promise<void> {}
+  async cancel(): Promise<void> {
+    this.cancelCount += 1;
+  }
 
   async close(): Promise<void> {}
 }
@@ -27,11 +33,13 @@ class FakeBackendSession implements AcpBackendSession {
 class CapturingBackendAdapter implements AcpBackendAdapter {
   readonly id = "capturing";
   startContext?: AcpBackendStartContext;
+  backendSession?: FakeBackendSession;
 
   async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
     this.startContext = context;
     const requestedSessionId = "sessionId" in context.request ? context.request.sessionId : undefined;
-    return new FakeBackendSession(requestedSessionId ?? "backend-session");
+    this.backendSession = new FakeBackendSession(requestedSessionId ?? "backend-session");
+    return this.backendSession;
   }
 }
 
@@ -62,6 +70,43 @@ class HookedBackendAdapter implements AcpBackendAdapter {
   async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
     this.startContext = context;
     return new HookedBackendSession("backend-session", () => this.onPrompt(context));
+  }
+}
+
+class InterruptibleBackendSession implements AcpBackendSession {
+  readonly prompts: PromptRequest[] = [];
+  cancelCount = 0;
+  private cancelCurrentPrompt: (() => void) | undefined;
+
+  constructor(readonly backendSessionId = "backend-session") {}
+
+  async prompt(request: PromptRequest): Promise<PromptResponse> {
+    this.prompts.push(request);
+    if (this.prompts.length > 1) {
+      return { stopReason: "end_turn" };
+    }
+    await new Promise<void>((resolve) => {
+      this.cancelCurrentPrompt = resolve;
+    });
+    return { stopReason: "cancelled" };
+  }
+
+  async cancel(): Promise<void> {
+    this.cancelCount += 1;
+    this.cancelCurrentPrompt?.();
+    this.cancelCurrentPrompt = undefined;
+  }
+
+  async close(): Promise<void> {}
+}
+
+class InterruptibleBackendAdapter implements AcpBackendAdapter {
+  readonly id = "interruptible";
+  backendSession?: InterruptibleBackendSession;
+
+  async start(_context: AcpBackendStartContext): Promise<AcpBackendSession> {
+    this.backendSession = new InterruptibleBackendSession();
+    return this.backendSession;
   }
 }
 
@@ -405,4 +450,59 @@ describe("AcpSessionManager", () => {
       );
     }
   );
+
+  it("interrupts current execution and resumes with queued steer prompts as a prompt", async () => {
+    const adapter = new InterruptibleBackendAdapter();
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    const runningPrompt = manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "initial prompt" }],
+    });
+    await waitFor(() => adapter.backendSession?.prompts.length === 1);
+
+    const first = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "stop the current command" }],
+    });
+    const second = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "continue with this instead" }],
+    });
+
+    const result = await manager.interruptSession({ sessionId: session.sessionId });
+    await expect(runningPrompt).resolves.toEqual({ stopReason: "cancelled" });
+
+    expect(result).toEqual({
+      interrupted: true,
+      resumed: true,
+      promptIds: [first.promptId, second.promptId],
+    });
+    expect(adapter.backendSession?.cancelCount).toBe(1);
+    expect(adapter.backendSession?.prompts.map((request) => request.prompt)).toEqual([
+      [{ type: "text", text: "initial prompt" }],
+      [{ type: "text", text: "stop the current command\n\ncontinue with this instead" }],
+    ]);
+    expect(connection.updates.map((notification) => notification.update)).toEqual([
+      expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: first.promptId }),
+      expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: second.promptId }),
+    ]);
+  });
 });
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error("Timed out waiting for condition");
+}

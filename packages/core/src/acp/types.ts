@@ -111,6 +111,16 @@ export interface AcpCancelSteerPromptResponse {
   cancelledAt?: string;
 }
 
+export interface AcpInterruptSessionRequest {
+  sessionId: string;
+}
+
+export interface AcpInterruptSessionResponse {
+  interrupted: boolean;
+  resumed: boolean;
+  promptIds: string[];
+}
+
 export interface AcpSteerPromptConsumedNotification {
   promptId: string;
   status: AcpSteerPromptStatus;

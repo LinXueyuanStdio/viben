@@ -14,6 +14,8 @@ export {
   type AcpErrorDetail,
   type AcpInitializeRequest,
   type AcpInitializeResponse,
+  type AcpInterruptSessionRequest,
+  type AcpInterruptSessionResponse,
   type AcpLoadSessionRequest,
   type AcpLoadSessionResponse,
   type AcpMcpServer,
