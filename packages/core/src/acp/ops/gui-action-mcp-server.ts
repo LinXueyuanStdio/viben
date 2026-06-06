@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -15,7 +14,7 @@ export interface GuiActionMcpServerOptions {
 
 export interface GuiActionClientToolRequest {
   sessionId: string;
-  toolUseId: string;
+  toolCallId?: string;
   toolName: string;
   input: {
     action?: string;
@@ -49,12 +48,10 @@ export function createGuiActionMcpServer(options: GuiActionMcpServerOptions = {}
         return errorResult("Error: action field is required.");
       }
 
-      const toolUseId = `gui-${randomUUID()}`;
       const toolName = "mcp__gui_action__GUI_execute";
       if (options.requestClientTool) {
         return await options.requestClientTool({
           sessionId,
-          toolUseId,
           toolName,
           input,
         });
@@ -65,7 +62,6 @@ export function createGuiActionMcpServer(options: GuiActionMcpServerOptions = {}
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId,
-          tool_use_id: toolUseId,
           tool_name: toolName,
           input,
         }),

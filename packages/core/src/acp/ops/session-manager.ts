@@ -84,6 +84,7 @@ interface AcpSession {
   backend_load_session_id?: string;
   prompt_running: boolean;
   prompt_queue: AcpPromptQueueItem[];
+  pending_gui_tool_call_ids: string[];
   sdk_session_id?: string;
   last_error?: AcpErrorDetail;
   config_options?: AcpConfigOption[];
@@ -165,6 +166,7 @@ export class AcpSessionManager {
       gateway_url: request.gateway_url ?? request.gatewayUrl ?? context.gateway_url,
       prompt_running: false,
       prompt_queue: [],
+      pending_gui_tool_call_ids: [],
       agent_capabilities: DEFAULT_AGENT_CAPABILITIES,
     };
     return session;
@@ -174,7 +176,7 @@ export class AcpSessionManager {
     sessionId: string,
     toolName: string,
     input: unknown,
-    toolUseId: string = randomUUID()
+    toolCallId: string = randomUUID()
   ): Promise<CallToolResult> {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -184,10 +186,11 @@ export class AcpSessionManager {
       };
     }
 
+    const resolvedToolCallId = this.resolveClientToolCallId(session, toolName, toolCallId);
     clientToolCompletionRegistry.registerToolOptions("GUI_execute", { timeoutMs: 60_000 });
-    clientToolCompletionRegistry.enqueue(session.id, toolUseId, toolName);
-    const result = clientToolCompletionRegistry.waitForClient(session.id, toolUseId, toolName);
-    await this.dispatchClientToolRequest(session, toolUseId, toolName, input);
+    clientToolCompletionRegistry.enqueue(session.id, resolvedToolCallId, toolName);
+    const result = clientToolCompletionRegistry.waitForClient(session.id, resolvedToolCallId, toolName);
+    await this.dispatchClientToolRequest(session, resolvedToolCallId, toolName, input);
     return await result;
   }
 
@@ -547,14 +550,17 @@ export class AcpSessionManager {
 
     if (update.sessionUpdate !== "tool_call") return;
     const toolName = update.title ?? "";
-    const toolUseId = update.toolCallId;
-    if (toolName === "mcp__gui_action__GUI_execute") return;
-    if (!toolUseId || !clientToolCompletionRegistry.isClientSideTool(toolName)) return;
+    const toolCallId = update.toolCallId;
+    if (toolName === "mcp__gui_action__GUI_execute") {
+      if (toolCallId) session.pending_gui_tool_call_ids.push(toolCallId);
+      return;
+    }
+    if (!toolCallId || !clientToolCompletionRegistry.isClientSideTool(toolName)) return;
 
-    clientToolCompletionRegistry.enqueue(session.id, toolUseId, toolName);
-    this.dispatchClientToolRequest(session, toolUseId, toolName, update.rawInput).catch((error) => {
-      log.warn({ err: error, sessionId: session.id, toolUseId }, "ACP client tool request failed");
-      clientToolCompletionRegistry.complete(toolUseId, session.id, {
+    clientToolCompletionRegistry.enqueue(session.id, toolCallId, toolName);
+    this.dispatchClientToolRequest(session, toolCallId, toolName, update.rawInput).catch((error) => {
+      log.warn({ err: error, sessionId: session.id, toolCallId }, "ACP client tool request failed");
+      clientToolCompletionRegistry.complete(toolCallId, session.id, {
         content: [{ type: "text", text: `Client tool failed: ${error.message}` }],
         isError: true,
       });
@@ -563,22 +569,27 @@ export class AcpSessionManager {
 
   private async dispatchClientToolRequest(
     session: AcpSession,
-    toolUseId: string,
+    toolCallId: string,
     toolName: string,
     input: unknown
   ): Promise<void> {
     const response = await session.connection.requestClient("_viben/client_tool_call", {
       sessionId: session.id,
-      toolUseId,
+      toolCallId,
       toolName,
       input,
     });
-    const result = normalizeClientToolResponse(response);
+    const result = normalizeClientToolResponse(response, session.id, toolCallId);
     await this.consumeQueuedSteerPrompts(session.id);
-    const accepted = clientToolCompletionRegistry.complete(toolUseId, session.id, result);
+    const accepted = clientToolCompletionRegistry.complete(toolCallId, session.id, result);
     if (!accepted) {
-      log.warn({ sessionId: session.id, toolUseId }, "ACP client tool completion was not accepted");
+      log.warn({ sessionId: session.id, toolCallId }, "ACP client tool completion was not accepted");
     }
+  }
+
+  private resolveClientToolCallId(session: AcpSession, toolName: string, fallbackToolCallId: string): string {
+    if (toolName !== "mcp__gui_action__GUI_execute") return fallbackToolCallId;
+    return session.pending_gui_tool_call_ids.shift() ?? fallbackToolCallId;
   }
 
   private async dispatchErrorUpdate(session: AcpSession, detail: AcpErrorDetail): Promise<void> {
@@ -763,11 +774,30 @@ function blockToPromptText(block: AcpContentBlock): string {
   }
 }
 
-function normalizeClientToolResponse(response: unknown): AcpClientToolCallResponse {
-  if (isCallToolResult(response)) return response;
+function normalizeClientToolResponse(response: unknown, sessionId: string, toolCallId: string): CallToolResult {
+  if (isClientToolCallResponse(response)) {
+    if (response.sessionId !== sessionId || response.toolCallId !== toolCallId) {
+      return {
+        content: [{
+          type: "text",
+          text: `Client tool response mismatch: expected ${sessionId}/${toolCallId}, got ${response.sessionId}/${response.toolCallId}`,
+        }],
+        isError: true,
+      };
+    }
+    return response.result;
+  }
   return {
-    content: [{ type: "text", text: typeof response === "string" ? response : JSON.stringify(response) }],
+    content: [{ type: "text", text: `Invalid client tool response envelope: ${typeof response === "string" ? response : JSON.stringify(response)}` }],
+    isError: true,
   };
+}
+
+function isClientToolCallResponse(response: unknown): response is AcpClientToolCallResponse {
+  if (!isRecord(response)) return false;
+  return typeof response.sessionId === "string" &&
+    typeof response.toolCallId === "string" &&
+    isCallToolResult(response.result);
 }
 
 interface PersistableUiMessage {

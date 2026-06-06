@@ -211,12 +211,16 @@ export interface AcpSessionContext {
 
 export interface AcpClientToolCallRequest {
   sessionId: string;
-  toolUseId: string;
+  toolCallId: string;
   toolName: string;
   input: unknown;
 }
 
-export type AcpClientToolCallResponse = CallToolResult;
+export interface AcpClientToolCallResponse {
+  sessionId: string;
+  toolCallId: string;
+  result: CallToolResult;
+}
 
 export interface AcpErrorDetail {
   message: string;
