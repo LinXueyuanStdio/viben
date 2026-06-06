@@ -1939,7 +1939,7 @@ function PermissionApprovalModal({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="json-modal-section">
           <div className="json-modal-header">Full Request JSON</div>
-          <JsonPanel value={requestJson} preClassName="json-panel-permission" />
+          <JsonPanel value={requestJson} size="permission" />
         </div>
         <div className="permission-side">
           <div className="json-modal-header">Options</div>
