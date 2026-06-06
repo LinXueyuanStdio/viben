@@ -523,6 +523,7 @@ describe("AcpSessionManager", () => {
       promptIds: [first.promptId, second.promptId],
     });
     expect(adapter.backendSession?.cancelCount).toBe(1);
+    await waitFor(() => adapter.backendSession?.prompts.length === 2);
     expect(adapter.backendSession?.prompts.map((request) => request.prompt)).toEqual([
       [{ type: "text", text: "initial prompt" }],
       [{ type: "text", text: "stop the current command\n\ncontinue with this instead" }],
