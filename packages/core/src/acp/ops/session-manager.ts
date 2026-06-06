@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResultSchema, type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
 import { clientToolCompletionRegistry } from "../../services/client-tool-completion";
@@ -94,11 +94,16 @@ interface AcpSession {
   backend_load_session_id?: string;
   prompt_running: boolean;
   prompt_queue: AcpPromptQueueItem[];
-  pending_gui_tool_call_ids: string[];
+  pending_gui_tool_calls: PendingGuiToolCall[];
   sdk_session_id?: string;
   last_error?: AcpErrorDetail;
   config_options?: AcpConfigOption[];
   agent_capabilities: AcpAgentCapabilities;
+}
+
+interface PendingGuiToolCall {
+  toolCallId: string;
+  toolName: string;
 }
 
 export class AcpSessionManager {
@@ -176,7 +181,7 @@ export class AcpSessionManager {
       gateway_url: request.gateway_url ?? request.gatewayUrl ?? context.gateway_url,
       prompt_running: false,
       prompt_queue: [],
-      pending_gui_tool_call_ids: [],
+      pending_gui_tool_calls: [],
       agent_capabilities: DEFAULT_AGENT_CAPABILITIES,
     };
     return session;
@@ -197,7 +202,7 @@ export class AcpSessionManager {
     }
 
     const resolvedToolCallId = this.resolveClientToolCallId(session, toolName, toolCallId);
-    clientToolCompletionRegistry.registerToolOptions("GUI_execute", { timeoutMs: 60_000 });
+    clientToolCompletionRegistry.registerToolOptions(toolName, { timeoutMs: 60_000 });
     clientToolCompletionRegistry.enqueue(session.id, resolvedToolCallId, toolName);
     const result = clientToolCompletionRegistry.waitForClient(session.id, resolvedToolCallId, toolName);
     await this.dispatchClientToolRequest(session, resolvedToolCallId, toolName, input);
@@ -373,16 +378,21 @@ export class AcpSessionManager {
       };
     }
 
-    this.enqueuePromptItem(session, {
+    const resumeItem: AcpPromptQueueItem = {
       kind: "steer_resume",
       promptIds,
       resolve: () => {},
       reject: (error) => {
         log.warn({ err: error, sessionId: session.id, promptIds }, "ACP interrupt resume prompt failed");
       },
-    }, "front");
+    };
 
-    await this.interruptCurrentExecution(session);
+    if (session.prompt_running) {
+      this.enqueuePromptItem(session, resumeItem, "front");
+      await this.interruptCurrentExecution(session);
+    } else {
+      this.enqueuePromptItem(session, resumeItem, "back");
+    }
 
     return {
       interrupted: true,
@@ -392,11 +402,19 @@ export class AcpSessionManager {
   }
 
   private async listQueuedSteerPrompts(sessionId: string): Promise<AcpSteerPromptView[]> {
-    const records = await this.steerPromptStore.list({
-      session_id: sessionId,
-      status: "queued",
-      limit: 100,
-    });
+    const records: AcpSteerPromptRecord[] = [];
+    let cursor = "0";
+    while (true) {
+      const page = await this.steerPromptStore.list({
+        session_id: sessionId,
+        status: "queued",
+        limit: 100,
+        cursor,
+      });
+      records.push(...page);
+      if (page.length < 100) break;
+      cursor = String(records.length);
+    }
     return records.map((record) => steerRecordToView(record));
   }
 
@@ -625,7 +643,10 @@ export class AcpSessionManager {
     const toolName = update.title ?? "";
     const toolCallId = update.toolCallId;
     if (toolName === "mcp__gui_action__GUI_execute") {
-      if (toolCallId) session.pending_gui_tool_call_ids.push(toolCallId);
+      if (toolCallId) {
+        session.pending_gui_tool_calls.push({ toolCallId, toolName });
+        log.debug({ sessionId: session.id, toolCallId, toolName }, "Queued ACP GUI tool call id for MCP bridge");
+      }
       return;
     }
     if (!toolCallId || !clientToolCompletionRegistry.isClientSideTool(toolName)) return;
@@ -662,7 +683,17 @@ export class AcpSessionManager {
 
   private resolveClientToolCallId(session: AcpSession, toolName: string, fallbackToolCallId: string): string {
     if (toolName !== "mcp__gui_action__GUI_execute") return fallbackToolCallId;
-    return session.pending_gui_tool_call_ids.shift() ?? fallbackToolCallId;
+    const pending = session.pending_gui_tool_calls.shift();
+    if (!pending) return fallbackToolCallId;
+    if (pending.toolCallId !== fallbackToolCallId) {
+      log.debug({
+        sessionId: session.id,
+        backendToolCallId: pending.toolCallId,
+        bridgeToolCallId: fallbackToolCallId,
+        toolName,
+      }, "Mapped GUI MCP bridge tool call to ACP backend tool call id");
+    }
+    return pending.toolCallId;
   }
 
   private async dispatchErrorUpdate(session: AcpSession, detail: AcpErrorDetail): Promise<void> {
@@ -988,11 +1019,7 @@ function resolveAgentId(agentConfigPath?: string, agentConfig?: AgentConfigPaylo
 }
 
 function isCallToolResult(value: unknown): value is CallToolResult {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    Array.isArray((value as { content?: unknown }).content)
-  );
+  return CallToolResultSchema.safeParse(value).success;
 }
 
 function steerRecordToResponse(record: AcpSteerPromptRecord): AcpSteerPromptResponse {
