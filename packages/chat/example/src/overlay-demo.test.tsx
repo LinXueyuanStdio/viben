@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { OverlayDemo, getAssistantPetState } from "./overlay-demo";
+import { OverlayDemo, getAssistantPetState, getPetInteractionForSessionStatus } from "./overlay-demo";
 import type { AgentMessage } from "@viben/chat";
 
 vi.mock("@viben/chat", async () => {
@@ -306,10 +306,21 @@ describe("OverlayDemo", () => {
 });
 
 describe("getAssistantPetState", () => {
-  test("maps playback and messages to idle, thinking, speaking, and done states", () => {
+  test("maps playback and messages to pet animation states", () => {
     expect(getAssistantPetState([], false, "idle")).toBe("idle");
-    expect(getAssistantPetState(messages, true, "playing")).toBe("thinking");
-    expect(getAssistantPetState(messages, false, "paused")).toBe("speaking");
-    expect(getAssistantPetState(messages, false, "idle")).toBe("done");
+    expect(getAssistantPetState(messages, true, "playing")).toBe("review");
+    expect(getAssistantPetState(messages, false, "playing")).toBe("waiting");
+    expect(getAssistantPetState(messages, false, "paused")).toBe("waving");
+    expect(getAssistantPetState(messages, false, "idle")).toBe("idle");
+  });
+});
+
+describe("getPetInteractionForSessionStatus", () => {
+  test("maps session playback status to @viben/pet interaction states", () => {
+    expect(getPetInteractionForSessionStatus("idle", false, false)).toBe("idle");
+    expect(getPetInteractionForSessionStatus("playing", false, false)).toBe("waiting");
+    expect(getPetInteractionForSessionStatus("playing", true, false)).toBe("waiting");
+    expect(getPetInteractionForSessionStatus("paused", false, false)).toBe("hover");
+    expect(getPetInteractionForSessionStatus("idle", false, true)).toBe("waiting");
   });
 });

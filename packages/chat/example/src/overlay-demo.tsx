@@ -1,11 +1,13 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
-import { ChatInput } from "@viben/chat";
+import { ChatInput, EmojiPicker } from "@viben/chat";
 import type { AgentMessage, ChatInputProps, MessageAttachment } from "@viben/chat";
 
 export type OverlayMode = "floating" | "compact" | "expanded" | "full";
-export type AssistantPetState = "idle" | "thinking" | "speaking" | "done";
+export type AssistantPetState = "idle" | "waiting" | "review" | "waving" | "failed";
+export type SessionPlayerStatus = "idle" | "playing" | "paused";
+export type PetInteractionState = "idle" | "hover" | "drag-right" | "drag-left" | "drag-up" | "drag-down" | "waiting";
 export type AssistantPetAvatarMap = Partial<Record<AssistantPetState, React.ReactNode>>;
 
 export interface OverlaySessionItem {
@@ -41,7 +43,7 @@ export interface OverlayDemoProps {
   messages: AgentMessage[];
   isStreaming: boolean;
   title?: string;
-  playerStatus?: "idle" | "playing" | "paused";
+  playerStatus?: SessionPlayerStatus;
   pendingUserMessageCount?: number;
   assistantAvatars?: AssistantPetAvatarMap;
   sessions?: OverlaySessionItem[];
@@ -69,15 +71,34 @@ const DEFAULT_AGENTS: OverlayAgentItem[] = [
   { id: "openai-browser", name: "OpenAI · Browser", type: "agent & executor" },
 ];
 
+const OVERLAY_TRANSITION = {
+  type: "spring",
+  stiffness: 430,
+  damping: 34,
+  mass: 0.9,
+} as const;
+
 export function getAssistantPetState(
   messages: AgentMessage[],
   isStreaming: boolean,
-  playerStatus: "idle" | "playing" | "paused" = "idle"
+  playerStatus: SessionPlayerStatus = "idle"
 ): AssistantPetState {
   if (messages.length === 0) return "idle";
-  if (isStreaming || playerStatus === "playing") return "thinking";
-  if (playerStatus === "paused") return "speaking";
-  return "done";
+  if (messages.some((message) => message.type === "error" || message.isError)) return "failed";
+  if (isStreaming) return "review";
+  if (playerStatus === "playing") return "waiting";
+  if (playerStatus === "paused") return "waving";
+  return "idle";
+}
+
+export function getPetInteractionForSessionStatus(
+  playerStatus: SessionPlayerStatus = "idle",
+  isStreaming = false,
+  hasPendingUserMessages = false
+): PetInteractionState {
+  if (isStreaming || hasPendingUserMessages || playerStatus === "playing") return "waiting";
+  if (playerStatus === "paused") return "hover";
+  return "idle";
 }
 
 export function OverlayDemo({
@@ -132,26 +153,33 @@ export function OverlayDemo({
   if (mode === "floating") {
     return (
       <div className="fixed bottom-6 right-6 z-50" data-testid="floating-overlay">
-        <button
+        <motion.button
+          layoutId="viben-overlay-surface"
           type="button"
           aria-label="Open compact chat"
           onClick={() => onModeChange("compact")}
+          transition={OVERLAY_TRANSITION}
           className="relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
+          <motion.div layoutId="viben-overlay-avatar" className="size-full">
           {assistantAvatar}
+          </motion.div>
           {pendingUserMessageCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
               {pendingUserMessageCount > 9 ? "9+" : pendingUserMessageCount}
             </span>
           )}
-        </button>
+        </motion.button>
       </div>
     );
   }
 
   if (mode === "compact") {
     return (
-      <div
+      <motion.div
+        layoutId="viben-overlay-surface"
+        transition={OVERLAY_TRANSITION}
+        initial={false}
         className="fixed bottom-5 right-5 z-50 flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2"
         data-testid="compact-overlay"
       >
@@ -165,6 +193,7 @@ export function OverlayDemo({
           onFullScreen={() => onModeChange("full")}
         />
         <CompactChatInput
+          variant="compact"
           value={content}
           isStreaming={isStreaming}
           onValueChange={setContent}
@@ -172,13 +201,17 @@ export function OverlayDemo({
           onCancel={onCancel}
           inputProps={inputProps}
         />
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div
-      className="flex h-full min-h-0 w-full flex-col bg-background"
+    <motion.div
+      layoutId="viben-overlay-surface"
+      transition={OVERLAY_TRANSITION}
+      initial={{ opacity: 0.94, scale: 0.985 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl bg-background shadow-2xl"
       data-testid="expanded-overlay"
     >
       <ExpandedHeader
@@ -199,6 +232,7 @@ export function OverlayDemo({
       </div>
       <div className="shrink-0 p-3">
         <CompactChatInput
+          variant="expanded"
           value={content}
           isStreaming={isStreaming}
           onValueChange={setContent}
@@ -207,7 +241,7 @@ export function OverlayDemo({
           inputProps={inputProps}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -238,7 +272,7 @@ function AgentPopup({
       onClick={onExpand}
     >
       <div className="flex items-start gap-3 p-3">
-        <div className="size-14 shrink-0">{avatar}</div>
+        <motion.div layoutId="viben-overlay-avatar" className="size-14 shrink-0">{avatar}</motion.div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
@@ -497,6 +531,7 @@ function MenuDivider() {
 }
 
 function CompactChatInput({
+  variant,
   value,
   isStreaming,
   onValueChange,
@@ -504,6 +539,7 @@ function CompactChatInput({
   onCancel,
   inputProps,
 }: {
+  variant: "compact" | "expanded";
   value: string;
   isStreaming: boolean;
   onValueChange: (value: string) => void;
@@ -514,7 +550,7 @@ function CompactChatInput({
   return (
     <section
       data-testid="compact-chat-input"
-      className="overflow-hidden rounded-xl border border-border bg-background shadow-2xl"
+      className={`overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`}
     >
       <ChatInput
         {...inputProps}
@@ -531,14 +567,15 @@ function CompactChatInput({
         isLoading={isStreaming}
         allowSendWhileLoading
         placeholder={inputProps?.placeholder ?? (isStreaming ? "Queue a message..." : "Ask Viben...")}
-        showTopToolbar
-        toolbarPosition="bottom"
-        showConfigBar={false}
+        layoutVariant={variant}
+        showTopToolbar={variant === "expanded"}
+        showConfigBar
+        renderEmojiPicker={inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
         defaultHeight={48}
         minHeight={48}
         maxHeight={48}
         showResizeHandle={false}
-        enableWritingMode={false}
+        enableWritingMode={variant === "expanded"}
         hideAgentSelector
         hideModelSelector
         hideExecutorSelector
