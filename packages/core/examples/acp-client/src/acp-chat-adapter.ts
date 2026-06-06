@@ -102,6 +102,17 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         timestamp: Date.now(),
       });
     case "tool_call_update":
+      if (isToolInputOnlyUpdate(update)) {
+        return messageStep("tool_use", {
+          id: typeof update.toolCallId === "string" ? update.toolCallId : createStepId("tool"),
+          type: "tool_use",
+          name: normalizeToolName(update.title),
+          toolUseId: update.toolCallId,
+          input: normalizeToolInput(update.rawInput, normalizeToolName(update.title)),
+          subagentId: readString(update.subagentId) ?? readMetaString(update._meta, "subagentId"),
+          timestamp: Date.now(),
+        });
+      }
       return messageStep("tool_result", {
         id: createStepId("tool-result"),
         type: "tool_result",
@@ -391,6 +402,25 @@ function contentBlockToText(content: unknown): string {
   if (isRecord(content) && content.type === "text" && typeof content.text === "string") return content.text;
   if (content === undefined || content === null) return "";
   return safeJson(content);
+}
+
+function isToolInputOnlyUpdate(update: Record<string, unknown>): boolean {
+  return update.rawInput !== undefined &&
+    update.rawOutput === undefined &&
+    (update.content === undefined || isEmptyArray(update.content)) &&
+    update.artifact === undefined &&
+    update.artifacts === undefined &&
+    update.files === undefined &&
+    !readClaudeToolResponse(update._meta) &&
+    !isFinishedToolStatus(readString(update.status));
+}
+
+function isFinishedToolStatus(status: string | undefined): boolean {
+  return status === "completed" || status === "failed" || status === "error";
+}
+
+function isEmptyArray(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 0;
 }
 
 function toolUpdateOutput(update: Record<string, unknown>): AgentMessage["output"] {

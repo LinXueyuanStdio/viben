@@ -1,5 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
+export type { CallToolResult };
+
 export type JsonRpcId = string | number | null;
 
 export interface JsonRpcRequest {
