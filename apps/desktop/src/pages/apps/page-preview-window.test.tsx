@@ -10,7 +10,7 @@ import { PagePreviewWindow } from "./page-preview-window";
 import { homeDir } from "@tauri-apps/api/path";
 import { getGatewayClient } from "@/lib/gateway";
 import { openFolder } from "@/lib/gateway/modules/files";
-import { useTabStore } from "@/stores/tab-store";
+import { getScopedTabStore, useTabStore } from "@/stores/tab-store";
 import type { ChatListItem } from "@/lib/gateway/types/workspace";
 import type { PageConfig } from "@/lib/gateway/types/page";
 import type { Root } from "react-dom/client";
@@ -72,6 +72,7 @@ vi.mock("@tauri-apps/api/path", () => ({
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({
+    label: "page-preview-test",
     close: mockClose,
     isFullscreen: vi.fn().mockResolvedValue(false),
     onResized: vi.fn().mockResolvedValue(() => undefined),
@@ -225,6 +226,11 @@ describe("PagePreviewWindow", () => {
       activeTabId: null,
       recentlyClosedTabs: [],
     });
+    getScopedTabStore("page-preview-test").setState({
+      tabs: [],
+      activeTabId: null,
+      recentlyClosedTabs: [],
+    });
   });
 
   afterEach(() => {
@@ -253,10 +259,30 @@ describe("PagePreviewWindow", () => {
       newTabButton?.click();
     });
 
-    const { tabs, activeTabId } = useTabStore.getState();
-    expect(tabs).toHaveLength(0);
-    expect(activeTabId).toBeNull();
+    expect(useTabStore.getState().tabs).toHaveLength(0);
+    const scopedState = getScopedTabStore("page-preview-test").getState();
+    expect(scopedState.tabs).toHaveLength(1);
+    expect(scopedState.activeTabId).toBe(scopedState.tabs[0].id);
+    expect(scopedState.getCurrentUrl(scopedState.tabs[0].id)).toBe("/workspace");
     expect(mockAssign).toHaveBeenCalledWith("/workspace?viben_new_tab=1");
+  });
+
+  it("uses preview-specific styling for tabs opened inside the preview window", () => {
+    const element = render(
+      <PagePreviewWindow navigateToWorkspace={mockAssign} />
+    );
+
+    const newTabButton = element.querySelector(
+      'button[aria-label="New Tab"]'
+    ) as HTMLButtonElement | null;
+
+    act(() => {
+      newTabButton?.click();
+    });
+
+    expect(
+      element.querySelector("[data-preview-window-tab='true']")
+    ).not.toBeNull();
   });
 
   it("wires page-preview menu shortcuts to real actions", async () => {

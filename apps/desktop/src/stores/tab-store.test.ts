@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import {
   TAB_STORE_STORAGE_KEY,
+  getScopedTabStore,
   getTabCurrentLeaf,
   getTabCurrentState,
   getTabUrl,
@@ -135,6 +136,41 @@ describe("tab-store URL-based navigation state", () => {
 
   it("does not define a legacy persisted storage key", () => {
     expect(TAB_STORE_STORAGE_KEY).not.toBe("viben-tab-store");
+  });
+
+  it("creates scoped tab stores with independent storage keys and state", () => {
+    const previewStore = getScopedTabStore("page-preview-1");
+    const anotherPreviewStore = getScopedTabStore("page-preview-2");
+
+    useTabStore.setState({
+      tabs: [],
+      activeTabId: null,
+      recentlyClosedTabs: [],
+    });
+    previewStore.setState({
+      tabs: [],
+      activeTabId: null,
+      recentlyClosedTabs: [],
+    });
+    anotherPreviewStore.setState({
+      tabs: [],
+      activeTabId: null,
+      recentlyClosedTabs: [],
+    });
+
+    const previewTabId = previewStore.getState().openTab({
+      navigationState: documentsState(),
+    });
+
+    expect(previewStore.persist.getOptions().name).toBe(
+      "viben-tab-store-v2:page-preview-1"
+    );
+    expect(anotherPreviewStore.persist.getOptions().name).toBe(
+      "viben-tab-store-v2:page-preview-2"
+    );
+    expect(useTabStore.getState().tabs).toHaveLength(0);
+    expect(previewStore.getState().activeTabId).toBe(previewTabId);
+    expect(anotherPreviewStore.getState().tabs).toHaveLength(0);
   });
 
   it("merges v2 persisted state and drops invalid new-structure tabs without reading legacy fields", () => {
