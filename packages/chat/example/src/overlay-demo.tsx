@@ -216,7 +216,7 @@ export function OverlayDemo({
 
   if (mode === "floating") {
     return (
-      <div className={contained ? "absolute bottom-6 right-6 z-20" : "fixed bottom-6 right-6 z-50"} data-testid="floating-overlay">
+      <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
         <motion.button
           layoutId="viben-overlay-surface"
           type="button"
@@ -246,7 +246,7 @@ export function OverlayDemo({
         transition={OVERLAY_TRANSITION}
         initial={false}
         className={`overlay-shared-surface flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2 rounded-3xl ${
-          contained ? "absolute bottom-5 right-5 z-20" : "fixed bottom-5 right-5 z-50"
+          contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.compact }}
         data-testid="compact-overlay"
@@ -281,7 +281,7 @@ export function OverlayDemo({
       animate={{ opacity: 1, scale: 1 }}
       className={`overlay-shared-surface flex min-h-0 flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained
-          ? "absolute bottom-5 right-5 z-20 h-[min(760px,calc(100%-2rem))] w-[min(440px,calc(100vw-2rem))]"
+          ? "absolute bottom-5 left-5 z-20 h-[min(760px,calc(100%-2rem))] w-[min(440px,calc(100vw-2rem))]"
           : "h-full w-full"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}

@@ -470,7 +470,7 @@ export function App() {
               <div className="space-y-1.5">
                 <SectionLabel>Overlay Mode</SectionLabel>
                 <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
-                  <ModeButton active={overlayMode === "floating"} onClick={() => setOverlayMode("floating")} title="Floating">
+                  <ModeButton active={overlayMode === "floating"} onClick={() => setOverlayMode("floating")} title="Float">
                     <Bot className="size-3.5" />
                   </ModeButton>
                   <ModeButton active={overlayMode === "compact"} onClick={() => setOverlayMode("compact")} title="Compact">
@@ -479,7 +479,7 @@ export function App() {
                   <ModeButton active={overlayMode === "expanded"} onClick={() => setOverlayMode("expanded")} title="Expanded">
                     <ChevronDown className="size-3.5 rotate-180" />
                   </ModeButton>
-                  <ModeButton active={overlayMode === "full"} onClick={() => setOverlayMode("full")} title="Full">
+                  <ModeButton active={overlayMode === "full"} onClick={() => setOverlayMode("full")} title="Fullscreen">
                     <Maximize2 className="size-3.5" />
                   </ModeButton>
                 </div>

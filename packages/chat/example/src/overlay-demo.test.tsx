@@ -46,6 +46,7 @@ describe("OverlayDemo", () => {
   test("floating mode renders only the assistant avatar button", () => {
     render(
       <OverlayDemo
+        contained
         mode="floating"
         messages={messages}
         isStreaming={false}
@@ -56,6 +57,8 @@ describe("OverlayDemo", () => {
     );
 
     expect(screen.getByRole("button", { name: "Open compact chat" })).toBeInTheDocument();
+    expect(screen.getByTestId("floating-overlay")).toHaveClass("left-6");
+    expect(screen.getByTestId("floating-overlay")).toHaveClass("bottom-6");
     expect(screen.queryByTestId("agent-popup")).not.toBeInTheDocument();
     expect(screen.queryByTestId("compact-chat-input")).not.toBeInTheDocument();
   });
@@ -63,6 +66,7 @@ describe("OverlayDemo", () => {
   test("compact mode renders agent popup above the one-line chat input", () => {
     render(
       <OverlayDemo
+        contained
         mode="compact"
         messages={messages}
         isStreaming={false}
@@ -73,6 +77,8 @@ describe("OverlayDemo", () => {
     );
 
     const surface = screen.getByTestId("compact-overlay");
+    expect(surface).toHaveClass("left-5");
+    expect(surface).toHaveClass("bottom-5");
     expect(surface.children[0]).toHaveAttribute("data-testid", "agent-popup");
     expect(surface.children[1]).toHaveAttribute("data-testid", "compact-chat-input");
     expect(screen.queryByText("Agent")).not.toBeInTheDocument();
@@ -94,6 +100,8 @@ describe("OverlayDemo", () => {
 
     expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to full mode" })).toBeInTheDocument();
     expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
@@ -192,7 +200,7 @@ describe("OverlayDemo", () => {
 
     expect(screen.getByTestId("expanded-overlay")).toHaveClass("w-[min(440px,calc(100vw-2rem))]");
     expect(screen.getByTestId("expanded-overlay")).toHaveClass("bottom-5");
-    expect(screen.getByTestId("expanded-overlay")).toHaveClass("right-5");
+    expect(screen.getByTestId("expanded-overlay")).toHaveClass("left-5");
   });
 
   test("expanded header compact and full buttons switch overlay modes", () => {
