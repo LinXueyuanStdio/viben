@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ClipboardList,
   Copy,
@@ -1670,11 +1671,7 @@ function AcpChatSurface({
           messageUpdates={messageUpdates}
           isStreaming={isStreaming}
           pendingPlan={pendingPlan}
-          pendingQuestions={pendingQuestion}
           artifacts={artifacts}
-          onApprovePlan={onApprovePlan}
-          onRejectPlan={onRejectPlan}
-          onAnswerQuestions={onQuestionAnswers}
           onExpandSubagent={onExpandSubagent}
           onArtifactClick={onArtifactClick}
           maxMessageWidth="780px"
@@ -1704,52 +1701,63 @@ function AcpChatSurface({
             />
           )}
 
-          {pendingPlan ? (
-            <PlanApproval
-              key="plan"
-              plan={pendingPlan}
-              isPending
-              onApprove={onApprovePlan}
-              onReject={onRejectPlan}
-            />
-          ) : pendingApproval ? (
-            <ExecApproval
-              key="approval"
-              approval={pendingApproval}
-              onDecision={onApprovalDecision}
-              enableKeyboard
-            />
-          ) : pendingQuestion ? (
-            <QuestionInput
-              key="question"
-              questions={pendingQuestion}
-              onSubmit={onQuestionAnswers}
-            />
-          ) : (
-            <>
-              <ChatInput
-                key="input"
-                value={prompt}
-                onValueChange={onPromptChange}
-                onSend={handleSend}
-                onCancel={onCancelTurn}
-                queuedInputRecallItems={steerQueueItems}
-                onQueuedInputRecall={onRecallSteerQueue}
-                isLoading={isStreaming}
-                allowSendWhileLoading
-                sendDisabled={!connected || !sessionId}
-                sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
-                placeholder={isStreaming ? "Type steering while the agent is running..." : "Type a message..."}
-                slashCommands={slashCommands}
-                onSlashCommand={handleSlashCommand}
-                showTopToolbar
-                showResizeHandle
-                defaultHeight={120}
-                minHeight={88}
-                maxHeight={320}
-                heightStorageKey="viben_acp_chat_input_height"
-                enableWritingMode
+          <AnimatePresence mode="wait">
+            {pendingPlan ? (
+              <PlanApproval
+                key="plan"
+                plan={pendingPlan}
+                isPending
+                onApprove={onApprovePlan}
+                onReject={onRejectPlan}
               />
+            ) : pendingApproval ? (
+              <ExecApproval
+                key="approval"
+                approval={pendingApproval}
+                onDecision={onApprovalDecision}
+                enableKeyboard
+              />
+            ) : pendingQuestion ? (
+              <QuestionInput
+                key="question"
+                questions={pendingQuestion}
+                onSubmit={onQuestionAnswers}
+              />
+            ) : (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ChatInput
+                  value={prompt}
+                  onValueChange={onPromptChange}
+                  onSend={handleSend}
+                  onCancel={onCancelTurn}
+                  queuedInputRecallItems={steerQueueItems}
+                  onQueuedInputRecall={onRecallSteerQueue}
+                  isLoading={isStreaming}
+                  allowSendWhileLoading
+                  sendDisabled={!connected || !sessionId}
+                  sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
+                  placeholder={isStreaming ? "Type steering while the agent is running..." : "Type a message..."}
+                  slashCommands={slashCommands}
+                  onSlashCommand={handleSlashCommand}
+                  showTopToolbar
+                  showResizeHandle
+                  defaultHeight={120}
+                  minHeight={88}
+                  maxHeight={320}
+                  heightStorageKey="viben_acp_chat_input_height"
+                  enableWritingMode
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {!pendingPlan && !pendingApproval && !pendingQuestion && (
+            <>
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-muted px-2 py-1">
@@ -2592,22 +2600,6 @@ function buildGuiExecutePrompt(actionName: string): string {
   ].join("\n");
 }
 
-function parseJsonOrFallback(text: string, fallback: unknown): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return fallback;
-  }
-}
-
-function normalizeJsonText(text: string): string {
-  return prettyJson(parseJsonOrFallback(text, { type: "object", properties: {} }));
-}
-
-function prettyJson(value: unknown): string {
-  return JSON.stringify(value, null, 2);
-}
-
 function readStringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
@@ -2622,42 +2614,6 @@ function readNumberField(value: unknown): number | undefined {
 
 function hasRecallItemId(item: QueuedInputRecallItem): item is QueuedInputRecallItem & { id: string } {
   return typeof item.id === "string" && item.id.trim().length > 0;
-}
-
-interface JsonToken {
-  text: string;
-  className?: string;
-}
-
-function tokenizeJson(json: string): JsonToken[] {
-  const tokens: JsonToken[] = [];
-  let cursor = 0;
-  const pattern = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(json)) !== null) {
-    if (match.index > cursor) {
-      tokens.push({ text: json.slice(cursor, match.index) });
-    }
-    tokens.push({
-      text: match[0],
-      className: getJsonTokenClass(match[0]),
-    });
-    cursor = match.index + match[0].length;
-  }
-
-  if (cursor < json.length) {
-    tokens.push({ text: json.slice(cursor) });
-  }
-  return tokens;
-}
-
-function getJsonTokenClass(token: string): string {
-  if (/^"/.test(token)) return token.endsWith(":") ? "json-key" : "json-string";
-  if (/^-?\d/.test(token)) return "json-number";
-  if (token === "true" || token === "false") return "json-boolean";
-  if (token === "null") return "json-null";
-  return "json-punctuation";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
