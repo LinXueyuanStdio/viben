@@ -67,8 +67,8 @@ export type {
 } from "./slash-commands";
 
 // Auxiliary components
-export { EmojiPicker } from "./emoji-picker";
-export type { EmojiPickerProps } from "./emoji-picker";
+export { EmojiPicker } from "./lazy-emoji-picker";
+export type { EmojiPickerProps } from "./lazy-emoji-picker";
 
 export { ToolsConfigPopover } from "./tools-config-popover";
 export type { ToolsConfigPopoverProps } from "./tools-config-popover";
