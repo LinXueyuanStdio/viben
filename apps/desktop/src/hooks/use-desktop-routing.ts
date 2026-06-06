@@ -28,15 +28,15 @@ export interface DesktopNavigationOptions {
   openMode?: "focus" | "reuse" | "new-tab";
   title?: string;
   icon?: IconData;
-  breadcrumbStack?: BreadcrumbStackItem[];
+  breadcrumbStack?: BreadcrumbStackItem[tabStore];
   stackMode?: "open" | "push" | "replace";
 }
 
 export interface DesktopRoutingApi {
   currentTab: ActiveTabState["activeTab"];
   currentUrl: string | null;
-  currentStack: BreadcrumbStackItem[];
-  breadcrumb: BreadcrumbStackItem[];
+  currentStack: BreadcrumbStackItem[tabStore];
+  breadcrumb: BreadcrumbStackItem[tabStore];
   currentDescriptor: BreadcrumbStackItem | null;
   currentWorkspaceId: string | null;
   currentWorkspace: Workspace | undefined;
@@ -203,7 +203,7 @@ function buildTabStoreActions(
 
 export function useDesktopRouting(): DesktopRoutingApi {
   const { t } = useTranslation();
-  const tabStore = useMemo(() => getCurrentWindowTabStore(), []);
+  const tabStore = useMemo(() => getCurrentWindowTabStore(), [tabStore]);
   const tabState = useActiveTabState();
   const tabActions = useTabActions();
   const tabNav = useTabNavigation();
@@ -214,7 +214,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
   const currentUrl = tabState.currentUrl;
   const currentNavigationState = tabState.currentNavigationState;
   const currentStack = useMemo(
-    () => currentNavigationState?.breadcrumbStack ?? [],
+    () => currentNavigationState?.breadcrumbStack ?? [tabStore],
     [currentNavigationState]
   );
   const currentDescriptor = currentStack[currentStack.length - 1] ?? null;
@@ -265,14 +265,14 @@ export function useDesktopRouting(): DesktopRoutingApi {
   // ─── Open in new tab ────────────────────────────────────────────────────────
 
   const openInNewTab = useCallback(
-    (url: string, headers?: NavigateHeaders, breadcrumbStack?: BreadcrumbStackItem[]) => {
+    (url: string, headers?: NavigateHeaders, breadcrumbStack?: BreadcrumbStackItem[tabStore]) => {
       const stack = breadcrumbStack ?? buildColdStartBreadcrumb(url, headers);
       const store = tabStore.getState();
       store.openTab({
         navigationState: { url, breadcrumbStack: stack },
       });
     },
-    []
+    [tabStore]
   );
 
   // ─── Public API implementations ──────────────────────────────────────────────
@@ -366,7 +366,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         store.pushNavigation(tabState.activeTabId, url, item);
       }
     },
-    [currentStack, tabState.activeTabId, openInNewTab]
+    [currentStack, tabState.activeTabId, openInNewTab, tabStore]
   );
 
   const openWorkspaceSection = useCallback(
@@ -443,7 +443,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openWorkspaceExecutorDetail = useCallback(
@@ -487,7 +487,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openWorkspacePage = useCallback(
@@ -520,7 +520,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
       navigateReset(url, headers);
     },
-    [navigateReset, openInNewTab, tabState.activeTabId]
+    [navigateReset, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const pushWorkspaceAgentDetail = useCallback(
@@ -635,7 +635,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openExecutorDetail = useCallback(
@@ -677,7 +677,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openMcpServerDetail = useCallback(
@@ -723,7 +723,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openSubagentDetail = useCallback(
@@ -769,7 +769,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openPromptDetail = useCallback(
@@ -815,7 +815,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openCommandDetail = useCallback(
@@ -861,7 +861,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const openDocuments = useCallback(
@@ -955,7 +955,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
         navigatePush(url, headers);
       }
     },
-    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId]
+    [currentStack, currentWorkspaceId, navigatePush, navigateReset, navigateReplace, openInNewTab, tabState.activeTabId, tabStore]
   );
 
   const pushCurrentPageChild = useCallback(
