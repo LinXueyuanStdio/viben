@@ -55,6 +55,8 @@ export interface ChatInputToolbarProps {
   extraActions?: ReactNode;
   /** Extra action buttons to render at the trailing edge of the toolbar */
   endActions?: ReactNode;
+  /** Fully custom toolbar content. */
+  children?: ReactNode;
   /** Additional CSS class */
   className?: string;
 }
@@ -71,6 +73,7 @@ export function ChatInputToolbar({
   showExpand,
   extraActions,
   endActions,
+  children,
   className,
 }: ChatInputToolbarProps) {
   const { t } = useTranslation();
@@ -92,6 +95,8 @@ export function ChatInputToolbar({
         className
       )}
     >
+      {children ?? (
+        <>
       <div className="flex items-center gap-1">
         {/* Emoji */}
         <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
@@ -205,6 +210,8 @@ export function ChatInputToolbar({
           </TooltipProvider>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

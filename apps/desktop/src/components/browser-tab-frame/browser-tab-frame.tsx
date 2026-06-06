@@ -37,7 +37,7 @@ export function BrowserTabFrame({
         className={cn(
           "flex items-center border-b bg-muted/30",
           isMacOS ? "h-8" : "h-10",
-          className
+          className,
         )}
       >
         <div
@@ -45,7 +45,7 @@ export function BrowserTabFrame({
           data-tauri-drag-region
           className={cn(
             "flex shrink-0 items-center gap-1 px-2",
-            reserveMacOSControlsSpace && "pl-20"
+            reserveMacOSControlsSpace && "pl-20",
           )}
         >
           {leadingControls}
@@ -113,7 +113,7 @@ export function BrowserTabFrameIconButton({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "disabled:pointer-events-none disabled:opacity-45",
         isMacOS ? "h-6 w-6" : "h-7 w-7",
-        className
+        className,
       )}
     >
       {icon}
@@ -167,8 +167,9 @@ export function BrowserTabFrameTab({
         "rounded-md text-[13px] text-muted-foreground",
         "transition-colors duration-150",
         "hover:bg-accent hover:text-accent-foreground",
-        active && "bg-background text-foreground shadow-sm ring-1 ring-border/50",
-        className
+        active &&
+          "bg-background text-foreground shadow-sm ring-1 ring-border/50",
+        className,
       )}
     >
       <button
@@ -178,7 +179,7 @@ export function BrowserTabFrameTab({
         className={cn(
           "flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-md px-2",
           closable && "pr-0.5",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         )}
       >
         {icon && <span className="shrink-0">{icon}</span>}
@@ -193,7 +194,7 @@ export function BrowserTabFrameTab({
             "mr-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded",
             "text-muted-foreground/70 transition-colors",
             "hover:bg-muted hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           )}
         >
           <X className="h-3 w-3" />
