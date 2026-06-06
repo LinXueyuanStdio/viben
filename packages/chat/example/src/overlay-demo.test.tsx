@@ -12,8 +12,9 @@ vi.mock("@viben/chat", async () => {
       "div",
       { "data-testid": "overlay-chat-input-props" },
       React.createElement("span", { "data-testid": "show-top-toolbar" }, String(props.showTopToolbar)),
-      React.createElement("span", { "data-testid": "toolbar-position" }, String(props.toolbarPosition)),
+      React.createElement("span", { "data-testid": "layout-variant" }, String(props.layoutVariant)),
       React.createElement("span", { "data-testid": "show-config-bar" }, String(props.showConfigBar)),
+      React.createElement("span", { "data-testid": "has-emoji-renderer" }, String(typeof props.renderEmojiPicker === "function")),
       React.createElement("span", { "data-testid": "hide-agent-selector" }, String(props.hideAgentSelector)),
       React.createElement("span", { "data-testid": "hide-model-selector" }, String(props.hideModelSelector)),
       React.createElement("span", { "data-testid": "slash-count" }, String((props.slashCommands as unknown[] | undefined)?.length ?? 0)),
@@ -274,9 +275,10 @@ describe("OverlayDemo", () => {
       />
     );
 
-    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
-    expect(screen.getByTestId("toolbar-position")).toHaveTextContent("bottom");
-    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("false");
+    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("false");
+    expect(screen.getByTestId("layout-variant")).toHaveTextContent("compact");
+    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
+    expect(screen.getByTestId("has-emoji-renderer")).toHaveTextContent("true");
     expect(screen.getByTestId("hide-agent-selector")).toHaveTextContent("true");
     expect(screen.getByTestId("hide-model-selector")).toHaveTextContent("true");
     expect(screen.getByTestId("slash-count")).toHaveTextContent("1");
@@ -298,8 +300,8 @@ describe("OverlayDemo", () => {
     );
 
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
-    expect(screen.getByTestId("toolbar-position")).toHaveTextContent("bottom");
-    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("false");
+    expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
+    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
     expect(screen.getByTestId("default-height")).toHaveTextContent("48");
     expect(screen.getByTestId("max-height")).toHaveTextContent("48");
   });

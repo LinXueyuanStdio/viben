@@ -37,6 +37,43 @@
   --radius-2xl: 2rem;
 }
 
+.overlay-input-shell {
+  position: relative;
+}
+
+.overlay-input-shell--running::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    conic-gradient(from var(--overlay-runner-angle, 0deg),
+      transparent 0deg,
+      transparent 255deg,
+      color-mix(in oklch, var(--primary) 92%, white 8%) 300deg,
+      transparent 360deg);
+  animation: overlayInputRunner 1.35s linear infinite;
+  pointer-events: none;
+}
+
+.overlay-input-shell--running > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes overlayInputRunner {
+  to {
+    --overlay-runner-angle: 360deg;
+  }
+}
+
+@property --overlay-runner-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 :root {
   --neutral-50: oklch(0.985 0.002 75);
   --neutral-100: oklch(0.97 0.002 75);
