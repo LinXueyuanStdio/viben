@@ -1,9 +1,4 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import data from "@emoji-mart/data/sets/15/native.json";
-import Picker from "@emoji-mart/react";
 import { cn } from "@viben/ui";
-import "./emoji-mart.css";
 
 export interface EmojiPickerProps {
   /** Called when an emoji is selected */
@@ -16,55 +11,30 @@ export interface EmojiPickerProps {
   className?: string;
 }
 
+const COMMON_EMOJIS = [
+  "😀", "😄", "🙂", "😊", "😍", "🥳", "😎", "🤔", "👍",
+  "👏", "🙏", "💪", "🔥", "✨", "✅", "🚀", "💡", "🎯",
+  "📌", "🧠", "👀", "💬", "🛠️", "📎", "📷", "❤️", "⭐",
+];
+
 export function EmojiPicker({
   onSelect,
-  theme = "auto",
-  locale,
+  theme: _theme = "auto",
+  locale: _locale,
   className,
 }: EmojiPickerProps) {
-  const { i18n } = useTranslation();
-
-  const resolvedTheme = useMemo(() => {
-    if (theme !== "auto") return theme;
-    if (typeof document !== "undefined") {
-      return document.documentElement.classList.contains("dark") ? "dark" : "light";
-    }
-    return "light";
-  }, [theme]);
-
-  const resolvedLocale = useMemo(() => {
-    if (locale) return locale;
-    const lang = i18n.language || "en";
-    if (lang.startsWith("zh")) return "zh";
-    if (lang.startsWith("ja")) return "ja";
-    if (lang.startsWith("ko")) return "ko";
-    if (lang.startsWith("fr")) return "fr";
-    if (lang.startsWith("de")) return "de";
-    if (lang.startsWith("es")) return "es";
-    return "en";
-  }, [locale, i18n.language]);
-
-  const handleEmojiSelect = (emoji: { native: string }) => {
-    onSelect(emoji.native);
-  };
-
   return (
-    <div className={cn("overflow-hidden rounded-lg", className)}>
-      <Picker
-        data={data}
-        onEmojiSelect={handleEmojiSelect}
-        theme={resolvedTheme}
-        set="native"
-        locale={resolvedLocale}
-        perLine={9}
-        previewPosition="none"
-        skinTonePosition="search"
-        maxFrequentRows={2}
-        navPosition="bottom"
-        dynamicWidth={false}
-        emojiButtonSize={36}
-        emojiSize={22}
-      />
+    <div className={cn("grid w-[252px] grid-cols-9 gap-1 rounded-lg bg-popover p-1", className)}>
+      {COMMON_EMOJIS.map((emoji) => (
+        <button
+          key={emoji}
+          type="button"
+          className="flex size-7 items-center justify-center rounded-md text-lg leading-none transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => onSelect(emoji)}
+        >
+          {emoji}
+        </button>
+      ))}
     </div>
   );
 }
