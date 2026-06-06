@@ -915,7 +915,7 @@ export function ChatPopupLayer(): ReactElement | null {
     phase,
     cancel,
   } = useAgentConversation(workspacePath, {
-    agentConfig: { mcp_servers: ["gui_action", "client_side_bash"] },
+    agentConfig: { mcp_servers: ["client_side"] },
     useWebSocket: true,
   });
 
