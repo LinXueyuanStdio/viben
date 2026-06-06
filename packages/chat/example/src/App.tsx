@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, LayoutGroup, motion } from "framer-motion"
 import {
   ChatInput,
   MessageList,
@@ -370,7 +370,7 @@ export function App() {
   const isAwaiting = player.isAwaiting
 
   const fullScreenDemo = (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <SubagentSheet
         open={!!sheetData}
         onClose={() => setSheetData(null)}
@@ -867,73 +867,26 @@ export function App() {
     </div>
   )
 
-  if (overlayMode === "full") {
-    return (
-      <OverlayDemo
-        mode="full"
-        messages={player.messages}
-        isStreaming={player.isStreaming}
-        playerStatus={player.status}
-        pendingUserMessageCount={commandQueue.items.length}
-        inputValue={chatInputValue}
-        onInputValueChange={setChatInputValue}
-        onModeChange={setOverlayMode}
-        onSend={handleSend}
-        onCancel={player.pause}
-        renderFullScreen={() => fullScreenDemo}
-      />
-    )
-  }
-
   return (
-    <div className="relative h-screen overflow-hidden bg-background">
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="max-w-xl text-center">
-          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl border border-border bg-card">
-            <Bot className="size-8 text-primary" />
-          </div>
-          <h1 className="text-2xl font-semibold text-foreground">Viben overlay demo</h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Floating mode starts as a single assistant pet avatar. Open compact mode to see the agent popup above the two-row idle chat input. Full mode shows the original session player.
-          </p>
-          <div className="mt-5 flex justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => setOverlayMode("floating")}
-              className={`rounded-lg border px-3 py-2 text-sm ${overlayMode === "floating" ? "bg-primary text-primary-foreground" : "bg-card text-foreground hover:bg-accent"}`}
-            >
-              Floating
-            </button>
-            <button
-              type="button"
-              onClick={() => setOverlayMode("compact")}
-              className={`rounded-lg border px-3 py-2 text-sm ${overlayMode === "compact" ? "bg-primary text-primary-foreground" : "bg-card text-foreground hover:bg-accent"}`}
-            >
-              Compact
-            </button>
-            <button
-              type="button"
-              onClick={() => setOverlayMode("full")}
-              className="rounded-lg border bg-card px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              Full screen
-            </button>
-          </div>
-        </div>
+    <LayoutGroup id="viben-chat-overlay-demo">
+      <div className="relative h-screen overflow-hidden bg-background">
+        {fullScreenDemo}
+        <OverlayDemo
+          contained
+          mode={overlayMode}
+          messages={player.messages}
+          isStreaming={player.isStreaming}
+          playerStatus={player.status}
+          pendingUserMessageCount={commandQueue.items.length}
+          inputValue={chatInputValue}
+          onInputValueChange={setChatInputValue}
+          onModeChange={setOverlayMode}
+          onSend={handleSend}
+          onCancel={player.pause}
+          renderFullScreen={() => fullScreenDemo}
+        />
       </div>
-      <OverlayDemo
-        mode={overlayMode}
-        messages={player.messages}
-        isStreaming={player.isStreaming}
-        playerStatus={player.status}
-        pendingUserMessageCount={commandQueue.items.length}
-        inputValue={chatInputValue}
-        onInputValueChange={setChatInputValue}
-        onModeChange={setOverlayMode}
-        onSend={handleSend}
-        onCancel={player.pause}
-      />
-    </div>
+    </LayoutGroup>
   )
 }
 
