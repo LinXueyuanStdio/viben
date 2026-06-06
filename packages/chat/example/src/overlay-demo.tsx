@@ -56,8 +56,6 @@ export interface OverlayDemoProps {
   onModeChange: (mode: OverlayMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
-  /** @deprecated Full mode is the expanded panel filling its container. */
-  renderFullScreen?: () => React.ReactNode;
 }
 
 const DEFAULT_SESSIONS: OverlaySessionItem[] = [

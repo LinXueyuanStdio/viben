@@ -80,7 +80,7 @@ describe("OverlayDemo", () => {
     expect(screen.queryByText("Skills")).not.toBeInTheDocument();
   });
 
-  test("full mode renders the provided full-screen demo", () => {
+  test("full mode fills the overlay container with the expanded chat surface", () => {
     render(
       <OverlayDemo
         mode="full"
@@ -89,11 +89,13 @@ describe("OverlayDemo", () => {
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
-        renderFullScreen={() => <div data-testid="full-screen-demo">Full screen</div>}
       />
     );
 
-    expect(screen.getByTestId("full-screen-demo")).toBeInTheDocument();
+    expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
+    expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
 
   test("allows custom pet avatars per assistant state", () => {
