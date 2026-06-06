@@ -150,6 +150,74 @@ describe("acp chat adapter", () => {
     expect(message?.output).toContain("/tmp/report.md");
   });
 
+  test("updates the same GUI tool card when pending, input, and result share a toolCallId", () => {
+    const toolCallId = "toolu_gui_1";
+    const pending = acpSessionUpdateToUiSteps(update({
+      sessionUpdate: "tool_call",
+      toolCallId,
+      title: "mcp__gui_action__GUI_execute",
+      status: "pending",
+      rawInput: {},
+    }));
+    const inputUpdate = acpSessionUpdateToUiSteps(update({
+      sessionUpdate: "tool_call_update",
+      toolCallId,
+      title: "mcp__gui_action__GUI_execute",
+      rawInput: {
+        action: "get_action_detail",
+        payload: { action: "app.open_settings" },
+      },
+    }));
+    const resultUpdate = acpSessionUpdateToUiSteps(update({
+      sessionUpdate: "tool_call_update",
+      toolCallId,
+      status: "completed",
+      rawOutput: [{ type: "text", text: "Settings panel opened." }],
+    }));
+
+    const messages = [...pending, ...inputUpdate, ...resultUpdate].reduce(
+      (current, step) => applyAcpUiStep(current, step),
+      []
+    );
+
+    expect(messages.filter((message) => message.type === "tool_use" && message.toolUseId === toolCallId)).toHaveLength(1);
+    expect(messages.filter((message) => message.type === "tool_result" && message.toolUseId === toolCallId)).toHaveLength(1);
+    expect(messages.find((message) => message.type === "tool_use" && message.toolUseId === toolCallId)).toMatchObject({
+      input: {
+        action: "get_action_detail",
+        payload: { action: "app.open_settings" },
+      },
+    });
+  });
+
+  test("converts MCP multimodal tool output into chat content blocks", () => {
+    const steps = acpSessionUpdateToUiSteps(update({
+      sessionUpdate: "tool_call_update",
+      toolCallId: "image-tool-1",
+      status: "completed",
+      rawOutput: [
+        { type: "text", text: "image result" },
+        { type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+        { type: "resource_link", uri: "file:///tmp/report.md", name: "report.md" },
+      ],
+    }));
+
+    const message = steps[0].kind === "message" ? steps[0].message : null;
+
+    expect(message?.output).toEqual([
+      { type: "text", text: "image result" },
+      {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/png",
+          data: "ZmFrZQ==",
+        },
+      },
+      { type: "text", text: expect.stringContaining("resource_link") },
+    ]);
+  });
+
   test("extracts agent message chunks for the streaming text channel", () => {
     const notification = update({
       sessionUpdate: "agent_message_chunk",
