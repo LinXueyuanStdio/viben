@@ -10,28 +10,12 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
-vi.mock("../emoji-picker", () => ({
-  EmojiPicker: ({ onSelect }: { onSelect: (emoji: string) => void }) => (
-    <button type="button" onClick={() => onSelect("🙂")}>Pick emoji</button>
-  ),
-}));
-vi.mock("../emoji-picker/index", () => ({
-  EmojiPicker: ({ onSelect }: { onSelect: (emoji: string) => void }) => (
-    <button type="button" onClick={() => onSelect("🙂")}>Pick emoji</button>
-  ),
-}));
-vi.mock("/root/viben/packages/chat/src/emoji-picker/index.tsx", () => ({
-  EmojiPicker: ({ onSelect }: { onSelect: (emoji: string) => void }) => (
-    <button type="button" onClick={() => onSelect("🙂")}>Pick emoji</button>
-  ),
-}));
-
-vi.mock("@emoji-mart/data", () => ({ default: {} }));
-vi.mock("@emoji-mart/data/sets/15/native.json", () => ({ default: {} }));
-vi.mock("@emoji-mart/react", () => ({
-  default: ({ onEmojiSelect }: { onEmojiSelect: (emoji: { native: string }) => void }) => (
-    <button type="button" onClick={() => onEmojiSelect({ native: "🙂" })}>Pick emoji</button>
-  ),
+vi.mock("../chat-input/toolbar", async () => {
+  const React = await import("react");
+  return {
+    ChatInputToolbar: ({ endActions }: { endActions?: React.ReactNode }) =>
+      React.createElement("div", { "data-testid": "chat-input-toolbar" }, endActions),
+  };
 }));
 
 describe("ChatInput layout", () => {
