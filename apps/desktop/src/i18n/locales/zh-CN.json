@@ -6065,7 +6065,20 @@
     "downloads": "下载内容",
     "noHistory": "没有浏览记录",
     "previousMatch": "上一个匹配项",
-    "nextMatch": "下一个匹配项"
+    "nextMatch": "下一个匹配项",
+    "forwardToSession": "转发",
+    "forwardSessionPrefix": "转发",
+    "forwardSuccess": "已转发",
+    "forwardFailed": "转发失败",
+    "recentChats": "最近聊天",
+    "forwardToEnterpriseWechat": "转发到企业微信",
+    "createChat": "创建聊天",
+    "noForwardTargets": "未找到聊天",
+    "sendTo": "发送给",
+    "selectRecipient": "选择接收方",
+    "noForwardUrl": "没有可转发链接",
+    "message": "留言",
+    "leaveMessage": "给朋友留言"
   },
   "emojiPicker": {
     "categories": {

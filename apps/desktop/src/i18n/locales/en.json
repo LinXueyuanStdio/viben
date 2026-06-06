@@ -6065,7 +6065,20 @@
     "downloads": "Downloads",
     "noHistory": "No history",
     "previousMatch": "Previous match",
-    "nextMatch": "Next match"
+    "nextMatch": "Next match",
+    "forwardToSession": "Forward",
+    "forwardSessionPrefix": "Forward",
+    "forwardSuccess": "Forwarded",
+    "forwardFailed": "Failed to forward",
+    "recentChats": "Recent Chats",
+    "forwardToEnterpriseWechat": "Forward to WeCom",
+    "createChat": "Create Chat",
+    "noForwardTargets": "No chats found",
+    "sendTo": "Send to",
+    "selectRecipient": "Select a recipient",
+    "noForwardUrl": "No link available",
+    "message": "Message",
+    "leaveMessage": "Leave a message"
   },
   "emojiPicker": {
     "categories": {
