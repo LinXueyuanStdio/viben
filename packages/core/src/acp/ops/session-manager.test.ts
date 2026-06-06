@@ -172,16 +172,19 @@ function createConnection(): AcpConnection {
   };
 }
 
-function createCapturingConnection(): AcpConnection & {
+interface CapturingConnection extends AcpConnection {
   updates: AcpSessionNotification[];
   clientRequests: ClientRequestRecord[];
   clientResponse?: unknown;
-} {
+}
+
+function createCapturingConnection(): CapturingConnection {
   const updates: AcpSessionNotification[] = [];
   const clientRequests: ClientRequestRecord[] = [];
-  return {
+  const connection: CapturingConnection = {
     updates,
     clientRequests,
+    clientResponse: undefined,
     async sessionUpdate(notification) {
       updates.push(notification);
     },
@@ -190,7 +193,7 @@ function createCapturingConnection(): AcpConnection & {
     },
     async requestClient(method, params) {
       clientRequests.push({ method, params });
-      return this.clientResponse ?? readClientToolEnvelope(params);
+      return connection.clientResponse ?? readClientToolEnvelope(params);
     },
     async notifyClient(method, params) {
       updates.push({
@@ -202,6 +205,7 @@ function createCapturingConnection(): AcpConnection & {
       } as AcpSessionNotification);
     },
   };
+  return connection;
 }
 
 describe("AcpSessionManager", () => {
