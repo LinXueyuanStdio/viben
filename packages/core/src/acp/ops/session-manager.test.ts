@@ -145,31 +145,52 @@ class HangingInterruptBackendAdapter implements AcpBackendAdapter {
   }
 }
 
+type ClientRequestRecord = {
+  method: string;
+  params: unknown;
+};
+
+function readClientToolEnvelope(params: unknown) {
+  const request = params as { sessionId?: string; toolCallId?: string };
+  return {
+    sessionId: request.sessionId ?? "unknown-session",
+    toolCallId: request.toolCallId ?? "unknown-tool-call",
+    result: { content: [{ type: "text" as const, text: "ok" }] },
+  };
+}
+
 function createConnection(): AcpConnection {
   return {
     async sessionUpdate() {},
     async requestPermission() {
       return { outcome: { outcome: "selected", optionId: "allow_once" } };
     },
-    async requestClient() {
-      return { content: [{ type: "text", text: "ok" }] };
+    async requestClient(_method, params) {
+      return readClientToolEnvelope(params);
     },
     async notifyClient() {},
   };
 }
 
-function createCapturingConnection(): AcpConnection & { updates: AcpSessionNotification[] } {
+function createCapturingConnection(): AcpConnection & {
+  updates: AcpSessionNotification[];
+  clientRequests: ClientRequestRecord[];
+  clientResponse?: unknown;
+} {
   const updates: AcpSessionNotification[] = [];
+  const clientRequests: ClientRequestRecord[] = [];
   return {
     updates,
+    clientRequests,
     async sessionUpdate(notification) {
       updates.push(notification);
     },
     async requestPermission() {
       return { outcome: { outcome: "selected", optionId: "allow_once" } };
     },
-    async requestClient() {
-      return { content: [{ type: "text", text: "ok" }] };
+    async requestClient(method, params) {
+      clientRequests.push({ method, params });
+      return this.clientResponse ?? readClientToolEnvelope(params);
     },
     async notifyClient(method, params) {
       updates.push({
@@ -387,6 +408,140 @@ describe("AcpSessionManager", () => {
       expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: first.promptId }),
       expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: second.promptId }),
     ]);
+  });
+
+  it("dispatches client tool calls with toolCallId and accepts the response envelope", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    const result = await manager.requestClientTool(
+      session.sessionId,
+      "mcp__gui_action__GUI_execute",
+      { action: "list_actions" },
+      "tool-call-1"
+    );
+
+    expect(result).toEqual({ content: [{ type: "text", text: "ok" }] });
+    expect(connection.clientRequests).toEqual([
+      {
+        method: "_viben/client_tool_call",
+        params: {
+          sessionId: session.sessionId,
+          toolCallId: "tool-call-1",
+          toolName: "mcp__gui_action__GUI_execute",
+          input: { action: "list_actions" },
+        },
+      },
+    ]);
+    expect(connection.clientRequests[0].params).not.toHaveProperty("toolUseId");
+  });
+
+  it("reuses the backend GUI toolCallId for MCP bridge client tool requests", async () => {
+    const connection = createCapturingConnection();
+    const adapter = new HookedBackendAdapter(async (context) => {
+      await context.onSessionUpdate?.({
+        sessionId: "backend-session",
+        update: {
+          sessionUpdate: "tool_call",
+          toolCallId: "backend-gui-tool-1",
+          title: "mcp__gui_action__GUI_execute",
+          status: "pending",
+        },
+      } as BackendNotification);
+    });
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "run GUI tool" }],
+    });
+    await manager.requestClientTool(
+      session.sessionId,
+      "mcp__gui_action__GUI_execute",
+      { action: "get_action_detail" },
+      "bridge-local-tool"
+    );
+
+    expect(connection.clientRequests.at(-1)?.params).toMatchObject({
+      sessionId: session.sessionId,
+      toolCallId: "backend-gui-tool-1",
+      toolName: "mcp__gui_action__GUI_execute",
+    });
+  });
+
+  it("returns an error when a client tool response envelope has mismatched ids", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    connection.clientResponse = {
+      sessionId: "wrong-session",
+      toolCallId: "wrong-tool",
+      result: { content: [{ type: "text", text: "wrong" }] },
+    };
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    const result = await manager.requestClientTool(session.sessionId, "GUI_execute", { action: "test" }, "tool-1");
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("Client tool response mismatch"),
+    });
+  });
+
+  it("returns an error for a bare client tool result without the ACP envelope", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    connection.clientResponse = { content: [{ type: "text", text: "bare" }] };
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    const result = await manager.requestClientTool(session.sessionId, "GUI_execute", { action: "test" }, "tool-1");
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]).toMatchObject({
+      type: "text",
+      text: expect.stringContaining("Invalid client tool response envelope"),
+    });
+  });
+
+  it("accepts multimodal MCP CallToolResult content in client tool envelopes", async () => {
+    const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
+    const connection = createCapturingConnection();
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+    connection.clientResponse = {
+      sessionId: session.sessionId,
+      toolCallId: "tool-1",
+      result: {
+        content: [
+          { type: "text", text: "image follows" },
+          { type: "image", data: "ZmFrZQ==", mimeType: "image/png" },
+          { type: "resource_link", uri: "file:///tmp/report.md", name: "report.md" },
+        ],
+        structuredContent: { ok: true },
+      },
+    };
+
+    const result = await manager.requestClientTool(session.sessionId, "GUI_execute", { action: "test" }, "tool-1");
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content).toHaveLength(3);
+    expect(result.structuredContent).toEqual({ ok: true });
   });
 
   it("does not cancel steer prompts after they were consumed before agent execution resumes", async () => {
