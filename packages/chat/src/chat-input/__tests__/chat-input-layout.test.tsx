@@ -3,7 +3,6 @@ import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { ChatInput } from "../index";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -11,8 +10,16 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("@emoji-mart/data", () => ({ default: {} }));
+vi.mock("@emoji-mart/data/sets/15/native.json", () => ({ default: {} }));
+vi.mock("@emoji-mart/react", () => ({
+  default: () => React.createElement("div", { "data-testid": "emoji-picker" }),
+}));
+
 describe("ChatInput layout", () => {
-  test("compact layout renders the editor inline inside the bottom toolbar", () => {
+  test("compact layout renders the editor inline inside the bottom toolbar", async () => {
+    const { ChatInput } = await import("../index");
+
     const { container } = render(
       <ChatInput
         value=""
@@ -39,7 +46,9 @@ describe("ChatInput layout", () => {
     expect(screen.queryByTestId("chat-input-toolbar")).not.toBeInTheDocument();
   });
 
-  test("expanded layout renders top toolbar, editor, and bottom toolbar as three rows", () => {
+  test("expanded layout renders top toolbar, editor, and bottom toolbar as three rows", async () => {
+    const { ChatInput } = await import("../index");
+
     const { container } = render(
       <ChatInput
         value=""
@@ -59,7 +68,9 @@ describe("ChatInput layout", () => {
     expect(editor?.compareDocumentPosition(bottomControls) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
-  test("custom toolbar renderers can replace default toolbar content", () => {
+  test("custom toolbar renderers can replace default toolbar content", async () => {
+    const { ChatInput } = await import("../index");
+
     render(
       <ChatInput
         value=""

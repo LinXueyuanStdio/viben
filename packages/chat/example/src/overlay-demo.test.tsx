@@ -256,7 +256,7 @@ describe("OverlayDemo", () => {
 
   test("compact and expanded inputs reuse chat input capabilities without config selectors", () => {
     const overlayInputProps = {
-      slashCommands: [{ name: "plan", description: "Plan" }],
+      slashCommands: [{ name: "plan", description: "Plan", input: null }],
       queuedInputRecallItems: [{ content: "queued work" }],
       onQueuedInputRecall: vi.fn(),
       onOpenFile: vi.fn(),
