@@ -59,6 +59,7 @@ describe("ClientToolCompletionRegistry", () => {
     it("should trust only known built-in MCP server prefixes", () => {
       registry.registerToolOptions("GUI_execute");
 
+      expect(registry.isClientSideTool("mcp__client_side__GUI_execute")).toBe(true);
       expect(registry.isClientSideTool("mcp__gui_action__GUI_execute")).toBe(true);
       expect(registry.isClientSideTool("mcp__myserver__screenshot")).toBe(false);
     });
@@ -66,12 +67,13 @@ describe("ClientToolCompletionRegistry", () => {
     it("should trust the built-in ClientSideBash MCP server prefix", () => {
       registry.registerToolOptions("ClientSideBash");
 
+      expect(registry.isClientSideTool("mcp__client_side__ClientSideBash")).toBe(true);
       expect(registry.isClientSideTool("mcp__client_side_bash__ClientSideBash")).toBe(true);
       expect(registry.isClientSideTool("mcp__other__ClientSideBash")).toBe(false);
     });
 
     it("should return false for mcp__ prefixed tools with unregistered suffix", () => {
-      expect(registry.isClientSideTool("mcp__gui_action__read_file")).toBe(false);
+      expect(registry.isClientSideTool("mcp__client_side__read_file")).toBe(false);
     });
   });
 
