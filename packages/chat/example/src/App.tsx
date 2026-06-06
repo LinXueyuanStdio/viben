@@ -10,7 +10,6 @@ import {
   ToolExecutionItem,
   CommandQueuePanel,
   ExecApproval,
-  SubagentSheet,
   useCommandQueue,
   useCommandQueueInputRecall,
   getModelIcon,
@@ -292,6 +291,7 @@ export function App() {
     setSessionLoadError(null)
     setActiveClaudeSession(session)
     setLoadedClaudeSession(null)
+    setSelectedOverlaySessionTitle(session.label)
     setSheetData(null)
     try {
       const loaded = await loadClaudeCodeSession(session)
@@ -421,17 +421,6 @@ export function App() {
   return (
     <LayoutGroup id="viben-chat-overlay-demo">
     <div className="flex h-screen flex-col">
-      <SubagentSheet
-        open={!!sheetData}
-        onClose={() => setSheetData(null)}
-        title={sheetData?.title || ""}
-        subagentType={sheetData?.subagentType}
-        messages={sheetData?.messages || []}
-        liveMessages={activeSheetLiveMessages}
-        context={sheetData?.context}
-        loadSubagentDetails={loadSubagentDetails}
-        onExpandSubagent={handleExpandSubagent}
-      />
       <div className="relative flex flex-1 overflow-hidden" data-testid="chat-example-shell">
         <aside
           data-testid="control-panel"
@@ -821,6 +810,7 @@ export function App() {
             mode={overlayMode}
             title={selectedOverlaySessionTitle}
             messages={player.messages}
+            messageUpdates={player.messageUpdates}
             isStreaming={player.isStreaming}
             playerStatus={player.status}
             pendingUserMessageCount={commandQueue.items.length}
@@ -832,6 +822,18 @@ export function App() {
             }}
             inputValue={chatInputValue}
             onInputValueChange={setChatInputValue}
+            messageListRef={messageListRef}
+            onExpandSubagent={handleExpandSubagent}
+            loadSubagentDetails={loadSubagentDetails}
+            subagentSheet={sheetData ? {
+              open: true,
+              onClose: () => setSheetData(null),
+              title: sheetData.title,
+              subagentType: sheetData.subagentType,
+              messages: sheetData.messages,
+              liveMessages: activeSheetLiveMessages,
+              context: sheetData.context,
+            } : undefined}
             onModeChange={setOverlayMode}
             onSend={handleSend}
             onCancel={player.pause}

@@ -134,4 +134,21 @@ describe("App overlay layout", () => {
       expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Claude Code: 2e83fc8b session replay");
     });
   });
+
+  test("sidebar session selection updates expanded and fullscreen header titles", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Claude Code: 3bbcc4d2 session replay/ })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Claude Code: 3bbcc4d2 session replay");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Claude Code: 3bbcc4d2 session replay");
+    });
+  });
 });
