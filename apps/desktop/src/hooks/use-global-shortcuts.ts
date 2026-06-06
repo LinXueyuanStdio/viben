@@ -1,6 +1,6 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import { useUiStore, useAppStore, useWorkspaceStore } from "@/stores";
-import { useTabStore } from "@/stores/tab-store";
+import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import { createTabNavigationState } from "@/navigation/tab-navigation";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
 
@@ -115,17 +115,18 @@ export function useGlobalShortcuts() {
   const openCreateTaskDialog = useUiStore((state) => state.openCreateTaskDialog);
   const shortcuts = useAppStore((state) => state.shortcuts);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
-  const openTab = useTabStore((state) => state.openTab);
-  const closeTab = useTabStore((state) => state.closeTab);
-  const setActiveTab = useTabStore((state) => state.setActiveTab);
-  const reopenClosedTab = useTabStore((state) => state.reopenClosedTab);
+  const tabStore = useMemo(() => getCurrentWindowTabStore(), []);
+  const openTab = tabStore((state) => state.openTab);
+  const closeTab = tabStore((state) => state.closeTab);
+  const setActiveTab = tabStore((state) => state.setActiveTab);
+  const reopenClosedTab = tabStore((state) => state.reopenClosedTab);
 
   // Read tab state via ref to avoid recreating the callback on every tab change.
   // Using .map() in a zustand selector creates a new array each time, which
   // triggers infinite re-renders via useSyncExternalStore.
   const tabStateRef = useRef({ activeTabId: null as string | null, tabIds: [] as string[], tabCount: 0 });
-  const activeTabId = useTabStore((state) => state.activeTabId);
-  const tabs = useTabStore((state) => state.tabs);
+  const activeTabId = tabStore((state) => state.activeTabId);
+  const tabs = tabStore((state) => state.tabs);
   tabStateRef.current = {
     activeTabId,
     tabIds: tabs.map((tab) => tab.id),
