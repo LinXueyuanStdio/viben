@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import data from "@emoji-mart/data";
+import data from "@emoji-mart/data/sets/15/native.json";
 import Picker from "@emoji-mart/react";
 import { cn } from "@viben/ui";
 import "./emoji-mart.css";
