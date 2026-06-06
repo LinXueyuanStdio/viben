@@ -727,7 +727,7 @@ export function ChatInput({
             onExecutorChange={onExecutorChange}
             showExecutorSelector={shouldShowExecutorSelector}
             tools={tools}
-            onToggleTool={handleToggleTool as never}
+            onToggleTool={onToggleTool}
             enabledToolsCount={enabledToolsCount}
             onToolsClick={onToolsClick}
             skills={skills}
@@ -829,9 +829,11 @@ export type {
   GlobalChatConfig,
   ChatConfigVisibility,
   QueuedInputRecallItem,
+  ChatInputToolbarRenderProps,
+  ChatInputBottomToolbarRenderProps,
 } from "./types";
 export { ChatInputToolbar } from "./toolbar";
-export { ChatInputConfigBar } from "./config-bar";
+export { ChatInputConfigBar, ChatInputConfigControls, ChatInputSubmitControl } from "./config-bar";
 export { AttachmentPreview } from "./attachment-preview";
 export { SlashCommandMenu } from "./slash-command-menu";
 export { WritingMode } from "./writing-mode";

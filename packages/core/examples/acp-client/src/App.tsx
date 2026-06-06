@@ -1406,8 +1406,7 @@ export function App() {
                 <div className="mb-2 font-semibold">Available GUI actions</div>
                 <JsonPanel
                   value={actionSummaries}
-                  preClassName="max-h-48 min-h-0 border-0 bg-transparent p-0 text-foreground"
-                  wrap
+                  preClassName="max-h-48 min-h-48 border-0 p-0"
                 />
               </div>
               <div className="max-h-80 space-y-2 overflow-auto pr-1">
