@@ -168,10 +168,51 @@ describe("OverlayDemo", () => {
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create new session" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New session menu" })).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to full mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
     expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
+  });
+
+  test("expanded mode keeps the same floating width as compact mode", () => {
+    render(
+      <OverlayDemo
+        contained
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-overlay")).toHaveClass("w-[min(440px,calc(100vw-2rem))]");
+    expect(screen.getByTestId("expanded-overlay")).toHaveClass("bottom-5");
+    expect(screen.getByTestId("expanded-overlay")).toHaveClass("right-5");
+  });
+
+  test("expanded header compact and full buttons switch overlay modes", () => {
+    const onModeChange = vi.fn();
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to compact mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to full mode" }));
+
+    expect(onModeChange).toHaveBeenCalledWith("compact");
+    expect(onModeChange).toHaveBeenCalledWith("full");
   });
 
   test("expanded session title menu shows search and session samples", () => {
@@ -195,6 +236,28 @@ describe("OverlayDemo", () => {
     expect(screen.getByText("2e83fc8b...jsonl")).toBeInTheDocument();
     expect(screen.getByText("Claude Code: 3bbcc4d2 session replay")).toBeInTheDocument();
     expect(screen.getByText("3bbcc4d2...jsonl")).toBeInTheDocument();
+  });
+
+  test("expanded session menu calls selection callback and closes", () => {
+    const onSelectSession = vi.fn();
+    render(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        sessions={[{ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" }]}
+        headerActions={{ onSelectSession }}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
+    fireEvent.click(screen.getByText("Session one"));
+
+    expect(onSelectSession).toHaveBeenCalledWith({ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" });
+    expect(screen.queryByText("session-1.jsonl")).not.toBeInTheDocument();
   });
 
   test("expanded new-session menu shows creation actions and agent samples", () => {

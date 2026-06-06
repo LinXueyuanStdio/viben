@@ -1,6 +1,6 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, PanelRightClose, Plus, Search, Settings } from "lucide-react";
 import { ChatInput, EmojiPicker } from "@viben/chat";
 import type { AgentMessage, ChatInputProps, MessageAttachment } from "@viben/chat";
 
@@ -174,6 +174,7 @@ export function OverlayDemo({
         headerActions={headerActions}
         onCreateSession={headerActions?.onCreateSession}
         onSettingsClick={headerActions?.onSettingsClick}
+        onModeChange={onModeChange}
       />
       <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
         <ExpandedMessageList
@@ -280,7 +281,7 @@ export function OverlayDemo({
       animate={{ opacity: 1, scale: 1 }}
       className={`overlay-shared-surface flex min-h-0 flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained
-          ? "absolute bottom-4 right-4 z-20 h-[min(760px,calc(100%-2rem))] w-[min(720px,calc(100%-2rem))]"
+          ? "absolute bottom-5 right-5 z-20 h-[min(760px,calc(100%-2rem))] w-[min(440px,calc(100vw-2rem))]"
           : "h-full w-full"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
@@ -426,6 +427,7 @@ function ExpandedHeader({
   headerActions,
   onCreateSession,
   onSettingsClick,
+  onModeChange,
 }: {
   title: string;
   sessions: OverlaySessionItem[];
@@ -434,19 +436,20 @@ function ExpandedHeader({
   headerActions?: OverlayHeaderActions;
   onCreateSession?: () => void;
   onSettingsClick?: () => void;
+  onModeChange: (mode: OverlayMode) => void;
 }) {
   const [sessionOpen, setSessionOpen] = React.useState(false);
   const [newOpen, setNewOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
 
   return (
-    <header className="relative flex h-12 shrink-0 items-center gap-2 border-b border-border bg-card px-3">
+    <header className="relative flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-card px-3">
       <div className="relative">
         <button
           type="button"
           aria-label="Session menu"
           onClick={() => setSessionOpen((open) => !open)}
-          className="flex h-8 max-w-[220px] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+          className="flex h-8 max-w-[164px] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
         >
           <span className="truncate">{title}</span>
           {sessionOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
@@ -467,7 +470,10 @@ function ExpandedHeader({
                 <button
                   key={session.id}
                   type="button"
-                  onClick={() => headerActions?.onSelectSession?.(session)}
+                  onClick={() => {
+                    headerActions?.onSelectSession?.(session);
+                    setSessionOpen(false);
+                  }}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent"
                 >
                   <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
@@ -484,25 +490,23 @@ function ExpandedHeader({
         )}
       </div>
 
-      <div className="min-w-0 flex-1" />
-
-      <button
-        type="button"
-        aria-label="Create new session"
-        onClick={onCreateSession}
-        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      >
-        <Plus className="size-4" />
-      </button>
-
-      <div className="relative">
+      <div className="relative flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-background">
+        <button
+          type="button"
+          aria-label="Create new session"
+          onClick={onCreateSession}
+          className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Plus className="size-4" />
+        </button>
+        <div className="h-full border-l border-border" />
         <button
           type="button"
           aria-label="New session menu"
           onClick={() => setNewOpen((open) => !open)}
-          className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <ChevronUp className="size-4" />
+          <ChevronDown className="size-4" />
         </button>
         {newOpen && (
           <div className="absolute right-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
@@ -525,6 +529,26 @@ function ExpandedHeader({
           </div>
         )}
       </div>
+
+      <div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />
+
+      <button
+        type="button"
+        aria-label="Switch to compact mode"
+        onClick={() => onModeChange("compact")}
+        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <PanelRightClose className="size-4" />
+      </button>
+
+      <button
+        type="button"
+        aria-label="Switch to full mode"
+        onClick={() => onModeChange("full")}
+        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        <Maximize2 className="size-4" />
+      </button>
 
       <button
         type="button"
