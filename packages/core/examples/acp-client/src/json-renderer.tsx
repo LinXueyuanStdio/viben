@@ -1,55 +1,76 @@
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  createJSONEditor,
+  Mode,
+  type Content,
+  type JSONContent,
+  type JSONEditorPropsOptional,
+} from "vanilla-jsoneditor";
+import "vanilla-jsoneditor/themes/jse-theme-dark.css";
 
-interface JsonToken {
-  text: string;
-  className?: string;
-}
+type JsonEditorInstance = ReturnType<typeof createJSONEditor>;
 
-interface JsonCodeProps {
+export interface JsonPanelProps {
   value: unknown;
   className?: string;
-  wrap?: boolean;
-  nullishValue?: unknown;
-}
-
-export interface JsonPanelProps extends JsonCodeProps {
   preClassName?: string;
+  mode?: "tree" | "text";
+  nullishValue?: unknown;
 }
 
 export interface JsonBlockProps extends JsonPanelProps {
   title: ReactNode;
-  className?: string;
   titleClassName?: string;
-}
-
-export function JsonCode({
-  value,
-  className,
-  wrap = false,
-  nullishValue,
-}: JsonCodeProps) {
-  return (
-    <code className={classNames("json-code", wrap && "json-code-wrap", className)}>
-      {tokenizeJson(formatJson(value ?? nullishValue ?? null)).map((token, index) => (
-        <span key={`${index}-${token.text}`} className={token.className}>
-          {token.text}
-        </span>
-      ))}
-    </code>
-  );
 }
 
 export function JsonPanel({
   value,
-  preClassName,
   className,
-  wrap,
+  preClassName,
+  mode = "tree",
   nullishValue,
 }: JsonPanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<JsonEditorInstance | null>(null);
+  const normalizedValue = value ?? nullishValue ?? null;
+  const content = useMemo(() => valueToEditorContent(normalizedValue), [normalizedValue]);
+  const editorMode = contentHasJson(content) && mode === "tree" ? Mode.tree : Mode.text;
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const props: JSONEditorPropsOptional = {
+      content,
+      mode: editorMode,
+      readOnly: true,
+      mainMenuBar: false,
+      navigationBar: true,
+      statusBar: false,
+    };
+
+    editorRef.current = createJSONEditor({
+      target: containerRef.current,
+      props,
+    });
+
+    return () => {
+      editorRef.current?.destroy();
+      editorRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    editorRef.current.update({
+      content,
+      mode: editorMode,
+    });
+  }, [content, editorMode]);
+
   return (
-    <pre className={classNames("json-panel", preClassName)}>
-      <JsonCode value={value} className={className} wrap={wrap} nullishValue={nullishValue} />
-    </pre>
+    <div className={classNames("json-panel jse-theme-dark", preClassName)}>
+      <div ref={containerRef} className={classNames("json-editor-host", className)} />
+    </div>
   );
 }
 
@@ -59,7 +80,7 @@ export function JsonBlock({
   className,
   titleClassName,
   preClassName,
-  wrap,
+  mode,
   nullishValue,
 }: JsonBlockProps) {
   return (
@@ -70,7 +91,7 @@ export function JsonBlock({
       <JsonPanel
         value={value}
         preClassName={classNames("max-h-44 text-code-foreground", preClassName)}
-        wrap={wrap}
+        mode={mode}
         nullishValue={nullishValue}
       />
     </div>
@@ -94,35 +115,19 @@ export function parseJsonOrFallback(text: string, fallback: unknown): unknown {
   }
 }
 
-function tokenizeJson(json: string): JsonToken[] {
-  const tokens: JsonToken[] = [];
-  let cursor = 0;
-  const pattern = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(json)) !== null) {
-    if (match.index > cursor) {
-      tokens.push({ text: json.slice(cursor, match.index) });
+function valueToEditorContent(value: unknown): Content {
+  if (typeof value === "string") {
+    try {
+      return { json: JSON.parse(value) as JSONContent["json"] };
+    } catch {
+      return { text: value };
     }
-    tokens.push({
-      text: match[0],
-      className: getJsonTokenClass(match[0]),
-    });
-    cursor = match.index + match[0].length;
   }
-
-  if (cursor < json.length) {
-    tokens.push({ text: json.slice(cursor) });
-  }
-  return tokens;
+  return { json: value as JSONContent["json"] };
 }
 
-function getJsonTokenClass(token: string): string {
-  if (/^"/.test(token)) return token.endsWith(":") ? "json-key" : "json-string";
-  if (/^-?\d/.test(token)) return "json-number";
-  if (token === "true" || token === "false") return "json-boolean";
-  if (token === "null") return "json-null";
-  return "json-punctuation";
+function contentHasJson(content: Content): content is JSONContent {
+  return "json" in content;
 }
 
 function classNames(...values: Array<string | false | undefined>): string | undefined {
