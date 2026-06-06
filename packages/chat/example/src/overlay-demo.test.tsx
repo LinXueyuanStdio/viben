@@ -12,6 +12,7 @@ vi.mock("@viben/chat", async () => {
       "div",
       { "data-testid": "overlay-chat-input-props" },
       React.createElement("span", { "data-testid": "show-top-toolbar" }, String(props.showTopToolbar)),
+      React.createElement("span", { "data-testid": "toolbar-position" }, String(props.toolbarPosition)),
       React.createElement("span", { "data-testid": "show-config-bar" }, String(props.showConfigBar)),
       React.createElement("span", { "data-testid": "hide-agent-selector" }, String(props.hideAgentSelector)),
       React.createElement("span", { "data-testid": "hide-model-selector" }, String(props.hideModelSelector)),
@@ -274,6 +275,7 @@ describe("OverlayDemo", () => {
     );
 
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("toolbar-position")).toHaveTextContent("bottom");
     expect(screen.getByTestId("show-config-bar")).toHaveTextContent("false");
     expect(screen.getByTestId("hide-agent-selector")).toHaveTextContent("true");
     expect(screen.getByTestId("hide-model-selector")).toHaveTextContent("true");
@@ -296,6 +298,7 @@ describe("OverlayDemo", () => {
     );
 
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("toolbar-position")).toHaveTextContent("bottom");
     expect(screen.getByTestId("show-config-bar")).toHaveTextContent("false");
     expect(screen.getByTestId("default-height")).toHaveTextContent("48");
     expect(screen.getByTestId("max-height")).toHaveTextContent("48");

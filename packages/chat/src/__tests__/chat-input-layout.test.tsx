@@ -3,7 +3,6 @@ import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { ChatInput } from "../chat-input";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -16,8 +15,19 @@ vi.mock("../emoji-picker", () => ({
     <button type="button" onClick={() => onSelect("🙂")}>Pick emoji</button>
   ),
 }));
+vi.mock("../emoji-picker/index", () => ({
+  EmojiPicker: ({ onSelect }: { onSelect: (emoji: string) => void }) => (
+    <button type="button" onClick={() => onSelect("🙂")}>Pick emoji</button>
+  ),
+}));
+vi.mock("/root/viben/packages/chat/src/emoji-picker/index.tsx", () => ({
+  EmojiPicker: ({ onSelect }: { onSelect: (emoji: string) => void }) => (
+    <button type="button" onClick={() => onSelect("🙂")}>Pick emoji</button>
+  ),
+}));
 
 vi.mock("@emoji-mart/data", () => ({ default: {} }));
+vi.mock("@emoji-mart/data/sets/15/native.json", () => ({ default: {} }));
 vi.mock("@emoji-mart/react", () => ({
   default: ({ onEmojiSelect }: { onEmojiSelect: (emoji: { native: string }) => void }) => (
     <button type="button" onClick={() => onEmojiSelect({ native: "🙂" })}>Pick emoji</button>
@@ -25,7 +35,9 @@ vi.mock("@emoji-mart/react", () => ({
 }));
 
 describe("ChatInput layout", () => {
-  test("can render compact two-row layout with editor first and toolbar actions second", () => {
+  test("can render compact two-row layout with editor first and toolbar actions second", async () => {
+    const { ChatInput } = await import("../chat-input");
+
     const { container } = render(
       <ChatInput
         value=""

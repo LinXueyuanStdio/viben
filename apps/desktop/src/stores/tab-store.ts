@@ -64,12 +64,27 @@ interface TabActions {
   setViewMode: (tabId: string, mode: PageViewMode) => void;
   moveTab: (fromIndex: number, toIndex: number) => void;
   navigate: (tabId: string, url: string) => void;
-  pushNavigation: (tabId: string, url: string, leaf: BreadcrumbStackItem) => void;
-  replaceNavigation: (tabId: string, url: string, leaf: BreadcrumbStackItem) => void;
-  resetNavigation: (tabId: string, url: string, stack: BreadcrumbStackItem[]) => void;
+  pushNavigation: (
+    tabId: string,
+    url: string,
+    leaf: BreadcrumbStackItem,
+  ) => void;
+  replaceNavigation: (
+    tabId: string,
+    url: string,
+    leaf: BreadcrumbStackItem,
+  ) => void;
+  resetNavigation: (
+    tabId: string,
+    url: string,
+    stack: BreadcrumbStackItem[],
+  ) => void;
   replaceLocation: (tabId: string, next: TabNavigationState) => void;
   pushLocation: (tabId: string, next: TabNavigationState) => void;
-  insertHistoryBeforeCurrent: (tabId: string, state: TabNavigationState) => void;
+  insertHistoryBeforeCurrent: (
+    tabId: string,
+    state: TabNavigationState,
+  ) => void;
   jumpToHistory: (tabId: string, historyIndex: number) => void;
   goBack: (tabId: string) => void;
   goForward: (tabId: string) => void;
@@ -116,13 +131,19 @@ function buildStateFromUrl(url?: string): TabNavigationState {
 function isNavigationState(value: unknown): value is TabNavigationState {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<TabNavigationState>;
-  return typeof candidate.url === "string" && Array.isArray(candidate.breadcrumbStack);
+  return (
+    typeof candidate.url === "string" &&
+    Array.isArray(candidate.breadcrumbStack)
+  );
 }
 
 function isPersistedPageTab(value: unknown): value is PageTab {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<PageTab>;
-  return typeof candidate.id === "string" && Array.isArray(candidate.navigationHistory);
+  return (
+    typeof candidate.id === "string" &&
+    Array.isArray(candidate.navigationHistory)
+  );
 }
 
 function isPersistedSnapshot(value: unknown): value is ClosedTabSnapshot {
@@ -137,10 +158,13 @@ function isPersistedSnapshot(value: unknown): value is ClosedTabSnapshot {
 
 function normalizeTab(tab: PageTab): PageTab {
   const navigationHistory = tab.navigationHistory.filter(isNavigationState);
-  const safeHistory = navigationHistory.length > 0 ? navigationHistory : [buildStateFromUrl("/workspace")];
+  const safeHistory =
+    navigationHistory.length > 0
+      ? navigationHistory
+      : [buildStateFromUrl("/workspace")];
   const historyIndex = Math.min(
     Math.max(tab.historyIndex ?? safeHistory.length - 1, 0),
-    safeHistory.length - 1
+    safeHistory.length - 1,
   );
 
   return {
@@ -162,14 +186,16 @@ function normalizeSnapshot(snapshot: ClosedTabSnapshot): ClosedTabSnapshot {
 
 export function mergePersistedTabState(
   persisted: Partial<TabState> | undefined,
-  current: TabState
+  current: TabState,
 ): TabState {
-  const tabs = (persisted?.tabs ?? []).filter(isPersistedPageTab).map(normalizeTab);
+  const tabs = (persisted?.tabs ?? [])
+    .filter(isPersistedPageTab)
+    .map(normalizeTab);
   const tabIds = new Set(tabs.map((tab) => tab.id));
   const activeTabId =
     persisted?.activeTabId && tabIds.has(persisted.activeTabId)
       ? persisted.activeTabId
-      : tabs[0]?.id ?? null;
+      : (tabs[0]?.id ?? null);
 
   return {
     ...current,
@@ -181,7 +207,10 @@ export function mergePersistedTabState(
   };
 }
 
-function cloneTabWithNewId(tab: PageTab, overrides?: Partial<PageTab>): PageTab {
+function cloneTabWithNewId(
+  tab: PageTab,
+  overrides?: Partial<PageTab>,
+): PageTab {
   return normalizeTab({
     ...normalizeTab(tab),
     ...overrides,
@@ -189,7 +218,10 @@ function cloneTabWithNewId(tab: PageTab, overrides?: Partial<PageTab>): PageTab 
   });
 }
 
-function createClosedSnapshot(tab: PageTab, originIndex: number): ClosedTabSnapshot {
+function createClosedSnapshot(
+  tab: PageTab,
+  originIndex: number,
+): ClosedTabSnapshot {
   return {
     tab: normalizeTab(tab),
     originIndex,
@@ -199,22 +231,28 @@ function createClosedSnapshot(tab: PageTab, originIndex: number): ClosedTabSnaps
 
 function pushClosedSnapshots(
   stack: ClosedTabSnapshot[],
-  snapshots: ClosedTabSnapshot[]
+  snapshots: ClosedTabSnapshot[],
 ): ClosedTabSnapshot[] {
   if (snapshots.length === 0) {
     return stack;
   }
 
-  return [...snapshots].reverse().concat(stack).slice(0, MAX_RECENTLY_CLOSED_TABS);
+  return [...snapshots]
+    .reverse()
+    .concat(stack)
+    .slice(0, MAX_RECENTLY_CLOSED_TABS);
 }
 
 function restoreClosedTabIntoTabs(
   tabs: PageTab[],
-  snapshot: ClosedTabSnapshot
+  snapshot: ClosedTabSnapshot,
 ): { tabs: PageTab[]; restoredTab: PageTab } {
   const restoredTab = cloneTabWithNewId(snapshot.tab);
   const nextTabs = [...tabs];
-  const insertIndex = Math.max(0, Math.min(snapshot.originIndex, nextTabs.length));
+  const insertIndex = Math.max(
+    0,
+    Math.min(snapshot.originIndex, nextTabs.length),
+  );
   nextTabs.splice(insertIndex, 0, restoredTab);
   return { tabs: nextTabs, restoredTab };
 }
@@ -254,7 +292,7 @@ export function getTabViewModel(tab: PageTab): TabViewModel {
 function findHistoryEntryByUrlInHistory(
   navigationHistory: TabNavigationState[],
   historyIndex: number,
-  url: string
+  url: string,
 ): number {
   for (let index = historyIndex - 1; index >= 0; index -= 1) {
     if (navigationHistory[index].url === url) {
@@ -264,446 +302,475 @@ function findHistoryEntryByUrlInHistory(
   return -1;
 }
 
-
 function createTabStore(storageKey: string): TabStore {
   return create<TabStoreState>()(
-  persist<TabStoreState, [], [], Partial<TabState>>(
-    (set, get) => ({
-      tabs: [],
-      activeTabId: null,
-      recentlyClosedTabs: [],
+    persist<TabStoreState, [], [], Partial<TabState>>(
+      (set, get) => ({
+        tabs: [],
+        activeTabId: null,
+        recentlyClosedTabs: [],
 
-      openTab: (tabData) => {
-        const id = generateTabId();
-        const newTab = normalizeTab({
-          id,
-          pinned: tabData.pinned ?? false,
-          navigationHistory: [tabData.navigationState],
-          historyIndex: 0,
-          viewMode: tabData.viewMode,
-        });
+        openTab: (tabData) => {
+          const id = generateTabId();
+          const newTab = normalizeTab({
+            id,
+            pinned: tabData.pinned ?? false,
+            navigationHistory: [tabData.navigationState],
+            historyIndex: 0,
+            viewMode: tabData.viewMode,
+          });
 
-        set((state) => ({
-          tabs: [...state.tabs, newTab],
-          activeTabId: id,
-        }));
+          set((state) => ({
+            tabs: [...state.tabs, newTab],
+            activeTabId: id,
+          }));
 
-        return id;
-      },
-
-      closeTab: (tabId) => {
-        set((state) => {
-          const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
-          if (tabIndex === -1) return state;
-
-          const recentlyClosedTabs = pushClosedSnapshots(
-            state.recentlyClosedTabs,
-            [createClosedSnapshot(state.tabs[tabIndex], tabIndex)]
-          );
-          const tabs = state.tabs.filter((tab) => tab.id !== tabId);
-          let activeTabId = state.activeTabId;
-
-          if (state.activeTabId === tabId) {
-            if (tabs.length === 0) {
-              activeTabId = null;
-            } else if (tabIndex >= tabs.length) {
-              activeTabId = tabs[tabs.length - 1].id;
-            } else {
-              activeTabId = tabs[tabIndex].id;
-            }
-          }
-
-          return { tabs, activeTabId, recentlyClosedTabs };
-        });
-      },
-
-      closeOtherTabs: (tabId) => {
-        set((state) => {
-          const snapshots = state.tabs
-            .map((tab, index) => ({ tab, index }))
-            .filter(({ tab }) => !tab.pinned && tab.id !== tabId)
-            .map(({ tab, index }) => createClosedSnapshot(tab, index));
-
-          return {
-            tabs: state.tabs.filter((tab) => tab.pinned || tab.id === tabId),
-            activeTabId: tabId,
-            recentlyClosedTabs: pushClosedSnapshots(state.recentlyClosedTabs, snapshots),
-          };
-        });
-      },
-
-      closeTabsToRight: (tabId) => {
-        set((state) => {
-          const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
-          if (tabIndex === -1) return state;
-
-          const snapshots = state.tabs
-            .map((tab, index) => ({ tab, index }))
-            .filter(({ tab, index }) => index > tabIndex && !tab.pinned)
-            .map(({ tab, index }) => createClosedSnapshot(tab, index));
-          const closingIds = new Set(snapshots.map((snapshot) => snapshot.tab.id));
-          const tabs = state.tabs.filter((tab) => !closingIds.has(tab.id));
-          const activeTabId = tabs.some((tab) => tab.id === state.activeTabId)
-            ? state.activeTabId
-            : tabId;
-
-          return {
-            tabs,
-            activeTabId,
-            recentlyClosedTabs: pushClosedSnapshots(state.recentlyClosedTabs, snapshots),
-          };
-        });
-      },
-
-      setActiveTab: (tabId) => {
-        set({ activeTabId: tabId });
-      },
-
-      pinTab: (tabId) => {
-        set((state) => {
-          const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
-          if (tabIndex === -1) return state;
-
-          const tab = state.tabs[tabIndex];
-          if (tab.pinned) return state;
-
-          const tabs = [...state.tabs];
-          tabs.splice(tabIndex, 1);
-
-          const insertIndex = findLastPinnedIndex(tabs) + 1;
-          tabs.splice(insertIndex, 0, { ...tab, pinned: true });
-
-          return { tabs };
-        });
-      },
-
-      unpinTab: (tabId) => {
-        set((state) => {
-          const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
-          if (tabIndex === -1) return state;
-
-          const tab = state.tabs[tabIndex];
-          if (!tab.pinned) return state;
-
-          const tabs = [...state.tabs];
-          tabs.splice(tabIndex, 1);
-
-          const insertIndex = findLastPinnedIndex(tabs) + 1;
-          tabs.splice(insertIndex, 0, { ...tab, pinned: false });
-
-          return { tabs };
-        });
-      },
-
-      setViewMode: (tabId, mode) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) =>
-            tab.id === tabId ? { ...tab, viewMode: mode } : tab
-          ),
-        }));
-      },
-
-      moveTab: (fromIndex, toIndex) => {
-        set((state) => {
-          if (
-            fromIndex === toIndex ||
-            fromIndex < 0 ||
-            toIndex < 0 ||
-            fromIndex >= state.tabs.length ||
-            toIndex >= state.tabs.length
-          ) {
-            return state;
-          }
-
-          const tabs = [...state.tabs];
-          const movedTab = tabs[fromIndex];
-          const lastPinned = findLastPinnedIndex(tabs);
-
-          // Enforce pinned/unpinned boundary:
-          // Pinned tabs can only move within [0, lastPinned]
-          // Unpinned tabs can only move within [lastPinned+1, tabs.length-1]
-          let clampedTo = toIndex;
-          if (movedTab.pinned) {
-            // Pinned tab cannot move past the last pinned position
-            // (after splice-out, boundary shifts by 1 if fromIndex <= lastPinned)
-            const boundaryAfterRemove = fromIndex <= lastPinned ? lastPinned - 1 : lastPinned;
-            clampedTo = Math.min(toIndex, boundaryAfterRemove);
-            clampedTo = Math.max(clampedTo, 0);
-          } else {
-            // Unpinned tab cannot move before the first unpinned position
-            const firstUnpinned = lastPinned + 1;
-            // After removing the unpinned tab, if it was after the boundary, boundary stays the same
-            const boundaryAfterRemove = fromIndex > lastPinned ? firstUnpinned : firstUnpinned - 1;
-            clampedTo = Math.max(toIndex, boundaryAfterRemove);
-            clampedTo = Math.min(clampedTo, tabs.length - 1);
-          }
-
-          if (fromIndex === clampedTo) {
-            return state;
-          }
-
-          const [moved] = tabs.splice(fromIndex, 1);
-          tabs.splice(clampedTo, 0, moved);
-          return { tabs };
-        });
-      },
-
-      navigate: (tabId, url) => {
-        get().pushLocation(tabId, buildStateFromUrl(url));
-      },
-
-      pushNavigation: (tabId, url, leaf) => {
-        const tab = get().tabs.find((entry) => entry.id === tabId);
-        const current = tab ? getTabCurrentState(normalizeTab(tab)) : null;
-        const currentStack = current?.breadcrumbStack ?? [];
-        const nextState: TabNavigationState = {
-          url,
-          breadcrumbStack: [...currentStack, leaf],
-        };
-        get().pushLocation(tabId, nextState);
-      },
-
-      replaceNavigation: (tabId, url, leaf) => {
-        const tab = get().tabs.find((entry) => entry.id === tabId);
-        const current = tab ? getTabCurrentState(normalizeTab(tab)) : null;
-        const currentStack = current?.breadcrumbStack ?? [];
-        const nextState: TabNavigationState = {
-          url,
-          breadcrumbStack: [...currentStack.slice(0, -1), leaf],
-        };
-        get().pushLocation(tabId, nextState);
-      },
-
-      resetNavigation: (tabId, url, stack) => {
-        const nextState: TabNavigationState = { url, breadcrumbStack: stack };
-        get().pushLocation(tabId, nextState);
-      },
-
-      replaceLocation: (tabId, next) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-            const current = normalizeTab(tab);
-            const baseHistory = current.navigationHistory.slice(0, current.historyIndex);
-            return normalizeTab({
-              ...current,
-              navigationHistory: [...baseHistory, next],
-              historyIndex: baseHistory.length,
-            });
-          }),
-        }));
-      },
-
-      pushLocation: (tabId, next) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-            const current = normalizeTab(tab);
-            let history = [...current.navigationHistory.slice(0, current.historyIndex + 1), next];
-            let index = history.length - 1;
-            // Trim oldest entries if history exceeds limit
-            if (history.length > MAX_NAVIGATION_HISTORY) {
-              const excess = history.length - MAX_NAVIGATION_HISTORY;
-              history = history.slice(excess);
-              index = history.length - 1;
-            }
-            return normalizeTab({
-              ...current,
-              navigationHistory: history,
-              historyIndex: index,
-            });
-          }),
-        }));
-      },
-
-      insertHistoryBeforeCurrent: (tabId, next) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-            const current = normalizeTab(tab);
-            const before = current.navigationHistory.slice(0, current.historyIndex);
-            const fromCurrent = current.navigationHistory.slice(current.historyIndex);
-            return normalizeTab({
-              ...current,
-              navigationHistory: [...before, next, ...fromCurrent],
-              historyIndex: before.length,
-            });
-          }),
-        }));
-      },
-
-      jumpToHistory: (tabId, historyIndex) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-            const current = normalizeTab(tab);
-            return normalizeTab({
-              ...current,
-              historyIndex,
-            });
-          }),
-        }));
-      },
-
-      goBack: (tabId) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-            const current = normalizeTab(tab);
-            if (current.historyIndex <= 0) return current;
-            return {
-              ...current,
-              historyIndex: current.historyIndex - 1,
-            };
-          }),
-        }));
-      },
-
-      goForward: (tabId) => {
-        set((state) => ({
-          tabs: state.tabs.map((tab) => {
-            if (tab.id !== tabId) return tab;
-            const current = normalizeTab(tab);
-            if (current.historyIndex >= current.navigationHistory.length - 1) {
-              return current;
-            }
-            return {
-              ...current,
-              historyIndex: current.historyIndex + 1,
-            };
-          }),
-        }));
-      },
-
-      canGoBack: (tabId) => {
-        const tab = get().tabs.find((item) => item.id === tabId);
-        return tab ? normalizeTab(tab).historyIndex > 0 : false;
-      },
-
-      canGoForward: (tabId) => {
-        const tab = get().tabs.find((item) => item.id === tabId);
-        if (!tab) return false;
-        const current = normalizeTab(tab);
-        return current.historyIndex < current.navigationHistory.length - 1;
-      },
-
-      getCurrentUrl: (tabId) => {
-        const tab = get().tabs.find((item) => item.id === tabId);
-        if (!tab) return null;
-        const current = getTabCurrentState(normalizeTab(tab));
-        return current?.url ?? null;
-      },
-
-      getCurrentNavigationState: (tabId) => {
-        const tab = get().tabs.find((item) => item.id === tabId);
-        return tab ? getTabCurrentState(normalizeTab(tab)) : null;
-      },
-
-      findHistoryEntryByUrl: (tabId, url) => {
-        const tab = get().tabs.find((item) => item.id === tabId);
-        if (!tab) return -1;
-        const current = normalizeTab(tab);
-        return findHistoryEntryByUrlInHistory(
-          current.navigationHistory,
-          current.historyIndex,
-          url
-        );
-      },
-
-      closeAllTabs: () => {
-        set((state) => {
-          const snapshots = state.tabs
-            .map((tab, index) => ({ tab, index }))
-            .filter(({ tab }) => !tab.pinned)
-            .map(({ tab, index }) => createClosedSnapshot(tab, index));
-          const tabs = state.tabs.filter((tab) => tab.pinned);
-          return {
-            tabs,
-            activeTabId: tabs[0]?.id ?? null,
-            recentlyClosedTabs: pushClosedSnapshots(state.recentlyClosedTabs, snapshots),
-          };
-        });
-      },
-
-      duplicateTab: (tabId) => {
-        const state = get();
-        const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
-        if (tabIndex === -1) return null;
-
-        const duplicatedTab = cloneTabWithNewId(state.tabs[tabIndex], {
-          pinned: false,
-        });
-
-        set((current) => {
-          const tabs = [...current.tabs];
-          tabs.splice(tabIndex + 1, 0, duplicatedTab);
-          return {
-            tabs,
-            activeTabId: duplicatedTab.id,
-          };
-        });
-
-        return duplicatedTab.id;
-      },
-
-      reopenClosedTab: () => {
-        let restoredTabId: string | null = null;
-
-        set((current) => {
-          const [nextSnapshot, ...restSnapshots] = current.recentlyClosedTabs;
-          if (!nextSnapshot) return current;
-
-          const restored = restoreClosedTabIntoTabs(current.tabs, nextSnapshot);
-          restoredTabId = restored.restoredTab.id;
-
-          return {
-            tabs: restored.tabs,
-            activeTabId: restored.restoredTab.id,
-            recentlyClosedTabs: restSnapshots,
-          };
-        });
-
-        return restoredTabId;
-      },
-
-      restoreTab: (tab) => {
-        const restoredTab = cloneTabWithNewId(tab);
-        set((state) => ({
-          tabs: [...state.tabs, restoredTab],
-          activeTabId: restoredTab.id,
-        }));
-      },
-    }),
-    {
-      name: storageKey,
-      version: TAB_STORE_VERSION,
-      storage: createJSONStorage(() => ({
-        getItem: (name: string) => localStorage.getItem(name),
-        setItem: (name: string, value: string) => {
-          try {
-            localStorage.setItem(name, value);
-          } catch {
-            // QuotaExceededError — silently skip persist
-          }
+          return id;
         },
-        removeItem: (name: string) => localStorage.removeItem(name),
-      })),
-      partialize: (state) => ({
-        tabs: state.tabs,
-        activeTabId: state.activeTabId,
-        recentlyClosedTabs: state.recentlyClosedTabs,
+
+        closeTab: (tabId) => {
+          set((state) => {
+            const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+            if (tabIndex === -1) return state;
+
+            const recentlyClosedTabs = pushClosedSnapshots(
+              state.recentlyClosedTabs,
+              [createClosedSnapshot(state.tabs[tabIndex], tabIndex)],
+            );
+            const tabs = state.tabs.filter((tab) => tab.id !== tabId);
+            let activeTabId = state.activeTabId;
+
+            if (state.activeTabId === tabId) {
+              if (tabs.length === 0) {
+                activeTabId = null;
+              } else if (tabIndex >= tabs.length) {
+                activeTabId = tabs[tabs.length - 1].id;
+              } else {
+                activeTabId = tabs[tabIndex].id;
+              }
+            }
+
+            return { tabs, activeTabId, recentlyClosedTabs };
+          });
+        },
+
+        closeOtherTabs: (tabId) => {
+          set((state) => {
+            const snapshots = state.tabs
+              .map((tab, index) => ({ tab, index }))
+              .filter(({ tab }) => !tab.pinned && tab.id !== tabId)
+              .map(({ tab, index }) => createClosedSnapshot(tab, index));
+
+            return {
+              tabs: state.tabs.filter((tab) => tab.pinned || tab.id === tabId),
+              activeTabId: tabId,
+              recentlyClosedTabs: pushClosedSnapshots(
+                state.recentlyClosedTabs,
+                snapshots,
+              ),
+            };
+          });
+        },
+
+        closeTabsToRight: (tabId) => {
+          set((state) => {
+            const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+            if (tabIndex === -1) return state;
+
+            const snapshots = state.tabs
+              .map((tab, index) => ({ tab, index }))
+              .filter(({ tab, index }) => index > tabIndex && !tab.pinned)
+              .map(({ tab, index }) => createClosedSnapshot(tab, index));
+            const closingIds = new Set(
+              snapshots.map((snapshot) => snapshot.tab.id),
+            );
+            const tabs = state.tabs.filter((tab) => !closingIds.has(tab.id));
+            const activeTabId = tabs.some((tab) => tab.id === state.activeTabId)
+              ? state.activeTabId
+              : tabId;
+
+            return {
+              tabs,
+              activeTabId,
+              recentlyClosedTabs: pushClosedSnapshots(
+                state.recentlyClosedTabs,
+                snapshots,
+              ),
+            };
+          });
+        },
+
+        setActiveTab: (tabId) => {
+          set({ activeTabId: tabId });
+        },
+
+        pinTab: (tabId) => {
+          set((state) => {
+            const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+            if (tabIndex === -1) return state;
+
+            const tab = state.tabs[tabIndex];
+            if (tab.pinned) return state;
+
+            const tabs = [...state.tabs];
+            tabs.splice(tabIndex, 1);
+
+            const insertIndex = findLastPinnedIndex(tabs) + 1;
+            tabs.splice(insertIndex, 0, { ...tab, pinned: true });
+
+            return { tabs };
+          });
+        },
+
+        unpinTab: (tabId) => {
+          set((state) => {
+            const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+            if (tabIndex === -1) return state;
+
+            const tab = state.tabs[tabIndex];
+            if (!tab.pinned) return state;
+
+            const tabs = [...state.tabs];
+            tabs.splice(tabIndex, 1);
+
+            const insertIndex = findLastPinnedIndex(tabs) + 1;
+            tabs.splice(insertIndex, 0, { ...tab, pinned: false });
+
+            return { tabs };
+          });
+        },
+
+        setViewMode: (tabId, mode) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) =>
+              tab.id === tabId ? { ...tab, viewMode: mode } : tab,
+            ),
+          }));
+        },
+
+        moveTab: (fromIndex, toIndex) => {
+          set((state) => {
+            if (
+              fromIndex === toIndex ||
+              fromIndex < 0 ||
+              toIndex < 0 ||
+              fromIndex >= state.tabs.length ||
+              toIndex >= state.tabs.length
+            ) {
+              return state;
+            }
+
+            const tabs = [...state.tabs];
+            const movedTab = tabs[fromIndex];
+            const lastPinned = findLastPinnedIndex(tabs);
+
+            // Enforce pinned/unpinned boundary:
+            // Pinned tabs can only move within [0, lastPinned]
+            // Unpinned tabs can only move within [lastPinned+1, tabs.length-1]
+            let clampedTo = toIndex;
+            if (movedTab.pinned) {
+              // Pinned tab cannot move past the last pinned position
+              // (after splice-out, boundary shifts by 1 if fromIndex <= lastPinned)
+              const boundaryAfterRemove =
+                fromIndex <= lastPinned ? lastPinned - 1 : lastPinned;
+              clampedTo = Math.min(toIndex, boundaryAfterRemove);
+              clampedTo = Math.max(clampedTo, 0);
+            } else {
+              // Unpinned tab cannot move before the first unpinned position
+              const firstUnpinned = lastPinned + 1;
+              // After removing the unpinned tab, if it was after the boundary, boundary stays the same
+              const boundaryAfterRemove =
+                fromIndex > lastPinned ? firstUnpinned : firstUnpinned - 1;
+              clampedTo = Math.max(toIndex, boundaryAfterRemove);
+              clampedTo = Math.min(clampedTo, tabs.length - 1);
+            }
+
+            if (fromIndex === clampedTo) {
+              return state;
+            }
+
+            const [moved] = tabs.splice(fromIndex, 1);
+            tabs.splice(clampedTo, 0, moved);
+            return { tabs };
+          });
+        },
+
+        navigate: (tabId, url) => {
+          get().pushLocation(tabId, buildStateFromUrl(url));
+        },
+
+        pushNavigation: (tabId, url, leaf) => {
+          const tab = get().tabs.find((entry) => entry.id === tabId);
+          const current = tab ? getTabCurrentState(normalizeTab(tab)) : null;
+          const currentStack = current?.breadcrumbStack ?? [];
+          const nextState: TabNavigationState = {
+            url,
+            breadcrumbStack: [...currentStack, leaf],
+          };
+          get().pushLocation(tabId, nextState);
+        },
+
+        replaceNavigation: (tabId, url, leaf) => {
+          const tab = get().tabs.find((entry) => entry.id === tabId);
+          const current = tab ? getTabCurrentState(normalizeTab(tab)) : null;
+          const currentStack = current?.breadcrumbStack ?? [];
+          const nextState: TabNavigationState = {
+            url,
+            breadcrumbStack: [...currentStack.slice(0, -1), leaf],
+          };
+          get().pushLocation(tabId, nextState);
+        },
+
+        resetNavigation: (tabId, url, stack) => {
+          const nextState: TabNavigationState = { url, breadcrumbStack: stack };
+          get().pushLocation(tabId, nextState);
+        },
+
+        replaceLocation: (tabId, next) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) => {
+              if (tab.id !== tabId) return tab;
+              const current = normalizeTab(tab);
+              const baseHistory = current.navigationHistory.slice(
+                0,
+                current.historyIndex,
+              );
+              return normalizeTab({
+                ...current,
+                navigationHistory: [...baseHistory, next],
+                historyIndex: baseHistory.length,
+              });
+            }),
+          }));
+        },
+
+        pushLocation: (tabId, next) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) => {
+              if (tab.id !== tabId) return tab;
+              const current = normalizeTab(tab);
+              let history = [
+                ...current.navigationHistory.slice(0, current.historyIndex + 1),
+                next,
+              ];
+              let index = history.length - 1;
+              // Trim oldest entries if history exceeds limit
+              if (history.length > MAX_NAVIGATION_HISTORY) {
+                const excess = history.length - MAX_NAVIGATION_HISTORY;
+                history = history.slice(excess);
+                index = history.length - 1;
+              }
+              return normalizeTab({
+                ...current,
+                navigationHistory: history,
+                historyIndex: index,
+              });
+            }),
+          }));
+        },
+
+        insertHistoryBeforeCurrent: (tabId, next) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) => {
+              if (tab.id !== tabId) return tab;
+              const current = normalizeTab(tab);
+              const before = current.navigationHistory.slice(
+                0,
+                current.historyIndex,
+              );
+              const fromCurrent = current.navigationHistory.slice(
+                current.historyIndex,
+              );
+              return normalizeTab({
+                ...current,
+                navigationHistory: [...before, next, ...fromCurrent],
+                historyIndex: before.length,
+              });
+            }),
+          }));
+        },
+
+        jumpToHistory: (tabId, historyIndex) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) => {
+              if (tab.id !== tabId) return tab;
+              const current = normalizeTab(tab);
+              return normalizeTab({
+                ...current,
+                historyIndex,
+              });
+            }),
+          }));
+        },
+
+        goBack: (tabId) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) => {
+              if (tab.id !== tabId) return tab;
+              const current = normalizeTab(tab);
+              if (current.historyIndex <= 0) return current;
+              return {
+                ...current,
+                historyIndex: current.historyIndex - 1,
+              };
+            }),
+          }));
+        },
+
+        goForward: (tabId) => {
+          set((state) => ({
+            tabs: state.tabs.map((tab) => {
+              if (tab.id !== tabId) return tab;
+              const current = normalizeTab(tab);
+              if (
+                current.historyIndex >=
+                current.navigationHistory.length - 1
+              ) {
+                return current;
+              }
+              return {
+                ...current,
+                historyIndex: current.historyIndex + 1,
+              };
+            }),
+          }));
+        },
+
+        canGoBack: (tabId) => {
+          const tab = get().tabs.find((item) => item.id === tabId);
+          return tab ? normalizeTab(tab).historyIndex > 0 : false;
+        },
+
+        canGoForward: (tabId) => {
+          const tab = get().tabs.find((item) => item.id === tabId);
+          if (!tab) return false;
+          const current = normalizeTab(tab);
+          return current.historyIndex < current.navigationHistory.length - 1;
+        },
+
+        getCurrentUrl: (tabId) => {
+          const tab = get().tabs.find((item) => item.id === tabId);
+          if (!tab) return null;
+          const current = getTabCurrentState(normalizeTab(tab));
+          return current?.url ?? null;
+        },
+
+        getCurrentNavigationState: (tabId) => {
+          const tab = get().tabs.find((item) => item.id === tabId);
+          return tab ? getTabCurrentState(normalizeTab(tab)) : null;
+        },
+
+        findHistoryEntryByUrl: (tabId, url) => {
+          const tab = get().tabs.find((item) => item.id === tabId);
+          if (!tab) return -1;
+          const current = normalizeTab(tab);
+          return findHistoryEntryByUrlInHistory(
+            current.navigationHistory,
+            current.historyIndex,
+            url,
+          );
+        },
+
+        closeAllTabs: () => {
+          set((state) => {
+            const snapshots = state.tabs
+              .map((tab, index) => ({ tab, index }))
+              .filter(({ tab }) => !tab.pinned)
+              .map(({ tab, index }) => createClosedSnapshot(tab, index));
+            const tabs = state.tabs.filter((tab) => tab.pinned);
+            return {
+              tabs,
+              activeTabId: tabs[0]?.id ?? null,
+              recentlyClosedTabs: pushClosedSnapshots(
+                state.recentlyClosedTabs,
+                snapshots,
+              ),
+            };
+          });
+        },
+
+        duplicateTab: (tabId) => {
+          const state = get();
+          const tabIndex = state.tabs.findIndex((tab) => tab.id === tabId);
+          if (tabIndex === -1) return null;
+
+          const duplicatedTab = cloneTabWithNewId(state.tabs[tabIndex], {
+            pinned: false,
+          });
+
+          set((current) => {
+            const tabs = [...current.tabs];
+            tabs.splice(tabIndex + 1, 0, duplicatedTab);
+            return {
+              tabs,
+              activeTabId: duplicatedTab.id,
+            };
+          });
+
+          return duplicatedTab.id;
+        },
+
+        reopenClosedTab: () => {
+          let restoredTabId: string | null = null;
+
+          set((current) => {
+            const [nextSnapshot, ...restSnapshots] = current.recentlyClosedTabs;
+            if (!nextSnapshot) return current;
+
+            const restored = restoreClosedTabIntoTabs(
+              current.tabs,
+              nextSnapshot,
+            );
+            restoredTabId = restored.restoredTab.id;
+
+            return {
+              tabs: restored.tabs,
+              activeTabId: restored.restoredTab.id,
+              recentlyClosedTabs: restSnapshots,
+            };
+          });
+
+          return restoredTabId;
+        },
+
+        restoreTab: (tab) => {
+          const restoredTab = cloneTabWithNewId(tab);
+          set((state) => ({
+            tabs: [...state.tabs, restoredTab],
+            activeTabId: restoredTab.id,
+          }));
+        },
       }),
-      merge: (persisted, current) => {
-        return {
-          ...current,
-          ...mergePersistedTabState(
-            persisted as Partial<TabState> | undefined,
-            current
-          ),
-        };
+      {
+        name: storageKey,
+        version: TAB_STORE_VERSION,
+        storage: createJSONStorage(() => ({
+          getItem: (name: string) => localStorage.getItem(name),
+          setItem: (name: string, value: string) => {
+            try {
+              localStorage.setItem(name, value);
+            } catch {
+              // QuotaExceededError — silently skip persist
+            }
+          },
+          removeItem: (name: string) => localStorage.removeItem(name),
+        })),
+        partialize: (state) => ({
+          tabs: state.tabs,
+          activeTabId: state.activeTabId,
+          recentlyClosedTabs: state.recentlyClosedTabs,
+        }),
+        merge: (persisted, current) => {
+          return {
+            ...current,
+            ...mergePersistedTabState(
+              persisted as Partial<TabState> | undefined,
+              current,
+            ),
+          };
+        },
       },
-    }
-  )
+    ),
   );
 }
 

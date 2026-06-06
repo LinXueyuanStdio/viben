@@ -227,6 +227,7 @@ export function App() {
   const isTurnActive = Boolean(
     activeSession?.promptInFlight ||
     activeSession?.uiStepQueue.length ||
+    activeSession?.pendingPlan ||
     activeSession?.pendingApproval ||
     activeSession?.pendingQuestion
   );
@@ -244,6 +245,7 @@ export function App() {
   useEffect(() => {
     const sessionEntries = Object.values(sessionsById);
     const drainable = sessionEntries.find((session) =>
+      !session.pendingPlan &&
       !session.pendingApproval &&
       !session.pendingQuestion &&
       session.uiStepQueue.length > 0
@@ -255,6 +257,7 @@ export function App() {
         const session = current[drainable.id];
         if (
           !session ||
+          session.pendingPlan ||
           session.pendingApproval ||
           session.pendingQuestion ||
           session.uiStepQueue.length === 0
@@ -1400,9 +1403,11 @@ export function App() {
             <Panel title="Client Tools" description="Requests initiated by Viben through _viben/client_tool_call.">
               <div className="mb-3 rounded-lg border border-border bg-muted/35 p-3 text-xs">
                 <div className="mb-2 font-semibold">Available GUI actions</div>
-                <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words leading-5">
-                  {JSON.stringify(actionSummaries, null, 2)}
-                </pre>
+                <JsonPanel
+                  value={actionSummaries}
+                  preClassName="max-h-48 min-h-0 border-0 bg-transparent p-0 text-foreground"
+                  wrap
+                />
               </div>
               <div className="max-h-80 space-y-2 overflow-auto pr-1">
                 {clientToolCalls.length === 0 ? (
@@ -1699,20 +1704,31 @@ function AcpChatSurface({
             />
           )}
 
-          {pendingApproval ? (
-            <ExecApproval approval={pendingApproval} onDecision={onApprovalDecision} enableKeyboard />
-          ) : pendingQuestion ? (
-            <QuestionInput questions={pendingQuestion} onSubmit={onQuestionAnswers} />
-          ) : pendingPlan ? (
+          {pendingPlan ? (
             <PlanApproval
+              key="plan"
               plan={pendingPlan}
               isPending
               onApprove={onApprovePlan}
               onReject={onRejectPlan}
             />
+          ) : pendingApproval ? (
+            <ExecApproval
+              key="approval"
+              approval={pendingApproval}
+              onDecision={onApprovalDecision}
+              enableKeyboard
+            />
+          ) : pendingQuestion ? (
+            <QuestionInput
+              key="question"
+              questions={pendingQuestion}
+              onSubmit={onQuestionAnswers}
+            />
           ) : (
             <>
               <ChatInput
+                key="input"
                 value={prompt}
                 onValueChange={onPromptChange}
                 onSend={handleSend}
@@ -1813,9 +1829,7 @@ function ToolApprovalModal({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div className="json-modal-section">
           <div className="json-modal-header">Input</div>
-          <pre className="json-panel">
-            <JsonCode value={dialog.request.input} />
-          </pre>
+          <JsonPanel value={dialog.request.input} />
         </div>
         <div className="json-modal-section">
           <div className="json-modal-header">Response JSON</div>
@@ -1888,9 +1902,10 @@ function ArtifactModal({
               Close
             </button>
           </div>
-          <pre className="max-h-[560px] overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
-            <JsonCode value={dialog.message ?? dialog.artifact} />
-          </pre>
+          <JsonPanel
+            value={dialog.message ?? dialog.artifact}
+            preClassName="max-h-[560px] text-xs"
+          />
         </div>
       </div>
     </ModalFrame>
@@ -1914,9 +1929,7 @@ function PermissionApprovalModal({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="json-modal-section">
           <div className="json-modal-header">Request JSON</div>
-          <pre className="json-panel json-panel-permission">
-            <JsonCode value={requestJson} />
-          </pre>
+          <JsonPanel value={requestJson} preClassName="json-panel-permission" />
         </div>
         <div className="permission-side">
           <div className="json-modal-header">Options</div>
