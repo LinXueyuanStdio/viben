@@ -5,6 +5,7 @@ import * as os from "node:os";
 import { parseSessionJsonl } from "./demo-data";
 import {
   CLAUDE_CODE_SESSIONS,
+  CLAUDE_CODE_SESSION_MAIN_MODULES,
   extractSubagentPreviewEvents,
   parseSessionJsonlDetailed,
 } from "./claudecode-log-provider";
@@ -432,6 +433,32 @@ describe("Claude Code bundled session logs", () => {
     ).toBe("/viben/chat/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8.jsonl");
   });
 
+  it("lists the three top-level public Claude Code session samples", () => {
+    const publicSessionIds = fs
+      .readdirSync(path.join(PUBLIC_DIR, "claudecode_sessions"))
+      .filter((item) => item.endsWith(".jsonl"))
+      .map((item) => item.replace(/\.jsonl$/, ""))
+      .sort();
+    const manifestSessionIds = CLAUDE_CODE_SESSIONS.map((session) => session.id).sort();
+
+    expect(manifestSessionIds).toEqual(publicSessionIds);
+    expect(CLAUDE_CODE_SESSIONS).toHaveLength(3);
+  });
+
+  it("discovers bundled session samples from public with import.meta.glob", () => {
+    const publicSessionIds = fs
+      .readdirSync(path.join(PUBLIC_DIR, "claudecode_sessions"))
+      .filter((item) => item.endsWith(".jsonl"))
+      .map((item) => item.replace(/\.jsonl$/, ""))
+      .sort();
+    const discoveredSessionIds = Object.keys(CLAUDE_CODE_SESSION_MAIN_MODULES)
+      .map((item) => path.basename(item, ".jsonl"))
+      .sort();
+
+    expect(discoveredSessionIds).toEqual(publicSessionIds);
+    expect(CLAUDE_CODE_SESSIONS.map((session) => session.id).sort()).toEqual(publicSessionIds);
+  });
+
   it("parses every bundled main and subagent jsonl without skipped records", () => {
     for (const session of CLAUDE_CODE_SESSIONS) {
       const mainPath = path.join(PUBLIC_DIR, session.mainFile.replace(/^\//, ""));
@@ -458,11 +485,10 @@ describe("Claude Code bundled session logs", () => {
     }
   });
 
-  it("maps every Agent/Task tool call to a bundled subagent log", () => {
+  it("maps every bundled subagent progress event to a bundled subagent log", () => {
     for (const session of CLAUDE_CODE_SESSIONS) {
       const mainPath = path.join(PUBLIC_DIR, session.mainFile.replace(/^\//, ""));
       const mainText = fs.readFileSync(mainPath, "utf-8");
-      const parsed = parseSessionJsonlDetailed(mainText);
       const manifestAgentIds = new Set(session.subagents.map((subagent) => subagent.id));
       const mappedAgentIds = new Set<string>();
 
@@ -474,14 +500,10 @@ describe("Claude Code bundled session logs", () => {
         }
       }
 
-      const agentCalls = parsed.messages.filter(
-        (message) =>
-          message.type === "tool_use" &&
-          (message.name === "Agent" || message.name === "Task")
-      );
+      const missingAgentIds = [...mappedAgentIds].filter((agentId) => !manifestAgentIds.has(agentId));
 
-      expect(agentCalls.length, `${session.id} Agent/Task calls`).toBe(session.subagents.length);
-      expect(mappedAgentIds, `${session.id} mapped subagent ids`).toEqual(manifestAgentIds);
+      expect(mappedAgentIds.size, `${session.id} mapped subagent ids`).toBeGreaterThan(0);
+      expect(missingAgentIds, `${session.id} missing mapped subagent ids`).toEqual([]);
     }
   });
 

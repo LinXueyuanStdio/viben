@@ -55,49 +55,90 @@ const EMPTY_STATS: ParseStats = {
   skippedByReason: {},
 }
 
-export const CLAUDE_CODE_SESSIONS: ClaudeCodeSessionManifestItem[] = [
-  {
-    id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8",
-    label: "Claude Code: breadcrumb navigation debug",
-    basePath: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8",
-    mainFile: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8.jsonl",
-    subagents: [
-      {
-        id: "a1e81c33764536d41",
-        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1e81c33764536d41.jsonl",
-        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1e81c33764536d41.meta.json",
-      },
-      {
-        id: "a1eda7958897db6d8",
-        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1eda7958897db6d8.jsonl",
-        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a1eda7958897db6d8.meta.json",
-      },
-      {
-        id: "a3d0c3d9c1f5e40ff",
-        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a3d0c3d9c1f5e40ff.jsonl",
-        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a3d0c3d9c1f5e40ff.meta.json",
-      },
-      {
-        id: "a5789a7c985400424",
-        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a5789a7c985400424.jsonl",
-        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a5789a7c985400424.meta.json",
-      },
-      {
-        id: "a719d89a17777f87b",
-        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a719d89a17777f87b.jsonl",
-        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a719d89a17777f87b.meta.json",
-      },
-      {
-        id: "a9d5f106ac0c11270",
-        jsonl: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a9d5f106ac0c11270.jsonl",
-        meta: "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/subagents/agent-a9d5f106ac0c11270.meta.json",
-      },
-    ],
-    toolResults: [
-      "/claudecode_sessions/2c88f85a-690d-49ca-95f4-c3aa71da1da8/tool-results/toolu_bdrk_012CKHBCCMarEZ85rG59VMM5.txt",
-    ],
-  },
-]
+export const CLAUDE_CODE_SESSION_MAIN_MODULES = import.meta.glob("../public/claudecode_sessions/*.jsonl", {
+  query: "?url",
+  import: "default",
+  eager: true,
+})
+
+const CLAUDE_CODE_SUBAGENT_MODULES = import.meta.glob("../public/claudecode_sessions/*/subagents/agent-*.jsonl", {
+  query: "?url",
+  import: "default",
+  eager: true,
+})
+
+const CLAUDE_CODE_TOOL_RESULT_MODULES = import.meta.glob("../public/claudecode_sessions/*/tool-results/*", {
+  query: "?url",
+  import: "default",
+  eager: true,
+})
+
+const CLAUDE_CODE_SESSION_LABELS: Record<string, string> = {
+  "2c88f85a-690d-49ca-95f4-c3aa71da1da8": "Claude Code: breadcrumb navigation debug",
+}
+
+function getSessionIdFromMainModulePath(modulePath: string): string {
+  const match = modulePath.match(/\/claudecode_sessions\/([^/]+)\.jsonl$/)
+  return match?.[1] ?? modulePath
+}
+
+function getSessionIdFromNestedModulePath(modulePath: string): string | null {
+  return modulePath.match(/\/claudecode_sessions\/([^/]+)\//)?.[1] ?? null
+}
+
+function getSubagentIdFromModulePath(modulePath: string): string | null {
+  return modulePath.match(/\/subagents\/agent-([^/]+)\.jsonl$/)?.[1] ?? null
+}
+
+function getFileNameFromModulePath(modulePath: string): string {
+  return modulePath.slice(modulePath.lastIndexOf("/") + 1)
+}
+
+function createClaudeCodeSessionManifest(
+  id: string,
+  label: string,
+  subagentIds: string[],
+  toolResultFiles: string[] = []
+): ClaudeCodeSessionManifestItem {
+  const basePath = `/claudecode_sessions/${id}`
+  return {
+    id,
+    label,
+    basePath,
+    mainFile: `${basePath}.jsonl`,
+    subagents: subagentIds.map((subagentId) => ({
+      id: subagentId,
+      jsonl: `${basePath}/subagents/agent-${subagentId}.jsonl`,
+      meta: `${basePath}/subagents/agent-${subagentId}.meta.json`,
+    })),
+    toolResults: toolResultFiles.map((file) => `${basePath}/tool-results/${file}`),
+  }
+}
+
+function buildClaudeCodeSessionManifests(): ClaudeCodeSessionManifestItem[] {
+  return Object.keys(CLAUDE_CODE_SESSION_MAIN_MODULES)
+    .map((modulePath) => getSessionIdFromMainModulePath(modulePath))
+    .sort()
+    .map((id) => {
+      const subagentIds = Object.keys(CLAUDE_CODE_SUBAGENT_MODULES)
+        .filter((modulePath) => getSessionIdFromNestedModulePath(modulePath) === id)
+        .map((modulePath) => getSubagentIdFromModulePath(modulePath))
+        .filter((subagentId): subagentId is string => Boolean(subagentId))
+        .sort()
+      const toolResultFiles = Object.keys(CLAUDE_CODE_TOOL_RESULT_MODULES)
+        .filter((modulePath) => getSessionIdFromNestedModulePath(modulePath) === id)
+        .map((modulePath) => getFileNameFromModulePath(modulePath))
+        .sort()
+      return createClaudeCodeSessionManifest(
+        id,
+        CLAUDE_CODE_SESSION_LABELS[id] ?? `Claude Code: ${id.slice(0, 8)} session replay`,
+        subagentIds,
+        toolResultFiles
+      )
+    })
+}
+
+export const CLAUDE_CODE_SESSIONS: ClaudeCodeSessionManifestItem[] = buildClaudeCodeSessionManifests()
 
 function incrementReason(stats: ParseStats, reason: string) {
   stats.skippedLines += 1
@@ -273,7 +314,8 @@ export function parseSessionJsonlDetailed(text: string): ParsedSessionJsonl {
         t === "system" ||
         t === "queue-operation" ||
         t === "last-prompt" ||
-        (t === "user" && obj.isMeta)
+        (t === "user" && obj.isMeta) ||
+        (t === "user" && typeof obj.message?.content === "string" && obj.message.content.startsWith("<local-command-stdout"))
       ) {
         stats.handledLines += 1
       } else if (t === "user" || t === "assistant") {
