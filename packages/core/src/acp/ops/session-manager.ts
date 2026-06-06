@@ -642,7 +642,7 @@ export class AcpSessionManager {
     if (update.sessionUpdate !== "tool_call") return;
     const toolName = update.title ?? "";
     const toolCallId = update.toolCallId;
-    if (toolName === "mcp__gui_action__GUI_execute") {
+    if (toolName === "mcp__client_side__GUI_execute" || toolName === "mcp__gui_action__GUI_execute") {
       if (toolCallId) {
         session.pending_gui_tool_calls.push({ toolCallId, toolName });
         log.debug({ sessionId: session.id, toolCallId, toolName }, "Queued ACP GUI tool call id for MCP bridge");
@@ -682,7 +682,7 @@ export class AcpSessionManager {
   }
 
   private resolveClientToolCallId(session: AcpSession, toolName: string, fallbackToolCallId: string): string {
-    if (toolName !== "mcp__gui_action__GUI_execute") return fallbackToolCallId;
+    if (toolName !== "mcp__client_side__GUI_execute" && toolName !== "mcp__gui_action__GUI_execute") return fallbackToolCallId;
     const pending = session.pending_gui_tool_calls.shift();
     if (!pending) return fallbackToolCallId;
     if (pending.toolCallId !== fallbackToolCallId) {
@@ -889,7 +889,17 @@ function normalizeClientToolResponse(response: unknown, sessionId: string, toolC
         isError: true,
       };
     }
-    return response.result;
+    const result = CallToolResultSchema.safeParse(response.result);
+    if (!result.success) {
+      return {
+        content: [{
+          type: "text",
+          text: `Invalid client tool result: ${result.error.message}`,
+        }],
+        isError: true,
+      };
+    }
+    return result.data;
   }
   return {
     content: [{ type: "text", text: `Invalid client tool response envelope: ${typeof response === "string" ? response : JSON.stringify(response)}` }],

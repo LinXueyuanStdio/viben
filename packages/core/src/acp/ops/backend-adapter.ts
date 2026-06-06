@@ -42,6 +42,7 @@ const OFFICIAL_CLAUDE_ACP_COMMAND = "claude-agent-acp";
 const DEFAULT_ACP_EXECUTOR_TYPE = "CLAUDE_CODE";
 const DEFAULT_GATEWAY_URL = "http://127.0.0.1:18790";
 const GUI_ACTION_MCP_SERVER_NAME = "gui_action";
+const CLIENT_SIDE_MCP_SERVER_NAME = "client_side";
 const CLAUDE_PERMISSION_MODES = new Set([
   "default",
   "acceptEdits",
@@ -680,16 +681,16 @@ function normalizeMcpServer(
   entry: McpServer | string | AgentMcpServerEntry
 ): McpServer | null {
   if (typeof entry === "string") {
-    if (entry === GUI_ACTION_MCP_SERVER_NAME) {
-      return createGuiActionMcpServer(context);
+    if (entry === CLIENT_SIDE_MCP_SERVER_NAME || entry === GUI_ACTION_MCP_SERVER_NAME) {
+      return createClientSideMcpServer(context);
     }
     log.warn({ mcpServer: entry }, "Named in-process MCP server is not available through ACP backend adapters");
     return null;
   }
 
   if ("type" in entry && entry.type === "builtin") {
-    if (entry.name === GUI_ACTION_MCP_SERVER_NAME) {
-      return createGuiActionMcpServer(context);
+    if (entry.name === CLIENT_SIDE_MCP_SERVER_NAME || entry.name === GUI_ACTION_MCP_SERVER_NAME) {
+      return createClientSideMcpServer(context);
     }
     log.warn({ mcpServer: entry.name }, "Named builtin MCP server is not available through ACP backend adapters");
     return null;
@@ -716,20 +717,20 @@ function normalizeMcpServer(
   return null;
 }
 
-function createGuiActionMcpServer(context: AcpBackendStartContext): McpServer {
-  const entry = resolveGuiActionMcpServerEntry();
+function createClientSideMcpServer(context: AcpBackendStartContext): McpServer {
+  const entry = resolveClientSideMcpServerEntry();
   const gatewayUrl = resolveGatewayUrl(context);
-  clientToolCompletionRegistryRegisterGuiExecute();
+  registerClientSideToolOptions();
   log.info(
     {
       outerSessionId: context.outerSessionId,
       gatewayUrl,
       entry,
     },
-    "Mounted ACP GUI action MCP bridge"
+    "Mounted ACP client-side MCP bridge"
   );
   return {
-    name: GUI_ACTION_MCP_SERVER_NAME,
+    name: CLIENT_SIDE_MCP_SERVER_NAME,
     command: process.execPath,
     args: [entry],
     env: [
@@ -739,16 +740,17 @@ function createGuiActionMcpServer(context: AcpBackendStartContext): McpServer {
   };
 }
 
-function clientToolCompletionRegistryRegisterGuiExecute(): void {
+function registerClientSideToolOptions(): void {
   // Kept local to avoid importing Claude SDK MCP registration into ACP adapters.
-  // The trusted prefixed tool name mcp__gui_action__GUI_execute resolves to this option.
+  // Trusted prefixed tool names resolve to these base tool options.
   clientToolCompletionRegistry.registerToolOptions("GUI_execute", { timeoutMs: 60_000 });
+  clientToolCompletionRegistry.registerToolOptions("ClientSideBash", { timeoutMs: 60_000 });
 }
 
-function resolveGuiActionMcpServerEntry(): string {
-  const built = path.resolve(process.cwd(), "dist", "acp", "ops", "gui-action-mcp-server.js");
+function resolveClientSideMcpServerEntry(): string {
+  const built = path.resolve(process.cwd(), "dist", "acp", "ops", "client-side-mcp-server.js");
   if (fs.existsSync(built)) return built;
-  return fileURLToPath(new URL("./gui-action-mcp-server.ts", import.meta.url));
+  return fileURLToPath(new URL("./client-side-mcp-server.ts", import.meta.url));
 }
 
 function resolveGatewayUrl(context: AcpBackendStartContext): string {
