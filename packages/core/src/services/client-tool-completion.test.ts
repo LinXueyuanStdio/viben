@@ -60,7 +60,7 @@ describe("ClientToolCompletionRegistry", () => {
       registry.registerToolOptions("GUI_execute");
 
       expect(registry.isClientSideTool("mcp__client_side__GUI_execute")).toBe(true);
-      expect(registry.isClientSideTool("mcp__gui_action__GUI_execute")).toBe(true);
+      expect(registry.isClientSideTool("mcp__gui_action__GUI_execute")).toBe(false);
       expect(registry.isClientSideTool("mcp__myserver__screenshot")).toBe(false);
     });
 
@@ -68,7 +68,7 @@ describe("ClientToolCompletionRegistry", () => {
       registry.registerToolOptions("ClientSideBash");
 
       expect(registry.isClientSideTool("mcp__client_side__ClientSideBash")).toBe(true);
-      expect(registry.isClientSideTool("mcp__client_side_bash__ClientSideBash")).toBe(true);
+      expect(registry.isClientSideTool("mcp__client_side_bash__ClientSideBash")).toBe(false);
       expect(registry.isClientSideTool("mcp__other__ClientSideBash")).toBe(false);
     });
 

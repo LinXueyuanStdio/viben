@@ -553,12 +553,6 @@ export class ClientToolCompletionRegistry {
     if (toolName.startsWith("mcp__client_side__")) {
       return toolName.slice("mcp__client_side__".length);
     }
-    if (toolName.startsWith("mcp__gui_action__")) {
-      return toolName.slice("mcp__gui_action__".length);
-    }
-    if (toolName.startsWith("mcp__client_side_bash__")) {
-      return toolName.slice("mcp__client_side_bash__".length);
-    }
 
     return toolName;
   }
