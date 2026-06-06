@@ -19,7 +19,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-i18next": "^17.0.0",
-    "streamdown": "^2.5.0"
+    "streamdown": "^2.5.0",
+    "vanilla-jsoneditor": "^3.12.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

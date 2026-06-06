@@ -32,7 +32,7 @@ function leaf(
   id: string,
   label: string,
   href: string,
-  meta?: BreadcrumbStackItem["meta"]
+  meta?: BreadcrumbStackItem["meta"],
 ): BreadcrumbStackItem {
   return {
     id,
@@ -42,7 +42,10 @@ function leaf(
   };
 }
 
-function state(url: string, stack: BreadcrumbStackItem[] = []): TabNavigationState {
+function state(
+  url: string,
+  stack: BreadcrumbStackItem[] = [],
+): TabNavigationState {
   return { url, breadcrumbStack: stack };
 }
 
@@ -52,22 +55,35 @@ function documentsState(): TabNavigationState {
 
 function settingsState(section: "general" | "about"): TabNavigationState {
   const url = `/settings/${section}`;
-  return state(url, [leaf("settings", section === "general" ? "General" : "About", url)]);
+  return state(url, [
+    leaf("settings", section === "general" ? "General" : "About", url),
+  ]);
 }
 
 function workspaceAgentsState(workspaceId = "workspace-a"): TabNavigationState {
   const url = `/workspace/${workspaceId}/agent`;
   return state(url, [
-    leaf("workspace", "Workspace A", `/workspace/${workspaceId}`, { workspaceId }),
-    leaf("workspace-section:agent", "Agents", url, { workspaceId, section: "agent" }),
+    leaf("workspace", "Workspace A", `/workspace/${workspaceId}`, {
+      workspaceId,
+    }),
+    leaf("workspace-section:agent", "Agents", url, {
+      workspaceId,
+      section: "agent",
+    }),
   ]);
 }
 
-function agentDetailState(workspaceId = "workspace-a", agentId = "agent-a"): TabNavigationState {
+function agentDetailState(
+  workspaceId = "workspace-a",
+  agentId = "agent-a",
+): TabNavigationState {
   const url = `/workspace/${workspaceId}/agent/${agentId}`;
   return state(url, [
     ...workspaceAgentsState(workspaceId).breadcrumbStack,
-    leaf("workspace-agent", "Personal Assistant", url, { workspaceId, agentId }),
+    leaf("workspace-agent", "Personal Assistant", url, {
+      workspaceId,
+      agentId,
+    }),
   ]);
 }
 
@@ -87,7 +103,10 @@ function makeTab(partial: {
   };
 }
 
-function makeClosedSnapshot(tab: PageTab, originIndex: number): ClosedTabSnapshot {
+function makeClosedSnapshot(
+  tab: PageTab,
+  originIndex: number,
+): ClosedTabSnapshot {
   return {
     tab,
     originIndex,
@@ -110,13 +129,15 @@ function mergePersisted(input: {
     {
       tabs: input.tabs as PageTab[] | undefined,
       activeTabId: input.activeTabId ?? null,
-      recentlyClosedTabs: input.recentlyClosedTabs as ClosedTabSnapshot[] | undefined,
+      recentlyClosedTabs: input.recentlyClosedTabs as
+        | ClosedTabSnapshot[]
+        | undefined,
     },
     {
       tabs: [],
       activeTabId: null,
       recentlyClosedTabs: [],
-    }
+    },
   );
 }
 
@@ -163,10 +184,10 @@ describe("tab-store URL-based navigation state", () => {
     });
 
     expect(previewStore.persist.getOptions().name).toBe(
-      "viben-tab-store-v2:page-preview-1"
+      "viben-tab-store-v2:page-preview-1",
     );
     expect(anotherPreviewStore.persist.getOptions().name).toBe(
-      "viben-tab-store-v2:page-preview-2"
+      "viben-tab-store-v2:page-preview-2",
     );
     expect(useTabStore.getState().tabs).toHaveLength(0);
     expect(previewStore.getState().activeTabId).toBe(previewTabId);
@@ -268,7 +289,9 @@ describe("tab-store URL-based navigation state", () => {
       pinned: false,
     });
 
-    const opened = useTabStore.getState().tabs.find((tab) => tab.id === openedId);
+    const opened = useTabStore
+      .getState()
+      .tabs.find((tab) => tab.id === openedId);
     expect(opened).toBeTruthy();
     expect(opened?.navigationHistory).toEqual([workspaceAgentsState()]);
     expect(opened?.historyIndex).toBe(0);
@@ -292,7 +315,9 @@ describe("tab-store URL-based navigation state", () => {
     });
 
     const duplicatedId = useTabStore.getState().duplicateTab(original.id);
-    const duplicated = useTabStore.getState().tabs.find((tab) => tab.id === duplicatedId);
+    const duplicated = useTabStore
+      .getState()
+      .tabs.find((tab) => tab.id === duplicatedId);
 
     expect(duplicatedId).toBeTruthy();
     expect(duplicated?.id).not.toBe(original.id);
@@ -322,8 +347,14 @@ describe("tab-store URL-based navigation state", () => {
   });
 
   it("archives and restores recently closed tabs using only the new PageTab shape", () => {
-    const tabA = makeTab({ id: "tab-a", navigationHistory: [workspaceAgentsState()] });
-    const tabB = makeTab({ id: "tab-b", navigationHistory: [agentDetailState()] });
+    const tabA = makeTab({
+      id: "tab-a",
+      navigationHistory: [workspaceAgentsState()],
+    });
+    const tabB = makeTab({
+      id: "tab-b",
+      navigationHistory: [agentDetailState()],
+    });
 
     useTabStore.setState({
       tabs: [tabA, tabB],
@@ -338,7 +369,9 @@ describe("tab-store URL-based navigation state", () => {
     expectNoRemovedPageTabFields(closed.tab);
 
     const reopenedId = useTabStore.getState().reopenClosedTab();
-    const reopened = useTabStore.getState().tabs.find((tab) => tab.id === reopenedId);
+    const reopened = useTabStore
+      .getState()
+      .tabs.find((tab) => tab.id === reopenedId);
 
     expect(reopenedId).toBeTruthy();
     expect(reopened?.id).not.toBe(tabA.id);
@@ -360,7 +393,11 @@ describe("tab-store URL-based navigation state", () => {
     const tab = makeTab({
       id: "tab-a",
       historyIndex: 2,
-      navigationHistory: [documentsState(), settingsState("general"), settingsState("about")],
+      navigationHistory: [
+        documentsState(),
+        settingsState("general"),
+        settingsState("about"),
+      ],
     });
 
     useTabStore.setState({
@@ -381,7 +418,11 @@ describe("tab-store URL-based navigation state", () => {
     const tab = makeTab({
       id: "tab-a",
       historyIndex: 1,
-      navigationHistory: [documentsState(), agentDetailState(), settingsState("about")],
+      navigationHistory: [
+        documentsState(),
+        agentDetailState(),
+        settingsState("about"),
+      ],
     });
 
     useTabStore.setState({
@@ -456,12 +497,21 @@ describe("tab-store URL-based navigation state", () => {
       recentlyClosedTabs: [],
     });
 
-    const newLeaf = leaf("workspace-agent", "Personal Assistant", "/workspace/workspace-a/agent/agent-a", { workspaceId: "workspace-a", agentId: "agent-a" });
-    useTabStore.getState().pushNavigation(tab.id, "/workspace/workspace-a/agent/agent-a", newLeaf);
+    const newLeaf = leaf(
+      "workspace-agent",
+      "Personal Assistant",
+      "/workspace/workspace-a/agent/agent-a",
+      { workspaceId: "workspace-a", agentId: "agent-a" },
+    );
+    useTabStore
+      .getState()
+      .pushNavigation(tab.id, "/workspace/workspace-a/agent/agent-a", newLeaf);
 
     const updated = useTabStore.getState().tabs[0];
     expect(updated.historyIndex).toBe(1);
-    expect(updated.navigationHistory[1].url).toBe("/workspace/workspace-a/agent/agent-a");
+    expect(updated.navigationHistory[1].url).toBe(
+      "/workspace/workspace-a/agent/agent-a",
+    );
     expect(updated.navigationHistory[1].breadcrumbStack).toEqual([
       ...workspaceAgentsState().breadcrumbStack,
       newLeaf,
@@ -481,14 +531,30 @@ describe("tab-store URL-based navigation state", () => {
       recentlyClosedTabs: [],
     });
 
-    const replacementLeaf = leaf("workspace-agent", "Updated Agent", "/workspace/workspace-a/agent/agent-b", { workspaceId: "workspace-a", agentId: "agent-b" });
-    useTabStore.getState().replaceNavigation(tab.id, "/workspace/workspace-a/agent/agent-b", replacementLeaf);
+    const replacementLeaf = leaf(
+      "workspace-agent",
+      "Updated Agent",
+      "/workspace/workspace-a/agent/agent-b",
+      { workspaceId: "workspace-a", agentId: "agent-b" },
+    );
+    useTabStore
+      .getState()
+      .replaceNavigation(
+        tab.id,
+        "/workspace/workspace-a/agent/agent-b",
+        replacementLeaf,
+      );
 
     const updated = useTabStore.getState().tabs[0];
     expect(updated.historyIndex).toBe(1);
-    expect(updated.navigationHistory[1].url).toBe("/workspace/workspace-a/agent/agent-b");
+    expect(updated.navigationHistory[1].url).toBe(
+      "/workspace/workspace-a/agent/agent-b",
+    );
     // The stack should have the first two items from agentDetailState, with the last replaced
-    const expectedStack = [...agentDetailState().breadcrumbStack.slice(0, -1), replacementLeaf];
+    const expectedStack = [
+      ...agentDetailState().breadcrumbStack.slice(0, -1),
+      replacementLeaf,
+    ];
     expect(updated.navigationHistory[1].breadcrumbStack).toEqual(expectedStack);
   });
 
@@ -510,7 +576,10 @@ describe("tab-store URL-based navigation state", () => {
 
     const updated = useTabStore.getState().tabs[0];
     expect(updated.historyIndex).toBe(1);
-    expect(updated.navigationHistory[1]).toEqual({ url: "/documents", breadcrumbStack: newStack });
+    expect(updated.navigationHistory[1]).toEqual({
+      url: "/documents",
+      breadcrumbStack: newStack,
+    });
   });
 
   it("getCurrentUrl returns the URL of the current navigation state", () => {
@@ -526,14 +595,20 @@ describe("tab-store URL-based navigation state", () => {
       recentlyClosedTabs: [],
     });
 
-    expect(useTabStore.getState().getCurrentUrl(tab.id)).toBe("/workspace/workspace-a/agent/agent-a");
+    expect(useTabStore.getState().getCurrentUrl(tab.id)).toBe(
+      "/workspace/workspace-a/agent/agent-a",
+    );
   });
 
   it("findHistoryEntryByUrl scans backward history for matching URL", () => {
     const tab = makeTab({
       id: "tab-a",
       historyIndex: 2,
-      navigationHistory: [documentsState(), workspaceAgentsState(), agentDetailState()],
+      navigationHistory: [
+        documentsState(),
+        workspaceAgentsState(),
+        agentDetailState(),
+      ],
     });
 
     useTabStore.setState({
@@ -542,9 +617,17 @@ describe("tab-store URL-based navigation state", () => {
       recentlyClosedTabs: [],
     });
 
-    expect(useTabStore.getState().findHistoryEntryByUrl(tab.id, "/documents")).toBe(0);
-    expect(useTabStore.getState().findHistoryEntryByUrl(tab.id, "/workspace/workspace-a/agent")).toBe(1);
-    expect(useTabStore.getState().findHistoryEntryByUrl(tab.id, "/unknown")).toBe(-1);
+    expect(
+      useTabStore.getState().findHistoryEntryByUrl(tab.id, "/documents"),
+    ).toBe(0);
+    expect(
+      useTabStore
+        .getState()
+        .findHistoryEntryByUrl(tab.id, "/workspace/workspace-a/agent"),
+    ).toBe(1);
+    expect(
+      useTabStore.getState().findHistoryEntryByUrl(tab.id, "/unknown"),
+    ).toBe(-1);
   });
 
   it("insertHistoryBeforeCurrent inserts before current position", () => {
@@ -565,7 +648,11 @@ describe("tab-store URL-based navigation state", () => {
 
     const updated = useTabStore.getState().tabs[0];
     expect(updated.historyIndex).toBe(1);
-    expect(updated.navigationHistory).toEqual([documentsState(), inserted, agentDetailState()]);
+    expect(updated.navigationHistory).toEqual([
+      documentsState(),
+      inserted,
+      agentDetailState(),
+    ]);
     expect(useTabStore.getState().canGoForward(tab.id)).toBe(true);
   });
 
@@ -586,7 +673,9 @@ describe("tab-store URL-based navigation state", () => {
     expect(useTabStore.getState().tabs[0].historyIndex).toBe(0);
     expect(useTabStore.getState().canGoBack(tab.id)).toBe(false);
     expect(useTabStore.getState().canGoForward(tab.id)).toBe(true);
-    expect(useTabStore.getState().tabs[0].navigationHistory).toEqual(tab.navigationHistory);
+    expect(useTabStore.getState().tabs[0].navigationHistory).toEqual(
+      tab.navigationHistory,
+    );
 
     useTabStore.getState().goBack(tab.id);
     expect(useTabStore.getState().tabs[0].historyIndex).toBe(0);
@@ -614,9 +703,9 @@ describe("tab-store URL-based navigation state", () => {
     const result = useTabStore.getState();
     expect(result.tabs.map((tab) => tab.id)).toEqual([tabB.id, tabC.id]);
     expect(result.activeTabId).toBe(tabC.id);
-    expect(result.recentlyClosedTabs.map((snapshot) => snapshot.tab.id)).toEqual([
-      tabA.id,
-    ]);
+    expect(
+      result.recentlyClosedTabs.map((snapshot) => snapshot.tab.id),
+    ).toEqual([tabA.id]);
   });
 
   it("closeTabsToRight closes only unpinned tabs to the right", () => {
@@ -634,11 +723,15 @@ describe("tab-store URL-based navigation state", () => {
     useTabStore.getState().closeTabsToRight(tabB.id);
 
     const result = useTabStore.getState();
-    expect(result.tabs.map((tab) => tab.id)).toEqual([tabA.id, tabB.id, tabC.id]);
-    expect(result.activeTabId).toBe(tabB.id);
-    expect(result.recentlyClosedTabs.map((snapshot) => snapshot.tab.id)).toEqual([
-      tabD.id,
+    expect(result.tabs.map((tab) => tab.id)).toEqual([
+      tabA.id,
+      tabB.id,
+      tabC.id,
     ]);
+    expect(result.activeTabId).toBe(tabB.id);
+    expect(
+      result.recentlyClosedTabs.map((snapshot) => snapshot.tab.id),
+    ).toEqual([tabD.id]);
   });
 
   it("pinTab and unpinTab update pinned state and tab ordering", () => {
@@ -653,14 +746,18 @@ describe("tab-store URL-based navigation state", () => {
     });
 
     useTabStore.getState().pinTab(tabC.id);
-    expect(useTabStore.getState().tabs.map((tab) => [tab.id, tab.pinned])).toEqual([
+    expect(
+      useTabStore.getState().tabs.map((tab) => [tab.id, tab.pinned]),
+    ).toEqual([
       [tabA.id, true],
       [tabC.id, true],
       [tabB.id, false],
     ]);
 
     useTabStore.getState().unpinTab(tabA.id);
-    expect(useTabStore.getState().tabs.map((tab) => [tab.id, tab.pinned])).toEqual([
+    expect(
+      useTabStore.getState().tabs.map((tab) => [tab.id, tab.pinned]),
+    ).toEqual([
       [tabC.id, true],
       [tabA.id, false],
       [tabB.id, false],
@@ -668,7 +765,10 @@ describe("tab-store URL-based navigation state", () => {
   });
 
   it("setViewMode updates only the tab container view mode", () => {
-    const tab = makeTab({ id: "tab-a", navigationHistory: [workspaceAgentsState()] });
+    const tab = makeTab({
+      id: "tab-a",
+      navigationHistory: [workspaceAgentsState()],
+    });
 
     useTabStore.setState({
       tabs: [tab],
@@ -700,10 +800,9 @@ describe("tab-store URL-based navigation state", () => {
     const store = useTabStore.getState();
     expect(store.tabs.map((tab) => tab.id)).toEqual(["tab-b"]);
     expect(store.activeTabId).toBe(tabB.id);
-    expect(store.recentlyClosedTabs.map((snapshot) => snapshot.tab.id)).toEqual([
-      "tab-c",
-      "tab-a",
-    ]);
+    expect(store.recentlyClosedTabs.map((snapshot) => snapshot.tab.id)).toEqual(
+      ["tab-c", "tab-a"],
+    );
     expectNoRemovedPageTabFields(store.tabs[0]);
     for (const snapshot of store.recentlyClosedTabs) {
       expectNoRemovedPageTabFields(snapshot.tab);
@@ -724,15 +823,19 @@ describe("tab-store URL-based navigation state", () => {
 
     expect(useTabStore.getState().tabs).toEqual([]);
     expect(useTabStore.getState().activeTabId).toBeNull();
-    expect(useTabStore.getState().recentlyClosedTabs.map((snapshot) => snapshot.tab.id)).toEqual([
-      tabB.id,
-      tabA.id,
-    ]);
+    expect(
+      useTabStore
+        .getState()
+        .recentlyClosedTabs.map((snapshot) => snapshot.tab.id),
+    ).toEqual([tabB.id, tabA.id]);
   });
 
   it("restores a closed tab snapshot that already uses the new shape", () => {
     const tabA = makeTab({ id: "tab-a" });
-    const tabB = makeTab({ id: "tab-b", navigationHistory: [agentDetailState()] });
+    const tabB = makeTab({
+      id: "tab-b",
+      navigationHistory: [agentDetailState()],
+    });
 
     useTabStore.setState({
       tabs: [tabA],
@@ -762,14 +865,19 @@ describe("tab-store URL-based navigation state", () => {
 
     expect(getTabCurrentState(tab)).toEqual(agentDetailState());
     expect(getTabCurrentLeaf(tab)).toEqual(
-      agentDetailState().breadcrumbStack[agentDetailState().breadcrumbStack.length - 1]
+      agentDetailState().breadcrumbStack[
+        agentDetailState().breadcrumbStack.length - 1
+      ],
     );
     expect(getTabUrl(tab)).toBe("/workspace/workspace-a/agent/agent-a");
 
     const viewModel = getTabViewModel(tab);
     expect(viewModel.label).toBe("Personal Assistant");
     expect(viewModel.currentUrl).toBe("/workspace/workspace-a/agent/agent-a");
-    expect(viewModel.meta).toEqual({ workspaceId: "workspace-a", agentId: "agent-a" });
+    expect(viewModel.meta).toEqual({
+      workspaceId: "workspace-a",
+      agentId: "agent-a",
+    });
     expect(viewModel.url).toBe("/workspace/workspace-a/agent/agent-a");
     expect(Object.keys(tab).sort()).toEqual([
       "historyIndex",

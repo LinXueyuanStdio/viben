@@ -1726,6 +1726,9 @@ importers:
       streamdown:
         specifier: ^2.5.0
         version: 2.5.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      vanilla-jsoneditor:
+        specifier: ^3.12.0
+        version: 3.12.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.0.0
