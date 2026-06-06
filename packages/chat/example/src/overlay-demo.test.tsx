@@ -308,8 +308,9 @@ describe("OverlayDemo", () => {
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
     expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
-    expect(screen.getByTestId("default-height")).toHaveTextContent("48");
-    expect(screen.getByTestId("max-height")).toHaveTextContent("48");
+    expect(screen.getByTestId("default-height")).toHaveTextContent("undefined");
+    expect(screen.getByTestId("min-height")).toHaveTextContent("undefined");
+    expect(screen.getByTestId("max-height")).toHaveTextContent("undefined");
   });
 });
 
