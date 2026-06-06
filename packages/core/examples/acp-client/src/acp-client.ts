@@ -352,7 +352,7 @@ export class AcpWebSocketClient {
         },
         _vibenClientTools: {
           enabled: true,
-          tools: ["GUI_execute", "mcp__client_side__GUI_execute", "mcp__gui_action__GUI_execute"],
+          tools: ["GUI_execute", "mcp__client_side__GUI_execute"],
           actionRegistry: "editable",
         },
       },

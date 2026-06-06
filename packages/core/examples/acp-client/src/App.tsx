@@ -72,7 +72,7 @@ import {
   type UiSessionState,
 } from "./acp-chat-state";
 import {
-  formatJson,
+  formatJson as prettyJson,
   JsonBlock,
   JsonCode,
   JsonPanel,
@@ -2294,8 +2294,7 @@ function shortId(id: string): string {
 
 function isGuiExecuteTool(toolName: string): boolean {
   return toolName === "GUI_execute"
-    || toolName === "mcp__client_side__GUI_execute"
-    || toolName === "mcp__gui_action__GUI_execute";
+    || toolName === "mcp__client_side__GUI_execute";
 }
 
 function executeGuiAction(request: ClientToolExecutionRequest, actions: GuiActionDefinition[]): CallToolResult {

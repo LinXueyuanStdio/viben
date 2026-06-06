@@ -50,9 +50,8 @@ client-side tool bridge exposed by Viben.
 
 ## GUI_execute Actions
 
-The example client handles `GUI_execute`, `mcp__client_side__GUI_execute`, and
-legacy `mcp__gui_action__GUI_execute`. Use the action editor to expose custom
-actions to backend agents.
+The example client handles `GUI_execute` and `mcp__client_side__GUI_execute`.
+Use the action editor to expose custom actions to backend agents.
 
 Supported built-in action names inside `GUI_execute`:
 
