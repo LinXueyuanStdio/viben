@@ -79,6 +79,7 @@ describe("ChatInput layout", () => {
         onSend={() => {}}
         layoutVariant="expanded"
         showTopToolbar={false}
+        showBottomToolbar={false}
         showConfigBar={false}
       />
     );
@@ -86,7 +87,7 @@ describe("ChatInput layout", () => {
     expect(screen.queryByTestId("chat-input-toolbar")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chat-input-config-controls")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chat-input-bottom-toolbar")).not.toBeInTheDocument();
-    expect(screen.getByTestId("chat-input-basic-actions")).toBeInTheDocument();
+    expect(screen.queryByTestId("chat-input-basic-actions")).not.toBeInTheDocument();
     expect(container.querySelector(".viben-chat-input-editor")).toBeInTheDocument();
   });
 

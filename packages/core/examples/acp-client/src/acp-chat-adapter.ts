@@ -187,7 +187,7 @@ export function permissionRequestToUiSteps(request: PermissionDecisionRequest): 
       tool_call: {
         title: request.title,
         kind: permissionKindFromOptions(request.options),
-        command: rawInputToCommand(request.rawInput),
+        command: permissionCommandSummary(request),
       },
       options: permissionOptionsToApprovalOptions(request.options),
     },
@@ -386,9 +386,24 @@ function permissionOptionsToApprovalOptions(options: PermissionOption[]): Pendin
     ];
   }
   return options.map((option, index) => ({
-    id: option.optionId ?? option.kind ?? `option-${index}`,
-    label: option.name ?? option.kind ?? option.optionId ?? `Option ${index + 1}`,
+    id: option.optionId ?? option.kind ?? option.name ?? `option-${index}`,
+    label: permissionOptionLabel(option, index),
   }));
+}
+
+function permissionCommandSummary(request: PermissionDecisionRequest): string | undefined {
+  const command = rawInputToCommand(request.rawInput);
+  const details = [
+    request.toolCallId ? `toolCallId=${request.toolCallId}` : undefined,
+    command ? `input=${command}` : undefined,
+  ].filter(Boolean);
+  return details.length > 0 ? details.join(" ") : request.title;
+}
+
+function permissionOptionLabel(option: PermissionOption, index: number): string {
+  const base = option.name ?? option.kind ?? option.optionId ?? `Option ${index + 1}`;
+  const id = option.optionId && option.optionId !== base ? ` (${option.optionId})` : "";
+  return `${base}${id}`;
 }
 
 function rawInputToCommand(rawInput: unknown): string | undefined {
