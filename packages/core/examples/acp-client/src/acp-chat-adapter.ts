@@ -140,10 +140,10 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
 
 export function clientToolRequestedToUiSteps(request: ClientToolExecutionRequest): AcpUiStep[] {
   return messageStep("tool_use", {
-    id: request.toolUseId,
+    id: request.toolCallId,
     type: "tool_use",
     name: request.toolName,
-    toolUseId: request.toolUseId,
+    toolUseId: request.toolCallId,
     input: normalizeToolInput(request.input, request.toolName),
     timestamp: Date.now(),
   });
@@ -154,14 +154,14 @@ export function clientToolCallToUiSteps(call: ClientToolCall): AcpUiStep[] {
     return clientToolRequestedToUiSteps({
       sessionId: call.sessionId,
       toolName: call.toolName,
-      toolUseId: call.toolUseId,
+      toolCallId: call.toolCallId,
       input: call.input,
     });
   }
   return messageStep("tool_result", {
     id: createStepId("client-tool-result"),
     type: "tool_result",
-    toolUseId: call.toolUseId,
+    toolUseId: call.toolCallId,
     output: callToolResultToOutput(call.result),
     isError: isCallToolError(call.result),
     timestamp: Date.now(),
@@ -393,10 +393,14 @@ function contentBlockToText(content: unknown): string {
   return safeJson(content);
 }
 
-function toolUpdateOutput(update: Record<string, unknown>): string {
+function toolUpdateOutput(update: Record<string, unknown>): AgentMessage["output"] {
   if (typeof update.rawOutput === "string") return update.rawOutput;
+  if (isContentBlockArray(update.rawOutput)) return update.rawOutput;
   if (update.rawOutput !== undefined) return safeJson(update.rawOutput);
+  if (isContentBlockArray(update.content)) return update.content;
   if (Array.isArray(update.content)) return safeJson(update.content);
+  const toolResponse = readClaudeToolResponse(update._meta);
+  if (toolResponse) return toolResponse;
   if (isRecord(update.artifact) || Array.isArray(update.artifacts) || Array.isArray(update.files)) {
     return safeJson({
       artifact: update.artifact,
@@ -408,10 +412,11 @@ function toolUpdateOutput(update: Record<string, unknown>): string {
   return safeJson(update);
 }
 
-function callToolResultToOutput(result: unknown): string {
+function callToolResultToOutput(result: unknown): AgentMessage["output"] {
   if (!isRecord(result)) return diagnosticToText(result);
   const content = result.content;
   if (!Array.isArray(content)) return safeJson(result);
+  if (isContentBlockArray(content)) return content;
   const text = content
     .map((block) => {
       if (isRecord(block) && block.type === "text" && typeof block.text === "string") return block.text;
@@ -424,6 +429,20 @@ function callToolResultToOutput(result: unknown): string {
 
 function isCallToolError(result: unknown): boolean {
   return isRecord(result) && result.isError === true;
+}
+
+function readClaudeToolResponse(meta: unknown): AgentMessage["output"] | null {
+  if (!isRecord(meta) || !isRecord(meta.claudeCode)) return null;
+  const toolResponse = meta.claudeCode.toolResponse;
+  return isContentBlockArray(toolResponse) ? toolResponse : null;
+}
+
+function isContentBlockArray(value: unknown): value is NonNullable<AgentMessage["output"]> & unknown[] {
+  return Array.isArray(value) &&
+    value.every((block) => isRecord(block) && (
+      (block.type === "text" && typeof block.text === "string") ||
+      (block.type === "image" && isRecord(block.source) && block.source.type === "base64")
+    ));
 }
 
 function diagnosticToText(value: unknown): string {

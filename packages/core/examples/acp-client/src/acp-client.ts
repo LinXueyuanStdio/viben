@@ -55,7 +55,7 @@ export interface ClientToolCall {
   at: string;
   sessionId: string;
   toolName: string;
-  toolUseId: string;
+  toolCallId: string;
   action?: string;
   input: unknown;
   result: unknown;
@@ -113,7 +113,7 @@ export type ConnectionStatus = "idle" | "connecting" | "connected" | "closed" | 
 
 export interface ClientToolExecutionRequest {
   sessionId: string;
-  toolUseId: string;
+  toolCallId: string;
   toolName: string;
   input: unknown;
 }
@@ -175,8 +175,12 @@ export type ElicitationResponse =
   | { action: { action: "decline" } }
   | { action: { action: "cancel" } };
 
+export type CallToolContentBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
 export interface CallToolResult {
-  content: Array<{ type: "text"; text: string }>;
+  content: CallToolContentBlock[];
   isError?: boolean;
   _meta?: Record<string, unknown>;
 }
@@ -517,17 +521,17 @@ export class AcpWebSocketClient {
       const params = frame.params as {
         sessionId?: string;
         toolName?: string;
-        toolUseId?: string;
+        toolCallId?: string;
         input?: unknown;
       };
       const toolName = params?.toolName ?? "client tool";
-      const toolUseId = params?.toolUseId ?? "unknown id";
+      const toolCallId = params?.toolCallId ?? "unknown id";
       const sessionId = params?.sessionId ?? "unknown session";
       const input = params?.input ?? null;
       const request = {
         sessionId,
         toolName,
-        toolUseId,
+        toolCallId,
         input,
       };
       this.callbacks.onClientToolCall({
@@ -535,7 +539,7 @@ export class AcpWebSocketClient {
         at: new Date().toISOString(),
         sessionId,
         toolName,
-        toolUseId,
+        toolCallId,
         action: readGuiAction(input),
         input,
         result: { pending: true },
@@ -544,7 +548,15 @@ export class AcpWebSocketClient {
       const result = this.callbacks.requestClientToolResult
         ? await this.callbacks.requestClientToolResult(request, draft)
         : draft;
-      const response: JsonRpcSuccess = { jsonrpc: "2.0", id: frame.id, result };
+      const response: JsonRpcSuccess = {
+        jsonrpc: "2.0",
+        id: frame.id,
+        result: {
+          sessionId,
+          toolCallId,
+          result,
+        },
+      };
       this.recordTraffic("out", response, frame.method);
       this.send(response);
       this.callbacks.onClientToolCall({
@@ -552,7 +564,7 @@ export class AcpWebSocketClient {
         at: new Date().toISOString(),
         sessionId,
         toolName,
-        toolUseId,
+        toolCallId,
         action: readGuiAction(input),
         input,
         result,
@@ -667,7 +679,7 @@ export class AcpWebSocketClient {
       content: [
         {
           type: "text",
-          text: `Example client handled ${request.toolName} (${request.toolUseId}).`,
+          text: `Example client handled ${request.toolName} (${request.toolCallId}).`,
         },
       ],
       _meta: {
