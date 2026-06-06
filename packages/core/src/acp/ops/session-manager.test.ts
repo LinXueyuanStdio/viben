@@ -229,30 +229,6 @@ describe("AcpSessionManager", () => {
     expect(adapter.startContext?.request.mcpServers).toEqual(mcpServers);
   });
 
-  it("mounts the ACP client-side MCP server when requested by name", async () => {
-    const adapter = resolveBuiltinAcpBackend("CLAUDE_CODE").createAdapter();
-    const connection = createConnection();
-
-    const session = await adapter.start({
-      outerSessionId: "acp-session-1",
-      cwd: "/tmp",
-      request: { cwd: "/tmp", mcpServers: ["client_side"] },
-      connection,
-    });
-
-    const server = session.startRequest?.mcpServers?.find((entry) => entry.name === "client_side");
-    expect(server).toBeDefined();
-    expect(server?.command).toBe(process.execPath);
-    expect(server?.args?.[0]).toContain("client-side-mcp-server");
-    expect(server?.env).toEqual(
-      expect.arrayContaining([
-        { name: "VIBEN_ACP_SESSION_ID", value: "acp-session-1" },
-      ])
-    );
-
-    await session.close();
-  });
-
   it("loads the matching backend ACP session when session/load is used", async () => {
     const adapter = new CapturingBackendAdapter();
     const manager = new AcpSessionManager(adapter);

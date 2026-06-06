@@ -1,4 +1,4 @@
-import type { AgentMessage, PendingQuestion, SlashCommand, TaskPlan, TaskPlanStep } from "@viben/chat";
+import type { AgentMessage, ContentBlock, PendingQuestion, SlashCommand, TaskPlan, TaskPlanStep } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import type {
   AcpSessionUpdate,
@@ -395,9 +395,11 @@ function contentBlockToText(content: unknown): string {
 
 function toolUpdateOutput(update: Record<string, unknown>): AgentMessage["output"] {
   if (typeof update.rawOutput === "string") return update.rawOutput;
-  if (isContentBlockArray(update.rawOutput)) return update.rawOutput;
+  const rawOutputBlocks = mcpContentToChatOutput(update.rawOutput);
+  if (rawOutputBlocks) return rawOutputBlocks;
   if (update.rawOutput !== undefined) return safeJson(update.rawOutput);
-  if (isContentBlockArray(update.content)) return update.content;
+  const contentBlocks = acpToolUpdateContentToChatOutput(update.content);
+  if (contentBlocks) return contentBlocks;
   if (Array.isArray(update.content)) return safeJson(update.content);
   const toolResponse = readClaudeToolResponse(update._meta);
   if (toolResponse) return toolResponse;
@@ -415,16 +417,8 @@ function toolUpdateOutput(update: Record<string, unknown>): AgentMessage["output
 function callToolResultToOutput(result: unknown): AgentMessage["output"] {
   if (!isRecord(result)) return diagnosticToText(result);
   const content = result.content;
-  if (!Array.isArray(content)) return safeJson(result);
-  if (isContentBlockArray(content)) return content;
-  const text = content
-    .map((block) => {
-      if (isRecord(block) && block.type === "text" && typeof block.text === "string") return block.text;
-      return safeJson(block);
-    })
-    .filter(Boolean)
-    .join("\n");
-  return text || safeJson(result);
+  const output = mcpContentToChatOutput(content);
+  return output ?? safeJson(result);
 }
 
 function isCallToolError(result: unknown): boolean {
@@ -434,15 +428,62 @@ function isCallToolError(result: unknown): boolean {
 function readClaudeToolResponse(meta: unknown): AgentMessage["output"] | null {
   if (!isRecord(meta) || !isRecord(meta.claudeCode)) return null;
   const toolResponse = meta.claudeCode.toolResponse;
-  return isContentBlockArray(toolResponse) ? toolResponse : null;
+  return mcpContentToChatOutput(toolResponse);
 }
 
-function isContentBlockArray(value: unknown): value is NonNullable<AgentMessage["output"]> & unknown[] {
-  return Array.isArray(value) &&
-    value.every((block) => isRecord(block) && (
-      (block.type === "text" && typeof block.text === "string") ||
-      (block.type === "image" && isRecord(block.source) && block.source.type === "base64")
-    ));
+function acpToolUpdateContentToChatOutput(value: unknown): AgentMessage["output"] | null {
+  if (!Array.isArray(value)) return null;
+  const unwrapped = value.map((block) => {
+    if (isRecord(block) && block.type === "content" && "content" in block) return block.content;
+    return block;
+  });
+  return mcpContentToChatOutput(unwrapped);
+}
+
+function mcpContentToChatOutput(value: unknown): AgentMessage["output"] | null {
+  if (!Array.isArray(value)) return null;
+  const blocks = value.flatMap((block): ContentBlock[] => {
+    const converted = mcpContentBlockToChatBlock(block);
+    return converted ? [converted] : [];
+  });
+  return blocks.length > 0 ? blocks : null;
+}
+
+function mcpContentBlockToChatBlock(block: unknown): ContentBlock | null {
+  if (!isRecord(block)) return blockToTextContentBlock(block);
+  if (block.type === "text" && typeof block.text === "string") {
+    return { type: "text", text: block.text };
+  }
+  if (block.type === "image") {
+    if (typeof block.data === "string" && typeof block.mimeType === "string") {
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: block.mimeType,
+          data: block.data,
+        },
+      };
+    }
+    if (isRecord(block.source) && block.source.type === "base64" && typeof block.source.data === "string") {
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: typeof block.source.media_type === "string" ? block.source.media_type : "image/png",
+          data: block.source.data,
+        },
+      };
+    }
+  }
+  return blockToTextContentBlock(block);
+}
+
+function blockToTextContentBlock(value: unknown): ContentBlock {
+  return {
+    type: "text",
+    text: safeJson(value),
+  };
 }
 
 function diagnosticToText(value: unknown): string {
