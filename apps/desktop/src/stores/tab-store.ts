@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import type { Mutate, StoreApi } from "zustand";
@@ -104,6 +105,7 @@ const generateTabId = () =>
 const MAX_RECENTLY_CLOSED_TABS = 20;
 const MAX_NAVIGATION_HISTORY = 50;
 export const TAB_STORE_STORAGE_KEY = "viben-tab-store-v2";
+export const MAIN_WINDOW_TAB_STORE_SCOPE = "main";
 const TAB_STORE_VERSION = 2;
 let tabStoreStorageSyncUnsubscribe: (() => void) | null = null;
 const scopedTabStores = new Map<string, TabStore>();
@@ -780,6 +782,10 @@ function normalizeTabStoreScope(scope: string): string {
 
 export function getScopedTabStore(scope: string): TabStore {
   const normalizedScope = normalizeTabStoreScope(scope);
+  if (normalizedScope === MAIN_WINDOW_TAB_STORE_SCOPE) {
+    return useTabStore;
+  }
+
   const existing = scopedTabStores.get(normalizedScope);
   if (existing) return existing;
 
@@ -791,6 +797,28 @@ export function getScopedTabStore(scope: string): TabStore {
 // ─── Store ───────────────────────────────────────────────────────────────────
 
 export const useTabStore = createTabStore(TAB_STORE_STORAGE_KEY);
+
+export function getCurrentWindowTabStoreScope(): string {
+  if (typeof window === "undefined") {
+    return MAIN_WINDOW_TAB_STORE_SCOPE;
+  }
+
+  try {
+    const label = getCurrentWindow().label;
+    if (label) {
+      window.name = label;
+      return label;
+    }
+  } catch {
+    // In browser tests/dev mode, fall back to window.name below.
+  }
+
+  return window.name || MAIN_WINDOW_TAB_STORE_SCOPE;
+}
+
+export function getCurrentWindowTabStore(): TabStore {
+  return getScopedTabStore(getCurrentWindowTabStoreScope());
+}
 
 export const selectActiveTab = (state: TabState) =>
   state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
