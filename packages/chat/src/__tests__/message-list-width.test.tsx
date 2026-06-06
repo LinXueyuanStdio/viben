@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 // @vitest-environment jsdom
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import { MessageList } from "../message-list";
 
@@ -87,5 +87,43 @@ describe("MessageList width", () => {
       marginLeft: "auto",
       marginRight: "auto",
     });
+  });
+
+  test("does not clip sticky message avatars inside the scroll content", () => {
+    const { container } = render(
+      <MessageList
+        messages={[{ id: "m1", type: "text", content: "assistant message" }]}
+      />
+    );
+
+    const content = container.querySelector("[data-message-list-content='true']");
+
+    expect(content).toBeInTheDocument();
+    expect(content).not.toHaveClass("overflow-hidden");
+  });
+
+  test("passes custom user and assistant avatars through to rendered messages", () => {
+    const onUserAvatarClick = vi.fn();
+    const onAssistantAvatarClick = vi.fn();
+    const userMessage = { id: "user-1", type: "user" as const, content: "from user" };
+    const assistantMessage = { id: "assistant-1", type: "text" as const, content: "from assistant" };
+
+    render(
+      <MessageList
+        messages={[userMessage, assistantMessage]}
+        userAvatar={<span data-testid="list-user-avatar">U</span>}
+        assistantAvatar={<span data-testid="list-assistant-avatar">A</span>}
+        onUserAvatarClick={onUserAvatarClick}
+        onAssistantAvatarClick={onAssistantAvatarClick}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "User avatar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Assistant avatar" }));
+
+    expect(screen.getByTestId("list-user-avatar")).toBeInTheDocument();
+    expect(screen.getByTestId("list-assistant-avatar")).toBeInTheDocument();
+    expect(onUserAvatarClick).toHaveBeenCalledWith(userMessage);
+    expect(onAssistantAvatarClick).toHaveBeenCalledWith(assistantMessage);
   });
 });

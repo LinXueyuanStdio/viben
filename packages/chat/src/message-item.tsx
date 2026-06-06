@@ -11,6 +11,10 @@ import { QuestionInput } from "./question-input";
 import { CachedStreamdown } from "./cached-markdown";
 import { ASSISTANT_MARKDOWN_TYPOGRAPHY } from "./message-typography";
 
+const MESSAGE_AVATAR_CLASS = "sticky top-0 flex shrink-0 items-center justify-center self-start rounded-full";
+const CLICKABLE_MESSAGE_AVATAR_CLASS =
+  "cursor-pointer transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
 export interface MessageItemProps {
   message: AgentMessage;
   isStreaming?: boolean;
@@ -33,6 +37,54 @@ export interface MessageItemProps {
   isLatestThinking?: boolean;
   /** Custom renderer for summary messages. */
   renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  /** Custom avatar content for user messages. */
+  userAvatar?: React.ReactNode;
+  /** Custom avatar content for assistant text/result messages. */
+  assistantAvatar?: React.ReactNode;
+  /** Called when a user message avatar is clicked. */
+  onUserAvatarClick?: (message: AgentMessage) => void;
+  /** Called when an assistant text/result message avatar is clicked. */
+  onAssistantAvatarClick?: (message: AgentMessage) => void;
+}
+
+function MessageAvatar({
+  children,
+  className,
+  label,
+  message,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  label: string;
+  message: AgentMessage;
+  onClick?: (message: AgentMessage) => void;
+}) {
+  const avatarClassName = cn(
+    MESSAGE_AVATAR_CLASS,
+    className,
+    onClick && CLICKABLE_MESSAGE_AVATAR_CLASS
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        data-message-avatar="true"
+        aria-label={label}
+        className={avatarClassName}
+        onClick={() => onClick(message)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <div data-message-avatar="true" aria-label={label} className={avatarClassName}>
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -212,13 +264,19 @@ function AttachmentPreview({ attachment }: { attachment: MessageAttachment }) {
  * User message bubble
  */
 function UserMessage({
+  message,
   content,
   attachments,
   skipAnimation,
+  avatar,
+  onAvatarClick,
 }: {
+  message: AgentMessage;
   content: string;
   attachments?: MessageAttachment[];
   skipAnimation?: boolean;
+  avatar?: React.ReactNode;
+  onAvatarClick?: (message: AgentMessage) => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
   return (
@@ -228,9 +286,14 @@ function UserMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-        <User className="h-4 w-4 text-primary" />
-      </div>
+      <MessageAvatar
+        className="h-8 w-8 bg-primary/10"
+        label="User avatar"
+        message={message}
+        onClick={onAvatarClick}
+      >
+        {avatar ?? <User className="h-4 w-4 text-primary" />}
+      </MessageAvatar>
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="w-fit max-w-full rounded-2xl rounded-tl-md bg-primary px-4 py-3 text-primary-foreground min-w-0">
           <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere]">{content}</p>
@@ -257,7 +320,7 @@ function ErrorMessage({ errorMessage, skipAnimation }: { errorMessage: string; s
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+      <div data-message-avatar="true" className={cn(MESSAGE_AVATAR_CLASS, "h-8 w-8 bg-destructive/10")}>
         <AlertCircle className="h-4 w-4 text-destructive" />
       </div>
       <div className="flex-1 min-w-0">
@@ -385,17 +448,23 @@ function ThinkingMessage({
  * Assistant text message with markdown rendering
  */
 function AssistantMessage({
+  message,
   content,
   isResult,
   isStreaming,
   onLinkClick,
   skipAnimation,
+  avatar,
+  onAvatarClick,
 }: {
+  message: AgentMessage;
   content: string;
   isResult?: boolean;
   isStreaming?: boolean;
   onLinkClick?: (href: string) => void;
   skipAnimation?: boolean;
+  avatar?: React.ReactNode;
+  onAvatarClick?: (message: AgentMessage) => void;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const markdownComponents = useMemo(
@@ -410,9 +479,14 @@ function AssistantMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
     >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-        <Bot className="h-4 w-4 text-secondary-foreground" />
-      </div>
+      <MessageAvatar
+        className="h-8 w-8 bg-secondary"
+        label="Assistant avatar"
+        message={message}
+        onClick={onAvatarClick}
+      >
+        {avatar ?? <Bot className="h-4 w-4 text-secondary-foreground" />}
+      </MessageAvatar>
       <div className="flex-1 min-w-0 overflow-hidden">
         <div
           className={cn(
@@ -461,7 +535,7 @@ function SummaryMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
       className="flex gap-3 w-full min-w-0"
     >
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+      <div data-message-avatar="true" className={cn(MESSAGE_AVATAR_CLASS, "h-7 w-7 bg-muted")}>
         <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0 overflow-hidden">
@@ -544,8 +618,9 @@ function PlanModeMessage({ action, skipAnimation }: { action: "enter" | "exit"; 
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-3 w-full min-w-0"
     >
-      <div className={cn(
-        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+      <div data-message-avatar="true" className={cn(
+        MESSAGE_AVATAR_CLASS,
+        "h-8 w-8",
         isEnter ? "bg-amber-500/10" : "bg-green-500/10"
       )}>
         <FileEdit className={cn("h-4 w-4", isEnter ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400")} />

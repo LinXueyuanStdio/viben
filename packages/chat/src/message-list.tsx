@@ -1568,7 +1568,8 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
       >
         <div
           ref={contentRef}
-          className="p-4 pb-8 min-w-0 overflow-hidden box-border w-full"
+          data-message-list-content="true"
+          className="p-4 pb-8 min-w-0 box-border w-full"
           style={contentStyle}
         >
           {/* Top spacer for unmounted items above viewport */}
