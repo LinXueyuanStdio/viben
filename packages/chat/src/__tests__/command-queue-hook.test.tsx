@@ -2,9 +2,19 @@
 import { act, renderHook } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
-import { useCommandQueue, useCommandQueueInputRecall } from "../command-queue";
+import { mergeQueuedInputRecallItems, useCommandQueue, useCommandQueueInputRecall } from "../command-queue";
 
 describe("useCommandQueue", () => {
+  test("merges queued input recall items with trimmed content", () => {
+    expect(
+      mergeQueuedInputRecallItems([
+        { id: "one", content: " first " },
+        { id: "empty", content: "   " },
+        { id: "two", content: "second" },
+      ])
+    ).toBe("first\n\nsecond");
+  });
+
   test("recalls queued items in order and clears the queue", () => {
     const { result } = renderHook(() =>
       useCommandQueue({

@@ -4,15 +4,9 @@ import type {
   UseCommandQueueInputRecallOptions,
   UseCommandQueueInputRecallReturn,
 } from "./types";
+import { mergeQueuedInputRecallItems } from "./merge-queued-content";
 
 const DEFAULT_JOINER = "\n\n";
-
-function mergeQueuedContent(items: CommandQueueItem[], joiner: string): string {
-  return items
-    .map((item) => item.content.trim())
-    .filter(Boolean)
-    .join(joiner);
-}
 
 export function useCommandQueueInputRecall({
   value,
@@ -29,7 +23,7 @@ export function useCommandQueueInputRecall({
       const recalledItems = recall();
       if (recalledItems.length === 0) return;
 
-      const recalledValue = mergeQueuedContent(recalledItems, joiner);
+      const recalledValue = mergeQueuedInputRecallItems(recalledItems, joiner);
       if (!recalledValue) return;
 
       onValueChange(recalledValue);
