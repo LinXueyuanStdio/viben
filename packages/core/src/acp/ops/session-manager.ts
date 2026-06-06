@@ -59,11 +59,21 @@ const DEFAULT_AGENT_CAPABILITIES: AcpAgentCapabilities = {
   },
 };
 
-interface AcpPromptQueueItem {
+interface AcpNormalPromptQueueItem {
+  kind: "prompt";
   request: AcpPromptRequest;
   resolve: (response: AcpPromptResponse) => void;
   reject: (error: Error) => void;
 }
+
+interface AcpSteerResumeQueueItem {
+  kind: "steer_resume";
+  promptIds: string[];
+  resolve: (response: AcpPromptResponse) => void;
+  reject: (error: Error) => void;
+}
+
+type AcpPromptQueueItem = AcpNormalPromptQueueItem | AcpSteerResumeQueueItem;
 
 interface AcpSession {
   id: string;
@@ -244,13 +254,8 @@ export class AcpSessionManager {
     }
 
     return new Promise<AcpPromptResponse>((resolve, reject) => {
-      const item: AcpPromptQueueItem = { request, resolve, reject };
-      if (session.prompt_running) {
-        session.prompt_queue.push(item);
-        log.debug({ sessionId: session.id, queueDepth: session.prompt_queue.length }, "ACP prompt queued");
-        return;
-      }
-      this.runPromptItem(session, item).catch(reject);
+      const item: AcpPromptQueueItem = { kind: "prompt", request, resolve, reject };
+      this.enqueuePromptItem(session, item, "back");
     });
   }
 
@@ -357,10 +362,10 @@ export class AcpSessionManager {
 
   async interruptSession(request: AcpInterruptSessionRequest): Promise<AcpInterruptSessionResponse> {
     const session = this.requireSession(request.sessionId);
-
-    await this.interruptCurrentExecution(session);
-    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
-    if (steerPrompts.length === 0) {
+    const steerPrompts = await this.listQueuedSteerPrompts(session.id);
+    const promptIds = steerPrompts.map((item) => item.promptId);
+    if (promptIds.length === 0) {
+      await this.interruptCurrentExecution(session);
       return {
         interrupted: true,
         resumed: false,
@@ -368,25 +373,31 @@ export class AcpSessionManager {
       };
     }
 
-    const prompt = mergeSteerPromptBlocks(steerPrompts);
-    if (prompt.length === 0) {
-      return {
-        interrupted: true,
-        resumed: false,
-        promptIds: steerPrompts.map((item) => item.promptId),
-      };
-    }
+    this.enqueuePromptItem(session, {
+      kind: "steer_resume",
+      promptIds,
+      resolve: () => {},
+      reject: (error) => {
+        log.warn({ err: error, sessionId: session.id, promptIds }, "ACP interrupt resume prompt failed");
+      },
+    }, "front");
 
-    await this.prompt({
-      sessionId: session.id,
-      prompt,
-    });
+    await this.interruptCurrentExecution(session);
 
     return {
       interrupted: true,
       resumed: true,
-      promptIds: steerPrompts.map((item) => item.promptId),
+      promptIds,
     };
+  }
+
+  private async listQueuedSteerPrompts(sessionId: string): Promise<AcpSteerPromptView[]> {
+    const records = await this.steerPromptStore.list({
+      session_id: sessionId,
+      status: "queued",
+      limit: 100,
+    });
+    return records.map((record) => steerRecordToView(record));
   }
 
   async cancelSession(sessionId: string): Promise<boolean> {
@@ -412,6 +423,9 @@ export class AcpSessionManager {
 
   private async interruptCurrentExecution(session: AcpSession): Promise<void> {
     clientToolCompletionRegistry.cancelSession(session.id);
+    if (session.prompt_running) {
+      session.status = "cancelled";
+    }
     if (!session.backend) return;
     try {
       await session.backend.cancel();
@@ -442,6 +456,23 @@ export class AcpSessionManager {
     }
   }
 
+  private enqueuePromptItem(
+    session: AcpSession,
+    item: AcpPromptQueueItem,
+    position: "front" | "back"
+  ): void {
+    if (session.prompt_running) {
+      if (position === "front") {
+        session.prompt_queue.unshift(item);
+      } else {
+        session.prompt_queue.push(item);
+      }
+      log.debug({ sessionId: session.id, queueDepth: session.prompt_queue.length }, "ACP prompt queued");
+      return;
+    }
+    this.runPromptItem(session, item).catch((error) => item.reject(error));
+  }
+
   private async runPromptItem(session: AcpSession, item: AcpPromptQueueItem): Promise<void> {
     session.prompt_running = true;
     session.status = "active";
@@ -449,9 +480,13 @@ export class AcpSessionManager {
     session.last_error = undefined;
 
     try {
-      const response = await this.executePrompt(session, item.request);
+      const response = await this.executePromptItem(session, item);
       item.resolve(response);
     } catch (error) {
+      if (session.status === "cancelled") {
+        item.resolve({ stopReason: "cancelled" });
+        return;
+      }
       session.status = "error";
       const detail = getAcpErrorDetail(error);
       session.last_error = detail;
@@ -474,6 +509,16 @@ export class AcpSessionManager {
     }
   }
 
+  private async executePromptItem(
+    session: AcpSession,
+    item: AcpPromptQueueItem
+  ): Promise<AcpPromptResponse> {
+    if (item.kind === "prompt") {
+      return await this.executePrompt(session, item.request);
+    }
+    return await this.executeSteerResumePrompt(session);
+  }
+
   private async executePrompt(
     session: AcpSession,
     request: AcpPromptRequest
@@ -492,6 +537,34 @@ export class AcpSessionManager {
     const response = await backend.prompt({
       ...request,
       sessionId: backend.backendSessionId,
+    });
+
+    if (session.status === "cancelled") {
+      return { stopReason: "cancelled" };
+    }
+    return response as AcpPromptResponse;
+  }
+
+  private async executeSteerResumePrompt(session: AcpSession): Promise<AcpPromptResponse> {
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    const prompt = mergeSteerPromptBlocks(steerPrompts);
+    if (prompt.length === 0) {
+      return { stopReason: "cancelled" };
+    }
+
+    const promptText = promptBlocksToText(prompt);
+    await this.persistUiMessage(session, {
+      type: "user",
+      content: promptText,
+    });
+
+    const backend = await this.ensureBackend(session, {
+      sessionId: session.id,
+      prompt,
+    });
+    const response = await backend.prompt({
+      sessionId: backend.backendSessionId,
+      prompt,
     });
 
     if (session.status === "cancelled") {
@@ -914,7 +987,7 @@ function resolveAgentId(agentConfigPath?: string, agentConfig?: AgentConfigPaylo
   return "default";
 }
 
-function isCallToolResult(value: unknown): value is AcpClientToolCallResponse {
+function isCallToolResult(value: unknown): value is CallToolResult {
   return (
     typeof value === "object" &&
     value !== null &&
