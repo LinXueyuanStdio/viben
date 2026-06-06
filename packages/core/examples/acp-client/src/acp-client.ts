@@ -74,6 +74,7 @@ export interface PermissionRequestLog {
   selectedOptionId: string;
   options: unknown[];
   rawInput: unknown;
+  rawRequest: unknown;
 }
 
 export interface ElicitationRequestLog {
@@ -128,6 +129,7 @@ export interface PermissionDecisionRequest {
   title: string;
   options: PermissionOption[];
   rawInput: unknown;
+  rawRequest: unknown;
 }
 
 export interface PermissionOption {
@@ -592,6 +594,7 @@ export class AcpWebSocketClient {
         title: params.toolCall?.title ?? "Permission request",
         options: params.options ?? [],
         rawInput: params.toolCall?.rawInput ?? null,
+        rawRequest: frame.params ?? null,
       };
       const decision = this.callbacks.requestPermissionDecision
         ? await this.callbacks.requestPermissionDecision(request)
@@ -616,6 +619,7 @@ export class AcpWebSocketClient {
         selectedOptionId: decision.outcome === "selected" ? decision.optionId : "cancelled",
         options: request.options,
         rawInput: request.rawInput,
+        rawRequest: request.rawRequest,
       });
       return;
     }
