@@ -617,9 +617,9 @@ function CompactChatInput({
         showTopToolbar={variant === "expanded"}
         showConfigBar
         renderEmojiPicker={inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
-        defaultHeight={48}
-        minHeight={48}
-        maxHeight={48}
+        defaultHeight={variant === "compact" ? 48 : inputProps?.defaultHeight}
+        minHeight={variant === "compact" ? 48 : inputProps?.minHeight}
+        maxHeight={variant === "compact" ? 48 : inputProps?.maxHeight}
         showResizeHandle={false}
         enableWritingMode={variant === "expanded"}
         hideAgentSelector={variant === "compact" ? true : inputProps?.hideAgentSelector}
