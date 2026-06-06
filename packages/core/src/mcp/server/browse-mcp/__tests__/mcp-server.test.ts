@@ -15,7 +15,7 @@ type RegisteredTool = {
   handler: (args: unknown) => Promise<CallToolResult>;
 };
 
-type InspectableMcpServer = ReturnType<typeof createBrowseMcpServer> & {
+type InspectableMcpServer = {
   _registeredTools?: Record<string, RegisteredTool>;
   server: {
     _serverInfo?: { name?: string };
@@ -68,7 +68,7 @@ describe("browse MCP server", () => {
   it("registers browse_mcp tools", () => {
     const server = createBrowseMcpServer({
       client: fakeClient(),
-    }) as InspectableMcpServer;
+    }) as unknown as InspectableMcpServer;
 
     expect(server.server._serverInfo?.name).toBe(BROWSE_MCP_SERVER_NAME);
     expect(getTool(server, BROWSE_SEARCH_TOOL_NAME).description).toContain("Search content");
@@ -79,7 +79,7 @@ describe("browse MCP server", () => {
   it("forwards search, download, and read requests through BrowseClient", async () => {
     const server = createBrowseMcpServer({
       client: fakeClient(),
-    }) as InspectableMcpServer;
+    }) as unknown as InspectableMcpServer;
 
     const search = await getTool(server, BROWSE_SEARCH_TOOL_NAME).handler({
       query_list: [{ searcher: "arxiv", query: "agents", max_results: 2 }],
