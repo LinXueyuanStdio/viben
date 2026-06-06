@@ -44,6 +44,8 @@ export type {
   GlobalChatConfig,
   ChatConfigVisibility,
   QueuedInputRecallItem,
+  ChatInputToolbarRenderProps,
+  ChatInputBottomToolbarRenderProps,
 } from "./chat-input";
 
 // Slash Commands
