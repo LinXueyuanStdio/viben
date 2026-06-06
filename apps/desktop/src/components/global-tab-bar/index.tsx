@@ -50,7 +50,7 @@ import {
 import { BrowserTabFrame } from "@/components/browser-tab-frame";
 import { cn } from "@/lib/utils";
 import { useTabList, useActiveTabState, useTabActions, useTabNavigation } from "@/hooks/use-page-tabs";
-import { useTabStore } from "@/stores/tab-store";
+import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import { SortableTabItem } from "./sortable-tab-item";
 import { WindowControls } from "./window-controls";
 import { createTabNavigationState } from "@/navigation/tab-navigation";
@@ -67,6 +67,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newTabIds, setNewTabIds] = useState<Set<string>>(new Set());
   const prevTabIdsRef = useRef<string[]>([]);
+  const tabStore = useRef(getCurrentWindowTabStore()).current;
 
   // Detect platform for macOS traffic light spacing
   useEffect(() => {
@@ -125,15 +126,15 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
   const { goBackInTab, goForwardInTab, jumpToHistory } = useTabNavigation();
 
   // Get additional store actions
-  const pinTab = useTabStore((state) => state.pinTab);
-  const unpinTab = useTabStore((state) => state.unpinTab);
-  const closeOtherTabs = useTabStore((state) => state.closeOtherTabs);
-  const closeTabsToRight = useTabStore((state) => state.closeTabsToRight);
-  const duplicateTab = useTabStore((state) => state.duplicateTab);
-  const reopenClosedTab = useTabStore((state) => state.reopenClosedTab);
-  const closeAllTabs = useTabStore((state) => state.closeAllTabs);
-  const moveTab = useTabStore((state) => state.moveTab);
-  const hasRecentlyClosedTabs = useTabStore((state) => state.recentlyClosedTabs.length > 0);
+  const pinTab = tabStore((state) => state.pinTab);
+  const unpinTab = tabStore((state) => state.unpinTab);
+  const closeOtherTabs = tabStore((state) => state.closeOtherTabs);
+  const closeTabsToRight = tabStore((state) => state.closeTabsToRight);
+  const duplicateTab = tabStore((state) => state.duplicateTab);
+  const reopenClosedTab = tabStore((state) => state.reopenClosedTab);
+  const closeAllTabs = tabStore((state) => state.closeAllTabs);
+  const moveTab = tabStore((state) => state.moveTab);
+  const hasRecentlyClosedTabs = tabStore((state) => state.recentlyClosedTabs.length > 0);
 
   // Track newly added tabs for entrance animation
   useEffect(() => {
@@ -190,7 +191,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
 
       if (over && active.id !== over.id) {
         // Read latest tabs from store to avoid stale closure
-        const currentTabs = useTabStore.getState().tabs;
+        const currentTabs = tabStore.getState().tabs;
         const oldIndex = currentTabs.findIndex((t) => t.id === active.id);
         const newIndex = currentTabs.findIndex((t) => t.id === over.id);
         if (oldIndex !== -1 && newIndex !== -1) {
@@ -198,7 +199,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         }
       }
     },
-    [moveTab]
+    [moveTab, tabStore]
   );
 
   // Handlers for tab actions
@@ -345,7 +346,7 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     : [];
 
   // Get openTab action for creating new tabs
-  const openTab = useTabStore((state) => state.openTab);
+  const openTab = tabStore((state) => state.openTab);
 
   // Handle new tab creation
   const handleNewTab = useCallback(() => {
