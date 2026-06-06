@@ -78,5 +78,7 @@ export { CLIENT_SIDE_BASH_TOOL_NAME, isClientSideBashTool };
  * by exposing a tool with the same suffix.
  */
 export function isGUIExecuteTool(toolName: string): boolean {
-  return toolName === GUI_EXECUTE_TOOL_NAME || toolName === `mcp__gui_action__${GUI_EXECUTE_TOOL_NAME}`;
+  return toolName === GUI_EXECUTE_TOOL_NAME
+    || toolName === `mcp__client_side__${GUI_EXECUTE_TOOL_NAME}`
+    || toolName === `mcp__gui_action__${GUI_EXECUTE_TOOL_NAME}`;
 }

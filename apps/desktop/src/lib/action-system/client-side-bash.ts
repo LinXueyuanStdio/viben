@@ -26,7 +26,9 @@ export interface ClientSideBashRuntime {
 }
 
 export function isClientSideBashTool(toolName: string): boolean {
-  return toolName === CLIENT_SIDE_BASH_TOOL_NAME || toolName === `mcp__client_side_bash__${CLIENT_SIDE_BASH_TOOL_NAME}`;
+  return toolName === CLIENT_SIDE_BASH_TOOL_NAME
+    || toolName === `mcp__client_side__${CLIENT_SIDE_BASH_TOOL_NAME}`
+    || toolName === `mcp__client_side_bash__${CLIENT_SIDE_BASH_TOOL_NAME}`;
 }
 
 export function createClientSideBash(options: ClientSideBashOptions): ClientSideBashRuntime {
