@@ -1,0 +1,121 @@
+// @vitest-environment jsdom
+import "@testing-library/jest-dom/vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
+import { OverlayDemo, getAssistantPetState } from "./overlay-demo";
+import type { AgentMessage } from "@viben/chat";
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (_key: string, fallback?: string) => fallback ?? _key,
+  }),
+}));
+
+vi.mock("streamdown", () => ({
+  Streamdown: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+const messages: AgentMessage[] = [
+  { id: "u1", type: "user", content: "Build the overlay" },
+  { id: "a1", type: "text", content: "I am preparing the popup." },
+];
+
+describe("OverlayDemo", () => {
+  test("floating mode renders only the assistant avatar button", () => {
+    render(
+      <OverlayDemo
+        mode="floating"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Open compact chat" })).toBeInTheDocument();
+    expect(screen.queryByTestId("agent-popup")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("compact-chat-input")).not.toBeInTheDocument();
+  });
+
+  test("compact mode renders agent popup above the one-line chat input", () => {
+    render(
+      <OverlayDemo
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const surface = screen.getByTestId("compact-overlay");
+    expect(surface.children[0]).toHaveAttribute("data-testid", "agent-popup");
+    expect(surface.children[1]).toHaveAttribute("data-testid", "compact-chat-input");
+    expect(screen.queryByText("Agent")).not.toBeInTheDocument();
+    expect(screen.queryByText("Model")).not.toBeInTheDocument();
+    expect(screen.queryByText("Skills")).not.toBeInTheDocument();
+  });
+
+  test("full mode renders the provided full-screen demo", () => {
+    render(
+      <OverlayDemo
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        renderFullScreen={() => <div data-testid="full-screen-demo">Full screen</div>}
+      />
+    );
+
+    expect(screen.getByTestId("full-screen-demo")).toBeInTheDocument();
+  });
+
+  test("allows custom pet avatars per assistant state", () => {
+    render(
+      <OverlayDemo
+        mode="floating"
+        messages={messages}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        assistantAvatars={{
+          thinking: <span data-testid="custom-thinking-pet">Thinking pet</span>,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("custom-thinking-pet")).toBeInTheDocument();
+  });
+
+  test("floating avatar expands to compact mode when clicked", () => {
+    const onModeChange = vi.fn();
+    render(
+      <OverlayDemo
+        mode="floating"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open compact chat" }));
+
+    expect(onModeChange).toHaveBeenCalledWith("compact");
+  });
+});
+
+describe("getAssistantPetState", () => {
+  test("maps playback and messages to idle, thinking, speaking, and done states", () => {
+    expect(getAssistantPetState([], false, "idle")).toBe("idle");
+    expect(getAssistantPetState(messages, true, "playing")).toBe("thinking");
+    expect(getAssistantPetState(messages, false, "paused")).toBe("speaking");
+    expect(getAssistantPetState(messages, false, "idle")).toBe("done");
+  });
+});
