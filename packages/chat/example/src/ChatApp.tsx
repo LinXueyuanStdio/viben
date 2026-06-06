@@ -135,6 +135,9 @@ const OVERLAY_RADIUS = {
   full: 0,
 } as const;
 
+const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
+const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
+
 export function getAssistantPetState(
   messages: AgentMessage[],
   isStreaming: boolean,
@@ -250,8 +253,8 @@ export function ChatApp({
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
-        className={`overlay-shared-surface overflow-hidden bg-background ${
-          contained ? "absolute inset-0 z-30 h-full min-h-0 w-full" : "fixed inset-0 z-50"
+        className={`overlay-shared-surface flex min-h-0 flex-col overflow-hidden bg-background shadow-none ${
+          contained ? "absolute inset-0 z-30 h-full w-full" : "fixed inset-0 z-50 h-full w-full"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.full }}
         data-testid="full-overlay"
@@ -292,7 +295,7 @@ export function ChatApp({
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
-        className={`overlay-shared-surface flex w-[min(440px,calc(100vw-2rem))] flex-col gap-2 rounded-3xl ${
+        className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
           contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.compact }}
@@ -324,12 +327,9 @@ export function ChatApp({
     <motion.div
       layoutId="viben-overlay-surface"
       transition={OVERLAY_TRANSITION}
-      initial={{ opacity: 0.94, scale: 0.985 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={`overlay-shared-surface flex min-h-0 flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
-        contained
-          ? "absolute bottom-5 left-5 z-20 h-[min(760px,calc(100%-2rem))] w-[min(440px,calc(100vw-2rem))]"
-          : "h-full w-full"
+      initial={false}
+      className={`overlay-shared-surface flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+        contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
       data-testid="expanded-overlay"
@@ -502,7 +502,7 @@ function AgentPopup({
               </button>
               <button
                 type="button"
-                aria-label="Open full screen chat"
+                aria-label="Open fullscreen chat"
                 onClick={(event) => {
                   event.stopPropagation();
                   onFullScreen();
@@ -716,7 +716,7 @@ function ExpandedHeader({
 
       <button
         type="button"
-        aria-label="Switch to full mode"
+        aria-label="Switch to fullscreen mode"
         onClick={() => onModeChange("full")}
         data-testid="full-mode-button"
         className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"

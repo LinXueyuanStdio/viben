@@ -103,6 +103,7 @@ describe("ChatApp", () => {
   test("full mode fills the overlay container with the expanded chat surface", () => {
     render(
       <ChatApp
+        contained
         mode="full"
         messages={messages}
         isStreaming={false}
@@ -115,7 +116,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to full mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to fullscreen mode" })).toBeInTheDocument();
     expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
@@ -193,14 +194,14 @@ describe("ChatApp", () => {
     expect(screen.getByRole("button", { name: "Open new session menu" })).toBeInTheDocument();
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to full mode" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Switch to fullscreen mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
     expect(screen.getByText("I am preparing the popup.")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
 
-  test("expanded mode keeps the same floating width as compact mode", () => {
+  test("expanded mode keeps the same floating width as compact mode and uses viewport height when contained", () => {
     render(
       <ChatApp
         contained
@@ -213,9 +214,39 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("expanded-overlay")).toHaveClass("w-[min(440px,calc(100vw-2rem))]");
-    expect(screen.getByTestId("expanded-overlay")).toHaveClass("bottom-5");
-    expect(screen.getByTestId("expanded-overlay")).toHaveClass("left-5");
+    const overlay = screen.getByTestId("expanded-overlay");
+    expect(overlay).toHaveClass("w-[min(440px,calc(100dvw_-_2rem))]");
+    expect(overlay).toHaveClass("h-[75dvh]");
+    expect(overlay).toHaveClass("absolute");
+    expect(overlay).toHaveClass("bottom-5");
+    expect(overlay).toHaveClass("left-5");
+    expect(overlay).toHaveClass("z-20");
+    expect(overlay).toHaveClass("overlay-shared-surface");
+    expect(overlay).not.toHaveClass("h-full");
+    expect(overlay).not.toHaveClass("w-full");
+  });
+
+  test("expanded mode is a viewport anchored floating panel when not contained", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const overlay = screen.getByTestId("expanded-overlay");
+    expect(overlay).toHaveClass("fixed");
+    expect(overlay).toHaveClass("bottom-5");
+    expect(overlay).toHaveClass("left-5");
+    expect(overlay).toHaveClass("z-50");
+    expect(overlay).toHaveClass("w-[min(440px,calc(100dvw_-_2rem))]");
+    expect(overlay).toHaveClass("h-[75dvh]");
+    expect(overlay).not.toHaveClass("h-full");
+    expect(overlay).not.toHaveClass("w-full");
   });
 
   test("expanded header compact and full buttons switch overlay modes", () => {
@@ -232,10 +263,30 @@ describe("ChatApp", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Switch to compact mode" }));
-    fireEvent.click(screen.getByRole("button", { name: "Switch to full mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to fullscreen mode" }));
 
     expect(onModeChange).toHaveBeenCalledWith("compact");
     expect(onModeChange).toHaveBeenCalledWith("full");
+  });
+
+  test("compact fullscreen button opens fullscreen without bubbling to expanded", () => {
+    const onModeChange = vi.fn();
+    render(
+      <ChatApp
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open fullscreen chat" }));
+
+    expect(onModeChange).toHaveBeenCalledTimes(1);
+    expect(onModeChange).toHaveBeenCalledWith("full");
+    expect(onModeChange).not.toHaveBeenCalledWith("expanded");
   });
 
   test("expanded session title menu shows search and session samples", () => {
@@ -448,6 +499,7 @@ describe("ChatApp", () => {
   test("full mode can render a reusable fullscreen panel under the shared expanded header", () => {
     render(
       <ChatApp
+        contained
         mode="full"
         messages={messages}
         isStreaming={false}
@@ -459,7 +511,36 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByTestId("full-overlay")).toHaveClass("overlay-shared-surface");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("flex");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("min-h-0");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("flex-col");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("absolute");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("inset-0");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("shadow-none");
     expect(screen.getByTestId("custom-fullscreen-panel")).toBeInTheDocument();
+  });
+
+  test("fullscreen mode reuses the expanded header controls", () => {
+    render(
+      <ChatApp
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-header")).toBeInTheDocument();
+    expect(screen.getByTestId("session-title-menu")).toBeInTheDocument();
+    expect(screen.getByTestId("new-session-split-button")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
+    expect(screen.getByTestId("compact-mode-button")).toBeInTheDocument();
+    expect(screen.getByTestId("full-mode-button")).toBeInTheDocument();
+    expect(screen.getByTestId("settings-button")).toBeInTheDocument();
+    expect(screen.getByTestId("more-actions-menu")).toBeInTheDocument();
   });
 });
 
