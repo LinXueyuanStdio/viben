@@ -106,6 +106,10 @@ export interface ChatInputProps {
   configBarLeftExtra?: ReactNode;
   /** Render an emoji picker UI when the toolbar emoji button is opened. */
   renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => ReactNode;
+  /** Replace the default top toolbar content. */
+  renderTopToolbar?: (props: ChatInputToolbarRenderProps) => ReactNode;
+  /** Replace or extend the default bottom toolbar content. */
+  renderBottomToolbar?: (props: ChatInputBottomToolbarRenderProps) => ReactNode;
   /** Callback when cancel/stop button is clicked */
   onCancel?: () => void;
   /** Whether the chat is in loading/streaming state */
@@ -128,15 +132,15 @@ export interface ChatInputProps {
   autoFocus?: boolean;
 
   // === Layout Control ===
-  /** Show top toolbar (emoji, file, screenshot, expand) */
+  /** Show top toolbar (emoji, file/screenshot, expand) */
   showTopToolbar?: boolean;
-  /**
-   * Render the emoji/file/screenshot toolbar below the editor instead of above it.
-   * Useful for compact surfaces that need a two-row layout: editor, then actions.
-   */
-  toolbarPosition?: "top" | "bottom";
-  /** Show bottom config bar (agent, model, tools, skills, context) */
+  /** Show bottom toolbar/config bar (agent, model, tools, skills, context, send) */
   showConfigBar?: boolean;
+  /**
+   * Input layout. "expanded" renders top toolbar, editor, bottom toolbar.
+   * "compact" renders the editor inline inside the bottom toolbar.
+   */
+  layoutVariant?: "expanded" | "compact";
   /** Show resize handle for adjustable height */
   showResizeHandle?: boolean;
   /** Initial height in pixels when resize handle is enabled */
@@ -231,6 +235,25 @@ export interface ChatInputProps {
   onSlashCommand?: SlashCommandHandler;
   /** Custom slash command menu renderer. If omitted, ChatInput renders the default menu. */
   renderSlashCommandMenu?: (props: SlashCommandMenuProps) => ReactNode;
+}
+
+export interface ChatInputToolbarRenderProps {
+  onEmojiSelect: (emoji: string) => void;
+  onFileClick: () => void;
+  onScreenshot?: (hideWindow?: boolean) => void;
+  onExpandClick?: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  isScreenshotCapturing?: boolean;
+}
+
+export interface ChatInputBottomToolbarRenderProps {
+  leftContent: ReactNode;
+  editor?: ReactNode;
+  submitControl: ReactNode;
+  isLoading?: boolean;
+  disabled?: boolean;
+  canSubmit: boolean;
 }
 
 // ============================================================================

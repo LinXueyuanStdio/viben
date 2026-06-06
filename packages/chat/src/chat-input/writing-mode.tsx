@@ -36,7 +36,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@viben/ui";
-import { EmojiPicker } from "../emoji-picker";
 import { AttachmentPreview } from "./attachment-preview";
 import type { MessageAttachment } from "../types";
 import type { AgentOption, ModelOption } from "./types";
@@ -68,6 +67,8 @@ export interface WritingModeProps {
   placeholder?: string;
   /** Emoji select handler */
   onEmojiSelect: (emoji: string) => void;
+  /** Render the picker shown inside the emoji popover. Writing mode does not own a picker implementation. */
+  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => React.ReactNode;
   /** File click handler */
   onFileClick: () => void;
   /** Screenshot handler */
@@ -120,6 +121,7 @@ export function WritingMode({
   canSubmit,
   placeholder,
   onEmojiSelect,
+  renderEmojiPicker,
   onFileClick,
   onScreenshot,
   isScreenshotCapturing,
@@ -190,9 +192,11 @@ export function WritingMode({
                   <TooltipContent>{t("chat.emoji", "Emoji")}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <PopoverContent className="w-auto p-2" align="start">
-                <EmojiPicker onSelect={handleEmojiSelect} />
-              </PopoverContent>
+              {renderEmojiPicker && (
+                <PopoverContent className="w-auto p-2" align="start">
+                  {renderEmojiPicker({ onSelect: handleEmojiSelect })}
+                </PopoverContent>
+              )}
             </Popover>
 
             {/* File */}
