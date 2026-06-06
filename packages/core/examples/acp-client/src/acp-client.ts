@@ -417,6 +417,10 @@ export class AcpWebSocketClient {
     this.notify("session/cancel", { sessionId });
   }
 
+  interrupt(sessionId: string): void {
+    this.notify("session/interrupt", { sessionId });
+  }
+
   private request(method: string, params?: unknown): Promise<unknown> {
     this.assertOpen();
     const id = this.nextId++;

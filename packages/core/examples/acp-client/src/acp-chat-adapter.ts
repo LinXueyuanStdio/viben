@@ -17,6 +17,8 @@ export type AcpUiStep =
   | { kind: "message"; message: AgentMessage; merge?: "text_chunk" | "thinking_chunk" | "tool_use" | "tool_result" }
   | { kind: "approval"; approval: PendingExecApproval }
   | { kind: "question"; question: PendingQuestion }
+  | { kind: "plan"; plan: TaskPlan }
+  | { kind: "summary"; summary: Record<string, unknown> }
   | { kind: "slash_commands"; commands: SlashCommand[] };
 
 type MessageStepMerge = Extract<AcpUiStep, { kind: "message" }>["merge"];
@@ -27,6 +29,12 @@ export interface ElicitationFormField {
 }
 
 export function applyAcpUiStep(current: AgentMessage[], step: AcpUiStep): AgentMessage[] {
+  if (step.kind === "plan") {
+    return [...current, { id: step.plan.id ?? createStepId("plan"), type: "plan", plan: step.plan, timestamp: Date.now() }];
+  }
+  if (step.kind === "summary") {
+    return [...current, { id: createStepId("summary"), type: "summary", summary: step.summary, timestamp: Date.now() }];
+  }
   if (step.kind !== "message") return current;
   switch (step.merge) {
     case "text_chunk":
@@ -89,7 +97,8 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         type: "tool_use",
         name: normalizeToolName(update.title),
         toolUseId: update.toolCallId,
-        input: normalizeToolInput(update.rawInput),
+        input: normalizeToolInput(update.rawInput, normalizeToolName(update.title)),
+        subagentId: readString(update.subagentId) ?? readMetaString(update._meta, "subagentId"),
         timestamp: Date.now(),
       });
     case "tool_call_update":
@@ -103,14 +112,14 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
       });
     case "plan": {
       const plan = updateToPlan(update);
-      return plan ? [{ kind: "message", message: { id: plan.id ?? createStepId("plan"), type: "plan", plan, timestamp: Date.now() } }] : [];
+      return plan ? [{ kind: "plan", plan }] : [];
     }
     case "session_info_update": {
       const sdkSessionId = readString(update.sessionId) ?? readMetaString(update._meta, "sessionId");
       return sdkSessionId ? systemTextToUiSteps(`Backend session: ${sdkSessionId}`) : [];
     }
     case "usage_update":
-      return systemTextToUiSteps(`Usage update: ${safeJson(update)}`);
+      return [{ kind: "summary", summary: update }];
     case "available_commands_update":
       return [{ kind: "slash_commands", commands: availableCommandsToSlashCommands(update.availableCommands) }];
     case "error":
@@ -135,7 +144,7 @@ export function clientToolRequestedToUiSteps(request: ClientToolExecutionRequest
     type: "tool_use",
     name: request.toolName,
     toolUseId: request.toolUseId,
-    input: normalizeToolInput(request.input),
+    input: normalizeToolInput(request.input, request.toolName),
     timestamp: Date.now(),
   });
 }
@@ -194,6 +203,12 @@ export function elicitationRequestToUiSteps(request: ElicitationRequest): AcpUiS
 
 export function elicitationResultToUiSteps(request: ElicitationRequestLog): AcpUiStep[] {
   return systemTextToUiSteps(`Elicitation response: ${safeJson(request.action)}`);
+}
+
+export function acpSessionUpdateToStreamingText(notification: AcpSessionUpdate): string | null {
+  if (notification.update.sessionUpdate !== "agent_message_chunk") return null;
+  const text = contentBlockToText(notification.update.content);
+  return text ? text : null;
 }
 
 export function elicitationRequestToPendingQuestion(request: ElicitationRequest): PendingQuestion {
@@ -300,7 +315,22 @@ function updateToPlan(update: Record<string, unknown>): TaskPlan | null {
     return [{ id: readString(entry.id) ?? `step-${index + 1}`, description, status: normalizePlanStepStatus(readString(entry.status)) }];
   });
   const goal = readString(update.goal) ?? readString(update.title) ?? "ACP plan";
-  return { id: readString(update.planId) ?? readString(update.id), goal, steps, notes: readString(update.notes) };
+  return {
+    id: readString(update.planId) ?? readString(update.id),
+    goal,
+    steps,
+    notes: readString(update.notes),
+    approvalStatus: inferPlanApprovalStatus(update, steps),
+  };
+}
+
+function inferPlanApprovalStatus(update: Record<string, unknown>, steps: TaskPlanStep[]): TaskPlan["approvalStatus"] {
+  const status = readString(update.approvalStatus) ?? readString(update.status);
+  if (status === "approved" || status === "rejected" || status === "pending") return status;
+  const isExecuting = steps.some((step) => step.status === "in_progress" || step.status === "completed");
+  const isCancelled = steps.some((step) => step.status === "cancelled");
+  if (isCancelled) return "rejected";
+  return isExecuting ? "approved" : "pending";
 }
 
 function normalizePlanStepStatus(status: string | undefined): TaskPlanStep["status"] {
@@ -319,8 +349,16 @@ function normalizeToolName(title: unknown): string {
   return typeof title === "string" && title.trim() ? title : "ACP tool";
 }
 
-function normalizeToolInput(input: unknown): Record<string, unknown> {
-  return isRecord(input) ? input : { value: input ?? null };
+function normalizeToolInput(input: unknown, toolName?: string): Record<string, unknown> {
+  const normalized: Record<string, unknown> = isRecord(input) ? { ...input } : { value: input ?? null };
+  if (toolName !== "Task" && toolName !== "Agent") return normalized;
+
+  return {
+    ...normalized,
+    description: readString(normalized.description) ?? readString(normalized.title) ?? readString(normalized.task) ?? toolName,
+    subagent_type: readString(normalized.subagent_type) ?? readString(normalized.agentType) ?? readString(normalized.type),
+    prompt: readString(normalized.prompt) ?? readString(normalized.instructions) ?? readString(normalized.message),
+  };
 }
 
 function permissionKindFromOptions(options: PermissionOption[]): PendingExecApproval["tool_call"]["kind"] {
@@ -359,6 +397,13 @@ function toolUpdateOutput(update: Record<string, unknown>): string {
   if (typeof update.rawOutput === "string") return update.rawOutput;
   if (update.rawOutput !== undefined) return safeJson(update.rawOutput);
   if (Array.isArray(update.content)) return safeJson(update.content);
+  if (isRecord(update.artifact) || Array.isArray(update.artifacts) || Array.isArray(update.files)) {
+    return safeJson({
+      artifact: update.artifact,
+      artifacts: update.artifacts,
+      files: update.files,
+    });
+  }
   if (typeof update.status === "string") return update.status;
   return safeJson(update);
 }
