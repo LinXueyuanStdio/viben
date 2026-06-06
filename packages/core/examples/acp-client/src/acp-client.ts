@@ -100,7 +100,7 @@ export interface AcpClientCallbacks {
   onClientToolCall: (call: ClientToolCall) => void;
   onPermissionRequest: (request: PermissionRequestLog) => void;
   onElicitationRequest: (request: ElicitationRequestLog) => void;
-  onSteerPromptConsumed: (result: ConsumedSteerPromptResult & { sessionId: string }) => void;
+  onSteerPromptConsumed: (result: ConsumedSteerPromptResult) => void;
   executeClientTool?: (request: ClientToolExecutionRequest) => Promise<CallToolResult> | CallToolResult;
   requestClientToolResult?: (request: ClientToolExecutionRequest, draft: CallToolResult) => Promise<CallToolResult>;
   requestPermissionDecision?: (request: PermissionDecisionRequest) => Promise<PermissionDecisionResult>;
@@ -235,9 +235,16 @@ export interface CancelSteerPromptResult {
 }
 
 export interface ConsumedSteerPromptResult {
+  sessionId: string;
   promptId: string;
   status: string;
   consumedAt?: string;
+}
+
+export interface InterruptSessionResult {
+  interrupted: boolean;
+  resumed: boolean;
+  promptIds: string[];
 }
 
 export interface SteerPromptView {
@@ -421,8 +428,8 @@ export class AcpWebSocketClient {
     this.notify("session/cancel", { sessionId });
   }
 
-  interrupt(sessionId: string): void {
-    this.notify("session/interrupt", { sessionId });
+  async interrupt(sessionId: string): Promise<InterruptSessionResult> {
+    return await this.request("session/interrupt", { sessionId }) as InterruptSessionResult;
   }
 
   private request(method: string, params?: unknown): Promise<unknown> {
@@ -810,7 +817,7 @@ function summarizeFrame(frame: JsonRpcFrame): string {
   return "response";
 }
 
-function steerConsumedFromSessionUpdate(notification: AcpSessionUpdate): (ConsumedSteerPromptResult & { sessionId: string }) | null {
+function steerConsumedFromSessionUpdate(notification: AcpSessionUpdate): ConsumedSteerPromptResult | null {
   const update = notification.update;
   if (update.sessionUpdate !== "steer_consumed") return null;
   const promptId = typeof update.promptId === "string" ? update.promptId : undefined;
@@ -824,7 +831,7 @@ function steerConsumedFromSessionUpdate(notification: AcpSessionUpdate): (Consum
   };
 }
 
-function steerConsumedFromParams(params: unknown): (ConsumedSteerPromptResult & { sessionId: string }) | null {
+function steerConsumedFromParams(params: unknown): ConsumedSteerPromptResult | null {
   if (typeof params !== "object" || params === null) return null;
   const value = params as Record<string, unknown>;
   const sessionId = typeof value.sessionId === "string"

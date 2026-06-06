@@ -678,20 +678,42 @@ export function App() {
   const interrupt = useCallback(async () => {
     if (!sessionId) return;
     const pendingSteerText = prompt.trim();
-    if (isTurnActive && pendingSteerText) {
-      const promptId = await sendSteerPromptText(pendingSteerText);
+    setError(null);
+    if (toolDialog) {
+      toolDialog.resolve(textErrorResult("Interrupted by ACP client user."));
+      setToolDialog(null);
+    }
+    if (permissionDialog) {
+      permissionDialog.resolve({ outcome: "cancelled" });
+      setPermissionDialog(null);
+    }
+    if (elicitationDialog) {
+      elicitationDialog.resolve({ action: { action: "cancel" } });
+      setElicitationDialog(null);
+    }
+    updateSession(setSessionsById, sessionId, (session) => ({
+      ...session,
+      pendingApproval: null,
+      pendingQuestion: null,
+      pendingPlan: null,
+      lastActiveAt: new Date().toISOString(),
+    }));
+
+    try {
+      let promptId: string | null = null;
+      if (isTurnActive && pendingSteerText) {
+        promptId = await sendSteerPromptText(pendingSteerText);
+      }
       if (promptId) {
         upsertSteerQueueItem(sessionId, { id: promptId, content: pendingSteerText, createdAt: Date.now() });
         setPrompt("");
       }
+      const result = await clientRef.current?.interrupt(sessionId);
+      setSteerResult(result ?? null);
+    } catch (interruptError) {
+      setError(interruptError instanceof Error ? interruptError.message : String(interruptError));
     }
-    clientRef.current?.interrupt(sessionId);
-    updateSession(setSessionsById, sessionId, (session) => ({
-      ...session,
-      promptInFlight: false,
-      lastActiveAt: new Date().toISOString(),
-    }));
-  }, [isTurnActive, prompt, sendSteerPromptText, sessionId, upsertSteerQueueItem]);
+  }, [elicitationDialog, isTurnActive, permissionDialog, prompt, sendSteerPromptText, sessionId, toolDialog, upsertSteerQueueItem]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
