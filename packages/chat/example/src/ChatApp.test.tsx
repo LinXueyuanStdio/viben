@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { OverlayDemo, getAssistantPetState, getPetInteractionForSessionStatus } from "./overlay-demo";
+import { ChatApp, ChatAppFullscreenPanel, getAssistantPetState, getPetInteractionForSessionStatus } from "./ChatApp";
 import type { AgentMessage } from "@viben/chat";
 
 vi.mock("@viben/chat", async () => {
@@ -24,6 +24,20 @@ vi.mock("@viben/chat", async () => {
       React.createElement("span", { "data-testid": "max-height" }, String(props.maxHeight)),
       React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
     ),
+    CommandQueuePanel: (props: Record<string, unknown>) => React.createElement(
+      "div",
+      { "data-testid": "command-queue-panel" },
+      String((props.items as unknown[] | undefined)?.length ?? 0)
+    ),
+    ExecApproval: () => React.createElement("div", { "data-testid": "exec-approval" }, "ExecApproval"),
+    EmojiPicker: () => React.createElement("div", { "data-testid": "emoji-picker" }, "EmojiPicker"),
+    MessageList: React.forwardRef((props: Record<string, unknown>, _ref) => React.createElement(
+      "div",
+      { "data-testid": "message-list" },
+      String((props.messages as unknown[] | undefined)?.length ?? 0)
+    )),
+    PlanApproval: () => React.createElement("div", { "data-testid": "plan-approval" }, "PlanApproval"),
+    QuestionInput: () => React.createElement("div", { "data-testid": "question-input" }, "QuestionInput"),
   };
 });
 
@@ -42,10 +56,10 @@ const messages: AgentMessage[] = [
   { id: "a1", type: "text", content: "I am preparing the popup." },
 ];
 
-describe("OverlayDemo", () => {
+describe("ChatApp", () => {
   test("floating mode renders only the assistant avatar button", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         contained
         mode="floating"
         messages={messages}
@@ -65,7 +79,7 @@ describe("OverlayDemo", () => {
 
   test("compact mode renders agent popup above the one-line chat input", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         contained
         mode="compact"
         messages={messages}
@@ -88,7 +102,7 @@ describe("OverlayDemo", () => {
 
   test("full mode fills the overlay container with the expanded chat surface", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         mode="full"
         messages={messages}
         isStreaming={false}
@@ -108,7 +122,7 @@ describe("OverlayDemo", () => {
 
   test("allows custom pet avatars per assistant state", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         mode="floating"
         messages={messages}
         isStreaming
@@ -127,7 +141,7 @@ describe("OverlayDemo", () => {
   test("floating avatar expands to compact mode when clicked", () => {
     const onModeChange = vi.fn();
     render(
-      <OverlayDemo
+      <ChatApp
         mode="floating"
         messages={messages}
         isStreaming={false}
@@ -145,7 +159,7 @@ describe("OverlayDemo", () => {
   test("compact capsule expands to expanded mode when clicked", () => {
     const onModeChange = vi.fn();
     render(
-      <OverlayDemo
+      <ChatApp
         mode="compact"
         messages={messages}
         isStreaming={false}
@@ -162,7 +176,7 @@ describe("OverlayDemo", () => {
 
   test("expanded mode renders header, message list, and chat input", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -187,7 +201,7 @@ describe("OverlayDemo", () => {
 
   test("expanded mode keeps the same floating width as compact mode", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         contained
         mode="expanded"
         messages={messages}
@@ -206,7 +220,7 @@ describe("OverlayDemo", () => {
   test("expanded header compact and full buttons switch overlay modes", () => {
     const onModeChange = vi.fn();
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -225,7 +239,7 @@ describe("OverlayDemo", () => {
 
   test("expanded session title menu shows search and session samples", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -249,7 +263,7 @@ describe("OverlayDemo", () => {
   test("expanded session menu calls selection callback and closes", () => {
     const onSelectSession = vi.fn();
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -270,7 +284,7 @@ describe("OverlayDemo", () => {
 
   test("expanded new-session menu shows creation actions and agent samples", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -290,7 +304,7 @@ describe("OverlayDemo", () => {
 
   test("expanded more menu shows sample navigation and debug actions", () => {
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -313,7 +327,7 @@ describe("OverlayDemo", () => {
     const onCreateSession = vi.fn();
     const onSettingsClick = vi.fn();
     render(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -341,7 +355,7 @@ describe("OverlayDemo", () => {
     };
 
     const { rerender } = render(
-      <OverlayDemo
+      <ChatApp
         mode="compact"
         messages={messages}
         isStreaming={false}
@@ -365,7 +379,7 @@ describe("OverlayDemo", () => {
     expect(screen.getByTestId("max-height")).toHaveTextContent("48");
 
     rerender(
-      <OverlayDemo
+      <ChatApp
         mode="expanded"
         messages={messages}
         isStreaming={false}
@@ -382,6 +396,45 @@ describe("OverlayDemo", () => {
     expect(screen.getByTestId("default-height")).toHaveTextContent("undefined");
     expect(screen.getByTestId("min-height")).toHaveTextContent("undefined");
     expect(screen.getByTestId("max-height")).toHaveTextContent("undefined");
+  });
+
+  test("full mode can render a reusable fullscreen panel under the shared expanded header", () => {
+    render(
+      <ChatApp
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        fullscreenContent={<div data-testid="custom-fullscreen-panel">Fullscreen body</div>}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByTestId("custom-fullscreen-panel")).toBeInTheDocument();
+  });
+});
+
+describe("ChatAppFullscreenPanel", () => {
+  test("renders the reusable message list and full chat input composition", () => {
+    render(
+      <ChatAppFullscreenPanel
+        messages={messages}
+        isStreaming={false}
+        inputProps={{
+          value: "hello",
+          onValueChange: () => {},
+          onSend: () => {},
+          onCancel: () => {},
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("message-list")).toHaveTextContent("2");
+    expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
+    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
   });
 });
 

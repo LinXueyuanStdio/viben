@@ -1,10 +1,20 @@
 import * as React from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, PanelRightClose, Plus, Search, Settings } from "lucide-react";
-import { ChatInput, EmojiPicker } from "@viben/chat";
-import type { AgentMessage, ChatInputProps, MessageAttachment } from "@viben/chat";
+import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput } from "@viben/chat";
+import type {
+  AgentMessage,
+  ChatInputProps,
+  CommandQueueItem,
+  ExpandSubagentHandler,
+  MessageAttachment,
+  PendingExecApproval,
+  PendingQuestion,
+  TaskPlan,
+} from "@viben/chat";
 
 export type OverlayMode = "floating" | "compact" | "expanded" | "full";
+export type ChatAppMode = OverlayMode;
 export type AssistantPetState = "idle" | "waiting" | "review" | "waving" | "failed";
 export type SessionPlayerStatus = "idle" | "playing" | "paused";
 export type PetInteractionState = "idle" | "hover" | "drag-right" | "drag-left" | "drag-up" | "drag-down" | "waiting";
@@ -38,7 +48,7 @@ export interface OverlayHeaderActions {
   onSelectAgent?: (agent: OverlayAgentItem) => void;
 }
 
-export interface OverlayDemoProps {
+export interface ChatAppProps {
   mode: OverlayMode;
   messages: AgentMessage[];
   isStreaming: boolean;
@@ -53,9 +63,40 @@ export interface OverlayDemoProps {
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
+  fullscreenContent?: React.ReactNode;
   onModeChange: (mode: OverlayMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
+}
+
+export type OverlayDemoProps = ChatAppProps;
+export type ChatAppSessionItem = OverlaySessionItem;
+export type ChatAppAgentItem = OverlayAgentItem;
+export type ChatAppHeaderActions = OverlayHeaderActions;
+
+export interface ChatAppFullscreenPanelProps {
+  messages: AgentMessage[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
+  isStreaming?: boolean;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
+  commandQueueItems?: CommandQueueItem[];
+  commandQueuePaused?: boolean;
+  inputProps: ChatInputProps;
+  messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
+  welcomeTitle?: string;
+  welcomeDescription?: string;
+  maxMessageWidth?: string;
+  onExpandSubagent?: ExpandSubagentHandler;
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
+  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
+  onCommandQueueRemove?: (id: string) => void;
+  onCommandQueueClear?: () => void;
+  onCommandQueuePause?: () => void;
+  onCommandQueueResume?: () => void;
 }
 
 const DEFAULT_SESSIONS: OverlaySessionItem[] = [
@@ -118,7 +159,7 @@ export function getPetInteractionForSessionStatus(
   return "idle";
 }
 
-export function OverlayDemo({
+export function ChatApp({
   mode,
   messages,
   isStreaming,
@@ -133,10 +174,11 @@ export function OverlayDemo({
   inputValue,
   onInputValueChange,
   inputProps,
+  fullscreenContent,
   onModeChange,
   onSend,
   onCancel,
-}: OverlayDemoProps) {
+}: ChatAppProps) {
   const petState = getAssistantPetState(messages, isStreaming, playerStatus);
   const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
   const assistantAvatar = assistantAvatars?.[petState] ?? <VibenPetAvatar state={petState} interaction={petInteraction} />;
@@ -164,18 +206,8 @@ export function OverlayDemo({
     setContent("");
   }, [content, onSend, setContent]);
 
-  const expandedContent = (
+  const defaultExpandedBody = (
     <>
-      <ExpandedHeader
-        title={title}
-        sessions={sessions}
-        agents={agents}
-        assistantAvatar={assistantAvatar}
-        headerActions={headerActions}
-        onCreateSession={headerActions?.onCreateSession}
-        onSettingsClick={headerActions?.onSettingsClick}
-        onModeChange={onModeChange}
-      />
       <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
         <ExpandedMessageList
           messages={messages}
@@ -194,6 +226,22 @@ export function OverlayDemo({
           inputProps={inputProps}
         />
       </div>
+    </>
+  );
+
+  const expandedContent = (
+    <>
+      <ExpandedHeader
+        title={title}
+        sessions={sessions}
+        agents={agents}
+        assistantAvatar={assistantAvatar}
+        headerActions={headerActions}
+        onCreateSession={headerActions?.onCreateSession}
+        onSettingsClick={headerActions?.onSettingsClick}
+        onModeChange={onModeChange}
+      />
+      {mode === "full" && fullscreenContent ? fullscreenContent : defaultExpandedBody}
     </>
   );
 
@@ -289,6 +337,121 @@ export function OverlayDemo({
     >
       {expandedContent}
     </motion.div>
+  );
+}
+
+export const OverlayDemo = ChatApp;
+
+export function ChatAppFullscreenPanel({
+  messages,
+  messageUpdates,
+  isStreaming = false,
+  pendingPlan,
+  pendingApproval,
+  pendingQuestion,
+  commandQueueItems = [],
+  commandQueuePaused = false,
+  inputProps,
+  messageListRef,
+  welcomeTitle = "@viben/chat Session Player",
+  welcomeDescription = "Press Play to replay the demo session, or load a .jsonl file.",
+  maxMessageWidth = "760px",
+  onExpandSubagent,
+  onApprovePlan,
+  onRejectPlan,
+  onApprovalDecision,
+  onAnswerQuestions,
+  onCommandQueueRemove,
+  onCommandQueueClear,
+  onCommandQueuePause,
+  onCommandQueueResume,
+}: ChatAppFullscreenPanelProps) {
+  const noop = React.useCallback(() => {}, []);
+  const noopRemove = React.useCallback((_id: string) => {}, []);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <MessageList
+          ref={messageListRef}
+          messages={messages}
+          messageUpdates={messageUpdates}
+          isStreaming={isStreaming}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestions={pendingQuestion}
+          welcomeTitle={welcomeTitle}
+          welcomeDescription={welcomeDescription}
+          maxMessageWidth={maxMessageWidth}
+          onExpandSubagent={onExpandSubagent}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onAnswerQuestions}
+        />
+        {commandQueueItems.length > 0 && (
+          <div className="mx-auto w-full max-w-[760px] px-4 pb-2">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <div className="size-1.5 animate-pulse rounded-full bg-amber-500" />
+              <span>Will send when agent finishes...</span>
+            </div>
+            <CommandQueuePanel
+              items={commandQueueItems}
+              isPaused={commandQueuePaused}
+              onRemove={onCommandQueueRemove ?? noopRemove}
+              onClear={onCommandQueueClear ?? noop}
+              onPause={onCommandQueuePause ?? noop}
+              onResume={onCommandQueueResume ?? noop}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-border px-4 py-2">
+        <div className="mx-auto max-w-[760px]">
+          <AnimatePresence mode="wait">
+            {pendingPlan ? (
+              <PlanApproval
+                key="plan"
+                plan={pendingPlan}
+                isPending
+                onApprove={onApprovePlan}
+                onReject={onRejectPlan}
+              />
+            ) : pendingApproval ? (
+              <ExecApproval
+                key="approval"
+                approval={pendingApproval}
+                onDecision={(decision, feedback) => onApprovalDecision?.(decision, feedback)}
+                enableKeyboard
+              />
+            ) : pendingQuestion ? (
+              <QuestionInput
+                key="question"
+                questions={pendingQuestion}
+                onSubmit={(answers) => onAnswerQuestions?.(answers)}
+              />
+            ) : (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+              >
+                <ChatInput
+                  {...inputProps}
+                  layoutVariant={inputProps.layoutVariant ?? "expanded"}
+                  showTopToolbar={inputProps.showTopToolbar ?? true}
+                  showConfigBar={inputProps.showConfigBar ?? true}
+                  renderEmojiPicker={inputProps.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
   );
 }
 
