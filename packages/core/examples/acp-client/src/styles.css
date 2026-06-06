@@ -60,6 +60,45 @@ pre code.json-code {
   white-space: pre;
 }
 
+.json-panel {
+  min-height: 360px;
+  max-height: min(560px, calc(100vh - 260px));
+  overflow: auto;
+  border-radius: 7px;
+  border: 1px solid color-mix(in oklch, var(--color-code-foreground) 12%, transparent);
+  background: var(--color-code-block);
+  padding: 12px;
+  color: var(--color-code-foreground);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.json-modal-section {
+  min-width: 0;
+}
+
+.json-modal-header {
+  margin-bottom: 8px;
+  color: var(--color-muted-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.json-editor {
+  min-height: 360px;
+  max-height: min(560px, calc(100vh - 260px));
+  resize: vertical;
+  background: var(--color-code-block);
+  color: var(--color-code-foreground);
+  font-family:
+    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+}
+
 .json-key {
   color: oklch(0.82 0.11 80);
 }

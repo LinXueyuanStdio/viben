@@ -1803,19 +1803,20 @@ function ToolApprovalModal({
 }) {
   return (
     <ModalFrame title="Client Tool Call" subtitle={`${dialog.request.toolName} / ${dialog.request.toolCallId}`}>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</div>
-          <pre className="json-panel max-h-[440px] overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <div className="json-modal-section">
+          <div className="json-modal-header">Input</div>
+          <pre className="json-panel">
             <JsonCode value={dialog.request.input} />
           </pre>
         </div>
-        <div>
-          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Response JSON</div>
+        <div className="json-modal-section">
+          <div className="json-modal-header">Response JSON</div>
           <textarea
             value={dialog.responseText}
             onChange={(event) => onChangeResponse(event.target.value)}
-            className="textarea min-h-72 font-mono text-xs"
+            spellCheck={false}
+            className="textarea json-editor"
           />
         </div>
       </div>
