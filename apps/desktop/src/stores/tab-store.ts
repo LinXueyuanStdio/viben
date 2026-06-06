@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { buildColdStartBreadcrumb } from "@/navigation/breadcrumb-builder";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
+import type { Mutate, StoreApi } from "zustand";
+import type { UseBoundStore } from "zustand/react";
 
 // ─── TabNavigationState (URL-based) ─────────────────────────────────────────
 
@@ -89,6 +91,12 @@ const MAX_NAVIGATION_HISTORY = 50;
 export const TAB_STORE_STORAGE_KEY = "viben-tab-store-v2";
 const TAB_STORE_VERSION = 2;
 let tabStoreStorageSyncUnsubscribe: (() => void) | null = null;
+const scopedTabStores = new Map<string, TabStore>();
+
+type TabStoreState = TabState & TabActions;
+type TabStore = UseBoundStore<
+  Mutate<StoreApi<TabStoreState>, [["zustand/persist", Partial<TabState>]]>
+>;
 
 function findLastPinnedIndex(tabs: PageTab[]): number {
   for (let index = tabs.length - 1; index >= 0; index -= 1) {
@@ -257,10 +265,9 @@ function findHistoryEntryByUrlInHistory(
 }
 
 
-// ─── Store ───────────────────────────────────────────────────────────────────
-
-export const useTabStore = create<TabState & TabActions>()(
-  persist(
+function createTabStore(storageKey: string): TabStore {
+  return create<TabStoreState>()(
+  persist<TabStoreState, [], [], Partial<TabState>>(
     (set, get) => ({
       tabs: [],
       activeTabId: null,
@@ -668,7 +675,7 @@ export const useTabStore = create<TabState & TabActions>()(
       },
     }),
     {
-      name: TAB_STORE_STORAGE_KEY,
+      name: storageKey,
       version: TAB_STORE_VERSION,
       storage: createJSONStorage(() => ({
         getItem: (name: string) => localStorage.getItem(name),
@@ -697,7 +704,26 @@ export const useTabStore = create<TabState & TabActions>()(
       },
     }
   )
-);
+  );
+}
+
+function normalizeTabStoreScope(scope: string): string {
+  return scope.trim().replace(/[^a-zA-Z0-9._:-]+/g, "-") || "window";
+}
+
+export function getScopedTabStore(scope: string): TabStore {
+  const normalizedScope = normalizeTabStoreScope(scope);
+  const existing = scopedTabStores.get(normalizedScope);
+  if (existing) return existing;
+
+  const store = createTabStore(`${TAB_STORE_STORAGE_KEY}:${normalizedScope}`);
+  scopedTabStores.set(normalizedScope, store);
+  return store;
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
+export const useTabStore = createTabStore(TAB_STORE_STORAGE_KEY);
 
 export const selectActiveTab = (state: TabState) =>
   state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
