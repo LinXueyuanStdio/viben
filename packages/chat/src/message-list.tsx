@@ -115,6 +115,14 @@ export interface MessageListProps {
    * Custom renderer for summary messages. Defaults to a compact generic key/value card.
    */
   renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  /** Custom avatar content for user messages. */
+  userAvatar?: React.ReactNode;
+  /** Custom avatar content for assistant text/result messages. */
+  assistantAvatar?: React.ReactNode;
+  /** Called when a user message avatar is clicked. */
+  onUserAvatarClick?: (message: AgentMessage) => void;
+  /** Called when an assistant text/result message avatar is clicked. */
+  onAssistantAvatarClick?: (message: AgentMessage) => void;
 }
 
 // Types for message grouping
@@ -1006,6 +1014,10 @@ interface MessageRowProps {
   toolExpandedInline?: boolean;
   onExpandSubagent?: ExpandSubagentHandler;
   renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  userAvatar?: React.ReactNode;
+  assistantAvatar?: React.ReactNode;
+  onUserAvatarClick?: (message: AgentMessage) => void;
+  onAssistantAvatarClick?: (message: AgentMessage) => void;
   // Ref callback for scroll-to-message
   registerRef?: (id: string, el: HTMLDivElement | null) => void;
 }
@@ -1025,6 +1037,10 @@ const MessageRow = React.memo(function MessageRow({
   toolExpandedInline,
   onExpandSubagent,
   renderSummary,
+  userAvatar,
+  assistantAvatar,
+  onUserAvatarClick,
+  onAssistantAvatarClick,
   registerRef,
 }: MessageRowProps) {
   const message = useMemo(() => {
@@ -1068,6 +1084,10 @@ const MessageRow = React.memo(function MessageRow({
           onExpandSubagent={onExpandSubagent}
           isLatestThinking={index === lastThinkingIdx}
           renderSummary={renderSummary}
+          userAvatar={userAvatar}
+          assistantAvatar={assistantAvatar}
+          onUserAvatarClick={onUserAvatarClick}
+          onAssistantAvatarClick={onAssistantAvatarClick}
         />
       </div>
     </React.Fragment>
@@ -1098,7 +1118,11 @@ const MessageRow = React.memo(function MessageRow({
       prev.lastThinkingIdx === next.lastThinkingIdx &&
       prev.maxMessageWidth === next.maxMessageWidth &&
       prev.toolExpandedInline === next.toolExpandedInline &&
-      prev.renderSummary === next.renderSummary
+      prev.renderSummary === next.renderSummary &&
+      prev.userAvatar === next.userAvatar &&
+      prev.assistantAvatar === next.assistantAvatar &&
+      prev.onUserAvatarClick === next.onUserAvatarClick &&
+      prev.onAssistantAvatarClick === next.onAssistantAvatarClick
     );
   }
   // Non-static: always re-render
@@ -1125,6 +1149,10 @@ function areMessageListPropsEqual(prev: MessageListProps, next: MessageListProps
   if (prev.artifacts !== next.artifacts) return false;
   if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
   if (prev.renderSummary !== next.renderSummary) return false;
+  if (prev.userAvatar !== next.userAvatar) return false;
+  if (prev.assistantAvatar !== next.assistantAvatar) return false;
+  if (prev.onUserAvatarClick !== next.onUserAvatarClick) return false;
+  if (prev.onAssistantAvatarClick !== next.onAssistantAvatarClick) return false;
   if (prev.autoScroll !== next.autoScroll) return false;
   if (prev.welcomeTitle !== next.welcomeTitle) return false;
   if (prev.welcomeDescription !== next.welcomeDescription) return false;
@@ -1161,6 +1189,10 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   onApprovalDecision: _onApprovalDecision,
   onExpandSubagent,
   renderSummary,
+  userAvatar,
+  assistantAvatar,
+  onUserAvatarClick,
+  onAssistantAvatarClick,
 }, ref) {
   const { t } = useTranslation();
 
@@ -1464,11 +1496,15 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
     onLinkClick,
     onExpandSubagent,
     onArtifactClick,
+    onUserAvatarClick,
+    onAssistantAvatarClick,
   });
   handlersRef.current = {
     onLinkClick,
     onExpandSubagent,
     onArtifactClick,
+    onUserAvatarClick,
+    onAssistantAvatarClick,
   };
 
   // Stable wrappers — empty deps, references never change
@@ -1488,6 +1524,14 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
+  const stableOnUserAvatarClick = useCallback((message: AgentMessage) => {
+    handlersRef.current.onUserAvatarClick?.(message);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const stableOnAssistantAvatarClick = useCallback((message: AgentMessage) => {
+    handlersRef.current.onAssistantAvatarClick?.(message);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stable ref registration callback for MessageRow (avoids creating new closures per row)
   const registerRef = useCallback((id: string, el: HTMLDivElement | null) => {
@@ -1618,6 +1662,10 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                     toolExpandedInline={toolExpandedInline}
                     onExpandSubagent={stableOnExpandSubagent}
                     renderSummary={renderSummary}
+                    userAvatar={userAvatar}
+                    assistantAvatar={assistantAvatar}
+                    onUserAvatarClick={stableOnUserAvatarClick}
+                    onAssistantAvatarClick={stableOnAssistantAvatarClick}
                     registerRef={registerRef}
                   />
                 </MessageWidthShell>
