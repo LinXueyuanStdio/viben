@@ -132,6 +132,7 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 | `session/prompt/steer` | request | Viben 扩展 | 会话忙碌时立即入队一条 steer prompt |
 | `session/prompt/cancel` | request | Viben 扩展 | 取消尚未消费的 steer prompt |
 | `session/prompt/view` | request | Viben 扩展 | 查看 steer prompt 队列记录 |
+| `session/interrupt` | request/notification | Viben 扩展 | 中断当前执行，并优先把 queued steer prompt 转为下一轮 prompt |
 | `session/cancel` | notification | 是 | 取消指定会话当前运行 prompt 和排队 prompt |
 | `session/set_mode` | request | 否 | 未在 Gateway Agent 接口实现，返回 `-32601` |
 | `session/set_model` | request | 否 | 未在 Gateway Agent 接口实现，返回 `-32601` |
@@ -620,11 +621,11 @@ Gateway 当前声明 `authMethods: []`，通常客户端不需要调用 `authent
 |------|------|------|------|
 | `sessionId` | string | 是 | 外层 ACP 会话 ID |
 | `prompt` | ContentBlock[] | 是 | 与 `session/prompt` 相同的 prompt 内容块 |
-| `agent_id` | string | 是 | Viben 智能体 ID，用于 SQL 过滤、审计和后端消费 |
-| `user_id` | string | 是 | 发起 steer 的用户 ID |
+| `agent_id` | string | 否 | Viben 智能体 ID，用于 SQL 过滤、审计和后端消费；未传时由 Gateway 从会话配置解析 |
+| `user_id` | string | 否 | 发起 steer 的用户 ID；未传时使用 `default` |
 | `_meta` | object | 否 | 客户端自定义元信息 |
 
-> 兼容性：新客户端必须使用 snake_case 的 `agent_id`、`user_id`。实现可以临时接受 camelCase，但不能写入规范示例。
+> 兼容性：新客户端必须使用 snake_case 的 `agent_id`、`user_id`。当前 Gateway 实现会临时接受 camelCase；如果没有传 `agent_id`，Gateway 从会话智能体配置解析，仍无法解析时使用 `default`；如果没有传 `user_id`，使用 `default`。
 
 **状态机**:
 
@@ -789,6 +790,86 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 - Gateway 在把客户端侧工具结果传回 Agent 前也必须执行同样的消费检查，以覆盖没有标准工具结束事件的适配器。
 - 每条被成功消费的 steer prompt 都会触发一条 `session/prompt/consumed` 通知。
 - 已通知的记录状态为 `consumed`，不能再被 `session/prompt/cancel` 撤销。
+
+## session/interrupt
+
+`session/interrupt` 是 Viben ACP 扩展方法，用于实现“按 Esc 中断当前执行并立即发送当前输入”。客户端通常先用 `session/prompt/steer` 把输入写入 steer 队列，再发送 `session/interrupt`。Gateway 收到后会中断当前工具或后端 prompt，并把当前会话下所有 queued steer prompt 安排为最高优先级的恢复 prompt。
+
+**请求**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "session/interrupt",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062"
+  }
+}
+```
+
+**响应**:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "result": {
+    "interrupted": true,
+    "resumed": true,
+    "promptIds": [
+      "sp_01JZ9W2M4C2ZQ3B5K1H8P9T0AA"
+    ]
+  }
+}
+```
+
+**通知形式**:
+
+客户端也可以把 `session/interrupt` 作为 notification 发送；notification 没有响应，不适合需要展示 `resumed` 或 `promptIds` 的 UI。
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "session/interrupt",
+  "params": {
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062"
+  }
+}
+```
+
+**规则**:
+
+- `interrupted: true` 表示 Gateway 已尝试中断当前执行；如果没有 active prompt，也仍然可以返回 `true`。
+- `resumed: true` 表示 Gateway 已发现 queued steer prompt，并把它们安排为下一次 Agent 运行。它不表示恢复 prompt 已执行完成。
+- Gateway 不会在收到 `session/interrupt` 时立刻把 steer prompt 标记为 `consumed`。只有恢复 prompt 真正开始运行前，Gateway 才消费 queued steer prompt，并逐条发送 `session/prompt/consumed`。
+- 恢复 prompt 必须插入普通 `session/prompt` 队列之前，优先于更早排队但尚未运行的普通 prompt。
+- 如果当前有工具调用正在等待客户端或后端结果，Gateway 会先取消当前工具执行路径，再进入恢复 prompt 检查。
+- 如果没有 queued steer prompt，Gateway 只执行中断，不创建恢复 prompt，返回 `resumed: false` 和空 `promptIds`。
+
+**Esc 中断并发送当前输入时序**:
+
+```text
+Client                 Gateway                    ACP Backend
+  | session/prompt       |                             |
+  |--------------------->| backend.prompt              |
+  |                      |---------------------------->|
+  |                      | session/update ...          |
+  |<---------------------|<----------------------------|
+  | 用户按 Esc            |                             |
+  | session/prompt/steer |                             |
+  |--------------------->| SQL: queued                 |
+  |<---------------------| promptId                    |
+  | session/interrupt    |                             |
+  |--------------------->| cancel current execution    |
+  |                      |---------------------------->|
+  |<---------------------| { resumed: true, promptIds }|
+  |                      | active prompt ends          |
+  |                      | consume queued steer        |
+  |<---------------------| session/prompt/consumed     |
+  |                      | backend.prompt(merged steer)|
+  |                      |---------------------------->|
+```
 
 ## session/prompt/view
 
