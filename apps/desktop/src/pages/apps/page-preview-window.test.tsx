@@ -163,7 +163,7 @@ describe("PagePreviewWindow", () => {
     window.history.replaceState(
       null,
       "",
-      "/page-preview-window.html?workspace_id=global&workspace_path=/tmp/workspace&slug=demo"
+      "/page-preview-window.html?workspace_id=global&workspace_path=/tmp/workspace&slug=demo",
     );
     mockAssign.mockClear();
     mockClose.mockClear();
@@ -247,10 +247,10 @@ describe("PagePreviewWindow", () => {
 
   it("opens the main app with a new-tab request from the preview window plus button", () => {
     const element = render(
-      <PagePreviewWindow navigateToWorkspace={mockAssign} />
+      <PagePreviewWindow navigateToWorkspace={mockAssign} />,
     );
     const newTabButton = element.querySelector(
-      'button[aria-label="New Tab"]'
+      'button[aria-label="New Tab"]',
     ) as HTMLButtonElement | null;
 
     expect(newTabButton).not.toBeNull();
@@ -263,17 +263,19 @@ describe("PagePreviewWindow", () => {
     const scopedState = getScopedTabStore("page-preview-test").getState();
     expect(scopedState.tabs).toHaveLength(1);
     expect(scopedState.activeTabId).toBe(scopedState.tabs[0].id);
-    expect(scopedState.getCurrentUrl(scopedState.tabs[0].id)).toBe("/workspace");
+    expect(scopedState.getCurrentUrl(scopedState.tabs[0].id)).toBe(
+      "/workspace",
+    );
     expect(mockAssign).toHaveBeenCalledWith("/workspace?viben_new_tab=1");
   });
 
   it("uses preview-specific styling for tabs opened inside the preview window", () => {
     const element = render(
-      <PagePreviewWindow navigateToWorkspace={mockAssign} />
+      <PagePreviewWindow navigateToWorkspace={mockAssign} />,
     );
 
     const newTabButton = element.querySelector(
-      'button[aria-label="New Tab"]'
+      'button[aria-label="New Tab"]',
     ) as HTMLButtonElement | null;
 
     act(() => {
@@ -281,41 +283,41 @@ describe("PagePreviewWindow", () => {
     });
 
     expect(
-      element.querySelector("[data-preview-window-tab='true']")
+      element.querySelector("[data-preview-window-tab='true']"),
     ).not.toBeNull();
   });
 
   it("wires page-preview menu shortcuts to real actions", async () => {
     const element = render(
-      <PagePreviewWindow navigateToWorkspace={mockAssign} />
+      <PagePreviewWindow navigateToWorkspace={mockAssign} />,
     );
 
     expect(element.querySelector('[data-preview-zoom="1.0"]')).not.toBeNull();
 
     act(() => {
       window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "=", ctrlKey: true })
+        new KeyboardEvent("keydown", { key: "=", ctrlKey: true }),
       );
     });
     expect(element.querySelector('[data-preview-zoom="1.1"]')).not.toBeNull();
 
     act(() => {
       window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "-", ctrlKey: true })
+        new KeyboardEvent("keydown", { key: "-", ctrlKey: true }),
       );
     });
     expect(element.querySelector('[data-preview-zoom="1.0"]')).not.toBeNull();
 
     act(() => {
       window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "f", ctrlKey: true })
+        new KeyboardEvent("keydown", { key: "f", ctrlKey: true }),
       );
     });
     expect(element.querySelector('input[aria-label="Find..."]')).not.toBeNull();
 
     act(() => {
       window.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "p", ctrlKey: true })
+        new KeyboardEvent("keydown", { key: "p", ctrlKey: true }),
       );
     });
     expect(mockPrint).toHaveBeenCalled();
@@ -326,13 +328,13 @@ describe("PagePreviewWindow", () => {
           key: "l",
           ctrlKey: true,
           altKey: true,
-        })
+        }),
       );
       await Promise.resolve();
     });
     expect(openFolder).toHaveBeenCalledWith(
       "http://127.0.0.1:18790",
-      "/home/tester/Downloads"
+      "/home/tester/Downloads",
     );
   });
 
@@ -370,7 +372,7 @@ describe("PagePreviewWindow", () => {
           key: "w",
           ctrlKey: true,
           altKey: true,
-        })
+        }),
       );
     });
 
@@ -415,7 +417,7 @@ describe("PagePreviewWindow", () => {
           key: "t",
           ctrlKey: true,
           shiftKey: true,
-        })
+        }),
       );
     });
 
@@ -425,23 +427,26 @@ describe("PagePreviewWindow", () => {
 
   it("forwards the preview link to an agent session", async () => {
     const element = render(
-      <PagePreviewWindow navigateToWorkspace={mockAssign} />
+      <PagePreviewWindow navigateToWorkspace={mockAssign} />,
     );
 
     const moreButton = element.querySelector(
-      'button[aria-label="More"]'
+      'button[aria-label="More"]',
     ) as HTMLButtonElement | null;
     expect(moreButton).not.toBeNull();
 
     await act(async () => {
       moreButton?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
       );
       await Promise.resolve();
     });
 
-    const forwardItem = Array.from(document.body.querySelectorAll('[role="menuitem"]'))
-      .find((item) => item.textContent?.includes("Forward")) as HTMLElement | undefined;
+    const forwardItem = Array.from(
+      document.body.querySelectorAll('[role="menuitem"]'),
+    ).find((item) => item.textContent?.includes("Forward")) as
+      | HTMLElement
+      | undefined;
     expect(forwardItem).toBeDefined();
 
     await act(async () => {
@@ -451,8 +456,11 @@ describe("PagePreviewWindow", () => {
 
     expect(document.body.textContent).toContain("Send to");
 
-    const targetButton = Array.from(document.body.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Alpha Agent")) as HTMLButtonElement | undefined;
+    const targetButton = Array.from(
+      document.body.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Alpha Agent")) as
+      | HTMLButtonElement
+      | undefined;
     expect(targetButton).toBeDefined();
 
     await act(async () => {
@@ -461,7 +469,7 @@ describe("PagePreviewWindow", () => {
     });
 
     const messageInput = document.body.querySelector(
-      'textarea[aria-label="Message"]'
+      'textarea[aria-label="Message"]',
     ) as HTMLTextAreaElement | null;
     expect(messageInput).not.toBeNull();
 
@@ -469,15 +477,18 @@ describe("PagePreviewWindow", () => {
       if (messageInput) {
         const valueSetter = Object.getOwnPropertyDescriptor(
           window.HTMLTextAreaElement.prototype,
-          "value"
+          "value",
         )?.set;
         valueSetter?.call(messageInput, "Please review");
         messageInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
 
-    const sendButton = Array.from(document.body.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Send")) as HTMLButtonElement | undefined;
+    const sendButton = Array.from(
+      document.body.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Send")) as
+      | HTMLButtonElement
+      | undefined;
     expect(sendButton).toBeDefined();
 
     await act(async () => {
@@ -486,7 +497,10 @@ describe("PagePreviewWindow", () => {
       await Promise.resolve();
     });
 
-    expect(mockListAgentSessions).toHaveBeenCalledWith("agent-alpha", "/tmp/workspace");
+    expect(mockListAgentSessions).toHaveBeenCalledWith(
+      "agent-alpha",
+      "/tmp/workspace",
+    );
     expect(mockCreateAgentSession).toHaveBeenCalledWith("agent-alpha", {
       prompt: "Forward - Demo",
       workspace_path: "/tmp/workspace",
@@ -497,33 +511,36 @@ describe("PagePreviewWindow", () => {
       expect.objectContaining({
         role: "user",
         content: expect.stringContaining("Please review"),
-      })
+      }),
     );
     expect(mockAppendSessionMessage.mock.calls[0][2].content).toContain("Demo");
     expect(mockAppendSessionMessage.mock.calls[0][2].content).toContain(
-      "http://127.0.0.1:18790/api/page/serve?workspace_path=%2Ftmp%2Fworkspace&slug=demo&theme=light"
+      "http://127.0.0.1:18790/api/page/serve?workspace_path=%2Ftmp%2Fworkspace&slug=demo&theme=light",
     );
   });
 
   it("forwards the preview link to a group chat session", async () => {
     const element = render(
-      <PagePreviewWindow navigateToWorkspace={mockAssign} />
+      <PagePreviewWindow navigateToWorkspace={mockAssign} />,
     );
 
     const moreButton = element.querySelector(
-      'button[aria-label="More"]'
+      'button[aria-label="More"]',
     ) as HTMLButtonElement | null;
     expect(moreButton).not.toBeNull();
 
     await act(async () => {
       moreButton?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
       );
       await Promise.resolve();
     });
 
-    const forwardItem = Array.from(document.body.querySelectorAll('[role="menuitem"]'))
-      .find((item) => item.textContent?.includes("Forward")) as HTMLElement | undefined;
+    const forwardItem = Array.from(
+      document.body.querySelectorAll('[role="menuitem"]'),
+    ).find((item) => item.textContent?.includes("Forward")) as
+      | HTMLElement
+      | undefined;
     expect(forwardItem).toBeDefined();
 
     await act(async () => {
@@ -531,8 +548,11 @@ describe("PagePreviewWindow", () => {
       await Promise.resolve();
     });
 
-    const targetButton = Array.from(document.body.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Project Room")) as HTMLButtonElement | undefined;
+    const targetButton = Array.from(
+      document.body.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Project Room")) as
+      | HTMLButtonElement
+      | undefined;
     expect(targetButton).toBeDefined();
 
     await act(async () => {
@@ -540,8 +560,11 @@ describe("PagePreviewWindow", () => {
       await Promise.resolve();
     });
 
-    const sendButton = Array.from(document.body.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Send")) as HTMLButtonElement | undefined;
+    const sendButton = Array.from(
+      document.body.querySelectorAll("button"),
+    ).find((button) => button.textContent?.includes("Send")) as
+      | HTMLButtonElement
+      | undefined;
     expect(sendButton).toBeDefined();
 
     await act(async () => {
@@ -550,11 +573,14 @@ describe("PagePreviewWindow", () => {
       await Promise.resolve();
     });
 
-    expect(mockListGroupChatSessions).toHaveBeenCalledWith("group-room", "/tmp/workspace");
+    expect(mockListGroupChatSessions).toHaveBeenCalledWith(
+      "group-room",
+      "/tmp/workspace",
+    );
     expect(mockCreateGroupChatSession).toHaveBeenCalledWith(
       "group-room",
       "/tmp/workspace",
-      { title: "Forward - Demo" }
+      { title: "Forward - Demo" },
     );
     expect(mockSendGroupChatMessage).toHaveBeenCalledWith(
       "group-room",
@@ -564,7 +590,7 @@ describe("PagePreviewWindow", () => {
         content: expect.stringContaining("Demo"),
         sender_id: "user-1",
         sender_name: "You",
-      })
+      }),
     );
   });
 });

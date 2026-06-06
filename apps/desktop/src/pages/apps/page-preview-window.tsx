@@ -52,11 +52,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -71,7 +67,11 @@ import { useChatList } from "@/hooks/use-workspace-resources";
 import { getGatewayClient } from "@/lib/gateway";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { openFolder } from "@/lib/gateway/modules/files";
-import type { PageConfig, ProxyPageConfig, ServerPageConfig } from "@/lib/gateway/types/page";
+import type {
+  PageConfig,
+  ProxyPageConfig,
+  ServerPageConfig,
+} from "@/lib/gateway/types/page";
 import type { ChatListItem } from "@/lib/gateway/types/workspace";
 import type { FileSession } from "@/lib/gateway/types/session";
 import type { GroupChatSession } from "@/lib/gateway/types/group-chat";
@@ -95,7 +95,7 @@ type BrowserFindWindow = Window & {
     wrapAround?: boolean,
     wholeWord?: boolean,
     searchInFrames?: boolean,
-    showDialog?: boolean
+    showDialog?: boolean,
   ) => boolean;
 };
 
@@ -140,7 +140,7 @@ function normalizeViewMode(value: string | undefined): PageViewMode {
 function clampZoomScale(value: number): number {
   return Math.min(
     MAX_ZOOM_SCALE,
-    Math.max(MIN_ZOOM_SCALE, Math.round(value * 10) / 10)
+    Math.max(MIN_ZOOM_SCALE, Math.round(value * 10) / 10),
   );
 }
 
@@ -184,25 +184,32 @@ function buildForwardContent(payload: ForwardPayload): string {
 }
 
 function getNewestFileSession(sessions: FileSession[]): FileSession | null {
-  return [...sessions].sort(
-    (left, right) =>
-      new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
-  )[0] ?? null;
+  return (
+    [...sessions].sort(
+      (left, right) =>
+        new Date(right.updated_at).getTime() -
+        new Date(left.updated_at).getTime(),
+    )[0] ?? null
+  );
 }
 
 function getNewestGroupChatSession(
-  sessions: GroupChatSession[]
+  sessions: GroupChatSession[],
 ): GroupChatSession | null {
-  return [...sessions]
-    .filter((session) => session.status !== "archived")
-    .sort(
-      (left, right) =>
-        new Date(right.updated_at).getTime() -
-        new Date(left.updated_at).getTime()
-    )[0] ?? null;
+  return (
+    [...sessions]
+      .filter((session) => session.status !== "archived")
+      .sort(
+        (left, right) =>
+          new Date(right.updated_at).getTime() -
+          new Date(left.updated_at).getTime(),
+      )[0] ?? null
+  );
 }
 
-function getPreviewFrame(surface: HTMLElement | null): HTMLIFrameElement | null {
+function getPreviewFrame(
+  surface: HTMLElement | null,
+): HTMLIFrameElement | null {
   return surface?.querySelector("iframe") ?? null;
 }
 
@@ -212,7 +219,7 @@ function getFrameWindow(surface: HTMLElement | null): Window | null {
 
 function runPreviewHistory(
   surface: HTMLElement | null,
-  direction: "back" | "forward"
+  direction: "back" | "forward",
 ): boolean {
   const frameWindow = getFrameWindow(surface);
   try {
@@ -238,7 +245,7 @@ function printPreview(surface: HTMLElement | null): void {
 function findInPreview(
   surface: HTMLElement | null,
   query: string,
-  backwards = false
+  backwards = false,
 ): boolean {
   const trimmed = query.trim();
   if (!trimmed) return false;
@@ -253,7 +260,7 @@ function findInPreview(
       true,
       false,
       true,
-      false
+      false,
     );
     if (typeof frameFound === "boolean") return frameFound;
   } catch {
@@ -264,15 +271,7 @@ function findInPreview(
   try {
     browserWindow.focus();
     return Boolean(
-      browserWindow.find?.(
-        trimmed,
-        false,
-        backwards,
-        true,
-        false,
-        true,
-        false
-      )
+      browserWindow.find?.(trimmed, false, backwards, true, false, true, false),
     );
   } catch {
     return false;
@@ -282,7 +281,7 @@ function findInPreview(
 function getStaticPageServeUrl(
   workspacePath: string,
   slug: string,
-  theme: string
+  theme: string,
 ): string {
   const params = new URLSearchParams({
     workspace_path: workspacePath,
@@ -356,12 +355,13 @@ export function PagePreviewWindow({
   const slug = getSearchParam("slug");
   const initialViewMode = useMemo(
     () => normalizeViewMode(getSearchParam("view")),
-    []
+    [],
   );
   const [viewMode] = useState<PageViewMode>(initialViewMode);
   const [iframeKey, setIframeKey] = useState(0);
   const [isMacOS, setIsMacOS] = useState(false);
-  const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] = useState(false);
+  const [shouldReserveMacOSControlsSpace, setShouldReserveMacOSControlsSpace] =
+    useState(false);
   const [zoomScale, setZoomScale] = useState(DEFAULT_ZOOM_SCALE);
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
@@ -371,21 +371,23 @@ export function PagePreviewWindow({
   const [isForwarding, setIsForwarding] = useState(false);
   const previewTabStore = useMemo(
     () => getScopedTabStore(getCurrentWindowStoreScope()),
-    []
+    [],
   );
   const activeTabId = previewTabStore((state) => state.activeTabId);
   const activeTab = previewTabStore((state) =>
-    activeTabId ? state.tabs.find((tab) => tab.id === activeTabId) : null
+    activeTabId ? state.tabs.find((tab) => tab.id === activeTabId) : null,
   );
   const canReopenClosedTab = previewTabStore(
-    (state) => state.recentlyClosedTabs.length > 0
+    (state) => state.recentlyClosedTabs.length > 0,
   );
   const openTabInStore = previewTabStore((state) => state.openTab);
   const goBackInStore = previewTabStore((state) => state.goBack);
   const goForwardInStore = previewTabStore((state) => state.goForward);
   const jumpToHistoryInStore = previewTabStore((state) => state.jumpToHistory);
   const closeAllTabsInStore = previewTabStore((state) => state.closeAllTabs);
-  const reopenClosedTabInStore = previewTabStore((state) => state.reopenClosedTab);
+  const reopenClosedTabInStore = previewTabStore(
+    (state) => state.reopenClosedTab,
+  );
   const chatList = useChatList({ workspacePath, includeGlobal: true });
 
   const {
@@ -456,14 +458,15 @@ export function PagePreviewWindow({
   const handleStartLivePreview = useCallback(() => {
     if (!workspacePath || !page) return;
     const pageDir = `${workspacePath}/pages/${page.slug}`;
-    const options = page.type === "server"
-      ? {
-          command: (page as ServerPageConfig).command,
-          port: (page as ServerPageConfig).port,
-          ready_pattern: (page as ServerPageConfig).ready_pattern,
-          timeout: (page as ServerPageConfig).timeout,
-        }
-      : undefined;
+    const options =
+      page.type === "server"
+        ? {
+            command: (page as ServerPageConfig).command,
+            port: (page as ServerPageConfig).port,
+            ready_pattern: (page as ServerPageConfig).ready_pattern,
+            timeout: (page as ServerPageConfig).timeout,
+          }
+        : undefined;
     startPreview(pageDir, options);
   }, [page, startPreview, workspacePath]);
 
@@ -500,8 +503,8 @@ export function PagePreviewWindow({
   }, [forwardDialogOpen, selectedForwardTarget]);
 
   const previewZoomStyle = useMemo<CSSProperties>(
-    () => ({ zoom: zoomScale } as CSSProperties),
-    [zoomScale]
+    () => ({ zoom: zoomScale }) as CSSProperties,
+    [zoomScale],
   );
 
   const historyItems = useMemo<PreviewHistoryMenuItem[]>(() => {
@@ -526,7 +529,7 @@ export function PagePreviewWindow({
           url: entry.url,
           active: historyIndex === activeTab.historyIndex,
         };
-      }
+      },
     );
   }, [activeTab, externalUrl, page?.name, page?.slug]);
 
@@ -584,7 +587,7 @@ export function PagePreviewWindow({
         navigateToWorkspace(url);
       }
     },
-    [navigateToWorkspace, previewTabStore]
+    [navigateToWorkspace, previewTabStore],
   );
 
   const handleGoBack = useCallback(() => {
@@ -627,30 +630,40 @@ export function PagePreviewWindow({
       const client = getGatewayClient();
       if (selectedForwardTarget.type === "agent") {
         const existingSession = getNewestFileSession(
-          await client.listAgentSessions(selectedForwardTarget.id, workspacePath)
-        );
-        const session =
-          existingSession ??
-          await client.createAgentSession(selectedForwardTarget.id, {
-            prompt: sessionTitle,
-            workspace_path: workspacePath,
-          });
-
-        await client.appendSessionMessage(selectedForwardTarget.id, session.id, {
-          role: "user",
-          content,
-        });
-      } else {
-        const existingSession = getNewestGroupChatSession(
-          await client.listGroupChatSessions(selectedForwardTarget.id, workspacePath)
-        );
-        const session =
-          existingSession ??
-          await client.createGroupChatSession(
+          await client.listAgentSessions(
             selectedForwardTarget.id,
             workspacePath,
-            { title: sessionTitle }
-          );
+          ),
+        );
+        const session =
+          existingSession ??
+          (await client.createAgentSession(selectedForwardTarget.id, {
+            prompt: sessionTitle,
+            workspace_path: workspacePath,
+          }));
+
+        await client.appendSessionMessage(
+          selectedForwardTarget.id,
+          session.id,
+          {
+            role: "user",
+            content,
+          },
+        );
+      } else {
+        const existingSession = getNewestGroupChatSession(
+          await client.listGroupChatSessions(
+            selectedForwardTarget.id,
+            workspacePath,
+          ),
+        );
+        const session =
+          existingSession ??
+          (await client.createGroupChatSession(
+            selectedForwardTarget.id,
+            workspacePath,
+            { title: sessionTitle },
+          ));
 
         await client.sendGroupChatMessage(
           selectedForwardTarget.id,
@@ -660,7 +673,7 @@ export function PagePreviewWindow({
             content,
             sender_id: "user-1",
             sender_name: t("common.you", "You"),
-          }
+          },
         );
       }
 
@@ -734,7 +747,7 @@ export function PagePreviewWindow({
       jumpToHistoryInStore(activeTabId, historyIndex);
       navigateToStoreTab(activeTabId);
     },
-    [activeTabId, jumpToHistoryInStore, navigateToStoreTab]
+    [activeTabId, jumpToHistoryInStore, navigateToStoreTab],
   );
 
   if (!workspaceId || !workspacePath || !slug) {
@@ -764,7 +777,10 @@ export function PagePreviewWindow({
         message={
           error
             ? String(error)
-            : t("page.notFoundDesc", "The requested page could not be found in this workspace.")
+            : t(
+                "page.notFoundDesc",
+                "The requested page could not be found in this workspace.",
+              )
         }
       />
     );
@@ -882,11 +898,9 @@ function ForwardToSessionDialog({
     if (!normalizedQuery) return targets;
 
     return targets.filter((target) => {
-      return [
-        target.name,
-        target.description ?? "",
-        target.source,
-      ].some((value) => value.toLowerCase().includes(normalizedQuery));
+      return [target.name, target.description ?? "", target.source].some(
+        (value) => value.toLowerCase().includes(normalizedQuery),
+      );
     });
   }, [query, targets]);
 
@@ -946,7 +960,7 @@ function ForwardToSessionDialog({
                       className={cn(
                         "flex h-11 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm",
                         "transition-colors hover:bg-accent hover:text-accent-foreground",
-                        selected && "bg-accent text-accent-foreground"
+                        selected && "bg-accent text-accent-foreground",
                       )}
                       onClick={() => onSelectTarget(target.id)}
                     >
@@ -955,7 +969,7 @@ function ForwardToSessionDialog({
                           "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
                           selected
                             ? "border-primary bg-primary text-primary-foreground"
-                            : "border-muted-foreground/50"
+                            : "border-muted-foreground/50",
                         )}
                       >
                         {selected ? <Check className="h-3 w-3" /> : null}
@@ -1113,7 +1127,11 @@ function PagePreviewWindowTabBar({
   const tabIcon = page.icon ? (
     <IconDisplay icon={page.icon} size="sm" className="text-muted-foreground" />
   ) : (
-    <IconDisplay icon={{ type: "lucide", value: "file-text" }} size="sm" className="text-muted-foreground" />
+    <IconDisplay
+      icon={{ type: "lucide", value: "file-text" }}
+      size="sm"
+      className="text-muted-foreground"
+    />
   );
 
   useEffect(() => {
@@ -1200,13 +1218,19 @@ function PagePreviewWindowTabBar({
           <BrowserTabFrame
             isMacOS={isMacOS}
             reserveMacOSControlsSpace={reserveMacOSControlsSpace}
-            spacerMenu={<div data-tauri-drag-region className="h-full w-full" />}
+            spacerMenu={
+              <div data-tauri-drag-region className="h-full w-full" />
+            }
             leadingControls={
               <>
                 <BrowserTabFrameIconButton
                   aria-label={t("common.back", "Go Back")}
                   tooltip={t("common.back", "Go Back")}
-                  icon={<ChevronLeft className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  icon={
+                    <ChevronLeft
+                      className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                    />
+                  }
                   onClick={onBack}
                   disabled={!canGoBack}
                   isMacOS={isMacOS}
@@ -1214,7 +1238,11 @@ function PagePreviewWindowTabBar({
                 <BrowserTabFrameIconButton
                   aria-label={t("common.forward", "Go Forward")}
                   tooltip={t("common.forward", "Go Forward")}
-                  icon={<ChevronRight className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  icon={
+                    <ChevronRight
+                      className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                    />
+                  }
                   onClick={onForward}
                   disabled={!canGoForward}
                   isMacOS={isMacOS}
@@ -1222,7 +1250,11 @@ function PagePreviewWindowTabBar({
                 <BrowserTabFrameIconButton
                   aria-label={t("common.refresh", "Refresh")}
                   tooltip={t("common.refresh", "Refresh")}
-                  icon={<RefreshCw className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  icon={
+                    <RefreshCw
+                      className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                    />
+                  }
                   onClick={onRefresh}
                   isMacOS={isMacOS}
                 />
@@ -1239,13 +1271,15 @@ function PagePreviewWindowTabBar({
                   data-preview-window-tab="true"
                   className={cn(
                     "border border-primary/25 bg-primary/10 text-foreground",
-                    "shadow-none ring-0 hover:bg-primary/15"
+                    "shadow-none ring-0 hover:bg-primary/15",
                   )}
                 />
                 <BrowserTabFrameIconButton
                   aria-label={t("common.newTab", "New Tab")}
                   tooltip={t("common.newTab", "New Tab")}
-                  icon={<Plus className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  icon={
+                    <Plus className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                  }
                   onClick={onNewTab}
                   isMacOS={isMacOS}
                 />
@@ -1256,7 +1290,11 @@ function PagePreviewWindowTabBar({
                 <BrowserTabFrameIconButton
                   aria-label={t("page.openExternal", "Open in Browser")}
                   tooltip={t("page.openExternal", "Open in Browser")}
-                  icon={<MonitorUp className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />}
+                  icon={
+                    <MonitorUp
+                      className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                    />
+                  }
                   onClick={onOpenExternal}
                   disabled={!canOpenExternal}
                   isMacOS={isMacOS}
@@ -1272,10 +1310,12 @@ function PagePreviewWindowTabBar({
                         "hover:bg-accent hover:text-accent-foreground",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         menuOpen && "bg-accent text-accent-foreground",
-                        isMacOS ? "h-6 w-6" : "h-7 w-7"
+                        isMacOS ? "h-6 w-6" : "h-7 w-7",
                       )}
                     >
-                      <MoreHorizontal className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                      <MoreHorizontal
+                        className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")}
+                      />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-64">
@@ -1491,7 +1531,10 @@ function PreviewDropdownMenuItems({
         {t("tabBar.closeAllTabs", "Close All Tabs")}
         <DropdownMenuShortcut>{closeTabsShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
-      <DropdownMenuItem onClick={onReopenClosedTab} disabled={!canReopenClosedTab}>
+      <DropdownMenuItem
+        onClick={onReopenClosedTab}
+        disabled={!canReopenClosedTab}
+      >
         {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
         <DropdownMenuShortcut>{reopenClosedTabShortcut}</DropdownMenuShortcut>
       </DropdownMenuItem>
@@ -1644,7 +1687,10 @@ function PreviewContextMenuItems({
         {t("tabBar.closeAllTabs", "Close All Tabs")}
         <ContextMenuShortcut>{closeTabsShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
-      <ContextMenuItem onClick={onReopenClosedTab} disabled={!canReopenClosedTab}>
+      <ContextMenuItem
+        onClick={onReopenClosedTab}
+        disabled={!canReopenClosedTab}
+      >
         {t("tabBar.reopenClosedTab", "Reopen Closed Tab")}
         <ContextMenuShortcut>{reopenClosedTabShortcut}</ContextMenuShortcut>
       </ContextMenuItem>
@@ -1733,13 +1779,7 @@ function PreviewFindBar({
   );
 }
 
-function WindowState({
-  title,
-  message,
-}: {
-  title: string;
-  message: string;
-}) {
+function WindowState({ title, message }: { title: string; message: string }) {
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-background p-8 text-center">
       <FileQuestion className="mb-4 h-12 w-12 text-muted-foreground" />
