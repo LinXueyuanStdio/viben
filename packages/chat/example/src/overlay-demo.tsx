@@ -1,7 +1,8 @@
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Paperclip, Plus, Search, Send, Settings, Smile, Square } from "lucide-react";
-import type { AgentMessage, MessageAttachment } from "@viben/chat";
+import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
+import { ChatInput } from "@viben/chat";
+import type { AgentMessage, ChatInputProps, MessageAttachment } from "@viben/chat";
 
 export type OverlayMode = "floating" | "compact" | "expanded" | "full";
 export type AssistantPetState = "idle" | "thinking" | "speaking" | "done";
@@ -48,6 +49,7 @@ export interface OverlayDemoProps {
   headerActions?: OverlayHeaderActions;
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
+  inputProps?: Partial<ChatInputProps>;
   onModeChange: (mode: OverlayMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
@@ -91,6 +93,7 @@ export function OverlayDemo({
   headerActions,
   inputValue,
   onInputValueChange,
+  inputProps,
   onModeChange,
   onSend,
   onCancel,
@@ -167,6 +170,7 @@ export function OverlayDemo({
           onValueChange={setContent}
           onSend={handleSubmit}
           onCancel={onCancel}
+          inputProps={inputProps}
         />
       </div>
     );
@@ -200,6 +204,7 @@ export function OverlayDemo({
           onValueChange={setContent}
           onSend={handleSubmit}
           onCancel={onCancel}
+          inputProps={inputProps}
         />
       </div>
     </div>
@@ -497,62 +502,47 @@ function CompactChatInput({
   onValueChange,
   onSend,
   onCancel,
+  inputProps,
 }: {
   value: string;
   isStreaming: boolean;
   onValueChange: (value: string) => void;
   onSend: () => void;
   onCancel: () => void;
+  inputProps?: Partial<ChatInputProps>;
 }) {
   return (
     <section
       data-testid="compact-chat-input"
-      className="rounded-xl border border-border bg-background shadow-2xl"
+      className="overflow-hidden rounded-xl border border-border bg-background shadow-2xl"
     >
-      <div className="flex items-center gap-1 border-b border-border/50 px-2 py-1.5">
-        <button type="button" aria-label="Emoji" className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
-          <Smile className="size-4" />
-        </button>
-        <button type="button" aria-label="Attach file" className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
-          <Paperclip className="size-4" />
-        </button>
-      </div>
-      <div className="flex items-end gap-2 px-3 py-2">
-        <textarea
-          aria-label="Compact chat input"
-          rows={1}
-          value={value}
-          onChange={(event) => onValueChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              onSend();
-            }
-          }}
-          placeholder={isStreaming ? "Queue a message..." : "Ask Viben..."}
-          className="min-h-9 flex-1 resize-none bg-transparent py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-        />
-        {isStreaming ? (
-          <button
-            type="button"
-            aria-label="Stop"
-            onClick={onCancel}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive text-destructive-foreground transition-colors hover:bg-destructive/90"
-          >
-            <Square className="size-3.5" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            aria-label="Send"
-            disabled={!value.trim()}
-            onClick={onSend}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
-          >
-            <Send className="size-4" />
-          </button>
-        )}
-      </div>
+      <ChatInput
+        {...inputProps}
+        value={value}
+        onValueChange={onValueChange}
+        onSend={(content, attachments) => {
+          if (inputProps?.onSend) {
+            inputProps.onSend(content, attachments);
+            return;
+          }
+          onSend();
+        }}
+        onCancel={inputProps?.onCancel ?? onCancel}
+        isLoading={isStreaming}
+        allowSendWhileLoading
+        placeholder={inputProps?.placeholder ?? (isStreaming ? "Queue a message..." : "Ask Viben...")}
+        showTopToolbar
+        showConfigBar={false}
+        defaultHeight={48}
+        minHeight={48}
+        maxHeight={48}
+        showResizeHandle={false}
+        enableWritingMode={false}
+        hideAgentSelector
+        hideModelSelector
+        hideExecutorSelector
+        className={`bg-background ${inputProps?.className ?? ""}`}
+      />
     </section>
   );
 }

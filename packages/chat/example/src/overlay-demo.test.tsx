@@ -5,6 +5,26 @@ import { describe, expect, test, vi } from "vitest";
 import { OverlayDemo, getAssistantPetState } from "./overlay-demo";
 import type { AgentMessage } from "@viben/chat";
 
+vi.mock("@viben/chat", async () => {
+  const React = await import("react");
+  return {
+    ChatInput: (props: Record<string, unknown>) => React.createElement(
+      "div",
+      { "data-testid": "overlay-chat-input-props" },
+      React.createElement("span", { "data-testid": "show-top-toolbar" }, String(props.showTopToolbar)),
+      React.createElement("span", { "data-testid": "show-config-bar" }, String(props.showConfigBar)),
+      React.createElement("span", { "data-testid": "hide-agent-selector" }, String(props.hideAgentSelector)),
+      React.createElement("span", { "data-testid": "hide-model-selector" }, String(props.hideModelSelector)),
+      React.createElement("span", { "data-testid": "slash-count" }, String((props.slashCommands as unknown[] | undefined)?.length ?? 0)),
+      React.createElement("span", { "data-testid": "queued-count" }, String((props.queuedInputRecallItems as unknown[] | undefined)?.length ?? 0)),
+      React.createElement("span", { "data-testid": "default-height" }, String(props.defaultHeight)),
+      React.createElement("span", { "data-testid": "min-height" }, String(props.minHeight)),
+      React.createElement("span", { "data-testid": "max-height" }, String(props.maxHeight)),
+      React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
+    ),
+  };
+});
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (_key: string, fallback?: string) => fallback ?? _key,
@@ -230,6 +250,55 @@ describe("OverlayDemo", () => {
 
     expect(onCreateSession).toHaveBeenCalledTimes(1);
     expect(onSettingsClick).toHaveBeenCalledTimes(1);
+  });
+
+  test("compact and expanded inputs reuse chat input capabilities without config selectors", () => {
+    const overlayInputProps = {
+      slashCommands: [{ name: "plan", description: "Plan" }],
+      queuedInputRecallItems: [{ content: "queued work" }],
+      onQueuedInputRecall: vi.fn(),
+      onOpenFile: vi.fn(),
+      onPaste: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <OverlayDemo
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        inputProps={overlayInputProps}
+      />
+    );
+
+    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("false");
+    expect(screen.getByTestId("hide-agent-selector")).toHaveTextContent("true");
+    expect(screen.getByTestId("hide-model-selector")).toHaveTextContent("true");
+    expect(screen.getByTestId("slash-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("queued-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("default-height")).toHaveTextContent("48");
+    expect(screen.getByTestId("min-height")).toHaveTextContent("48");
+    expect(screen.getByTestId("max-height")).toHaveTextContent("48");
+
+    rerender(
+      <OverlayDemo
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        inputProps={overlayInputProps}
+      />
+    );
+
+    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("false");
+    expect(screen.getByTestId("default-height")).toHaveTextContent("48");
+    expect(screen.getByTestId("max-height")).toHaveTextContent("48");
   });
 });
 
