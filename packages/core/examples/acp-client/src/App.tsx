@@ -1780,11 +1780,11 @@ function ToolApprovalModal({
   onReject: () => void;
 }) {
   return (
-    <ModalFrame title="Client Tool Call" subtitle={`${dialog.request.toolName} / ${dialog.request.toolUseId}`}>
+    <ModalFrame title="Client Tool Call" subtitle={`${dialog.request.toolName} / ${dialog.request.toolCallId}`}>
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
           <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</div>
-          <pre className="max-h-72 overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
+          <pre className="json-panel max-h-[440px] overflow-auto rounded-lg bg-code-block p-3 text-xs leading-5">
             <JsonCode value={dialog.request.input} />
           </pre>
         </div>
@@ -2043,7 +2043,7 @@ function ClientToolRow({ call }: { call: ClientToolCall }) {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="truncate font-semibold">{call.toolName}</div>
-            <div className="truncate text-muted-foreground">{call.action ?? call.toolUseId}</div>
+            <div className="truncate text-muted-foreground">{call.action ?? call.toolCallId}</div>
           </div>
           <span className="shrink-0 text-muted-foreground">{new Date(call.at).toLocaleTimeString()}</span>
         </div>
@@ -2331,7 +2331,7 @@ function builtinListActionsDetail() {
 function runLocalGuiExecute(actionName: string, actions: GuiActionDefinition[]): ClientToolCall {
   const request: ClientToolExecutionRequest = {
     sessionId: "local-preview-session",
-    toolUseId: `local-${Date.now()}`,
+    toolCallId: `local-${Date.now()}`,
     toolName: "GUI_execute",
     input: {
       action: actionName,
@@ -2343,7 +2343,7 @@ function runLocalGuiExecute(actionName: string, actions: GuiActionDefinition[]):
     at: new Date().toISOString(),
     sessionId: request.sessionId,
     toolName: request.toolName,
-    toolUseId: request.toolUseId,
+    toolCallId: request.toolCallId,
     action: actionName,
     input: request.input,
     result: executeGuiAction(request, actions),
