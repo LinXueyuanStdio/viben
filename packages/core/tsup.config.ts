@@ -18,7 +18,7 @@ export default defineConfig({
     "telemetry/index": "src/telemetry/index.ts",
     "cli/index": "src/cli/index.ts",
     "cli/bin": "src/cli/bin.ts",
-    "acp/ops/gui-action-mcp-server": "src/acp/ops/gui-action-mcp-server.ts",
+    "acp/ops/client-side-mcp-server": "src/acp/ops/client-side-mcp-server.ts",
   },
   format: ["cjs", "esm"],
   dts: {
@@ -42,8 +42,8 @@ export default defineConfig({
     const binFiles = [
       "dist/cli/bin.js",
       "dist/cli/bin.cjs",
-      "dist/acp/ops/gui-action-mcp-server.js",
-      "dist/acp/ops/gui-action-mcp-server.cjs",
+      "dist/acp/ops/client-side-mcp-server.js",
+      "dist/acp/ops/client-side-mcp-server.cjs",
     ];
     for (const file of binFiles) {
       try {
