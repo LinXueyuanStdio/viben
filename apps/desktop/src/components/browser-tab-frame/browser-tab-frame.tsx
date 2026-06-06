@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { MouseEvent, ReactNode } from "react";
+import type { HTMLAttributes, MouseEvent, ReactNode } from "react";
 
 export interface BrowserTabFrameProps {
   isMacOS?: boolean;
@@ -134,14 +134,13 @@ export function BrowserTabFrameIconButton({
   );
 }
 
-export interface BrowserTabFrameTabProps {
+export interface BrowserTabFrameTabProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: ReactNode;
   active?: boolean;
   closable?: boolean;
   onSelect?: () => void;
   onClose?: () => void;
-  className?: string;
 }
 
 export function BrowserTabFrameTab({
@@ -152,6 +151,7 @@ export function BrowserTabFrameTab({
   onSelect,
   onClose,
   className,
+  ...props
 }: BrowserTabFrameTabProps) {
   const handleClose = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -161,6 +161,7 @@ export function BrowserTabFrameTab({
 
   return (
     <div
+      {...props}
       className={cn(
         "group relative flex h-7 max-w-[180px] shrink-0 items-center gap-1.5",
         "rounded-md text-[13px] text-muted-foreground",
