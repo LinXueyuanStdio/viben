@@ -424,7 +424,7 @@ describe("AcpSessionManager", () => {
 
     const result = await manager.requestClientTool(
       session.sessionId,
-      "mcp__gui_action__GUI_execute",
+      "mcp__client_side__GUI_execute",
       { action: "list_actions" },
       "tool-call-1"
     );
@@ -436,7 +436,7 @@ describe("AcpSessionManager", () => {
         params: {
           sessionId: session.sessionId,
           toolCallId: "tool-call-1",
-          toolName: "mcp__gui_action__GUI_execute",
+          toolName: "mcp__client_side__GUI_execute",
           input: { action: "list_actions" },
         },
       },
@@ -452,7 +452,7 @@ describe("AcpSessionManager", () => {
         update: {
           sessionUpdate: "tool_call",
           toolCallId: "backend-gui-tool-1",
-          title: "mcp__gui_action__GUI_execute",
+          title: "mcp__client_side__GUI_execute",
           status: "pending",
         },
       } as BackendNotification);
@@ -469,7 +469,7 @@ describe("AcpSessionManager", () => {
     });
     await manager.requestClientTool(
       session.sessionId,
-      "mcp__gui_action__GUI_execute",
+      "mcp__client_side__GUI_execute",
       { action: "get_action_detail" },
       "bridge-local-tool"
     );
@@ -477,7 +477,7 @@ describe("AcpSessionManager", () => {
     expect(connection.clientRequests.at(-1)?.params).toMatchObject({
       sessionId: session.sessionId,
       toolCallId: "backend-gui-tool-1",
-      toolName: "mcp__gui_action__GUI_execute",
+      toolName: "mcp__client_side__GUI_execute",
     });
   });
 

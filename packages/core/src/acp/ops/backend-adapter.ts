@@ -30,7 +30,6 @@ import {
   CLIENT_SIDE_BASH_TOOL_NAME,
   CLIENT_SIDE_MCP_SERVER_NAME,
   GUI_EXECUTE_TOOL_NAME,
-  LEGACY_GUI_ACTION_MCP_SERVER_NAME,
 } from "./client-side-mcp-constants";
 import type {
   AcpAgentCapabilities,
@@ -685,7 +684,7 @@ function normalizeMcpServer(
   entry: McpServer | string | AgentMcpServerEntry
 ): McpServer | null {
   if (typeof entry === "string") {
-    if (entry === CLIENT_SIDE_MCP_SERVER_NAME || entry === LEGACY_GUI_ACTION_MCP_SERVER_NAME) {
+    if (entry === CLIENT_SIDE_MCP_SERVER_NAME) {
       return createClientSideMcpServer(context);
     }
     log.warn({ mcpServer: entry }, "Named in-process MCP server is not available through ACP backend adapters");
@@ -693,7 +692,7 @@ function normalizeMcpServer(
   }
 
   if ("type" in entry && entry.type === "builtin") {
-    if (entry.name === CLIENT_SIDE_MCP_SERVER_NAME || entry.name === LEGACY_GUI_ACTION_MCP_SERVER_NAME) {
+    if (entry.name === CLIENT_SIDE_MCP_SERVER_NAME) {
       return createClientSideMcpServer(context);
     }
     log.warn({ mcpServer: entry.name }, "Named builtin MCP server is not available through ACP backend adapters");
