@@ -9,6 +9,10 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("../../model-icons", () => ({
+  getModelIcon: () => null,
+}));
+
 describe("ChatInput layout", () => {
   test("compact layout renders the editor inline inside the bottom toolbar", async () => {
     const { ChatInput } = await import("../index");
