@@ -1598,6 +1598,9 @@ importers:
       '@viben/api-client':
         specifier: workspace:*
         version: link:../api-client
+      '@viben/browse-sdk':
+        specifier: workspace:*
+        version: link:../browse-sdk
       adm-zip:
         specifier: ^0.5.17
         version: 0.5.17

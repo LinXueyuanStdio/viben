@@ -19,6 +19,7 @@ export default defineConfig({
     "cli/index": "src/cli/index.ts",
     "cli/bin": "src/cli/bin.ts",
     "acp/ops/client-side-mcp-server": "src/acp/ops/client-side-mcp-server.ts",
+    "mcp/server/browse-mcp/mcp-server": "src/mcp/server/browse-mcp/mcp-server.ts",
   },
   format: ["cjs", "esm"],
   dts: {
@@ -44,6 +45,8 @@ export default defineConfig({
       "dist/cli/bin.cjs",
       "dist/acp/ops/client-side-mcp-server.js",
       "dist/acp/ops/client-side-mcp-server.cjs",
+      "dist/mcp/server/browse-mcp/mcp-server.js",
+      "dist/mcp/server/browse-mcp/mcp-server.cjs",
     ];
     for (const file of binFiles) {
       try {
