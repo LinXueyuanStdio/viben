@@ -501,7 +501,7 @@ export class AcpSessionManager {
       const response = await this.executePromptItem(session, item);
       item.resolve(response);
     } catch (error) {
-      if (session.status === "cancelled") {
+      if (getSessionStatus(session) === "cancelled") {
         item.resolve({ stopReason: "cancelled" });
         return;
       }
@@ -1074,6 +1074,10 @@ function parseSteerCursor(cursor: string | undefined): number {
 
 function isFinishedToolStatus(status: string | null | undefined): boolean {
   return status === "completed" || status === "failed";
+}
+
+function getSessionStatus(session: AcpSession): AcpSessionStatus {
+  return session.status;
 }
 
 function toSummary(session: AcpSession): AcpSessionSummary {

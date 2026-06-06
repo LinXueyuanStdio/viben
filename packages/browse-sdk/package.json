@@ -1,0 +1,48 @@
+{
+  "name": "@viben/browse-sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Browse MCP academic content sources",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./providers": {
+      "types": "./dist/providers/index.d.ts",
+      "import": "./dist/providers/index.js",
+      "require": "./dist/providers/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "fast-xml-parser": "^5.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "keywords": [
+    "viben",
+    "browse",
+    "mcp",
+    "academic"
+  ],
+  "license": "MIT"
+}
