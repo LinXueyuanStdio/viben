@@ -7,16 +7,11 @@ interface FakeStatement {
   all: (...params: unknown[]) => unknown[];
 }
 
-interface InjectableStore {
-  db: {
-    prepare: (sql: string) => FakeStatement;
-  };
-}
-
 function createStoreWithFakeDb(prepare: (sql: string) => FakeStatement): SqliteAcpSteerPromptStore {
-  const store = Object.create(SqliteAcpSteerPromptStore.prototype) as SqliteAcpSteerPromptStore & InjectableStore;
-  store.db = { prepare };
-  return store;
+  return new SqliteAcpSteerPromptStore(":memory:", {
+    exec: () => undefined,
+    prepare,
+  });
 }
 
 function consumedRow(id: string) {

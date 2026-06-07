@@ -172,17 +172,21 @@ function createVibenAcpAgent(
     },
 
     async extMethod(method: string, params: Record<string, unknown>) {
-      switch (method) {
-        case "session/prompt/steer":
-          return await acpSessionManager.steerPrompt(params as unknown as AcpSteerPromptRequest) as unknown as Record<string, unknown>;
-        case "session/prompt/cancel":
-          return await acpSessionManager.cancelSteerPrompt(params as unknown as AcpCancelSteerPromptRequest) as unknown as Record<string, unknown>;
-        case "session/prompt/view":
-          return await acpSessionManager.viewSteerPrompt(params as unknown as AcpViewSteerPromptRequest) as unknown as Record<string, unknown>;
-        case "session/interrupt":
-          return await acpSessionManager.interruptSession(params as unknown as AcpInterruptSessionRequest) as unknown as Record<string, unknown>;
-        default:
-          throw RequestError.methodNotFound(method);
+      try {
+        switch (method) {
+          case "session/prompt/steer":
+            return await acpSessionManager.steerPrompt(params as unknown as AcpSteerPromptRequest) as unknown as Record<string, unknown>;
+          case "session/prompt/cancel":
+            return await acpSessionManager.cancelSteerPrompt(params as unknown as AcpCancelSteerPromptRequest) as unknown as Record<string, unknown>;
+          case "session/prompt/view":
+            return await acpSessionManager.viewSteerPrompt(params as unknown as AcpViewSteerPromptRequest) as unknown as Record<string, unknown>;
+          case "session/interrupt":
+            return await acpSessionManager.interruptSession(params as unknown as AcpInterruptSessionRequest) as unknown as Record<string, unknown>;
+          default:
+            throw RequestError.methodNotFound(method);
+        }
+      } catch (error) {
+        throw mapAcpExtensionError(error);
       }
     },
 
@@ -227,6 +231,18 @@ function createInitializeResponse(_request: InitializeRequest): InitializeRespon
     },
     authMethods: [],
   };
+}
+
+function mapAcpExtensionError(error: unknown): RequestError {
+  if (error instanceof RequestError) return error;
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("not found")) {
+    return RequestError.resourceNotFound(message);
+  }
+  return RequestError.internalError(
+    error instanceof Error ? { message: error.message, name: error.name } : { message },
+    message
+  );
 }
 
 class SdkAcpConnection implements AcpConnection {

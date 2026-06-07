@@ -168,10 +168,14 @@ export class InMemoryAcpSteerPromptStore implements AcpSteerPromptStore {
 export class SqliteAcpSteerPromptStore implements AcpSteerPromptStore {
   private db: SqliteDatabase;
 
-  constructor(dbPath: string = DEFAULT_STEER_DB_PATH) {
-    const DatabaseSync = loadDatabaseSync();
-    mkdirSync(join(dbPath, ".."), { recursive: true });
-    this.db = new DatabaseSync(dbPath);
+  constructor(dbPath: string = DEFAULT_STEER_DB_PATH, db?: SqliteDatabase) {
+    if (db) {
+      this.db = db;
+    } else {
+      const DatabaseSync = loadDatabaseSync();
+      mkdirSync(join(dbPath, ".."), { recursive: true });
+      this.db = new DatabaseSync(dbPath);
+    }
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS acp_steer_prompts (
         id TEXT PRIMARY KEY,

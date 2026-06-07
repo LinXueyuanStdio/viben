@@ -903,11 +903,13 @@ function mergeToolResultWithSteerPrompts(
 ): CallToolResult {
   const steerPrompt = mergeSteerPromptBlocks(steerPrompts);
   if (steerPrompt.length === 0) return result;
+  const steerText = promptBlocksToText(steerPrompt).trim();
+  if (!steerText) return result;
   return {
     ...result,
     content: [
       ...result.content,
-      ...steerPrompt,
+      { type: "text", text: steerText },
     ],
   };
 }
