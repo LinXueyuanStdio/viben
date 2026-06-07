@@ -380,6 +380,13 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 }
 ```
 
+**Session ID 语义**:
+
+- 外层 ACP `sessionId`：客户端在 `/ws/agent/acp` 上看到和传入的会话 ID。`session/new` 由 Gateway 生成；`session/load` 使用客户端传入的 `sessionId`。
+- 后端 ACP session ID：内层 ACP Backend 自己返回的 session ID。Gateway 保存为 `sdkSessionId`，并在后续 `backend.prompt` 时使用；客户端通常不直接使用它。
+- 持久化 `session_id`：WebSocket 查询参数或 `persist_session_id`，用于 Viben UI 消息和 raw ACP 消息落盘，不等同于外层 ACP `sessionId`。
+- `session/resume`：当前 Gateway 未实现，调用返回 `-32601`。客户端恢复 live connection 时使用 `session/load`；历史 UI 展示依赖 Viben 持久化会话读取，不由 ACP `session/resume` 完成。
+
 ---
 
 ## session/list

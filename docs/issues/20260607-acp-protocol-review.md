@@ -110,15 +110,17 @@
   - 修复：
     - ACP route 的扩展方法层将业务层 `not found` 错误映射为 SDK `RequestError.resourceNotFound`，对应 JSON-RPC `-32002`。
 
-- [ ] **steer 消费是否按 `agent_id` 过滤不一致**
+- [x] **steer 消费是否按 `agent_id` 过滤不一致**
   - 影响：多智能体共享同一 ACP session 时可能消费错 steer。
   - 位置：
     - `/root/viben/docs/specs/modules/gateway/acp.md`
     - `/root/viben/packages/core/src/acp/ops/session-manager.ts`
     - `/root/viben/packages/core/src/acp/ops/steer-prompt-store.ts`
   - 决策：
-    - 如果一个 ACP session 只绑定一个 Agent，则文档改为按 `session_id` 消费。
-    - 如果支持多 Agent 共享 session，则实现增加 `agent_id` 过滤。
+    - 当前实现一个 ACP session 绑定一个智能体运行上下文，消费按 `session_id` 限定。
+    - `agent_id` 用于审计、列表过滤和未来多智能体共享 session 扩展；未来支持多 Agent 共享 session 时再扩展消费条件为 `session_id + agent_id`。
+  - 修复：
+    - spec 已明确当前实现边界和未来扩展条件。
 
 - [x] **example client 的 Viben 扩展字段仍使用 camelCase**
   - 影响：新客户端复制错误模式；未来移除兼容时会断。
@@ -129,12 +131,15 @@
   - 修复：
     - core example ACP client 的 `session/prompt/steer` 已发送 `agent_id`、`user_id`、`_meta`。
 
-- [ ] **session id / resume 语义还不清晰**
+- [x] **session id / resume 语义还不清晰**
   - 影响：后续 desktop/web 迁移可能混淆外层 ACP session id、后端 ACP session id、旧 SDK resume id 和 file storage `session_id`。
   - 位置：
     - `/root/viben/docs/specs/modules/gateway/acp.md`
     - `/root/viben/packages/core/src/acp/ops/session-manager.ts`
     - `/root/viben/packages/core/src/gateway/routes/agent-acp.ts`
+  - 修复：
+    - spec 已明确外层 ACP `sessionId`、后端 ACP session ID、持久化 `session_id` 的边界。
+    - spec 已明确当前不实现 `session/resume`，客户端恢复 live connection 使用 `session/load`。
 
 - [ ] **缺少 `/ws/agent/acp` route-level 集成测试**
   - 影响：WebSocket JSON-RPC envelope、reverse request、notification 方向等无法被测试捕捉。
