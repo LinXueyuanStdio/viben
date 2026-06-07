@@ -8,11 +8,8 @@ import {
   ChatAppFullscreenInputPanel,
   ChatAppFullscreenMessagePanel,
   ChatAppFullscreenPanel,
-  DefaultExpandedHeaderMoreMenu,
   ExpandedHeader,
   ExpandedHeaderModeControls,
-  ExpandedHeaderNewSessionMenu,
-  ExpandedHeaderSessionMenu,
 } from "../chat-app";
 import type { AgentMessage } from "../types";
 
@@ -253,38 +250,19 @@ const pendingQuestion = {
     },
   ],
 };
-const sampleSessions = [
-  { id: "session-1", title: "Session one", subtitle: "session-1.jsonl" },
-  { id: "session-2", title: "Session two", subtitle: "session-2.jsonl" },
-];
-const sampleAgents = [
-  { id: "claude-code", name: "Claude Code", type: "agent & executor" },
-  { id: "openai-browser", name: "OpenAI · Browser", type: "agent & executor" },
-];
-
 function createHeaderContent({
   mode = "expanded",
-  title = "Viben session",
-  sessions = sampleSessions,
-  agents = sampleAgents,
   onModeChange = () => {},
 }: {
   mode?: "floating" | "compact" | "expanded" | "full";
-  title?: string;
-  sessions?: typeof sampleSessions;
-  agents?: typeof sampleAgents;
   onModeChange?: (mode: "floating" | "compact" | "expanded" | "full") => void;
 } = {}) {
   return (
     <ExpandedHeader
       leftContent={(
         <>
-          <ExpandedHeaderSessionMenu
-            title={title}
-            sessions={sessions}
-            assistantAvatar={<span>avatar</span>}
-          />
-          <ExpandedHeaderNewSessionMenu agents={agents} />
+          <span data-testid="expanded-header-session-slot">Session slot</span>
+          <span data-testid="expanded-header-action-slot">Action slot</span>
         </>
       )}
       centerContent={<div data-testid="expanded-header-drag-area" />}
@@ -292,7 +270,7 @@ function createHeaderContent({
         <ExpandedHeaderModeControls
           mode={mode}
           onModeChange={onModeChange}
-          moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
+          moreMenuContent={<button type="button">Settings</button>}
         />
       )}
     />
@@ -760,10 +738,8 @@ describe("ChatApp", () => {
 
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-overlay")).toHaveClass("pointer-events-auto");
-    expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
-    expect(screen.getByTestId("new-session-split-button")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create new session" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open new session menu" })).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-session-slot")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-action-slot")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to fullscreen mode" })).toBeInTheDocument();
@@ -1141,127 +1117,11 @@ describe("ChatApp", () => {
     expect(screen.queryByRole("button", { name: "Open fullscreen chat" })).not.toBeInTheDocument();
   });
 
-  test("expanded session title menu shows search and session samples", () => {
-    render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        headerContent={createHeaderContent({
-          sessions: [
-            { id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8", title: "Claude Code: breadcrumb navigation debug", subtitle: "2c88f85a...jsonl" },
-            { id: "2e83fc8b-a852-4530-a5f3-497bcafa9da6", title: "Claude Code: 2e83fc8b session replay", subtitle: "2e83fc8b...jsonl" },
-            { id: "3bbcc4d2-0267-4938-98c3-c06a380828ba", title: "Claude Code: 3bbcc4d2 session replay", subtitle: "3bbcc4d2...jsonl" },
-          ],
-        })}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
-
-    expect(screen.getByRole("searchbox", { name: "Search sessions" })).toBeInTheDocument();
-    expect(screen.getByText("Claude Code: breadcrumb navigation debug")).toBeInTheDocument();
-    expect(screen.getByText("2c88f85a...jsonl")).toBeInTheDocument();
-    expect(screen.getByText("Claude Code: 2e83fc8b session replay")).toBeInTheDocument();
-    expect(screen.getByText("2e83fc8b...jsonl")).toBeInTheDocument();
-    expect(screen.getByText("Claude Code: 3bbcc4d2 session replay")).toBeInTheDocument();
-    expect(screen.getByText("3bbcc4d2...jsonl")).toBeInTheDocument();
-  });
-
-  test("expanded session menu calls selection callback and closes", () => {
-    const onSelectSession = vi.fn();
-    render(
-      <ExpandedHeader
-        leftContent={(
-          <ExpandedHeaderSessionMenu
-            title="Viben session"
-            sessions={[{ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" }]}
-            assistantAvatar={<span>avatar</span>}
-            onSelectSession={onSelectSession}
-          />
-        )}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
-    fireEvent.click(screen.getByText("Session one"));
-
-    expect(onSelectSession).toHaveBeenCalledWith({ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" });
-    expect(screen.queryByText("session-1.jsonl")).not.toBeInTheDocument();
-  });
-
-  test("expanded session menu shows the selected session title after selection", () => {
-    render(
-      <ExpandedHeader
-        leftContent={(
-          <ExpandedHeaderSessionMenu
-            title="Viben session"
-            sessions={sampleSessions}
-            assistantAvatar={<span>avatar</span>}
-          />
-        )}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
-    fireEvent.click(screen.getByText("Session two"));
-
-    expect(screen.getByRole("button", { name: "Session menu" })).toHaveTextContent("Session two");
-  });
-
-  test("expanded new-session menu shows creation actions and agent samples", () => {
-    render(
-      <ExpandedHeader
-        leftContent={(
-          <ExpandedHeaderNewSessionMenu
-            agents={sampleAgents}
-          />
-        )}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Open new session menu" }));
-
-    expect(screen.getByTestId("new-session-menu-chevron")).toHaveClass("lucide-chevron-down");
-    expect(screen.getByText("New chat")).toBeInTheDocument();
-    expect(screen.getByText("New chat window")).toBeInTheDocument();
-    expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(screen.getByText("OpenAI · Browser")).toBeInTheDocument();
-  });
-
-  test("expanded more menu shows settings, sample navigation, and debug actions", () => {
-    render(
-      <ExpandedHeader
-        rightContent={(
-          <ExpandedHeaderModeControls
-            mode="expanded"
-            onModeChange={() => {}}
-            moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
-          />
-        )}
-      />
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
-
-    expect(screen.getByText("Settings")).toBeInTheDocument();
-    expect(screen.getByText("Previous step")).toBeInTheDocument();
-    expect(screen.getByText("Next step")).toBeInTheDocument();
-    expect(screen.getByText("Move chat to new window")).toBeInTheDocument();
-    expect(screen.getByText("Show debug view")).toBeInTheDocument();
-    expect(screen.getByText("Show debug log")).toBeInTheDocument();
-  });
-
-  test("expanded header buttons use configurable callbacks", () => {
-    const onCreateSession = vi.fn();
+  test("expanded header mode controls render supplied more menu content", () => {
     const onSettingsClick = vi.fn();
     const onModeChange = vi.fn();
     render(
       <ExpandedHeader
-        leftContent={<ExpandedHeaderNewSessionMenu agents={[]} onCreateSession={onCreateSession} />}
         centerContent={<div data-testid="expanded-header-drag-area" />}
         rightContent={(
           <ExpandedHeaderModeControls
@@ -1273,13 +1133,12 @@ describe("ChatApp", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Create new session" }));
     expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
 
-    expect(onCreateSession).toHaveBeenCalledTimes(1);
     expect(onSettingsClick).toHaveBeenCalledTimes(1);
+    expect(onModeChange).not.toHaveBeenCalled();
   });
 
   test("expanded header exposes left center and right content slots", () => {
@@ -1301,12 +1160,8 @@ describe("ChatApp", () => {
       <ExpandedHeader
         leftContent={(
           <>
-            <ExpandedHeaderSessionMenu
-              title="Viben session"
-              sessions={sampleSessions}
-              assistantAvatar={<span>avatar</span>}
-            />
-            <ExpandedHeaderNewSessionMenu agents={sampleAgents} />
+            <span data-testid="session-title-menu">Session slot</span>
+            <span data-testid="new-session-split-button">Action slot</span>
           </>
         )}
         centerContent={<div data-testid="expanded-header-drag-area" />}
@@ -1314,7 +1169,7 @@ describe("ChatApp", () => {
           <ExpandedHeaderModeControls
             mode="expanded"
             onModeChange={() => {}}
-            moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
+            moreMenuContent={<button type="button">Settings</button>}
           />
         )}
       />
@@ -1442,7 +1297,7 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-session-slot")).toBeInTheDocument();
     expect(screen.getByTestId("full-overlay")).toHaveClass("overlay-shared-surface");
     expect(screen.getByTestId("full-overlay")).toHaveClass("flex");
     expect(screen.getByTestId("full-overlay")).toHaveClass("min-h-0");
@@ -1515,8 +1370,8 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("expanded-header")).toBeInTheDocument();
-    expect(screen.getByTestId("session-title-menu")).toBeInTheDocument();
-    expect(screen.getByTestId("new-session-split-button")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-session-slot")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-header-action-slot")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByTestId("compact-mode-button")).toBeInTheDocument();
     expect(screen.queryByTestId("full-mode-button")).not.toBeInTheDocument();
@@ -1573,23 +1428,16 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("custom-overlay-header")).toHaveTextContent("full");
   });
 
-  test("exports expanded header slot content components for composed App usage", () => {
-    const onCreateSession = vi.fn();
+  test("composes expanded header slots with mode controls", () => {
     const onSettingsClick = vi.fn();
-    const onSelectSession = vi.fn();
     const onModeChange = vi.fn();
 
     render(
       <ExpandedHeader
         leftContent={(
           <>
-            <ExpandedHeaderSessionMenu
-              title="Composable session"
-              sessions={[{ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" }]}
-              assistantAvatar={<span>avatar</span>}
-              onSelectSession={onSelectSession}
-            />
-            <ExpandedHeaderNewSessionMenu agents={[]} onCreateSession={onCreateSession} />
+            <button type="button">Session slot</button>
+            <button type="button">Action slot</button>
           </>
         )}
         centerContent={<div data-testid="expanded-header-drag-area" />}
@@ -1603,16 +1451,15 @@ describe("ChatApp", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Create new session" }));
+    expect(screen.getByRole("button", { name: "Session slot" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Action slot" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to compact mode" }));
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
-    fireEvent.click(screen.getByText("Session one"));
 
-    expect(onCreateSession).toHaveBeenCalledTimes(1);
+    expect(onModeChange).toHaveBeenCalledWith("compact");
     expect(onSettingsClick).toHaveBeenCalledTimes(1);
-    expect(onSelectSession).toHaveBeenCalledWith({ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" });
   });
 });
 
