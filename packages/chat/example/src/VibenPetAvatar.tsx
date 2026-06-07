@@ -11,6 +11,8 @@ export type VibenPetAvatarProps = {
   interaction?: PetInteractionState;
 };
 
+type TranslationValues = Record<string, string | number | boolean | null | undefined>;
+
 type PetStateMeta = {
   labelKey: string;
   defaultLabel: string;
@@ -122,6 +124,19 @@ const DEFAULT_STATE_TRANSITION: PetTransition = {
   status: { scale: [0.8, 1.18, 1], opacity: [0.65, 1, 1] },
   duration: 0.42,
 };
+
+function translatePetText(
+  t: ReturnType<typeof useTranslation>["t"],
+  key: string,
+  defaultValue: string,
+  values: TranslationValues = {}
+): string {
+  const translated = t(key, { defaultValue, ...values });
+  return String(translated).replace(/\{\{(\w+)\}\}/g, (_, name: string) => {
+    const replacement = values[name];
+    return replacement === null || replacement === undefined ? `{{${name}}}` : String(replacement);
+  });
+}
 
 const PET_STATE_TRANSITIONS: Partial<Record<`${AssistantPetState}-to-${AssistantPetState}`, PetTransition>> = {
   "idle-to-waiting": {
@@ -329,14 +344,14 @@ export function VibenPetAvatar({ kind = "dynamic", state, interaction = "idle" }
   const stateTransition = getStateTransition(stateTransitionKey);
   const meta = PET_STATE_META[state];
   const localMotion = getPetLocalMotion(state);
-  const stateLabel = t(meta.labelKey, meta.defaultLabel);
+  const stateLabel = translatePetText(t, meta.labelKey, meta.defaultLabel);
   const gradientId = React.useId().replace(/:/g, "");
   const warmGradientId = `${gradientId}-warm`;
   const bodyGradientId = `${gradientId}-body`;
   const glowId = `${gradientId}-glow`;
   const movement = PET_FLOAT_ANIMATION[interaction];
   const shouldLoop = interaction !== "idle" || state === "review" || state === "waiting";
-  const ariaLabel = t("chat_app.pet.aria_label", "Viben pet {{state}}", { state: stateLabel });
+  const ariaLabel = translatePetText(t, "chat_app.pet.aria_label", "Viben pet {{state}}", { state: stateLabel });
 
   if (kind === "static") {
     return (

@@ -14,6 +14,7 @@ import { VibenPetAvatar } from "./VibenPetAvatar";
 import type { AssistantPetState, PetInteractionState } from "./VibenPetAvatar";
 import type {
   AgentMessage,
+  BackgroundTaskItem,
   ChatInputProps,
   CommandQueueItem,
   ExpandSubagentHandler,
@@ -252,7 +253,7 @@ export function ChatApp({
 
   const idleGreeting = React.useMemo(() => {
     const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT));
-    return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index]);
+    return t(`chat_app.greetings.`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index]);
   }, [t]);
   const compactActivity = React.useMemo(
     () => getCompactActivitySummary(messages, t, idleGreeting),
@@ -716,6 +717,20 @@ function ChatAppMessagePanel({
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }) {
   const { t } = useTranslation();
+  const handleBackgroundTaskClick = React.useCallback((task: BackgroundTaskItem) => {
+    onExpandSubagent?.(
+      task.description,
+      task.kind,
+      task.messages ?? [],
+      {
+        subagentId: task.sourceMessage?.subagentId,
+        toolUseId: task.sourceMessage?.toolUseId ?? task.id,
+        parentMessage: task.sourceMessage,
+        messages: task.messages,
+      }
+    );
+  }, [onExpandSubagent]);
+
   return (
     <>
       <MessageList
@@ -738,7 +753,7 @@ function ChatAppMessagePanel({
       />
       <div className="space-y-2 px-4 pb-2">
         <TodoListPanel messages={messages} compact />
-        <BackgroundTaskList messages={messages} containedSheet />
+        <BackgroundTaskList messages={messages} onTaskClick={handleBackgroundTaskClick} />
       </div>
     </>
   );
@@ -761,7 +776,9 @@ function getToolActivityText(message: AgentMessage, t: Translate): string {
   switch (message.name) {
     case "Bash": {
       const command = input?.command ? truncateText(String(input.command).trim(), 72) : "";
-      return command ? t("chat_app.activity.running_command_named", "Running {{command}}", { command }) : t("chat_app.activity.running_command", "Running command...");
+      return command
+        ? t("chat_app.activity.running_command_named", "Running {{command}}", { command })
+        : t("chat_app.activity.running_command", "Running command...");
     }
     case "Read": {
       return t("chat_app.activity.reading_file", "Reading {{file}}...", { file: getToolPath(input?.file_path, "file") });
@@ -776,12 +793,14 @@ function getToolActivityText(message: AgentMessage, t: Translate): string {
     case "Grep": {
       const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
       return pattern
-        ? t("chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
+        ? chatAppTranslate(t, "chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
         : t("chat_app.activity.searching_workspace", "Searching workspace...");
     }
     case "Glob": {
       const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
-      return pattern ? t("chat_app.activity.finding", "Finding {{pattern}}...", { pattern }) : t("chat_app.activity.finding_files", "Finding files...");
+      return pattern
+        ? t("chat_app.activity.finding", "Finding {{pattern}}...", { pattern })
+        : t("chat_app.activity.finding_files", "Finding files...");
     }
     case "WebSearch":
       return t("chat_app.activity.searching_web", "Searching the web...");
@@ -791,7 +810,9 @@ function getToolActivityText(message: AgentMessage, t: Translate): string {
     case "Agent":
       return t("chat_app.activity.running_agent_task", "Running a delegated agent task...");
     default:
-      return message.name ? t("chat_app.activity.running_tool", "Running {{name}}...", { name: message.name }) : t("chat_app.activity.working", "Working...");
+      return message.name
+        ? t("chat_app.activity.running_tool", "Running {{name}}...", { name: message.name })
+        : t("chat_app.activity.working", "Working...");
   }
 }
 
@@ -1049,7 +1070,11 @@ function CompactChatInput({
         onCancel={inputProps?.onCancel ?? onCancel}
         isLoading={isStreaming}
         allowSendWhileLoading
-        placeholder={inputProps?.placeholder ?? (isStreaming ? t("chat_app.input.placeholder.queue", "Queue a message...") : t("chat_app.input.placeholder.default", "Ask Viben..."))}
+        placeholder={inputProps?.placeholder ?? (
+          isStreaming
+            ? t("chat_app.input.placeholder.queue", "Queue a message...")
+            : t("chat_app.input.placeholder.default", "Ask Viben...")
+        )}
         layoutVariant={variant === "expanded" ? (inputProps?.layoutVariant ?? "expanded") : "compact"}
         showTopToolbar={variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false}
         showConfigBar={variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true}

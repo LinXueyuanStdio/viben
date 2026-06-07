@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { VibenPetAvatar, getPetLocalMotion, getPetStateTransitionKey } from "./VibenPetAvatar";
+import { VibenPetAvatar, getPetMotionPreset, getPetStateTransitionKey } from "./VibenPetAvatar";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -40,20 +40,49 @@ describe("VibenPetAvatar", () => {
     expect(getPetStateTransitionKey("failed", "waving")).toBe("failed-to-waving");
   });
 
-  test("defines nonlinear local motion beyond whole-avatar transform", () => {
-    expect(getPetLocalMotion("waiting")).toMatchObject({
-      bodyPath: { d: expect.arrayContaining(["M31 33 L40 57 L49 33"]) },
-      leftBracket: { d: expect.arrayContaining(["M18 31 L7 22 L25 25"]) },
-      rightBracket: { d: expect.arrayContaining(["M62 31 L73 22 L55 25"]) },
-      eyes: { d: expect.arrayContaining(["M27 40 H35"]) },
-      mouth: { d: expect.arrayContaining(["M32 57 Q40 53 48 57"]) },
+  test("defines motion presets by body part instead of path-only animation", () => {
+    expect(getPetMotionPreset("waiting")).toMatchObject({
+      loop: true,
+      duration: 0.95,
+      root: { y: [0, -3, 0], scale: [1, 1.025, 1] },
+      leftHand: { rotate: [4, -5, 4] },
+      rightHand: { rotate: [-4, 5, -4] },
+      tail: { rotate: [-3, 3, -3] },
+      status: { scale: [0.9, 1.22, 0.9] },
     });
 
-    expect(getPetLocalMotion("failed")).toMatchObject({
-      leftBracket: { d: expect.arrayContaining(["M18 31 L10 18 L25 27"]) },
-      rightBracket: { d: expect.arrayContaining(["M62 31 L70 18 L55 27"]) },
-      status: { cx: expect.arrayContaining([59, 63, 61]) },
+    expect(getPetMotionPreset("review")).toMatchObject({
+      loop: true,
+      face: { x: [-0.8, 0.8, -0.8] },
+      rightHand: { rotate: [-6, 8, -3, 0] },
     });
+  });
+
+  test("failed and waving motions are not infinite body shakes", () => {
+    expect(getPetMotionPreset("failed")).toMatchObject({
+      loop: false,
+      root: { x: [0, -3, 3, -1, 0], y: [0, 2, 1.5] },
+      tail: { rotate: [0, -18, -14] },
+    });
+
+    expect(getPetMotionPreset("waving")).toMatchObject({
+      loop: false,
+      rightHand: { rotate: [-12, 18, -8, 14, 0] },
+    });
+  });
+
+  test("dynamic avatar exposes articulated motion layers", () => {
+    render(<VibenPetAvatar state="review" interaction="idle" />);
+
+    expect(screen.getByTestId("pet-root-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-torso-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-left-hand-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-right-hand-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-left-foot-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-right-foot-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-face-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-tail-layer")).toBeInTheDocument();
+    expect(screen.getByTestId("pet-status-layer")).toBeInTheDocument();
   });
 
   test("can render a static state avatar without dynamic local motion", () => {

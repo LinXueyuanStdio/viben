@@ -398,7 +398,7 @@ export function UIShowcaseDemoOverlay({
       ) : activeDemoId === "background-tasks" ? (
         <ComponentDemoSurface title={title} onDismiss={onDismiss} dismissLabel={dismissLabel}>
           <div className="w-full max-w-lg">
-            <BackgroundTaskList tasks={backgroundTaskItems} containedSheet />
+            <BackgroundTaskList tasks={backgroundTaskItems} />
           </div>
         </ComponentDemoSurface>
       ) : null}

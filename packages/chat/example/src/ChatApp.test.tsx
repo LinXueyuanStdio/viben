@@ -44,7 +44,28 @@ vi.mock("@viben/chat", async () => {
     BackgroundTaskList: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "background-task-list" },
-      String((props.messages as unknown[] | undefined)?.length ?? 0)
+      React.createElement("span", null, String((props.messages as unknown[] | undefined)?.length ?? 0)),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => (props.onTaskClick as ((task: unknown) => void) | undefined)?.({
+            id: "bg-agent-1",
+            kind: "agent",
+            description: "Background agent",
+            status: "running",
+            messages: [{ id: "bg-sub-1", type: "text", content: "background detail" }],
+            sourceMessage: {
+              id: "agent-tool",
+              type: "tool_use",
+              name: "Agent",
+              toolUseId: "tool-bg-1",
+              subagentId: "sub-bg-1",
+            },
+          }),
+        },
+        "Open background task"
+      )
     ),
     ExecApproval: () => React.createElement("div", { "data-testid": "exec-approval" }, "ExecApproval"),
     EmojiPicker: () => React.createElement("div", { "data-testid": "emoji-picker" }, "EmojiPicker"),
@@ -94,7 +115,7 @@ vi.mock("@viben/chat", async () => {
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string, options?: Record<string, unknown>) => {
+    t: (key: string, fallback?: string | { defaultValue?: string; count?: number }, options?: Record<string, unknown>) => {
       const translations: Record<string, string> = {
         "chat_app.header.new_chat": "New chat",
         "chat_app.header.new_chat_window": "New chat window",
@@ -109,8 +130,9 @@ vi.mock("react-i18next", () => ({
         "chat_app.greetings.0": "Ready when you are.",
         "chat_app.greetings.49": "Let’s make progress.",
       };
-      const value = translations[key] ?? fallback ?? key;
-      return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options?.[name] ?? `{{${name}}}`));
+      const values = typeof fallback === "object" ? fallback : options;
+      const value = translations[key] ?? (typeof fallback === "object" ? fallback.defaultValue : fallback) ?? key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(values?.[name] ?? `{{${name}}}`));
     },
   }),
 }));
@@ -283,10 +305,10 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("background-task-list")).toHaveTextContent(String(messages.length));
   });
 
-  test("allows custom pet avatars per assistant state", () => {
+  test("uses legacy custom pet avatars only for static surfaces", () => {
     render(
       <ChatApp
-        mode="floating"
+        mode="expanded"
         messages={messages}
         isStreaming
         onModeChange={() => {}}
@@ -299,6 +321,25 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("custom-review-pet")).toBeInTheDocument();
+  });
+
+  test("keeps the default dynamic pet when only legacy static avatars are provided", () => {
+    render(
+      <ChatApp
+        mode="floating"
+        messages={messages}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        assistantAvatars={{
+          review: <span data-testid="legacy-static-review-pet">Static review pet</span>,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("viben-pet-avatar")).toHaveAttribute("data-avatar-kind", "dynamic");
+    expect(screen.queryByTestId("legacy-static-review-pet")).not.toBeInTheDocument();
   });
 
   test("uses dynamic pet avatars for overlay modes and static state avatars for the message list", () => {
@@ -358,6 +399,23 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("fullscreen-static-pet"));
+  });
+
+  test("maps pending queued user messages to waiting state for static and dynamic pets", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        pendingUserMessageCount={2}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    const staticAvatar = screen.getByTestId("message-list-assistant-avatar").querySelector("[data-avatar-kind='static']");
+    expect(staticAvatar).toHaveAttribute("aria-label", "Viben pet Waiting");
   });
 
   test("floating avatar expands to compact mode when clicked", () => {
@@ -519,6 +577,20 @@ describe("ChatApp", () => {
       "explorer",
       [{ id: "sub-1", type: "text", content: "subagent detail" }],
       { toolUseId: "tool-1" }
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open background task" }));
+
+    expect(onExpandSubagent).toHaveBeenCalledWith(
+      "Background agent",
+      "agent",
+      [{ id: "bg-sub-1", type: "text", content: "background detail" }],
+      {
+        subagentId: "sub-bg-1",
+        toolUseId: "tool-bg-1",
+        parentMessage: expect.objectContaining({ id: "agent-tool" }),
+        messages: [{ id: "bg-sub-1", type: "text", content: "background detail" }],
+      }
     );
   });
 

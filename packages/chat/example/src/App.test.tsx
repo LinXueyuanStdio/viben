@@ -48,7 +48,7 @@ vi.mock("@viben/chat", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string, options?: Record<string, unknown>) => {
+    t: (key: string, fallback?: string | { defaultValue?: string; count?: number }, options?: Record<string, unknown>) => {
       const translations: Record<string, Record<string, string>> = {
         en: {
           "example.language.english": "English",
@@ -121,8 +121,9 @@ vi.mock("react-i18next", () => ({
           "example.components.dismiss": "关闭组件演示",
         },
       };
-      const value = translations[mockLanguage]?.[key] ?? fallback ?? key;
-      return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options?.[name] ?? `{{${name}}}`));
+      const values = typeof fallback === "object" ? fallback : options;
+      const value = translations[mockLanguage]?.[key] ?? (typeof fallback === "object" ? fallback.defaultValue : fallback) ?? key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(values?.[name] ?? `{{${name}}}`));
     },
     i18n: {
       get language() {
