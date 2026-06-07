@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { LayoutGroup } from "framer-motion"
 import { useTranslation } from "react-i18next"
-import { Streamdown } from "streamdown"
 import {
   EmojiPicker,
   useCommandQueue,
@@ -26,10 +25,6 @@ import {
   parseSessionJsonl,
   parseSessionFolder,
 } from "./demo-data"
-import {
-  CHAT_APP_COMPACT_GREETING_COUNT,
-  CHAT_APP_COMPACT_GREETING_FALLBACKS,
-} from "./ChatAppDemoData"
 import { demoSteps } from "./demo-steps"
 import { useStepPlayer } from "./use-step-player"
 import {
@@ -40,14 +35,7 @@ import {
   type LoadedClaudeCodeSession,
   type ParseStats,
 } from "./claudecode-log-provider"
-import {
-  ChatApp,
-  ChatAppFullscreenPanel,
-  ExpandedHeader,
-  ExpandedHeaderModeControls,
-  ExpandedHeaderNewSessionMenu,
-  ExpandedHeaderSessionMenu,
-} from "./ChatApp"
+import { ChatApp } from "./ChatApp"
 import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
 import { PlayerButton, ModeButton, SectionLabel, SidebarPageButton } from "./components/common"
 import { PlayerPage } from "./pages/PlayerPage"
@@ -67,6 +55,11 @@ import {
   storeFullscreenChatWidth,
 } from "./hooks/app-utils"
 import type { ExampleLanguage, ExampleSidebarPage, FullscreenEntryGeometry } from "./hooks/app-utils"
+import {
+  useCompactSummaryContent,
+  useExpandedHeaderRenderer,
+  useFullscreenContent,
+} from "./hooks/chat-app-composition"
 
 // ============================================================================
 // App
@@ -462,102 +455,11 @@ export function App() {
     slashCommands: demoSlashCommands,
     onSlashCommand: handleSlashCommand,
   }
-  const compactIdleGreeting = useMemo(() => {
-    const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT))
-    return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index])
-  }, [t])
-  const compactActivity = useMemo(() => {
-    const formatToolPath = (value: unknown): string => {
-      if (!value) return "file"
-      const raw = String(value)
-      const packageIndex = raw.indexOf("packages/")
-      return packageIndex >= 0 ? raw.slice(packageIndex) : raw.split("/").filter(Boolean).slice(-3).join("/") || "file"
-    }
-    const truncate = (value: string, maxLength: number): string =>
-      value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value
-    const latest = [...player.messages].reverse().find((message) =>
-      (message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error") &&
-      (message.content || message.message || message.name)
-    )
-
-    if (!latest) return { kind: "plain", text: compactIdleGreeting }
-    if (latest.type === "thinking") {
-      return { kind: "thinking", text: latest.content || t("chat_app.activity.thinking", "Thinking...") }
-    }
-    if (latest.type === "error") {
-      return { kind: "plain", text: latest.message || latest.content || t("chat_app.activity.needs_attention", "Something needs attention.") }
-    }
-    if (latest.type !== "tool_use") {
-      return { kind: "plain", text: latest.content || latest.message || t("chat_app.activity.working", "Working...") }
-    }
-
-    const input = latest.input
-    switch (latest.name) {
-      case "Bash": {
-        const command = input?.command ? truncate(String(input.command).trim(), 72) : ""
-        return {
-          kind: "plain",
-          text: command
-            ? t("chat_app.activity.running_command_named", "Running {{command}}", { command })
-            : t("chat_app.activity.running_command", "Running command..."),
-        }
-      }
-      case "Read":
-        return { kind: "plain", text: t("chat_app.activity.reading_file", "Reading {{file}}...", { file: formatToolPath(input?.file_path) }) }
-      case "Write":
-        return { kind: "plain", text: t("chat_app.activity.writing_file", "Writing {{file}}...", { file: formatToolPath(input?.file_path) }) }
-      case "Edit":
-      case "MultiEdit":
-        return { kind: "plain", text: t("chat_app.activity.editing_file", "Editing {{file}}...", { file: formatToolPath(input?.file_path) }) }
-      case "Grep": {
-        const pattern = input?.pattern ? truncate(String(input.pattern), 48) : ""
-        return {
-          kind: "plain",
-          text: pattern
-            ? t("chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
-            : t("chat_app.activity.searching_workspace", "Searching workspace..."),
-        }
-      }
-      case "Glob": {
-        const pattern = input?.pattern ? truncate(String(input.pattern), 48) : ""
-        return {
-          kind: "plain",
-          text: pattern
-            ? t("chat_app.activity.finding", "Finding {{pattern}}...", { pattern })
-            : t("chat_app.activity.finding_files", "Finding files..."),
-        }
-      }
-      case "WebSearch":
-        return { kind: "plain", text: t("chat_app.activity.searching_web", "Searching the web...") }
-      case "WebFetch":
-        return { kind: "plain", text: t("chat_app.activity.fetching_page", "Fetching page content...") }
-      case "Task":
-      case "Agent":
-        return { kind: "plain", text: t("chat_app.activity.running_agent_task", "Running a delegated agent task...") }
-      default:
-        return {
-          kind: "plain",
-          text: latest.name
-            ? t("chat_app.activity.running_tool", "Running {{name}}...", { name: latest.name })
-            : t("chat_app.activity.working", "Working..."),
-        }
-    }
-  }, [compactIdleGreeting, player.messages, t])
-  const renderCompactActivitySummary = useCallback(() => {
-    if (compactActivity.kind === "thinking") {
-      return (
-        <Streamdown mode={player.isStreaming ? "streaming" : "static"} caret={player.isStreaming ? "block" : undefined}>
-          {compactActivity.text}
-        </Streamdown>
-      )
-    }
-    return (
-      <>
-        {compactActivity.text}
-        {player.isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
-      </>
-    )
-  }, [compactActivity, player.isStreaming])
+  const compactSummaryContent = useCompactSummaryContent({
+    messages: player.messages,
+    isStreaming: player.isStreaming,
+    t,
+  })
   const isComponentDemoActive = (id: UIShowcaseDemoId) => {
     switch (id) {
       case "plan":
@@ -693,7 +595,7 @@ export function App() {
       isStreaming={player.isStreaming}
       playerStatus={player.status}
       pendingUserMessageCount={commandQueue.items.length}
-      renderCompactActivitySummary={renderCompactActivitySummary}
+      compactSummaryContent={renderCompactActivitySummary()}
       sessions={chatAppSessions}
       renderHeader={(headerProps) => (
         <ExpandedHeader
@@ -716,7 +618,11 @@ export function App() {
             <ExpandedHeaderModeControls
               mode={headerProps.mode}
               onModeChange={headerProps.onModeChange}
-              onSettingsClick={() => setShowToolsPanel((open) => !open)}
+              moreMenuContent={(
+                <DefaultExpandedHeaderMoreMenu
+                  onSettingsClick={() => setShowToolsPanel((open) => !open)}
+                />
+              )}
             />
           )}
         />
@@ -741,37 +647,68 @@ export function App() {
       inputProps={sharedChatInputProps}
       fullscreenContent={(
         <ChatAppFullscreenPanel
-          messages={player.messages}
-          messageUpdates={player.messageUpdates}
-          isStreaming={player.isStreaming}
-          pendingPlan={player.pendingPlan}
-          pendingApproval={player.pendingApproval}
-          pendingQuestion={player.pendingQuestion}
-          commandQueueItems={commandQueue.items}
-          commandQueuePaused={commandQueue.isPaused}
-          messageListRef={messageListRef}
-          onExpandSubagent={handleExpandSubagent}
-          onApprovePlan={() => {
-            console.log("Plan approved")
-            player.resolvePlan(true)
-          }}
-          onRejectPlan={() => {
-            console.log("Plan rejected")
-            player.resolvePlan(false)
-          }}
-          onApprovalDecision={(decision, feedback) => {
-            console.log("Exec decision:", decision, "Feedback:", feedback)
-            player.resolveApproval(decision, feedback)
-          }}
-          onAnswerQuestions={(answers) => {
-            console.log("Answers:", answers)
-            player.resolveQuestion(answers)
-          }}
-          onCommandQueueRemove={commandQueue.remove}
-          onCommandQueueClear={commandQueue.clear}
-          onCommandQueuePause={commandQueue.pause}
-          onCommandQueueResume={commandQueue.resume}
-          inputProps={sharedChatInputProps}
+          messageContent={(
+            <ChatAppFullscreenMessagePanel
+              messages={player.messages}
+              messageUpdates={player.messageUpdates}
+              isStreaming={player.isStreaming}
+              pendingPlan={player.pendingPlan}
+              pendingApproval={player.pendingApproval}
+              pendingQuestion={player.pendingQuestion}
+              messageListRef={messageListRef}
+              onExpandSubagent={handleExpandSubagent}
+              onApprovePlan={() => {
+                console.log("Plan approved")
+                player.resolvePlan(true)
+              }}
+              onRejectPlan={() => {
+                console.log("Plan rejected")
+                player.resolvePlan(false)
+              }}
+              onApprovalDecision={(decision, feedback) => {
+                console.log("Exec decision:", decision, "Feedback:", feedback)
+                player.resolveApproval(decision, feedback)
+              }}
+              onAnswerQuestions={(answers) => {
+                console.log("Answers:", answers)
+                player.resolveQuestion(answers)
+              }}
+            />
+          )}
+          statusContent={(
+            <ChatAppFullscreenCommandQueue
+              commandQueueItems={commandQueue.items}
+              commandQueuePaused={commandQueue.isPaused}
+              onCommandQueueRemove={commandQueue.remove}
+              onCommandQueueClear={commandQueue.clear}
+              onCommandQueuePause={commandQueue.pause}
+              onCommandQueueResume={commandQueue.resume}
+            />
+          )}
+          inputContent={(
+            <ChatAppFullscreenInputPanel
+              pendingPlan={player.pendingPlan}
+              pendingApproval={player.pendingApproval}
+              pendingQuestion={player.pendingQuestion}
+              onApprovePlan={() => {
+                console.log("Plan approved")
+                player.resolvePlan(true)
+              }}
+              onRejectPlan={() => {
+                console.log("Plan rejected")
+                player.resolvePlan(false)
+              }}
+              onApprovalDecision={(decision, feedback) => {
+                console.log("Exec decision:", decision, "Feedback:", feedback)
+                player.resolveApproval(decision, feedback)
+              }}
+              onAnswerQuestions={(answers) => {
+                console.log("Answers:", answers)
+                player.resolveQuestion(answers)
+              }}
+              inputProps={sharedChatInputProps}
+            />
+          )}
         />
       )}
     />

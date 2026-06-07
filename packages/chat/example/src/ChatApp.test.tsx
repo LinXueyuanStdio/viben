@@ -399,15 +399,23 @@ describe("ChatApp", () => {
   test("passes static pet avatars into fullscreen message lists", () => {
     render(
       <ChatAppFullscreenPanel
-        messages={messages}
-        isStreaming={false}
-        inputProps={{
-          value: "",
-          onValueChange: () => {},
-          onSend: () => {},
-          onCancel: () => {},
-        }}
-        assistantAvatar={<span data-testid="fullscreen-static-pet">Fullscreen static pet</span>}
+        messageContent={(
+          <ChatAppFullscreenMessagePanel
+            messages={messages}
+            isStreaming={false}
+            assistantAvatar={<span data-testid="fullscreen-static-pet">Fullscreen static pet</span>}
+          />
+        )}
+        inputContent={(
+          <ChatAppFullscreenInputPanel
+            inputProps={{
+              value: "",
+              onValueChange: () => {},
+              onSend: () => {},
+              onCancel: () => {},
+            }}
+          />
+        )}
       />
     );
 
@@ -725,14 +733,17 @@ describe("ChatApp", () => {
         onCancel={() => {}}
         fullscreenContent={(
           <ChatAppFullscreenPanel
-            messages={messages}
-            isStreaming={false}
-            inputProps={{
-              value: "",
-              onValueChange: () => {},
-              onSend: () => {},
-              onCancel: () => {},
-            }}
+            messageContent={<ChatAppFullscreenMessagePanel messages={messages} isStreaming={false} />}
+            inputContent={(
+              <ChatAppFullscreenInputPanel
+                inputProps={{
+                  value: "",
+                  onValueChange: () => {},
+                  onSend: () => {},
+                  onCancel: () => {},
+                }}
+              />
+            )}
           />
         )}
       />
@@ -771,14 +782,17 @@ describe("ChatApp", () => {
         onCancel={() => {}}
         fullscreenContent={(
           <ChatAppFullscreenPanel
-            messages={messages}
-            isStreaming={false}
-            inputProps={{
-              value: "",
-              onValueChange: () => {},
-              onSend: () => {},
-              onCancel: () => {},
-            }}
+            messageContent={<ChatAppFullscreenMessagePanel messages={messages} isStreaming={false} />}
+            inputContent={(
+              <ChatAppFullscreenInputPanel
+                inputProps={{
+                  value: "",
+                  onValueChange: () => {},
+                  onSend: () => {},
+                  onCancel: () => {},
+                }}
+              />
+            )}
           />
         )}
       />
@@ -1289,13 +1303,15 @@ describe("ChatApp", () => {
           <ExpandedHeaderModeControls
             mode="expanded"
             onModeChange={onModeChange}
-            onSettingsClick={onSettingsClick}
+            moreMenuContent={<button type="button" onClick={onSettingsClick}>Settings</button>}
           />
         )}
       />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Create new session" }));
+    expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
     fireEvent.click(screen.getByText("Session one"));
@@ -1310,14 +1326,17 @@ describe("ChatAppFullscreenPanel", () => {
   test("renders the reusable message list and full chat input composition", () => {
     render(
       <ChatAppFullscreenPanel
-        messages={messages}
-        isStreaming={false}
-        inputProps={{
-          value: "hello",
-          onValueChange: () => {},
-          onSend: () => {},
-          onCancel: () => {},
-        }}
+        messageContent={<ChatAppFullscreenMessagePanel messages={messages} isStreaming={false} />}
+        inputContent={(
+          <ChatAppFullscreenInputPanel
+            inputProps={{
+              value: "hello",
+              onValueChange: () => {},
+              onSend: () => {},
+              onCancel: () => {},
+            }}
+          />
+        )}
       />
     );
 
@@ -1340,9 +1359,8 @@ describe("ChatAppFullscreenPanel", () => {
 
     render(
       <ChatAppFullscreenPanel
-        messages={messages}
-        isStreaming={false}
-        inputProps={sharedInputProps}
+        messageContent={<ChatAppFullscreenMessagePanel messages={messages} isStreaming={false} />}
+        inputContent={<ChatAppFullscreenInputPanel inputProps={sharedInputProps} />}
       />
     );
 

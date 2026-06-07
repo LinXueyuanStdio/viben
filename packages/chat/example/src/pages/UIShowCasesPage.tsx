@@ -215,10 +215,10 @@ export function UIShowCasesPage({
       <DashboardCard className="space-y-3">
         <SectionLabel>{t("example.sections.toolExecution", "ToolExecutionItem (4 states)")}</SectionLabel>
         <div className="space-y-1">
-          <ToolExecutionItem name="Grep" displayName="Grep" input={{ pattern: "TODO" }} status="queued" compact />
-          <ToolExecutionItem name="Bash" displayName="Bash" input={{ command: "pnpm test" }} status="executing" compact />
-          <ToolExecutionItem name="Read" displayName="Read" input={{ file_path: "/src/App.tsx" }} output="File content here..." status="success" compact />
-          <ToolExecutionItem name="Write" displayName="Write" input={{ file_path: "/src/utils.ts" }} output="Permission denied" status="error" isError compact />
+          <ToolExecutionItem state={{ name: "Grep", displayName: "Grep", input: { pattern: "TODO" }, status: "queued" }} compact />
+          <ToolExecutionItem state={{ name: "Bash", displayName: "Bash", input: { command: "pnpm test" }, status: "executing" }} compact />
+          <ToolExecutionItem state={{ name: "Read", displayName: "Read", input: { file_path: "/src/App.tsx" }, output: "File content here...", status: "success" }} compact />
+          <ToolExecutionItem state={{ name: "Write", displayName: "Write", input: { file_path: "/src/utils.ts" }, output: "Permission denied", status: "error", isError: true }} compact />
         </div>
       </DashboardCard>
 

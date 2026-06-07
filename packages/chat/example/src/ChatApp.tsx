@@ -1,7 +1,7 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search } from "lucide-react";
 import { BackgroundTaskList, ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet, TodoListPanel } from "@viben/chat";
 import {
   DEFAULT_CHAT_APP_AGENTS,
@@ -77,12 +77,7 @@ export interface ExpandedHeaderNewSessionMenuProps {
 export interface ExpandedHeaderModeControlsProps {
   mode: ChatAppMode;
   onModeChange: (mode: ChatAppMode) => void;
-  onSettingsClick?: () => void;
-  onPrevious?: () => void;
-  onNext?: () => void;
-  onMoveToWindow?: () => void;
-  onShowDebugView?: () => void;
-  onShowDebugLog?: () => void;
+  moreMenuContent?: React.ReactNode;
 }
 
 export interface ChatAppProps {
@@ -102,7 +97,7 @@ export interface ChatAppProps {
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
   fullscreenContent?: React.ReactNode;
-  renderCompactActivitySummary?: () => React.ReactNode;
+  compactSummaryContent?: React.ReactNode;
   renderHeader?: (props: ChatAppHeaderRenderProps) => React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   onExpandSubagent?: ExpandSubagentHandler;
@@ -127,15 +122,15 @@ export type ChatAppSessionItem = OverlaySessionItem;
 export type ChatAppAgentItem = OverlayAgentItem;
 
 export interface ChatAppFullscreenPanelProps {
+  messageContent: React.ReactNode;
+  inputContent: React.ReactNode;
+  statusContent?: React.ReactNode;
+}
+
+export interface ChatAppFullscreenMessagePanelProps {
   messages: AgentMessage[];
   messageUpdates?: Record<string, Partial<AgentMessage>>;
   isStreaming?: boolean;
-  pendingPlan?: TaskPlan | null;
-  pendingApproval?: PendingExecApproval | null;
-  pendingQuestion?: PendingQuestion | null;
-  commandQueueItems?: CommandQueueItem[];
-  commandQueuePaused?: boolean;
-  inputProps: ChatInputProps;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   assistantAvatar?: React.ReactNode;
   welcomeTitle?: string;
@@ -146,10 +141,26 @@ export interface ChatAppFullscreenPanelProps {
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
+}
+
+export interface ChatAppFullscreenCommandQueueProps {
+  commandQueueItems?: CommandQueueItem[];
+  commandQueuePaused?: boolean;
   onCommandQueueRemove?: (id: string) => void;
   onCommandQueueClear?: () => void;
   onCommandQueuePause?: () => void;
   onCommandQueueResume?: () => void;
+}
+
+export interface ChatAppFullscreenInputPanelProps {
+  inputProps: ChatInputProps;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
+  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }
 
 const OVERLAY_TRANSITION = {
@@ -233,7 +244,7 @@ export function ChatApp({
   onInputValueChange,
   inputProps,
   fullscreenContent,
-  renderCompactActivitySummary,
+  compactSummaryContent,
   renderHeader,
   messageListRef,
   onExpandSubagent,
@@ -259,7 +270,7 @@ export function ChatApp({
     onInputValueChange?.(value);
   }, [inputValue, onInputValueChange]);
 
-  const compactActivitySummary = renderCompactActivitySummary?.() ?? t("chat_app.activity.ready", "Ready when you are.");
+  const compactActivitySummary = compactSummaryContent ?? t("chat_app.activity.ready", "Ready when you are.");
   const hasCompactDraft = content.trim().length > 0;
 
   const handleSubmit = React.useCallback(() => {
@@ -328,7 +339,13 @@ export function ChatApp({
         </>
       )}
       centerContent={<div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />}
-      rightContent={<ExpandedHeaderModeControls mode={mode} onModeChange={onModeChange} />}
+      rightContent={(
+        <ExpandedHeaderModeControls
+          mode={mode}
+          onModeChange={onModeChange}
+          moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
+        />
+      )}
     />
   );
 
@@ -477,15 +494,34 @@ export function ChatApp({
 }
 
 export function ChatAppFullscreenPanel({
+  messageContent,
+  statusContent,
+  inputContent,
+}: ChatAppFullscreenPanelProps) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <motion.div
+        layoutId="viben-overlay-message-panel"
+        transition={INTERNAL_LAYOUT_TRANSITION}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        data-shared-element="overlay-message-panel"
+        data-testid="fullscreen-message-panel"
+      >
+        {messageContent}
+        {statusContent}
+      </motion.div>
+      {inputContent}
+    </div>
+  );
+}
+
+export function ChatAppFullscreenMessagePanel({
   messages,
   messageUpdates,
   isStreaming = false,
   pendingPlan,
   pendingApproval,
   pendingQuestion,
-  commandQueueItems = [],
-  commandQueuePaused = false,
-  inputProps,
   messageListRef,
   assistantAvatar,
   welcomeTitle,
@@ -496,60 +532,74 @@ export function ChatAppFullscreenPanel({
   onRejectPlan,
   onApprovalDecision,
   onAnswerQuestions,
+}: ChatAppFullscreenMessagePanelProps) {
+  const { t } = useTranslation();
+
+  return (
+    <ChatAppMessagePanel
+      messageListRef={messageListRef}
+      messages={messages}
+      messageUpdates={messageUpdates}
+      isStreaming={isStreaming}
+      pendingPlan={pendingPlan}
+      pendingApproval={pendingApproval}
+      pendingQuestion={pendingQuestion}
+      assistantAvatar={assistantAvatar}
+      welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
+      welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
+      maxMessageWidth={maxMessageWidth}
+      onExpandSubagent={onExpandSubagent}
+      onApprovePlan={onApprovePlan}
+      onRejectPlan={onRejectPlan}
+      onApprovalDecision={onApprovalDecision}
+      onAnswerQuestions={onAnswerQuestions}
+    />
+  );
+}
+
+export function ChatAppFullscreenCommandQueue({
+  commandQueueItems = [],
+  commandQueuePaused = false,
   onCommandQueueRemove,
   onCommandQueueClear,
   onCommandQueuePause,
   onCommandQueueResume,
-}: ChatAppFullscreenPanelProps) {
+}: ChatAppFullscreenCommandQueueProps) {
   const { t } = useTranslation();
   const noop = React.useCallback(() => {}, []);
   const noopRemove = React.useCallback((_id: string) => {}, []);
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <motion.div
-        layoutId="viben-overlay-message-panel"
-        transition={INTERNAL_LAYOUT_TRANSITION}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden"
-        data-shared-element="overlay-message-panel"
-        data-testid="fullscreen-message-panel"
-      >
-        <ChatAppMessagePanel
-          messageListRef={messageListRef}
-          messages={messages}
-          messageUpdates={messageUpdates}
-          isStreaming={isStreaming}
-          pendingPlan={pendingPlan}
-          pendingApproval={pendingApproval}
-          pendingQuestion={pendingQuestion}
-          assistantAvatar={assistantAvatar}
-          welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
-          welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
-          maxMessageWidth={maxMessageWidth}
-          onExpandSubagent={onExpandSubagent}
-          onApprovePlan={onApprovePlan}
-          onRejectPlan={onRejectPlan}
-          onApprovalDecision={onApprovalDecision}
-          onAnswerQuestions={onAnswerQuestions}
-        />
-        {commandQueueItems.length > 0 && (
-          <div className="w-full px-4 pb-2">
-            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <div className="size-1.5 animate-pulse rounded-full bg-amber-500" />
-              <span>{t("chat_app.queue.will_send_when_finished", "Will send when agent finishes...")}</span>
-            </div>
-            <CommandQueuePanel
-              items={commandQueueItems}
-              isPaused={commandQueuePaused}
-              onRemove={onCommandQueueRemove ?? noopRemove}
-              onClear={onCommandQueueClear ?? noop}
-              onPause={onCommandQueuePause ?? noop}
-              onResume={onCommandQueueResume ?? noop}
-            />
-          </div>
-        )}
-      </motion.div>
+  if (commandQueueItems.length === 0) return null;
 
+  return (
+    <div className="w-full px-4 pb-2">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <div className="size-1.5 animate-pulse rounded-full bg-amber-500" />
+        <span>{t("chat_app.queue.will_send_when_finished", "Will send when agent finishes...")}</span>
+      </div>
+      <CommandQueuePanel
+        items={commandQueueItems}
+        isPaused={commandQueuePaused}
+        onRemove={onCommandQueueRemove ?? noopRemove}
+        onClear={onCommandQueueClear ?? noop}
+        onPause={onCommandQueuePause ?? noop}
+        onResume={onCommandQueueResume ?? noop}
+      />
+    </div>
+  );
+}
+
+export function ChatAppFullscreenInputPanel({
+  inputProps,
+  pendingPlan,
+  pendingApproval,
+  pendingQuestion,
+  onApprovePlan,
+  onRejectPlan,
+  onApprovalDecision,
+  onAnswerQuestions,
+}: ChatAppFullscreenInputPanelProps) {
+  return (
       <motion.div
         layoutId="viben-overlay-input-panel"
         transition={INTERNAL_LAYOUT_TRANSITION}
@@ -596,7 +646,6 @@ export function ChatAppFullscreenPanel({
           </AnimatePresence>
         </div>
       </motion.div>
-    </div>
   );
 }
 
@@ -896,12 +945,7 @@ export function ExpandedHeaderNewSessionMenu({
 export function ExpandedHeaderModeControls({
   mode,
   onModeChange,
-  onSettingsClick,
-  onPrevious,
-  onNext,
-  onMoveToWindow,
-  onShowDebugView,
-  onShowDebugLog,
+  moreMenuContent,
 }: ExpandedHeaderModeControlsProps) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -930,16 +974,6 @@ export function ExpandedHeaderModeControls({
         </button>
       )}
 
-      <button
-        type="button"
-        aria-label={t("chat_app.header.settings", "Settings")}
-        onClick={onSettingsClick}
-        data-testid="settings-button"
-        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      >
-        <Settings className="size-4" />
-      </button>
-
       <div className="relative" data-testid="more-actions-menu">
         <button
           type="button"
@@ -951,16 +985,42 @@ export function ExpandedHeaderModeControls({
         </button>
         {moreOpen && (
           <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
-            <MenuButton onClick={onPrevious}>{t("chat_app.header.previous_step", "Previous step")}</MenuButton>
-            <MenuButton onClick={onNext}>{t("chat_app.header.next_step", "Next step")}</MenuButton>
-            <MenuDivider />
-            <MenuButton onClick={onMoveToWindow}>{t("chat_app.header.move_to_window", "Move chat to new window")}</MenuButton>
-            <MenuDivider />
-            <MenuButton onClick={onShowDebugView}>{t("chat_app.header.show_debug_view", "Show debug view")}</MenuButton>
-            <MenuButton onClick={onShowDebugLog}>{t("chat_app.header.show_debug_log", "Show debug log")}</MenuButton>
+            {moreMenuContent ?? <DefaultExpandedHeaderMoreMenu />}
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+export function DefaultExpandedHeaderMoreMenu({
+  onSettingsClick,
+  onPrevious,
+  onNext,
+  onMoveToWindow,
+  onShowDebugView,
+  onShowDebugLog,
+}: {
+  onSettingsClick?: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  onMoveToWindow?: () => void;
+  onShowDebugView?: () => void;
+  onShowDebugLog?: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <MenuButton onClick={onSettingsClick}>{t("chat_app.header.settings", "Settings")}</MenuButton>
+      <MenuDivider />
+      <MenuButton onClick={onPrevious}>{t("chat_app.header.previous_step", "Previous step")}</MenuButton>
+      <MenuButton onClick={onNext}>{t("chat_app.header.next_step", "Next step")}</MenuButton>
+      <MenuDivider />
+      <MenuButton onClick={onMoveToWindow}>{t("chat_app.header.move_to_window", "Move chat to new window")}</MenuButton>
+      <MenuDivider />
+      <MenuButton onClick={onShowDebugView}>{t("chat_app.header.show_debug_view", "Show debug view")}</MenuButton>
+      <MenuButton onClick={onShowDebugLog}>{t("chat_app.header.show_debug_log", "Show debug log")}</MenuButton>
     </>
   );
 }
