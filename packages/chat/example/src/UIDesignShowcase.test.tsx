@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { CommandQueueItem } from "@viben/chat";
-import { UIDesignShowcase } from "./components/UIDesignShowcase";
+import { UIShowCasesPage } from "./components/UIShowCasesPage";
 
 vi.mock("@viben/chat", () => ({
   ContextDetailsPopover: () => <div data-testid="context-details-popover" />,
@@ -27,10 +27,10 @@ const queueItems: CommandQueueItem[] = [
   { id: "cmd-2", content: "Update docs", createdAt: Date.now() },
 ];
 
-describe("UIDesignShowcase", () => {
+describe("UIShowCasesPage", () => {
   test("renders the standalone UI design showcase outside App", () => {
     render(
-      <UIDesignShowcase
+      <UIShowCasesPage
         isChatAppFull={false}
         activeComponentLabel={null}
         componentDemoItems={[

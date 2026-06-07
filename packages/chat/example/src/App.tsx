@@ -8,9 +8,7 @@ import {
 } from "@viben/chat"
 import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react"
-import { JsonView, darkStyles } from "react-json-view-lite"
-import "react-json-view-lite/dist/index.css"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import {
   demoAgents,
   demoModels,
@@ -20,6 +18,8 @@ import {
   demoContextBreakdown,
   demoCommandQueueItems,
   demoExecApprovals,
+  demoPlan,
+  demoQuestions,
   parseSessionJsonl,
   parseSessionFolder,
 } from "./demo-data"
@@ -37,9 +37,10 @@ import {
 } from "./claudecode-log-provider"
 import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
 import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
-import { UIDesignShowcase, UIShowcaseDemoOverlay } from "./components/UIDesignShowcase"
+import { PlayerPage } from "./components/PlayerPage"
+import { UIShowCasesPage, UIShowcaseDemoOverlay } from "./components/UIShowCasesPage"
+import { UI_DESIGN_SHOWCASE_DEMOS } from "./UIDesignShowcaseData"
 import type { UIShowcaseDemoId } from "./UIDesignShowcaseData"
-import { demoPlan, demoQuestions } from "./demo-data"
 
 // ============================================================================
 // Agent Busy Detection
@@ -83,8 +84,6 @@ type FullscreenEntryGeometry = {
   y: number
   width: number
   height: number
-  scaleX: number
-  scaleY: number
 }
 
 function getFullscreenChatMaxWidth(sidebarWidth: number) {
@@ -117,15 +116,15 @@ function getFullscreenEntryInitial(geometry: FullscreenEntryGeometry | null) {
         opacity: 0.98,
         x: geometry.x,
         y: geometry.y,
-        scaleX: geometry.scaleX,
-        scaleY: geometry.scaleY,
+        width: geometry.width,
+        height: geometry.height,
       }
     : {
         opacity: 0.96,
         x: -28,
         y: 32,
-        scaleX: 0.62,
-        scaleY: 0.75,
+        width: FULLSCREEN_CHAT_DEFAULT_WIDTH,
+        height: "75%",
       }
 }
 
@@ -496,7 +495,6 @@ export function App() {
   const isAwaiting = player.isAwaiting
   const isChatAppFull = chatAppMode === "full"
   const isUiShowcasePage = sidebarPage === "ui-showcase"
-  const hasStandaloneDemoOpen = showPlan || showQuestions || showEmojiPicker || showExecApproval || showCommandQueue
   const dismissComponentDemo = useCallback(() => {
     setShowPlan(false)
     setShowQuestions(false)
@@ -520,10 +518,8 @@ export function App() {
     return {
       x: expandedRect.left - targetLeft,
       y: expandedRect.top - targetTop,
-      width: expandedRect.width,
-      height: expandedRect.height,
-      scaleX: expandedRect.width / Math.max(1, targetWidth),
-      scaleY: expandedRect.height / targetHeight,
+      width: Math.min(expandedRect.width, targetWidth),
+      height: Math.min(expandedRect.height, targetHeight),
     }
   }, [introSidebarOpen])
   const handleChatAppModeChange = useCallback((nextMode: ChatAppMode) => {
@@ -644,146 +640,57 @@ export function App() {
       onClick: () => handleComponentDemoClick(demo.id),
     }))
   const activeComponentDemo = componentDemoItems.find((item) => item.active)
+  const activeDemoId = activeComponentDemo?.id ?? null
   const introSidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
 
-  const componentDemoOverlay = hasStandaloneDemoOpen ? (
-    <div className="pointer-events-auto absolute inset-0 z-40 flex min-h-0 items-center justify-center bg-background/80 p-5 backdrop-blur-sm">
-      {showPlan ? (
-        <ComponentDemoSurface
-          title={activeComponentDemo?.label ?? t("example.components.plan_approval", "Plan approval")}
-          onDismiss={dismissComponentDemo}
-          dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
-        >
-          <div className="w-full max-w-lg">
-            <PlanApproval
-              plan={demoPlan}
-              isPending
-              onApprove={() => setShowPlan(false)}
-              onReject={() => setShowPlan(false)}
-            />
-          </div>
-        </ComponentDemoSurface>
-      ) : showQuestions ? (
-        <ComponentDemoSurface
-          title={activeComponentDemo?.label ?? t("example.components.question_input", "Question input")}
-          onDismiss={dismissComponentDemo}
-          dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
-        >
-          <div className="w-full max-w-lg">
-            <QuestionInput
-              questions={demoQuestions}
-              onSubmit={(answers) => {
-                console.log("Answers:", answers)
-                setShowQuestions(false)
-              }}
-            />
-          </div>
-        </ComponentDemoSurface>
-      ) : showEmojiPicker ? (
-        <ComponentDemoSurface
-          title={activeComponentDemo?.label ?? t("example.components.emoji_picker", "Emoji picker")}
-          onDismiss={dismissComponentDemo}
-          dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
-        >
-          <EmojiPicker
-            onSelect={(emoji) => console.log("Selected:", emoji)}
-          />
-        </ComponentDemoSurface>
-      ) : showExecApproval ? (
-        <ComponentDemoSurface
-          title={activeComponentDemo?.label ?? t("example.components.exec_approval", "Exec approval")}
-          onDismiss={dismissComponentDemo}
-          dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
-        >
-          <div className="w-full max-w-lg space-y-3">
-            <ExecApproval
-              approval={demoExecApprovals[approvalDemoIdx % demoExecApprovals.length]}
-              onDecision={(decision, feedback) => {
-                console.log("Decision:", decision, "Feedback:", feedback)
-                const label = decision === "allow_once"
-                  ? t("example.exec_feedback.allowed_once", "Allowed")
-                  : decision === "allow_always"
-                    ? t("example.exec_feedback.allowed_always", "Always allowed")
-                    : t("example.exec_feedback.rejected", "Rejected")
-                setApprovalFeedback(label + (feedback ? ` - "${feedback}"` : ""))
-                if (approvalFeedbackTimerRef.current) clearTimeout(approvalFeedbackTimerRef.current)
-                approvalFeedbackTimerRef.current = setTimeout(() => {
-                  setApprovalFeedback(null)
-                  setApprovalDemoIdx(i => (i + 1) % demoExecApprovals.length)
-                }, 1500)
-              }}
-            />
-            {approvalFeedback && (
-              <div className="rounded-md border border-border/60 bg-muted/50 px-3 py-2 text-center text-sm text-muted-foreground animate-in fade-in duration-200">
-                {approvalFeedback}
-              </div>
-            )}
-            <p className="text-center text-[11px] text-muted-foreground">
-              {t("example.exec_feedback.cycle_hint", "Click sidebar button to cycle through {{count}} scenarios ({{current}}/{{total}})", {
-                count: demoExecApprovals.length,
-                current: approvalDemoIdx + 1,
-                total: demoExecApprovals.length,
-              })}
-            </p>
-          </div>
-        </ComponentDemoSurface>
-      ) : showCommandQueue ? (
-        <ComponentDemoSurface
-          title={activeComponentDemo?.label ?? t("example.components.command_queue", "Command queue")}
-          onDismiss={dismissComponentDemo}
-          dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
-        >
-          <div className="w-full max-w-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">{t("example.command_queue.demo_title", "Command Queue Demo")}</h3>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => {
-                    const newItem: CommandQueueItem = {
-                      id: `cmd-${Date.now()}`,
-                      content: t("example.command_queue.demo_task", "Task {{count}}: Run automated check", { count: standaloneQueueItems.length + 1 }),
-                      createdAt: Date.now(),
-                    }
-                    setStandaloneQueueItems(prev => [...prev, newItem])
-                  }}
-                  className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <Plus className="size-3" />
-                  {t("example.command_queue.add_item", "Add item")}
-                </button>
-                <button
-                  onClick={() => setStandaloneQueuePaused(p => !p)}
-                  className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground ${standaloneQueuePaused ? "text-amber-500" : "text-muted-foreground"}`}
-                >
-                  {standaloneQueuePaused ? <Play className="size-3" /> : <Pause className="size-3" />}
-                  {standaloneQueuePaused ? t("example.command_queue.resume", "Resume") : t("example.command_queue.pause", "Pause")}
-                </button>
-                <button
-                  onClick={() => setStandaloneQueueItems([])}
-                  className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-                >
-                  {t("example.command_queue.clear_all", "Clear all")}
-                </button>
-              </div>
-            </div>
-            <CommandQueuePanel
-              items={standaloneQueueItems}
-              isPaused={standaloneQueuePaused}
-              onRemove={(id) => setStandaloneQueueItems(prev => prev.filter(it => it.id !== id))}
-              onClear={() => setStandaloneQueueItems([])}
-              onPause={() => setStandaloneQueuePaused(true)}
-              onResume={() => setStandaloneQueuePaused(false)}
-            />
-            {standaloneQueueItems.length === 0 && (
-              <p className="py-4 text-center text-[11px] text-muted-foreground">
-                {t("example.command_queue.empty_hint", "Queue is empty. Click \"Add item\" to add demo items.")}
-              </p>
-            )}
-          </div>
-        </ComponentDemoSurface>
-      ) : null}
-    </div>
-  ) : null
+  const componentDemoOverlay = (
+    <UIShowcaseDemoOverlay
+      activeDemoId={activeDemoId}
+      activeComponentLabel={activeComponentDemo?.label ?? null}
+      plan={demoPlan}
+      questions={demoQuestions}
+      execApprovals={demoExecApprovals}
+      approvalDemoIdx={approvalDemoIdx}
+      approvalFeedback={approvalFeedback}
+      standaloneQueueItems={standaloneQueueItems}
+      standaloneQueuePaused={standaloneQueuePaused}
+      onDismiss={dismissComponentDemo}
+      onPlanApprove={() => setShowPlan(false)}
+      onPlanReject={() => setShowPlan(false)}
+      onQuestionsSubmit={(answers) => {
+        console.log("Answers:", answers)
+        setShowQuestions(false)
+      }}
+      onEmojiSelect={(emoji) => console.log("Selected:", emoji)}
+      onExecDecision={(decision, feedback) => {
+        console.log("Decision:", decision, "Feedback:", feedback)
+        const label = decision === "allow_once"
+          ? t("example.exec_feedback.allowed_once", "Allowed")
+          : decision === "allow_always"
+            ? t("example.exec_feedback.allowed_always", "Always allowed")
+            : t("example.exec_feedback.rejected", "Rejected")
+        setApprovalFeedback(label + (feedback ? ` - "${feedback}"` : ""))
+        if (approvalFeedbackTimerRef.current) clearTimeout(approvalFeedbackTimerRef.current)
+        approvalFeedbackTimerRef.current = setTimeout(() => {
+          setApprovalFeedback(null)
+          setApprovalDemoIdx(i => (i + 1) % demoExecApprovals.length)
+        }, 1500)
+      }}
+      onAddQueueItem={() => {
+        const newItem: CommandQueueItem = {
+          id: `cmd-${Date.now()}`,
+          content: t("example.command_queue.demo_task", "Task {{count}}: Run automated check", { count: standaloneQueueItems.length + 1 }),
+          createdAt: Date.now(),
+        }
+        setStandaloneQueueItems(prev => [...prev, newItem])
+      }}
+      onToggleQueuePaused={() => setStandaloneQueuePaused(p => !p)}
+      onClearQueue={() => setStandaloneQueueItems([])}
+      onRemoveQueueItem={(id) => setStandaloneQueueItems(prev => prev.filter(it => it.id !== id))}
+      onPauseQueue={() => setStandaloneQueuePaused(true)}
+      onResumeQueue={() => setStandaloneQueuePaused(false)}
+    />
+  )
 
   const chatAppNode = (
     <ChatApp
@@ -859,302 +766,87 @@ export function App() {
 
   const demoPanelContent = (
     <div className={isChatAppFull ? "space-y-4" : "grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(360px,1fr)_minmax(320px,420px)]"}>
-      {isUiShowcasePage && (
-        <DashboardCard className={isChatAppFull ? "space-y-3" : "space-y-3 xl:col-span-3"}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-foreground">{t("example.ui_showcase.title", "UI design showcase")}</h1>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                {t("example.ui_showcase.subtitle", "Display-only component states are grouped separately from the player.")}
-              </p>
+      {isUiShowcasePage ? (
+        <UIShowCasesPage
+          isChatAppFull={isChatAppFull}
+          activeComponentLabel={activeComponentDemo?.label ?? null}
+          componentDemoItems={componentDemoItems}
+          standaloneQueueItems={standaloneQueueItems}
+          models={demoModels}
+          tools={tools}
+          skills={skills}
+          contextBreakdown={demoContextBreakdown}
+          showToolsPanel={showToolsPanel}
+          showSkillsPanel={showSkillsPanel}
+          showContextPanel={showContextPanel}
+          onToggleToolsPanel={() => setShowToolsPanel(!showToolsPanel)}
+          onToggleSkillsPanel={() => setShowSkillsPanel(!showSkillsPanel)}
+          onToggleContextPanel={() => setShowContextPanel(!showContextPanel)}
+          onToggleTool={handleToggleTool}
+          onToggleSkill={handleToggleSkill}
+        />
+      ) : (
+        <PlayerPage
+          isChatAppFull={isChatAppFull}
+          messages={player.messages}
+          sessionInfo={sessionInfo}
+          sessionLoadError={sessionLoadError}
+          sessions={CLAUDE_CODE_SESSIONS}
+          activeSession={activeClaudeSession}
+          isLoadingSession={isLoadingSession}
+          progress={progress}
+          stepIndex={player.stepIndex}
+          totalSteps={player.totalSteps}
+          speedLabel={`${SPEEDS[speedIdx]}x`}
+          isPlaying={isPlaying}
+          isAwaiting={isAwaiting}
+          renderChatAppModeControls={() => (
+            <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
+              <ModeButton active={chatAppMode === "floating"} onClick={() => handleChatAppModeChange("floating")} title={t("example.chat_app_mode.float", "Float")}>
+                <Bot className="size-3.5" />
+              </ModeButton>
+              <ModeButton active={chatAppMode === "compact"} onClick={() => handleChatAppModeChange("compact")} title={t("example.chat_app_mode.compact", "Compact")}>
+                <MessageSquare className="size-3.5" />
+              </ModeButton>
+              <ModeButton active={chatAppMode === "expanded"} onClick={() => handleChatAppModeChange("expanded")} title={t("example.chat_app_mode.expanded", "Expanded")}>
+                <ChevronDown className="size-3.5 rotate-180" />
+              </ModeButton>
+              <ModeButton active={chatAppMode === "full"} onClick={() => handleChatAppModeChange("full")} title={t("example.chat_app_mode.fullscreen", "Fullscreen")}>
+                <Maximize2 className="size-3.5" />
+              </ModeButton>
             </div>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-              {t("example.components.available_count", "{{count}} demos", { count: UI_DESIGN_SHOWCASE_DEMOS.length })}
-            </span>
-          </div>
-          <div className="grid gap-2 md:grid-cols-3">
-            {UI_DESIGN_SHOWCASE_GROUPS.map((group) => (
-              <div key={group.id} className="rounded-md border bg-background p-3">
-                <SectionLabel>{t(group.labelKey, group.labelFallback)}</SectionLabel>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  {t(group.descriptionKey, group.descriptionFallback)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </DashboardCard>
-      )}
-
-      {!isUiShowcasePage && (
-      <DashboardCard className={isChatAppFull ? "space-y-3" : "space-y-4"}>
-        {!isChatAppFull && (
-          <div className="space-y-1">
-            <h1 className="text-xl font-semibold text-foreground">{t("example.title", "Chat component lab")}</h1>
-            <p className="text-sm text-muted-foreground">{t("example.subtitle", "Replay sessions, inspect component states, and switch overlay modes from one control surface.")}</p>
-          </div>
-        )}
-        <div className="flex gap-2">
-          <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-            <Upload className="size-3.5" />
-            .jsonl
-            <input type="file" accept=".jsonl" hidden onChange={handleFileLoad} />
-          </label>
-          <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-            <Upload className="size-3.5" />
-            {t("example.load.session_folder", "Session Folder")}
-            {/* @ts-expect-error webkitdirectory is non-standard but widely supported */}
-            <input type="file" hidden webkitdirectory="true" onChange={handleFolderLoad} />
-          </label>
-        </div>
-
-        <p className="text-center text-[11px] text-muted-foreground">{sessionInfo}</p>
-        {sessionLoadError && (
-          <p className="rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1 text-[11px] text-destructive">
-            {sessionLoadError}
-          </p>
-        )}
-
-        <div className="space-y-1.5">
-          <SectionLabel>{t("example.sections.sessions", "Claude Code Sessions")}</SectionLabel>
-          {CLAUDE_CODE_SESSIONS.map((session) => (
-            <button
-              key={session.id}
-              type="button"
-              onClick={() => handleClaudeSessionLoad(session)}
-              disabled={isLoadingSession}
-              className={`flex w-full items-start gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors ${
-                activeClaudeSession?.id === session.id
-                  ? "border-primary/50 bg-primary/10 text-foreground"
-                  : "border-border/60 text-muted-foreground hover:bg-accent hover:text-foreground"
-              } disabled:cursor-wait disabled:opacity-60`}
-            >
-              <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{session.label}</span>
-                <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                  {t("example.session.meta", "{{count}} subagents · real JSONL", { count: session.subagents.length })}
-                </span>
+          )}
+          renderPlayerControls={() => (
+            <div className="flex items-center justify-center gap-1">
+              <PlayerButton onClick={player.replay} title={t("example.player.replay", "Replay")}>
+                <RotateCcw className="size-3.5" />
+              </PlayerButton>
+              <PlayerButton onClick={player.prev} title={t("example.player.previous", "Previous")}>
+                <SkipBack className="size-3.5" />
+              </PlayerButton>
+              <button
+                onClick={isPlaying ? player.pause : player.play}
+                disabled={isAwaiting}
+                className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
+              </button>
+              <PlayerButton onClick={player.next} title={t("example.player.next", "Next")}>
+                <SkipForward className="size-3.5" />
+              </PlayerButton>
+              <PlayerButton onClick={() => setSpeedIdx(i => (i + 1) % SPEEDS.length)} title={t("example.player.speed", "Speed")}>
+                <Zap className="size-3.5" />
+              </PlayerButton>
+              <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                {SPEEDS[speedIdx]}x
               </span>
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-1.5">
-          <SectionLabel>{t("example.sections.chatAppMode", "Chat App Mode")}</SectionLabel>
-          <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
-            <ModeButton active={chatAppMode === "floating"} onClick={() => handleChatAppModeChange("floating")} title={t("example.chat_app_mode.float", "Float")}>
-              <Bot className="size-3.5" />
-            </ModeButton>
-            <ModeButton active={chatAppMode === "compact"} onClick={() => handleChatAppModeChange("compact")} title={t("example.chat_app_mode.compact", "Compact")}>
-              <MessageSquare className="size-3.5" />
-            </ModeButton>
-            <ModeButton active={chatAppMode === "expanded"} onClick={() => handleChatAppModeChange("expanded")} title={t("example.chat_app_mode.expanded", "Expanded")}>
-              <ChevronDown className="size-3.5 rotate-180" />
-            </ModeButton>
-            <ModeButton active={chatAppMode === "full"} onClick={() => handleChatAppModeChange("full")} title={t("example.chat_app_mode.fullscreen", "Fullscreen")}>
-              <Maximize2 className="size-3.5" />
-            </ModeButton>
-          </div>
-        </div>
-
-        {isAwaiting && (
-          <div className="flex items-center justify-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1">
-            <div className="size-2 animate-pulse rounded-full bg-amber-500" />
-            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-              {t("example.status.waiting", "Waiting for user action")}
-            </span>
-          </div>
-        )}
-
-        <div className="flex items-center justify-center gap-1">
-          <PlayerButton onClick={player.replay} title={t("example.player.replay", "Replay")}>
-            <RotateCcw className="size-3.5" />
-          </PlayerButton>
-          <PlayerButton onClick={player.prev} title={t("example.player.previous", "Previous")}>
-            <SkipBack className="size-3.5" />
-          </PlayerButton>
-          <button
-            onClick={isPlaying ? player.pause : player.play}
-            disabled={isAwaiting}
-            className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
-          </button>
-          <PlayerButton onClick={player.next} title={t("example.player.next", "Next")}>
-            <SkipForward className="size-3.5" />
-          </PlayerButton>
-          <PlayerButton onClick={() => setSpeedIdx(i => (i + 1) % SPEEDS.length)} title={t("example.player.speed", "Speed")}>
-            <Zap className="size-3.5" />
-          </PlayerButton>
-          <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-            {SPEEDS[speedIdx]}x
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div
-            className="h-1 flex-1 cursor-pointer rounded-full bg-muted"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect()
-              player.seek((e.clientX - rect.left) / rect.width)
-            }}
-          >
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-150"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-          <span className="text-[10px] tabular-nums text-muted-foreground">
-            {player.stepIndex}/{player.totalSteps}
-          </span>
-        </div>
-      </DashboardCard>
-      )}
-
-      {!isUiShowcasePage && player.messages.length > 0 && (
-        <DashboardCard className={isChatAppFull ? "space-y-2" : "space-y-2 xl:col-start-2 xl:row-span-2"}>
-          <SectionLabel>{t("example.sections.nowPlaying", "Now Playing")}</SectionLabel>
-          <div className="max-h-[240px] overflow-x-auto overflow-y-auto rounded-lg border bg-muted/30 p-2 text-[10px] [&_*]:!text-[10px] [&_*]:!leading-relaxed">
-            <JsonView data={player.messages[player.messages.length - 1]} style={darkStyles} />
-          </div>
-        </DashboardCard>
-      )}
-
-      {isUiShowcasePage && (
-      <>
-      <DashboardCard className={isChatAppFull ? "space-y-3" : "space-y-3 xl:col-start-2"}>
-        <div className="flex items-center justify-between gap-3">
-          <SectionLabel>{t("example.sections.components", "Components")}</SectionLabel>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {activeComponentDemo?.label ?? t("example.components.none_selected", "No demo selected")}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {componentDemoItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={item.onClick}
-              aria-pressed={item.active}
-              className={`min-h-14 rounded-md border px-2.5 py-2 text-left transition-colors ${
-                item.active
-                  ? "border-primary/50 bg-primary/10 text-foreground shadow-sm"
-                  : "border-border/60 bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <span className="block truncate text-xs font-medium">{item.label}</span>
-              <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{item.description}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5 text-[10px] text-muted-foreground">
-          <span>{t("example.components.available_count", "{{count}} demos", { count: componentDemoItems.length })}</span>
-          <span>{t("example.components.active_hint", "Selection opens on the right")}</span>
-        </div>
-      </DashboardCard>
-
-      <DashboardCard className={isChatAppFull ? "space-y-3" : "space-y-3 xl:col-start-1 xl:row-start-2"}>
-        <SectionLabel>{t("example.ui_showcase.grouped_states", "Grouped UI states")}</SectionLabel>
-        <div className="space-y-3">
-          {UI_DESIGN_SHOWCASE_GROUPS.map((group) => (
-            <div key={group.id} className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-medium text-foreground">{t(group.labelKey, group.labelFallback)}</span>
-                <span className="text-[10px] text-muted-foreground">
-                  {UI_DESIGN_SHOWCASE_DEMOS.filter((demo) => demo.groupId === group.id).length}
-                </span>
-              </div>
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {UI_DESIGN_SHOWCASE_DEMOS.filter((demo) => demo.groupId === group.id).map((demo) => (
-                  <div key={demo.id} className="rounded-md border bg-background p-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-xs font-medium text-foreground">{t(demo.labelKey, demo.labelFallback)}</span>
-                      {demo.interactive && (
-                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-                          {t("example.ui_showcase.interactive", "Interactive")}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                      {t(demo.descriptionKey, demo.descriptionFallback, demo.id === "queue" ? { count: standaloneQueueItems.length } : undefined)}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {demo.stateLabels.map((stateLabel) => (
-                        <span key={stateLabel} className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-medium uppercase text-muted-foreground">
-                          {stateLabel}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
-          ))}
-        </div>
-      </DashboardCard>
-
-      <DashboardCard className="space-y-3">
-        <SectionLabel>{t("example.sections.modelIcons", "Model Icons")}</SectionLabel>
-        <div className="flex flex-wrap gap-1.5">
-          {demoModels.map(m => (
-            <div key={m.id} className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-              {getModelIcon(m.id, { size: 12 })}
-              <span>{m.name.split(" ").pop()}</span>
-            </div>
-          ))}
-        </div>
-      </DashboardCard>
-
-      <DashboardCard className="space-y-3">
-        <SectionLabel>{t("example.sections.toolExecution", "ToolExecutionItem (4 states)")}</SectionLabel>
-        <div className="space-y-1">
-          <ToolExecutionItem name="Grep" displayName="Grep" input={{ pattern: "TODO" }} status="queued" compact />
-          <ToolExecutionItem name="Bash" displayName="Bash" input={{ command: "pnpm test" }} status="executing" compact />
-          <ToolExecutionItem name="Read" displayName="Read" input={{ file_path: "/src/App.tsx" }} output="File content here..." status="success" compact />
-          <ToolExecutionItem name="Write" displayName="Write" input={{ file_path: "/src/utils.ts" }} output="Permission denied" status="error" isError compact />
-        </div>
-      </DashboardCard>
-
-      <DashboardCard className="space-y-3">
-        <SectionLabel>{t("example.sections.configPanels", "Config Panels")}</SectionLabel>
-        <div className="space-y-2">
-          <CollapsibleSection
-            title={t("example.config.tools", "Tools ({{enabled}}/{{total}})", { enabled: tools.filter(t => t.enabled).length, total: tools.length })}
-            open={showToolsPanel}
-            onToggle={() => setShowToolsPanel(!showToolsPanel)}
-          >
-            <ToolsConfigPopover
-              tools={tools}
-              onToggleTool={(toolId, _enabled) => handleToggleTool(toolId)}
-              className="!w-full"
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title={t("example.config.skills", "Skills ({{enabled}}/{{total}})", { enabled: skills.filter(s => s.enabled).length, total: skills.length })}
-            open={showSkillsPanel}
-            onToggle={() => setShowSkillsPanel(!showSkillsPanel)}
-          >
-            <SkillsConfigPopover
-              skills={skills}
-              onToggleSkill={(skillId, _enabled) => handleToggleSkill(skillId)}
-              className="!w-full"
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title={t("example.config.context_details", "Context Details")}
-            open={showContextPanel}
-            onToggle={() => setShowContextPanel(!showContextPanel)}
-          >
-            <ContextDetailsPopover
-              breakdown={demoContextBreakdown}
-              className="!w-full"
-            />
-          </CollapsibleSection>
-        </div>
-      </DashboardCard>
-      </>
+          )}
+          onFileLoad={handleFileLoad}
+          onFolderLoad={handleFolderLoad}
+          onSessionLoad={handleClaudeSessionLoad}
+          onSeek={player.seek}
+        />
       )}
     </div>
   )
@@ -1265,7 +957,7 @@ export function App() {
         </aside>
 
         {isChatAppFull && (
-          <motion.div
+          <div
             data-testid="chat-app-stage"
             data-transition-origin="expanded-bottom-left"
             data-entry-geometry={fullscreenEntryGeometry ? "measured" : "fallback"}
@@ -1273,15 +965,15 @@ export function App() {
             style={{ width: fullscreenChatWidth }}
           >
             <motion.div
-              className="h-full origin-top-left"
+              className="h-full overflow-hidden bg-background"
               initial={getFullscreenEntryInitial(fullscreenEntryGeometry)}
-              animate={{ opacity: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 }}
+              animate={{ opacity: 1, x: 0, y: 0, width: fullscreenChatWidth, height: "100%" }}
               exit={{ opacity: 0.96, x: fullscreenEntryGeometry?.x ?? -20, y: fullscreenEntryGeometry?.y ?? 24 }}
               transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
             >
               {chatAppNode}
             </motion.div>
-          </motion.div>
+          </div>
         )}
 
         {isChatAppFull && (
@@ -1367,39 +1059,6 @@ function SidebarPageButton({ active, onClick, children }: { active: boolean; onC
   )
 }
 
-function ComponentDemoSurface({
-  title,
-  dismissLabel,
-  onDismiss,
-  children,
-}: {
-  title: string
-  dismissLabel: string
-  onDismiss: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-1 items-center justify-center p-8">
-      <div className="relative w-full max-w-xl rounded-lg border bg-background p-4 shadow-xl" data-testid="component-demo-surface">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-sm font-medium text-foreground">{title}</span>
-          <button
-            type="button"
-            aria-label={dismissLabel}
-            onClick={onDismiss}
-            className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="flex justify-center">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function PlayerButton({ onClick, title, children }: { onClick: () => void; title?: string; children: React.ReactNode }) {
   return (
     <button
@@ -1442,29 +1101,5 @@ function ModeButton({ active, onClick, title, children }: { active: boolean; onC
     >
       {children}
     </button>
-  )
-}
-
-function CollapsibleSection({ title, open, onToggle, children }: {
-  title: string
-  open: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div className="overflow-hidden rounded-lg border">
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-3 py-2.5 text-xs font-medium transition-colors hover:bg-accent/50"
-      >
-        {title}
-        <ChevronDown className={`size-3.5 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="border-t p-3">
-          {children}
-        </div>
-      )}
-    </div>
   )
 }
