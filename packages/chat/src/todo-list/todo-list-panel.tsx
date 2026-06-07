@@ -26,6 +26,24 @@ function normalizeStatus(value: unknown): TodoListItemStatus {
   return "pending";
 }
 
+const STATUS_IMPORTANCE: Record<TodoListItemStatus, number> = {
+  in_progress: 0,
+  failed: 1,
+  pending: 2,
+  cancelled: 3,
+  completed: 4,
+};
+
+function sortTodoListItems(items: TodoListItem[]): TodoListItem[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const statusDiff = STATUS_IMPORTANCE[a.item.status] - STATUS_IMPORTANCE[b.item.status];
+      return statusDiff === 0 ? a.index - b.index : statusDiff;
+    })
+    .map(({ item }) => item);
+}
+
 function getTaskId(input: Record<string, unknown>, fallback: string): string {
   return getExplicitTaskId(input) ?? fallback;
 }
@@ -167,7 +185,7 @@ export function buildTodoListItemsFromMessages(
     });
   }
 
-  return Array.from(itemsById.values());
+  return sortTodoListItems(Array.from(itemsById.values()));
 }
 
 function statusLabel(status: TodoListItemStatus): string {
@@ -217,7 +235,7 @@ export function TodoListPanel({
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(defaultExpanded);
   const resolvedItems = React.useMemo(
-    () => items ?? buildTodoListItemsFromMessages(messages, messageUpdates),
+    () => items ? sortTodoListItems(items) : buildTodoListItemsFromMessages(messages, messageUpdates),
     [items, messageUpdates, messages]
   );
 

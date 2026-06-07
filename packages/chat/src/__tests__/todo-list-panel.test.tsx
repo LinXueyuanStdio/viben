@@ -205,4 +205,40 @@ describe("TodoListPanel", () => {
     expect(screen.getByText("completed")).toBeInTheDocument();
     expect(screen.queryByText("pending")).not.toBeInTheDocument();
   });
+
+  test("sorts todo items by importance with completed items last", () => {
+    render(
+      <TodoListPanel
+        defaultExpanded
+        items={[
+          { id: "completed", content: "Ship completed work", status: "completed" },
+          { id: "pending", content: "Queue next task", status: "pending" },
+          { id: "failed", content: "Fix failed task", status: "failed" },
+          { id: "in-progress", content: "Continue current task", status: "in_progress" },
+          { id: "cancelled", content: "Review cancelled task", status: "cancelled" },
+        ]}
+      />
+    );
+
+    const renderedItems = [
+      "Continue current task",
+      "Fix failed task",
+      "Queue next task",
+      "Review cancelled task",
+      "Ship completed work",
+    ].map((text) => screen.getByText(text));
+
+    expect(renderedItems.map((item) => item.textContent)).toEqual([
+      "Continue current task",
+      "Fix failed task",
+      "Queue next task",
+      "Review cancelled task",
+      "Ship completed work",
+    ]);
+
+    expect(renderedItems[0].compareDocumentPosition(renderedItems[1])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(renderedItems[1].compareDocumentPosition(renderedItems[2])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(renderedItems[2].compareDocumentPosition(renderedItems[3])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(renderedItems[3].compareDocumentPosition(renderedItems[4])).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
 });
