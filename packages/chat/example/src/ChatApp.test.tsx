@@ -29,6 +29,11 @@ vi.mock("@viben/chat", async () => {
       typeof props.renderBottomToolbar === "function"
         ? React.createElement("div", { "data-testid": "custom-bottom-toolbar" })
         : null,
+      React.createElement("input", {
+        "aria-label": "Mock chat value",
+        value: String(props.value ?? ""),
+        onChange: (event: React.ChangeEvent<HTMLInputElement>) => (props.onValueChange as (value: string) => void)?.(event.target.value),
+      }),
       React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
     ),
     CommandQueuePanel: (props: Record<string, unknown>) => React.createElement(
@@ -78,7 +83,24 @@ vi.mock("@viben/chat", async () => {
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
+    t: (key: string, fallback?: string, options?: Record<string, unknown>) => {
+      const translations: Record<string, string> = {
+        "chat_app.header.new_chat": "New chat",
+        "chat_app.header.new_chat_window": "New chat window",
+        "chat_app.header.previous_step": "Previous step",
+        "chat_app.header.next_step": "Next step",
+        "chat_app.header.move_to_window": "Move chat to new window",
+        "chat_app.header.show_debug_view": "Show debug view",
+        "chat_app.header.show_debug_log": "Show debug log",
+        "chat_app.pet.name": "Viben Sprite",
+        "chat_app.pet.state.idle": "Idle",
+        "chat_app.pet.state.review": "Review",
+        "chat_app.greetings.0": "Ready when you are.",
+        "chat_app.greetings.49": "Let’s make progress.",
+      };
+      const value = translations[key] ?? fallback ?? key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options?.[name] ?? `{{${name}}}`));
+    },
   }),
 }));
 
@@ -92,6 +114,8 @@ const messages: AgentMessage[] = [
   { id: "u1", type: "user", content: "Build the overlay" },
   { id: "a1", type: "text", content: "I am preparing the popup." },
 ];
+
+const emptyMessages: AgentMessage[] = [];
 
 describe("ChatApp", () => {
   test("floating mode renders only the assistant avatar button", () => {
@@ -132,6 +156,10 @@ describe("ChatApp", () => {
     expect(surface).toHaveClass("bottom-5");
     expect(surface.children[0]).toHaveAttribute("data-testid", "agent-popup");
     expect(surface.children[1]).toHaveAttribute("data-testid", "compact-chat-input");
+    expect(screen.getByTestId("agent-popup-title")).toHaveTextContent("Viben session");
+    expect(screen.queryByText("Viben Sprite")).not.toBeInTheDocument();
+    expect(screen.queryByText("Idle")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Minimize chat" })).not.toBeInTheDocument();
     expect(screen.queryByText("Agent")).not.toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.queryByText("Skills")).not.toBeInTheDocument();
@@ -263,6 +291,58 @@ describe("ChatApp", () => {
     expect(onModeChange).toHaveBeenCalledWith("compact");
   });
 
+  test("floating avatar expands to compact mode on hover", () => {
+    const onModeChange = vi.fn();
+    render(
+      <ChatApp
+        mode="floating"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId("floating-overlay-surface"));
+
+    expect(onModeChange).toHaveBeenCalledWith("compact");
+  });
+
+  test("compact returns to floating on mouse leave only when input is empty", () => {
+    const onModeChange = vi.fn();
+    const { rerender } = render(
+      <ChatApp
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    fireEvent.mouseLeave(screen.getByTestId("compact-overlay"));
+    expect(onModeChange).toHaveBeenCalledWith("floating");
+
+    onModeChange.mockClear();
+    rerender(
+      <ChatApp
+        mode="compact"
+        inputValue="draft"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Minimize chat" })).toBeInTheDocument();
+    fireEvent.mouseLeave(screen.getByTestId("compact-overlay"));
+    expect(onModeChange).not.toHaveBeenCalledWith("floating");
+  });
+
   test("compact capsule expands to expanded mode when clicked", () => {
     const onModeChange = vi.fn();
     render(
@@ -294,6 +374,7 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-overlay")).toHaveClass("pointer-events-auto");
     expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
     expect(screen.getByTestId("new-session-split-button")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create new session" })).toBeInTheDocument();
@@ -338,6 +419,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("expanded-message-panel")).toHaveClass("flex-col");
     expect(screen.getByTestId("expanded-message-panel")).toHaveClass("min-h-0");
     expect(screen.getByTestId("expanded-message-panel")).toHaveClass("overflow-hidden");
+    expect(screen.getByTestId("expanded-message-panel")).toHaveClass("overscroll-contain");
     expect(screen.queryByText("Read is running...")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Open subagent" }));
@@ -350,7 +432,28 @@ describe("ChatApp", () => {
     );
   });
 
-  test("compact summary describes active tools with context", () => {
+  test("compact idle summary shows a single-line greeting", () => {
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
+    render(
+      <ChatApp
+        mode="compact"
+        title="Demo session title"
+        messages={emptyMessages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("agent-popup-title")).toHaveTextContent("Demo session title");
+    expect(screen.getByTestId("agent-popup-summary")).toHaveTextContent("Let’s make progress.");
+    expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
+
+    randomSpy.mockRestore();
+  });
+
+  test("compact summary describes active tools with context on one line", () => {
     render(
       <ChatApp
         mode="compact"
@@ -370,11 +473,12 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("agent-popup-description")).toHaveTextContent("Reading packages/chat/example/src/ChatApp.tsx...");
+    expect(screen.getByTestId("agent-popup-summary")).toHaveTextContent("Reading packages/chat/example/src/ChatApp.tsx...");
+    expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
     expect(screen.queryByText("Read is working...")).not.toBeInTheDocument();
   });
 
-  test("compact thinking summary renders with streaming markdown", () => {
+  test("compact thinking summary renders with streaming markdown on one line", () => {
     render(
       <ChatApp
         mode="compact"
@@ -386,7 +490,8 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("agent-popup-thinking-stream")).toContainElement(screen.getByTestId("streamdown-streaming"));
+    expect(screen.getByTestId("agent-popup-summary")).toContainElement(screen.getByTestId("streamdown-streaming"));
+    expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
     expect(screen.getByTestId("streamdown-streaming")).toHaveAttribute("data-caret", "block");
   });
 
@@ -589,8 +694,8 @@ describe("ChatApp", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open new session menu" }));
 
     expect(screen.getByTestId("new-session-menu-chevron")).toHaveClass("lucide-chevron-down");
-    expect(screen.getByText("新建聊天")).toBeInTheDocument();
-    expect(screen.getByText("新建聊天窗口")).toBeInTheDocument();
+    expect(screen.getByText("New chat")).toBeInTheDocument();
+    expect(screen.getByText("New chat window")).toBeInTheDocument();
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
     expect(screen.getByText("OpenAI · Browser")).toBeInTheDocument();
   });
@@ -609,11 +714,11 @@ describe("ChatApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
 
-    expect(screen.getByText("上一步")).toBeInTheDocument();
-    expect(screen.getByText("下一步")).toBeInTheDocument();
-    expect(screen.getByText("将聊天移动到新窗口")).toBeInTheDocument();
-    expect(screen.getByText("显示调试视图")).toBeInTheDocument();
-    expect(screen.getByText("显示调试日志")).toBeInTheDocument();
+    expect(screen.getByText("Previous step")).toBeInTheDocument();
+    expect(screen.getByText("Next step")).toBeInTheDocument();
+    expect(screen.getByText("Move chat to new window")).toBeInTheDocument();
+    expect(screen.getByText("Show debug view")).toBeInTheDocument();
+    expect(screen.getByText("Show debug log")).toBeInTheDocument();
   });
 
   test("expanded header buttons use configurable callbacks", () => {

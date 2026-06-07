@@ -1,8 +1,11 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
+import { VibenPetAvatar } from "./VibenPetAvatar";
+import type { AssistantPetState, PetInteractionState } from "./VibenPetAvatar";
 import type {
   AgentMessage,
   ChatInputProps,
@@ -16,11 +19,10 @@ import type {
   TaskPlan,
 } from "@viben/chat";
 
-export type OverlayMode = "floating" | "compact" | "expanded" | "full";
-export type ChatAppMode = OverlayMode;
-export type AssistantPetState = "idle" | "waiting" | "review" | "waving" | "failed";
+type Translate = ReturnType<typeof useTranslation>["t"];
+
+export type ChatAppMode = "floating" | "compact" | "expanded" | "full";
 export type SessionPlayerStatus = "idle" | "playing" | "paused";
-export type PetInteractionState = "idle" | "hover" | "drag-right" | "drag-left" | "drag-up" | "drag-down" | "waiting";
 export type AssistantPetAvatarMap = Partial<Record<AssistantPetState, React.ReactNode>>;
 
 export interface OverlaySessionItem {
@@ -52,7 +54,7 @@ export interface OverlayHeaderActions {
 }
 
 export interface ChatAppProps {
-  mode: OverlayMode;
+  mode: ChatAppMode;
   messages: AgentMessage[];
   messageUpdates?: Record<string, Partial<AgentMessage>>;
   isStreaming: boolean;
@@ -72,7 +74,7 @@ export interface ChatAppProps {
   onExpandSubagent?: ExpandSubagentHandler;
   subagentSheet?: ChatAppSubagentSheetState;
   loadSubagentDetails?: LoadSubagentDetails;
-  onModeChange: (mode: OverlayMode) => void;
+  onModeChange: (mode: ChatAppMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
 }
@@ -169,6 +171,59 @@ const OVERLAY_RADIUS = {
 
 const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
 const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
+const COMPACT_GREETING_COUNT = 50;
+const COMPACT_GREETING_FALLBACKS = [
+  "Ready when you are.",
+  "What should we shape next?",
+  "I am here when you need me.",
+  "Drop a thought and I will follow it.",
+  "Ready to inspect the next step.",
+  "Tell me what changed.",
+  "I can help trace the thread.",
+  "Send a note when you are ready.",
+  "Standing by for the next move.",
+  "Let me know where to look.",
+  "We can pick this up anywhere.",
+  "Ready to continue the session.",
+  "I can help turn that into action.",
+  "What are we improving next?",
+  "Share the next clue.",
+  "I am ready to review.",
+  "Point me at the issue.",
+  "We can keep this tight.",
+  "What should I focus on?",
+  "Ready for the next task.",
+  "Send the rough version.",
+  "I can help refine it.",
+  "Let us keep the flow going.",
+  "What should we debug next?",
+  "I am listening.",
+  "Ready to compare options.",
+  "Show me what you want changed.",
+  "We can move from here.",
+  "What would make this better?",
+  "Ready to run the next pass.",
+  "I can help make it clearer.",
+  "Drop the next instruction.",
+  "Ready to look closer.",
+  "Tell me what feels off.",
+  "We can tighten the details.",
+  "Ready to continue.",
+  "What should this become?",
+  "I can help with the next edit.",
+  "Let us inspect the behavior.",
+  "Ready for a quick pass.",
+  "Send the next idea.",
+  "I can help make it work.",
+  "Where should we start?",
+  "Ready to follow your lead.",
+  "Let us make the next move.",
+  "I can help connect the dots.",
+  "What needs attention?",
+  "Ready when the thought lands.",
+  "Send me the next target.",
+  "Let’s make progress.",
+] as const;
 
 type CompactActivitySummary = {
   kind: "plain" | "thinking";
@@ -226,6 +281,7 @@ export function ChatApp({
   onSend,
   onCancel,
 }: ChatAppProps) {
+  const { t } = useTranslation();
   const petState = getAssistantPetState(messages, isStreaming, playerStatus);
   const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
   const assistantAvatar = assistantAvatars?.[petState] ?? <VibenPetAvatar state={petState} interaction={petInteraction} />;
@@ -236,7 +292,15 @@ export function ChatApp({
     onInputValueChange?.(value);
   }, [inputValue, onInputValueChange]);
 
-  const compactActivity = React.useMemo(() => getCompactActivitySummary(messages), [messages]);
+  const idleGreeting = React.useMemo(() => {
+    const index = Math.min(COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * COMPACT_GREETING_COUNT));
+    return t(`chat_app.greetings.${index}`, COMPACT_GREETING_FALLBACKS[index]);
+  }, [t]);
+  const compactActivity = React.useMemo(
+    () => getCompactActivitySummary(messages, t, idleGreeting),
+    [idleGreeting, messages, t]
+  );
+  const hasCompactDraft = content.trim().length > 0;
 
   const handleSubmit = React.useCallback(() => {
     const trimmed = content.trim();
@@ -247,7 +311,7 @@ export function ChatApp({
 
   const defaultExpandedBody = (
     <>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-border/70" data-testid="expanded-message-panel">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain border-y border-border/70" data-testid="expanded-message-panel">
         <ChatAppMessagePanel
           messageListRef={messageListRef}
           messages={messages}
@@ -327,8 +391,9 @@ export function ChatApp({
       <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
         <motion.button
           type="button"
-          aria-label="Open compact chat"
+          aria-label={t("chat_app.overlay.open_compact", "Open compact chat")}
           onClick={() => onModeChange("compact")}
+          onMouseEnter={() => onModeChange("compact")}
           initial={{ opacity: 0, x: 10, y: -10 }}
           animate={{ opacity: 1, x: 0, y: 0 }}
           exit={{ opacity: 0, x: 14, y: -14 }}
@@ -369,6 +434,9 @@ export function ChatApp({
         exit={{ opacity: 0 }}
         data-shared-surface="overlay"
         data-transition-role="panel-fade"
+        onMouseLeave={() => {
+          if (!hasCompactDraft) onModeChange("floating");
+        }}
         className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
           contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
         }`}
@@ -377,9 +445,10 @@ export function ChatApp({
       >
         <AgentPopup
           avatar={assistantAvatar}
-          petState={petState}
+          title={title}
           activity={compactActivity}
           isStreaming={isStreaming}
+          showMinimize={hasCompactDraft}
           onExpand={() => onModeChange("expanded")}
           onMinimize={() => onModeChange("floating")}
         />
@@ -402,7 +471,7 @@ export function ChatApp({
       transition={OVERLAY_TRANSITION}
       initial={false}
       data-transition-role="expand-to-full"
-      className={`overlay-shared-surface relative flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+      className={`overlay-shared-surface pointer-events-auto relative flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
@@ -425,8 +494,8 @@ export function ChatAppFullscreenPanel({
   commandQueuePaused = false,
   inputProps,
   messageListRef,
-  welcomeTitle = "@viben/chat Session Player",
-  welcomeDescription = "Press Play to replay the demo session, or load a .jsonl file.",
+  welcomeTitle,
+  welcomeDescription,
   maxMessageWidth = "760px",
   onExpandSubagent,
   onApprovePlan,
@@ -438,6 +507,7 @@ export function ChatAppFullscreenPanel({
   onCommandQueuePause,
   onCommandQueueResume,
 }: ChatAppFullscreenPanelProps) {
+  const { t } = useTranslation();
   const noop = React.useCallback(() => {}, []);
   const noopRemove = React.useCallback((_id: string) => {}, []);
 
@@ -452,8 +522,8 @@ export function ChatAppFullscreenPanel({
           pendingPlan={pendingPlan}
           pendingApproval={pendingApproval}
           pendingQuestion={pendingQuestion}
-          welcomeTitle={welcomeTitle}
-          welcomeDescription={welcomeDescription}
+          welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
+          welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
           maxMessageWidth={maxMessageWidth}
           onExpandSubagent={onExpandSubagent}
           onApprovePlan={onApprovePlan}
@@ -465,7 +535,7 @@ export function ChatAppFullscreenPanel({
           <div className="w-full px-4 pb-2">
             <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <div className="size-1.5 animate-pulse rounded-full bg-amber-500" />
-              <span>Will send when agent finishes...</span>
+              <span>{t("chat_app.queue.will_send_when_finished", "Will send when agent finishes...")}</span>
             </div>
             <CommandQueuePanel
               items={commandQueueItems}
@@ -525,19 +595,22 @@ export function ChatAppFullscreenPanel({
 
 function AgentPopup({
   avatar,
-  petState,
+  title,
   activity,
   isStreaming,
+  showMinimize,
   onExpand,
   onMinimize,
 }: {
   avatar: React.ReactNode;
-  petState: AssistantPetState;
+  title: string;
   activity: CompactActivitySummary;
   isStreaming: boolean;
+  showMinimize: boolean;
   onExpand: () => void;
   onMinimize: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.section
       data-testid="agent-popup"
@@ -561,37 +634,38 @@ function AgentPopup({
         </motion.div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-sm font-medium text-foreground">Viben Sprite</span>
-              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {petState}
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-foreground" data-testid="agent-popup-title">
+                {title}
               </span>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                aria-label="Minimize chat"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onMinimize();
-                }}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Minimize2 className="size-3.5" />
-              </button>
-            </div>
+            {showMinimize && (
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  aria-label={t("chat_app.overlay.minimize", "Minimize chat")}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onMinimize();
+                  }}
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Minimize2 className="size-3.5" />
+                </button>
+              </div>
+            )}
           </div>
           {activity.kind === "thinking" ? (
             <div
-              className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-foreground/85"
-              data-testid="agent-popup-thinking-stream"
+              className="mt-2 overflow-hidden truncate whitespace-nowrap text-sm leading-6 text-foreground/85"
+              data-testid="agent-popup-summary"
             >
               <Streamdown mode={isStreaming ? "streaming" : "static"} caret={isStreaming ? "block" : undefined}>
                 {activity.text}
               </Streamdown>
             </div>
           ) : (
-            <p className="mt-2 max-h-24 overflow-hidden text-sm leading-6 text-foreground/85" data-testid="agent-popup-description">
+            <p className="mt-2 overflow-hidden truncate whitespace-nowrap text-sm leading-6 text-foreground/85" data-testid="agent-popup-summary">
               {activity.text}
               {isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
             </p>
@@ -610,8 +684,8 @@ function ChatAppMessagePanel({
   pendingApproval,
   pendingQuestion,
   messageListRef,
-  welcomeTitle = "@viben/chat Session Player",
-  welcomeDescription = "Press Play to replay the demo session, or load a .jsonl file.",
+  welcomeTitle,
+  welcomeDescription,
   maxMessageWidth = "760px",
   onExpandSubagent,
   onApprovePlan,
@@ -635,6 +709,7 @@ function ChatAppMessagePanel({
   onApprovalDecision?: (decision: string, feedback?: string) => void;
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <MessageList
       ref={messageListRef}
@@ -644,8 +719,8 @@ function ChatAppMessagePanel({
       pendingPlan={pendingPlan}
       pendingApproval={pendingApproval}
       pendingQuestions={pendingQuestion}
-      welcomeTitle={welcomeTitle}
-      welcomeDescription={welcomeDescription}
+      welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
+      welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
       maxMessageWidth={maxMessageWidth}
       onExpandSubagent={onExpandSubagent}
       onApprovePlan={onApprovePlan}
@@ -656,52 +731,54 @@ function ChatAppMessagePanel({
   );
 }
 
-function getCompactActivitySummary(messages: AgentMessage[]): CompactActivitySummary {
+function getCompactActivitySummary(messages: AgentMessage[], t: Translate, idleGreeting: string): CompactActivitySummary {
   const latest = [...messages].reverse().find((message) =>
     (message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error") &&
     (message.content || message.message || message.name)
   );
-  if (!latest) return { kind: "plain", text: "Ready when you are." };
-  if (latest.type === "thinking") return { kind: "thinking", text: latest.content || "Thinking..." };
-  if (latest.type === "tool_use") return { kind: "plain", text: getToolActivityText(latest) };
-  if (latest.type === "error") return { kind: "plain", text: latest.message || latest.content || "Something needs attention." };
-  return { kind: "plain", text: latest.content || latest.message || "Working..." };
+  if (!latest) return { kind: "plain", text: idleGreeting };
+  if (latest.type === "thinking") return { kind: "thinking", text: latest.content || t("chat_app.activity.thinking", "Thinking...") };
+  if (latest.type === "tool_use") return { kind: "plain", text: getToolActivityText(latest, t) };
+  if (latest.type === "error") return { kind: "plain", text: latest.message || latest.content || t("chat_app.activity.needs_attention", "Something needs attention.") };
+  return { kind: "plain", text: latest.content || latest.message || t("chat_app.activity.working", "Working...") };
 }
 
-function getToolActivityText(message: AgentMessage): string {
+function getToolActivityText(message: AgentMessage, t: Translate): string {
   const input = message.input;
   switch (message.name) {
     case "Bash": {
       const command = input?.command ? truncateText(String(input.command).trim(), 72) : "";
-      return command ? `Running ${command}` : "Running command...";
+      return command ? t("chat_app.activity.running_command_named", "Running {{command}}", { command }) : t("chat_app.activity.running_command", "Running command...");
     }
     case "Read": {
-      return `Reading ${getToolPath(input?.file_path, "file")}...`;
+      return t("chat_app.activity.reading_file", "Reading {{file}}...", { file: getToolPath(input?.file_path, "file") });
     }
     case "Write": {
-      return `Writing ${getToolPath(input?.file_path, "file")}...`;
+      return t("chat_app.activity.writing_file", "Writing {{file}}...", { file: getToolPath(input?.file_path, "file") });
     }
     case "Edit":
     case "MultiEdit": {
-      return `Editing ${getToolPath(input?.file_path, "file")}...`;
+      return t("chat_app.activity.editing_file", "Editing {{file}}...", { file: getToolPath(input?.file_path, "file") });
     }
     case "Grep": {
       const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
-      return pattern ? `Searching for "${pattern}"...` : "Searching workspace...";
+      return pattern
+        ? t("chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
+        : t("chat_app.activity.searching_workspace", "Searching workspace...");
     }
     case "Glob": {
       const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
-      return pattern ? `Finding ${pattern}...` : "Finding files...";
+      return pattern ? t("chat_app.activity.finding", "Finding {{pattern}}...", { pattern }) : t("chat_app.activity.finding_files", "Finding files...");
     }
     case "WebSearch":
-      return "Searching the web...";
+      return t("chat_app.activity.searching_web", "Searching the web...");
     case "WebFetch":
-      return "Fetching page content...";
+      return t("chat_app.activity.fetching_page", "Fetching page content...");
     case "Task":
     case "Agent":
-      return "Running a delegated agent task...";
+      return t("chat_app.activity.running_agent_task", "Running a delegated agent task...");
     default:
-      return message.name ? `Running ${message.name}...` : "Working...";
+      return message.name ? t("chat_app.activity.running_tool", "Running {{name}}...", { name: message.name }) : t("chat_app.activity.working", "Working...");
   }
 }
 
@@ -734,9 +811,10 @@ function ExpandedHeader({
   headerActions?: OverlayHeaderActions;
   onCreateSession?: () => void;
   onSettingsClick?: () => void;
-  mode: OverlayMode;
-  onModeChange: (mode: OverlayMode) => void;
+  mode: ChatAppMode;
+  onModeChange: (mode: ChatAppMode) => void;
 }) {
+  const { t } = useTranslation();
   const [sessionOpen, setSessionOpen] = React.useState(false);
   const [newOpen, setNewOpen] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -754,7 +832,7 @@ function ExpandedHeader({
       <div className="relative" data-testid="session-title-menu">
         <button
           type="button"
-          aria-label="Session menu"
+          aria-label={t("chat_app.header.session_menu", "Session menu")}
           onClick={() => setSessionOpen((open) => !open)}
           className="flex h-8 max-w-[164px] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
         >
@@ -767,8 +845,8 @@ function ExpandedHeader({
               <Search className="size-4 text-muted-foreground" />
               <input
                 type="search"
-                aria-label="Search sessions"
-                placeholder="Search sessions"
+                aria-label={t("chat_app.header.search_sessions", "Search sessions")}
+                placeholder={t("chat_app.header.search_sessions", "Search sessions")}
                 className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </label>
@@ -804,7 +882,7 @@ function ExpandedHeader({
       >
         <button
           type="button"
-          aria-label="Create new session"
+          aria-label={t("chat_app.header.create_session", "Create new session")}
           onClick={onCreateSession}
           className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
         >
@@ -813,7 +891,7 @@ function ExpandedHeader({
         <div className="h-full border-l border-border" />
         <button
           type="button"
-          aria-label="Open new session menu"
+          aria-label={t("chat_app.header.open_new_session_menu", "Open new session menu")}
           onClick={() => setNewOpen((open) => !open)}
           className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
         >
@@ -821,8 +899,8 @@ function ExpandedHeader({
         </button>
         {newOpen && (
           <div className="absolute right-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
-            <MenuButton onClick={headerActions?.onNewChat}>新建聊天</MenuButton>
-            <MenuButton onClick={headerActions?.onNewChatWindow}>新建聊天窗口</MenuButton>
+            <MenuButton onClick={headerActions?.onNewChat}>{t("chat_app.header.new_chat", "New chat")}</MenuButton>
+            <MenuButton onClick={headerActions?.onNewChatWindow}>{t("chat_app.header.new_chat_window", "New chat window")}</MenuButton>
             <MenuDivider />
             {agents.map((agent) => (
               <MenuButton key={agent.id} onClick={() => headerActions?.onSelectAgent?.(agent)}>
@@ -845,7 +923,7 @@ function ExpandedHeader({
 
       <button
         type="button"
-        aria-label="Switch to compact mode"
+        aria-label={t("chat_app.header.switch_compact", "Switch to compact mode")}
         onClick={() => onModeChange("compact")}
         data-testid="compact-mode-button"
         className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -856,7 +934,7 @@ function ExpandedHeader({
       {mode !== "full" && (
         <button
           type="button"
-          aria-label="Switch to fullscreen mode"
+          aria-label={t("chat_app.header.switch_fullscreen", "Switch to fullscreen mode")}
           onClick={() => onModeChange("full")}
           data-testid="full-mode-button"
           className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -867,7 +945,7 @@ function ExpandedHeader({
 
       <button
         type="button"
-        aria-label="Settings"
+        aria-label={t("chat_app.header.settings", "Settings")}
         onClick={onSettingsClick}
         data-testid="settings-button"
         className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -878,7 +956,7 @@ function ExpandedHeader({
       <div className="relative" data-testid="more-actions-menu">
         <button
           type="button"
-          aria-label="More actions"
+          aria-label={t("chat_app.header.more_actions", "More actions")}
           onClick={() => setMoreOpen((open) => !open)}
           className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
         >
@@ -886,13 +964,13 @@ function ExpandedHeader({
         </button>
         {moreOpen && (
           <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
-            <MenuButton onClick={headerActions?.onPrevious}>上一步</MenuButton>
-            <MenuButton onClick={headerActions?.onNext}>下一步</MenuButton>
+            <MenuButton onClick={headerActions?.onPrevious}>{t("chat_app.header.previous_step", "Previous step")}</MenuButton>
+            <MenuButton onClick={headerActions?.onNext}>{t("chat_app.header.next_step", "Next step")}</MenuButton>
             <MenuDivider />
-            <MenuButton onClick={headerActions?.onMoveToWindow}>将聊天移动到新窗口</MenuButton>
+            <MenuButton onClick={headerActions?.onMoveToWindow}>{t("chat_app.header.move_to_window", "Move chat to new window")}</MenuButton>
             <MenuDivider />
-            <MenuButton onClick={headerActions?.onShowDebugView}>显示调试视图</MenuButton>
-            <MenuButton onClick={headerActions?.onShowDebugLog}>显示调试日志</MenuButton>
+            <MenuButton onClick={headerActions?.onShowDebugView}>{t("chat_app.header.show_debug_view", "Show debug view")}</MenuButton>
+            <MenuButton onClick={headerActions?.onShowDebugLog}>{t("chat_app.header.show_debug_log", "Show debug log")}</MenuButton>
           </div>
         )}
       </div>
@@ -933,6 +1011,7 @@ function CompactChatInput({
   onCancel: () => void;
   inputProps?: Partial<ChatInputProps>;
 }) {
+  const { t } = useTranslation();
   const shellClassName = variant === "compact"
     ? `overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`
     : `overlay-input-shell w-full bg-transparent ${isStreaming ? "overlay-input-shell--running" : ""}`;
@@ -957,7 +1036,7 @@ function CompactChatInput({
         onCancel={inputProps?.onCancel ?? onCancel}
         isLoading={isStreaming}
         allowSendWhileLoading
-        placeholder={inputProps?.placeholder ?? (isStreaming ? "Queue a message..." : "Ask Viben...")}
+        placeholder={inputProps?.placeholder ?? (isStreaming ? t("chat_app.input.placeholder.queue", "Queue a message...") : t("chat_app.input.placeholder.default", "Ask Viben..."))}
         layoutVariant={variant === "expanded" ? (inputProps?.layoutVariant ?? "expanded") : "compact"}
         showTopToolbar={variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false}
         showConfigBar={variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true}
@@ -992,151 +1071,4 @@ function getExpandedChatInputProps(inputProps?: Partial<ChatInputProps>): Partia
     showConfigBar: inputProps?.showConfigBar ?? true,
     renderEmojiPicker: inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />),
   };
-}
-
-const PET_STATE_META: Record<AssistantPetState, {
-  label: string;
-  halo: string;
-  eye: string;
-  mouth: string;
-  statusFill: string;
-}> = {
-  idle: {
-    label: "Idle",
-    halo: "oklch(0.78 0.13 188)",
-    eye: "M27 42 Q31 39 35 42",
-    mouth: "M31 55 Q40 59 49 55",
-    statusFill: "oklch(0.78 0.13 188)",
-  },
-  waiting: {
-    label: "Waiting",
-    halo: "oklch(0.82 0.16 82)",
-    eye: "M27 41 H35",
-    mouth: "M32 56 Q40 54 48 56",
-    statusFill: "oklch(0.82 0.16 82)",
-  },
-  review: {
-    label: "Review",
-    halo: "oklch(0.75 0.15 172)",
-    eye: "M27 42 Q31 39 35 42",
-    mouth: "M31 55 Q40 52 49 55",
-    statusFill: "oklch(0.75 0.15 172)",
-  },
-  waving: {
-    label: "Waving",
-    halo: "oklch(0.78 0.15 132)",
-    eye: "M27 41 Q31 44 35 41",
-    mouth: "M31 54 Q40 61 49 54",
-    statusFill: "oklch(0.78 0.15 132)",
-  },
-  failed: {
-    label: "Failed",
-    halo: "oklch(0.66 0.2 28)",
-    eye: "M27 39 L35 45 M35 39 L27 45",
-    mouth: "M31 58 Q40 53 49 58",
-    statusFill: "oklch(0.66 0.2 28)",
-  },
-};
-
-const PET_FLOAT_ANIMATION: Record<PetInteractionState, { y?: number[]; rotate?: number[]; x?: number[]; scale?: number[] }> = {
-  idle: { y: [0, -1.5, 0] },
-  hover: { rotate: [-2, 2, -2] },
-  "drag-right": { x: [0, 2, 0] },
-  "drag-left": { x: [0, -2, 0] },
-  "drag-up": { y: [0, -5, 0] },
-  "drag-down": { y: [0, 3, 0] },
-  waiting: { y: [0, -3, 0], scale: [1, 1.02, 1] },
-};
-
-function VibenPetAvatar({ state, interaction }: { state: AssistantPetState; interaction: PetInteractionState }) {
-  const meta = PET_STATE_META[state];
-  const gradientId = React.useId().replace(/:/g, "");
-  const warmGradientId = `${gradientId}-warm`;
-  const bodyGradientId = `${gradientId}-body`;
-  const glowId = `${gradientId}-glow`;
-  const movement = PET_FLOAT_ANIMATION[interaction];
-  const shouldLoop = interaction !== "idle" || state === "review" || state === "waiting";
-
-  return (
-    <svg
-      viewBox="0 0 80 80"
-      role="img"
-      aria-label={`Viben pet ${meta.label}`}
-      className="size-full"
-    >
-      <defs>
-        <linearGradient id={warmGradientId} x1="13" y1="13" x2="67" y2="67" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FDB813" />
-          <stop offset="100%" stopColor="#38B2AC" />
-        </linearGradient>
-        <radialGradient id={bodyGradientId} cx="33%" cy="24%" r="68%">
-          <stop offset="0%" stopColor="oklch(0.99 0.02 95)" />
-          <stop offset="52%" stopColor="oklch(0.93 0.04 102)" />
-          <stop offset="100%" stopColor="oklch(0.86 0.05 176)" />
-        </radialGradient>
-        <filter id={glowId} x="-24%" y="-24%" width="148%" height="148%">
-          <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#0f172a" floodOpacity="0.28" />
-          <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#38B2AC" floodOpacity="0.25" />
-        </filter>
-      </defs>
-      <motion.g
-        filter={`url(#${glowId})`}
-        animate={movement}
-        transition={{ duration: interaction === "waiting" ? 1.1 : 1.6, repeat: shouldLoop ? Infinity : 0, ease: "easeInOut" }}
-        style={{ transformOrigin: "40px 43px" }}
-      >
-        <motion.path
-          d="M18 31 L8 20 L24 24"
-          fill="none"
-          stroke="#FDB813"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          animate={state === "waving" ? { rotate: [-7, 7, -7] } : undefined}
-          transition={{ duration: 0.7, repeat: state === "waving" ? Infinity : 0 }}
-          style={{ transformOrigin: "21px 28px" }}
-        />
-        <motion.path
-          d="M62 31 L72 20 L56 24"
-          fill="none"
-          stroke="#38B2AC"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          animate={state === "waving" ? { rotate: [7, -7, 7] } : undefined}
-          transition={{ duration: 0.7, repeat: state === "waving" ? Infinity : 0 }}
-          style={{ transformOrigin: "59px 28px" }}
-        />
-        <circle cx="40" cy="41" r="29" fill={`url(#${bodyGradientId})`} stroke={`url(#${warmGradientId})`} strokeWidth="3" />
-        <path d="M28 25 L40 35 L52 25" fill="none" stroke={`url(#${warmGradientId})`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
-        <path d="M31 33 L40 55 L49 33" fill="none" stroke="oklch(0.22 0.04 220)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M21 36 L12 43 L21 50" fill="none" stroke="#FDB813" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
-        <path d="M59 36 L68 43 L59 50" fill="none" stroke="#38B2AC" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
-        <path d={meta.eye} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
-        <path d={meta.eye.replace(/27/g, "45").replace(/35/g, "53")} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
-        <motion.path
-          d={meta.mouth}
-          stroke="oklch(0.19 0.03 230)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          fill="none"
-          animate={state === "review" ? { d: ["M31 55 Q40 52 49 55", "M31 55 Q40 58 49 55", "M31 55 Q40 52 49 55"] } : undefined}
-          transition={{ duration: 0.7, repeat: state === "review" ? Infinity : 0 }}
-        />
-        <motion.circle
-          cx="61"
-          cy="20"
-          r="5"
-          fill={meta.statusFill}
-          stroke="oklch(0.99 0.01 95)"
-          strokeWidth="2"
-          animate={state === "waiting" || state === "review" ? { scale: [0.85, 1.18, 0.85], opacity: [0.75, 1, 0.75] } : undefined}
-          transition={{ duration: 0.9, repeat: state === "waiting" || state === "review" ? Infinity : 0 }}
-        />
-        {state === "failed" && (
-          <path d="M23 64 H57" stroke="oklch(0.66 0.2 28)" strokeWidth="4" strokeLinecap="round" opacity="0.75" />
-        )}
-      </motion.g>
-    </svg>
-  );
 }
