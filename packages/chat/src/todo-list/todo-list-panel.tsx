@@ -96,16 +96,28 @@ function extractTodosFromValue(value: unknown, message: AgentMessage): TodoListI
 }
 
 export function buildTodoListItems(messages: AgentMessage[] = []): TodoListItem[] {
+  return buildTodoListItemsFromMessages(messages);
+}
+
+export function buildTodoListItemsFromMessages(
+  messages: AgentMessage[] = [],
+  messageUpdates?: Record<string, Partial<AgentMessage>>
+): TodoListItem[] {
   const itemsById = new Map<string, TodoListItem>();
   const resultsByToolUseId = new Map<string, AgentMessage>();
+  const resolvedMessages = messages.map((message) => {
+    if (!message.id) return message;
+    const update = messageUpdates?.[message.id];
+    return update ? { ...message, ...update } : message;
+  });
 
-  for (const message of messages) {
+  for (const message of resolvedMessages) {
     if (message.type === "tool_result" && message.toolUseId) {
       resultsByToolUseId.set(message.toolUseId, message);
     }
   }
 
-  for (const message of messages) {
+  for (const message of resolvedMessages) {
     if (message.type !== "tool_use") continue;
     const toolName = message.name;
     const input = isRecord(message.input) ? message.input : {};
@@ -187,6 +199,7 @@ function getStatusClassName(status: TodoListItemStatus): string {
 
 export function TodoListPanel({
   messages,
+  messageUpdates,
   items,
   className,
   compact,
@@ -195,8 +208,8 @@ export function TodoListPanel({
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(defaultExpanded);
   const resolvedItems = React.useMemo(
-    () => items ?? buildTodoListItems(messages),
-    [items, messages]
+    () => items ?? buildTodoListItemsFromMessages(messages, messageUpdates),
+    [items, messageUpdates, messages]
   );
 
   if (!resolvedItems || resolvedItems.length === 0) return null;
