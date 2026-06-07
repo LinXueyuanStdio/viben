@@ -371,7 +371,7 @@ export class AcpSessionManager {
     const steerPrompts = await this.listQueuedSteerPrompts(session.id);
     const promptIds = steerPrompts.map((item) => item.promptId);
     if (promptIds.length === 0) {
-      await this.interruptCurrentExecution(session);
+      this.interruptCurrentExecution(session);
       return {
         interrupted: true,
         resumed: false,
@@ -390,7 +390,7 @@ export class AcpSessionManager {
 
     if (session.prompt_running) {
       this.enqueuePromptItem(session, resumeItem, "front");
-      await this.interruptCurrentExecution(session);
+      this.interruptCurrentExecution(session);
     } else {
       this.enqueuePromptItem(session, resumeItem, "back");
     }
@@ -440,17 +440,15 @@ export class AcpSessionManager {
     return true;
   }
 
-  private async interruptCurrentExecution(session: AcpSession): Promise<void> {
+  private interruptCurrentExecution(session: AcpSession): void {
     clientToolCompletionRegistry.cancelSession(session.id);
     if (session.prompt_running) {
       session.status = "cancelled";
     }
     if (!session.backend) return;
-    try {
-      await session.backend.cancel();
-    } catch {
-      // The backend may already be ending its current prompt.
-    }
+    void session.backend.cancel().catch((error) => {
+      log.debug({ err: error, sessionId: session.id }, "ACP backend interrupt cancel failed");
+    });
   }
 
   closeSession(sessionId: string): void {
