@@ -1,4 +1,5 @@
 import {
+  BackgroundTaskList,
   CommandQueuePanel,
   ContextDetailsPopover,
   EmojiPicker,
@@ -8,9 +9,12 @@ import {
   SkillsConfigPopover,
   ToolExecutionItem,
   ToolsConfigPopover,
+  TodoListPanel,
   getModelIcon,
 } from "@viben/chat"
 import type {
+  AgentMessage,
+  BackgroundTaskItem,
   ContextTokenBreakdown,
   PendingExecApproval,
   PendingQuestion,
@@ -58,6 +62,8 @@ export type UIShowcaseDemoOverlayProps = {
   plan: TaskPlan
   questions: PendingQuestion
   execApprovals: PendingExecApproval[]
+  todoListMessages: AgentMessage[]
+  backgroundTaskItems: BackgroundTaskItem[]
   approvalDemoIdx: number
   approvalFeedback: string | null
   standaloneQueueItems: CommandQueueItem[]
@@ -264,6 +270,8 @@ export function UIShowcaseDemoOverlay({
   plan,
   questions,
   execApprovals,
+  todoListMessages,
+  backgroundTaskItems,
   approvalDemoIdx,
   approvalFeedback,
   standaloneQueueItems,
@@ -378,6 +386,18 @@ export function UIShowcaseDemoOverlay({
                 {t("example.command_queue.empty_hint", "Queue is empty. Click \"Add item\" to add demo items.")}
               </p>
             )}
+          </div>
+        </ComponentDemoSurface>
+      ) : activeDemoId === "todo-list" ? (
+        <ComponentDemoSurface title={title} onDismiss={onDismiss} dismissLabel={dismissLabel}>
+          <div className="w-full max-w-lg">
+            <TodoListPanel messages={todoListMessages} defaultExpanded />
+          </div>
+        </ComponentDemoSurface>
+      ) : activeDemoId === "background-tasks" ? (
+        <ComponentDemoSurface title={title} onDismiss={onDismiss} dismissLabel={dismissLabel}>
+          <div className="w-full max-w-lg">
+            <BackgroundTaskList tasks={backgroundTaskItems} containedSheet />
           </div>
         </ComponentDemoSurface>
       ) : null}

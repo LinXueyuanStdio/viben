@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
 import { Streamdown } from "streamdown";
-import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
+import { BackgroundTaskList, ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet, TodoListPanel } from "@viben/chat";
 import {
   CHAT_APP_COMPACT_GREETING_COUNT,
   CHAT_APP_COMPACT_GREETING_FALLBACKS,
@@ -30,6 +30,10 @@ type Translate = ReturnType<typeof useTranslation>["t"];
 export type ChatAppMode = "floating" | "compact" | "expanded" | "full";
 export type SessionPlayerStatus = "idle" | "playing" | "paused";
 export type AssistantPetAvatarMap = Partial<Record<AssistantPetState, React.ReactNode>>;
+export type AssistantPetAvatarSet = {
+  dynamic?: AssistantPetAvatarMap;
+  static?: AssistantPetAvatarMap;
+};
 
 export interface OverlaySessionItem {
   id: string;
@@ -68,6 +72,7 @@ export interface ChatAppProps {
   title?: string;
   playerStatus?: SessionPlayerStatus;
   pendingUserMessageCount?: number;
+  assistantPetAvatars?: AssistantPetAvatarSet;
   assistantAvatars?: AssistantPetAvatarMap;
   sessions?: OverlaySessionItem[];
   agents?: OverlayAgentItem[];
@@ -110,6 +115,7 @@ export interface ChatAppFullscreenPanelProps {
   commandQueuePaused?: boolean;
   inputProps: ChatInputProps;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
+  assistantAvatar?: React.ReactNode;
   welcomeTitle?: string;
   welcomeDescription?: string;
   maxMessageWidth?: string;
@@ -194,6 +200,7 @@ export function ChatApp({
   title = "Viben session",
   playerStatus = "idle",
   pendingUserMessageCount = 0,
+  assistantPetAvatars,
   assistantAvatars,
   sessions = DEFAULT_CHAT_APP_SESSIONS,
   agents = DEFAULT_CHAT_APP_AGENTS,
@@ -213,7 +220,12 @@ export function ChatApp({
   const { t } = useTranslation();
   const petState = getAssistantPetState(messages, isStreaming, playerStatus);
   const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
-  const assistantAvatar = assistantAvatars?.[petState] ?? <VibenPetAvatar state={petState} interaction={petInteraction} />;
+  const dynamicAssistantAvatar = assistantPetAvatars?.dynamic?.[petState] ?? assistantAvatars?.[petState] ?? (
+    <VibenPetAvatar kind="dynamic" state={petState} interaction={petInteraction} />
+  );
+  const staticAssistantAvatar = assistantPetAvatars?.static?.[petState] ?? assistantAvatars?.[petState] ?? (
+    <VibenPetAvatar kind="static" state={petState} interaction="idle" />
+  );
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
   const content = inputValue ?? uncontrolledInput;
   const setContent = React.useCallback((value: string) => {
@@ -246,6 +258,7 @@ export function ChatApp({
           messages={messages}
           messageUpdates={messageUpdates}
           isStreaming={isStreaming}
+          assistantAvatar={staticAssistantAvatar}
           maxMessageWidth="100%"
           onExpandSubagent={onExpandSubagent}
         />
@@ -270,7 +283,7 @@ export function ChatApp({
         title={title}
         sessions={sessions}
         agents={agents}
-        assistantAvatar={assistantAvatar}
+        assistantAvatar={staticAssistantAvatar}
         headerActions={headerActions}
         onCreateSession={headerActions?.onCreateSession}
         onSettingsClick={headerActions?.onSettingsClick}
@@ -341,7 +354,7 @@ export function ChatApp({
             animate={{ opacity: 1, y: 0 }}
             transition={OVERLAY_AVATAR_TRANSITION}
           >
-            {assistantAvatar}
+            {dynamicAssistantAvatar}
           </motion.div>
           {pendingUserMessageCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
@@ -373,7 +386,7 @@ export function ChatApp({
         data-testid="compact-overlay"
       >
         <AgentPopup
-          avatar={assistantAvatar}
+          avatar={dynamicAssistantAvatar}
           title={title}
           activity={compactActivity}
           isStreaming={isStreaming}
@@ -423,6 +436,7 @@ export function ChatAppFullscreenPanel({
   commandQueuePaused = false,
   inputProps,
   messageListRef,
+  assistantAvatar,
   welcomeTitle,
   welcomeDescription,
   maxMessageWidth = "760px",
@@ -451,6 +465,7 @@ export function ChatAppFullscreenPanel({
           pendingPlan={pendingPlan}
           pendingApproval={pendingApproval}
           pendingQuestion={pendingQuestion}
+          assistantAvatar={assistantAvatar}
           welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
           welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
           maxMessageWidth={maxMessageWidth}
@@ -613,6 +628,7 @@ function ChatAppMessagePanel({
   pendingApproval,
   pendingQuestion,
   messageListRef,
+  assistantAvatar,
   welcomeTitle,
   welcomeDescription,
   maxMessageWidth = "760px",
@@ -629,6 +645,7 @@ function ChatAppMessagePanel({
   pendingApproval?: PendingExecApproval | null;
   pendingQuestion?: PendingQuestion | null;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
+  assistantAvatar?: React.ReactNode;
   welcomeTitle?: string;
   welcomeDescription?: string;
   maxMessageWidth?: string;
@@ -640,23 +657,30 @@ function ChatAppMessagePanel({
 }) {
   const { t } = useTranslation();
   return (
-    <MessageList
-      ref={messageListRef}
-      messages={messages}
-      messageUpdates={messageUpdates}
-      isStreaming={isStreaming}
-      pendingPlan={pendingPlan}
-      pendingApproval={pendingApproval}
-      pendingQuestions={pendingQuestion}
-      welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
-      welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
-      maxMessageWidth={maxMessageWidth}
-      onExpandSubagent={onExpandSubagent}
-      onApprovePlan={onApprovePlan}
-      onRejectPlan={onRejectPlan}
-      onApprovalDecision={onApprovalDecision}
-      onAnswerQuestions={onAnswerQuestions}
-    />
+    <>
+      <MessageList
+        ref={messageListRef}
+        messages={messages}
+        messageUpdates={messageUpdates}
+        isStreaming={isStreaming}
+        assistantAvatar={assistantAvatar}
+        pendingPlan={pendingPlan}
+        pendingApproval={pendingApproval}
+        pendingQuestions={pendingQuestion}
+        welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
+        welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
+        maxMessageWidth={maxMessageWidth}
+        onExpandSubagent={onExpandSubagent}
+        onApprovePlan={onApprovePlan}
+        onRejectPlan={onRejectPlan}
+        onApprovalDecision={onApprovalDecision}
+        onAnswerQuestions={onAnswerQuestions}
+      />
+      <div className="space-y-2 px-4 pb-2">
+        <TodoListPanel messages={messages} compact />
+        <BackgroundTaskList messages={messages} containedSheet />
+      </div>
+    </>
   );
 }
 

@@ -41,6 +41,11 @@ vi.mock("@viben/chat", async () => {
       { "data-testid": "command-queue-panel" },
       String((props.items as unknown[] | undefined)?.length ?? 0)
     ),
+    BackgroundTaskList: (props: Record<string, unknown>) => React.createElement(
+      "div",
+      { "data-testid": "background-task-list" },
+      String((props.messages as unknown[] | undefined)?.length ?? 0)
+    ),
     ExecApproval: () => React.createElement("div", { "data-testid": "exec-approval" }, "ExecApproval"),
     EmojiPicker: () => React.createElement("div", { "data-testid": "emoji-picker" }, "EmojiPicker"),
     MessageList: React.forwardRef((props: Record<string, unknown>, _ref) => React.createElement(
@@ -51,6 +56,7 @@ vi.mock("@viben/chat", async () => {
       React.createElement("span", { "data-testid": "message-list-updates" }, String(Object.keys((props.messageUpdates as Record<string, unknown> | undefined) ?? {}).length)),
       React.createElement("span", { "data-testid": "message-list-width" }, String(props.maxMessageWidth)),
       React.createElement("span", { "data-testid": "message-list-has-expand-subagent" }, String(typeof props.onExpandSubagent === "function")),
+      React.createElement("span", { "data-testid": "message-list-assistant-avatar" }, props.assistantAvatar as React.ReactNode),
       React.createElement(
         "button",
         {
@@ -78,6 +84,11 @@ vi.mock("@viben/chat", async () => {
         String(props.title)
       )
       : null,
+    TodoListPanel: (props: Record<string, unknown>) => React.createElement(
+      "div",
+      { "data-testid": "todo-list-panel" },
+      String((props.messages as unknown[] | undefined)?.length ?? 0)
+    ),
   };
 });
 
@@ -255,6 +266,23 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
 
+  test("renders todo and background task summaries from the ChatApp message stream", () => {
+    render(
+      <ChatApp
+        contained
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("todo-list-panel")).toHaveTextContent(String(messages.length));
+    expect(screen.getByTestId("background-task-list")).toHaveTextContent(String(messages.length));
+  });
+
   test("allows custom pet avatars per assistant state", () => {
     render(
       <ChatApp
@@ -271,6 +299,65 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("custom-review-pet")).toBeInTheDocument();
+  });
+
+  test("uses dynamic pet avatars for overlay modes and static state avatars for the message list", () => {
+    const assistantPetAvatars = {
+      dynamic: {
+        review: <span data-testid="custom-dynamic-review-pet">Dynamic review pet</span>,
+      },
+      static: {
+        review: <span data-testid="custom-static-review-pet">Static review pet</span>,
+      },
+    };
+
+    const { rerender } = render(
+      <ChatApp
+        mode="floating"
+        messages={messages}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        assistantPetAvatars={assistantPetAvatars}
+      />
+    );
+
+    expect(screen.getByTestId("custom-dynamic-review-pet")).toBeInTheDocument();
+    expect(screen.queryByTestId("custom-static-review-pet")).not.toBeInTheDocument();
+
+    rerender(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        assistantPetAvatars={assistantPetAvatars}
+      />
+    );
+
+    expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("custom-static-review-pet"));
+    expect(screen.queryByTestId("custom-dynamic-review-pet")).not.toBeInTheDocument();
+  });
+
+  test("passes static pet avatars into fullscreen message lists", () => {
+    render(
+      <ChatAppFullscreenPanel
+        messages={messages}
+        isStreaming={false}
+        inputProps={{
+          value: "",
+          onValueChange: () => {},
+          onSend: () => {},
+          onCancel: () => {},
+        }}
+        assistantAvatar={<span data-testid="fullscreen-static-pet">Fullscreen static pet</span>}
+      />
+    );
+
+    expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("fullscreen-static-pet"));
   });
 
   test("floating avatar expands to compact mode when clicked", () => {
@@ -955,6 +1042,57 @@ describe("ChatApp", () => {
     expect(screen.queryByTestId("full-mode-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("settings-button")).toBeInTheDocument();
     expect(screen.getByTestId("more-actions-menu")).toBeInTheDocument();
+  });
+
+  test("allows expanded and full headers to be replaced with custom UI and interactions", () => {
+    const onModeChange = vi.fn();
+    const renderHeader = vi.fn((props: { title: string; mode: string; onModeChange: (mode: "floating" | "compact" | "expanded" | "full") => void }) => (
+      <div data-testid="custom-overlay-header">
+        <span>{props.title}</span>
+        <span>{props.mode}</span>
+        <button type="button" onClick={() => props.onModeChange("compact")}>Custom compact</button>
+      </div>
+    ));
+
+    const { rerender } = render(
+      <ChatApp
+        mode="expanded"
+        title="Custom session"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+        renderHeader={renderHeader}
+      />
+    );
+
+    expect(screen.getByTestId("custom-overlay-header")).toHaveTextContent("Custom session");
+    expect(screen.getByTestId("custom-overlay-header")).toHaveTextContent("expanded");
+    expect(screen.queryByTestId("expanded-header")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Custom compact" }));
+    expect(onModeChange).toHaveBeenCalledWith("compact");
+
+    rerender(
+      <ChatApp
+        mode="full"
+        title="Custom session"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={onModeChange}
+        onSend={() => {}}
+        onCancel={() => {}}
+        renderHeader={renderHeader}
+      />
+    );
+
+    expect(screen.getByTestId("custom-overlay-header")).toHaveTextContent("full");
+    expect(renderHeader).toHaveBeenLastCalledWith(expect.objectContaining({
+      mode: "full",
+      title: "Custom session",
+      onModeChange,
+    }));
   });
 });
 
