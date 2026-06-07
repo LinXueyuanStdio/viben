@@ -503,14 +503,9 @@ export function App() {
         : t("example.components.exec_approval_desc", "Permission gate"),
       active: showExecApproval,
       onClick: () => {
-        if (!showExecApproval) {
-          setApprovalDemoIdx(0)
-          setApprovalFeedback(null)
-        } else {
-          setApprovalDemoIdx(i => (i + 1) % demoExecApprovals.length)
-          setApprovalFeedback(null)
-        }
-        setShowExecApproval(true)
+        setApprovalDemoIdx(showExecApproval ? (approvalDemoIdx + 1) % demoExecApprovals.length : 0)
+        setApprovalFeedback(null)
+        setShowExecApproval(!showExecApproval)
         setShowPlan(false)
         setShowQuestions(false)
         setShowEmojiPicker(false)
@@ -840,7 +835,11 @@ export function App() {
           {/* Content area */}
           <div className={`flex min-h-0 flex-1 flex-col ${!isChatAppFull && !hasStandaloneDemoOpen ? "pointer-events-none" : "pointer-events-auto"}`}>
             {showPlan ? (
-              <div className="flex flex-1 items-center justify-center p-8">
+              <ComponentDemoSurface
+                title={activeComponentDemo?.label ?? t("example.components.plan_approval", "Plan approval")}
+                onDismiss={dismissComponentDemo}
+                dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
+              >
                 <div className="w-full max-w-lg">
                   <PlanApproval
                     plan={demoPlan}
@@ -849,9 +848,13 @@ export function App() {
                     onReject={() => setShowPlan(false)}
                   />
                 </div>
-              </div>
+              </ComponentDemoSurface>
             ) : showQuestions ? (
-              <div className="flex flex-1 items-center justify-center p-8">
+              <ComponentDemoSurface
+                title={activeComponentDemo?.label ?? t("example.components.question_input", "Question input")}
+                onDismiss={dismissComponentDemo}
+                dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
+              >
                 <div className="w-full max-w-lg">
                   <QuestionInput
                     questions={demoQuestions}
@@ -861,15 +864,23 @@ export function App() {
                     }}
                   />
                 </div>
-              </div>
+              </ComponentDemoSurface>
             ) : showEmojiPicker ? (
-              <div className="flex flex-1 items-center justify-center p-8">
+              <ComponentDemoSurface
+                title={activeComponentDemo?.label ?? t("example.components.emoji_picker", "Emoji picker")}
+                onDismiss={dismissComponentDemo}
+                dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
+              >
                 <EmojiPicker
                   onSelect={(emoji) => console.log("Selected:", emoji)}
                 />
-              </div>
+              </ComponentDemoSurface>
             ) : showExecApproval ? (
-              <div className="flex flex-1 items-center justify-center p-8">
+              <ComponentDemoSurface
+                title={activeComponentDemo?.label ?? t("example.components.exec_approval", "Exec approval")}
+                onDismiss={dismissComponentDemo}
+                dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
+              >
                 <div className="w-full max-w-lg space-y-3">
                   <ExecApproval
                     approval={demoExecApprovals[approvalDemoIdx % demoExecApprovals.length]}
@@ -901,9 +912,13 @@ export function App() {
                     })}
                   </p>
                 </div>
-              </div>
+              </ComponentDemoSurface>
             ) : showCommandQueue ? (
-              <div className="flex flex-1 items-center justify-center p-8">
+              <ComponentDemoSurface
+                title={activeComponentDemo?.label ?? t("example.components.command_queue", "Command queue")}
+                onDismiss={dismissComponentDemo}
+                dismissLabel={t("example.components.dismiss", "Dismiss component demo")}
+              >
                 <div className="w-full max-w-lg space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium">{t("example.command_queue.demo_title", "Command Queue Demo")}</h3>
@@ -951,7 +966,7 @@ export function App() {
                     </p>
                   )}
                 </div>
-              </div>
+              </ComponentDemoSurface>
             ) : null}
           </div>
           <div className={isChatAppFull ? "contents" : "pointer-events-auto"}>
@@ -1053,6 +1068,39 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
       {children}
     </h3>
+  )
+}
+
+function ComponentDemoSurface({
+  title,
+  dismissLabel,
+  onDismiss,
+  children,
+}: {
+  title: string
+  dismissLabel: string
+  onDismiss: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center p-8">
+      <div className="relative w-full max-w-xl rounded-lg border bg-background p-4 shadow-xl" data-testid="component-demo-surface">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <span className="min-w-0 truncate text-sm font-medium text-foreground">{title}</span>
+          <button
+            type="button"
+            aria-label={dismissLabel}
+            onClick={onDismiss}
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="flex justify-center">
+          {children}
+        </div>
+      </div>
+    </div>
   )
 }
 
