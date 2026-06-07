@@ -5,9 +5,11 @@ import {
   FileJson,
   MessageSquare,
   EthernetPort,
+  ChevronDown,
   FolderPlus,
   Loader2,
   Maximize2,
+  Minimize2,
   Plug,
   Plus,
   RotateCcw,
@@ -27,18 +29,15 @@ import {
   ChatAppFullscreenPanel,
   ChatInput,
   CommandQueuePanel,
-  DefaultExpandedHeaderMoreMenu,
   ExecApproval,
   ExpandedHeader,
   ExpandedHeaderModeControls,
-  ExpandedHeaderNewSessionMenu,
-  ExpandedHeaderSessionMenu,
   MessageList,
   PlanApproval,
   QuestionInput,
   SubagentSheet,
 } from "@viben/chat";
-import type { AgentMessage, Artifact, ChatAppMode, ChatAppSessionItem, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, TaskPlan, ToolConfig } from "@viben/chat";
+import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, TaskPlan, ToolConfig } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -146,6 +145,12 @@ interface ArtifactDialogState {
 interface ToolInspectDialogState {
   message: AgentMessage;
   result?: AgentMessage;
+}
+
+interface AcpChatSessionItem {
+  id: string;
+  title: string;
+  subtitle?: string;
 }
 
 const BACKEND_OPTIONS = [
@@ -283,7 +288,7 @@ export function App() {
     () => buildChatContextBreakdown(messages, streamingText, slashCommands, actionSummaries, steerQueueItems),
     [actionSummaries, messages, slashCommands, steerQueueItems, streamingText]
   );
-  const chatAppSessions = useMemo<ChatAppSessionItem[]>(
+  const chatAppSessions = useMemo<AcpChatSessionItem[]>(
     () => sessionOrder.flatMap((id) => {
       const session = sessionsById[id];
       if (!session) return [];
@@ -1156,6 +1161,9 @@ export function App() {
             onChatAppModeChange={setChatAppMode}
             sessions={chatAppSessions}
             onSelectSession={(id) => setActiveSessionId(id)}
+            subagentSheet={subagentSheet}
+            liveSubagentMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
+            onCloseSubagentSheet={() => setSubagentSheet(null)}
             onExpandSubagent={handleExpandSubagent}
             onInspectTool={handleInspectTool}
             onArtifactClick={handleArtifactClick}
@@ -1651,16 +1659,18 @@ export function App() {
           onCancel={cancelElicitationDialog}
         />
       )}
-      <SubagentSheet
-        open={!!subagentSheet}
-        onClose={() => setSubagentSheet(null)}
-        title={subagentSheet?.title ?? ""}
-        subagentType={subagentSheet?.subagentType}
-        messages={subagentSheet?.messages ?? []}
-        liveMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
-        context={subagentSheet?.context}
-        onExpandSubagent={handleExpandSubagent}
-      />
+      {viewMode === "inspector" && (
+        <SubagentSheet
+          open={!!subagentSheet}
+          onClose={() => setSubagentSheet(null)}
+          title={subagentSheet?.title ?? ""}
+          subagentType={subagentSheet?.subagentType}
+          messages={subagentSheet?.messages ?? []}
+          liveMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
+          context={subagentSheet?.context}
+          onExpandSubagent={handleExpandSubagent}
+        />
+      )}
       {artifactDialog && (
         <ArtifactModal
           dialog={artifactDialog}
@@ -1731,6 +1741,9 @@ function AcpChatSurface({
   onChatAppModeChange,
   sessions,
   onSelectSession,
+  subagentSheet,
+  liveSubagentMessages,
+  onCloseSubagentSheet,
   onExpandSubagent,
   onInspectTool,
   onArtifactClick,
@@ -1780,8 +1793,11 @@ function AcpChatSurface({
   onRecallSteerQueue: (items: QueuedInputRecallItem[], value: string) => void;
   chatAppMode: ChatAppMode;
   onChatAppModeChange: (mode: ChatAppMode) => void;
-  sessions: ChatAppSessionItem[];
+  sessions: AcpChatSessionItem[];
   onSelectSession: (id: string) => void;
+  subagentSheet: SubagentSheetState | null;
+  liveSubagentMessages?: AgentMessage[];
+  onCloseSubagentSheet: () => void;
   onExpandSubagent: ExpandSubagentHandler;
   onInspectTool: InspectToolHandler;
   onArtifactClick: (artifactId: string) => void;
@@ -1920,22 +1936,14 @@ function AcpChatSurface({
     <ExpandedHeader
       leftContent={(
         <>
-          <ExpandedHeaderSessionMenu
+          <AcpHeaderSessionMenu
             title={activeTitle}
             sessions={sessions}
-            assistantAvatar={assistantAvatar}
-            onSelectSession={(session) => onSelectSession(session.id)}
+            onSelectSession={onSelectSession}
           />
-          <ExpandedHeaderNewSessionMenu
-            agents={BACKEND_OPTIONS.map((backend) => ({
-              id: backend.value,
-              name: backend.label,
-              type: backend.value,
-            }))}
+          <AcpHeaderNewSessionMenu
             onCreateSession={onCreateSession}
-            onNewChat={onCreateSession}
-            onNewChatWindow={() => onChatAppModeChange("expanded")}
-            onSelectAgent={(agent) => onExecutorTypeChange(agent.id)}
+            onSelectExecutor={onExecutorTypeChange}
           />
         </>
       )}
@@ -1950,7 +1958,15 @@ function AcpChatSurface({
           onModeChange={onChatAppModeChange}
           moreMenuContent={(
             <>
-              <DefaultExpandedHeaderMoreMenu />
+              <MenuActionButton onClick={() => onChatAppModeChange("compact")} icon={<Minimize2 size={14} />}>
+                Compact mode
+              </MenuActionButton>
+              <MenuActionButton onClick={() => onChatAppModeChange("expanded")} icon={<MessageSquare size={14} />}>
+                Expanded mode
+              </MenuActionButton>
+              <MenuActionButton onClick={() => onChatAppModeChange("full")} icon={<Maximize2 size={14} />}>
+                Fullscreen mode
+              </MenuActionButton>
               <div className="my-1 border-t border-border" />
               {!connected ? (
                 <MenuActionButton onClick={onConnect} disabled={busy} icon={busy ? <Loader2 className="animate-spin" size={14} /> : <Plug size={14} />}>
@@ -2076,6 +2092,15 @@ function AcpChatSurface({
         onRejectPlan={onRejectPlan}
         onApprovalDecision={onApprovalDecision}
         onAnswerQuestions={onQuestionAnswers}
+        subagentSheet={subagentSheet ? {
+          open: true,
+          onClose: onCloseSubagentSheet,
+          title: subagentSheet.title,
+          subagentType: subagentSheet.subagentType,
+          messages: subagentSheet.messages,
+          liveMessages: liveSubagentMessages,
+          context: subagentSheet.context,
+        } : undefined}
         onExpandSubagent={onExpandSubagent}
         onInspectTool={onInspectTool}
         onArtifactClick={onArtifactClick}
@@ -2422,6 +2447,105 @@ function ToolInspectRow({ label, value }: { label: string; value: string }) {
     <div className="min-w-0">
       <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 break-words font-mono text-xs text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function AcpHeaderSessionMenu({
+  title,
+  sessions,
+  onSelectSession,
+}: {
+  title: string;
+  sessions: AcpChatSessionItem[];
+  onSelectSession: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="flex h-8 max-w-44 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="truncate">{title}</span>
+        <ChevronDown className="size-3.5 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-10 z-30 w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
+          {sessions.length === 0 ? (
+            <div className="px-2 py-2 text-xs text-muted-foreground">No sessions</div>
+          ) : (
+            sessions.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                className="flex w-full min-w-0 flex-col rounded-md px-2 py-2 text-left hover:bg-accent"
+                onClick={() => {
+                  onSelectSession(session.id);
+                  setOpen(false);
+                }}
+              >
+                <span className="truncate text-sm font-medium text-foreground">{session.title}</span>
+                <span className="truncate text-[11px] text-muted-foreground">{session.subtitle ?? session.id}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AcpHeaderNewSessionMenu({
+  onCreateSession,
+  onSelectExecutor,
+}: {
+  onCreateSession: () => void;
+  onSelectExecutor: (executorType: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-background">
+      <button
+        type="button"
+        className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        onClick={onCreateSession}
+        aria-label="Create session"
+      >
+        <Plus className="size-4" />
+      </button>
+      <div className="h-full border-l border-border" />
+      <button
+        type="button"
+        className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        onClick={() => setOpen((current) => !current)}
+        aria-label="Open session menu"
+      >
+        <ChevronDown className="size-4" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-10 z-30 w-64 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
+          <MenuActionButton onClick={() => {
+            onCreateSession();
+            setOpen(false);
+          }} icon={<FolderPlus size={14} />}>
+            New session
+          </MenuActionButton>
+          <div className="my-1 border-t border-border" />
+          {BACKEND_OPTIONS.map((backend) => (
+            <MenuActionButton
+              key={backend.value}
+              onClick={() => {
+                onSelectExecutor(backend.value);
+                setOpen(false);
+              }}
+            >
+              {backend.label}
+            </MenuActionButton>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
