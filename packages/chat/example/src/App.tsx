@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { LayoutGroup } from "framer-motion"
+import { LayoutGroup, motion } from "framer-motion"
 import { useTranslation } from "react-i18next"
 import {
   PlanApproval,
@@ -88,6 +88,12 @@ const DEMO_PANEL_MIN_WIDTH = 360
 const FULLSCREEN_CHAT_WIDTH_STORAGE_KEY = "viben.chat.example.fullscreen_chat_width"
 type ExampleLanguage = "en" | "zh-CN"
 type ExampleSidebarPage = "player" | "ui-showcase"
+type FullscreenEntryGeometry = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 function getFullscreenChatMaxWidth(sidebarWidth: number) {
   if (typeof window === "undefined") return FULLSCREEN_CHAT_MAX_WIDTH
@@ -111,6 +117,24 @@ function readStoredFullscreenChatWidth() {
 function storeFullscreenChatWidth(width: number) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(FULLSCREEN_CHAT_WIDTH_STORAGE_KEY, String(Math.round(width)))
+}
+
+function getFullscreenEntryInitial(geometry: FullscreenEntryGeometry | null) {
+  return geometry
+    ? {
+        opacity: 0.98,
+        x: geometry.x,
+        y: geometry.y,
+        width: geometry.width,
+        height: geometry.height,
+      }
+    : {
+        opacity: 0.96,
+        x: -28,
+        y: 32,
+        width: FULLSCREEN_CHAT_DEFAULT_WIDTH,
+        height: "75%",
+      }
 }
 
 // ============================================================================
@@ -252,6 +276,7 @@ export function App() {
   const [fullscreenChatWidth, setFullscreenChatWidth] = useState(() =>
     clampFullscreenChatWidth(readStoredFullscreenChatWidth(), EXAMPLE_SIDEBAR_EXPANDED_WIDTH)
   )
+  const [fullscreenEntryGeometry, setFullscreenEntryGeometry] = useState<FullscreenEntryGeometry | null>(null)
   const isResizingChatRef = useRef(false)
 
   // ExecApproval cycling demo
@@ -274,6 +299,7 @@ export function App() {
 
   // Refs
   const messageListRef = useRef<MessageListHandle>(null)
+  const chatExampleShellRef = useRef<HTMLDivElement>(null)
 
   // Sync speed to player
   useEffect(() => {
@@ -487,17 +513,36 @@ export function App() {
     setShowCommandQueue(false)
     setApprovalFeedback(null)
   }, [])
+  const getFullscreenEntryGeometry = useCallback((targetWidth: number): FullscreenEntryGeometry | null => {
+    const expandedElement = document.querySelector<HTMLElement>("[data-testid='expanded-overlay']")
+    const shellElement = chatExampleShellRef.current
+    if (!expandedElement || !shellElement) return null
+
+    const expandedRect = expandedElement.getBoundingClientRect()
+    const shellRect = shellElement.getBoundingClientRect()
+    const sidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
+    const targetLeft = shellRect.left + sidebarWidth
+    const targetTop = shellRect.top
+
+    return {
+      x: expandedRect.left - targetLeft,
+      y: expandedRect.top - targetTop,
+      width: expandedRect.width,
+      height: expandedRect.height,
+    }
+  }, [introSidebarOpen])
   const handleChatAppModeChange = useCallback((nextMode: ChatAppMode) => {
     if (nextMode === "full") {
       const sidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
-      setFullscreenChatWidth((width) => {
-        const nextWidth = clampFullscreenChatWidth(width, sidebarWidth)
-        storeFullscreenChatWidth(nextWidth)
-        return nextWidth
-      })
+      const nextWidth = clampFullscreenChatWidth(fullscreenChatWidth, sidebarWidth)
+      setFullscreenChatWidth(nextWidth)
+      storeFullscreenChatWidth(nextWidth)
+      setFullscreenEntryGeometry(getFullscreenEntryGeometry(nextWidth))
+    } else {
+      setFullscreenEntryGeometry(null)
     }
     setChatAppMode(nextMode)
-  }, [introSidebarOpen])
+  }, [fullscreenChatWidth, getFullscreenEntryGeometry, introSidebarOpen])
   const handleLanguageChange = useCallback((nextLanguage: ExampleLanguage) => {
     setLanguage(nextLanguage)
     void i18n.changeLanguage(nextLanguage)
@@ -1160,7 +1205,11 @@ export function App() {
         </div>
       </header>
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden bg-background" data-testid="chat-example-shell">
+      <div
+        ref={chatExampleShellRef}
+        className="relative flex min-h-0 flex-1 overflow-hidden bg-background"
+        data-testid="chat-example-shell"
+      >
         <aside
           data-testid="intro-sidebar"
           className="flex h-full shrink-0 flex-col overflow-hidden border-r bg-muted/20 transition-[width] duration-300"
@@ -1221,15 +1270,21 @@ export function App() {
         </aside>
 
         {isChatAppFull && (
-          <div
+          <motion.div
             data-testid="chat-app-stage"
+            data-transition-origin="expanded-bottom-left"
+            data-entry-geometry={fullscreenEntryGeometry ? "measured" : "fallback"}
+            initial={getFullscreenEntryInitial(fullscreenEntryGeometry)}
+            animate={{ opacity: 1, x: 0, y: 0, width: fullscreenChatWidth, height: "100%" }}
+            exit={{ opacity: 0.96, x: fullscreenEntryGeometry?.x ?? -20, y: fullscreenEntryGeometry?.y ?? 24 }}
+            transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
             className="relative h-full min-w-0 flex-none overflow-hidden border-r bg-background transition-[width] duration-300"
             style={{ width: fullscreenChatWidth }}
           >
             <div className="contents">
               {chatAppNode}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {isChatAppFull && (

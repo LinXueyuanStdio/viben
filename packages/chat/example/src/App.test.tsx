@@ -184,6 +184,7 @@ describe("App overlay layout", () => {
 
     expect(screen.getByTestId("intro-sidebar")).toHaveStyle({ width: "280px" });
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-none");
+    expect(screen.getByTestId("chat-app-stage")).toHaveAttribute("data-transition-origin", "expanded-bottom-left");
     expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
     expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("absolute");
     expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("pointer-events-none");
