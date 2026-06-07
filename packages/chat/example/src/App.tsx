@@ -9,7 +9,7 @@ import {
 } from "@viben/chat"
 import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen, X } from "lucide-react"
 import {
   demoAgents,
   demoModels,
@@ -75,6 +75,76 @@ import type { ExampleLanguage, ExampleSidebarPage, FullscreenEntryGeometry } fro
 type CompactActivity = {
   kind: "plain" | "thinking"
   text: string
+}
+
+function formatToolPayload(value: unknown): string {
+  if (value === undefined || value === null) return "None"
+  if (typeof value === "string") return value
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
+function resolveToolResult(message: AgentMessage, messages: AgentMessage[]): AgentMessage | undefined {
+  if (!message.toolUseId) return undefined
+  return messages.find((candidate) =>
+    candidate.type === "tool_result" &&
+    candidate.toolUseId === message.toolUseId
+  )
+}
+
+function ToolInspectPanel({
+  message,
+  result,
+  onClose,
+}: {
+  message: AgentMessage
+  result?: AgentMessage
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const output = result?.output ?? message.output
+  const isError = result?.isError ?? message.isError
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-end justify-end bg-background/30 p-4 backdrop-blur-[1px]">
+      <section className="flex max-h-[min(680px,calc(100dvh_-_2rem))] w-[min(520px,calc(100dvw_-_2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold">{message.name ?? t("example.tool_detail.title", "Tool detail")}</h2>
+            <p className="truncate text-xs text-muted-foreground">{message.toolUseId ?? message.id ?? t("example.tool_detail.no_id", "No tool id")}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label={t("common.close", "Close")}
+          >
+            <X className="size-4" />
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
+          <div>
+            <div className="mb-1.5 text-xs font-medium text-muted-foreground">{t("chat.toolInput", "Input")}</div>
+            <pre className="max-h-56 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
+              {formatToolPayload(message.input)}
+            </pre>
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+              <span>{t("chat.toolOutput", "Output")}</span>
+              {isError && <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] text-destructive">{t("common.error", "Error")}</span>}
+            </div>
+            <pre className="max-h-80 overflow-auto rounded-lg bg-muted p-3 text-xs whitespace-pre-wrap">
+              {formatToolPayload(output)}
+            </pre>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 // ============================================================================
@@ -150,6 +220,7 @@ export function App() {
   const [fullscreenEntryGeometry, setFullscreenEntryGeometry] = useState<FullscreenEntryGeometry | null>(null)
   const [fullscreenDockVisible, setFullscreenDockVisible] = useState(false)
   const isResizingChatRef = useRef(false)
+  const [inspectedToolMessage, setInspectedToolMessage] = useState<AgentMessage | null>(null)
 
   // ExecApproval cycling demo
   const [approvalDemoIdx, setApprovalDemoIdx] = useState(0)
@@ -322,6 +393,15 @@ export function App() {
   const handleExpandSubagent = useCallback<ExpandSubagentHandler>((title, subagentType, messages, context) => {
     setSheetData({ title, subagentType, messages, context })
   }, [])
+
+  const handleInspectTool = useCallback((message: AgentMessage) => {
+    setInspectedToolMessage(message)
+  }, [])
+
+  const inspectedToolResult = useMemo(
+    () => inspectedToolMessage ? resolveToolResult(inspectedToolMessage, player.messages) : undefined,
+    [inspectedToolMessage, player.messages]
+  )
 
   const activeSheetLiveMessages = useMemo(() => {
     const toolUseId = sheetData?.context?.toolUseId
@@ -741,6 +821,7 @@ export function App() {
       onInputValueChange={setChatInputValue}
       messageListRef={messageListRef}
       onExpandSubagent={handleExpandSubagent}
+      onInspectTool={handleInspectTool}
       loadSubagentDetails={loadSubagentDetails}
       subagentSheet={sheetData ? {
         open: true,
@@ -767,6 +848,7 @@ export function App() {
               pendingQuestion={player.pendingQuestion}
               messageListRef={messageListRef}
               onExpandSubagent={handleExpandSubagent}
+              onInspectTool={handleInspectTool}
               onApprovePlan={() => {
                 console.log("Plan approved")
                 player.resolvePlan(true)
@@ -844,6 +926,7 @@ export function App() {
           onToggleContextPanel={() => setShowContextPanel(!showContextPanel)}
           onToggleTool={handleToggleTool}
           onToggleSkill={handleToggleSkill}
+          onInspectTool={handleInspectTool}
         />
       ) : (
         <PlayerPage
@@ -1065,6 +1148,13 @@ export function App() {
               {chatAppNode}
             </div>
           </div>
+        )}
+        {inspectedToolMessage && (
+          <ToolInspectPanel
+            message={inspectedToolMessage}
+            result={inspectedToolResult}
+            onClose={() => setInspectedToolMessage(null)}
+          />
         )}
       </div>
     </div>
