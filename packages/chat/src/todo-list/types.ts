@@ -20,6 +20,8 @@ export interface TodoListItem {
 export interface TodoListPanelProps {
   /** Tool messages containing TaskCreate, TaskUpdate, TodoList, or TodoWrite calls. */
   messages?: AgentMessage[];
+  /** Transient per-message updates keyed by message id. */
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
   /** Precomputed todo items. When provided, these are rendered directly. */
   items?: TodoListItem[];
   className?: string;

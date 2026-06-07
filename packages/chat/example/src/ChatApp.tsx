@@ -250,9 +250,9 @@ export function ChatApp({
   onCancel,
 }: ChatAppProps) {
   const { t } = useTranslation();
-  const petState = getAssistantPetState(messages, isStreaming, playerStatus);
+  const petState = getAssistantPetState(messages, isStreaming, playerStatus, pendingUserMessageCount > 0);
   const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
-  const dynamicAssistantAvatar = assistantPetAvatars?.dynamic?.[petState] ?? assistantAvatars?.[petState] ?? (
+  const dynamicAssistantAvatar = assistantPetAvatars?.dynamic?.[petState] ?? (
     <VibenPetAvatar kind="dynamic" state={petState} interaction={petInteraction} />
   );
   const staticAssistantAvatar = assistantPetAvatars?.static?.[petState] ?? assistantAvatars?.[petState] ?? (
