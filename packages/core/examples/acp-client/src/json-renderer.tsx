@@ -4,6 +4,7 @@ import {
   Mode,
   type Content,
   type JSONContent,
+  type TextContent,
   type JSONEditorPropsOptional,
 } from "vanilla-jsoneditor";
 import "vanilla-jsoneditor/themes/jse-theme-dark.css";
@@ -21,9 +22,84 @@ export interface JsonPanelProps {
   lazyMount?: boolean;
 }
 
+export interface JsonEditorPanelProps {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  preClassName?: string;
+  size?: JsonPanelSize;
+  mode?: "tree" | "text";
+}
+
 export interface JsonBlockProps extends JsonPanelProps {
   title: ReactNode;
   titleClassName?: string;
+}
+
+export function JsonEditorPanel({
+  value,
+  onChange,
+  className,
+  preClassName,
+  size = "default",
+  mode = "text",
+}: JsonEditorPanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<JsonEditorInstance | null>(null);
+  const changeHandlerRef = useRef(onChange);
+  const valueRef = useRef(value);
+  const content = useMemo(() => textToEditorContent(value), [value]);
+  const editorMode = mode === "tree" && contentHasJson(content) ? Mode.tree : Mode.text;
+
+  useEffect(() => {
+    changeHandlerRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const props: JSONEditorPropsOptional = {
+      content,
+      mode: editorMode,
+      readOnly: false,
+      mainMenuBar: false,
+      navigationBar: true,
+      statusBar: false,
+      onChange: (updatedContent) => {
+        const nextValue = editorContentToText(updatedContent);
+        if (nextValue !== valueRef.current) {
+          valueRef.current = nextValue;
+          changeHandlerRef.current(nextValue);
+        }
+      },
+    };
+
+    editorRef.current = createJSONEditor({
+      target: containerRef.current,
+      props,
+    });
+
+    return () => {
+      editorRef.current?.destroy();
+      editorRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!editorRef.current) return;
+    editorRef.current.updateProps({ mode: editorMode });
+    editorRef.current.update(content);
+  }, [content, editorMode]);
+
+  return (
+    <div className={classNames("json-panel jse-theme-dark", `json-panel-${size}`, preClassName)}>
+      <div ref={containerRef} className={classNames("json-editor-host", className)} />
+    </div>
+  );
 }
 
 export function JsonPanel({
@@ -157,6 +233,19 @@ function valueToEditorContent(value: unknown): Content {
     }
   }
   return { json: value as JSONContent["json"] };
+}
+
+function textToEditorContent(value: string): Content {
+  try {
+    return { json: JSON.parse(value) as JSONContent["json"] };
+  } catch {
+    return { text: value };
+  }
+}
+
+function editorContentToText(content: Content): string {
+  if ("text" in content) return (content as TextContent).text;
+  return formatJson((content as JSONContent).json);
 }
 
 function contentHasJson(content: Content): content is JSONContent {
