@@ -305,3 +305,4 @@ docs/index/
 /apps/OpenACP/
 /logs
 /resources/page-templates/fullstack/
+.claude/scheduled_tasks.json

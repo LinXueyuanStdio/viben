@@ -195,6 +195,18 @@ export function App() {
     onSteer: async () => {},
     onQueued: (item) => console.log("Queued:", item.content),
   })
+  const scriptedQueueItems = useMemo<CommandQueueItem[]>(() =>
+    player.queuedUserMessages.map((message, index) => ({
+      id: message.id ?? `scripted-${index}`,
+      content: message.content ?? "",
+      attachments: message.attachments,
+      createdAt: message.timestamp ?? Date.now(),
+    })),
+  [player.queuedUserMessages])
+  const visibleCommandQueueItems = useMemo(
+    () => [...scriptedQueueItems, ...commandQueue.items],
+    [commandQueue.items, scriptedQueueItems]
+  )
 
   // Interactive state for standalone component demos
   const [selectedAgentId, setSelectedAgentId] = useState("coder")
@@ -301,24 +313,19 @@ export function App() {
     }
   }, [])
 
-  // ===== Implicit user message routing =====
-  // When a step emits user messages, route based on agent busy state:
-  // - Agent busy (unresolved tool calls) → queue (shows in CommandQueuePanel)
-  // - Agent idle → inject directly into message list
-  // Queue auto-dequeues when tool_result arrives (agentBusy becomes false).
+  // ===== Legacy implicit user message routing =====
+  // The step player owns scripted user messages that arrive while a tool call is
+  // unresolved. This fallback only handles non-busy routed users from older
+  // step shapes.
   useEffect(() => {
     if (player.pendingUserMessages.length === 0) return
-    if (agentBusy) {
-      for (const msg of player.pendingUserMessages) {
-        commandQueue.send(msg.content || "", msg.attachments)
-      }
-    } else {
+    if (!agentBusy) {
       for (const msg of player.pendingUserMessages) {
         player.injectMessage(msg)
       }
+      player.consumePendingUsers()
     }
-    player.consumePendingUsers()
-  }, [player.pendingUserMessages, agentBusy, commandQueue, player.injectMessage, player.consumePendingUsers])
+  }, [player.pendingUserMessages, agentBusy, player.injectMessage, player.consumePendingUsers])
 
   // ===== File Load =====
   const handleFileLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -799,7 +806,7 @@ export function App() {
 
   const chatAppStatusContent = useMemo(() => (
     <ChatAppFullscreenCommandQueue
-      commandQueueItems={commandQueue.items}
+      commandQueueItems={visibleCommandQueueItems}
       commandQueuePaused={commandQueue.isPaused}
       onCommandQueueRemove={commandQueue.remove}
       onCommandQueueClear={commandQueue.clear}
@@ -809,12 +816,12 @@ export function App() {
   ), [
     commandQueue.clear,
     commandQueue.isPaused,
-    commandQueue.items,
     commandQueue.pause,
     commandQueue.remove,
     commandQueue.resume,
+    visibleCommandQueueItems,
   ])
-  const hasPendingChatAppMessages = commandQueue.items.length > 0
+  const hasPendingChatAppMessages = visibleCommandQueueItems.length > 0
   const chatAppPetState = useMemo(
     () => getAssistantPetState(player.messages, player.isStreaming, player.status, hasPendingChatAppMessages),
     [hasPendingChatAppMessages, player.isStreaming, player.messages, player.status]
@@ -886,7 +893,7 @@ export function App() {
       messages={player.messages}
       messageUpdates={player.messageUpdates}
       isStreaming={player.isStreaming}
-      pendingUserMessageCount={commandQueue.items.length}
+      pendingUserMessageCount={visibleCommandQueueItems.length}
       dynamicAssistantAvatar={dynamicAssistantAvatar}
       staticAssistantAvatar={staticAssistantAvatar}
       compactSummaryContent={compactActivitySummaryContent}

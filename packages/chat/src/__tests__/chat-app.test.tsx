@@ -129,9 +129,12 @@ vi.mock("../message-list", async () => {
       { "data-testid": "message-list" },
       React.createElement("span", { "data-testid": "message-list-count" }, String((props.messages as unknown[] | undefined)?.length ?? 0)),
       React.createElement("span", { "data-testid": "message-list-streaming" }, String(props.isStreaming)),
+      React.createElement("span", { "data-testid": "message-list-streaming-text" }, String(props.streamingText ?? "")),
       React.createElement("span", { "data-testid": "message-list-updates" }, String(Object.keys((props.messageUpdates as Record<string, unknown> | undefined) ?? {}).length)),
       React.createElement("span", { "data-testid": "message-list-width" }, String(props.maxMessageWidth)),
       React.createElement("span", { "data-testid": "message-list-has-expand-subagent" }, String(typeof props.onExpandSubagent === "function")),
+      React.createElement("span", { "data-testid": "message-list-has-inspect-tool" }, String(typeof props.onInspectTool === "function")),
+      React.createElement("span", { "data-testid": "message-list-artifacts" }, String((props.artifacts as unknown[] | undefined)?.length ?? 0)),
       React.createElement("span", { "data-testid": "message-list-assistant-avatar" }, props.assistantAvatar as React.ReactNode),
       React.createElement(
         "button",

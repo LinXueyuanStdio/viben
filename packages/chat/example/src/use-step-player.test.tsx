@@ -1,10 +1,97 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { useStepPlayer } from "./use-step-player";
 import type { DemoStep } from "./use-step-player";
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("useStepPlayer", () => {
+  test("flushes queued scripted user messages before continuing after the agent becomes idle", () => {
+    const steps: DemoStep[] = [
+      { messages: [{ id: "user-start", type: "user", content: "start" }] },
+      { messages: [{ id: "tool-use", type: "tool_use", name: "Write", toolUseId: "tool-1" }] },
+      { messages: [{ id: "queued-user", type: "user", content: "queued while busy" }] },
+      { messages: [{ id: "tool-result", type: "tool_result", toolUseId: "tool-1", output: "done" }] },
+      { messages: [{ id: "assistant-next", type: "thinking", content: "process queued input" }] },
+    ];
+
+    const { result } = renderHook(() => useStepPlayer(steps));
+
+    act(() => {
+      result.current.next();
+      result.current.next();
+      result.current.next();
+    });
+
+    expect(result.current.messages.map((message) => message.id)).toEqual(["user-start", "tool-use"]);
+    expect(result.current.queuedUserMessages.map((message) => message.id)).toEqual(["queued-user"]);
+
+    act(() => {
+      result.current.next();
+    });
+
+    expect(result.current.messages.map((message) => message.id)).toEqual(["user-start", "tool-use", "tool-result"]);
+    expect(result.current.queuedUserMessages.map((message) => message.id)).toEqual(["queued-user"]);
+
+    act(() => {
+      result.current.next();
+    });
+
+    expect(result.current.messages.map((message) => message.id)).toEqual([
+      "user-start",
+      "tool-use",
+      "tool-result",
+      "queued-user",
+    ]);
+    expect(result.current.queuedUserMessages).toEqual([]);
+
+    act(() => {
+      result.current.next();
+    });
+
+    expect(result.current.messages.map((message) => message.id)).toEqual([
+      "user-start",
+      "tool-use",
+      "tool-result",
+      "queued-user",
+      "assistant-next",
+    ]);
+  });
+
+  test("auto playback does not stall before the tool result that releases queued scripted users", () => {
+    vi.useFakeTimers();
+
+    const steps: DemoStep[] = [
+      { messages: [{ id: "user-start", type: "user", content: "start" }], delayMs: 1 },
+      { messages: [{ id: "tool-use", type: "tool_use", name: "Write", toolUseId: "tool-1" }], delayMs: 1 },
+      { messages: [{ id: "queued-user", type: "user", content: "queued while busy" }], delayMs: 1 },
+      { messages: [{ id: "tool-result", type: "tool_result", toolUseId: "tool-1", output: "done" }], delayMs: 1 },
+      { messages: [{ id: "assistant-next", type: "thinking", content: "process queued input" }], delayMs: 1 },
+    ];
+
+    const { result } = renderHook(() => useStepPlayer(steps));
+
+    act(() => {
+      result.current.play();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(result.current.messages.map((message) => message.id)).toEqual([
+      "user-start",
+      "tool-use",
+      "tool-result",
+      "queued-user",
+      "assistant-next",
+    ]);
+    expect(result.current.queuedUserMessages).toEqual([]);
+  });
+
   test("loadSteps replaces the active playback steps and applies message updates", () => {
     const initialSteps: DemoStep[] = [
       {

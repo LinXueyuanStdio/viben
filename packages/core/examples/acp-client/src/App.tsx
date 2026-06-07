@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   ClipboardList,
   Copy,
@@ -9,8 +8,6 @@ import {
   FolderPlus,
   Loader2,
   Maximize2,
-  Minimize2,
-  MoreHorizontal,
   Plug,
   Plus,
   RotateCcw,
@@ -1670,6 +1667,12 @@ export function App() {
           onClose={() => setArtifactDialog(null)}
         />
       )}
+      {toolInspectDialog && (
+        <ToolInspectModal
+          dialog={toolInspectDialog}
+          onClose={() => setToolInspectDialog(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1724,7 +1727,12 @@ function AcpChatSurface({
   onQuestionAnswers,
   onSteerSend,
   onRecallSteerQueue,
+  chatAppMode,
+  onChatAppModeChange,
+  sessions,
+  onSelectSession,
   onExpandSubagent,
+  onInspectTool,
   onArtifactClick,
   onRemoveSteerQueueItem,
   onClearSteerQueue,
@@ -1766,11 +1774,16 @@ function AcpChatSurface({
   onModelChange: (model: string) => void;
   onApprovePlan: () => void;
   onRejectPlan: () => void;
-  onApprovalDecision: (decision: string) => void;
+  onApprovalDecision: (decision: string, feedback?: string) => void;
   onQuestionAnswers: (answers: Record<string, string[]>) => void;
   onSteerSend: (content: string) => void;
   onRecallSteerQueue: (items: QueuedInputRecallItem[], value: string) => void;
+  chatAppMode: ChatAppMode;
+  onChatAppModeChange: (mode: ChatAppMode) => void;
+  sessions: ChatAppSessionItem[];
+  onSelectSession: (id: string) => void;
   onExpandSubagent: ExpandSubagentHandler;
+  onInspectTool: InspectToolHandler;
   onArtifactClick: (artifactId: string) => void;
   onRemoveSteerQueueItem: (id: string) => void;
   onClearSteerQueue: () => void;
@@ -1788,8 +1801,20 @@ function AcpChatSurface({
     id: backend.value,
     name: backend.label,
   })), []);
+  const agentOptions = useMemo(() => [{
+    id: "acp-agent",
+    name: "ACP Agent",
+    description: executorType,
+    model,
+  }], [executorType, model]);
+  const activeTitle = sessions.find((session) => session.id === sessionId)?.title ?? "ACP Chat";
+  const assistantAvatar = useMemo(() => (
+    <div className="flex size-full items-center justify-center rounded-full bg-primary text-primary-foreground">
+      <EthernetPort size={chatAppMode === "floating" ? 28 : 18} />
+    </div>
+  ), [chatAppMode]);
 
-  const handleSend = useCallback((content: string) => {
+  const handleSend = useCallback((content: string, _attachments?: MessageAttachment[]) => {
     if (isStreaming) {
       onSteerSend(content);
       return;
@@ -1806,180 +1831,270 @@ function AcpChatSurface({
     onSlashCommand(command, selection);
   }, [isStreaming, onSlashCommand, onSteerSend]);
 
-  return (
-    <div className="flex h-[calc(100vh-81px)] min-h-0 flex-col bg-background">
-      <div className="flex min-h-0 flex-1 flex-col">
-        <MessageList
-          messages={messages}
-          streamingText={streamingText}
-          messageUpdates={messageUpdates}
-          isStreaming={isAgentRunning}
-          pendingPlan={pendingPlan}
-          artifacts={artifacts}
-          onExpandSubagent={onExpandSubagent}
-          onArtifactClick={onArtifactClick}
-          maxMessageWidth="780px"
-          toolExpandedInline
-          welcomeTitle="ACP Chat"
-          welcomeDescription="Connect, create a session, then talk to an ACP backend."
-        />
-      </div>
+  const handleRecallQueue = useCallback((items: QueuedInputRecallItem[], value: string) => {
+    onPromptChange(value);
+    onRecallSteerQueue(items, value);
+  }, [onPromptChange, onRecallSteerQueue]);
 
-      <div className="border-t border-border bg-background px-4 py-3">
-        <div className="mx-auto max-w-[780px] space-y-3">
-          {error && (
-            <div className="rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-          {steerQueueItems.length > 0 && (
-            <CommandQueuePanel
-              items={steerQueueItems}
-              isPaused={steerQueuePaused}
-              onRemove={onRemoveSteerQueueItem}
-              onClear={onClearSteerQueue}
-              onPause={onPauseSteerQueue}
-              onResume={onResumeSteerQueue}
-              compact
-              className="rounded-lg border border-border"
-            />
-          )}
+  const sharedInputProps = useMemo<Partial<ChatInputProps>>(() => ({
+    value: prompt,
+    onValueChange: onPromptChange,
+    onSend: handleSend,
+    onCancel: onCancelTurn,
+    queuedInputRecallItems: steerQueueItems,
+    onQueuedInputRecall: handleRecallQueue,
+    isLoading: isStreaming,
+    allowSendWhileLoading: true,
+    sendDisabled: !connected || !sessionId,
+    sendBlockedReason: !connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined,
+    placeholder: isStreaming ? "Type steering while the agent is running..." : "Type a message...",
+    slashCommands,
+    onSlashCommand: handleSlashCommand,
+    showTopToolbar: true,
+    showConfigBar: true,
+    hideAgentSelector: false,
+    agents: agentOptions,
+    selectedAgentId: "acp-agent",
+    onAgentChange: () => undefined,
+    models: modelOptions,
+    selectedModelId: model,
+    onModelChange,
+    executors: executorOptions,
+    selectedExecutor: executorType,
+    onExecutorChange: onExecutorTypeChange,
+    tools,
+    onToggleTool: () => undefined,
+    enabledToolsCount: tools.filter((tool) => tool.enabled).length,
+    skills,
+    onToggleSkill: () => undefined,
+    enabledSkillsCount: skills.filter((skill) => skill.enabled).length,
+    contextTokens: estimateContextTokens(contextBreakdown),
+    contextBreakdown,
+    configBarLeftExtra: (
+      <span className="hidden rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground sm:inline-flex">
+        {slashCommands.length} commands
+      </span>
+    ),
+    showResizeHandle: true,
+    defaultHeight: 132,
+    minHeight: 96,
+    maxHeight: 360,
+    heightStorageKey: "viben_acp_chat_input_height",
+    enableWritingMode: true,
+  }), [
+    agentOptions,
+    connected,
+    contextBreakdown,
+    executorOptions,
+    executorType,
+    handleRecallQueue,
+    handleSend,
+    handleSlashCommand,
+    isStreaming,
+    model,
+    modelOptions,
+    onCancelTurn,
+    onExecutorTypeChange,
+    onModelChange,
+    onPromptChange,
+    prompt,
+    sessionId,
+    skills,
+    slashCommands,
+    steerQueueItems,
+    tools,
+  ]);
 
-          <AnimatePresence mode="wait">
-            {pendingPlan ? (
-              <PlanApproval
-                key="plan"
-                plan={pendingPlan}
-                isPending
-                onApprove={onApprovePlan}
-                onReject={onRejectPlan}
-              />
-            ) : pendingApproval ? (
-              <ExecApproval
-                key="approval"
-                approval={pendingApproval}
-                onDecision={onApprovalDecision}
-                enableKeyboard={false}
-              />
-            ) : pendingQuestion ? (
-              <QuestionInput
-                key="question"
-                questions={pendingQuestion}
-                onSubmit={onQuestionAnswers}
-              />
-            ) : (
-              <motion.div
-                key="input"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <ChatInput
-                  value={prompt}
-                  onValueChange={onPromptChange}
-                  onSend={handleSend}
-                  onCancel={onCancelTurn}
-                  queuedInputRecallItems={steerQueueItems}
-                  onQueuedInputRecall={onRecallSteerQueue}
-                  isLoading={isStreaming}
-                  allowSendWhileLoading
-                  sendDisabled={!connected || !sessionId}
-                  sendBlockedReason={!connected ? "Connect first to send prompts." : !sessionId ? "Create or load a session before sending." : undefined}
-                  placeholder={isStreaming ? "Type steering while the agent is running..." : "Type a message..."}
-                  slashCommands={slashCommands}
-                  onSlashCommand={handleSlashCommand}
-                  showTopToolbar
-                  showConfigBar
-                  hideAgentSelector
-                  models={modelOptions}
-                  selectedModelId={model}
-                  onModelChange={onModelChange}
-                  executors={executorOptions}
-                  selectedExecutor={executorType}
-                  onExecutorChange={onExecutorTypeChange}
-                  tools={tools}
-                  onToggleTool={() => undefined}
-                  skills={skills}
-                  onToggleSkill={() => undefined}
-                  contextTokens={estimateContextTokens(contextBreakdown)}
-                  contextBreakdown={contextBreakdown}
-                  configBarLeftExtra={(
-                    <span className="hidden rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground sm:inline-flex">
-                      {slashCommands.length} commands
-                    </span>
-                  )}
-                  showResizeHandle
-                  defaultHeight={120}
-                  minHeight={88}
-                  maxHeight={320}
-                  heightStorageKey="viben_acp_chat_input_height"
-                  enableWritingMode
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {!pendingPlan && !pendingApproval && !pendingQuestion && (
+  const statusContent = (
+    <ChatAppFullscreenCommandQueue
+      commandQueueItems={steerQueueItems}
+      commandQueuePaused={steerQueuePaused}
+      onCommandQueueRemove={onRemoveSteerQueueItem}
+      onCommandQueueClear={onClearSteerQueue}
+      onCommandQueuePause={onPauseSteerQueue}
+      onCommandQueueResume={onResumeSteerQueue}
+    />
+  );
+
+  const headerContent = (
+    <ExpandedHeader
+      leftContent={(
+        <>
+          <ExpandedHeaderSessionMenu
+            title={activeTitle}
+            sessions={sessions}
+            assistantAvatar={assistantAvatar}
+            onSelectSession={(session) => onSelectSession(session.id)}
+          />
+          <ExpandedHeaderNewSessionMenu
+            agents={BACKEND_OPTIONS.map((backend) => ({
+              id: backend.value,
+              name: backend.label,
+              type: backend.value,
+            }))}
+            onCreateSession={onCreateSession}
+            onNewChat={onCreateSession}
+            onNewChatWindow={() => onChatAppModeChange("expanded")}
+            onSelectAgent={(agent) => onExecutorTypeChange(agent.id)}
+          />
+        </>
+      )}
+      centerContent={(
+        <div className="min-w-0 flex-1 text-xs text-muted-foreground">
+          {sessionId ? `session ${shortId(sessionId)}` : connected ? "No active session" : "Disconnected"}
+        </div>
+      )}
+      rightContent={(
+        <ExpandedHeaderModeControls
+          mode={chatAppMode}
+          onModeChange={onChatAppModeChange}
+          moreMenuContent={(
             <>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-muted px-2 py-1">
-                    {sessionId ? `session ${shortId(sessionId)}` : "no session"}
-                  </span>
-                  <span className="rounded-full bg-muted px-2 py-1">{slashCommands.length} slash commands</span>
-                  {isStreaming && (
-                    <span className="rounded-full bg-info/15 px-2 py-1 text-info">
-                      streaming: input sends steering
-                    </span>
-                  )}
-                  {steerQueueItems.length > 0 && (
-                    <span className="rounded-full bg-warning/15 px-2 py-1 text-warning">
-                      ArrowUp recalls {steerQueueItems.length} queued steer prompt{steerQueueItems.length === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {!connected && (
-                    <button className="btn-secondary" onClick={onConnect} disabled={busy}>
-                      {busy ? <Loader2 className="animate-spin" size={16} /> : <Plug size={16} />}
-                      Connect
-                    </button>
-                  )}
-                  {connected && !sessionId && (
-                    <>
-                      <button className="btn-primary" onClick={onCreateSession}>
-                        <FolderPlus size={16} />
-                        New Session
-                      </button>
-                      <input
-                        value={loadSessionId}
-                        onChange={(event) => onLoadSessionIdChange(event.target.value)}
-                        className="input h-9 w-44 font-mono text-xs"
-                        placeholder="session id"
-                      />
-                      <button className="btn-secondary" onClick={onLoadSession} disabled={!loadSessionId.trim()}>
-                        <RotateCcw size={16} />
-                        Resume
-                      </button>
-                    </>
-                  )}
-                  <button
-                    className="btn-secondary"
-                    onClick={() => onRecallSteerQueue(
-                      steerQueueItems,
-                      steerQueueItems.map((item) => item.content.trim()).filter(Boolean).join("\n\n")
-                    )}
-                    disabled={steerQueueItems.length === 0 || !sessionId}
-                  >
-                    <RotateCcw size={16} />
-                    Recall Queue
-                  </button>
-                </div>
-              </div>
+              <DefaultExpandedHeaderMoreMenu />
+              <div className="my-1 border-t border-border" />
+              {!connected ? (
+                <MenuActionButton onClick={onConnect} disabled={busy} icon={busy ? <Loader2 className="animate-spin" size={14} /> : <Plug size={14} />}>
+                  Connect
+                </MenuActionButton>
+              ) : null}
+              {connected && !sessionId ? (
+                <MenuActionButton onClick={onCreateSession} icon={<FolderPlus size={14} />}>
+                  New session
+                </MenuActionButton>
+              ) : null}
+              <MenuActionButton
+                onClick={() => onRecallSteerQueue(
+                  steerQueueItems,
+                  steerQueueItems.map((item) => item.content.trim()).filter(Boolean).join("\n\n")
+                )}
+                disabled={steerQueueItems.length === 0 || !sessionId}
+                icon={<RotateCcw size={14} />}
+              >
+                Recall queue
+              </MenuActionButton>
             </>
           )}
+        />
+      )}
+    />
+  );
+
+  const fullscreenContent = (
+    <ChatAppFullscreenPanel
+      messageContent={(
+        <ChatAppFullscreenMessagePanel
+          messages={messages}
+          messageUpdates={messageUpdates}
+          isStreaming={isAgentRunning}
+          streamingText={streamingText}
+          assistantAvatar={assistantAvatar}
+          artifacts={artifacts}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
+          onArtifactClick={onArtifactClick}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onQuestionAnswers}
+          welcomeTitle="ACP Chat"
+          welcomeDescription="Connect, create or resume a session, then talk to an ACP backend."
+        />
+      )}
+      statusContent={statusContent}
+      inputContent={(
+        <ChatAppFullscreenInputPanel
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onQuestionAnswers}
+          inputProps={sharedInputProps as ChatInputProps}
+        />
+      )}
+    />
+  );
+
+  return (
+    <div className="relative h-[calc(100vh-81px)] min-h-[560px] overflow-hidden bg-background">
+      {error && (
+        <div className="absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+          {error}
         </div>
-      </div>
+      )}
+      {!connected && chatAppMode === "floating" ? (
+        <button className="btn-primary absolute bottom-6 left-6 z-30" onClick={onConnect} disabled={busy}>
+          {busy ? <Loader2 className="animate-spin" size={16} /> : <Plug size={16} />}
+          Connect ACP
+        </button>
+      ) : null}
+      {connected && !sessionId && chatAppMode !== "floating" ? (
+        <div className="absolute right-5 top-5 z-40 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+          <button className="btn-primary" onClick={onCreateSession}>
+            <FolderPlus size={16} />
+            New Session
+          </button>
+          <input
+            value={loadSessionId}
+            onChange={(event) => onLoadSessionIdChange(event.target.value)}
+            className="input h-10 w-52 font-mono text-xs"
+            placeholder="session id"
+          />
+          <button className="btn-secondary" onClick={onLoadSession} disabled={!loadSessionId.trim()}>
+            <RotateCcw size={16} />
+            Resume
+          </button>
+        </div>
+      ) : null}
+      <ChatApp
+        contained
+        mode={chatAppMode}
+        title={activeTitle}
+        messages={messages}
+        messageUpdates={messageUpdates}
+        isStreaming={isAgentRunning}
+        streamingText={streamingText}
+        pendingUserMessageCount={steerQueueItems.length}
+        dynamicAssistantAvatar={assistantAvatar}
+        staticAssistantAvatar={assistantAvatar}
+        artifacts={artifacts}
+        compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
+        headerContent={headerContent}
+        inputValue={prompt}
+        onInputValueChange={onPromptChange}
+        inputProps={sharedInputProps}
+        statusContent={statusContent}
+        fullscreenContent={fullscreenContent}
+        pendingPlan={pendingPlan}
+        pendingApproval={pendingApproval}
+        pendingQuestion={pendingQuestion}
+        onApprovePlan={onApprovePlan}
+        onRejectPlan={onRejectPlan}
+        onApprovalDecision={onApprovalDecision}
+        onAnswerQuestions={onQuestionAnswers}
+        onExpandSubagent={onExpandSubagent}
+        onInspectTool={onInspectTool}
+        onArtifactClick={onArtifactClick}
+        onModeChange={onChatAppModeChange}
+        onSend={handleSend}
+        onCancel={onCancelTurn}
+      />
+      {chatAppMode === "floating" ? (
+        <div className="absolute bottom-6 right-6 z-30 flex gap-2">
+          <button className="btn-secondary" onClick={() => onChatAppModeChange("compact")}>
+            <MessageSquare size={16} />
+            Open
+          </button>
+          <button className="btn-secondary" onClick={() => onChatAppModeChange("expanded")}>
+            <Maximize2 size={16} />
+            Expanded
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2241,6 +2356,97 @@ function ModalFrame({ title, subtitle, children }: { title: string; subtitle?: s
         {children}
       </div>
     </div>
+  );
+}
+
+function ToolInspectModal({
+  dialog,
+  onClose,
+}: {
+  dialog: ToolInspectDialogState;
+  onClose: () => void;
+}) {
+  const output = dialog.result?.output ?? dialog.message.output;
+  const isError = Boolean(dialog.result?.isError ?? dialog.message.isError);
+  return (
+    <ModalFrame
+      title={dialog.message.name ?? "Tool call"}
+      subtitle={dialog.message.toolUseId ?? dialog.message.id}
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                {dialog.result ? "completed" : "pending"}
+              </span>
+              {isError && (
+                <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                  error
+                </span>
+              )}
+            </div>
+            <dl className="grid gap-2 text-xs">
+              <ToolInspectRow label="Tool" value={dialog.message.name ?? "unknown"} />
+              <ToolInspectRow label="Tool Call ID" value={dialog.message.toolUseId ?? "none"} />
+              {dialog.message.subagentId && <ToolInspectRow label="Subagent" value={dialog.message.subagentId} />}
+            </dl>
+          </div>
+          <div className="json-modal-section">
+            <div className="json-modal-header">Input</div>
+            <JsonPanel value={dialog.message.input ?? null} size="permission" />
+          </div>
+        </div>
+        <div className="json-modal-section">
+          <div className="json-modal-header">Output</div>
+          <JsonPanel
+            value={toolOutputToInspectableValue(output)}
+            size="default"
+            mode={typeof output === "string" && !looksLikeJson(output) ? "text" : "tree"}
+            nullishValue="No output"
+          />
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <button className="btn-secondary" onClick={onClose}>
+          <X size={16} />
+          Close
+        </button>
+      </div>
+    </ModalFrame>
+  );
+}
+
+function ToolInspectRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 break-words font-mono text-xs text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function MenuActionButton({
+  children,
+  onClick,
+  disabled,
+  icon,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {icon}
+      <span className="min-w-0 truncate">{children}</span>
+    </button>
   );
 }
 
@@ -2682,6 +2888,38 @@ function buildChatContextBreakdown(
   };
 }
 
+function buildAcpCompactSummary(
+  messages: AgentMessage[],
+  streamingText: string | null | undefined,
+  isAgentRunning: boolean,
+  queuedCount: number
+): React.ReactNode {
+  if (queuedCount > 0) {
+    return `${queuedCount} queued prompt${queuedCount === 1 ? "" : "s"}`;
+  }
+  if (streamingText?.trim()) {
+    return truncateText(streamingText.trim(), 120);
+  }
+  const latest = [...messages].reverse().find((message) =>
+    message.type === "text" ||
+    message.type === "thinking" ||
+    message.type === "tool_use" ||
+    message.type === "error"
+  );
+  if (!latest) return "Ready when you are.";
+  if (latest.type === "tool_use") {
+    return isAgentRunning
+      ? `Running ${latest.name ?? "tool"}...`
+      : `Tool ${latest.name ?? "call"}`;
+  }
+  if (latest.type === "error") return truncateText(latest.message ?? latest.content ?? "Something needs attention.", 120);
+  return truncateText(latest.content ?? latest.message ?? "Working...", 120);
+}
+
+function truncateText(value: string, maxLength: number): string {
+  return value.length > maxLength ? `${value.slice(0, Math.max(0, maxLength - 3))}...` : value;
+}
+
 function estimateContextTokens(breakdown: ContextTokenBreakdown): number {
   return breakdown.assistantProfile +
     breakdown.skillSettings +
@@ -2749,6 +2987,24 @@ function permissionDecisionPreview(optionId: string): Record<string, unknown> {
 
 function isCallToolResult(value: unknown): value is CallToolResult {
   return isRecord(value) && Array.isArray(value.content);
+}
+
+function toolOutputToInspectableValue(output: AgentMessage["output"]): unknown {
+  if (typeof output !== "string") return output ?? null;
+  const trimmed = output.trim();
+  if (!trimmed) return "";
+  if (!looksLikeJson(trimmed)) return trimmed;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed;
+  }
+}
+
+function looksLikeJson(value: string): boolean {
+  const trimmed = value.trim();
+  return (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"));
 }
 
 function resolvePermissionDecisionOption(options: PermissionOption[], decision: string): string {

@@ -16,6 +16,7 @@ import type { BackgroundTaskItem } from "./background-task-list";
 import type { ChatInputProps } from "./chat-input";
 import type { CommandQueueItem } from "./command-queue";
 import type { PendingExecApproval } from "./exec-approval";
+import type { Artifact } from "./message-list";
 import type {
   AgentMessage,
   ExpandSubagentHandler,
@@ -60,6 +61,7 @@ export interface ChatAppProps {
   statusContent?: React.ReactNode;
   compactSummaryContent?: React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
+  artifacts?: Artifact[];
   onExpandSubagent?: ExpandSubagentHandler;
   onInspectTool?: InspectToolHandler;
   subagentSheet?: ChatAppSubagentSheetState;
@@ -103,6 +105,7 @@ export interface ChatAppFullscreenMessagePanelProps {
   pendingQuestion?: PendingQuestion | null;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   assistantAvatar?: React.ReactNode;
+  artifacts?: Artifact[];
   welcomeTitle?: string;
   welcomeDescription?: string;
   maxMessageWidth?: string;
@@ -192,6 +195,7 @@ export function ChatApp({
   statusContent,
   compactSummaryContent,
   messageListRef,
+  artifacts,
   onExpandSubagent,
   onInspectTool,
   subagentSheet,
@@ -243,6 +247,7 @@ export function ChatApp({
           streamingText={streamingText}
           assistantAvatar={staticAssistantAvatar}
           maxMessageWidth="100%"
+          artifacts={artifacts}
           onExpandSubagent={onExpandSubagent}
           onInspectTool={onInspectTool}
           onArtifactClick={onArtifactClick}
@@ -471,6 +476,7 @@ export function ChatAppFullscreenMessagePanel({
   pendingQuestion,
   messageListRef,
   assistantAvatar,
+  artifacts,
   welcomeTitle,
   welcomeDescription,
   maxMessageWidth = "760px",
@@ -495,6 +501,7 @@ export function ChatAppFullscreenMessagePanel({
       pendingApproval={pendingApproval}
       pendingQuestion={pendingQuestion}
       assistantAvatar={assistantAvatar}
+      artifacts={artifacts}
       welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
       welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
       maxMessageWidth={maxMessageWidth}
@@ -714,6 +721,7 @@ function ChatAppMessagePanel({
   pendingQuestion,
   messageListRef,
   assistantAvatar,
+  artifacts,
   welcomeTitle,
   welcomeDescription,
   maxMessageWidth = "760px",
@@ -734,6 +742,7 @@ function ChatAppMessagePanel({
   pendingQuestion?: PendingQuestion | null;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   assistantAvatar?: React.ReactNode;
+  artifacts?: Artifact[];
   welcomeTitle?: string;
   welcomeDescription?: string;
   maxMessageWidth?: string;
@@ -777,6 +786,7 @@ function ChatAppMessagePanel({
         isStreaming={isStreaming}
         streamingText={streamingText}
         assistantAvatar={assistantAvatar}
+        artifacts={artifacts}
         pendingPlan={pendingPlan}
         pendingApproval={pendingApproval}
         pendingQuestions={pendingQuestion}

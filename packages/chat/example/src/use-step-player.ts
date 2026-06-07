@@ -58,6 +58,12 @@ interface PlayerState {
   pendingPlan: TaskPlan | null
   speed: number
   /**
+   * Scripted user messages that arrived while a tool call was unresolved.
+   * The player owns this sequencing so playback cannot continue past queued
+   * user input before it is visible in the message list.
+   */
+  queuedUserMessages: AgentMessage[]
+  /**
    * User messages from steps that need routing by the App.
    * App checks isAgentBusy(messages) to decide: queue or inject directly.
    * Blocks ADVANCE until consumed to prevent overwrite.
@@ -94,8 +100,22 @@ function createInitialState(steps: DemoStep[] = []): PlayerState {
     pendingQuestion: null,
     pendingPlan: null,
     speed: 1,
+    queuedUserMessages: [],
     pendingUserMessages: [],
   }
+}
+
+function hasPendingToolCalls(messages: AgentMessage[]): boolean {
+  const pendingToolUseIds = new Set<string>()
+  for (const message of messages) {
+    if (message.type === "tool_use" && message.toolUseId) {
+      pendingToolUseIds.add(message.toolUseId)
+    }
+    if (message.type === "tool_result" && message.toolUseId) {
+      pendingToolUseIds.delete(message.toolUseId)
+    }
+  }
+  return pendingToolUseIds.size > 0
 }
 
 function buildStateUpTo(steps: DemoStep[], endIndex: number): {
@@ -128,6 +148,13 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       if (state.status !== "playing") return state
       if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
       if (state.pendingUserMessages.length > 0) return state // wait for routing
+      if (state.queuedUserMessages.length > 0 && !hasPendingToolCalls(state.messages)) {
+        return {
+          ...state,
+          messages: [...state.messages, ...state.queuedUserMessages],
+          queuedUserMessages: [],
+        }
+      }
       if (state.stepIndex >= steps.length) return { ...state, status: "idle" }
 
       const step = steps[state.stepIndex]
@@ -143,13 +170,29 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       const hasAgentOutput = state.messages.some(m => m.type !== "user")
 
       if (hasAgentOutput && userMsgs.length > 0) {
-        // User messages go to pendingUserMessages for routing by App.
-        // App will check isAgentBusy(messages) to decide queue vs direct inject.
+        const nextMessages = [...state.messages, ...agentMsgs]
+        if (hasPendingToolCalls(nextMessages)) {
+          return {
+            ...state,
+            status: done ? "idle" : "playing",
+            stepIndex: newIndex,
+            messages: nextMessages,
+            messageUpdates: nextMessageUpdates,
+            queuedUserMessages: [...state.queuedUserMessages, ...userMsgs],
+            pendingUserMessages: [],
+            pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
+            pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
+            pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
+          }
+        }
+
+        // User messages go to pendingUserMessages for legacy App routing when
+        // no tool call is pending.
         return {
           ...state,
           status: done ? "idle" : "playing",
           stepIndex: newIndex,
-          messages: [...state.messages, ...agentMsgs],
+          messages: nextMessages,
           messageUpdates: nextMessageUpdates,
           pendingUserMessages: userMsgs,
           pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
@@ -174,16 +217,39 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
 
     case "NEXT_MANUAL": {
       if (state.pendingApproval || state.pendingQuestion || state.pendingPlan) return state
+      if (state.queuedUserMessages.length > 0 && !hasPendingToolCalls(state.messages)) {
+        return {
+          ...state,
+          messages: [...state.messages, ...state.queuedUserMessages],
+          queuedUserMessages: [],
+        }
+      }
       if (state.stepIndex >= steps.length) return state
 
       const step = steps[state.stepIndex]
-      const newMessages = [...state.messages, ...step.messages]
+      const userMsgs = step.messages.filter(msg => msg.type === "user")
+      const agentMsgs = step.messages.filter(msg => msg.type !== "user")
+      const nextMessages = [...state.messages, ...agentMsgs]
       const newIndex = state.stepIndex + 1
+
+      if (userMsgs.length > 0 && state.messages.some(m => m.type !== "user") && hasPendingToolCalls(nextMessages)) {
+        return {
+          ...state,
+          stepIndex: newIndex,
+          messages: nextMessages,
+          messageUpdates: step.messageUpdates ?? state.messageUpdates,
+          queuedUserMessages: [...state.queuedUserMessages, ...userMsgs],
+          pendingUserMessages: [],
+          pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
+          pendingQuestion: step.awaitsInteraction?.type === "question" ? step.awaitsInteraction.question : null,
+          pendingPlan: step.awaitsInteraction?.type === "plan" ? step.awaitsInteraction.plan : null,
+        }
+      }
 
       return {
         ...state,
         stepIndex: newIndex,
-        messages: newMessages,
+        messages: [...nextMessages, ...userMsgs],
         messageUpdates: step.messageUpdates ?? state.messageUpdates,
         pendingUserMessages: [],
         pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
@@ -204,6 +270,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         pendingApproval: null,
         pendingQuestion: null,
         pendingPlan: null,
+        queuedUserMessages: [],
         pendingUserMessages: [],
       }
     }
@@ -220,6 +287,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         pendingApproval: null,
         pendingQuestion: null,
         pendingPlan: null,
+        queuedUserMessages: [],
         pendingUserMessages: [],
       }
     }
@@ -300,6 +368,8 @@ export interface StepPlayerReturn {
   setMessageUpdates: (updates: Record<string, Partial<AgentMessage>>) => void
   /** Inject a message into the message list (e.g., from command queue dequeue) */
   injectMessage: (message: AgentMessage) => void
+  /** Scripted user messages waiting for unresolved tool calls to finish. */
+  queuedUserMessages: AgentMessage[]
   /** User messages waiting to be routed (consumed by App via consumePendingUsers) */
   pendingUserMessages: AgentMessage[]
   /** Clear pendingUserMessages after App has consumed them */
@@ -453,6 +523,7 @@ export function useStepPlayer(initialSteps: DemoStep[]): StepPlayerReturn {
     loadMessages,
     setMessageUpdates,
     injectMessage,
+    queuedUserMessages: state.queuedUserMessages,
     pendingUserMessages: state.pendingUserMessages,
     consumePendingUsers,
   }
