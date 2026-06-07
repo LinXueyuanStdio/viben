@@ -1,0 +1,11 @@
+{
+  "name": "browse-plugin-google-search",
+  "description": "Example Browse SDK plugin that adds Google Custom Search as a browse_mcp source.",
+  "sources": [
+    {
+      "name": "google_search",
+      "module": "./google-search-source.cjs",
+      "export": "source"
+    }
+  ]
+}
