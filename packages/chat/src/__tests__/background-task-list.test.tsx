@@ -163,4 +163,24 @@ describe("BackgroundTaskList", () => {
     expect(screen.getByText("1m 5s")).toBeInTheDocument();
     expect(screen.queryByText(/750h/)).not.toBeInTheDocument();
   });
+
+  test("formats multi-day runtimes compactly", () => {
+    render(
+      <BackgroundTaskList
+        tasks={[
+          {
+            id: "long-running-agent",
+            kind: "agent",
+            description: "Long running agent",
+            status: "running",
+            elapsedMs: ((750 * 60) + 51) * 60 * 1000,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Long running agent")).toBeInTheDocument();
+    expect(screen.getByText("31d 6h")).toBeInTheDocument();
+    expect(screen.queryByText(/750h/)).not.toBeInTheDocument();
+  });
 });
