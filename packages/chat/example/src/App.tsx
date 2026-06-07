@@ -2,27 +2,16 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { LayoutGroup, motion } from "framer-motion"
 import { useTranslation } from "react-i18next"
 import {
-  PlanApproval,
-  QuestionInput,
   EmojiPicker,
-  ToolsConfigPopover,
-  SkillsConfigPopover,
-  ContextDetailsPopover,
-  ToolExecutionItem,
-  CommandQueuePanel,
-  ExecApproval,
   useCommandQueue,
   useCommandQueueInputRecall,
-  getModelIcon,
 } from "@viben/chat"
 import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2, Languages, X, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
 import "react-json-view-lite/dist/index.css"
 import {
-  demoPlan,
-  demoQuestions,
   demoAgents,
   demoModels,
   demoTools,
@@ -48,8 +37,9 @@ import {
 } from "./claudecode-log-provider"
 import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
 import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
-import { UI_DESIGN_SHOWCASE_DEMOS, UI_DESIGN_SHOWCASE_GROUPS } from "./UIDesignShowcaseData"
+import { UIDesignShowcase, UIShowcaseDemoOverlay } from "./components/UIDesignShowcase"
 import type { UIShowcaseDemoId } from "./UIDesignShowcaseData"
+import { demoPlan, demoQuestions } from "./demo-data"
 
 // ============================================================================
 // Agent Busy Detection
@@ -93,6 +83,8 @@ type FullscreenEntryGeometry = {
   y: number
   width: number
   height: number
+  scaleX: number
+  scaleY: number
 }
 
 function getFullscreenChatMaxWidth(sidebarWidth: number) {
@@ -125,15 +117,15 @@ function getFullscreenEntryInitial(geometry: FullscreenEntryGeometry | null) {
         opacity: 0.98,
         x: geometry.x,
         y: geometry.y,
-        width: geometry.width,
-        height: geometry.height,
+        scaleX: geometry.scaleX,
+        scaleY: geometry.scaleY,
       }
     : {
         opacity: 0.96,
         x: -28,
         y: 32,
-        width: FULLSCREEN_CHAT_DEFAULT_WIDTH,
-        height: "75%",
+        scaleX: 0.62,
+        scaleY: 0.75,
       }
 }
 
@@ -523,12 +515,15 @@ export function App() {
     const sidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
     const targetLeft = shellRect.left + sidebarWidth
     const targetTop = shellRect.top
+    const targetHeight = Math.max(1, shellRect.height)
 
     return {
       x: expandedRect.left - targetLeft,
       y: expandedRect.top - targetTop,
       width: expandedRect.width,
       height: expandedRect.height,
+      scaleX: expandedRect.width / Math.max(1, targetWidth),
+      scaleY: expandedRect.height / targetHeight,
     }
   }, [introSidebarOpen])
   const handleChatAppModeChange = useCallback((nextMode: ChatAppMode) => {
@@ -1274,16 +1269,18 @@ export function App() {
             data-testid="chat-app-stage"
             data-transition-origin="expanded-bottom-left"
             data-entry-geometry={fullscreenEntryGeometry ? "measured" : "fallback"}
-            initial={getFullscreenEntryInitial(fullscreenEntryGeometry)}
-            animate={{ opacity: 1, x: 0, y: 0, width: fullscreenChatWidth, height: "100%" }}
-            exit={{ opacity: 0.96, x: fullscreenEntryGeometry?.x ?? -20, y: fullscreenEntryGeometry?.y ?? 24 }}
-            transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
             className="relative h-full min-w-0 flex-none overflow-hidden border-r bg-background transition-[width] duration-300"
             style={{ width: fullscreenChatWidth }}
           >
-            <div className="contents">
+            <motion.div
+              className="h-full origin-top-left"
+              initial={getFullscreenEntryInitial(fullscreenEntryGeometry)}
+              animate={{ opacity: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 }}
+              exit={{ opacity: 0.96, x: fullscreenEntryGeometry?.x ?? -20, y: fullscreenEntryGeometry?.y ?? 24 }}
+              transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
+            >
               {chatAppNode}
-            </div>
+            </motion.div>
           </motion.div>
         )}
 

@@ -195,11 +195,35 @@ describe("App overlay layout", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
-    expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+    const expandedOverlay = screen.getByTestId("expanded-overlay");
+    expect(expandedOverlay).toBeInTheDocument();
+    vi.spyOn(expandedOverlay, "getBoundingClientRect").mockReturnValue({
+      x: 40,
+      y: 360,
+      left: 40,
+      top: 360,
+      right: 480,
+      bottom: 840,
+      width: 440,
+      height: 480,
+      toJSON: () => ({}),
+    } as DOMRect);
+    vi.spyOn(screen.getByTestId("chat-example-shell"), "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 56,
+      left: 0,
+      top: 56,
+      right: 1400,
+      bottom: 900,
+      width: 1400,
+      height: 844,
+      toJSON: () => ({}),
+    } as DOMRect);
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
     expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
+    expect(screen.getByTestId("chat-app-stage")).toHaveAttribute("data-entry-geometry", "measured");
     expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
     expect(screen.queryByTestId("full-overlay")).not.toBeInTheDocument();
