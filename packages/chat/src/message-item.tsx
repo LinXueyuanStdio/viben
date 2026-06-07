@@ -723,15 +723,17 @@ function MessageItemImpl({
 
     content = (
       <ToolExecutionItem
-        name={message.name || "unknown"}
-        input={message.input}
-        toolUseId={message.toolUseId}
-        output={message.output}
-        isExecuting={!hasOutput}
-        isError={message.isError}
-        subagentId={message.subagentId}
-        subagentMessages={message.subagentMessages}
-        subagentPreviewMessages={message.subagentPreviewMessages}
+        state={{
+          name: message.name || "unknown",
+          input: message.input,
+          toolUseId: message.toolUseId,
+          output: message.output,
+          status: !hasOutput ? "executing" : message.isError ? "error" : "success",
+          isError: message.isError,
+          subagentId: message.subagentId,
+          subagentMessages: message.subagentMessages,
+          subagentPreviewMessages: message.subagentPreviewMessages,
+        }}
         renderMessage={renderSubagentMessage}
         expandedInline={toolExpandedInline}
         onExpandSubagent={onExpandSubagent}
@@ -742,9 +744,12 @@ function MessageItemImpl({
   else if (message.type === "tool_result") {
     content = (
       <ToolExecutionItem
-        name={t("chat.toolResult.label", "Tool Result")}
-        output={message.output}
-        isError={message.isError}
+        state={{
+          name: t("chat.toolResult.label", "Tool Result"),
+          output: message.output,
+          status: message.isError ? "error" : "success",
+          isError: message.isError,
+        }}
         expandedInline={toolExpandedInline}
       />
     );

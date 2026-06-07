@@ -224,16 +224,18 @@ function CollapsedToolRun({
       {tools.map(({ message, globalIndex, result }) => (
         <ToolExecutionItem
           key={globalIndex}
-          name={message.name || "unknown"}
-          displayName={message.name}
-          input={message.input}
-          toolUseId={message.toolUseId}
-          subagentId={message.subagentId}
-          subagentMessages={message.subagentMessages}
-          subagentPreviewMessages={message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined}
-          output={result?.output}
-          isError={result?.isError}
-          isExecuting={!result}
+          state={{
+            name: message.name || "unknown",
+            displayName: message.name,
+            input: message.input,
+            toolUseId: message.toolUseId,
+            subagentId: message.subagentId,
+            subagentMessages: message.subagentMessages,
+            subagentPreviewMessages: message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined,
+            output: result?.output,
+            status: !result ? "executing" : result.isError ? "error" : "success",
+            isError: result?.isError,
+          }}
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
@@ -275,16 +277,18 @@ function renderToolsWithCollapsing(
       elements.push(
         <ToolExecutionItem
           key={globalIndex}
-          name={message.name || "unknown"}
-          displayName={message.name}
-          input={message.input}
-          toolUseId={message.toolUseId}
-          subagentId={message.subagentId}
-          subagentMessages={message.subagentMessages}
-          subagentPreviewMessages={message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined}
-          output={result?.output}
-          isError={result?.isError}
-          isExecuting={!result}
+          state={{
+            name: message.name || "unknown",
+            displayName: message.name,
+            input: message.input,
+            toolUseId: message.toolUseId,
+            subagentId: message.subagentId,
+            subagentMessages: message.subagentMessages,
+            subagentPreviewMessages: message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined,
+            output: result?.output,
+            status: !result ? "executing" : result.isError ? "error" : "success",
+            isError: result?.isError,
+          }}
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
@@ -304,16 +308,18 @@ function renderToolsWithCollapsing(
       elements.push(
         <ToolExecutionItem
           key={globalIndex}
-          name={message.name || "unknown"}
-          displayName={message.name}
-          input={message.input}
-          toolUseId={message.toolUseId}
-          subagentId={message.subagentId}
-          subagentMessages={message.subagentMessages}
-          subagentPreviewMessages={message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined}
-          output={result?.output}
-          isError={result?.isError}
-          isExecuting={!result}
+          state={{
+            name: message.name || "unknown",
+            displayName: message.name,
+            input: message.input,
+            toolUseId: message.toolUseId,
+            subagentId: message.subagentId,
+            subagentMessages: message.subagentMessages,
+            subagentPreviewMessages: message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined,
+            output: result?.output,
+            status: !result ? "executing" : result.isError ? "error" : "success",
+            isError: result?.isError,
+          }}
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}

@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Bot,
   Loader2,
-  X,
   FileText,
   FileCode,
   FileJson,
@@ -33,24 +32,12 @@ export interface ArtifactInfo {
 /** Execution status for a tool call */
 export type ToolExecutionStatus = "queued" | "executing" | "success" | "error";
 
-export type ShowToolDetailModalHandler = (
-  props: Omit<ToolExecutionItemProps, "onShowToolDetailModal">
-) => void;
-
-export interface ToolExecutionItemProps {
+export interface ToolExecutionState {
   name: string;
   displayName?: string;
   input?: Record<string, unknown>;
   output?: string | ContentBlock[];
-  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
-  isExecuting?: boolean;
-  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
-  isError?: boolean;
-  /** Explicit execution status. When provided, takes precedence over isExecuting/isError. */
-  status?: ToolExecutionStatus;
-  className?: string;
-  /** Compact mode for use within task groups */
-  compact?: boolean;
+  status: ToolExecutionStatus;
   /** Subagent ID for Task tool calls */
   subagentId?: string;
   /** Parent tool_use ID for matching external subagent loaders */
@@ -59,6 +46,17 @@ export interface ToolExecutionItemProps {
   subagentMessages?: AgentMessage[];
   /** Temporary running transcript preview for Task/Agent calls. Hidden once the call completes. */
   subagentPreviewMessages?: AgentMessage[];
+  /** Whether the completed tool result is an error. Used to distinguish expected warnings from actual failures. */
+  isError?: boolean;
+}
+
+export type InspectToolHandler = () => void;
+
+export interface ToolExecutionItemProps {
+  state: ToolExecutionState;
+  className?: string;
+  /** Compact mode for use within task groups */
+  compact?: boolean;
   /** Render function for subagent messages */
   renderMessage?: (message: AgentMessage, index: number) => React.ReactNode;
   /** Artifact info when this tool created/modified a file */
@@ -69,8 +67,8 @@ export interface ToolExecutionItemProps {
   expandedInline?: boolean;
   /** Callback to expand subagent messages in a side panel */
   onExpandSubagent?: ExpandSubagentHandler;
-  /** Called when a regular tool detail view should be shown. When provided, the built-in modal is not rendered. */
-  onShowToolDetailModal?: ShowToolDetailModalHandler;
+  /** Called when the user asks to inspect this tool. */
+  onInspectTool?: InspectToolHandler;
 }
 
 // ============================================================================
@@ -306,24 +304,6 @@ function isExpectedWarning(toolName: string, output: string): boolean {
 // ============================================================================
 
 /**
- * Resolve execution status from explicit `status` prop or legacy `isExecuting`/`isError` props.
- * When `status` is provided, it takes precedence.
- */
-function resolveStatus(
-  statusProp: ToolExecutionStatus | undefined,
-  isExecuting: boolean | undefined,
-  isError: boolean | undefined,
-  output: string | ContentBlock[] | undefined,
-): ToolExecutionStatus {
-  if (statusProp) return statusProp;
-  // Legacy fallback
-  if (isExecuting && !output) return "executing";
-  if (isError) return "error";
-  if (output) return "success";
-  return "queued";
-}
-
-/**
  * Animated status dot indicator for tool execution state.
  *
  * - queued: muted static dot (low opacity)
@@ -492,142 +472,6 @@ function useResultSummaryFromString(
 }
 
 // ============================================================================
-// Tool Detail Modal Component
-// ============================================================================
-
-interface ToolDetailModalProps {
-  toolName: string;
-  input: Record<string, unknown> | undefined;
-  output: string | ContentBlock[] | undefined;
-  isError: boolean;
-  isWarning: boolean;
-  onClose: () => void;
-}
-
-function ToolDetailModal({
-  toolName,
-  input,
-  output,
-  isError,
-  isWarning,
-  onClose,
-}: ToolDetailModalProps) {
-  const { t } = useTranslation();
-
-  const formatInput = (input: unknown): string => {
-    if (!input) return t("chat.toolResult.noInput", "No input");
-    try {
-      return JSON.stringify(input, null, 2);
-    } catch {
-      return String(input);
-    }
-  };
-
-  const formatOutput = (output: string | ContentBlock[] | undefined): string => {
-    if (!output) return t("chat.toolResult.noOutputLabel", "No output");
-    if (Array.isArray(output)) {
-      // Content blocks handled separately via resolveContentBlocks
-      return "";
-    }
-    if (typeof output !== "string") {
-      return JSON.stringify(output, null, 2);
-    }
-    // Extract content from <tool_use_error> tag if present
-    const toolUseErrorMatch = output.match(
-      /<tool_use_error>([\s\S]*?)<\/tool_use_error>/
-    );
-    let cleanOutput = toolUseErrorMatch ? toolUseErrorMatch[1].trim() : output;
-    // Truncate very long output
-    if (cleanOutput.length > 10000) {
-      return cleanOutput.slice(0, 10000) + "\n\n" + t("chat.toolResult.truncated", "... (truncated)");
-    }
-    return cleanOutput;
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Modal */}
-      <div className="bg-background border-border relative flex max-h-[80vh] w-[700px] max-w-[90vw] flex-col rounded-lg border shadow-xl">
-        {/* Header */}
-        <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-medium">{toolName}</span>
-            {isError && (
-              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-600 dark:text-red-400">
-                {t("common.error", "Error")}
-              </span>
-            )}
-            {isWarning && !isError && (
-              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-xs text-amber-600 dark:text-amber-400">
-                {t("common.info", "Info")}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="hover:bg-accent cursor-pointer rounded-md p-1 transition-colors"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 space-y-4 overflow-auto p-4">
-          {/* Input Section */}
-          <div>
-            <h3 className="text-muted-foreground mb-2 text-sm font-medium">
-              {t("chat.toolInput", "Input")}
-            </h3>
-            <pre className="bg-code-block max-h-[200px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap">
-              {formatInput(input)}
-            </pre>
-          </div>
-
-          {/* Output Section */}
-          <div>
-            <h3 className="text-muted-foreground mb-2 text-sm font-medium">
-              {t("chat.toolOutput", "Output")}
-            </h3>
-            {(() => {
-              const blocks = resolveContentBlocks(output);
-              if (blocks) {
-                return (
-                  <div className={cn(
-                    "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs",
-                    isError ? "bg-red-500/10 text-red-600 dark:text-red-400"
-                      : isWarning ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      : "bg-code-block"
-                  )}>
-                    <RenderContentBlocks blocks={blocks} maxTextLength={10000} />
-                  </div>
-                );
-              }
-              return (
-                <pre
-                  className={cn(
-                    "max-h-[400px] overflow-auto rounded-md p-3 font-mono text-xs break-words whitespace-pre-wrap",
-                    isError
-                      ? "bg-red-500/10 text-red-400"
-                      : isWarning
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : "bg-code-block"
-                  )}
-                >
-                  {formatOutput(output)}
-                </pre>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
 // Artifact Badge Component
 // ============================================================================
 
@@ -753,12 +597,17 @@ function getPreviewLabel(message: AgentMessage, t: TFunction): string {
   return message.type;
 }
 
-function SubagentPreviewRow({ message }: { message: AgentMessage }) {
-  const { t } = useTranslation();
+function SubagentPreviewRow({
+  message,
+  previewText,
+  previewLabel,
+}: {
+  message: AgentMessage;
+  previewText: string;
+  previewLabel: string;
+}) {
   const isActive = message.type === "tool_use" && !message.output;
   const isError = message.type === "error" || message.isError;
-  const text = getPreviewText(message, t);
-  const label = getPreviewLabel(message, t);
 
   return (
     <div className="flex min-w-0 items-start gap-1.5 rounded bg-background/60 px-2 py-1 text-[11px]">
@@ -769,16 +618,17 @@ function SubagentPreviewRow({ message }: { message: AgentMessage }) {
         )}
       />
       <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
-        {label}
+        {previewLabel}
       </span>
       <span className="min-w-0 flex-1 truncate text-muted-foreground">
-        {text}
+        {previewText}
       </span>
     </div>
   );
 }
 
 function SubagentPreview({ messages }: { messages: AgentMessage[] }) {
+  const { t } = useTranslation();
   const visibleMessages = messages.slice(-5);
 
   return (
@@ -798,7 +648,11 @@ function SubagentPreview({ messages }: { messages: AgentMessage[] }) {
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.16 }}
             >
-              <SubagentPreviewRow message={message} />
+              <SubagentPreviewRow
+                message={message}
+                previewText={getPreviewText(message, t)}
+                previewLabel={getPreviewLabel(message, t)}
+              />
             </motion.div>
           ))}
         </motion.div>
@@ -812,29 +666,30 @@ function SubagentPreview({ messages }: { messages: AgentMessage[] }) {
 // ============================================================================
 
 export function ToolExecutionItem({
-  name,
-  displayName,
-  input,
-  output,
-  isExecuting,
-  isError,
-  status: statusProp,
+  state,
   className,
   compact = false,
-  subagentId,
-  toolUseId,
-  subagentMessages,
-  subagentPreviewMessages,
   renderMessage,
   artifactInfo,
   onArtifactClick,
   expandedInline = false,
   onExpandSubagent,
-  onShowToolDetailModal,
+  onInspectTool,
 }: ToolExecutionItemProps) {
+  const {
+    name,
+    displayName,
+    input,
+    output,
+    status: resolvedStatus,
+    subagentId,
+    toolUseId,
+    subagentMessages,
+    subagentPreviewMessages,
+    isError,
+  } = state;
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [showModal, setShowModal] = useState(false);
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
   const hasSubagentPreviewMessages = subagentPreviewMessages && subagentPreviewMessages.length > 0;
 
@@ -842,9 +697,6 @@ export function ToolExecutionItem({
   const param = getToolParam(name, input);
   const truncatedParam = truncateParam(param);
   const { summary, isWarning } = useResultSummary(name, output, isError);
-
-  // Resolve execution status (new prop takes precedence over legacy props)
-  const resolvedStatus = resolveStatus(statusProp, isExecuting, isError, output);
 
   // Derive convenience booleans from resolved status
   const isRunning = resolvedStatus === "executing";
@@ -873,37 +725,9 @@ export function ToolExecutionItem({
 
   const hasDetails = input || output || hasSubagentMessages;
 
-  const showToolDetail = () => {
-    if (onShowToolDetailModal) {
-      onShowToolDetailModal({
-        name,
-        displayName,
-        input,
-        output,
-        isExecuting,
-        isError,
-        status: statusProp,
-        className,
-        compact,
-        subagentId,
-        toolUseId,
-        subagentMessages,
-        subagentPreviewMessages,
-        renderMessage,
-        artifactInfo,
-        onArtifactClick,
-        expandedInline,
-        onExpandSubagent,
-      });
-      return;
-    }
-
-    setShowModal(true);
-  };
-
   const handleClick = () => {
     if (!isRunning && !isTaskTool) {
-      showToolDetail();
+      onInspectTool?.();
     }
   };
 
@@ -978,17 +802,6 @@ export function ToolExecutionItem({
           )}
         </div>
 
-        {/* Modal */}
-        {showModal && (
-          <ToolDetailModal
-            toolName={name}
-            input={input}
-            output={output}
-            isError={isActualError}
-            isWarning={isWarning}
-            onClose={() => setShowModal(false)}
-          />
-        )}
       </>
     );
   }
@@ -1361,17 +1174,6 @@ export function ToolExecutionItem({
         </div>
       </motion.div>
 
-      {/* Modal (only used when not in expandedInline mode) */}
-      {!expandedInline && showModal && (
-        <ToolDetailModal
-          toolName={name}
-          input={input}
-          output={output}
-          isError={isActualError}
-          isWarning={isWarning}
-          onClose={() => setShowModal(false)}
-        />
-      )}
     </>
   );
 }
