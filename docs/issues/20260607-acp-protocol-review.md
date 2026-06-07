@@ -141,7 +141,7 @@
     - spec 已明确外层 ACP `sessionId`、后端 ACP session ID、持久化 `session_id` 的边界。
     - spec 已明确当前不实现 `session/resume`，客户端恢复 live connection 使用 `session/load`。
 
-- [ ] **缺少 `/ws/agent/acp` route-level 集成测试**
+- [x] **缺少 `/ws/agent/acp` route-level 集成测试**
   - 影响：WebSocket JSON-RPC envelope、reverse request、notification 方向等无法被测试捕捉。
   - 覆盖建议：
     - `initialize -> session/new -> session/prompt`
@@ -150,6 +150,9 @@
     - `session/elicitation`
     - `session/cancel`
     - `session/close` / reconnect / `session/load`
+  - 修复：
+    - 已新增 `/ws/agent/acp` route-level WebSocket JSON-RPC 集成测试，覆盖 `initialize`、`session/new`、`session/prompt/steer`、`session/prompt/view`、`session/prompt/cancel` 和 not-found `-32002` envelope。
+    - 尚未覆盖真实 backend prompt 流、反向 `session/request_permission` / `session/elicitation` 和 `session/prompt/consumed` notification，后续可在可注入 fake backend 后补齐。
 
 ## Low
 
