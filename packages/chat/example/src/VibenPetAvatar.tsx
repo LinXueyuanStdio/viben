@@ -4,6 +4,12 @@ import { useTranslation } from "react-i18next";
 
 export type AssistantPetState = "idle" | "waiting" | "review" | "waving" | "failed";
 export type PetInteractionState = "idle" | "hover" | "drag-right" | "drag-left" | "drag-up" | "drag-down" | "waiting";
+export type VibenPetAvatarKind = "dynamic" | "static";
+export type VibenPetAvatarProps = {
+  kind?: VibenPetAvatarKind;
+  state: AssistantPetState;
+  interaction?: PetInteractionState;
+};
 
 type PetStateMeta = {
   labelKey: string;
@@ -249,7 +255,74 @@ export function getPetLocalMotion(state: AssistantPetState): PetLocalMotion {
   return PET_LOCAL_MOTION[state];
 }
 
-export function VibenPetAvatar({ state, interaction }: { state: AssistantPetState; interaction: PetInteractionState }) {
+function getRightEyePath(path: string) {
+  return path.replace(/27/g, "45").replace(/35/g, "53");
+}
+
+function PetAvatarDefs({
+  warmGradientId,
+  bodyGradientId,
+  glowId,
+}: {
+  warmGradientId: string;
+  bodyGradientId: string;
+  glowId: string;
+}) {
+  return (
+    <defs>
+      <linearGradient id={warmGradientId} x1="13" y1="13" x2="67" y2="67" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#FDB813" />
+        <stop offset="100%" stopColor="#38B2AC" />
+      </linearGradient>
+      <radialGradient id={bodyGradientId} cx="33%" cy="24%" r="68%">
+        <stop offset="0%" stopColor="oklch(0.99 0.02 95)" />
+        <stop offset="52%" stopColor="oklch(0.93 0.04 102)" />
+        <stop offset="100%" stopColor="oklch(0.86 0.05 176)" />
+      </radialGradient>
+      <filter id={glowId} x="-24%" y="-24%" width="148%" height="148%">
+        <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#0f172a" floodOpacity="0.28" />
+        <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#38B2AC" floodOpacity="0.25" />
+      </filter>
+    </defs>
+  );
+}
+
+function StaticPetArtwork({
+  state,
+  meta,
+  warmGradientId,
+  bodyGradientId,
+  glowId,
+}: {
+  state: AssistantPetState;
+  meta: PetStateMeta;
+  warmGradientId: string;
+  bodyGradientId: string;
+  glowId: string;
+}) {
+  return (
+    <g filter={`url(#${glowId})`}>
+      <g>
+        <path d="M18 31 L8 20 L24 24" fill="none" stroke="#FDB813" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M62 31 L72 20 L56 24" fill="none" stroke="#38B2AC" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="40" cy="41" r="29" fill={`url(#${bodyGradientId})`} stroke={`url(#${warmGradientId})`} strokeWidth="3" />
+        <path d="M28 25 L40 35 L52 25" fill="none" stroke={`url(#${warmGradientId})`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+        <path d="M31 33 L40 55 L49 33" fill="none" stroke="oklch(0.22 0.04 220)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M21 36 L12 43 L21 50" fill="none" stroke="#FDB813" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
+        <path d="M59 36 L68 43 L59 50" fill="none" stroke="#38B2AC" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
+        <path d={meta.eye} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <path d={getRightEyePath(meta.eye)} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <path d={meta.mouth} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
+        <circle cx="61" cy="20" r="5" fill={meta.statusFill} stroke="oklch(0.99 0.01 95)" strokeWidth="2" />
+        {state === "failed" && (
+          <path d="M23 64 H57" stroke="oklch(0.66 0.2 28)" strokeWidth="4" strokeLinecap="round" opacity="0.75" />
+        )}
+      </g>
+    </g>
+  );
+}
+
+export function VibenPetAvatar({ kind = "dynamic", state, interaction = "idle" }: VibenPetAvatarProps) {
   const { t } = useTranslation();
   const previousState = usePreviousPetState(state);
   const stateTransitionKey = getPetStateTransitionKey(previousState, state);
@@ -263,31 +336,41 @@ export function VibenPetAvatar({ state, interaction }: { state: AssistantPetStat
   const glowId = `${gradientId}-glow`;
   const movement = PET_FLOAT_ANIMATION[interaction];
   const shouldLoop = interaction !== "idle" || state === "review" || state === "waiting";
+  const ariaLabel = t("chat_app.pet.aria_label", "Viben pet {{state}}", { state: stateLabel });
+
+  if (kind === "static") {
+    return (
+      <svg
+        viewBox="0 0 80 80"
+        role="img"
+        aria-label={ariaLabel}
+        className="size-full"
+        data-testid="viben-pet-avatar"
+        data-avatar-kind="static"
+      >
+        <PetAvatarDefs warmGradientId={warmGradientId} bodyGradientId={bodyGradientId} glowId={glowId} />
+        <StaticPetArtwork
+          state={state}
+          meta={meta}
+          warmGradientId={warmGradientId}
+          bodyGradientId={bodyGradientId}
+          glowId={glowId}
+        />
+      </svg>
+    );
+  }
 
   return (
     <svg
       viewBox="0 0 80 80"
       role="img"
-      aria-label={t("chat_app.pet.aria_label", "Viben pet {{state}}", { state: stateLabel })}
+      aria-label={ariaLabel}
       className="size-full"
       data-testid="viben-pet-avatar"
+      data-avatar-kind="dynamic"
       data-state-transition={stateTransitionKey}
     >
-      <defs>
-        <linearGradient id={warmGradientId} x1="13" y1="13" x2="67" y2="67" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FDB813" />
-          <stop offset="100%" stopColor="#38B2AC" />
-        </linearGradient>
-        <radialGradient id={bodyGradientId} cx="33%" cy="24%" r="68%">
-          <stop offset="0%" stopColor="oklch(0.99 0.02 95)" />
-          <stop offset="52%" stopColor="oklch(0.93 0.04 102)" />
-          <stop offset="100%" stopColor="oklch(0.86 0.05 176)" />
-        </radialGradient>
-        <filter id={glowId} x="-24%" y="-24%" width="148%" height="148%">
-          <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#0f172a" floodOpacity="0.28" />
-          <feDropShadow dx="0" dy="0" stdDeviation="2" floodColor="#38B2AC" floodOpacity="0.25" />
-        </filter>
-      </defs>
+      <PetAvatarDefs warmGradientId={warmGradientId} bodyGradientId={bodyGradientId} glowId={glowId} />
       <motion.g
         key={stateTransitionKey}
         filter={`url(#${glowId})`}
@@ -369,12 +452,12 @@ export function VibenPetAvatar({ state, interaction }: { state: AssistantPetStat
             transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.path
-            d={meta.eye.replace(/27/g, "45").replace(/35/g, "53")}
+            d={getRightEyePath(meta.eye)}
             stroke="oklch(0.19 0.03 230)"
             strokeWidth="3"
             strokeLinecap="round"
             fill="none"
-            animate={localMotion.eyes?.d ? { ...localMotion.eyes, d: localMotion.eyes.d.map((path) => path.replace(/27/g, "45").replace(/35/g, "53")) } : localMotion.eyes}
+            animate={localMotion.eyes?.d ? { ...localMotion.eyes, d: localMotion.eyes.d.map(getRightEyePath) } : localMotion.eyes}
             transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.path

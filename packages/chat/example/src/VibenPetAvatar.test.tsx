@@ -55,4 +55,11 @@ describe("VibenPetAvatar", () => {
       status: { cx: expect.arrayContaining([59, 63, 61]) },
     });
   });
+
+  test("can render a static state avatar without dynamic local motion", () => {
+    render(<VibenPetAvatar kind="static" state="review" interaction="waiting" />);
+
+    expect(screen.getByTestId("viben-pet-avatar")).toHaveAttribute("data-avatar-kind", "static");
+    expect(screen.getByTestId("viben-pet-avatar")).not.toHaveAttribute("data-state-transition");
+  });
 });
