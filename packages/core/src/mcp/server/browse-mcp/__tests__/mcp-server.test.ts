@@ -99,6 +99,23 @@ describe("browse MCP server", () => {
     expect(getTool(server, BROWSE_READ_TOOL_NAME).description).toContain("page=3: Return only page 3");
   });
 
+  it("loads local browse-sdk plugin sources in the default gateway server", async () => {
+    const server = createBrowseMcpServer() as unknown as InspectableMcpServer;
+
+    expect(getTool(server, BROWSE_SEARCH_TOOL_NAME).description).toContain("google_search");
+
+    const search = await getTool(server, BROWSE_SEARCH_TOOL_NAME).handler({
+      query_list: [{ searcher: "google_search", query: "viben", max_results: 1 }],
+    });
+
+    expect(CallToolResultSchema.safeParse(search).success).toBe(true);
+    expect(search.content[0]?.type === "text" ? search.content[0].text : "").toContain("Google Search plugin");
+    expect(search.structuredContent).toMatchObject({
+      count: 1,
+      queries: [{ searcher: "google_search", query: "viben", max_results: 1 }],
+    });
+  });
+
   it("forwards search, download, and read requests through BrowseClient", async () => {
     const server = createBrowseMcpServer({
       client: fakeClient(),
