@@ -1,5 +1,6 @@
 import type {
   AgentMessage,
+  BackgroundTaskItem,
   TaskPlan,
   PendingQuestion,
   SlashCommand,
@@ -946,6 +947,76 @@ export const demoCommandQueueItems: CommandQueueItem[] = [
   { id: "cmd-1", content: "Run the test suite for the auth module", createdAt: Date.now() - 5000 },
   { id: "cmd-2", content: "Fix the failing TypeScript compilation errors", attachments: [{ id: "att-1", type: "file", name: "src/auth/login.ts" }, { id: "att-2", type: "file", name: "src/auth/types.ts" }], createdAt: Date.now() - 3000 },
   { id: "cmd-3", content: "Update the README with the new API endpoints", createdAt: Date.now() - 1000 },
+]
+
+export const demoTodoListMessages: AgentMessage[] = [
+  {
+    id: "todo-create-1",
+    type: "tool_use",
+    name: "TaskCreate",
+    toolUseId: "todo-create-1",
+    input: { id: "todo-1", subject: "Map TaskCreate and TaskUpdate inputs", status: "completed" },
+  },
+  {
+    id: "todo-create-2",
+    type: "tool_use",
+    name: "TaskCreate",
+    toolUseId: "todo-create-2",
+    input: { id: "todo-2", subject: "Render collapsible task states", status: "pending" },
+  },
+  {
+    id: "todo-update-2",
+    type: "tool_use",
+    name: "TaskUpdate",
+    toolUseId: "todo-update-2",
+    input: { id: "todo-2", status: "in_progress" },
+  },
+  {
+    id: "todo-list-snapshot",
+    type: "tool_use",
+    name: "TodoList",
+    toolUseId: "todo-list-snapshot",
+    input: {
+      todos: [
+        { id: "todo-1", content: "Map TaskCreate and TaskUpdate inputs", status: "completed" },
+        { id: "todo-2", content: "Render collapsible task states", status: "in_progress" },
+        { id: "todo-3", content: "Document package exports", status: "pending" },
+      ],
+    },
+  },
+]
+
+export const demoBackgroundTaskItems: BackgroundTaskItem[] = [
+  {
+    id: "bg-cron-1",
+    kind: "cron",
+    description: "Refresh provider catalog",
+    status: "running",
+    elapsedMs: 125000,
+    usage: { inputTokens: 1200, outputTokens: 240, costUsd: 0.034 },
+    details: "Scheduled refresh is checking model metadata and cached provider manifests.",
+  },
+  {
+    id: "bg-agent-1",
+    kind: "agent",
+    description: "Audit chat UI components",
+    status: "running",
+    elapsedMs: 42000,
+    usageLabel: "3 tools",
+    details: "A delegated agent is reviewing component states and accessibility labels.",
+    messages: [
+      { id: "bg-agent-msg-1", type: "text", content: "Checking chat component contracts." },
+      { id: "bg-agent-msg-2", type: "tool_use", name: "Grep", toolUseId: "bg-agent-tool-1", input: { pattern: "BackgroundTaskList" } },
+    ],
+  },
+  {
+    id: "bg-bash-1",
+    kind: "bash",
+    description: "pnpm --filter @viben/chat test",
+    status: "running",
+    elapsedMs: 9000,
+    usageLabel: "1 command",
+  },
 ]
 
 // ============================================================================

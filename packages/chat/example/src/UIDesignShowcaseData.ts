@@ -6,6 +6,8 @@ export type UIShowcaseDemoId =
   | "emoji"
   | "exec"
   | "queue"
+  | "todo-list"
+  | "background-tasks"
   | "model-icons"
   | "tool-execution"
   | "config-panels"
@@ -102,6 +104,26 @@ export const UI_DESIGN_SHOWCASE_DEMOS: UIShowcaseDemoDefinition[] = [
     descriptionKey: "example.components.command_queue_desc",
     descriptionFallback: "{{count}} queued",
     stateLabels: ["queued", "paused", "empty"],
+    interactive: true,
+  },
+  {
+    id: "todo-list",
+    groupId: "feedback",
+    labelKey: "example.components.todo_list",
+    labelFallback: "Todo list",
+    descriptionKey: "example.components.todo_list_desc",
+    descriptionFallback: "Task tool state",
+    stateLabels: ["pending", "running", "done"],
+    interactive: true,
+  },
+  {
+    id: "background-tasks",
+    groupId: "feedback",
+    labelKey: "example.components.background_tasks",
+    labelFallback: "Background tasks",
+    descriptionKey: "example.components.background_tasks_desc",
+    descriptionFallback: "Associated running work",
+    stateLabels: ["cron", "agent", "bash"],
     interactive: true,
   },
   {
