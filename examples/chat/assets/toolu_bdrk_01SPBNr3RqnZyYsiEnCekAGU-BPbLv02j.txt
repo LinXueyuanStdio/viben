@@ -1,0 +1,175 @@
+apps/desktop/src/pages/conversation/hooks/use-chat-config.ts:50:    const pathname = location.pathname;
+apps/desktop/src/pages/conversation/hooks/use-chat-config.ts:75:  }, [location.pathname, params.agentId, params.workspaceId]);
+apps/desktop/src/pages/settings/index.tsx:52:    const pathSection = location.pathname.split("/settings/")[1];
+apps/desktop/src/pages/settings/index.tsx:98:  }, [location.pathname]);
+apps/desktop/src/hooks/use-page-tabs.ts:150:        input?.workspaceId ?? ("workspaceId" in location ? location.workspaceId : undefined);
+apps/desktop/src/hooks/use-page-tabs.ts:394:          ? activeState.location.workspaceId
+apps/desktop/src/hooks/use-page-tabs.ts:452:        const workspace = getWorkspace(state.location.workspaceId);
+apps/desktop/src/hooks/use-page-tabs.ts:458:          workspaceId: state.location.workspaceId,
+apps/desktop/src/hooks/use-page-tabs.ts:460:          slug: state.location.pageSlug,
+apps/desktop/src/hooks/use-page-tabs.ts:461:          title: tabView?.label ?? state.location.pageSlug,
+apps/desktop/src/hooks/use-page-tabs.ts:470:        workspaceId: state.location.workspaceId,
+apps/desktop/src/hooks/use-desktop-routing.ts:186:  return "workspaceId" in location ? location.workspaceId : null;
+apps/desktop/src/hooks/use-desktop-routing.ts:374:        currentWorkspaceId === location.workspaceId;
+apps/desktop/src/pages/apps/components/page-section.tsx:161:    () => urlToLocation(`${location.pathname}${location.search}${location.hash}`),
+apps/desktop/src/pages/apps/components/page-section.tsx:162:    [location.hash, location.pathname, location.search]
+apps/desktop/src/navigation/location-navigation.ts:33:      return getWorkspaceSectionLabel(location.section) || location.section;
+apps/desktop/src/navigation/location-navigation.ts:35:      return location.section
+apps/desktop/src/navigation/location-navigation.ts:36:        ? getSettingsSectionLabel(location.section)
+apps/desktop/src/navigation/location-navigation.ts:44:        location.path.split("?")[0]?.split("#")[0] ?? location.path;
+apps/desktop/src/navigation/location-navigation.ts:57:      return getWorkspaceSectionDescriptor(location.section)?.icon;
+apps/desktop/src/navigation/location-navigation.ts:59:      return location.section
+apps/desktop/src/navigation/location-navigation.ts:60:        ? getSettingsSectionIcon(location.section)
+apps/desktop/src/navigation/location-navigation.ts:68:        location.path.split("?")[0]?.split("#")[0] ?? location.path;
+apps/desktop/src/navigation/location-navigation.ts:146:    id: `workspace:${"workspaceId" in location ? location.workspaceId : "global"}`,
+apps/desktop/src/navigation/location-navigation.ts:148:    label: "workspaceId" in location ? location.workspaceId : "Viben",
+apps/desktop/src/navigation/location-navigation.ts:150:      ? { workspaceId: location.workspaceId }
+apps/desktop/src/navigation/location-navigation.ts:154:        ? { kind: "workspace-home", workspaceId: location.workspaceId }
+apps/desktop/src/navigation/location-navigation.ts:162:      return [root, createWorkspacePagesRootItem(location.workspaceId)];
+apps/desktop/src/navigation/location-navigation.ts:167:          id: `${location.workspaceId}:${location.section}`,
+apps/desktop/src/navigation/location-navigation.ts:168:          descriptorId: `workspace-section:${location.section}`,
+apps/desktop/src/navigation/location-navigation.ts:171:            getWorkspaceSectionLabel(location.section) ??
+apps/desktop/src/navigation/location-navigation.ts:172:            location.section,
+apps/desktop/src/navigation/location-navigation.ts:175:            getWorkspaceSectionDescriptor(location.section)?.icon,
+apps/desktop/src/navigation/location-navigation.ts:177:            workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:178:            section: location.section,
+apps/desktop/src/navigation/location-navigation.ts:179:            routePath: getWorkspaceSectionDescriptor(location.section)?.routePath,
+apps/desktop/src/navigation/location-navigation.ts:188:          id: `${location.workspaceId}:agent`,
+apps/desktop/src/navigation/location-navigation.ts:192:          meta: { workspaceId: location.workspaceId },
+apps/desktop/src/navigation/location-navigation.ts:195:            workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:200:          id: `${location.workspaceId}:agent:${location.agentId}`,
+apps/desktop/src/navigation/location-navigation.ts:202:          label: title ?? location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:205:            workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:206:            agentId: location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:215:          id: `${location.workspaceId}:agent`,
+apps/desktop/src/navigation/location-navigation.ts:219:          meta: { workspaceId: location.workspaceId },
+apps/desktop/src/navigation/location-navigation.ts:222:            workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:227:          id: `${location.workspaceId}:executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:229:          label: title ?? location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:232:            workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:233:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:241:        createWorkspacePagesRootItem(location.workspaceId),
+apps/desktop/src/navigation/location-navigation.ts:242:        ...createWorkspacePagePathItems(location.workspaceId, location.pageSlug, {
+apps/desktop/src/navigation/location-navigation.ts:250:        ...(location.sourcePageSlug
+apps/desktop/src/navigation/location-navigation.ts:251:          ? [createWorkspacePagesRootItem(location.workspaceId)]
+apps/desktop/src/navigation/location-navigation.ts:253:        ...(location.sourcePageSlug
+apps/desktop/src/navigation/location-navigation.ts:255:              location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:256:              location.sourcePageSlug
+apps/desktop/src/navigation/location-navigation.ts:260:          id: `${location.workspaceId}:web:${location.webId ?? location.url}`,
+apps/desktop/src/navigation/location-navigation.ts:265:            workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:266:            webId: location.webId,
+apps/desktop/src/navigation/location-navigation.ts:267:            pageSlug: location.sourcePageSlug,
+apps/desktop/src/navigation/location-navigation.ts:268:            url: location.url,
+apps/desktop/src/navigation/location-navigation.ts:283:          id: `agent:${location.agentId}`,
+apps/desktop/src/navigation/location-navigation.ts:285:          label: title ?? location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:288:            agentId: location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:303:          id: `executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:305:          label: title ?? location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:308:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:316:          id: `executor:${location.agentId}`,
+apps/desktop/src/navigation/location-navigation.ts:318:          label: location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:322:            executorType: location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:327:          id: `skill:${location.skillId}`,
+apps/desktop/src/navigation/location-navigation.ts:329:          label: title ?? location.skillId,
+apps/desktop/src/navigation/location-navigation.ts:332:            agentId: location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:340:          id: `executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:342:          label: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:346:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:351:          id: `mcp:${location.serverName}`,
+apps/desktop/src/navigation/location-navigation.ts:353:          label: title ?? location.serverName,
+apps/desktop/src/navigation/location-navigation.ts:356:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:364:          id: `executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:366:          label: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:370:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:375:          id: `subagent:${location.configId}`,
+apps/desktop/src/navigation/location-navigation.ts:377:          label: title ?? location.configId,
+apps/desktop/src/navigation/location-navigation.ts:380:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:388:          id: `executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:390:          label: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:394:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:399:          id: `prompt:${location.promptId}`,
+apps/desktop/src/navigation/location-navigation.ts:401:          label: title ?? location.promptId,
+apps/desktop/src/navigation/location-navigation.ts:404:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:412:          id: `executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:414:          label: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:418:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:423:          id: `command:${location.commandId}`,
+apps/desktop/src/navigation/location-navigation.ts:425:          label: title ?? location.commandId,
+apps/desktop/src/navigation/location-navigation.ts:428:            executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:442:        ...(location.section
+apps/desktop/src/navigation/location-navigation.ts:445:                id: `settings:${location.section}`,
+apps/desktop/src/navigation/location-navigation.ts:446:                descriptorId: `settings:${location.section}`,
+apps/desktop/src/navigation/location-navigation.ts:447:                label: resolvedTitle ?? getSettingsSectionLabel(location.section),
+apps/desktop/src/navigation/location-navigation.ts:448:                icon: resolvedIcon ?? getSettingsSectionIcon(location.section),
+apps/desktop/src/navigation/location-navigation.ts:475:      const normalizedPath = location.path.split("?")[0]?.split("#")[0] ?? location.path;
+apps/desktop/src/navigation/location-navigation.ts:479:          id: `global:${location.path}`,
+apps/desktop/src/navigation/location-navigation.ts:608:  if (!location.sourcePageSlug) {
+apps/desktop/src/navigation/location-navigation.ts:613:    location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:614:    location.sourcePageSlug,
+apps/desktop/src/navigation/location-navigation.ts:622:      id: `${location.workspaceId}:web:${location.webId ?? location.url}`,
+apps/desktop/src/navigation/location-navigation.ts:627:        workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:628:        pageSlug: location.sourcePageSlug,
+apps/desktop/src/navigation/location-navigation.ts:629:        webId: location.webId,
+apps/desktop/src/navigation/location-navigation.ts:630:        url: location.url,
+apps/desktop/src/navigation/location-navigation.ts:642:    createWorkspaceRootItem(location.workspaceId, workspace),
+apps/desktop/src/navigation/location-navigation.ts:646:        workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:650:        id: `${location.workspaceId}:agent`,
+apps/desktop/src/navigation/location-navigation.ts:654:        meta: { workspaceId: location.workspaceId, section: "agent" },
+apps/desktop/src/navigation/location-navigation.ts:658:      id: `${location.workspaceId}:agent:${location.agentId}`,
+apps/desktop/src/navigation/location-navigation.ts:660:      label: patch?.title ?? location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:663:        workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:664:        agentId: location.agentId,
+apps/desktop/src/navigation/location-navigation.ts:676:    createWorkspaceRootItem(location.workspaceId, workspace),
+apps/desktop/src/navigation/location-navigation.ts:680:        workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:684:        id: `${location.workspaceId}:agent`,
+apps/desktop/src/navigation/location-navigation.ts:688:        meta: { workspaceId: location.workspaceId, section: "agent" },
+apps/desktop/src/navigation/location-navigation.ts:692:      id: `${location.workspaceId}:executor:${location.executorType}`,
+apps/desktop/src/navigation/location-navigation.ts:694:      label: patch?.title ?? location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:697:        workspaceId: location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:698:        executorType: location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:723:        location.kind === "skill-detail" ? location.agentId : location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:734:      location.kind === "skill-detail" ? location.agentId : location.executorType,
+apps/desktop/src/navigation/location-navigation.ts:739:      id = `workspace:${workspace.id}:skill:${location.skillId}`;
+apps/desktop/src/navigation/location-navigation.ts:740:      label = label ?? location.skillId;
+apps/desktop/src/navigation/location-navigation.ts:741:      meta = { ...meta, agentId: location.agentId };
+apps/desktop/src/navigation/location-navigation.ts:744:      id = `workspace:${workspace.id}:mcp:${location.serverName}`;
+apps/desktop/src/navigation/location-navigation.ts:745:      label = label ?? location.serverName;
+apps/desktop/src/navigation/location-navigation.ts:748:      id = `workspace:${workspace.id}:subagent:${location.configId}`;
+apps/desktop/src/navigation/location-navigation.ts:749:      label = label ?? location.configId;
+apps/desktop/src/navigation/location-navigation.ts:752:      id = `workspace:${workspace.id}:prompt:${location.promptId}`;
+apps/desktop/src/navigation/location-navigation.ts:753:      label = label ?? location.promptId;
+apps/desktop/src/navigation/location-navigation.ts:756:      id = `workspace:${workspace.id}:command:${location.commandId}`;
+apps/desktop/src/navigation/location-navigation.ts:757:      label = label ?? location.commandId;
+apps/desktop/src/navigation/location-navigation.ts:795:        input.location.workspaceId,
+apps/desktop/src/navigation/location-navigation.ts:796:        input.location.pageSlug,
+apps/desktop/src/navigation/navigation-meta.ts:433:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:435:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/apps`, location);
+apps/desktop/src/navigation/navigation-meta.ts:437:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/${location.section}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:439:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/agent/${encodeURIComponent(location.agentId)}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:441:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/executor/${encodeURIComponent(location.executorType)}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:443:      const encodedSlug = location.pageSlug.split("/").filter(Boolean).map((segment) => encodeURIComponent(segment)).join("/");
+apps/desktop/src/navigation/navigation-meta.ts:444:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/page/${encodedSlug}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:447:      const params = new URLSearchParams({ url: location.url, title: location.title });
+apps/desktop/src/navigation/navigation-meta.ts:448:      if (location.sourcePageSlug) params.set("source_page", location.sourcePageSlug);
+apps/desktop/src/navigation/navigation-meta.ts:449:      if (location.webId) params.set("web_id", location.webId);
+apps/desktop/src/navigation/navigation-meta.ts:450:      return appendUrlSuffix(`/workspace/${encodeURIComponent(location.workspaceId)}/web?${params.toString()}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:453:      return appendUrlSuffix(`/agent/${encodeURIComponent(location.agentId)}${buildDetailQuery(location.workspacePath)}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:455:      return appendUrlSuffix(`/executor/${encodeURIComponent(location.executorType)}${buildDetailQuery(location.workspacePath)}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:457:      return appendUrlSuffix(`/skill/${encodeURIComponent(location.skillId)}${buildDetailQuery(location.workspacePath, { agent_id: location.agentId })}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:459:      return appendUrlSuffix(`/mcp-server/${encodeURIComponent(location.serverName)}${buildDetailQuery(location.workspacePath, { executor_type: location.executorType })}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:461:      return appendUrlSuffix(`/subagent/${encodeURIComponent(location.configId)}${buildDetailQuery(location.workspacePath, { executor_type: location.executorType })}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:463:      return appendUrlSuffix(`/prompt/${encodeURIComponent(location.promptId)}${buildDetailQuery(location.workspacePath, { executor_type: location.executorType })}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:465:      return appendUrlSuffix(`/command/${encodeURIComponent(location.commandId)}${buildDetailQuery(location.workspacePath, { executor_type: location.executorType })}`, location);
+apps/desktop/src/navigation/navigation-meta.ts:467:      return appendUrlSuffix(location.section ? `/settings/${encodeURIComponent(location.section)}` : "/settings/general", location);
+apps/desktop/src/navigation/navigation-meta.ts:473:      return location.path;
+apps/desktop/src/components/layout/sidebar-icon-button.tsx:46:    ? location.pathname === href || location.pathname.startsWith(href + "/")
+apps/desktop/src/components/layout/mcp-services-layout.tsx:118:                  const isActive = location.pathname === item.href;
+apps/desktop/src/components/layout/sidebar.tsx:633:  const isActiveOrChild = location.pathname === item.href ||
+apps/desktop/src/components/layout/sidebar.tsx:634:    location.pathname.startsWith(item.href + "/");
+apps/desktop/src/components/layout/sidebar.tsx:725:    location.pathname === href ||
+apps/desktop/src/components/layout/sidebar.tsx:726:    location.pathname.startsWith(href + "/") ||
+apps/desktop/src/components/layout/sidebar.tsx:728:      (location.pathname === agentCompatHref ||
+apps/desktop/src/components/layout/sidebar.tsx:729:        location.pathname.startsWith(agentCompatHref + "/")));
+apps/desktop/src/components/navigation/tab-router-bridge.tsx:27:      `${location.pathname}${location.search}${location.hash}`,
+apps/desktop/src/components/navigation/tab-router-bridge.tsx:28:    [location.hash, location.pathname, location.search]
+apps/desktop/src/components/overlay/chat-popup.tsx:398:    window.location.pathname = `/workspace/${wsId}/chat`;

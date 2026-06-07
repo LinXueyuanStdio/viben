@@ -1,0 +1,812 @@
+apps/desktop/src/pages/providers.tsx:272:  useEffect(() => {
+apps/desktop/src/pages/providers.tsx:273:    setMounted(true);
+apps/desktop/src/pages/providers.tsx:274:  }, []);
+apps/desktop/src/pages/providers.tsx:275:
+apps/desktop/src/pages/providers.tsx:276:  return (
+apps/desktop/src/pages/providers.tsx:277:    <>
+apps/desktop/src/pages/providers.tsx:278:      {/* Search and Stats */}
+apps/desktop/src/pages/providers.tsx:279:      <div className="flex items-center gap-4 mb-4">
+apps/desktop/src/pages/providers.tsx:280:        <div className="relative flex-1">
+apps/desktop/src/pages/providers.tsx:281:          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+apps/desktop/src/pages/providers.tsx:282:          <input
+apps/desktop/src/pages/providers.tsx:283:            type="text"
+apps/desktop/src/pages/providers.tsx:284:            value={searchQuery}
+apps/desktop/src/pages/providers.tsx:285:            onChange={(e) => onSearchChange(e.target.value)}
+apps/desktop/src/pages/providers.tsx:286:            placeholder={t("providers.searchSources")}
+apps/desktop/src/pages/providers.tsx:287:            className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+apps/desktop/src/pages/providers.tsx:288:          />
+apps/desktop/src/pages/providers.tsx:289:        </div>
+apps/desktop/src/pages/providers.tsx:290:        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:291:          <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded">
+apps/desktop/src/pages/providers.tsx:292:            {sourceCounts.none} {t("providers.free")}
+apps/desktop/src/pages/providers.tsx:293:          </span>
+apps/desktop/src/pages/providers.tsx:294:          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded">
+apps/desktop/src/pages/providers.tsx:295:            {sourceCounts.optional} {t("providers.optional")}
+apps/desktop/src/pages/providers.tsx:296:          </span>
+apps/desktop/src/pages/providers.tsx:297:          <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1 rounded">
+apps/desktop/src/pages/providers.tsx:298:            {sourceCounts.required} {t("providers.required")}
+apps/desktop/src/pages/providers.tsx:299:          </span>
+apps/desktop/src/pages/providers.tsx:300:        </div>
+apps/desktop/src/pages/providers.tsx:301:      </div>
+apps/desktop/src/pages/providers.tsx:302:
+apps/desktop/src/pages/providers.tsx:303:      {/* Info Banner */}
+apps/desktop/src/pages/providers.tsx:304:      <div className="mb-4 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:305:        {t("providers.configureInfo")}
+apps/desktop/src/pages/providers.tsx:306:      </div>
+apps/desktop/src/pages/providers.tsx:307:
+apps/desktop/src/pages/providers.tsx:308:      {/* Sources Grid */}
+apps/desktop/src/pages/providers.tsx:309:      <ScrollArea className="flex-1">
+apps/desktop/src/pages/providers.tsx:310:        {loading ? (
+apps/desktop/src/pages/providers.tsx:311:          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+apps/desktop/src/pages/providers.tsx:312:            {Array.from({ length: 6 }).map((_, i) => (
+apps/desktop/src/pages/providers.tsx:313:              <SourceCardSkeleton key={i} />
+apps/desktop/src/pages/providers.tsx:314:            ))}
+apps/desktop/src/pages/providers.tsx:315:          </div>
+apps/desktop/src/pages/providers.tsx:316:        ) : sources.length === 0 ? (
+apps/desktop/src/pages/providers.tsx:317:          <div className="text-center py-12 text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:318:            {searchQuery
+apps/desktop/src/pages/providers.tsx:319:              ? t("providers.noSourcesMatch")
+apps/desktop/src/pages/providers.tsx:320:              : t("providers.noSourcesAvailable")}
+apps/desktop/src/pages/providers.tsx:321:          </div>
+apps/desktop/src/pages/providers.tsx:322:        ) : (
+apps/desktop/src/pages/providers.tsx:323:          <motion.div
+apps/desktop/src/pages/providers.tsx:324:            variants={containerVariants}
+apps/desktop/src/pages/providers.tsx:325:            initial="hidden"
+apps/desktop/src/pages/providers.tsx:326:            animate={mounted ? "visible" : "hidden"}
+apps/desktop/src/pages/providers.tsx:327:            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pb-4"
+apps/desktop/src/pages/providers.tsx:328:          >
+apps/desktop/src/pages/providers.tsx:329:            {sources.map((source) => (
+apps/desktop/src/pages/providers.tsx:330:              <motion.div key={source.id} variants={itemVariants}>
+apps/desktop/src/pages/providers.tsx:331:                <SourceCard
+apps/desktop/src/pages/providers.tsx:332:                  source={source}
+apps/desktop/src/pages/providers.tsx:333:                  onApiKeyChange={setProviderApiKey}
+apps/desktop/src/pages/providers.tsx:334:                />
+apps/desktop/src/pages/providers.tsx:335:              </motion.div>
+apps/desktop/src/pages/providers.tsx:336:            ))}
+apps/desktop/src/pages/providers.tsx:337:          </motion.div>
+apps/desktop/src/pages/providers.tsx:338:        )}
+apps/desktop/src/pages/providers.tsx:339:      </ScrollArea>
+apps/desktop/src/pages/providers.tsx:340:    </>
+apps/desktop/src/pages/providers.tsx:341:  );
+apps/desktop/src/pages/providers.tsx:342:}
+apps/desktop/src/pages/providers.tsx:343:
+apps/desktop/src/pages/providers.tsx:344:/* -----------------------------------------------------------------------------
+apps/desktop/src/pages/providers.tsx:345: * Source Card Component
+apps/desktop/src/pages/providers.tsx:346: * -------------------------------------------------------------------------- */
+apps/desktop/src/pages/providers.tsx:347:
+apps/desktop/src/pages/providers.tsx:348:interface SourceCardProps {
+apps/desktop/src/pages/providers.tsx:349:  source: FlatSource;
+apps/desktop/src/pages/providers.tsx:350:  onApiKeyChange: (id: string, hasKey: boolean) => void;
+apps/desktop/src/pages/providers.tsx:351:}
+apps/desktop/src/pages/providers.tsx:352:
+apps/desktop/src/pages/providers.tsx:353:function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
+apps/desktop/src/pages/providers.tsx:354:  const { t } = useTranslation();
+apps/desktop/src/pages/providers.tsx:355:  const { setApiKey, deleteApiKey, providers } = useApiKeys();
+apps/desktop/src/pages/providers.tsx:356:  const [editing, setEditing] = useState(false);
+apps/desktop/src/pages/providers.tsx:357:  const [keyValue, setKeyValue] = useState("");
+apps/desktop/src/pages/providers.tsx:358:  const [showKey, setShowKey] = useState(false);
+apps/desktop/src/pages/providers.tsx:359:  const [saving, setSaving] = useState(false);
+apps/desktop/src/pages/providers.tsx:360:
+apps/desktop/src/pages/providers.tsx:361:  // Find provider info from useApiKeys (using flat name)
+apps/desktop/src/pages/providers.tsx:362:  const apiKeyInfo = providers.find(
+apps/desktop/src/pages/providers.tsx:363:    (p) => p.provider_id === source.source_name
+apps/desktop/src/pages/providers.tsx:364:  );
+apps/desktop/src/pages/providers.tsx:365:  const hasApiKey = apiKeyInfo?.has_key ?? false;
+apps/desktop/src/pages/providers.tsx:366:
+apps/desktop/src/pages/providers.tsx:367:  const handleSaveKey = async () => {
+apps/desktop/src/pages/providers.tsx:368:    if (!keyValue.trim()) return;
+apps/desktop/src/pages/providers.tsx:369:
+apps/desktop/src/pages/providers.tsx:370:    setSaving(true);
+apps/desktop/src/pages/providers.tsx:371:    const success = await setApiKey(source.source_name, keyValue);
+apps/desktop/src/pages/providers.tsx:372:    if (success) {
+apps/desktop/src/pages/providers.tsx:373:      onApiKeyChange(source.source_name, true);
+apps/desktop/src/pages/providers.tsx:374:      setEditing(false);
+apps/desktop/src/pages/providers.tsx:375:      setKeyValue("");
+apps/desktop/src/pages/providers.tsx:376:    }
+apps/desktop/src/pages/providers.tsx:377:    setSaving(false);
+apps/desktop/src/pages/providers.tsx:378:  };
+apps/desktop/src/pages/providers.tsx:379:
+apps/desktop/src/pages/providers.tsx:380:  const handleDeleteKey = async () => {
+apps/desktop/src/pages/providers.tsx:381:    if (!confirm(t("providers.removeApiKey", { name: source.name }))) return;
+apps/desktop/src/pages/providers.tsx:382:
+apps/desktop/src/pages/providers.tsx:383:    await deleteApiKey(source.source_name);
+apps/desktop/src/pages/providers.tsx:384:    onApiKeyChange(source.source_name, false);
+apps/desktop/src/pages/providers.tsx:385:  };
+apps/desktop/src/pages/providers.tsx:386:
+apps/desktop/src/pages/providers.tsx:387:  const handleCancel = () => {
+apps/desktop/src/pages/providers.tsx:388:    setEditing(false);
+apps/desktop/src/pages/providers.tsx:389:    setKeyValue("");
+apps/desktop/src/pages/providers.tsx:390:  };
+apps/desktop/src/pages/providers.tsx:391:
+apps/desktop/src/pages/providers.tsx:392:  const requiresKey = source.api_key_type === "required";
+apps/desktop/src/pages/providers.tsx:393:  const optionalKey = source.api_key_type === "optional";
+apps/desktop/src/pages/providers.tsx:394:  const isAvailable = !requiresKey || hasApiKey;
+apps/desktop/src/pages/providers.tsx:395:  const showApiKeyConfig = requiresKey || optionalKey;
+apps/desktop/src/pages/providers.tsx:396:
+apps/desktop/src/pages/providers.tsx:397:  // Get API key status badge
+apps/desktop/src/pages/providers.tsx:398:  const getStatusBadge = () => {
+apps/desktop/src/pages/providers.tsx:399:    if (source.api_key_type === "none") {
+apps/desktop/src/pages/providers.tsx:400:      return (
+apps/desktop/src/pages/providers.tsx:401:        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+apps/desktop/src/pages/providers.tsx:402:          {t("providers.free")}
+apps/desktop/src/pages/providers.tsx:403:        </span>
+apps/desktop/src/pages/providers.tsx:404:      );
+apps/desktop/src/pages/providers.tsx:405:    }
+apps/desktop/src/pages/providers.tsx:406:    if (source.api_key_type === "optional") {
+apps/desktop/src/pages/providers.tsx:407:      return (
+apps/desktop/src/pages/providers.tsx:408:        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">
+apps/desktop/src/pages/providers.tsx:409:          {t("providers.optional")}
+apps/desktop/src/pages/providers.tsx:410:        </span>
+apps/desktop/src/pages/providers.tsx:411:      );
+apps/desktop/src/pages/providers.tsx:412:    }
+apps/desktop/src/pages/providers.tsx:413:    return (
+apps/desktop/src/pages/providers.tsx:414:      <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">
+apps/desktop/src/pages/providers.tsx:415:        {t("providers.required")}
+apps/desktop/src/pages/providers.tsx:416:      </span>
+apps/desktop/src/pages/providers.tsx:417:    );
+apps/desktop/src/pages/providers.tsx:418:  };
+apps/desktop/src/pages/providers.tsx:419:
+apps/desktop/src/pages/providers.tsx:420:  return (
+apps/desktop/src/pages/providers.tsx:421:    <div className="rounded-xl border bg-card p-4 theme-transition">
+apps/desktop/src/pages/providers.tsx:422:      <div className="flex items-start justify-between mb-3">
+apps/desktop/src/pages/providers.tsx:423:        <div className="flex items-start gap-3">
+apps/desktop/src/pages/providers.tsx:424:          <div
+apps/desktop/src/pages/providers.tsx:425:            className={cn(
+apps/desktop/src/pages/providers.tsx:426:              "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+apps/desktop/src/pages/providers.tsx:427:              isAvailable
+apps/desktop/src/pages/providers.tsx:428:                ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+apps/desktop/src/pages/providers.tsx:429:                : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+apps/desktop/src/pages/providers.tsx:430:            )}
+apps/desktop/src/pages/providers.tsx:431:          >
+apps/desktop/src/pages/providers.tsx:432:            {isAvailable ? (
+apps/desktop/src/pages/providers.tsx:433:              <Check className="h-5 w-5" />
+apps/desktop/src/pages/providers.tsx:434:            ) : (
+apps/desktop/src/pages/providers.tsx:435:              <Lock className="h-5 w-5" />
+apps/desktop/src/pages/providers.tsx:436:            )}
+apps/desktop/src/pages/providers.tsx:437:          </div>
+apps/desktop/src/pages/providers.tsx:438:          <div className="flex-1 min-w-0">
+apps/desktop/src/pages/providers.tsx:439:            <div className="flex items-center gap-2">
+apps/desktop/src/pages/providers.tsx:440:              <h3 className="font-semibold text-sm">{source.name}</h3>
+apps/desktop/src/pages/providers.tsx:441:              {getStatusBadge()}
+apps/desktop/src/pages/providers.tsx:442:            </div>
+apps/desktop/src/pages/providers.tsx:443:            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+apps/desktop/src/pages/providers.tsx:444:              {source.description}
+apps/desktop/src/pages/providers.tsx:445:            </p>
+apps/desktop/src/pages/providers.tsx:446:          </div>
+apps/desktop/src/pages/providers.tsx:447:        </div>
+apps/desktop/src/pages/providers.tsx:448:      </div>
+apps/desktop/src/pages/providers.tsx:449:
+apps/desktop/src/pages/providers.tsx:450:      {/* Plugin info */}
+apps/desktop/src/pages/providers.tsx:451:      <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:452:        <Layers className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:453:        <span className="font-mono">{source.id}</span>
+apps/desktop/src/pages/providers.tsx:454:      </div>
+apps/desktop/src/pages/providers.tsx:455:
+apps/desktop/src/pages/providers.tsx:456:      {/* API Key Status */}
+apps/desktop/src/pages/providers.tsx:457:      {showApiKeyConfig && (
+apps/desktop/src/pages/providers.tsx:458:        <div className="mb-3">
+apps/desktop/src/pages/providers.tsx:459:          {hasApiKey ? (
+apps/desktop/src/pages/providers.tsx:460:            <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+apps/desktop/src/pages/providers.tsx:461:              <Key className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:462:              <span>{t("providers.apiKeyConfigured")}</span>
+apps/desktop/src/pages/providers.tsx:463:              {apiKeyInfo?.key_prefix && (
+apps/desktop/src/pages/providers.tsx:464:                <code className="bg-muted px-1 rounded text-[10px]">
+apps/desktop/src/pages/providers.tsx:465:                  {apiKeyInfo.key_prefix}
+apps/desktop/src/pages/providers.tsx:466:                </code>
+apps/desktop/src/pages/providers.tsx:467:              )}
+apps/desktop/src/pages/providers.tsx:468:            </div>
+apps/desktop/src/pages/providers.tsx:469:          ) : requiresKey ? (
+apps/desktop/src/pages/providers.tsx:470:            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+apps/desktop/src/pages/providers.tsx:471:              <Key className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:472:              <span>{t("providers.apiKeyRequired")}</span>
+apps/desktop/src/pages/providers.tsx:473:            </div>
+apps/desktop/src/pages/providers.tsx:474:          ) : (
+apps/desktop/src/pages/providers.tsx:475:            <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+apps/desktop/src/pages/providers.tsx:476:              <Key className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:477:              <span>{t("providers.apiKeyOptional")}</span>
+apps/desktop/src/pages/providers.tsx:478:            </div>
+apps/desktop/src/pages/providers.tsx:479:          )}
+apps/desktop/src/pages/providers.tsx:480:        </div>
+apps/desktop/src/pages/providers.tsx:481:      )}
+apps/desktop/src/pages/providers.tsx:482:
+apps/desktop/src/pages/providers.tsx:483:      {/* Actions */}
+apps/desktop/src/pages/providers.tsx:484:      <div className="flex items-center gap-2">
+apps/desktop/src/pages/providers.tsx:485:        {source.documentation && (
+apps/desktop/src/pages/providers.tsx:486:          <Button
+apps/desktop/src/pages/providers.tsx:487:            variant="ghost"
+apps/desktop/src/pages/providers.tsx:488:            size="sm"
+apps/desktop/src/pages/providers.tsx:489:            onClick={() => openUrl(source.documentation!)}
+apps/desktop/src/pages/providers.tsx:490:            title={t("providers.documentation")}
+apps/desktop/src/pages/providers.tsx:491:            className="h-8 px-2"
+apps/desktop/src/pages/providers.tsx:492:          >
+apps/desktop/src/pages/providers.tsx:493:            <ExternalLink className="h-3.5 w-3.5 mr-1" />
+apps/desktop/src/pages/providers.tsx:494:            <span className="text-xs">{t("providers.documentation")}</span>
+apps/desktop/src/pages/providers.tsx:495:          </Button>
+apps/desktop/src/pages/providers.tsx:496:        )}
+apps/desktop/src/pages/providers.tsx:497:        <div className="flex-1" />
+apps/desktop/src/pages/providers.tsx:498:        {showApiKeyConfig && (
+apps/desktop/src/pages/providers.tsx:499:          <>
+apps/desktop/src/pages/providers.tsx:500:            {!editing && (
+apps/desktop/src/pages/providers.tsx:501:              <Button
+apps/desktop/src/pages/providers.tsx:502:                variant="outline"
+apps/desktop/src/pages/providers.tsx:503:                size="sm"
+apps/desktop/src/pages/providers.tsx:504:                onClick={() => setEditing(true)}
+apps/desktop/src/pages/providers.tsx:505:                className="h-8 text-xs"
+apps/desktop/src/pages/providers.tsx:506:              >
+apps/desktop/src/pages/providers.tsx:507:                <Key className="h-3 w-3 mr-1" />
+apps/desktop/src/pages/providers.tsx:508:                {hasApiKey ? t("common.update") : t("common.add")}
+apps/desktop/src/pages/providers.tsx:509:              </Button>
+apps/desktop/src/pages/providers.tsx:510:            )}
+apps/desktop/src/pages/providers.tsx:511:            {hasApiKey && !editing && (
+apps/desktop/src/pages/providers.tsx:512:              <Button
+apps/desktop/src/pages/providers.tsx:513:                variant="ghost"
+apps/desktop/src/pages/providers.tsx:514:                size="sm"
+apps/desktop/src/pages/providers.tsx:515:                onClick={handleDeleteKey}
+apps/desktop/src/pages/providers.tsx:516:                className="text-destructive hover:text-destructive h-8 w-8 p-0"
+apps/desktop/src/pages/providers.tsx:517:              >
+apps/desktop/src/pages/providers.tsx:518:                <Trash2 className="h-3.5 w-3.5" />
+apps/desktop/src/pages/providers.tsx:519:              </Button>
+apps/desktop/src/pages/providers.tsx:520:            )}
+apps/desktop/src/pages/providers.tsx:521:          </>
+apps/desktop/src/pages/providers.tsx:522:        )}
+apps/desktop/src/pages/providers.tsx:523:      </div>
+apps/desktop/src/pages/providers.tsx:524:
+apps/desktop/src/pages/providers.tsx:525:      {/* API Key Input */}
+apps/desktop/src/pages/providers.tsx:526:      {editing && (
+apps/desktop/src/pages/providers.tsx:527:        <div className="mt-3 pt-3 border-t">
+apps/desktop/src/pages/providers.tsx:528:          <div className="flex gap-2">
+apps/desktop/src/pages/providers.tsx:529:            <div className="relative flex-1">
+apps/desktop/src/pages/providers.tsx:530:              <input
+apps/desktop/src/pages/providers.tsx:531:                type={showKey ? "text" : "password"}
+apps/desktop/src/pages/providers.tsx:532:                value={keyValue}
+apps/desktop/src/pages/providers.tsx:533:                onChange={(e) => setKeyValue(e.target.value)}
+apps/desktop/src/pages/providers.tsx:534:                placeholder={t("providers.enterApiKey", { name: source.name })}
+apps/desktop/src/pages/providers.tsx:535:                className="w-full rounded-md border bg-background px-3 py-1.5 text-xs font-mono pr-8 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+apps/desktop/src/pages/providers.tsx:536:                autoFocus
+apps/desktop/src/pages/providers.tsx:537:                onKeyDown={(e) => {
+apps/desktop/src/pages/providers.tsx:538:                  if (e.key === "Enter") handleSaveKey();
+apps/desktop/src/pages/providers.tsx:539:                  if (e.key === "Escape") handleCancel();
+apps/desktop/src/pages/providers.tsx:540:                }}
+apps/desktop/src/pages/providers.tsx:541:              />
+apps/desktop/src/pages/providers.tsx:542:              <button
+apps/desktop/src/pages/providers.tsx:543:                type="button"
+apps/desktop/src/pages/providers.tsx:544:                onClick={() => setShowKey(!showKey)}
+apps/desktop/src/pages/providers.tsx:545:                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+apps/desktop/src/pages/providers.tsx:546:              >
+apps/desktop/src/pages/providers.tsx:547:                {showKey ? (
+apps/desktop/src/pages/providers.tsx:548:                  <EyeOff className="h-3.5 w-3.5" />
+apps/desktop/src/pages/providers.tsx:549:                ) : (
+apps/desktop/src/pages/providers.tsx:550:                  <Eye className="h-3.5 w-3.5" />
+apps/desktop/src/pages/providers.tsx:551:                )}
+apps/desktop/src/pages/providers.tsx:552:              </button>
+apps/desktop/src/pages/providers.tsx:553:            </div>
+apps/desktop/src/pages/providers.tsx:554:            <Button
+apps/desktop/src/pages/providers.tsx:555:              size="sm"
+apps/desktop/src/pages/providers.tsx:556:              onClick={handleSaveKey}
+apps/desktop/src/pages/providers.tsx:557:              disabled={saving || !keyValue.trim()}
+apps/desktop/src/pages/providers.tsx:558:              className="h-7"
+apps/desktop/src/pages/providers.tsx:559:            >
+apps/desktop/src/pages/providers.tsx:560:              {saving ? (
+apps/desktop/src/pages/providers.tsx:561:                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+apps/desktop/src/pages/providers.tsx:562:              ) : (
+apps/desktop/src/pages/providers.tsx:563:                <Check className="h-3.5 w-3.5" />
+apps/desktop/src/pages/providers.tsx:564:              )}
+apps/desktop/src/pages/providers.tsx:565:            </Button>
+apps/desktop/src/pages/providers.tsx:566:            <Button
+apps/desktop/src/pages/providers.tsx:567:              variant="outline"
+apps/desktop/src/pages/providers.tsx:568:              size="sm"
+apps/desktop/src/pages/providers.tsx:569:              onClick={handleCancel}
+apps/desktop/src/pages/providers.tsx:570:              className="h-7"
+apps/desktop/src/pages/providers.tsx:571:            >
+apps/desktop/src/pages/providers.tsx:572:              <X className="h-3.5 w-3.5" />
+apps/desktop/src/pages/providers.tsx:573:            </Button>
+apps/desktop/src/pages/providers.tsx:574:          </div>
+apps/desktop/src/pages/providers.tsx:575:          {source.documentation && (
+apps/desktop/src/pages/providers.tsx:576:            <p className="text-[10px] text-muted-foreground mt-2">
+apps/desktop/src/pages/providers.tsx:577:              {t("providers.getApiKeyFrom")}{" "}
+apps/desktop/src/pages/providers.tsx:578:              <button
+apps/desktop/src/pages/providers.tsx:579:                type="button"
+apps/desktop/src/pages/providers.tsx:580:                onClick={() => openUrl(source.documentation!)}
+apps/desktop/src/pages/providers.tsx:581:                className="text-primary hover:underline"
+apps/desktop/src/pages/providers.tsx:582:              >
+apps/desktop/src/pages/providers.tsx:583:                {t("providers.developerPortal", { name: source.name })}
+apps/desktop/src/pages/providers.tsx:584:              </button>
+apps/desktop/src/pages/providers.tsx:585:            </p>
+apps/desktop/src/pages/providers.tsx:586:          )}
+apps/desktop/src/pages/providers.tsx:587:        </div>
+apps/desktop/src/pages/providers.tsx:588:      )}
+apps/desktop/src/pages/providers.tsx:589:    </div>
+apps/desktop/src/pages/providers.tsx:590:  );
+apps/desktop/src/pages/providers.tsx:591:}
+apps/desktop/src/pages/providers.tsx:592:
+apps/desktop/src/pages/providers.tsx:593:/* -----------------------------------------------------------------------------
+apps/desktop/src/pages/providers.tsx:594: * Source Card Skeleton
+apps/desktop/src/pages/providers.tsx:595: * -------------------------------------------------------------------------- */
+apps/desktop/src/pages/providers.tsx:596:
+apps/desktop/src/pages/providers.tsx:597:function SourceCardSkeleton() {
+apps/desktop/src/pages/providers.tsx:598:  return (
+apps/desktop/src/pages/providers.tsx:599:    <div className="rounded-xl border bg-card p-4 animate-pulse">
+apps/desktop/src/pages/providers.tsx:600:      <div className="flex items-start gap-3 mb-3">
+apps/desktop/src/pages/providers.tsx:601:        <div className="h-10 w-10 rounded-lg bg-muted" />
+apps/desktop/src/pages/providers.tsx:602:        <div className="flex-1 space-y-2">
+apps/desktop/src/pages/providers.tsx:603:          <div className="h-4 w-24 bg-muted rounded" />
+apps/desktop/src/pages/providers.tsx:604:          <div className="h-3 w-full bg-muted rounded" />
+apps/desktop/src/pages/providers.tsx:605:        </div>
+apps/desktop/src/pages/providers.tsx:606:      </div>
+apps/desktop/src/pages/providers.tsx:607:      <div className="h-3 w-32 bg-muted rounded mb-3" />
+apps/desktop/src/pages/providers.tsx:608:      <div className="flex gap-2">
+apps/desktop/src/pages/providers.tsx:609:        <div className="h-8 w-20 bg-muted rounded" />
+apps/desktop/src/pages/providers.tsx:610:        <div className="flex-1" />
+apps/desktop/src/pages/providers.tsx:611:        <div className="h-8 w-16 bg-muted rounded" />
+apps/desktop/src/pages/providers.tsx:612:      </div>
+apps/desktop/src/pages/providers.tsx:613:    </div>
+apps/desktop/src/pages/providers.tsx:614:  );
+apps/desktop/src/pages/providers.tsx:615:}
+apps/desktop/src/pages/providers.tsx:616:
+apps/desktop/src/pages/providers.tsx:617:/* -----------------------------------------------------------------------------
+apps/desktop/src/pages/providers.tsx:618: * Marketplace Tab (Plugin-centric)
+apps/desktop/src/pages/providers.tsx:619: * -------------------------------------------------------------------------- */
+apps/desktop/src/pages/providers.tsx:620:
+apps/desktop/src/pages/providers.tsx:621:interface MarketplaceTabProps {
+apps/desktop/src/pages/providers.tsx:622:  plugins: MarketplacePlugin[];
+apps/desktop/src/pages/providers.tsx:623:  categories: MarketplaceCategory[];
+apps/desktop/src/pages/providers.tsx:624:  loading: boolean;
+apps/desktop/src/pages/providers.tsx:625:}
+apps/desktop/src/pages/providers.tsx:626:
+apps/desktop/src/pages/providers.tsx:627:function MarketplaceTab({
+apps/desktop/src/pages/providers.tsx:628:  plugins,
+apps/desktop/src/pages/providers.tsx:629:  categories,
+apps/desktop/src/pages/providers.tsx:630:  loading,
+apps/desktop/src/pages/providers.tsx:631:}: MarketplaceTabProps) {
+apps/desktop/src/pages/providers.tsx:632:  const { t } = useTranslation();
+apps/desktop/src/pages/providers.tsx:633:  const prefersReducedMotion = useReducedMotion();
+apps/desktop/src/pages/providers.tsx:634:  const [mounted, setMounted] = useState(false);
+apps/desktop/src/pages/providers.tsx:635:  const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
+apps/desktop/src/pages/providers.tsx:636:  const [searchQuery, setSearchQuery] = useState("");
+apps/desktop/src/pages/providers.tsx:637:
+apps/desktop/src/pages/providers.tsx:638:  // Animation variants
+apps/desktop/src/pages/providers.tsx:639:  const containerVariants = {
+apps/desktop/src/pages/providers.tsx:640:    hidden: { opacity: 0 },
+apps/desktop/src/pages/providers.tsx:641:    visible: {
+apps/desktop/src/pages/providers.tsx:642:      opacity: 1,
+apps/desktop/src/pages/providers.tsx:643:      transition: {
+apps/desktop/src/pages/providers.tsx:644:        staggerChildren: prefersReducedMotion ? 0 : 0.08,
+apps/desktop/src/pages/providers.tsx:645:        delayChildren: prefersReducedMotion ? 0 : 0.1,
+apps/desktop/src/pages/providers.tsx:646:      },
+apps/desktop/src/pages/providers.tsx:647:    },
+apps/desktop/src/pages/providers.tsx:648:  };
+apps/desktop/src/pages/providers.tsx:649:
+apps/desktop/src/pages/providers.tsx:650:  const itemVariants = {
+apps/desktop/src/pages/providers.tsx:651:    hidden: {
+apps/desktop/src/pages/providers.tsx:652:      opacity: 0,
+apps/desktop/src/pages/providers.tsx:653:      y: prefersReducedMotion ? 0 : 12,
+apps/desktop/src/pages/providers.tsx:654:    },
+apps/desktop/src/pages/providers.tsx:655:    visible: {
+apps/desktop/src/pages/providers.tsx:656:      opacity: 1,
+apps/desktop/src/pages/providers.tsx:657:      y: 0,
+apps/desktop/src/pages/providers.tsx:658:      transition: {
+apps/desktop/src/pages/providers.tsx:659:        duration: prefersReducedMotion ? 0 : 0.4,
+apps/desktop/src/pages/providers.tsx:660:        ease: easeOutExpo,
+apps/desktop/src/pages/providers.tsx:661:      },
+apps/desktop/src/pages/providers.tsx:662:    },
+apps/desktop/src/pages/providers.tsx:663:  };
+apps/desktop/src/pages/providers.tsx:664:
+apps/desktop/src/pages/providers.tsx:665:  useEffect(() => {
+apps/desktop/src/pages/providers.tsx:666:    setMounted(true);
+apps/desktop/src/pages/providers.tsx:667:  }, []);
+apps/desktop/src/pages/providers.tsx:668:
+apps/desktop/src/pages/providers.tsx:669:  // Filter plugins based on search query
+apps/desktop/src/pages/providers.tsx:670:  const filteredPlugins = useMemo(() => {
+apps/desktop/src/pages/providers.tsx:671:    if (!searchQuery.trim()) return plugins;
+apps/desktop/src/pages/providers.tsx:672:    const query = searchQuery.toLowerCase();
+apps/desktop/src/pages/providers.tsx:673:    return plugins.filter(
+apps/desktop/src/pages/providers.tsx:674:      (p) =>
+apps/desktop/src/pages/providers.tsx:675:        p.name.toLowerCase().includes(query) ||
+apps/desktop/src/pages/providers.tsx:676:        p.description.toLowerCase().includes(query) ||
+apps/desktop/src/pages/providers.tsx:677:        p.id.toLowerCase().includes(query) ||
+apps/desktop/src/pages/providers.tsx:678:        p.author_name.toLowerCase().includes(query)
+apps/desktop/src/pages/providers.tsx:679:    );
+apps/desktop/src/pages/providers.tsx:680:  }, [plugins, searchQuery]);
+apps/desktop/src/pages/providers.tsx:681:
+apps/desktop/src/pages/providers.tsx:682:  // Calculate total sources
+apps/desktop/src/pages/providers.tsx:683:  const totalSources = useMemo(
+apps/desktop/src/pages/providers.tsx:684:    () => plugins.reduce((acc, p) => acc + p.source_count, 0),
+apps/desktop/src/pages/providers.tsx:685:    [plugins]
+apps/desktop/src/pages/providers.tsx:686:  );
+apps/desktop/src/pages/providers.tsx:687:
+apps/desktop/src/pages/providers.tsx:688:  return (
+apps/desktop/src/pages/providers.tsx:689:    <>
+apps/desktop/src/pages/providers.tsx:690:      {/* Search */}
+apps/desktop/src/pages/providers.tsx:691:      <div className="flex items-center gap-4 mb-4">
+apps/desktop/src/pages/providers.tsx:692:        <div className="relative flex-1">
+apps/desktop/src/pages/providers.tsx:693:          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+apps/desktop/src/pages/providers.tsx:694:          <input
+apps/desktop/src/pages/providers.tsx:695:            type="text"
+apps/desktop/src/pages/providers.tsx:696:            value={searchQuery}
+apps/desktop/src/pages/providers.tsx:697:            onChange={(e) => setSearchQuery(e.target.value)}
+apps/desktop/src/pages/providers.tsx:698:            placeholder={t("providers.searchPlugins", { defaultValue: "Search plugins..." })}
+apps/desktop/src/pages/providers.tsx:699:            className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+apps/desktop/src/pages/providers.tsx:700:          />
+apps/desktop/src/pages/providers.tsx:701:        </div>
+apps/desktop/src/pages/providers.tsx:702:      </div>
+apps/desktop/src/pages/providers.tsx:703:
+apps/desktop/src/pages/providers.tsx:704:      {/* Stats */}
+apps/desktop/src/pages/providers.tsx:705:      <div className="mb-4 p-3 rounded-lg bg-muted/50">
+apps/desktop/src/pages/providers.tsx:706:        <div className="flex items-center gap-4 text-sm">
+apps/desktop/src/pages/providers.tsx:707:          <div className="flex items-center gap-2">
+apps/desktop/src/pages/providers.tsx:708:            <Package className="h-4 w-4 text-muted-foreground" />
+apps/desktop/src/pages/providers.tsx:709:            <span>
+apps/desktop/src/pages/providers.tsx:710:              {t("providers.pluginsAvailable", {
+apps/desktop/src/pages/providers.tsx:711:                defaultValue: "{{count}} plugins available",
+apps/desktop/src/pages/providers.tsx:712:                count: plugins.length,
+apps/desktop/src/pages/providers.tsx:713:              })}
+apps/desktop/src/pages/providers.tsx:714:            </span>
+apps/desktop/src/pages/providers.tsx:715:          </div>
+apps/desktop/src/pages/providers.tsx:716:          <div className="flex items-center gap-2">
+apps/desktop/src/pages/providers.tsx:717:            <Database className="h-4 w-4 text-muted-foreground" />
+apps/desktop/src/pages/providers.tsx:718:            <span>
+apps/desktop/src/pages/providers.tsx:719:              {t("providers.totalSourcesAvailable", {
+apps/desktop/src/pages/providers.tsx:720:                defaultValue: "{{count}} sources available",
+apps/desktop/src/pages/providers.tsx:721:                count: totalSources,
+apps/desktop/src/pages/providers.tsx:722:              })}
+apps/desktop/src/pages/providers.tsx:723:            </span>
+apps/desktop/src/pages/providers.tsx:724:          </div>
+apps/desktop/src/pages/providers.tsx:725:          <div className="flex items-center gap-2">
+apps/desktop/src/pages/providers.tsx:726:            <Layers className="h-4 w-4 text-muted-foreground" />
+apps/desktop/src/pages/providers.tsx:727:            <span>
+apps/desktop/src/pages/providers.tsx:728:              {t("providers.categoriesAvailable", {
+apps/desktop/src/pages/providers.tsx:729:                defaultValue: "{{count}} categories",
+apps/desktop/src/pages/providers.tsx:730:                count: categories.length,
+apps/desktop/src/pages/providers.tsx:731:              })}
+apps/desktop/src/pages/providers.tsx:732:            </span>
+apps/desktop/src/pages/providers.tsx:733:          </div>
+apps/desktop/src/pages/providers.tsx:734:        </div>
+apps/desktop/src/pages/providers.tsx:735:      </div>
+apps/desktop/src/pages/providers.tsx:736:
+apps/desktop/src/pages/providers.tsx:737:      {/* Category Pills */}
+apps/desktop/src/pages/providers.tsx:738:      {categories.length > 0 && (
+apps/desktop/src/pages/providers.tsx:739:        <div className="mb-4 flex flex-wrap gap-2">
+apps/desktop/src/pages/providers.tsx:740:          {categories.map((category) => {
+apps/desktop/src/pages/providers.tsx:741:            const IconComponent = getCategoryIcon(category.icon);
+apps/desktop/src/pages/providers.tsx:742:            return (
+apps/desktop/src/pages/providers.tsx:743:              <div
+apps/desktop/src/pages/providers.tsx:744:                key={category.id}
+apps/desktop/src/pages/providers.tsx:745:                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 text-xs"
+apps/desktop/src/pages/providers.tsx:746:              >
+apps/desktop/src/pages/providers.tsx:747:                <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
+apps/desktop/src/pages/providers.tsx:748:                <span>{category.name}</span>
+apps/desktop/src/pages/providers.tsx:749:                <span className="text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:750:                  ({category.source_count})
+apps/desktop/src/pages/providers.tsx:751:                </span>
+apps/desktop/src/pages/providers.tsx:752:              </div>
+apps/desktop/src/pages/providers.tsx:753:            );
+apps/desktop/src/pages/providers.tsx:754:          })}
+apps/desktop/src/pages/providers.tsx:755:        </div>
+apps/desktop/src/pages/providers.tsx:756:      )}
+apps/desktop/src/pages/providers.tsx:757:
+apps/desktop/src/pages/providers.tsx:758:      {/* Plugins Grid */}
+apps/desktop/src/pages/providers.tsx:759:      <ScrollArea className="flex-1">
+apps/desktop/src/pages/providers.tsx:760:        {loading ? (
+apps/desktop/src/pages/providers.tsx:761:          <div className="grid gap-4 sm:grid-cols-2">
+apps/desktop/src/pages/providers.tsx:762:            {Array.from({ length: 4 }).map((_, i) => (
+apps/desktop/src/pages/providers.tsx:763:              <PluginCardSkeleton key={i} />
+apps/desktop/src/pages/providers.tsx:764:            ))}
+apps/desktop/src/pages/providers.tsx:765:          </div>
+apps/desktop/src/pages/providers.tsx:766:        ) : filteredPlugins.length === 0 ? (
+apps/desktop/src/pages/providers.tsx:767:          <div className="text-center py-12 text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:768:            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+apps/desktop/src/pages/providers.tsx:769:            <p className="text-lg font-medium">
+apps/desktop/src/pages/providers.tsx:770:              {searchQuery
+apps/desktop/src/pages/providers.tsx:771:                ? t("providers.noPluginsMatch", {
+apps/desktop/src/pages/providers.tsx:772:                    defaultValue: "No plugins match your search",
+apps/desktop/src/pages/providers.tsx:773:                  })
+apps/desktop/src/pages/providers.tsx:774:                : t("providers.noPluginsAvailable", {
+apps/desktop/src/pages/providers.tsx:775:                    defaultValue: "No plugins available",
+apps/desktop/src/pages/providers.tsx:776:                  })}
+apps/desktop/src/pages/providers.tsx:777:            </p>
+apps/desktop/src/pages/providers.tsx:778:            <p className="text-sm mt-1">
+apps/desktop/src/pages/providers.tsx:779:              {t("providers.checkBackLater", {
+apps/desktop/src/pages/providers.tsx:780:                defaultValue: "Check back later for new plugins",
+apps/desktop/src/pages/providers.tsx:781:              })}
+apps/desktop/src/pages/providers.tsx:782:            </p>
+apps/desktop/src/pages/providers.tsx:783:          </div>
+apps/desktop/src/pages/providers.tsx:784:        ) : (
+apps/desktop/src/pages/providers.tsx:785:          <motion.div
+apps/desktop/src/pages/providers.tsx:786:            variants={containerVariants}
+apps/desktop/src/pages/providers.tsx:787:            initial="hidden"
+apps/desktop/src/pages/providers.tsx:788:            animate={mounted ? "visible" : "hidden"}
+apps/desktop/src/pages/providers.tsx:789:            className="grid gap-4 sm:grid-cols-2 pb-4"
+apps/desktop/src/pages/providers.tsx:790:          >
+apps/desktop/src/pages/providers.tsx:791:            {filteredPlugins.map((plugin) => (
+apps/desktop/src/pages/providers.tsx:792:              <motion.div key={plugin.id} variants={itemVariants}>
+apps/desktop/src/pages/providers.tsx:793:                <PluginCard
+apps/desktop/src/pages/providers.tsx:794:                  plugin={plugin}
+apps/desktop/src/pages/providers.tsx:795:                  categories={categories}
+apps/desktop/src/pages/providers.tsx:796:                  expanded={expandedPlugin === plugin.id}
+apps/desktop/src/pages/providers.tsx:797:                  onToggle={() =>
+apps/desktop/src/pages/providers.tsx:798:                    setExpandedPlugin(
+apps/desktop/src/pages/providers.tsx:799:                      expandedPlugin === plugin.id ? null : plugin.id
+apps/desktop/src/pages/providers.tsx:800:                    )
+apps/desktop/src/pages/providers.tsx:801:                  }
+apps/desktop/src/pages/providers.tsx:802:                />
+apps/desktop/src/pages/providers.tsx:803:              </motion.div>
+apps/desktop/src/pages/providers.tsx:804:            ))}
+apps/desktop/src/pages/providers.tsx:805:          </motion.div>
+apps/desktop/src/pages/providers.tsx:806:        )}
+apps/desktop/src/pages/providers.tsx:807:      </ScrollArea>
+apps/desktop/src/pages/providers.tsx:808:    </>
+apps/desktop/src/pages/providers.tsx:809:  );
+apps/desktop/src/pages/providers.tsx:810:}
+apps/desktop/src/pages/providers.tsx:811:
+apps/desktop/src/pages/providers.tsx:812:/* -----------------------------------------------------------------------------
+apps/desktop/src/pages/providers.tsx:813: * Plugin Card Component (v2 Schema)
+apps/desktop/src/pages/providers.tsx:814: * -------------------------------------------------------------------------- */
+apps/desktop/src/pages/providers.tsx:815:
+apps/desktop/src/pages/providers.tsx:816:interface PluginCardProps {
+apps/desktop/src/pages/providers.tsx:817:  plugin: MarketplacePlugin;
+apps/desktop/src/pages/providers.tsx:818:  categories: MarketplaceCategory[];
+apps/desktop/src/pages/providers.tsx:819:  expanded: boolean;
+apps/desktop/src/pages/providers.tsx:820:  onToggle: () => void;
+apps/desktop/src/pages/providers.tsx:821:}
+apps/desktop/src/pages/providers.tsx:822:
+apps/desktop/src/pages/providers.tsx:823:function PluginCard({
+apps/desktop/src/pages/providers.tsx:824:  plugin,
+apps/desktop/src/pages/providers.tsx:825:  categories,
+apps/desktop/src/pages/providers.tsx:826:  expanded,
+apps/desktop/src/pages/providers.tsx:827:  onToggle,
+apps/desktop/src/pages/providers.tsx:828:}: PluginCardProps) {
+apps/desktop/src/pages/providers.tsx:829:  const { t } = useTranslation();
+apps/desktop/src/pages/providers.tsx:830:
+apps/desktop/src/pages/providers.tsx:831:  // Get category names for this plugin
+apps/desktop/src/pages/providers.tsx:832:  const pluginCategories = useMemo(() => {
+apps/desktop/src/pages/providers.tsx:833:    return plugin.categories
+apps/desktop/src/pages/providers.tsx:834:      .map((catId) => categories.find((c) => c.id === catId))
+apps/desktop/src/pages/providers.tsx:835:      .filter(Boolean) as MarketplaceCategory[];
+apps/desktop/src/pages/providers.tsx:836:  }, [plugin.categories, categories]);
+apps/desktop/src/pages/providers.tsx:837:
+apps/desktop/src/pages/providers.tsx:838:  return (
+apps/desktop/src/pages/providers.tsx:839:    <div className="rounded-xl border bg-card overflow-hidden theme-transition">
+apps/desktop/src/pages/providers.tsx:840:      {/* Header */}
+apps/desktop/src/pages/providers.tsx:841:      <button
+apps/desktop/src/pages/providers.tsx:842:        onClick={onToggle}
+apps/desktop/src/pages/providers.tsx:843:        className="w-full p-4 text-left hover:bg-muted/30 transition-colors"
+apps/desktop/src/pages/providers.tsx:844:      >
+apps/desktop/src/pages/providers.tsx:845:        <div className="flex items-start gap-3">
+apps/desktop/src/pages/providers.tsx:846:          <div
+apps/desktop/src/pages/providers.tsx:847:            className={cn(
+apps/desktop/src/pages/providers.tsx:848:              "flex h-10 w-10 items-center justify-center rounded-lg",
+apps/desktop/src/pages/providers.tsx:849:              plugin.builtin
+apps/desktop/src/pages/providers.tsx:850:                ? "bg-primary/10 text-primary"
+apps/desktop/src/pages/providers.tsx:851:                : "bg-secondary/50 text-secondary-foreground"
+apps/desktop/src/pages/providers.tsx:852:            )}
+apps/desktop/src/pages/providers.tsx:853:          >
+apps/desktop/src/pages/providers.tsx:854:            <Package className="h-5 w-5" />
+apps/desktop/src/pages/providers.tsx:855:          </div>
+apps/desktop/src/pages/providers.tsx:856:          <div className="flex-1 min-w-0">
+apps/desktop/src/pages/providers.tsx:857:            <div className="flex items-center gap-2 flex-wrap">
+apps/desktop/src/pages/providers.tsx:858:              <h3 className="font-semibold">{plugin.name}</h3>
+apps/desktop/src/pages/providers.tsx:859:              {plugin.builtin && (
+apps/desktop/src/pages/providers.tsx:860:                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+apps/desktop/src/pages/providers.tsx:861:                  {t("providers.builtin", { defaultValue: "Built-in" })}
+apps/desktop/src/pages/providers.tsx:862:                </span>
+apps/desktop/src/pages/providers.tsx:863:              )}
+apps/desktop/src/pages/providers.tsx:864:              {plugin.version && (
+apps/desktop/src/pages/providers.tsx:865:                <span className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
+apps/desktop/src/pages/providers.tsx:866:                  v{plugin.version}
+apps/desktop/src/pages/providers.tsx:867:                </span>
+apps/desktop/src/pages/providers.tsx:868:              )}
+apps/desktop/src/pages/providers.tsx:869:              <span className="text-xs bg-muted px-2 py-0.5 rounded">
+apps/desktop/src/pages/providers.tsx:870:                {plugin.source_count} {t("searchService.sources")}
+apps/desktop/src/pages/providers.tsx:871:              </span>
+apps/desktop/src/pages/providers.tsx:872:            </div>
+apps/desktop/src/pages/providers.tsx:873:            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+apps/desktop/src/pages/providers.tsx:874:              {plugin.description}
+apps/desktop/src/pages/providers.tsx:875:            </p>
+apps/desktop/src/pages/providers.tsx:876:          </div>
+apps/desktop/src/pages/providers.tsx:877:          <ChevronRight
+apps/desktop/src/pages/providers.tsx:878:            className={cn(
+apps/desktop/src/pages/providers.tsx:879:              "h-5 w-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+apps/desktop/src/pages/providers.tsx:880:              expanded && "rotate-90"
+apps/desktop/src/pages/providers.tsx:881:            )}
+apps/desktop/src/pages/providers.tsx:882:          />
+apps/desktop/src/pages/providers.tsx:883:        </div>
+apps/desktop/src/pages/providers.tsx:884:
+apps/desktop/src/pages/providers.tsx:885:        {/* Author and License */}
+apps/desktop/src/pages/providers.tsx:886:        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+apps/desktop/src/pages/providers.tsx:887:          <div className="flex items-center gap-1.5">
+apps/desktop/src/pages/providers.tsx:888:            <User className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:889:            <span>{plugin.author_name}</span>
+apps/desktop/src/pages/providers.tsx:890:          </div>
+apps/desktop/src/pages/providers.tsx:891:          {plugin.license && (
+apps/desktop/src/pages/providers.tsx:892:            <div className="flex items-center gap-1.5">
+apps/desktop/src/pages/providers.tsx:893:              <Tag className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:894:              <span>{plugin.license}</span>
+apps/desktop/src/pages/providers.tsx:895:            </div>
+apps/desktop/src/pages/providers.tsx:896:          )}
+apps/desktop/src/pages/providers.tsx:897:        </div>
+apps/desktop/src/pages/providers.tsx:898:
+apps/desktop/src/pages/providers.tsx:899:        {/* Category badges */}
+apps/desktop/src/pages/providers.tsx:900:        {pluginCategories.length > 0 && (
+apps/desktop/src/pages/providers.tsx:901:          <div className="flex flex-wrap gap-1.5 mt-3">
+apps/desktop/src/pages/providers.tsx:902:            {pluginCategories.map((cat) => {
+apps/desktop/src/pages/providers.tsx:903:              const IconComponent = getCategoryIcon(cat.icon);
+apps/desktop/src/pages/providers.tsx:904:              return (
+apps/desktop/src/pages/providers.tsx:905:                <span
+apps/desktop/src/pages/providers.tsx:906:                  key={cat.id}
+apps/desktop/src/pages/providers.tsx:907:                  className="flex items-center gap-1 text-xs bg-muted/50 px-2 py-0.5 rounded"
+apps/desktop/src/pages/providers.tsx:908:                >
+apps/desktop/src/pages/providers.tsx:909:                  <IconComponent className="h-3 w-3" />
+apps/desktop/src/pages/providers.tsx:910:                  {cat.name}
+apps/desktop/src/pages/providers.tsx:911:                </span>
+apps/desktop/src/pages/providers.tsx:912:              );
+apps/desktop/src/pages/providers.tsx:913:            })}
+apps/desktop/src/pages/providers.tsx:914:          </div>
+apps/desktop/src/pages/providers.tsx:915:        )}
+apps/desktop/src/pages/providers.tsx:916:      </button>
+apps/desktop/src/pages/providers.tsx:917:
+apps/desktop/src/pages/providers.tsx:918:      {/* Expanded Content */}
+apps/desktop/src/pages/providers.tsx:919:      <AnimatePresence>
+apps/desktop/src/pages/providers.tsx:920:        {expanded && (
+apps/desktop/src/pages/providers.tsx:921:          <motion.div
+apps/desktop/src/pages/providers.tsx:922:            initial={{ height: 0, opacity: 0 }}
+apps/desktop/src/pages/providers.tsx:923:            animate={{ height: "auto", opacity: 1 }}
+apps/desktop/src/pages/providers.tsx:924:            exit={{ height: 0, opacity: 0 }}
+apps/desktop/src/pages/providers.tsx:925:            transition={{ duration: 0.2 }}
+apps/desktop/src/pages/providers.tsx:926:            className="overflow-hidden"
+apps/desktop/src/pages/providers.tsx:927:          >
+apps/desktop/src/pages/providers.tsx:928:            <div className="border-t p-4 bg-muted/20">
+apps/desktop/src/pages/providers.tsx:929:              {/* Links */}
+apps/desktop/src/pages/providers.tsx:930:              <div className="flex flex-wrap gap-2 mb-4">
+apps/desktop/src/pages/providers.tsx:931:                {plugin.homepage && (
+apps/desktop/src/pages/providers.tsx:932:                  <Button
+apps/desktop/src/pages/providers.tsx:933:                    variant="outline"
+apps/desktop/src/pages/providers.tsx:934:                    size="sm"
+apps/desktop/src/pages/providers.tsx:935:                    onClick={() => openUrl(plugin.homepage!)}
+apps/desktop/src/pages/providers.tsx:936:                    className="h-7 text-xs"
+apps/desktop/src/pages/providers.tsx:937:                  >
+apps/desktop/src/pages/providers.tsx:938:                    <Globe className="h-3 w-3 mr-1" />
+apps/desktop/src/pages/providers.tsx:939:                    {t("providers.homepage", { defaultValue: "Homepage" })}
+apps/desktop/src/pages/providers.tsx:940:                  </Button>
+apps/desktop/src/pages/providers.tsx:941:                )}
+apps/desktop/src/pages/providers.tsx:942:                {plugin.repository && (
+apps/desktop/src/pages/providers.tsx:943:                  <Button
+apps/desktop/src/pages/providers.tsx:944:                    variant="outline"
+apps/desktop/src/pages/providers.tsx:945:                    size="sm"
+apps/desktop/src/pages/providers.tsx:946:                    onClick={() => openUrl(plugin.repository!)}
+apps/desktop/src/pages/about.tsx:35:  useEffect(() => {
+apps/desktop/src/pages/about.tsx:36:    getVersion().then(setAppVersion).catch(console.error);
+apps/desktop/src/pages/about.tsx:37:  }, []);
+apps/desktop/src/pages/about.tsx:38:
+apps/desktop/src/pages/about.tsx:39:  // Animation variants for staggered entrance
+apps/desktop/src/pages/about.tsx:40:  const containerVariants = {
+apps/desktop/src/pages/about.tsx:41:    hidden: { opacity: 0 },
+apps/desktop/src/pages/about.tsx:42:    visible: {
+apps/desktop/src/pages/about.tsx:43:      opacity: 1,
+apps/desktop/src/pages/about.tsx:44:      transition: {
+apps/desktop/src/pages/about.tsx:45:        staggerChildren: prefersReducedMotion ? 0 : 0.1,
+apps/desktop/src/pages/about.tsx:46:        delayChildren: prefersReducedMotion ? 0 : 0.05,
+apps/desktop/src/pages/about.tsx:47:      },
+apps/desktop/src/pages/about.tsx:48:    },
+apps/desktop/src/pages/about.tsx:49:  };
+apps/desktop/src/pages/about.tsx:50:
+apps/desktop/src/pages/about.tsx:51:  const itemVariants = {
+apps/desktop/src/pages/about.tsx:52:    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 20 },
+apps/desktop/src/pages/about.tsx:53:    visible: {
+apps/desktop/src/pages/about.tsx:54:      opacity: 1,
+apps/desktop/src/pages/about.tsx:55:      y: 0,
+apps/desktop/src/pages/about.tsx:56:      transition: {
+apps/desktop/src/pages/about.tsx:57:        duration: prefersReducedMotion ? 0 : 0.3,
+apps/desktop/src/pages/about.tsx:58:        ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ease-out-expo
+apps/desktop/src/pages/about.tsx:59:      },
+apps/desktop/src/pages/about.tsx:60:    },
+apps/desktop/src/pages/about.tsx:61:  };
+apps/desktop/src/pages/about.tsx:62:
+apps/desktop/src/pages/about.tsx:63:  // Setup status
+apps/desktop/src/pages/about.tsx:64:  const pythonValid = selectedPython?.is_valid ?? false;
+apps/desktop/src/pages/about.tsx:65:  const mcpInstalled = browseMcpInfo?.installed ?? false;
+apps/desktop/src/pages/about.tsx:66:  const isSetupComplete = pythonValid && mcpInstalled;
+apps/desktop/src/pages/about.tsx:67:
+apps/desktop/src/pages/about.tsx:68:  // Handle external link click using Tauri opener
+apps/desktop/src/pages/about.tsx:69:  const handleExternalLink = async (url: string) => {
+apps/desktop/src/pages/about.tsx:70:    try {
+apps/desktop/src/pages/about.tsx:71:      await openUrl(url);
+apps/desktop/src/pages/settings/account-section/index.tsx:46:  useEffect(() => {
+apps/desktop/src/pages/settings/account-section/index.tsx:47:    fetch("http://127.0.0.1:18790/api/accounts")
+apps/desktop/src/pages/settings/account-section/index.tsx:48:      .then((r) => r.json())
+apps/desktop/src/pages/settings/account-section/index.tsx:49:      .then((data) => setTradingAccounts(data.accounts ?? []))
+apps/desktop/src/pages/settings/account-section/index.tsx:50:      .catch(() => {});
+apps/desktop/src/pages/settings/account-section/index.tsx:51:  }, [tradingDialogOpen]);
+apps/desktop/src/pages/settings/account-section/index.tsx:52:
+apps/desktop/src/pages/settings/account-section/index.tsx:53:  // Dev mode: manual OAuth code input
+apps/desktop/src/pages/settings/account-section/index.tsx:54:  const isDev = import.meta.env.DEV;
+apps/desktop/src/pages/settings/account-section/index.tsx:55:  const [showDevOAuth, setShowDevOAuth] = useState(false);
+apps/desktop/src/pages/settings/account-section/index.tsx:56:  const [oauthCode, setOauthCode] = useState("");
+apps/desktop/src/pages/settings/account-section/index.tsx:57:  const [formError, setFormError] = useState<string | null>(null);
+apps/desktop/src/pages/settings/account-section/index.tsx:58:
+apps/desktop/src/pages/settings/account-section/index.tsx:59:  // Clear timers
+apps/desktop/src/pages/settings/account-section/index.tsx:60:  const clearTimers = useCallback(() => {
+apps/desktop/src/pages/settings/account-section/index.tsx:61:    if (timeoutRef.current) {
+apps/desktop/src/pages/settings/account-section/index.tsx:62:      clearTimeout(timeoutRef.current);
+apps/desktop/src/pages/settings/account-section/index.tsx:63:      timeoutRef.current = null;
+apps/desktop/src/pages/settings/account-section/index.tsx:64:    }
+apps/desktop/src/pages/settings/account-section/index.tsx:65:    if (stepIntervalRef.current) {
+apps/desktop/src/pages/settings/account-section/index.tsx:66:      clearInterval(stepIntervalRef.current);
+apps/desktop/src/pages/settings/account-section/index.tsx:67:      stepIntervalRef.current = null;
+apps/desktop/src/pages/settings/account-section/index.tsx:68:    }
+apps/desktop/src/pages/settings/account-section/index.tsx:69:  }, []);
+apps/desktop/src/pages/settings/account-section/index.tsx:70:
+apps/desktop/src/pages/settings/account-section/index.tsx:71:  // Handle successful auth
+apps/desktop/src/pages/settings/account-section/index.tsx:72:  useEffect(() => {
+apps/desktop/src/pages/settings/account-section/index.tsx:73:    if (isAuthenticated && oauthStatus === "waiting") {
+apps/desktop/src/pages/settings/account-section/index.tsx:74:      clearTimers();
+apps/desktop/src/pages/settings/account-section/index.tsx:75:      setOauthStatus("success");
+apps/desktop/src/pages/settings/account-section/index.tsx:76:      setCurrentStep(2);
+apps/desktop/src/pages/settings/account-section/index.tsx:77:    }
+apps/desktop/src/pages/settings/account-section/index.tsx:78:  }, [isAuthenticated, oauthStatus, clearTimers]);
+apps/desktop/src/pages/settings/account-section/index.tsx:79:
+apps/desktop/src/pages/settings/account-section/index.tsx:80:  // Cleanup on unmount
+apps/desktop/src/pages/settings/account-section/index.tsx:81:  useEffect(() => {
+apps/desktop/src/pages/settings/account-section/index.tsx:82:    return () => clearTimers();
+apps/desktop/src/pages/settings/account-section/index.tsx:83:  }, [clearTimers]);
+apps/desktop/src/pages/settings/account-section/index.tsx:84:
+apps/desktop/src/pages/settings/account-section/index.tsx:85:  const startOAuthFlow = async () => {
+apps/desktop/src/pages/settings/account-section/index.tsx:86:    clearError();
+apps/desktop/src/pages/settings/account-section/index.tsx:87:    setFormError(null);
+apps/desktop/src/pages/settings/account-section/index.tsx:88:    setOauthStatus("waiting");
+apps/desktop/src/pages/settings/account-section/index.tsx:89:    setCurrentStep(0);
+apps/desktop/src/pages/settings/account-section/index.tsx:90:
+apps/desktop/src/pages/settings/account-section/index.tsx:91:    try {
+apps/desktop/src/pages/settings/account-section/index.tsx:92:      await loginWithGitHub();
+apps/desktop/src/pages/settings/account-section/index.tsx:93:
+apps/desktop/src/pages/settings/account-section/index.tsx:94:      if (isDev) {
+apps/desktop/src/pages/settings/account-section/index.tsx:95:        setShowDevOAuth(true);
+apps/desktop/src/pages/settings/account-section/index.tsx:96:      }
+apps/desktop/src/pages/settings/account-section/index.tsx:97:
+apps/desktop/src/pages/settings/account-section/index.tsx:98:      let step = 0;
+apps/desktop/src/pages/settings/account-section/index.tsx:99:      stepIntervalRef.current = setInterval(() => {
+apps/desktop/src/pages/settings/account-section/index.tsx:100:        if (step < 1) {
+apps/desktop/src/pages/settings/account-section/index.tsx:101:          step++;
+apps/desktop/src/pages/settings/account-section/index.tsx:102:          setCurrentStep(step);
+apps/desktop/src/pages/settings/account-section/index.tsx:103:        }
+apps/desktop/src/pages/settings/account-section/index.tsx:104:      }, 2000);
+apps/desktop/src/pages/settings/account-section/index.tsx:105:
+apps/desktop/src/pages/settings/account-section/index.tsx:106:      timeoutRef.current = setTimeout(() => {
+apps/desktop/src/pages/settings/account-section/index.tsx:107:        clearTimers();
+apps/desktop/src/pages/settings/account-section/index.tsx:108:        setOauthStatus("timeout");
+apps/desktop/src/pages/settings/account-section/index.tsx:109:        setLoading(false);
+apps/desktop/src/pages/settings/account-section/index.tsx:110:      }, OAUTH_TIMEOUT_MS);
+apps/desktop/src/pages/settings/account-section/index.tsx:111:    } catch (err) {
+apps/desktop/src/pages/settings/account-section/index.tsx:112:      console.error("[AccountSection] OAuth flow failed:", err);
+apps/desktop/src/pages/settings/account-section/index.tsx:113:      setOauthStatus("error");
+apps/desktop/src/pages/settings/account-section/index.tsx:114:    }
+apps/desktop/src/pages/settings/account-section/index.tsx:115:  };
+apps/desktop/src/pages/settings/account-section/index.tsx:116:
+apps/desktop/src/pages/settings/account-section/index.tsx:117:  const cancelOAuth = () => {
+apps/desktop/src/pages/settings/account-section/index.tsx:118:    clearTimers();
+apps/desktop/src/pages/settings/account-section/index.tsx:119:    clearError();
+apps/desktop/src/pages/settings/account-section/index.tsx:120:    setFormError(null);
+apps/desktop/src/pages/settings/account-section/index.tsx:121:    setOauthStatus("idle");
+apps/desktop/src/pages/settings/account-section/index.tsx:122:    setShowDevOAuth(false);
+apps/desktop/src/pages/settings/account-section/index.tsx:123:    setOauthCode("");
+apps/desktop/src/pages/settings/account-section/index.tsx:124:    setLoading(false);
+apps/desktop/src/pages/settings/account-section/index.tsx:125:  };
+apps/desktop/src/pages/settings/account-section/index.tsx:126:
+apps/desktop/src/pages/settings/account-section/index.tsx:127:  // Dev mode: handle manual OAuth code submission
+apps/desktop/src/pages/settings/account-section/index.tsx:128:  const handleDevOAuthSubmit = async (e: React.FormEvent) => {
+apps/desktop/src/pages/settings/account-section/index.tsx:129:    e.preventDefault();
+apps/desktop/src/pages/settings/account-section/index.tsx:130:    if (!oauthCode.trim()) {
+apps/desktop/src/pages/settings/account-section/index.tsx:131:      setFormError(t("auth.oauthCodeRequired"));
+apps/desktop/src/pages/settings/account-section/index.tsx:132:      return;
+apps/desktop/src/pages/settings/account-section/index.tsx:133:    }
+apps/desktop/src/pages/settings/account-section/index.tsx:134:    try {
+apps/desktop/src/pages/settings/account-section/index.tsx:135:      await handleOAuthCallback(oauthCode.trim());
+apps/desktop/src/pages/settings/account-section/index.tsx:136:    } catch (err) {
+apps/desktop/src/pages/settings/account-section/index.tsx:137:      // Error is surfaced in UI via the useAuth hook's error state
+apps/desktop/src/pages/settings/account-section/index.tsx:138:      console.error("[AccountSection] OAuth callback failed:", err);
+apps/desktop/src/pages/settings/account-section/index.tsx:139:    }
+apps/desktop/src/pages/settings/account-section/index.tsx:140:  };
+apps/desktop/src/pages/settings/account-section/index.tsx:141:
+apps/desktop/src/pages/settings/account-section/index.tsx:142:  // Handle external link click using Tauri opener
+apps/desktop/src/pages/settings/account-section/index.tsx:143:  const handleExternalLink = async (url: string) => {
+apps/desktop/src/pages/settings/account-section/index.tsx:144:    try {
+apps/desktop/src/pages/settings/account-section/index.tsx:145:      await openUrl(url);
