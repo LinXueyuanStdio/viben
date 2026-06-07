@@ -19,7 +19,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import { cn } from "@viben/ui";
-import { formatI18nTemplate, getDisplayPath } from "./utils";
+import { getDisplayPath } from "./utils";
 import type { AgentMessage, ContentBlock, ExpandSubagentHandler } from "./types";
 import type { TFunction } from "i18next";
 
@@ -237,13 +237,6 @@ function formatFriendlySubagentType(subagentType: string | undefined): string {
     .trim() || "Sub-Agent";
 }
 
-function formatTranslated(
-  value: string,
-  vars: Record<string, string | number | undefined>
-): string {
-  return formatI18nTemplate(value, vars);
-}
-
 /**
  * Check if output is an expected non-fatal message (warning, not error)
  */
@@ -447,10 +440,10 @@ function useResultSummaryFromString(
     case "Bash":
       if (lineCount === 0) return { summary: t("chat.toolResult.noOutput", "(No output)"), isWarning: false };
       if (lineCount === 1) return { summary: lines[0].slice(0, 80), isWarning: false };
-      return { summary: formatTranslated(t("chat.toolResult.linesOfOutput", { defaultValue: "{{count}} lines of output", count: lineCount }) as string, { count: lineCount }), isWarning: false };
+      return { summary: t("chat.toolResult.linesOfOutput", { defaultValue: `${lineCount} lines of output`, count: lineCount }) as string, isWarning: false };
 
     case "Read":
-      return { summary: formatTranslated(t("chat.toolResult.readLines", { defaultValue: "Read {{count}} lines", count: lineCount }) as string, { count: lineCount }), isWarning: false };
+      return { summary: t("chat.toolResult.readLines", { defaultValue: `Read ${lineCount} lines`, count: lineCount }) as string, isWarning: false };
 
     case "Write":
       return { summary: t("chat.toolResult.fileCreated", "File created successfully"), isWarning: false };
@@ -461,14 +454,14 @@ function useResultSummaryFromString(
 
     case "Grep":
       if (lineCount === 0) return { summary: t("chat.toolResult.noMatchesFound", "No matches found"), isWarning: false };
-      return { summary: formatTranslated(t("chat.toolResult.foundMatchesInFiles", { defaultValue: "Found matches in {{count}} files", count: lineCount }) as string, { count: lineCount }), isWarning: false };
+      return { summary: t("chat.toolResult.foundMatchesInFiles", { defaultValue: `Found matches in ${lineCount} files`, count: lineCount }) as string, isWarning: false };
 
     case "Glob":
       if (lineCount === 0) return { summary: t("chat.toolResult.noFilesFound", "No files found"), isWarning: false };
-      return { summary: formatTranslated(t("chat.toolResult.foundFiles", { defaultValue: "Found {{count}} files", count: lineCount }) as string, { count: lineCount }), isWarning: false };
+      return { summary: t("chat.toolResult.foundFiles", { defaultValue: `Found ${lineCount} files`, count: lineCount }) as string, isWarning: false };
 
     case "WebFetch":
-      return { summary: formatTranslated(t("chat.toolResult.fetchedCharacters", { defaultValue: "Fetched {{count}} characters", count: cleanOutput.length }) as string, { count: cleanOutput.length }), isWarning: false };
+      return { summary: t("chat.toolResult.fetchedCharacters", { defaultValue: `Fetched ${cleanOutput.length} characters`, count: cleanOutput.length }) as string, isWarning: false };
 
     case "WebSearch":
       return { summary: t("chat.toolResult.searchCompleted", "Search completed"), isWarning: false };
@@ -486,7 +479,7 @@ function useResultSummaryFromString(
 
     default:
       return {
-        summary: lineCount > 0 ? formatTranslated(t("chat.toolResult.lines", { defaultValue: "{{count}} lines", count: lineCount }) as string, { count: lineCount }) : t("chat.toolResult.noContent", "(No content)"),
+        summary: lineCount > 0 ? t("chat.toolResult.lines", { defaultValue: `${lineCount} lines`, count: lineCount }) as string : t("chat.toolResult.noContent", "(No content)"),
         isWarning: false,
       };
   }
@@ -690,32 +683,34 @@ function getProgressText(
     case "Read": {
       const filename = getDisplayPath((input.file_path as string) || "");
       return filename
-        ? formatTranslated(t("chat.activity.readingFile", { defaultValue: "Reading {{file}}...", file: filename }) as string, { file: filename })
+        ? t("chat.activity.readingFile", { defaultValue: `Reading ${filename}...`, file: filename })
         : t("chat.running", "Running...");
     }
     case "Write": {
       const filename = getDisplayPath((input.file_path as string) || "");
       return filename
-        ? formatTranslated(t("chat.activity.writingFile", { defaultValue: "Writing {{file}}...", file: filename }) as string, { file: filename })
+        ? t("chat.activity.writingFile", { defaultValue: `Writing ${filename}...`, file: filename })
         : t("chat.running", "Running...");
     }
     case "Edit":
     case "MultiEdit": {
       const filename = getDisplayPath((input.file_path as string) || "");
       return filename
-        ? formatTranslated(t("chat.activity.editingFile", { defaultValue: "Editing {{file}}...", file: filename }) as string, { file: filename })
+        ? t("chat.activity.editingFile", { defaultValue: `Editing ${filename}...`, file: filename })
         : t("chat.running", "Running...");
     }
     case "Grep": {
       const pattern = (input.pattern as string) || "";
+      const displayPattern = pattern.slice(0, 40);
       return pattern
-        ? formatTranslated(t("chat.activity.searching", { defaultValue: "Searching \"{{pattern}}\"...", pattern: pattern.slice(0, 40) }) as string, { pattern: pattern.slice(0, 40) })
+        ? t("chat.activity.searching", { defaultValue: `Searching "${displayPattern}"...`, pattern: displayPattern })
         : t("chat.running", "Running...");
     }
     case "Glob": {
       const pattern = (input.pattern as string) || "";
+      const displayPattern = pattern.slice(0, 40);
       return pattern
-        ? formatTranslated(t("chat.activity.findingFiles", { defaultValue: "Finding {{pattern}}...", pattern: pattern.slice(0, 40) }) as string, { pattern: pattern.slice(0, 40) })
+        ? t("chat.activity.findingFiles", { defaultValue: `Finding ${displayPattern}...`, pattern: displayPattern })
         : t("chat.running", "Running...");
     }
     default:

@@ -851,13 +851,10 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
         const cmd = input?.command ? String(input.command).trim() : "";
         if (cmd) {
           const command = truncate(cmd, 60);
-          return formatI18nTemplate(
-            String(t("chat.activity.runningCommand", {
-              defaultValue: "Running: {{command}}",
-              command,
-            })),
-            { command }
-          );
+          return t("chat.activity.runningCommand", {
+            defaultValue: `Running: ${command}`,
+            command,
+          });
         }
         return t("chat.activity.runningCommand", {
           defaultValue: "Running command...",
@@ -868,51 +865,39 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
           ? shortPath(String(input.file_path))
           : "";
         const file = readFile || "file";
-        return formatI18nTemplate(
-          String(t("chat.activity.readingFile", {
-            defaultValue: "Reading {{file}}...",
-            file,
-          })),
-          { file }
-        );
+        return t("chat.activity.readingFile", {
+          defaultValue: `Reading ${file}...`,
+          file,
+        });
       }
       case "Write": {
         const writeFile = input?.file_path
           ? shortPath(String(input.file_path))
           : "";
         const file = writeFile || "file";
-        return formatI18nTemplate(
-          String(t("chat.activity.writingFile", {
-            defaultValue: "Writing {{file}}...",
-            file,
-          })),
-          { file }
-        );
+        return t("chat.activity.writingFile", {
+          defaultValue: `Writing ${file}...`,
+          file,
+        });
       }
       case "Edit": {
         const editFile = input?.file_path
           ? shortPath(String(input.file_path))
           : "";
         const file = editFile || "file";
-        return formatI18nTemplate(
-          String(t("chat.activity.editingFile", {
-            defaultValue: "Editing {{file}}...",
-            file,
-          })),
-          { file }
-        );
+        return t("chat.activity.editingFile", {
+          defaultValue: `Editing ${file}...`,
+          file,
+        });
       }
       case "Grep": {
         const pattern = input?.pattern ? String(input.pattern) : "";
         if (pattern) {
           const displayPattern = truncate(pattern, 40);
-          return formatI18nTemplate(
-            String(t("chat.activity.searching", {
-              defaultValue: 'Searching for "{{pattern}}"...',
-              pattern: displayPattern,
-            })),
-            { pattern: displayPattern }
-          );
+          return t("chat.activity.searching", {
+            defaultValue: `Searching for "${displayPattern}"...`,
+            pattern: displayPattern,
+          });
         }
         return t("chat.activity.searching", {
           defaultValue: "Searching...",
@@ -922,13 +907,10 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
         const globPattern = input?.pattern ? String(input.pattern) : "";
         if (globPattern) {
           const pattern = truncate(globPattern, 40);
-          return formatI18nTemplate(
-            String(t("chat.activity.findingFiles", {
-              defaultValue: "Finding files: {{pattern}}...",
-              pattern,
-            })),
-            { pattern }
-          );
+          return t("chat.activity.findingFiles", {
+            defaultValue: `Finding files: ${pattern}...`,
+            pattern,
+          });
         }
         return t("chat.activity.findingFiles", {
           defaultValue: "Finding files...",
@@ -942,13 +924,10 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
       case "Agent":
         return t("chat.activity.runningSubtask", "Running subtask...");
       default:
-        return formatI18nTemplate(
-          String(t("chat.activity.runningTool", {
-            defaultValue: "Running {{name}}...",
-            name: lastToolUse.name,
-          })),
-          { name: lastToolUse.name }
-        );
+        return t("chat.activity.runningTool", {
+          defaultValue: `Running ${lastToolUse.name}...`,
+          name: lastToolUse.name,
+        });
     }
   }, [lastToolUse, t]);
 
