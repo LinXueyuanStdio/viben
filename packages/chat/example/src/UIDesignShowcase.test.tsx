@@ -63,6 +63,7 @@ describe("UIShowCasesPage", () => {
         onToggleContextPanel={vi.fn()}
         onToggleTool={vi.fn()}
         onToggleSkill={vi.fn()}
+        onInspectTool={vi.fn()}
       />
     );
 

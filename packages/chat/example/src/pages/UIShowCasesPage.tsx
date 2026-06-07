@@ -55,6 +55,7 @@ export type UIShowCasesPageProps = {
   onToggleContextPanel: () => void
   onToggleTool: (toolId: string) => void
   onToggleSkill: (skillId: string) => void
+  onInspectTool: (message: AgentMessage) => void
 }
 
 export type UIShowcaseDemoOverlayProps = {
@@ -100,6 +101,7 @@ export function UIShowCasesPage({
   onToggleContextPanel,
   onToggleTool,
   onToggleSkill,
+  onInspectTool,
 }: UIShowCasesPageProps) {
   const { t } = useTranslation()
 
@@ -215,10 +217,10 @@ export function UIShowCasesPage({
       <DashboardCard className="space-y-3">
         <SectionLabel>{t("example.sections.toolExecution", "ToolExecutionItem (4 states)")}</SectionLabel>
         <div className="space-y-1">
-          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Grep", input: { pattern: "TODO" } } }} status="queued" compact />
-          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Bash", input: { command: "pnpm test" } } }} status="executing" compact />
-          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Read", input: { file_path: "/src/App.tsx" } }, result: { type: "tool_result", output: "File content here..." } }} status="success" compact />
-          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Write", input: { file_path: "/src/utils.ts" } }, result: { type: "tool_result", output: "Permission denied", isError: true } }} status="error" compact />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Grep", input: { pattern: "TODO" } } }} status="queued" compact onInspectTool={onInspectTool} />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Bash", input: { command: "pnpm test" } } }} status="executing" compact onInspectTool={onInspectTool} />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Read", input: { file_path: "/src/App.tsx" } }, result: { type: "tool_result", output: "File content here..." } }} status="success" compact onInspectTool={onInspectTool} />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Write", input: { file_path: "/src/utils.ts" } }, result: { type: "tool_result", output: "Permission denied", isError: true } }} status="error" compact onInspectTool={onInspectTool} />
         </div>
       </DashboardCard>
 
