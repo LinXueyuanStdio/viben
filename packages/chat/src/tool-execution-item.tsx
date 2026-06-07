@@ -1032,10 +1032,6 @@ export function ToolExecutionItem({
 
           {isRunning && hasSubagentPreviewMessages && (
             <div className="border-t border-border/60 bg-muted/20 px-2.5 py-2">
-              <div className="mb-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
-                <span>{t("chat.subagentLivePreview", "Subagent activity")}</span>
-              </div>
               <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
                 {subagentPreviewMessages!.slice(-8).map((msg, idx) => (
                   <SubagentPreviewRow key={msg.id || idx} message={msg} />

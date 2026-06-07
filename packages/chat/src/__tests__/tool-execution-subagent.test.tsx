@@ -100,7 +100,7 @@ describe("ToolExecutionItem subagent cards", () => {
     );
   });
 
-  test("renders running subagent preview rows inside the Agent card", () => {
+  test("renders running subagent preview rows inside the Agent card without a definition label", () => {
     render(
       <ToolExecutionItem
         name="Agent"
@@ -127,7 +127,7 @@ describe("ToolExecutionItem subagent cards", () => {
       />
     );
 
-    expect(screen.getByText("Subagent activity")).toBeInTheDocument();
+    expect(screen.queryByText("Subagent activity")).not.toBeInTheDocument();
     expect(screen.getByText("Grep")).toBeInTheDocument();
     expect(screen.getByText("Found the width constant usage")).toBeInTheDocument();
   });
