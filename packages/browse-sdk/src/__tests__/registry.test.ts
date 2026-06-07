@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   BrowseSourceRegistry,
+  createDefaultSources,
+  loadBrowsePluginSources,
   Paper,
   getHierarchicalName,
   normalizeSourceName,
@@ -47,6 +52,24 @@ class FakeSource implements PaperSource {
   }
 }
 
+const envKeys = ["BROWSE_MCP_PLUGIN_DIRS"] as const;
+const originalEnv = new Map<string, string | undefined>();
+
+for (const key of envKeys) {
+  originalEnv.set(key, process.env[key]);
+}
+
+afterEach(() => {
+  for (const key of envKeys) {
+    const value = originalEnv.get(key);
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+});
+
 describe("source naming", () => {
   it("maps flat source names to provider/source hierarchy", () => {
     expect(getHierarchicalName("arxiv")).toBe("academic/arxiv");
@@ -78,5 +101,89 @@ describe("BrowseSourceRegistry", () => {
       "academic/crossref": "crossref",
       "publisher/scopus": "scopus",
     });
+  });
+});
+
+describe("browse source plugins", () => {
+  it("loads local browse plugin sources from plugin manifests", async () => {
+    const pluginsDir = await mkdtemp(join(tmpdir(), "browse-plugin-test-"));
+    const pluginDir = join(pluginsDir, "browse-plugin-test-source");
+    await mkdir(pluginDir, { recursive: true });
+    await writeFile(join(pluginDir, "browse-plugin.json"), JSON.stringify({
+      name: "browse-plugin-test-source",
+      sources: [
+        {
+          name: "test_search",
+          module: "./source.cjs",
+        },
+      ],
+    }, null, 2));
+    await writeFile(join(pluginDir, "source.cjs"), `
+      class TestSource {
+        async search(query) {
+          return [{
+            paper_id: "test:" + query,
+            title: "Plugin " + query,
+            source: "test_search"
+          }];
+        }
+        async downloadPdf(contentId, savePath) {
+          return savePath + "/" + contentId + ".txt";
+        }
+        async download(contentId, savePath) {
+          return this.downloadPdf(contentId, savePath);
+        }
+        async readPaper(contentId) {
+          return "plugin:" + contentId;
+        }
+        async read(contentId) {
+          return this.readPaper(contentId);
+        }
+      }
+      module.exports = { source: new TestSource() };
+    `);
+
+    const sources = loadBrowsePluginSources([pluginsDir]);
+
+    expect(Object.keys(sources)).toEqual(["test_search"]);
+    await expect(sources.test_search.search("agents")).resolves.toMatchObject([
+      {
+        paper_id: "test:agents",
+        title: "Plugin agents",
+        source: "test_search",
+      },
+    ]);
+  });
+
+  it("merges plugin sources into the default source set", async () => {
+    const pluginsDir = await mkdtemp(join(tmpdir(), "browse-plugin-default-test-"));
+    const pluginDir = join(pluginsDir, "browse-plugin-default-source");
+    await mkdir(pluginDir, { recursive: true });
+    await writeFile(join(pluginDir, "browse-plugin.json"), JSON.stringify({
+      name: "browse-plugin-default-source",
+      sources: [
+        {
+          name: "default_test_search",
+          module: "./source.cjs",
+        },
+      ],
+    }, null, 2));
+    await writeFile(join(pluginDir, "source.cjs"), `
+      module.exports = {
+        source: {
+          async search() { return []; },
+          async downloadPdf(contentId, savePath) { return savePath + "/" + contentId; },
+          async download(contentId, savePath) { return savePath + "/" + contentId; },
+          async readPaper(contentId) { return contentId; },
+          async read(contentId) { return contentId; }
+        }
+      };
+    `);
+    process.env.BROWSE_MCP_PLUGIN_DIRS = pluginsDir;
+
+    const sources = createDefaultSources();
+
+    expect(sources.default_test_search).toBeDefined();
+    expect(sources.arxiv).toBeDefined();
   });
 });

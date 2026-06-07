@@ -9,6 +9,7 @@ import { BioRxivSearcher, MedRxivSearcher } from "./preprint";
 import { PubMedSearcher } from "./pubmed";
 import { SemanticSearcher } from "./semantic";
 import { EmptySearchInstitutionalSource } from "./simple";
+import { loadBrowsePluginSources } from "../plugins";
 
 export { ArxivSearcher } from "./arxiv";
 export { CORESearcher, IEEESearcher, ScienceDirectSearcher, ScopusSearcher, SpringerSearcher, WOSSearcher } from "./api-sources";
@@ -52,5 +53,6 @@ export function createDefaultSources(): Record<string, PaperSource> {
       "PDF not found: {path}. ResearchGate requires manual download."
     ),
     google_scholar: new GoogleScholarSearcher(),
+    ...loadBrowsePluginSources(),
   };
 }
