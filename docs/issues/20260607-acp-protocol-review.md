@@ -25,7 +25,7 @@
     - 普通 `session/prompt` 执行前会把已消费 steer 合并进本次 backend prompt。
     - 已补回归测试：`injects queued steer prompts into the next normal agent prompt`。
 
-- [ ] **SQLite steer 消费不是原子操作**
+- [x] **SQLite steer 消费不是原子操作**
   - 影响：多 worker 或并发连接下可能重复发送 consumed 通知，未来注入实现后也可能重复注入。
   - 位置：
     - `/root/viben/packages/core/src/acp/ops/steer-prompt-store.ts`
@@ -33,6 +33,9 @@
     - `SELECT queued ids -> UPDATE -> get` 不是单个原子消费流程；竞争失败方仍可能读到 `consumed` 并误认为自己消费成功。
   - 期望：
     - 只有成功把记录从 `queued` 更新为 `consumed` 的 worker 返回该记录。
+  - 修复：
+    - SQLite `consumeNext` / `consumeQueued` 会检查 UPDATE `changes`，只有实际完成 `queued -> consumed` 的 worker 返回记录。
+    - 已补回归测试：竞争失败时不返回 consumed 记录。
 
 ## High
 
@@ -53,12 +56,15 @@
   - 期望：
     - pending request 与 UI step 应有稳定 id 绑定；或至少 queue 化 resolver，保证 UI 显示哪个 pending 就 resolve 哪个 request。
 
-- [ ] **`session/interrupt` 仍可能卡在 `backend.cancel()`**
+- [x] **`session/interrupt` 仍可能卡在 `backend.cancel()`**
   - 影响：如果后端 cancel 不返回，interrupt request 仍会挂住。
   - 位置：
     - `/root/viben/packages/core/src/acp/ops/session-manager.ts`
   - 期望：
     - interrupt request 不等待无界 cancel；应有超时或 fire-and-log 行为。
+  - 修复：
+    - `session/interrupt` 改为异步触发 backend cancel，并记录失败，不等待无界 cancel。
+    - 已补回归测试：`returns from interrupt without waiting for backend cancel to finish`。
 
 - [ ] **`_viben/client_tool_call` 文档与实现不一致**
   - 影响：按文档实现的客户端会返回错误 envelope。
