@@ -156,28 +156,19 @@ export {
   ChatAppFullscreenInputPanel,
   ChatAppFullscreenMessagePanel,
   ChatAppFullscreenPanel,
-  DefaultExpandedHeaderMoreMenu,
   ExpandedHeader,
   ExpandedHeaderModeControls,
-  ExpandedHeaderNewSessionMenu,
-  ExpandedHeaderSessionMenu,
 } from "./chat-app";
 export type {
-  ChatAppAgentItem,
   ChatAppFullscreenCommandQueueProps,
   ChatAppFullscreenInputPanelProps,
   ChatAppFullscreenMessagePanelProps,
   ChatAppFullscreenPanelProps,
   ChatAppMode,
   ChatAppProps,
-  ChatAppSessionItem,
   ChatAppSubagentSheetState,
   ExpandedHeaderModeControlsProps,
-  ExpandedHeaderNewSessionMenuProps,
   ExpandedHeaderProps,
-  ExpandedHeaderSessionMenuProps,
-  OverlayAgentItem,
-  OverlaySessionItem,
 } from "./chat-app";
 
 // Subagent Sheet (side panel)
