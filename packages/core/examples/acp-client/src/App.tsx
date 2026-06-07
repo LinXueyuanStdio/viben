@@ -1127,11 +1127,11 @@ export function App() {
                       />
                     </Field>
                     <Field label="Input Schema JSON">
-                      <textarea
+                      <JsonEditorPanel
                         value={selectedAction.inputSchemaText}
-                        onChange={(event) => updateAction(setActions, selectedAction.id, { inputSchemaText: event.target.value })}
-                        className="textarea font-mono text-xs"
-                        rows={7}
+                        onChange={(value) => updateAction(setActions, selectedAction.id, { inputSchemaText: value })}
+                        size="row"
+                        mode="text"
                       />
                     </Field>
                     <div className="flex flex-wrap gap-2">
@@ -1224,19 +1224,19 @@ export function App() {
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <Field label="Request MCP Servers JSON">
-                  <textarea
+                  <JsonEditorPanel
                     value={requestMcpServersText}
-                    onChange={(event) => setRequestMcpServersText(event.target.value)}
-                    className="textarea font-mono text-xs"
-                    rows={5}
+                    onChange={setRequestMcpServersText}
+                    size="row"
+                    mode="text"
                   />
                 </Field>
                 <Field label="Executor Config JSON">
-                  <textarea
+                  <JsonEditorPanel
                     value={executorConfigText}
-                    onChange={(event) => setExecutorConfigText(event.target.value)}
-                    className="textarea font-mono text-xs"
-                    rows={5}
+                    onChange={setExecutorConfigText}
+                    size="row"
+                    mode="text"
                   />
                 </Field>
               </div>
@@ -1529,7 +1529,7 @@ export function App() {
           onReject={rejectToolDialog}
         />
       )}
-      {permissionDialog && (
+      {permissionDialog && viewMode === "inspector" && (
         <PermissionApprovalModal
           dialog={permissionDialog}
           onSelect={(optionId) => setPermissionDialog((current) => current ? { ...current, selectedOptionId: optionId } : current)}
