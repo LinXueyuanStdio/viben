@@ -26,6 +26,7 @@ type PetMotionPreset = {
   loop: boolean;
   root?: MotionValues;
   torso?: MotionValues;
+  head?: MotionValues;
   leftHand?: MotionValues;
   rightHand?: MotionValues;
   leftFoot?: MotionValues;
@@ -37,6 +38,7 @@ type PetMotionPreset = {
 type PetPose = {
   root?: MotionValues;
   torso?: MotionValues;
+  head?: MotionValues;
   leftHand?: MotionValues;
   rightHand?: MotionValues;
   leftFoot?: MotionValues;
@@ -92,12 +94,17 @@ const PET_STATE_META: Record<AssistantPetState, PetStateMeta> = {
 
 const PET_POSES: Record<AssistantPetState, PetPose> = {
   idle: {
+    head: { rotate: 1 },
     leftHand: { rotate: -8 },
     rightHand: { rotate: 8 },
+    leftFoot: { rotate: -2 },
+    rightFoot: { rotate: 2 },
     tail: { rotate: 12 },
   },
   waiting: {
     root: { y: -1, rotate: -1 },
+    torso: { scaleY: 1.01 },
+    head: { y: -1 },
     leftHand: { rotate: 6, x: 1 },
     rightHand: { rotate: -6, x: -1 },
     leftFoot: { y: -1 },
@@ -106,6 +113,8 @@ const PET_POSES: Record<AssistantPetState, PetPose> = {
   },
   review: {
     root: { x: -0.5 },
+    torso: { rotate: -1 },
+    head: { rotate: -2, y: 1 },
     rightHand: { rotate: 8, y: -1 },
     leftHand: { rotate: 2 },
     rightFoot: { x: 1 },
@@ -113,6 +122,7 @@ const PET_POSES: Record<AssistantPetState, PetPose> = {
   },
   waving: {
     root: { x: -1, rotate: -1 },
+    head: { rotate: 2 },
     rightHand: { rotate: 18, y: -3 },
     leftHand: { rotate: 4 },
     rightFoot: { y: -1.5 },
@@ -120,6 +130,8 @@ const PET_POSES: Record<AssistantPetState, PetPose> = {
   },
   failed: {
     root: { y: 2, scale: 0.98 },
+    torso: { scaleY: 0.96, scaleX: 1.02 },
+    head: { rotate: -3, y: 2 },
     leftHand: { rotate: -10, y: 2 },
     rightHand: { rotate: 10, y: 2 },
     leftFoot: { rotate: 6 },
@@ -130,52 +142,67 @@ const PET_POSES: Record<AssistantPetState, PetPose> = {
 
 const PET_MOTION_PRESETS: Record<AssistantPetState, PetMotionPreset> = {
   idle: {
-    duration: 2.8,
+    duration: 3.2,
     loop: true,
-    root: { y: [0, -1.5, 0] },
-    torso: { scaleY: [1, 0.985, 1], scaleX: [1, 1.008, 1] },
-    leftHand: { rotate: [0, -2, 0] },
-    rightHand: { rotate: [0, 2, 0] },
-    tail: { rotate: [0, 6, 0, -4, 0] },
+    root: { y: [0, -0.4, 0] },
+    torso: { scaleY: [1, 1.025, 1], scaleX: [1, 0.99, 1] },
+    head: { y: [0, -0.5, 0] },
+    leftHand: { rotate: [-8, -10, -8] },
+    rightHand: { rotate: [8, 10, 8] },
+    leftFoot: { scaleY: [1, 0.98, 1] },
+    rightFoot: { scaleY: [1, 0.98, 1] },
+    tail: { rotate: [12, 17, 9, 12] },
   },
   waiting: {
-    duration: 0.95,
+    duration: 0.9,
     loop: true,
-    root: { y: [0, -3, 0], scale: [1, 1.025, 1] },
-    leftHand: { rotate: [4, -5, 4] },
-    rightHand: { rotate: [-4, 5, -4] },
-    leftFoot: { y: [0, -1, 0] },
-    rightFoot: { y: [0, -1, 0] },
-    tail: { rotate: [-3, 3, -3] },
+    root: { y: [0, -0.8, 0], rotate: [-1, -2, -1] },
+    torso: { scaleY: [1, 1.03, 0.995, 1] },
+    head: { y: [0, -1, 0] },
+    leftHand: { rotate: [6, 11, 4, 6] },
+    rightHand: { rotate: [-6, -11, -4, -6] },
+    leftFoot: { y: [0, -0.5, 0] },
+    rightFoot: { y: [0, -2, 0], rotate: [0, 5, 0] },
+    face: { x: [0, 0.4, 0] },
+    tail: { rotate: [-3, 5, -5, -3] },
     status: { scale: [0.9, 1.22, 0.9], opacity: [0.75, 1, 0.75] },
   },
   review: {
-    duration: 1.2,
+    duration: 1.4,
     loop: true,
-    root: { rotate: [0, -1.5, 1, 0] },
+    root: { x: [-0.5, 0.5, -0.5], rotate: [-1, 1, -1] },
+    torso: { rotate: [-1.5, 1, -1.5] },
+    head: { rotate: [-3, 2, -2, -3], y: [1, 0, 1] },
     face: { x: [-0.8, 0.8, -0.8] },
-    rightHand: { rotate: [-6, 8, -3, 0] },
-    leftHand: { rotate: [2, -2, 2] },
+    rightHand: { rotate: [6, 14, 8, 11, 6], y: [-1, -2, -1] },
+    leftHand: { rotate: [2, -1, 2] },
     rightFoot: { x: [0, 1, 0] },
-    tail: { rotate: [2, -2, 2] },
-    status: { scale: [0.9, 1.08, 0.9], opacity: [0.8, 1, 0.8] },
+    tail: { rotate: [2, -3, 2] },
+    status: { scale: [0.95, 1.08, 0.95], opacity: [0.82, 1, 0.82] },
   },
   waving: {
-    duration: 0.6,
+    duration: 0.72,
     loop: false,
-    root: { x: [0, -1, 0], rotate: [0, -3, 0] },
-    rightHand: { rotate: [-12, 18, -8, 14, 0] },
-    leftHand: { rotate: [4, -3, 0] },
+    root: { x: [0, -1.2, -0.8, 0], rotate: [0, -2.5, -1, 0] },
+    torso: { rotate: [0, -2, -1, 0], scaleY: [1, 0.98, 1.02, 1] },
+    head: { rotate: [0, 3, 2, 0] },
+    rightHand: { rotate: [-12, 24, -8, 20, -4, 14], y: [0, -4, -2] },
+    leftHand: { rotate: [4, -4, 2, 4] },
     rightFoot: { y: [0, -1.5, 0] },
-    tail: { rotate: [0, -8, 6, 0] },
+    tail: { rotate: [14, 4, 20, 10, 16] },
+    status: { scale: [1, 1.15, 1] },
   },
   failed: {
-    duration: 0.42,
+    duration: 0.5,
     loop: false,
-    root: { x: [0, -3, 3, -1, 0], y: [0, 2, 1.5], rotate: [0, -4, 4, 0] },
-    leftHand: { rotate: [0, -10, -6] },
-    rightHand: { rotate: [0, 10, 6] },
-    tail: { rotate: [0, -18, -14] },
+    root: { x: [0, -2, 2, -0.5, 0], y: [0, 2.5, 2], rotate: [0, -4, 4, 0] },
+    torso: { scaleY: [1, 0.92, 0.96], scaleX: [1, 1.06, 1.02] },
+    head: { y: [0, 3, 2], rotate: [0, -5, -3] },
+    leftHand: { rotate: [0, -16, -10], y: [0, 3, 2] },
+    rightHand: { rotate: [0, 16, 10], y: [0, 3, 2] },
+    leftFoot: { rotate: [0, 8, 6] },
+    rightFoot: { rotate: [0, -8, -6] },
+    tail: { rotate: [0, -24, -16], y: [0, 3, 2] },
     status: { scale: [1, 1.35, 0.95, 1], opacity: [0.85, 1, 0.85] },
   },
 };
@@ -200,7 +227,7 @@ function usePreviousPetState(state: AssistantPetState) {
 }
 
 function getRightEyePath(path: string) {
-  return path.replace(/27/g, "45").replace(/35/g, "53");
+  return path.replace(/\b27\b/g, "45").replace(/\b31\b/g, "49").replace(/\b35\b/g, "53");
 }
 
 function getReducedMotionPreset(state: AssistantPetState): PetMotionPreset {
@@ -299,6 +326,15 @@ function PetArtwork({
         <circle cx="40" cy="41" r="29" fill={`url(#${bodyGradientId})`} stroke={`url(#${warmGradientId})`} strokeWidth="3" />
         <path d="M28 25 L40 35 L52 25" fill="none" stroke={`url(#${warmGradientId})`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
         <path d="M31 33 L40 55 L49 33" fill="none" stroke="oklch(0.22 0.04 220)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+      </motion.g>
+
+      <motion.g
+        data-testid="pet-head-layer"
+        animate={dynamic ? combineMotion(pose.head, preset.head, reducedMotion) : pose.head}
+        transition={getTransition(preset, reducedMotion, 0.04)}
+        style={{ transformOrigin: "40px 34px" }}
+      >
+        <path d="M29 26 Q40 19 51 26" fill="none" stroke={`url(#${warmGradientId})`} strokeWidth="2.5" strokeLinecap="round" opacity="0.38" />
       </motion.g>
 
       <motion.g
