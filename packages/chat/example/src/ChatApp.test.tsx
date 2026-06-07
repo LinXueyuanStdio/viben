@@ -595,13 +595,13 @@ describe("ChatApp", () => {
   });
 
   test("compact idle summary shows a single-line greeting", () => {
-    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0.99);
     render(
       <ChatApp
         mode="compact"
         title="Demo session title"
         messages={emptyMessages}
         isStreaming={false}
+        compactActivity={{ kind: "plain", text: "Let’s make progress." }}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -611,11 +611,9 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("agent-popup-title")).toHaveTextContent("Demo session title");
     expect(screen.getByTestId("agent-popup-summary")).toHaveTextContent("Let’s make progress.");
     expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
-
-    randomSpy.mockRestore();
   });
 
-  test("compact summary describes active tools with context on one line", () => {
+  test("compact summary is driven by the compactActivity prop", () => {
     render(
       <ChatApp
         mode="compact"
@@ -629,13 +627,14 @@ describe("ChatApp", () => {
           },
         ]}
         isStreaming
+        compactActivity={{ kind: "plain", text: "Host controlled status" }}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
       />
     );
 
-    expect(screen.getByTestId("agent-popup-summary")).toHaveTextContent("Reading packages/chat/example/src/ChatApp.tsx...");
+    expect(screen.getByTestId("agent-popup-summary")).toHaveTextContent("Host controlled status");
     expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
     expect(screen.queryByText("Read is working...")).not.toBeInTheDocument();
   });
@@ -646,6 +645,7 @@ describe("ChatApp", () => {
         mode="compact"
         messages={[{ id: "think-1", type: "thinking", content: "I am checking the active session." }]}
         isStreaming
+        compactActivity={{ kind: "thinking", text: "I am checking the active session." }}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}

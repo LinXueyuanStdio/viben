@@ -5,8 +5,6 @@ import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus
 import { Streamdown } from "streamdown";
 import { BackgroundTaskList, ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet, TodoListPanel } from "@viben/chat";
 import {
-  CHAT_APP_COMPACT_GREETING_COUNT,
-  CHAT_APP_COMPACT_GREETING_FALLBACKS,
   DEFAULT_CHAT_APP_AGENTS,
   DEFAULT_CHAT_APP_SESSIONS,
 } from "./ChatAppDemoData";
@@ -25,8 +23,6 @@ import type {
   SubagentOpenContext,
   TaskPlan,
 } from "@viben/chat";
-
-type Translate = ReturnType<typeof useTranslation>["t"];
 
 export type ChatAppMode = "floating" | "compact" | "expanded" | "full";
 export type SessionPlayerStatus = "idle" | "playing" | "paused";
@@ -73,6 +69,11 @@ export interface OverlayHeaderActions {
   onSelectAgent?: (agent: OverlayAgentItem) => void;
 }
 
+export type CompactActivitySummary = {
+  kind: "plain" | "thinking";
+  text: string;
+};
+
 export interface ChatAppProps {
   mode: ChatAppMode;
   messages: AgentMessage[];
@@ -91,6 +92,7 @@ export interface ChatAppProps {
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
   fullscreenContent?: React.ReactNode;
+  compactActivity?: CompactActivitySummary;
   renderHeader?: (props: ChatAppHeaderRenderProps) => React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   onExpandSubagent?: ExpandSubagentHandler;
@@ -177,10 +179,6 @@ const OVERLAY_RADIUS = {
 
 const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
 const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
-type CompactActivitySummary = {
-  kind: "plain" | "thinking";
-  text: string;
-};
 
 export function getAssistantPetState(
   messages: AgentMessage[],
@@ -227,6 +225,7 @@ export function ChatApp({
   onInputValueChange,
   inputProps,
   fullscreenContent,
+  compactActivity: compactActivityProp,
   renderHeader,
   messageListRef,
   onExpandSubagent,
@@ -252,14 +251,10 @@ export function ChatApp({
     onInputValueChange?.(value);
   }, [inputValue, onInputValueChange]);
 
-  const idleGreeting = React.useMemo(() => {
-    const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT));
-    return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index]);
-  }, [t]);
-  const compactActivity = React.useMemo(
-    () => getCompactActivitySummary(messages, t, idleGreeting),
-    [idleGreeting, messages, t]
-  );
+  const compactActivity = compactActivityProp ?? {
+    kind: "plain" as const,
+    text: t("chat_app.activity.ready", "Ready when you are."),
+  };
   const hasCompactDraft = content.trim().length > 0;
 
   const handleSubmit = React.useCallback(() => {
@@ -758,74 +753,6 @@ function ChatAppMessagePanel({
       </div>
     </>
   );
-}
-
-function getCompactActivitySummary(messages: AgentMessage[], t: Translate, idleGreeting: string): CompactActivitySummary {
-  const latest = [...messages].reverse().find((message) =>
-    (message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error") &&
-    (message.content || message.message || message.name)
-  );
-  if (!latest) return { kind: "plain", text: idleGreeting };
-  if (latest.type === "thinking") return { kind: "thinking", text: latest.content || t("chat_app.activity.thinking", "Thinking...") };
-  if (latest.type === "tool_use") return { kind: "plain", text: getToolActivityText(latest, t) };
-  if (latest.type === "error") return { kind: "plain", text: latest.message || latest.content || t("chat_app.activity.needs_attention", "Something needs attention.") };
-  return { kind: "plain", text: latest.content || latest.message || t("chat_app.activity.working", "Working...") };
-}
-
-function getToolActivityText(message: AgentMessage, t: Translate): string {
-  const input = message.input;
-  switch (message.name) {
-    case "Bash": {
-      const command = input?.command ? truncateText(String(input.command).trim(), 72) : "";
-      return command
-        ? t("chat_app.activity.running_command_named", "Running {{command}}", { command })
-        : t("chat_app.activity.running_command", "Running command...");
-    }
-    case "Read": {
-      return t("chat_app.activity.reading_file", "Reading {{file}}...", { file: getToolPath(input?.file_path, "file") });
-    }
-    case "Write": {
-      return t("chat_app.activity.writing_file", "Writing {{file}}...", { file: getToolPath(input?.file_path, "file") });
-    }
-    case "Edit":
-    case "MultiEdit": {
-      return t("chat_app.activity.editing_file", "Editing {{file}}...", { file: getToolPath(input?.file_path, "file") });
-    }
-    case "Grep": {
-      const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
-      return pattern
-        ? t("chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
-        : t("chat_app.activity.searching_workspace", "Searching workspace...");
-    }
-    case "Glob": {
-      const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
-      return pattern
-        ? t("chat_app.activity.finding", "Finding {{pattern}}...", { pattern })
-        : t("chat_app.activity.finding_files", "Finding files...");
-    }
-    case "WebSearch":
-      return t("chat_app.activity.searching_web", "Searching the web...");
-    case "WebFetch":
-      return t("chat_app.activity.fetching_page", "Fetching page content...");
-    case "Task":
-    case "Agent":
-      return t("chat_app.activity.running_agent_task", "Running a delegated agent task...");
-    default:
-      return message.name
-        ? t("chat_app.activity.running_tool", "Running {{name}}...", { name: message.name })
-        : t("chat_app.activity.working", "Working...");
-  }
-}
-
-function getToolPath(value: unknown, fallback: string): string {
-  if (!value) return fallback;
-  const raw = String(value);
-  const packageIndex = raw.indexOf("packages/");
-  return packageIndex >= 0 ? raw.slice(packageIndex) : raw.split("/").filter(Boolean).slice(-3).join("/") || fallback;
-}
-
-function truncateText(value: string, maxLength: number): string {
-  return value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value;
 }
 
 function ExpandedHeader({
