@@ -8,6 +8,7 @@ import {
   Wrench,
   CheckCircle2,
   Bot,
+  Loader2,
   X,
   FileText,
   FileCode,
@@ -219,6 +220,19 @@ function getToolParam(
 function truncateParam(param: string, maxLen: number = 60): string {
   if (param.length <= maxLen) return param;
   return param.slice(0, maxLen) + "...";
+}
+
+function formatFriendlySubagentType(subagentType: string | undefined): string {
+  if (!subagentType) return "Sub-Agent";
+  return subagentType
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (part.toUpperCase() === part) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join(" ") || "Sub-Agent";
 }
 
 function formatTranslated(
@@ -758,6 +772,34 @@ function SubagentPreviewRow({ message }: { message: AgentMessage }) {
   );
 }
 
+function SubagentPreview({ messages }: { messages: AgentMessage[] }) {
+  const visibleMessages = messages.slice(-5);
+
+  return (
+    <div
+      className="h-[132px] overflow-hidden rounded bg-muted/30 p-1.5"
+      data-testid="subagent-preview"
+    >
+      <AnimatePresence initial={false}>
+        <motion.div className="space-y-1">
+          {visibleMessages.map((message, index) => (
+            <motion.div
+              key={message.id || `${message.type}-${index}`}
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.16 }}
+            >
+              <SubagentPreviewRow message={message} />
+            </motion.div>
+          ))}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -816,8 +858,10 @@ export function ToolExecutionItem({
 
   // Auto-expand Task/Agent tool when running or when result arrives
   useEffect(() => {
-    if (isTaskTool && !canOpenSubagent && (isRunning || output)) setIsExpanded(true);
-  }, [canOpenSubagent, isRunning, isTaskTool, output]);
+    if (isTaskTool && ((isRunning && hasSubagentPreviewMessages) || (!canOpenSubagent && (isRunning || output)))) {
+      setIsExpanded(true);
+    }
+  }, [canOpenSubagent, hasSubagentPreviewMessages, isRunning, isTaskTool, output]);
 
   const hasDetails = input || output || hasSubagentMessages;
 
@@ -951,6 +995,10 @@ export function ToolExecutionItem({
       ? mergedSubagentMessages.filter(m => m.type === "tool_use").length
       : 0;
     const title = taskInput.description || taskInput.subagent_type || "Sub-Agent";
+    const subagentTitle = formatFriendlySubagentType(taskInput.subagent_type);
+    const latestSubagentActivity = isRunning && hasSubagentPreviewMessages
+      ? getPreviewText(subagentPreviewMessages![subagentPreviewMessages!.length - 1])
+      : "";
     const handleOpenSubagent = () => {
       if (!canOpenSubagent) return;
       onExpandSubagent(title, taskInput.subagent_type, subagentMessages ?? [], {
@@ -986,12 +1034,12 @@ export function ToolExecutionItem({
             >
               <StatusDot status={resolvedStatus} isWarning={isWarning} />
               <Bot className="h-3 w-3 shrink-0 text-violet-500" />
-              <span className="truncate font-semibold text-foreground">
-                {title}
+              <span className="min-w-0 truncate font-semibold text-foreground">
+                {subagentTitle}
               </span>
-              {taskInput.subagent_type && (
-                <span className="min-w-0 max-w-[140px] truncate rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400">
-                  {taskInput.subagent_type}
+              {taskInput.description && (
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                  ({taskInput.description})
                 </span>
               )}
               {toolUseCount > 0 && (
@@ -1024,19 +1072,15 @@ export function ToolExecutionItem({
           {/* Status line */}
           {(status === "executing" || status === "completed") && (
             <div className="px-2.5 pb-1.5 -mt-0.5">
-              <span className="text-[10px] text-muted-foreground ml-3.5">
-                ⎿ {status === "executing" ? t("chat.subAgentRunning", "Running…") : t("chat.done", "Done")}
+              <span className="ml-3.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="shrink-0">⎿</span>
+                {status === "executing" && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
+                <span className="min-w-0 truncate">
+                  {status === "executing"
+                    ? latestSubagentActivity || t("chat.subAgentRunning", "Running…")
+                    : t("chat.done", "Done")}
+                </span>
               </span>
-            </div>
-          )}
-
-          {isRunning && hasSubagentPreviewMessages && (
-            <div className="border-t border-border/60 bg-muted/20 px-2.5 py-2">
-              <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
-                {subagentPreviewMessages!.slice(-8).map((msg, idx) => (
-                  <SubagentPreviewRow key={msg.id || idx} message={msg} />
-                ))}
-              </div>
             </div>
           )}
 
@@ -1061,6 +1105,10 @@ export function ToolExecutionItem({
                         <code className="whitespace-pre-wrap break-words text-xs">{taskInput.prompt}</code>
                       </pre>
                     </details>
+                  )}
+
+                  {isRunning && hasSubagentPreviewMessages && (
+                    <SubagentPreview messages={subagentPreviewMessages!} />
                   )}
 
                   {/* Subagent messages (merged, rendered inline) */}
