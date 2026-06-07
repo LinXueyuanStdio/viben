@@ -188,6 +188,10 @@ export function permissionRequestToUiSteps(request: PermissionDecisionRequest): 
         title: request.title,
         kind: permissionKindFromOptions(request.options),
         command: permissionCommandSummary(request),
+        toolCallId: request.toolCallId,
+        toolName: permissionToolName(request),
+        input: request.rawInput,
+        details: permissionDetails(request),
       },
       options: permissionOptionsToApprovalOptions(request.options),
     },
@@ -392,12 +396,7 @@ function permissionOptionsToApprovalOptions(options: PermissionOption[]): Pendin
 }
 
 function permissionCommandSummary(request: PermissionDecisionRequest): string | undefined {
-  const command = rawInputToCommand(request.rawInput);
-  const details = [
-    request.toolCallId ? `toolCallId=${request.toolCallId}` : undefined,
-    command ? `input=${command}` : undefined,
-  ].filter(Boolean);
-  return details.length > 0 ? details.join(" ") : request.title;
+  return rawInputToCommand(request.rawInput) ?? request.title;
 }
 
 function permissionOptionLabel(option: PermissionOption, index: number): string {
@@ -406,10 +405,36 @@ function permissionOptionLabel(option: PermissionOption, index: number): string 
   return `${base}${id}`;
 }
 
+function permissionToolName(request: PermissionDecisionRequest): string | undefined {
+  const toolCall = request.toolCall;
+  if (!isRecord(toolCall)) return undefined;
+  return readString(toolCall.title) ?? readString(toolCall.name) ?? readString(toolCall.toolName);
+}
+
+function permissionDetails(request: PermissionDecisionRequest): Array<{ label: string; value: string }> {
+  const details: Array<{ label: string; value: string }> = [];
+  const input = isRecord(request.rawInput) ? request.rawInput : {};
+  const action = readString(input.action);
+  const command = readString(input.command);
+  const payload = input.payload;
+  if (action) details.push({ label: "Action", value: action });
+  if (command) details.push({ label: "Command", value: command });
+  if (payload !== undefined) details.push({ label: "Payload", value: compactJson(payload) });
+  if (request.options.length > 0) {
+    details.push({ label: "Options", value: request.options.map((option, index) => permissionOptionLabel(option, index)).join(", ") });
+  }
+  return details;
+}
+
 function rawInputToCommand(rawInput: unknown): string | undefined {
   if (!isRecord(rawInput)) return undefined;
   if (typeof rawInput.command === "string") return rawInput.command;
-  if (typeof rawInput.action === "string") return rawInput.action;
+  if (typeof rawInput.action === "string") {
+    const payload = rawInput.payload;
+    return payload === undefined
+      ? `${rawInput.action}()`
+      : `${rawInput.action}(${compactJson(payload)})`;
+  }
   return safeJson(rawInput);
 }
 
@@ -417,6 +442,15 @@ function contentBlockToText(content: unknown): string {
   if (isRecord(content) && content.type === "text" && typeof content.text === "string") return content.text;
   if (content === undefined || content === null) return "";
   return safeJson(content);
+}
+
+function compactJson(value: unknown): string {
+  try {
+    const json = JSON.stringify(value);
+    return json === undefined ? String(value) : json;
+  } catch {
+    return String(value);
+  }
 }
 
 function isToolInputOnlyUpdate(update: Record<string, unknown>): boolean {

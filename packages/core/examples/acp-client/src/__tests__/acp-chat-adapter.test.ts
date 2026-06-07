@@ -4,6 +4,7 @@ import {
   acpSessionUpdateToStreamingText,
   acpSessionUpdateToUiSteps,
   applyAcpUiStep,
+  permissionRequestToUiSteps,
 } from "../acp-chat-adapter";
 import type { AcpSessionUpdate } from "../acp-client";
 
@@ -217,6 +218,44 @@ describe("acp chat adapter", () => {
       },
       { type: "text", text: expect.stringContaining("resource_link") },
     ]);
+  });
+
+  test("formats GUI_execute permission approval with action payload details", () => {
+    const steps = permissionRequestToUiSteps({
+      sessionId: "session-1",
+      toolCallId: "toolu_gui_permission",
+      title: "mcp__gui_action__GUI_execute",
+      options: [{ kind: "allow_once", name: "Allow once" }],
+      rawInput: {
+        action: "get_action_detail",
+        payload: { action: "app.open_settings" },
+      },
+      toolCall: {
+        title: "mcp__gui_action__GUI_execute",
+      },
+      rawParams: null,
+      rawRequest: null,
+    });
+
+    expect(steps[0]).toMatchObject({
+      kind: "approval",
+      approval: {
+        id: "toolu_gui_permission",
+        tool_call: {
+          command: "get_action_detail({\"action\":\"app.open_settings\"})",
+          toolCallId: "toolu_gui_permission",
+          toolName: "mcp__gui_action__GUI_execute",
+          input: {
+            action: "get_action_detail",
+            payload: { action: "app.open_settings" },
+          },
+          details: expect.arrayContaining([
+            { label: "Action", value: "get_action_detail" },
+            { label: "Payload", value: "{\"action\":\"app.open_settings\"}" },
+          ]),
+        },
+      },
+    });
   });
 
   test("extracts agent message chunks for the streaming text channel", () => {
