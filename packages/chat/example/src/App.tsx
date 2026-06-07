@@ -17,7 +17,7 @@ import {
 } from "@viben/chat"
 import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2, Languages, X } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2, Languages, X, GripVertical, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
 import "react-json-view-lite/dist/index.css"
 import {
@@ -76,8 +76,13 @@ function isAgentBusy(messages: AgentMessage[]): boolean {
 // ============================================================================
 
 const SPEEDS = [0.5, 1, 2, 4, 8]
-const FULLSCREEN_CHAT_STAGE_WIDTH_CLASS = "w-[calc(100dvw_-_280px)]"
 const FULLSCREEN_LAYOUT_DELAY_MS = 40
+const EXAMPLE_SIDEBAR_EXPANDED_WIDTH = 280
+const EXAMPLE_SIDEBAR_COLLAPSED_WIDTH = 56
+const FULLSCREEN_CHAT_MIN_WIDTH = 440
+const FULLSCREEN_CHAT_DEFAULT_WIDTH = 720
+const FULLSCREEN_CHAT_MAX_WIDTH = 1040
+const DEMO_PANEL_MIN_WIDTH = 360
 type ExampleLanguage = "en" | "zh-CN"
 
 // ============================================================================
@@ -214,6 +219,9 @@ export function App() {
   const [chatAppMode, setChatAppMode] = useState<ChatAppMode>("floating")
   const [renderedChatAppMode, setRenderedChatAppMode] = useState<ChatAppMode>("floating")
   const [selectedChatAppSessionTitle, setSelectedChatAppSessionTitle] = useState("Viben session")
+  const [introSidebarOpen, setIntroSidebarOpen] = useState(true)
+  const [fullscreenChatWidth, setFullscreenChatWidth] = useState(FULLSCREEN_CHAT_DEFAULT_WIDTH)
+  const isResizingChatRef = useRef(false)
 
   // ExecApproval cycling demo
   const [approvalDemoIdx, setApprovalDemoIdx] = useState(0)
@@ -258,6 +266,33 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark)
   }, [dark])
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!isResizingChatRef.current) return
+      const sidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
+      const maxWidth = Math.min(
+        FULLSCREEN_CHAT_MAX_WIDTH,
+        Math.max(FULLSCREEN_CHAT_MIN_WIDTH, window.innerWidth - sidebarWidth - DEMO_PANEL_MIN_WIDTH)
+      )
+      const nextWidth = Math.min(maxWidth, Math.max(FULLSCREEN_CHAT_MIN_WIDTH, event.clientX - sidebarWidth))
+      setFullscreenChatWidth(nextWidth)
+    }
+
+    const stopResize = () => {
+      isResizingChatRef.current = false
+      document.body.style.cursor = ""
+      document.body.style.userSelect = ""
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", stopResize)
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", stopResize)
+      stopResize()
+    }
+  }, [introSidebarOpen])
 
   // ===== Implicit user message routing =====
   // When a step emits user messages, route based on agent busy state:
