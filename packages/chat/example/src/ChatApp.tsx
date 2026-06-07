@@ -4,6 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
 import { Streamdown } from "streamdown";
 import { ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
+import {
+  CHAT_APP_COMPACT_GREETING_COUNT,
+  CHAT_APP_COMPACT_GREETING_FALLBACKS,
+  DEFAULT_CHAT_APP_AGENTS,
+  DEFAULT_CHAT_APP_SESSIONS,
+} from "./ChatAppDemoData";
 import { VibenPetAvatar } from "./VibenPetAvatar";
 import type { AssistantPetState, PetInteractionState } from "./VibenPetAvatar";
 import type {
@@ -118,29 +124,6 @@ export interface ChatAppFullscreenPanelProps {
   onCommandQueueResume?: () => void;
 }
 
-const DEFAULT_SESSIONS: OverlaySessionItem[] = [
-  {
-    id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8",
-    title: "Claude Code: breadcrumb navigation debug",
-    subtitle: "2c88f85a...jsonl",
-  },
-  {
-    id: "2e83fc8b-a852-4530-a5f3-497bcafa9da6",
-    title: "Claude Code: 2e83fc8b session replay",
-    subtitle: "2e83fc8b...jsonl",
-  },
-  {
-    id: "3bbcc4d2-0267-4938-98c3-c06a380828ba",
-    title: "Claude Code: 3bbcc4d2 session replay",
-    subtitle: "3bbcc4d2...jsonl",
-  },
-];
-
-const DEFAULT_AGENTS: OverlayAgentItem[] = [
-  { id: "claude-code", name: "Claude Code", type: "agent & executor" },
-  { id: "openai-browser", name: "OpenAI · Browser", type: "agent & executor" },
-];
-
 const OVERLAY_TRANSITION = {
   type: "tween",
   duration: 0.34,
@@ -171,60 +154,6 @@ const OVERLAY_RADIUS = {
 
 const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
 const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
-const COMPACT_GREETING_COUNT = 50;
-const COMPACT_GREETING_FALLBACKS = [
-  "Ready when you are.",
-  "What should we shape next?",
-  "I am here when you need me.",
-  "Drop a thought and I will follow it.",
-  "Ready to inspect the next step.",
-  "Tell me what changed.",
-  "I can help trace the thread.",
-  "Send a note when you are ready.",
-  "Standing by for the next move.",
-  "Let me know where to look.",
-  "We can pick this up anywhere.",
-  "Ready to continue the session.",
-  "I can help turn that into action.",
-  "What are we improving next?",
-  "Share the next clue.",
-  "I am ready to review.",
-  "Point me at the issue.",
-  "We can keep this tight.",
-  "What should I focus on?",
-  "Ready for the next task.",
-  "Send the rough version.",
-  "I can help refine it.",
-  "Let us keep the flow going.",
-  "What should we debug next?",
-  "I am listening.",
-  "Ready to compare options.",
-  "Show me what you want changed.",
-  "We can move from here.",
-  "What would make this better?",
-  "Ready to run the next pass.",
-  "I can help make it clearer.",
-  "Drop the next instruction.",
-  "Ready to look closer.",
-  "Tell me what feels off.",
-  "We can tighten the details.",
-  "Ready to continue.",
-  "What should this become?",
-  "I can help with the next edit.",
-  "Let us inspect the behavior.",
-  "Ready for a quick pass.",
-  "Send the next idea.",
-  "I can help make it work.",
-  "Where should we start?",
-  "Ready to follow your lead.",
-  "Let us make the next move.",
-  "I can help connect the dots.",
-  "What needs attention?",
-  "Ready when the thought lands.",
-  "Send me the next target.",
-  "Let’s make progress.",
-] as const;
-
 type CompactActivitySummary = {
   kind: "plain" | "thinking";
   text: string;
@@ -266,8 +195,8 @@ export function ChatApp({
   playerStatus = "idle",
   pendingUserMessageCount = 0,
   assistantAvatars,
-  sessions = DEFAULT_SESSIONS,
-  agents = DEFAULT_AGENTS,
+  sessions = DEFAULT_CHAT_APP_SESSIONS,
+  agents = DEFAULT_CHAT_APP_AGENTS,
   headerActions,
   inputValue,
   onInputValueChange,
@@ -293,8 +222,8 @@ export function ChatApp({
   }, [inputValue, onInputValueChange]);
 
   const idleGreeting = React.useMemo(() => {
-    const index = Math.min(COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * COMPACT_GREETING_COUNT));
-    return t(`chat_app.greetings.${index}`, COMPACT_GREETING_FALLBACKS[index]);
+    const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT));
+    return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index]);
   }, [t]);
   const compactActivity = React.useMemo(
     () => getCompactActivitySummary(messages, t, idleGreeting),
