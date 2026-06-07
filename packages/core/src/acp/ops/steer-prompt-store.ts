@@ -271,11 +271,12 @@ export class SqliteAcpSteerPromptStore implements AcpSteerPromptStore {
     if (!isRecord(row) || typeof row.id !== "string") return undefined;
 
     const now = new Date().toISOString();
-    this.db.prepare(`
+    const result = this.db.prepare(`
       UPDATE acp_steer_prompts
       SET status = 'consumed', consumed_at = ?
       WHERE session_id = ? AND id = ? AND status = 'queued'
     `).run(now, sessionId, row.id);
+    if (!didSqliteUpdateChangeRow(result)) return undefined;
     const record = await this.get(sessionId, row.id);
     return record?.status === "consumed" ? record : undefined;
   }
@@ -294,11 +295,12 @@ export class SqliteAcpSteerPromptStore implements AcpSteerPromptStore {
     const now = new Date().toISOString();
     const consumed: AcpSteerPromptRecord[] = [];
     for (const id of ids) {
-      this.db.prepare(`
+      const result = this.db.prepare(`
         UPDATE acp_steer_prompts
         SET status = 'consumed', consumed_at = ?
         WHERE session_id = ? AND id = ? AND status = 'queued'
       `).run(now, sessionId, id);
+      if (!didSqliteUpdateChangeRow(result)) continue;
       const record = await this.get(sessionId, id);
       if (record?.status === "consumed") {
         consumed.push(record);
@@ -338,6 +340,13 @@ function parseCursor(cursor: string | undefined): number {
   if (!cursor) return 0;
   const offset = Number.parseInt(cursor, 10);
   return Number.isFinite(offset) && offset > 0 ? offset : 0;
+}
+
+function didSqliteUpdateChangeRow(result: unknown): boolean {
+  if (typeof result !== "object" || result === null) return true;
+  const changes = (result as { changes?: unknown }).changes;
+  if (typeof changes === "number") return changes > 0;
+  return true;
 }
 
 function loadDatabaseSync(): DatabaseSyncConstructor {
