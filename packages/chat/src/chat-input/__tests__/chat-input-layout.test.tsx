@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -114,5 +114,40 @@ describe("ChatInput layout", () => {
     expect(screen.getByTestId("custom-top")).toBeInTheDocument();
     expect(screen.getByTestId("custom-bottom-left")).toContainElement(screen.getByTestId("chat-input-config-controls"));
     expect(screen.getByTestId("custom-bottom-right")).toContainElement(screen.getByTestId("chat-input-submit-control"));
+  });
+
+  test("custom writing mode renderer can replace the default writing mode page", async () => {
+    const { ChatInput } = await import("../index");
+
+    render(
+      <ChatInput
+        value="draft"
+        onValueChange={() => {}}
+        onSend={() => {}}
+        showTopToolbar
+        enableWritingMode
+        renderWritingMode={({ content, onContentChange, onClose }) => (
+          <div data-testid="custom-writing-mode">
+            <button type="button" onClick={() => onContentChange(`${content}!`)}>
+              Update draft
+            </button>
+            <button type="button" onClick={onClose}>
+              Close writing mode
+            </button>
+          </div>
+        )}
+      />
+    );
+
+    const toolbar = screen.getByTestId("chat-input-toolbar");
+    const toolbarButtons = toolbar.querySelectorAll("button");
+    fireEvent.click(toolbarButtons[toolbarButtons.length - 1]);
+
+    expect(screen.getByTestId("custom-writing-mode")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Update draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close writing mode" }));
+
+    expect(screen.queryByTestId("custom-writing-mode")).not.toBeInTheDocument();
   });
 });
