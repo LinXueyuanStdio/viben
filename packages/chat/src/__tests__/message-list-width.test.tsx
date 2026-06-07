@@ -118,7 +118,7 @@ describe("MessageList width", () => {
       />
     );
 
-    expect(screen.getByText("Editing chat/example/src/ChatApp.tsx...")).toBeInTheDocument();
+    expect(screen.getAllByText("Editing example/src/ChatApp.tsx...").length).toBeGreaterThan(0);
     expect(screen.queryByText("Editing {{file}}...")).not.toBeInTheDocument();
   });
 

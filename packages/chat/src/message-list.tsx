@@ -9,7 +9,7 @@ import { ToolExecutionItem } from "./tool-execution-item";
 import type { ArtifactInfo } from "./tool-execution-item";
 import { CollapsedToolGroup } from "./collapsed-tool-group";
 import type { PendingExecApproval } from "./exec-approval";
-import { getDisplayPath } from "./utils";
+import { formatI18nTemplate, getDisplayPath } from "./utils";
 import { isMessageStatic } from "./utils/is-message-static";
 import { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
 import { StreamingTextBlock } from "./streaming-text-block";
@@ -146,6 +146,11 @@ interface OtherMessageGroup {
 }
 
 type MessageGroup = TaskMessageGroup | OtherMessageGroup;
+type MessageListTranslate = (
+  key: string,
+  fallback?: string | { defaultValue?: string; count?: number },
+  options?: Record<string, unknown>
+) => string;
 
 function isRenderableSimpleMessage(message: AgentMessage): boolean {
   if (message.type === "result" || message.type === "text" || message.type === "thinking") {
@@ -357,7 +362,7 @@ function useTaskGroupSummary(
   tools: ToolWithResult[],
   isCompleted: boolean,
   isRunning: boolean,
-  t: ReturnType<typeof useTranslation>["t"]
+  t: MessageListTranslate
 ): string {
   return useMemo(() => {
     if (!isCompleted && isRunning) {
@@ -850,10 +855,14 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
       case "Bash": {
         const cmd = input?.command ? String(input.command).trim() : "";
         if (cmd) {
-          return t("chat.activity.runningCommand", {
-            defaultValue: "Running: {{command}}",
-            command: truncate(cmd, 60),
-          });
+          const command = truncate(cmd, 60);
+          return formatI18nTemplate(
+            String(t("chat.activity.runningCommand", {
+              defaultValue: "Running: {{command}}",
+              command,
+            })),
+            { command }
+          );
         }
         return t("chat.activity.runningCommand", {
           defaultValue: "Running command...",
@@ -863,36 +872,52 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
         const readFile = input?.file_path
           ? shortPath(String(input.file_path))
           : "";
-        return t("chat.activity.readingFile", {
-          defaultValue: "Reading {{file}}...",
-          file: readFile || "file",
-        });
+        const file = readFile || "file";
+        return formatI18nTemplate(
+          String(t("chat.activity.readingFile", {
+            defaultValue: "Reading {{file}}...",
+            file,
+          })),
+          { file }
+        );
       }
       case "Write": {
         const writeFile = input?.file_path
           ? shortPath(String(input.file_path))
           : "";
-        return t("chat.activity.writingFile", {
-          defaultValue: "Writing {{file}}...",
-          file: writeFile || "file",
-        });
+        const file = writeFile || "file";
+        return formatI18nTemplate(
+          String(t("chat.activity.writingFile", {
+            defaultValue: "Writing {{file}}...",
+            file,
+          })),
+          { file }
+        );
       }
       case "Edit": {
         const editFile = input?.file_path
           ? shortPath(String(input.file_path))
           : "";
-        return t("chat.activity.editingFile", {
-          defaultValue: "Editing {{file}}...",
-          file: editFile || "file",
-        });
+        const file = editFile || "file";
+        return formatI18nTemplate(
+          String(t("chat.activity.editingFile", {
+            defaultValue: "Editing {{file}}...",
+            file,
+          })),
+          { file }
+        );
       }
       case "Grep": {
         const pattern = input?.pattern ? String(input.pattern) : "";
         if (pattern) {
-          return t("chat.activity.searching", {
-            defaultValue: 'Searching for "{{pattern}}"...',
-            pattern: truncate(pattern, 40),
-          });
+          const displayPattern = truncate(pattern, 40);
+          return formatI18nTemplate(
+            String(t("chat.activity.searching", {
+              defaultValue: 'Searching for "{{pattern}}"...',
+              pattern: displayPattern,
+            })),
+            { pattern: displayPattern }
+          );
         }
         return t("chat.activity.searching", {
           defaultValue: "Searching...",
@@ -901,10 +926,14 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
       case "Glob": {
         const globPattern = input?.pattern ? String(input.pattern) : "";
         if (globPattern) {
-          return t("chat.activity.findingFiles", {
-            defaultValue: "Finding files: {{pattern}}...",
-            pattern: truncate(globPattern, 40),
-          });
+          const pattern = truncate(globPattern, 40);
+          return formatI18nTemplate(
+            String(t("chat.activity.findingFiles", {
+              defaultValue: "Finding files: {{pattern}}...",
+              pattern,
+            })),
+            { pattern }
+          );
         }
         return t("chat.activity.findingFiles", {
           defaultValue: "Finding files...",
@@ -918,10 +947,13 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
       case "Agent":
         return t("chat.activity.runningSubtask", "Running subtask...");
       default:
-        return t("chat.activity.runningTool", {
-          defaultValue: "Running {{name}}...",
-          name: lastToolUse.name,
-        });
+        return formatI18nTemplate(
+          String(t("chat.activity.runningTool", {
+            defaultValue: "Running {{name}}...",
+            name: lastToolUse.name,
+          })),
+          { name: lastToolUse.name }
+        );
     }
   }, [lastToolUse, t]);
 
