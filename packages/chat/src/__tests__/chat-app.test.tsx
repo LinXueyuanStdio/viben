@@ -790,7 +790,11 @@ describe("ChatApp", () => {
         ]}
         messageUpdates={{ "read-1": { content: "updated" } }}
         isStreaming
+        streamingText="partial assistant response"
+        artifacts={[{ id: "artifact-1", name: "settings.json", type: "json" }]}
         onExpandSubagent={onExpandSubagent}
+        onInspectTool={() => {}}
+        onArtifactClick={() => {}}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -799,8 +803,11 @@ describe("ChatApp", () => {
 
     expect(screen.getByTestId("message-list-count")).toHaveTextContent("1");
     expect(screen.getByTestId("message-list-streaming")).toHaveTextContent("true");
+    expect(screen.getByTestId("message-list-streaming-text")).toHaveTextContent("partial assistant response");
     expect(screen.getByTestId("message-list-updates")).toHaveTextContent("1");
     expect(screen.getByTestId("message-list-has-expand-subagent")).toHaveTextContent("true");
+    expect(screen.getByTestId("message-list-has-inspect-tool")).toHaveTextContent("true");
+    expect(screen.getByTestId("message-list-artifacts")).toHaveTextContent("1");
     expect(screen.getByTestId("expanded-message-panel")).toHaveClass("flex");
     expect(screen.getByTestId("expanded-message-panel")).toHaveClass("flex-col");
     expect(screen.getByTestId("expanded-message-panel")).toHaveClass("min-h-0");
