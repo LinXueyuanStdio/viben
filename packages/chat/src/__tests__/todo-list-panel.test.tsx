@@ -110,4 +110,40 @@ describe("TodoListPanel", () => {
 
     expect(screen.getByText("Read result snapshot")).toBeInTheDocument();
   });
+
+  test("applies TaskUpdate from messageUpdates when deriving the current task list", () => {
+    const messages: AgentMessage[] = [
+      {
+        id: "create-1",
+        type: "tool_use",
+        name: "TaskCreate",
+        toolUseId: "tool-create-1",
+        input: { id: "task-1", subject: "Wire lifted state", status: "pending" },
+      },
+      {
+        id: "update-1",
+        type: "tool_use",
+        name: "TaskUpdate",
+        toolUseId: "tool-update-1",
+        input: { id: "task-1", status: "pending" },
+      },
+    ];
+
+    render(
+      <TodoListPanel
+        messages={messages}
+        messageUpdates={{
+          "update-1": {
+            input: { id: "task-1", status: "completed" },
+          },
+        }}
+        defaultExpanded
+      />
+    );
+
+    expect(screen.getByText("Wire lifted state")).toBeInTheDocument();
+    expect(screen.getByText("1 completed")).toBeInTheDocument();
+    expect(screen.getByText("completed")).toBeInTheDocument();
+    expect(screen.queryByText("pending")).not.toBeInTheDocument();
+  });
 });
