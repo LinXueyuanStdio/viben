@@ -42,20 +42,29 @@ vi.mock("@viben/chat", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => {
+    t: (key: string, fallback?: string, options?: Record<string, unknown>) => {
       const translations: Record<string, Record<string, string>> = {
         en: {
           "example.language.english": "English",
           "example.language.chinese": "中文",
           "example.title": "Chat component lab",
+          "example.kicker": "Control surface",
+          "example.subtitle": "Replay sessions, inspect component states, and switch overlay modes from one control surface.",
+          "example.load.session_folder": "Session Folder",
+          "example.sections.overlayMode": "Overlay Mode",
         },
-        zh: {
+        "zh-CN": {
           "example.language.english": "English",
           "example.language.chinese": "中文",
           "example.title": "聊天组件实验室",
+          "example.kicker": "控制面板",
+          "example.subtitle": "在同一个控制面板中回放会话、检查组件状态并切换浮层模式。",
+          "example.load.session_folder": "会话文件夹",
+          "example.sections.overlayMode": "浮层模式",
         },
       };
-      return translations[mockLanguage]?.[key] ?? fallback ?? key;
+      const value = translations[mockLanguage]?.[key] ?? fallback ?? key;
+      return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options?.[name] ?? `{{${name}}}`));
     },
     i18n: {
       get language() {
@@ -207,10 +216,13 @@ describe("App overlay layout", () => {
     fireEvent.click(chineseButton);
     expect(changeLanguageMock).toHaveBeenCalledWith("zh-CN");
     expect(screen.getByText("聊天组件实验室")).toBeInTheDocument();
+    expect(screen.getByText("会话文件夹")).toBeInTheDocument();
+    expect(screen.getByText("浮层模式")).toBeInTheDocument();
 
     fireEvent.click(englishButton);
     expect(changeLanguageMock).toHaveBeenCalledWith("en");
     expect(screen.getByText("Chat component lab")).toBeInTheDocument();
+    expect(screen.getByText("Session Folder")).toBeInTheDocument();
     expect(chineseButton).toBeInTheDocument();
   });
 

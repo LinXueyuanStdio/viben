@@ -47,7 +47,7 @@ import {
   type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
 import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
-import type { OverlayMode, OverlaySessionItem } from "./ChatApp"
+import type { ChatAppMode, OverlaySessionItem } from "./ChatApp"
 
 // ============================================================================
 // Agent Busy Detection
@@ -78,19 +78,7 @@ function isAgentBusy(messages: AgentMessage[]): boolean {
 const SPEEDS = [0.5, 1, 2, 4, 8]
 const FULLSCREEN_CHAT_STAGE_WIDTH_CLASS = "w-[calc(100dvw_-_280px)]"
 const FULLSCREEN_LAYOUT_DELAY_MS = 40
-const EXAMPLE_COPY = {
-  en: {
-    title: "Chat component lab",
-    kicker: "Control surface",
-    subtitle: "Replay sessions, inspect component states, and switch overlay modes from one control surface.",
-  },
-  "zh-CN": {
-    title: "聊天组件实验室",
-    kicker: "控制面板",
-    subtitle: "在同一个控制面板中回放会话、检查组件状态并切换浮层模式。",
-  },
-} as const
-type ExampleLanguage = keyof typeof EXAMPLE_COPY
+type ExampleLanguage = "en" | "zh-CN"
 
 // ============================================================================
 // Convert flat messages to simple steps (for .jsonl loading)
@@ -175,7 +163,9 @@ export function App() {
   const player = useStepPlayer(demoSteps)
 
   // Session info display
-  const [sessionInfo, setSessionInfo] = useState(`Demo · ${demoSteps.length} steps`)
+  const [sessionInfo, setSessionInfo] = useState(() =>
+    t("example.session.default_info", "Demo · {{count}} steps", { count: demoSteps.length })
+  )
   const [activeClaudeSession, setActiveClaudeSession] = useState<ClaudeCodeSessionManifestItem | null>(null)
   const [loadedClaudeSession, setLoadedClaudeSession] = useState<LoadedClaudeCodeSession | null>(null)
   const [isLoadingSession, setIsLoadingSession] = useState(false)
@@ -221,9 +211,9 @@ export function App() {
   const [standaloneQueueItems, setStandaloneQueueItems] = useState<CommandQueueItem[]>(demoCommandQueueItems)
   const [standaloneQueuePaused, setStandaloneQueuePaused] = useState(false)
   const [chatInputValue, setChatInputValue] = useState("")
-  const [overlayMode, setOverlayMode] = useState<OverlayMode>("floating")
-  const [renderedOverlayMode, setRenderedOverlayMode] = useState<OverlayMode>("floating")
-  const [selectedOverlaySessionTitle, setSelectedOverlaySessionTitle] = useState("Viben session")
+  const [chatAppMode, setChatAppMode] = useState<ChatAppMode>("floating")
+  const [renderedChatAppMode, setRenderedChatAppMode] = useState<ChatAppMode>("floating")
+  const [selectedChatAppSessionTitle, setSelectedChatAppSessionTitle] = useState("Viben session")
 
   // ExecApproval cycling demo
   const [approvalDemoIdx, setApprovalDemoIdx] = useState(0)
@@ -252,17 +242,17 @@ export function App() {
   }, [speedIdx, player.setSpeed])
 
   useEffect(() => {
-    if (overlayMode !== "full") {
-      setRenderedOverlayMode(overlayMode)
+    if (chatAppMode !== "full") {
+      setRenderedChatAppMode(chatAppMode)
       return
     }
 
     const timer = setTimeout(() => {
-      setRenderedOverlayMode("full")
+      setRenderedChatAppMode("full")
     }, FULLSCREEN_LAYOUT_DELAY_MS)
 
     return () => clearTimeout(timer)
-  }, [overlayMode])
+  }, [chatAppMode])
 
   // Theme toggle
   useEffect(() => {
@@ -296,9 +286,9 @@ export function App() {
       const parsed = parseSessionJsonl(text)
       const steps = messagesToSteps(parsed)
       player.loadSteps(steps)
-      setSessionInfo(`${file.name} · ${steps.length} steps`)
+      setSessionInfo(t("example.session.file_info", "{{name}} · {{count}} steps", { name: file.name, count: steps.length }))
     })
-  }, [player.loadSteps])
+  }, [player.loadSteps, t])
 
   // ===== Folder Load (with sub-agent support) =====
   const handleFolderLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -307,23 +297,27 @@ export function App() {
     parseSessionFolder(Array.from(files)).then(({ messages, sessionName, subagentCount }) => {
       const steps = messagesToSteps(messages)
       player.loadSteps(steps)
-      const subInfo = subagentCount > 0 ? ` · ${subagentCount} sub-agents` : ""
-      setSessionInfo(`${sessionName} · ${steps.length} steps${subInfo}`)
+      const subInfo = subagentCount > 0 ? t("example.session.folder_subagents", " · {{count}} sub-agents", { count: subagentCount }) : ""
+      setSessionInfo(t("example.session.folder_info", "{{name}} · {{count}} steps", { name: sessionName, count: steps.length }) + subInfo)
     })
-  }, [player.loadSteps])
+  }, [player.loadSteps, t])
 
   const formatStats = useCallback((stats: ParseStats, subagentCount?: number) => {
-    const skipped = stats.skippedLines > 0 ? ` · ${stats.skippedLines} skipped` : ""
-    const subagents = subagentCount ? ` · ${subagentCount} subagents` : ""
-    return `${stats.emittedMessages} messages · ${stats.handledLines}/${stats.totalLines} records handled${skipped}${subagents}`
-  }, [])
+    const skipped = stats.skippedLines > 0 ? t("example.session.stats.skipped", " · {{count}} skipped", { count: stats.skippedLines }) : ""
+    const subagents = subagentCount ? t("example.session.stats.subagents", " · {{count}} subagents", { count: subagentCount }) : ""
+    return t("example.session.stats.summary", "{{messages}} messages · {{handled}}/{{total}} records handled", {
+      messages: stats.emittedMessages,
+      handled: stats.handledLines,
+      total: stats.totalLines,
+    }) + skipped + subagents
+  }, [t])
 
   const handleClaudeSessionLoad = useCallback(async (session: ClaudeCodeSessionManifestItem) => {
     setIsLoadingSession(true)
     setSessionLoadError(null)
     setActiveClaudeSession(session)
     setLoadedClaudeSession(null)
-    setSelectedOverlaySessionTitle(session.label)
+    setSelectedChatAppSessionTitle(session.label)
     setSheetData(null)
     try {
       const loaded = await loadClaudeCodeSession(session)
@@ -333,13 +327,13 @@ export function App() {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       setSessionLoadError(message)
-      setSessionInfo(`Failed to load ${session.label}`)
+      setSessionInfo(t("example.session.load_failed", "Failed to load {{label}}", { label: session.label }))
     } finally {
       setIsLoadingSession(false)
     }
   }, [formatStats, player.loadSteps])
 
-  const overlaySessions = useMemo<OverlaySessionItem[]>(
+  const chatAppSessions = useMemo<OverlaySessionItem[]>(
     () => CLAUDE_CODE_SESSIONS.map((session) => ({
       id: session.id,
       title: session.label,
@@ -348,8 +342,8 @@ export function App() {
     []
   )
 
-  const handleOverlaySessionSelect = useCallback((session: OverlaySessionItem) => {
-    setSelectedOverlaySessionTitle(session.title)
+  const handleChatAppSessionSelect = useCallback((session: OverlaySessionItem) => {
+    setSelectedChatAppSessionTitle(session.title)
     const claudeSession = CLAUDE_CODE_SESSIONS.find((item) => item.id === session.id)
     if (claudeSession) {
       void handleClaudeSessionLoad(claudeSession)
@@ -416,9 +410,8 @@ export function App() {
   const progress = player.totalSteps > 0 ? player.stepIndex / player.totalSteps : 0
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
-  const isOverlayFull = overlayMode === "full"
+  const isChatAppFull = chatAppMode === "full"
   const hasStandaloneDemoOpen = showPlan || showQuestions || showEmojiPicker || showExecApproval || showCommandQueue
-  const exampleCopy = EXAMPLE_COPY[language]
   const handleLanguageChange = useCallback((nextLanguage: ExampleLanguage) => {
     setLanguage(nextLanguage)
     void i18n.changeLanguage(nextLanguage)
@@ -431,7 +424,7 @@ export function App() {
     onCancel: player.pause,
     isLoading: player.isStreaming,
     allowSendWhileLoading: true,
-    placeholder: player.isStreaming ? "Type to queue a message..." : "Type a message...",
+    placeholder: player.isStreaming ? t("example.chat_input.placeholder.queue", "Type to queue a message...") : t("example.chat_input.placeholder.default", "Type a message..."),
     layoutVariant: "expanded",
     showTopToolbar: true,
     showConfigBar: true,
@@ -462,7 +455,7 @@ export function App() {
         <aside
           data-testid="control-panel"
           className={`flex h-full shrink-0 flex-col bg-background transition-all duration-300 ${
-          isOverlayFull
+          isChatAppFull
             ? "order-2 w-[280px] border-l"
             : "order-1 flex-1 overflow-hidden"
         }`}
@@ -471,12 +464,12 @@ export function App() {
           <div className="flex h-14 shrink-0 items-center justify-between border-b px-5">
             <div className="min-w-0">
               <span className="block text-sm font-semibold">@viben/chat</span>
-              {!isOverlayFull && (
-                <span className="block truncate text-xs text-muted-foreground">{exampleCopy.kicker}</span>
+              {!isChatAppFull && (
+                <span className="block truncate text-xs text-muted-foreground">{t("example.kicker", "Control surface")}</span>
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              {!isOverlayFull && (
+              {!isChatAppFull && (
                 <div className="flex items-center gap-1 rounded-lg border bg-card p-1" aria-label={t("example.language.label", "Language")}>
                   <Languages className="ml-1 size-3.5 text-muted-foreground" />
                   <button
@@ -510,14 +503,14 @@ export function App() {
           </div>
 
           {/* Sidebar scrollable body */}
-          <div className={`flex-1 overflow-y-auto ${isOverlayFull ? "" : "p-5"}`}>
-            <div className={isOverlayFull ? "" : "grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(360px,1fr)_minmax(320px,420px)]"}>
+          <div className={`flex-1 overflow-y-auto ${isChatAppFull ? "" : "p-5"}`}>
+            <div className={isChatAppFull ? "" : "grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(360px,1fr)_minmax(320px,420px)]"}>
             {/* Player section */}
-            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-4"}>
-              {!isOverlayFull && (
+            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-3" : "space-y-4"}>
+              {!isChatAppFull && (
                 <div className="space-y-1">
-                  <h1 className="text-xl font-semibold text-foreground">{exampleCopy.title}</h1>
-                  <p className="text-sm text-muted-foreground">{exampleCopy.subtitle}</p>
+                  <h1 className="text-xl font-semibold text-foreground">{t("example.title", "Chat component lab")}</h1>
+                  <p className="text-sm text-muted-foreground">{t("example.subtitle", "Replay sessions, inspect component states, and switch overlay modes from one control surface.")}</p>
                 </div>
               )}
               <div className="flex gap-2">
@@ -528,7 +521,7 @@ export function App() {
                 </label>
                 <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                   <Upload className="size-3.5" />
-                  Session Folder
+                  {t("example.load.session_folder", "Session Folder")}
                   {/* @ts-expect-error webkitdirectory is non-standard but widely supported */}
                   <input type="file" hidden webkitdirectory="true" onChange={handleFolderLoad} />
                 </label>
@@ -567,18 +560,18 @@ export function App() {
               </div>
 
               <div className="space-y-1.5">
-                <SectionLabel>{t("example.sections.overlayMode", "Overlay Mode")}</SectionLabel>
+                <SectionLabel>{t("example.sections.chatAppMode", "Overlay Mode")}</SectionLabel>
                 <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
-                  <ModeButton active={overlayMode === "floating"} onClick={() => setOverlayMode("floating")} title="Float">
+                  <ModeButton active={chatAppMode === "floating"} onClick={() => setChatAppMode("floating")} title={t("example.overlay_mode.float", "Float")}>
                     <Bot className="size-3.5" />
                   </ModeButton>
-                  <ModeButton active={overlayMode === "compact"} onClick={() => setOverlayMode("compact")} title="Compact">
+                  <ModeButton active={chatAppMode === "compact"} onClick={() => setChatAppMode("compact")} title={t("example.overlay_mode.compact", "Compact")}>
                     <MessageSquare className="size-3.5" />
                   </ModeButton>
-                  <ModeButton active={overlayMode === "expanded"} onClick={() => setOverlayMode("expanded")} title="Expanded">
+                  <ModeButton active={chatAppMode === "expanded"} onClick={() => setChatAppMode("expanded")} title={t("example.overlay_mode.expanded", "Expanded")}>
                     <ChevronDown className="size-3.5 rotate-180" />
                   </ModeButton>
-                  <ModeButton active={overlayMode === "full"} onClick={() => setOverlayMode("full")} title="Fullscreen">
+                  <ModeButton active={chatAppMode === "full"} onClick={() => setChatAppMode("full")} title={t("example.overlay_mode.fullscreen", "Fullscreen")}>
                     <Maximize2 className="size-3.5" />
                   </ModeButton>
                 </div>
@@ -596,10 +589,10 @@ export function App() {
 
               {/* Controls */}
               <div className="flex items-center justify-center gap-1">
-                <PlayerButton onClick={player.replay} title="Replay">
+                <PlayerButton onClick={player.replay} title={t("example.player.replay", "Replay")}>
                   <RotateCcw className="size-3.5" />
                 </PlayerButton>
-                <PlayerButton onClick={player.prev} title="Previous">
+                <PlayerButton onClick={player.prev} title={t("example.player.previous", "Previous")}>
                   <SkipBack className="size-3.5" />
                 </PlayerButton>
                 <button
@@ -609,10 +602,10 @@ export function App() {
                 >
                   {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 translate-x-[1px]" />}
                 </button>
-                <PlayerButton onClick={player.next} title="Next">
+                <PlayerButton onClick={player.next} title={t("example.player.next", "Next")}>
                   <SkipForward className="size-3.5" />
                 </PlayerButton>
-                <PlayerButton onClick={() => setSpeedIdx(i => (i + 1) % SPEEDS.length)} title="Speed">
+                <PlayerButton onClick={() => setSpeedIdx(i => (i + 1) % SPEEDS.length)} title={t("example.player.speed", "Speed")}>
                   <Zap className="size-3.5" />
                 </PlayerButton>
                 <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
@@ -642,7 +635,7 @@ export function App() {
 
             {/* Now Playing - current message raw JSON with syntax highlighting */}
             {player.messages.length > 0 && (
-              <DashboardCard className={isOverlayFull ? "mx-3 my-3 space-y-2" : "space-y-2 xl:col-start-2 xl:row-span-2"}>
+              <DashboardCard className={isChatAppFull ? "mx-3 my-3 space-y-2" : "space-y-2 xl:col-start-2 xl:row-span-2"}>
                   <SectionLabel>{t("example.sections.nowPlaying", "Now Playing")}</SectionLabel>
                   <div className="rounded-lg border bg-muted/30 p-2 overflow-x-auto overflow-y-auto max-h-[240px] text-[10px] [&_*]:!text-[10px] [&_*]:!leading-relaxed">
                     <JsonView data={player.messages[player.messages.length - 1]} style={darkStyles} />
@@ -651,7 +644,7 @@ export function App() {
             )}
 
             {/* Component Demos */}
-            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-1.5" : "space-y-1.5 xl:col-start-2"}>
+            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-1.5" : "space-y-1.5 xl:col-start-2"}>
               <SectionLabel>{t("example.sections.components", "Components")}</SectionLabel>
               <NavButton active={showPlan} onClick={() => { setShowPlan(!showPlan); setShowQuestions(false); setShowEmojiPicker(false); setShowExecApproval(false); setShowCommandQueue(false) }}>
                 PlanApproval
@@ -685,7 +678,7 @@ export function App() {
             </DashboardCard>
 
             {/* Model Icons */}
-            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
+            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
               <SectionLabel>{t("example.sections.modelIcons", "Model Icons")}</SectionLabel>
               <div className="flex flex-wrap gap-1.5">
                 {demoModels.map(m => (
@@ -698,7 +691,7 @@ export function App() {
             </DashboardCard>
 
             {/* ToolExecutionItem */}
-            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
+            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
               <SectionLabel>{t("example.sections.toolExecution", "ToolExecutionItem (4 states)")}</SectionLabel>
               <div className="space-y-1">
                 <ToolExecutionItem name="Grep" displayName="Grep" input={{ pattern: "TODO" }} status="queued" compact />
@@ -709,11 +702,11 @@ export function App() {
             </DashboardCard>
 
             {/* Config Panels */}
-            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
+            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
               <SectionLabel>{t("example.sections.configPanels", "Config Panels")}</SectionLabel>
               <div className="space-y-2">
                 <CollapsibleSection
-                  title={`Tools (${tools.filter(t => t.enabled).length}/${tools.length})`}
+                  title={t("example.config.tools", "Tools ({{enabled}}/{{total}})", { enabled: tools.filter(t => t.enabled).length, total: tools.length })}
                   open={showToolsPanel}
                   onToggle={() => setShowToolsPanel(!showToolsPanel)}
                 >
@@ -725,7 +718,7 @@ export function App() {
                 </CollapsibleSection>
 
                 <CollapsibleSection
-                  title={`Skills (${skills.filter(s => s.enabled).length}/${skills.length})`}
+                  title={t("example.config.skills", "Skills ({{enabled}}/{{total}})", { enabled: skills.filter(s => s.enabled).length, total: skills.length })}
                   open={showSkillsPanel}
                   onToggle={() => setShowSkillsPanel(!showSkillsPanel)}
                 >
@@ -737,7 +730,7 @@ export function App() {
                 </CollapsibleSection>
 
                 <CollapsibleSection
-                  title="Context Details"
+                  title={t("example.config.context_details", "Context Details")}
                   open={showContextPanel}
                   onToggle={() => setShowContextPanel(!showContextPanel)}
                 >
@@ -756,13 +749,13 @@ export function App() {
         <div
           data-testid="chat-app-stage"
           className={`flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
-            isOverlayFull
+            isChatAppFull
               ? `relative order-1 ${FULLSCREEN_CHAT_STAGE_WIDTH_CLASS} flex-none overflow-hidden opacity-100`
               : "pointer-events-none fixed inset-0 z-20 overflow-visible bg-transparent opacity-100"
           }`}
         >
           {/* Content area */}
-          <div className={`flex min-h-0 flex-1 flex-col ${!isOverlayFull && !hasStandaloneDemoOpen ? "pointer-events-none" : "pointer-events-auto"}`}>
+          <div className={`flex min-h-0 flex-1 flex-col ${!isChatAppFull && !hasStandaloneDemoOpen ? "pointer-events-none" : "pointer-events-auto"}`}>
             {showPlan ? (
               <div className="flex flex-1 items-center justify-center p-8">
                 <div className="w-full max-w-lg">
@@ -799,7 +792,11 @@ export function App() {
                     approval={demoExecApprovals[approvalDemoIdx % demoExecApprovals.length]}
                     onDecision={(decision, feedback) => {
                       console.log("Decision:", decision, "Feedback:", feedback)
-                      const label = decision === "allow_once" ? "Allowed" : decision === "allow_always" ? "Always allowed" : "Rejected"
+                      const label = decision === "allow_once"
+                        ? t("example.exec_feedback.allowed_once", "Allowed")
+                        : decision === "allow_always"
+                          ? t("example.exec_feedback.allowed_always", "Always allowed")
+                          : t("example.exec_feedback.rejected", "Rejected")
                       setApprovalFeedback(label + (feedback ? ` — "${feedback}"` : ""))
                       if (approvalFeedbackTimerRef.current) clearTimeout(approvalFeedbackTimerRef.current)
                       approvalFeedbackTimerRef.current = setTimeout(() => {
@@ -814,7 +811,11 @@ export function App() {
                     </div>
                   )}
                   <p className="text-center text-[11px] text-muted-foreground">
-                    Click sidebar button to cycle through {demoExecApprovals.length} scenarios ({approvalDemoIdx + 1}/{demoExecApprovals.length})
+                    {t("example.exec_feedback.cycle_hint", "Click sidebar button to cycle through {{count}} scenarios ({{current}}/{{total}})", {
+                      count: demoExecApprovals.length,
+                      current: approvalDemoIdx + 1,
+                      total: demoExecApprovals.length,
+                    })}
                   </p>
                 </div>
               </div>
@@ -822,13 +823,13 @@ export function App() {
               <div className="flex flex-1 items-center justify-center p-8">
                 <div className="w-full max-w-lg space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">Command Queue Demo</h3>
+                    <h3 className="text-sm font-medium">{t("example.command_queue.demo_title", "Command Queue Demo")}</h3>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
                           const newItem: CommandQueueItem = {
                             id: `cmd-${Date.now()}`,
-                            content: `Task ${standaloneQueueItems.length + 1}: Run automated check`,
+                            content: t("example.command_queue.demo_task", "Task {{count}}: Run automated check", { count: standaloneQueueItems.length + 1 }),
                             createdAt: Date.now(),
                           }
                           setStandaloneQueueItems(prev => [...prev, newItem])
@@ -836,20 +837,20 @@ export function App() {
                         className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                       >
                         <Plus className="size-3" />
-                        Add item
+                        {t("example.command_queue.add_item", "Add item")}
                       </button>
                       <button
                         onClick={() => setStandaloneQueuePaused(p => !p)}
                         className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground ${standaloneQueuePaused ? "text-amber-500" : "text-muted-foreground"}`}
                       >
                         {standaloneQueuePaused ? <Play className="size-3" /> : <Pause className="size-3" />}
-                        {standaloneQueuePaused ? "Resume" : "Pause"}
+                        {standaloneQueuePaused ? t("example.command_queue.resume", "Resume") : t("example.command_queue.pause", "Pause")}
                       </button>
                       <button
                         onClick={() => setStandaloneQueueItems([])}
                         className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
                       >
-                        Clear all
+                        {t("example.command_queue.clear_all", "Clear all")}
                       </button>
                     </div>
                   </div>
@@ -863,27 +864,27 @@ export function App() {
                   />
                   {standaloneQueueItems.length === 0 && (
                     <p className="text-center text-[11px] text-muted-foreground py-4">
-                      Queue is empty. Click "Add item" to add demo items.
+                      {t("example.command_queue.empty_hint", "Queue is empty. Click \"Add item\" to add demo items.")}
                     </p>
                   )}
                 </div>
               </div>
             ) : null}
           </div>
-          <div className={isOverlayFull ? "contents" : "pointer-events-auto"}>
+          <div className={isChatAppFull ? "contents" : "pointer-events-auto"}>
             <ChatApp
               contained
-              mode={renderedOverlayMode}
-              title={selectedOverlaySessionTitle}
+              mode={renderedChatAppMode}
+              title={selectedChatAppSessionTitle}
               messages={player.messages}
               messageUpdates={player.messageUpdates}
               isStreaming={player.isStreaming}
               playerStatus={player.status}
               pendingUserMessageCount={commandQueue.items.length}
-              sessions={overlaySessions}
+              sessions={chatAppSessions}
               headerActions={{
-                onSelectSession: handleOverlaySessionSelect,
-                onCreateSession: () => setOverlayMode("expanded"),
+                onSelectSession: handleChatAppSessionSelect,
+                onCreateSession: () => setChatAppMode("expanded"),
                 onSettingsClick: () => setShowToolsPanel((open) => !open),
               }}
               inputValue={chatInputValue}
@@ -900,7 +901,7 @@ export function App() {
                 liveMessages: activeSheetLiveMessages,
                 context: sheetData.context,
               } : undefined}
-              onModeChange={setOverlayMode}
+              onModeChange={setChatAppMode}
               onSend={handleSend}
               onCancel={player.pause}
               inputProps={sharedChatInputProps}
