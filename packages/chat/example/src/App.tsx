@@ -25,11 +25,13 @@ import {
   parseSessionJsonl,
   parseSessionFolder,
 } from "./demo-data"
-import { demoSteps } from "./demo-steps"
-import { useStepPlayer } from "./use-step-player"
 import {
   CHAT_APP_COMPACT_GREETING_COUNT,
   CHAT_APP_COMPACT_GREETING_FALLBACKS,
+} from "./ChatAppDemoData"
+import { demoSteps } from "./demo-steps"
+import { useStepPlayer } from "./use-step-player"
+import {
   CLAUDE_CODE_SESSIONS,
   loadClaudeCodeSession,
   loadClaudeCodeSubagent,
