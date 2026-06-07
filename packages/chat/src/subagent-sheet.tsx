@@ -4,7 +4,7 @@ import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn, Badge, Button } from "@viben/ui";
 import { MessageList } from "./message-list";
-import type { AgentMessage, ExpandSubagentHandler, LoadSubagentDetails, SubagentOpenContext } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, SubagentOpenContext } from "./types";
 
 const DEFAULT_SHEET_WIDTH = 480;
 const MIN_SHEET_WIDTH = 320;
@@ -45,6 +45,7 @@ export interface SubagentSheetProps {
   isLoading?: boolean;
   error?: string | null;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
   /** Render inside a relatively positioned parent instead of the viewport. */
   contained?: boolean;
   className?: string;
@@ -87,6 +88,7 @@ export function SubagentSheet({
   isLoading = false,
   error,
   onExpandSubagent,
+  onInspectTool,
   contained = false,
   className,
 }: SubagentSheetProps) {
@@ -303,6 +305,7 @@ export function SubagentSheet({
                     toolExpandedInline
                     maxMessageWidth="100%"
                     onExpandSubagent={onExpandSubagent}
+                    onInspectTool={onInspectTool}
                   />
                 </>
               )}
