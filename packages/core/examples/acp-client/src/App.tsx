@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { ChatInput, CommandQueuePanel, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
-import type { AgentMessage, Artifact, CommandQueueItem, ExpandSubagentHandler, PendingQuestion, QueuedInputRecallItem, SlashCommand, SlashCommandSelection, TaskPlan } from "@viben/chat";
+import type { AgentMessage, Artifact, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, TaskPlan, ToolConfig } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -75,6 +75,7 @@ import {
 import {
   formatJson as prettyJson,
   JsonBlock,
+  JsonEditorPanel,
   JsonPanel,
   normalizeJsonText,
   parseJsonOrFallback,
@@ -236,6 +237,12 @@ export function App() {
   const steerQueuePaused = sessionId ? steerQueuePausedBySessionId[sessionId] ?? false : false;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
   const actionSummaries = useMemo(() => buildActionSummaries(actions), [actions]);
+  const chatTools = useMemo(() => buildChatToolConfigs(actions), [actions]);
+  const chatSkills = useMemo(() => buildChatSkillConfigs(slashCommands), [slashCommands]);
+  const chatContextBreakdown = useMemo(
+    () => buildChatContextBreakdown(messages, streamingText, slashCommands, actionSummaries, steerQueueItems),
+    [actionSummaries, messages, slashCommands, steerQueueItems, streamingText]
+  );
   const requestMcpServers = useMemo(() => parseJsonOrFallback(requestMcpServersText, []), [requestMcpServersText]);
   const executorConfig = useMemo(() => parseJsonOrFallback(executorConfigText, {}), [executorConfigText]);
 
@@ -1025,6 +1032,13 @@ export function App() {
             pendingApproval={pendingApproval}
             pendingQuestion={pendingQuestion}
             slashCommands={slashCommands}
+            tools={chatTools}
+            skills={chatSkills}
+            contextBreakdown={chatContextBreakdown}
+            executorType={executorType}
+            model={model}
+            onExecutorTypeChange={setExecutorType}
+            onModelChange={setModel}
             artifacts={artifacts}
             error={error}
             steerQueueItems={steerQueueItems}
@@ -1578,6 +1592,11 @@ function AcpChatSurface({
   pendingApproval,
   pendingQuestion,
   slashCommands,
+  tools,
+  skills,
+  contextBreakdown,
+  executorType,
+  model,
   artifacts,
   error,
   steerQueueItems,
@@ -1588,6 +1607,8 @@ function AcpChatSurface({
   onSendPrompt,
   onCancelTurn,
   onSlashCommand,
+  onExecutorTypeChange,
+  onModelChange,
   onApprovePlan,
   onRejectPlan,
   onApprovalDecision,
@@ -1616,6 +1637,11 @@ function AcpChatSurface({
   pendingApproval: PendingExecApproval | null;
   pendingQuestion: PendingQuestion | null;
   slashCommands: SlashCommand[];
+  tools: ToolConfig[];
+  skills: SkillConfig[];
+  contextBreakdown: ContextTokenBreakdown;
+  executorType: string;
+  model: string;
   artifacts: Artifact[];
   error: string | null;
   steerQueueItems: CommandQueueItem[];
@@ -1626,6 +1652,8 @@ function AcpChatSurface({
   onSendPrompt: (content: string) => void;
   onCancelTurn: () => void;
   onSlashCommand: (command: SlashCommand, selection: SlashCommandSelection) => void;
+  onExecutorTypeChange: (executorType: string) => void;
+  onModelChange: (model: string) => void;
   onApprovePlan: () => void;
   onRejectPlan: () => void;
   onApprovalDecision: (decision: string) => void;
@@ -1645,6 +1673,12 @@ function AcpChatSurface({
   onLoadSessionIdChange: (value: string) => void;
   busy: boolean;
 }) {
+  const modelOptions = useMemo<ModelOption[]>(() => buildModelOptions(model), [model]);
+  const executorOptions = useMemo<ExecutorOption[]>(() => BACKEND_OPTIONS.map((backend) => ({
+    id: backend.value,
+    name: backend.label,
+  })), []);
+
   const handleSend = useCallback((content: string) => {
     if (isStreaming) {
       onSteerSend(content);
@@ -1746,6 +1780,25 @@ function AcpChatSurface({
                   slashCommands={slashCommands}
                   onSlashCommand={handleSlashCommand}
                   showTopToolbar
+                  showConfigBar
+                  hideAgentSelector
+                  models={modelOptions}
+                  selectedModelId={model}
+                  onModelChange={onModelChange}
+                  executors={executorOptions}
+                  selectedExecutor={executorType}
+                  onExecutorChange={onExecutorTypeChange}
+                  tools={tools}
+                  onToggleTool={() => undefined}
+                  skills={skills}
+                  onToggleSkill={() => undefined}
+                  contextTokens={estimateContextTokens(contextBreakdown)}
+                  contextBreakdown={contextBreakdown}
+                  configBarLeftExtra={(
+                    <span className="hidden rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground sm:inline-flex">
+                      {slashCommands.length} commands
+                    </span>
+                  )}
                   showResizeHandle
                   defaultHeight={120}
                   minHeight={88}
@@ -1841,11 +1894,11 @@ function ToolApprovalModal({
         </div>
         <div className="json-modal-section">
           <div className="json-modal-header">Response JSON</div>
-          <textarea
+          <JsonEditorPanel
             value={dialog.responseText}
-            onChange={(event) => onChangeResponse(event.target.value)}
-            spellCheck={false}
-            className="textarea json-editor"
+            onChange={onChangeResponse}
+            size="default"
+            mode="text"
           />
         </div>
       </div>
@@ -2038,10 +2091,11 @@ function ElicitationApprovalModal({
         </div>
         <div>
           <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Response Content JSON</div>
-          <textarea
+          <JsonEditorPanel
             value={dialog.answersText}
-            onChange={(event) => onChangeAnswers(event.target.value)}
-            className="textarea min-h-72 font-mono text-xs"
+            onChange={onChangeAnswers}
+            size="default"
+            mode="text"
           />
         </div>
       </div>
@@ -2463,6 +2517,81 @@ function buildActionSummaries(actions: GuiActionDefinition[]) {
     name: action.name,
     description: action.description,
     input_schema: parseJsonOrFallback(action.inputSchemaText, { type: "object", properties: {} }),
+  }));
+}
+
+function buildChatToolConfigs(actions: GuiActionDefinition[]): ToolConfig[] {
+  return [
+    {
+      id: "GUI_execute",
+      name: "GUI_execute",
+      description: "Execute or inspect GUI actions exposed by this ACP client.",
+      enabled: true,
+    },
+    ...actions.map((action) => ({
+      id: action.id,
+      name: action.name,
+      description: action.description,
+      enabled: !action.fail,
+    })),
+  ];
+}
+
+function buildChatSkillConfigs(commands: SlashCommand[]): SkillConfig[] {
+  return commands.map((command) => ({
+    id: command.name,
+    name: `/${command.name}`,
+    description: command.description,
+    enabled: true,
+  }));
+}
+
+function buildChatContextBreakdown(
+  messages: AgentMessage[],
+  streamingText: string | null,
+  commands: SlashCommand[],
+  actions: Array<Record<string, unknown>>,
+  steerQueue: CommandQueueItem[]
+): ContextTokenBreakdown {
+  const conversationMessages = estimateJsonTokens(messages) + estimateTextTokens(streamingText ?? "");
+  const skillSettings = estimateJsonTokens(commands);
+  const assistantProfile = estimateJsonTokens(actions);
+  const historySummary = estimateJsonTokens(steerQueue);
+  return {
+    assistantProfile,
+    skillSettings,
+    historySummary,
+    conversationMessages,
+    totalContext: Math.max(8_000, assistantProfile + skillSettings + historySummary + conversationMessages + 4_000),
+  };
+}
+
+function estimateContextTokens(breakdown: ContextTokenBreakdown): number {
+  return breakdown.assistantProfile +
+    breakdown.skillSettings +
+    breakdown.historySummary +
+    breakdown.conversationMessages;
+}
+
+function estimateJsonTokens(value: unknown): number {
+  return estimateTextTokens(prettyJson(value));
+}
+
+function estimateTextTokens(value: string): number {
+  return Math.max(0, Math.ceil(value.length / 4));
+}
+
+function buildModelOptions(currentModel: string): ModelOption[] {
+  const models = [
+    currentModel,
+    DEFAULT_MODEL,
+    "claude-opus-4-5",
+    "claude-haiku-4-5",
+  ].filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  return Array.from(new Set(models)).map((id) => ({
+    id,
+    name: id,
+    provider: id.includes("claude") ? "Anthropic" : undefined,
   }));
 }
 
