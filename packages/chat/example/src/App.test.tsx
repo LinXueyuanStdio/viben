@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { App } from "./App";
 
@@ -84,33 +84,24 @@ describe("App overlay layout", () => {
   });
 
   test("opens the fullscreen layout before morphing the expanded panel into fullscreen", async () => {
-    vi.useFakeTimers();
-    try {
-      render(<App />);
+    render(<App />);
 
-      fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
-      expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
+    expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
-      expect(screen.getByTestId("chat-app-stage")).toHaveClass("w-[calc(100dvw_-_280px)]");
-      expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
-      expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
-      expect(screen.queryByTestId("full-overlay")).not.toBeInTheDocument();
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("w-[calc(100dvw_-_280px)]");
+    expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
+    expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+    expect(screen.queryByTestId("full-overlay")).not.toBeInTheDocument();
 
-      act(() => {
-        vi.runOnlyPendingTimers();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
-      });
-    } finally {
-      vi.useRealTimers();
-    }
+    await waitFor(() => {
+      expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
+    });
   });
 
-  test("does not render the fullscreen session player content before fullscreen mode", () => {
+  test("does not render the fullscreen session player content before fullscreen mode", async () => {
     render(<App />);
 
     expect(screen.queryByText("@viben/chat Session Player")).not.toBeInTheDocument();
@@ -119,7 +110,9 @@ describe("App overlay layout", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
-    expect(screen.getByTestId("message-list")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("message-list")).toBeInTheDocument();
+    });
     expect(screen.getByTestId("chat-input")).toBeInTheDocument();
   });
 
