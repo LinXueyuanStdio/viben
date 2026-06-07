@@ -4,7 +4,7 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { ToolExecutionItem } from "../tool-execution-item";
-import type { AgentMessage } from "../types";
+import type { AgentMessage, ToolWithResult } from "../types";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -12,20 +12,35 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+function buildAgentTool(
+  input: Record<string, unknown>,
+  overrides: Partial<AgentMessage> = {},
+  result?: AgentMessage
+): ToolWithResult {
+  return {
+    message: {
+      type: "tool_use",
+      name: "Agent",
+      input,
+      ...overrides,
+    },
+    result,
+  };
+}
+
 describe("ToolExecutionItem subagent cards", () => {
   test("renders the subagent header as friendly type with description parameter", () => {
     render(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "success",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Explore sidebar navigation chain",
             subagent_type: "Explore",
           },
-          toolUseId: "tool-header",
-          output: "done",
-        }}
+          { toolUseId: "tool-header" },
+          { type: "tool_result", output: "done" }
+        )}
+        status="success"
         onExpandSubagent={vi.fn()}
       />
     );
@@ -42,18 +57,21 @@ describe("ToolExecutionItem subagent cards", () => {
 
     render(
       <ToolExecutionItem
-        state={{
-          name: "Task",
-          status: "success",
-          input: {
-            description: "Inspect workspace",
-            subagent_type: "explorer",
+        tool={{
+          message: {
+            type: "tool_use",
+            name: "Task",
+            input: {
+              description: "Inspect workspace",
+              subagent_type: "explorer",
+            },
+            toolUseId: "tool-1",
+            subagentId: "agent-1",
+            subagentMessages,
           },
-          toolUseId: "tool-1",
-          subagentId: "agent-1",
-          output: "done",
-          subagentMessages,
+          result: { type: "tool_result", output: "done" },
         }}
+        status="success"
         onExpandSubagent={onExpandSubagent}
       />
     );
@@ -79,16 +97,19 @@ describe("ToolExecutionItem subagent cards", () => {
 
     render(
       <ToolExecutionItem
-        state={{
-          name: "Task",
-          status: "success",
-          input: {
-            description: "Inspect workspace",
-            subagent_type: "explorer",
+        tool={{
+          message: {
+            type: "tool_use",
+            name: "Task",
+            input: {
+              description: "Inspect workspace",
+              subagent_type: "explorer",
+            },
+            subagentMessages,
           },
-          output: "done",
-          subagentMessages,
+          result: { type: "tool_result", output: "done" },
         }}
+        status="success"
         renderMessage={(message) => <div>{message.content}</div>}
         onExpandSubagent={vi.fn()}
       />
@@ -102,16 +123,15 @@ describe("ToolExecutionItem subagent cards", () => {
 
     render(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "success",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Research message width",
             subagent_type: "explorer",
           },
-          toolUseId: "tool-2",
-          output: "done",
-        }}
+          { toolUseId: "tool-2" },
+          { type: "tool_result", output: "done" }
+        )}
+        status="success"
         onExpandSubagent={onExpandSubagent}
       />
     );
@@ -133,28 +153,29 @@ describe("ToolExecutionItem subagent cards", () => {
   test("renders running subagent preview rows inside the Agent card without a definition label", () => {
     render(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "executing",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Research message width",
             subagent_type: "explorer",
           },
-          toolUseId: "tool-3",
-          subagentPreviewMessages: [
-            {
-              id: "preview-1",
-              type: "tool_use",
-              name: "Grep",
-              input: { pattern: "MESSAGE_COLUMN_MAX_WIDTH" },
-            },
-            {
-              id: "preview-2",
-              type: "text",
-              content: "Found the width constant usage",
-            },
-          ],
-        }}
+          {
+            toolUseId: "tool-3",
+            subagentPreviewMessages: [
+              {
+                id: "preview-1",
+                type: "tool_use",
+                name: "Grep",
+                input: { pattern: "MESSAGE_COLUMN_MAX_WIDTH" },
+              },
+              {
+                id: "preview-2",
+                type: "text",
+                content: "Found the width constant usage",
+              },
+            ],
+          }
+        )}
+        status="executing"
         onExpandSubagent={vi.fn()}
       />
     );
@@ -167,20 +188,21 @@ describe("ToolExecutionItem subagent cards", () => {
   test("shows only the latest five running preview rows", async () => {
     const { rerender } = render(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "executing",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Research message width",
             subagent_type: "Explore",
           },
-          toolUseId: "tool-preview-window",
-          subagentPreviewMessages: Array.from({ length: 7 }, (_, index) => ({
-            id: `preview-${index + 1}`,
-            type: "text",
-            content: `preview event ${index + 1}`,
-          })),
-        }}
+          {
+            toolUseId: "tool-preview-window",
+            subagentPreviewMessages: Array.from({ length: 7 }, (_, index) => ({
+              id: `preview-${index + 1}`,
+              type: "text",
+              content: `preview event ${index + 1}`,
+            })),
+          }
+        )}
+        status="executing"
         onExpandSubagent={vi.fn()}
       />
     );
@@ -197,20 +219,21 @@ describe("ToolExecutionItem subagent cards", () => {
 
     rerender(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "executing",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Research message width",
             subagent_type: "Explore",
           },
-          toolUseId: "tool-preview-window",
-          subagentPreviewMessages: Array.from({ length: 8 }, (_, index) => ({
-            id: `preview-${index + 1}`,
-            type: "text",
-            content: `preview event ${index + 1}`,
-          })),
-        }}
+          {
+            toolUseId: "tool-preview-window",
+            subagentPreviewMessages: Array.from({ length: 8 }, (_, index) => ({
+              id: `preview-${index + 1}`,
+              type: "text",
+              content: `preview event ${index + 1}`,
+            })),
+          }
+        )}
+        status="executing"
         onExpandSubagent={vi.fn()}
       />
     );
@@ -226,22 +249,23 @@ describe("ToolExecutionItem subagent cards", () => {
   test("places the running preview below the task prompt inside collapsible details", () => {
     render(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "executing",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Inspect prompt placement",
             subagent_type: "Explore",
             prompt: "Use the repository structure to inspect navigation.",
           },
-          subagentPreviewMessages: [
-            {
-              id: "preview-1",
-              type: "text",
-              content: "Reading route files",
-            },
-          ],
-        }}
+          {
+            subagentPreviewMessages: [
+              {
+                id: "preview-1",
+                type: "text",
+                content: "Reading route files",
+              },
+            ],
+          }
+        )}
+        status="executing"
       />
     );
 
@@ -260,27 +284,28 @@ describe("ToolExecutionItem subagent cards", () => {
   test("running header shows latest subagent activity and removes it after completion", () => {
     const { rerender } = render(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "executing",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Research message width",
             subagent_type: "Explore",
           },
-          subagentPreviewMessages: [
-            {
-              id: "preview-1",
-              type: "tool_use",
-              name: "Grep",
-              input: { pattern: "MESSAGE_COLUMN_MAX_WIDTH" },
-            },
-            {
-              id: "preview-2",
-              type: "text",
-              content: "Found the width constant usage",
-            },
-          ],
-        }}
+          {
+            subagentPreviewMessages: [
+              {
+                id: "preview-1",
+                type: "tool_use",
+                name: "Grep",
+                input: { pattern: "MESSAGE_COLUMN_MAX_WIDTH" },
+              },
+              {
+                id: "preview-2",
+                type: "text",
+                content: "Found the width constant usage",
+              },
+            ],
+          }
+        )}
+        status="executing"
       />
     );
 
@@ -291,22 +316,23 @@ describe("ToolExecutionItem subagent cards", () => {
 
     rerender(
       <ToolExecutionItem
-        state={{
-          name: "Agent",
-          status: "success",
-          input: {
+        tool={buildAgentTool(
+          {
             description: "Research message width",
             subagent_type: "Explore",
           },
-          output: "done",
-          subagentPreviewMessages: [
-            {
-              id: "preview-2",
-              type: "text",
-              content: "Found the width constant usage",
-            },
-          ],
-        }}
+          {
+            subagentPreviewMessages: [
+              {
+                id: "preview-2",
+                type: "text",
+                content: "Found the width constant usage",
+              },
+            ],
+          },
+          { type: "tool_result", output: "done" }
+        )}
+        status="success"
       />
     );
 
@@ -318,15 +344,19 @@ describe("ToolExecutionItem subagent cards", () => {
 
   test("requests regular tool inspection and leaves details controlled by the host", () => {
     const onInspectTool = vi.fn();
+    const message: AgentMessage = {
+      type: "tool_use",
+      name: "Bash",
+      input: { command: "pnpm test" },
+    };
 
     render(
       <ToolExecutionItem
-        state={{
-          name: "Bash",
-          input: { command: "pnpm test" },
-          output: "ok",
-          status: "success",
+        tool={{
+          message,
+          result: { type: "tool_result", output: "ok" },
         }}
+        status="success"
         onInspectTool={onInspectTool}
       />
     );
@@ -334,7 +364,7 @@ describe("ToolExecutionItem subagent cards", () => {
     fireEvent.click(screen.getByText("Bash").closest("[class*='rounded-lg']")!);
 
     expect(onInspectTool).toHaveBeenCalledTimes(1);
-    expect(onInspectTool).toHaveBeenCalledWith();
+    expect(onInspectTool).toHaveBeenCalledWith(message);
     expect(screen.queryByText("Input")).not.toBeInTheDocument();
     expect(screen.queryByText("Output")).not.toBeInTheDocument();
   });
