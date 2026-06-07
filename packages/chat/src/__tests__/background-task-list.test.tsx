@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { BackgroundTaskList } from "../background-task-list/background-task-list";
 import type { AgentMessage } from "../types";
@@ -50,10 +50,11 @@ describe("BackgroundTaskList", () => {
     expect(screen.getByText("1 command")).toBeInTheDocument();
   });
 
-  test("opens a right-side detail drawer when a task row is clicked", () => {
+  test("exposes task row clicks through an external callback", () => {
     const messages: AgentMessage[] = [
       { id: "m1", type: "text", content: "Checking chat package tests" },
     ];
+    const onTaskClick = vi.fn();
 
     render(
       <BackgroundTaskList
@@ -69,16 +70,20 @@ describe("BackgroundTaskList", () => {
             details: "The agent is reviewing component contracts.",
           },
         ]}
+        onTaskClick={onTaskClick}
       />
     );
 
     fireEvent.click(screen.getByRole("button", { name: /audit chat ui components/i }));
 
-    const panel = screen.getByTestId("background-task-sheet-panel");
-    expect(panel).toBeInTheDocument();
-    expect(within(panel).getByText("Audit chat UI components")).toBeInTheDocument();
-    expect(within(panel).getByText("The agent is reviewing component contracts.")).toBeInTheDocument();
-    expect(within(panel).getByText("Checking chat package tests")).toBeInTheDocument();
+    expect(onTaskClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "agent-1",
+        description: "Audit chat UI components",
+        messages,
+      })
+    );
+    expect(screen.queryByTestId("background-task-sheet-panel")).not.toBeInTheDocument();
   });
 
   test("can derive running Agent, Task, Bash, and Cron tools from messages", () => {
@@ -130,5 +135,32 @@ describe("BackgroundTaskList", () => {
     expect(screen.getByText("Implement focused tests")).toBeInTheDocument();
     expect(screen.getByText("Nightly cleanup")).toBeInTheDocument();
     expect(screen.queryByText("pnpm --filter @viben/chat test")).not.toBeInTheDocument();
+  });
+
+  test("uses each tool creation time instead of the parent message timestamp for runtime", () => {
+    const messages: AgentMessage[] = [
+      {
+        id: "old-parent-message",
+        type: "tool_use",
+        name: "Agent",
+        toolUseId: "agent-tool-id",
+        input: {
+          description: "Inspect current task",
+          created_at: "2026-06-07T10:00:00.000Z",
+        },
+        timestamp: Date.parse("2026-05-07T03:10:00.000Z"),
+      },
+    ];
+
+    render(
+      <BackgroundTaskList
+        messages={messages}
+        now={Date.parse("2026-06-07T10:01:05.000Z")}
+      />
+    );
+
+    expect(screen.getByText("Inspect current task")).toBeInTheDocument();
+    expect(screen.getByText("1m 5s")).toBeInTheDocument();
+    expect(screen.queryByText(/750h/)).not.toBeInTheDocument();
   });
 });

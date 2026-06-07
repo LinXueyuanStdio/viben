@@ -34,6 +34,7 @@ export interface BackgroundTaskListProps {
   now?: number;
   className?: string;
   defaultExpanded?: boolean;
-  containedSheet?: boolean;
+  onTaskClick?: (task: BackgroundTaskItem) => void;
+  /** @deprecated Use onTaskClick. */
   onOpenTask?: (task: BackgroundTaskItem) => void;
 }

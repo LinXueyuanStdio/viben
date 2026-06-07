@@ -1,9 +1,7 @@
 import * as React from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Bot, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, Clock3, Terminal, X } from "lucide-react";
+import { Bot, CalendarClock, CheckCircle2, ChevronDown, CircleAlert, Clock3, Terminal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge, cn } from "@viben/ui";
-import { MessageList } from "../message-list";
 import type { AgentMessage } from "../types";
 import type {
   BackgroundTaskItem,
@@ -23,6 +21,17 @@ function stringValue(value: unknown): string | undefined {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function timeValue(value: unknown): number | undefined {
+  const numeric = numberValue(value);
+  if (numeric !== undefined) {
+    return numeric < 100_000_000_000 ? numeric * 1000 : numeric;
+  }
+  const text = stringValue(value);
+  if (!text) return undefined;
+  const parsed = Date.parse(text);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function formatTemplate(value: string, vars: Record<string, string | number>): string {
@@ -97,9 +106,12 @@ export function buildBackgroundTasksFromMessages(
     const input = isRecord(message.input) ? message.input : {};
     const id = message.toolUseId ?? message.id ?? `${kind}-${message.timestamp ?? now}`;
     const startedAt =
-      numberValue(message.timestamp) ??
-      numberValue(input.started_at) ??
-      numberValue(input.startedAt);
+      timeValue(input.created_at) ??
+      timeValue(input.createdAt) ??
+      timeValue(input.started_at) ??
+      timeValue(input.startedAt) ??
+      timeValue(input.timestamp) ??
+      timeValue(message.timestamp);
 
     return [
       {
@@ -168,21 +180,6 @@ function kindLabel(kind: BackgroundTaskKind): string {
   }
 }
 
-function statusLabel(status: BackgroundTaskStatus): string {
-  switch (status) {
-    case "running":
-      return "Running";
-    case "queued":
-      return "Queued";
-    case "completed":
-      return "Done";
-    case "failed":
-      return "Error";
-    case "cancelled":
-      return "Cancelled";
-  }
-}
-
 function getKindIcon(kind: BackgroundTaskKind) {
   switch (kind) {
     case "cron":
@@ -204,117 +201,17 @@ function getStatusIcon(status: BackgroundTaskStatus) {
   return Clock3;
 }
 
-function getStatusVariant(status: BackgroundTaskStatus): "secondary" | "destructive" | "success" | "warning" | "outline" {
-  if (status === "failed") return "destructive";
-  if (status === "completed") return "success";
-  if (status === "running") return "warning";
-  return "secondary";
-}
-
-function TaskDetailSheet({
-  task,
-  onClose,
-  contained,
-}: {
-  task: BackgroundTaskItem | null;
-  onClose: () => void;
-  contained?: boolean;
-}) {
-  const { t } = useTranslation();
-  const open = !!task;
-
-  return (
-    <AnimatePresence>
-      {open && task && (
-        <>
-          <motion.div
-            key="background-task-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
-            className={contained ? "absolute inset-0 z-40 bg-black/20" : "fixed inset-0 z-40 bg-black/20"}
-            onClick={onClose}
-            data-testid="background-task-sheet-backdrop"
-          />
-          <motion.aside
-            key="background-task-panel"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-            className={cn(
-              contained
-                ? "absolute bottom-0 right-0 top-0 z-50 flex w-[420px] max-w-[85%] flex-col border-l bg-background shadow-xl"
-                : "fixed bottom-0 right-0 top-0 z-50 flex w-[420px] max-w-[85vw] flex-col border-l bg-background shadow-xl"
-            )}
-            data-testid="background-task-sheet-panel"
-          >
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
-              <div className="min-w-0">
-                <h3 className="truncate text-sm font-medium text-foreground">{task.description}</h3>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                    {kindLabel(task.kind)}
-                  </Badge>
-                  <Badge variant={getStatusVariant(task.status)} className="px-1.5 py-0 text-[10px]">
-                    {statusLabel(task.status)}
-                  </Badge>
-                </div>
-              </div>
-              <button
-                type="button"
-                aria-label={t("chat.backgroundTasks.closeDetails", "Close task details")}
-                onClick={onClose}
-                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-              {task.details && (
-                <div className="mb-3 rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-                  {task.details}
-                </div>
-              )}
-              {task.sourceMessage?.input && (
-                <details className="mb-3 rounded-md border bg-background p-3">
-                  <summary className="cursor-pointer select-none text-xs font-medium text-foreground">
-                    {t("chat.backgroundTasks.input", "Input")}
-                  </summary>
-                  <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
-                    {JSON.stringify(task.sourceMessage.input, null, 2)}
-                  </pre>
-                </details>
-              )}
-              {task.messages && task.messages.length > 0 ? (
-                <MessageList messages={task.messages} simpleMode autoScroll={false} />
-              ) : (
-                <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                  {t("chat.backgroundTasks.noDetails", "No detail transcript available.")}
-                </div>
-              )}
-            </div>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
-
 export function BackgroundTaskList({
   tasks,
   messages,
   now = Date.now(),
   className,
   defaultExpanded = true,
-  containedSheet,
+  onTaskClick,
   onOpenTask,
 }: BackgroundTaskListProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(defaultExpanded);
-  const [selectedTask, setSelectedTask] = React.useState<BackgroundTaskItem | null>(null);
   const resolvedTasks = React.useMemo(
     () => tasks ?? buildBackgroundTasksFromMessages(messages, now),
     [messages, now, tasks]
@@ -325,8 +222,8 @@ export function BackgroundTaskList({
   const runningCount = resolvedTasks.filter((task) => task.status === "running").length;
 
   const handleOpenTask = (task: BackgroundTaskItem) => {
+    onTaskClick?.(task);
     onOpenTask?.(task);
-    setSelectedTask(task);
   };
 
   return (
@@ -395,12 +292,6 @@ export function BackgroundTaskList({
           })}
         </div>
       )}
-
-      <TaskDetailSheet
-        task={selectedTask}
-        onClose={() => setSelectedTask(null)}
-        contained={containedSheet}
-      />
     </div>
   );
 }
