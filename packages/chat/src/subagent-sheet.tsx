@@ -1,10 +1,36 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn, Badge, Button } from "@viben/ui";
 import { MessageList } from "./message-list";
 import type { AgentMessage, ExpandSubagentHandler, LoadSubagentDetails, SubagentOpenContext } from "./types";
+
+const DEFAULT_SHEET_WIDTH = 480;
+const MIN_SHEET_WIDTH = 320;
+const MAX_SHEET_WIDTH = 760;
+
+function mergeToolResultsIntoToolCalls(messages: AgentMessage[]): AgentMessage[] {
+  const resultsByToolUseId = new Map<string, AgentMessage>();
+  for (const message of messages) {
+    if (message.type === "tool_result" && message.toolUseId) {
+      resultsByToolUseId.set(message.toolUseId, message);
+    }
+  }
+
+  return messages
+    .filter((message) => message.type !== "tool_result")
+    .map((message) => {
+      if (message.type !== "tool_use" || !message.toolUseId) return message;
+      const result = resultsByToolUseId.get(message.toolUseId);
+      if (!result) return message;
+      return {
+        ...message,
+        output: result.output,
+        isError: result.isError ?? message.isError,
+      };
+    });
+}
 
 export interface SubagentSheetProps {
   open: boolean;
@@ -72,12 +98,15 @@ export function SubagentSheet({
     isLoading: boolean;
     error: string | null;
   }>({ isLoading: false, error: null });
+  const [sheetWidth, setSheetWidth] = useState(DEFAULT_SHEET_WIDTH);
+  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const hasLiveMessages = !!liveMessages && liveMessages.length > 0;
   const effectiveMessages = hasLiveMessages
     ? liveMessages
     : messages.length > 0
       ? messages
       : (loadedMessages ?? messages);
+  const displayMessages = useMemo(() => mergeToolResultsIntoToolCalls(effectiveMessages), [effectiveMessages]);
   const hasDisplayMessages = effectiveMessages.length > 0;
   const effectiveTitle = loadedTitle ?? title;
   const effectiveSubagentType = loadedSubagentType ?? subagentType;
@@ -127,6 +156,43 @@ export function SubagentSheet({
     };
   }, [context, loadSubagentDetails, messages.length, open]);
 
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const dragState = dragStateRef.current;
+      if (!dragState) return;
+      const maxWidth = Math.min(MAX_SHEET_WIDTH, Math.max(MIN_SHEET_WIDTH, window.innerWidth - 48));
+      const nextWidth = dragState.startWidth + dragState.startX - event.clientX;
+      setSheetWidth(Math.min(maxWidth, Math.max(MIN_SHEET_WIDTH, nextWidth)));
+    };
+
+    const handleMouseUp = () => {
+      dragStateRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, []);
+
+  const handleResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragStateRef.current = {
+      startX: event.clientX,
+      startWidth: sheetWidth,
+    };
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -137,7 +203,7 @@ export function SubagentSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
             data-testid="subagent-sheet-backdrop"
             className={contained ? "absolute inset-0 z-40 bg-black/20" : "fixed inset-0 z-40 bg-black/20"}
             onClick={onClose}
@@ -148,15 +214,26 @@ export function SubagentSheet({
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
             data-testid="subagent-sheet-panel"
             className={cn(
               contained
-                ? "absolute right-0 top-0 bottom-0 z-50 flex w-[480px] max-w-[85%] flex-col border-l bg-background shadow-xl"
-                : "fixed right-0 top-0 bottom-0 z-50 flex w-[480px] max-w-[85vw] flex-col border-l bg-background shadow-xl",
+                ? "absolute right-0 top-0 bottom-0 z-50 flex max-w-[85%] transform-gpu flex-col border-l bg-background shadow-xl will-change-transform"
+                : "fixed right-0 top-0 bottom-0 z-50 flex max-w-[85vw] transform-gpu flex-col border-l bg-background shadow-xl will-change-transform",
               className
             )}
+            style={{ width: `${sheetWidth}px` }}
           >
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={t("chat.resizeSubagentPanel", "Resize subagent panel")}
+              data-testid="subagent-sheet-resize-handle"
+              className="absolute inset-y-0 left-0 z-10 w-2 -translate-x-1/2 cursor-ew-resize touch-none"
+              onMouseDown={handleResizeStart}
+            >
+              <div className="absolute left-1/2 top-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-border transition-colors hover:bg-primary/60" />
+            </div>
             {/* Header */}
             <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
               <div className="min-w-0 flex-1">
@@ -221,7 +298,7 @@ export function SubagentSheet({
                     </div>
                   )}
                   <MessageList
-                    messages={effectiveMessages}
+                    messages={displayMessages}
                     simpleMode
                     toolExpandedInline
                     maxMessageWidth="100%"

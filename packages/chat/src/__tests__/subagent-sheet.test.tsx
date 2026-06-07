@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 // @vitest-environment jsdom
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeAll, describe, expect, test, vi } from "vitest";
 import { SubagentSheet } from "../subagent-sheet";
 import type { AgentMessage, LoadSubagentDetails } from "../types";
@@ -113,5 +113,58 @@ describe("SubagentSheet", () => {
     expect(screen.getByTestId("subagent-sheet-panel")).toHaveClass("absolute");
     expect(screen.getByTestId("subagent-sheet-panel")).not.toHaveClass("fixed");
     expect(screen.getByTestId("overlay-panel")).toContainElement(screen.getByTestId("subagent-sheet-panel"));
+  });
+
+  test("resizes from a drag handle on the left edge", () => {
+    render(
+      <SubagentSheet
+        open
+        onClose={vi.fn()}
+        title="Resizable subagent"
+        messages={[
+          { id: "m1", type: "text", content: "contained transcript" },
+        ]}
+      />
+    );
+
+    const panel = screen.getByTestId("subagent-sheet-panel");
+    const handle = screen.getByTestId("subagent-sheet-resize-handle");
+
+    expect(panel).toHaveStyle({ width: "480px" });
+
+    fireEvent.mouseDown(handle, { clientX: 500 });
+    fireEvent.mouseMove(window, { clientX: 420 });
+    fireEvent.mouseUp(window);
+
+    expect(panel).toHaveStyle({ width: "560px" });
+  });
+
+  test("merges tool calls and matching tool results into one card", () => {
+    render(
+      <SubagentSheet
+        open
+        onClose={vi.fn()}
+        title="Tool transcript"
+        messages={[
+          {
+            id: "tool-use-1",
+            type: "tool_use",
+            name: "Read",
+            toolUseId: "tool-1",
+            input: { file_path: "/root/viben/packages/chat/src/subagent-sheet.tsx" },
+          },
+          {
+            id: "tool-result-1",
+            type: "tool_result",
+            toolUseId: "tool-1",
+            output: "merged file content",
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Read")).toBeInTheDocument();
+    expect(screen.getByText("merged file content")).toBeInTheDocument();
+    expect(screen.queryByText("Tool Result")).not.toBeInTheDocument();
   });
 });
