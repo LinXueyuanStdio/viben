@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { App } from "./App";
 
@@ -77,9 +77,37 @@ describe("App overlay layout", () => {
 
     expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("order-1");
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-1");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("w-[calc(100dvw_-_280px)]");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-none");
     expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
     expect(screen.getByTestId("control-panel")).toHaveClass("border-l");
+  });
+
+  test("opens the fullscreen layout before morphing the expanded panel into fullscreen", async () => {
+    vi.useFakeTimers();
+    try {
+      render(<App />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
+      expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+
+      expect(screen.getByTestId("chat-app-stage")).toHaveClass("w-[calc(100dvw_-_280px)]");
+      expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
+      expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+      expect(screen.queryByTestId("full-overlay")).not.toBeInTheDocument();
+
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("does not render the fullscreen session player content before fullscreen mode", () => {
