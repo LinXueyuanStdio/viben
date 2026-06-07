@@ -8,6 +8,9 @@ import {
   EthernetPort,
   FolderPlus,
   Loader2,
+  Maximize2,
+  Minimize2,
+  MoreHorizontal,
   Plug,
   Plus,
   RotateCcw,
@@ -19,8 +22,26 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import { ChatInput, CommandQueuePanel, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet } from "@viben/chat";
-import type { AgentMessage, Artifact, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, TaskPlan, ToolConfig } from "@viben/chat";
+import {
+  ChatApp,
+  ChatAppFullscreenCommandQueue,
+  ChatAppFullscreenInputPanel,
+  ChatAppFullscreenMessagePanel,
+  ChatAppFullscreenPanel,
+  ChatInput,
+  CommandQueuePanel,
+  DefaultExpandedHeaderMoreMenu,
+  ExecApproval,
+  ExpandedHeader,
+  ExpandedHeaderModeControls,
+  ExpandedHeaderNewSessionMenu,
+  ExpandedHeaderSessionMenu,
+  MessageList,
+  PlanApproval,
+  QuestionInput,
+  SubagentSheet,
+} from "@viben/chat";
+import type { AgentMessage, Artifact, ChatAppMode, ChatAppSessionItem, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, TaskPlan, ToolConfig } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -125,6 +146,11 @@ interface ArtifactDialogState {
   message?: AgentMessage;
 }
 
+interface ToolInspectDialogState {
+  message: AgentMessage;
+  result?: AgentMessage;
+}
+
 const BACKEND_OPTIONS = [
   { value: "CLAUDE_CODE", label: "Claude ACP" },
   { value: "OPENCLAW", label: "OpenClaw ACP" },
@@ -187,6 +213,7 @@ export function App() {
   const [steerQueuePausedBySessionId, setSteerQueuePausedBySessionId] = useState<Record<string, boolean>>({});
   const [steerResult, setSteerResult] = useState<unknown>(null);
   const [viewMode, setViewMode] = useState<"chat" | "inspector">("chat");
+  const [chatAppMode, setChatAppMode] = useState<ChatAppMode>("expanded");
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
@@ -208,6 +235,7 @@ export function App() {
   const [activeElicitationDialogId, setActiveElicitationDialogId] = useState<string | null>(null);
   const [subagentSheet, setSubagentSheet] = useState<SubagentSheetState | null>(null);
   const [artifactDialog, setArtifactDialog] = useState<ArtifactDialogState | null>(null);
+  const [toolInspectDialog, setToolInspectDialog] = useState<ToolInspectDialogState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const clientRef = useRef<AcpWebSocketClient | null>(null);
   const actionsRef = useRef(actions);
@@ -257,6 +285,18 @@ export function App() {
   const chatContextBreakdown = useMemo(
     () => buildChatContextBreakdown(messages, streamingText, slashCommands, actionSummaries, steerQueueItems),
     [actionSummaries, messages, slashCommands, steerQueueItems, streamingText]
+  );
+  const chatAppSessions = useMemo<ChatAppSessionItem[]>(
+    () => sessionOrder.flatMap((id) => {
+      const session = sessionsById[id];
+      if (!session) return [];
+      return [{
+        id,
+        title: session.title,
+        subtitle: session.id,
+      }];
+    }),
+    [sessionOrder, sessionsById]
   );
   const requestMcpServers = useMemo(() => parseJsonOrFallback(requestMcpServersText, []), [requestMcpServersText]);
   const executorConfig = useMemo(() => parseJsonOrFallback(executorConfigText, {}), [executorConfigText]);
@@ -942,6 +982,13 @@ export function App() {
     setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
   }, []);
 
+  const handleInspectTool = useCallback<InspectToolHandler>((message) => {
+    const result = message.toolUseId
+      ? messages.find((candidate) => candidate.type === "tool_result" && candidate.toolUseId === message.toolUseId)
+      : undefined;
+    setToolInspectDialog({ message, result });
+  }, [messages]);
+
   const handleArtifactClick = useCallback((artifactId: string) => {
     const artifact = artifacts.find((item) => item.id === artifactId);
     if (!artifact) return;
@@ -1108,7 +1155,12 @@ export function App() {
               setPrompt(value);
               void recallSteerQueue(items, setPrompt);
             }}
+            chatAppMode={chatAppMode}
+            onChatAppModeChange={setChatAppMode}
+            sessions={chatAppSessions}
+            onSelectSession={(id) => setActiveSessionId(id)}
             onExpandSubagent={handleExpandSubagent}
+            onInspectTool={handleInspectTool}
             onArtifactClick={handleArtifactClick}
             onRemoveSteerQueueItem={removeSteerQueueItem}
             onClearSteerQueue={clearSteerQueue}
