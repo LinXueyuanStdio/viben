@@ -33,6 +33,10 @@ export interface ArtifactInfo {
 /** Execution status for a tool call */
 export type ToolExecutionStatus = "queued" | "executing" | "success" | "error";
 
+export type ShowToolDetailModalHandler = (
+  props: Omit<ToolExecutionItemProps, "onShowToolDetailModal">
+) => void;
+
 export interface ToolExecutionItemProps {
   name: string;
   displayName?: string;
@@ -65,6 +69,8 @@ export interface ToolExecutionItemProps {
   expandedInline?: boolean;
   /** Callback to expand subagent messages in a side panel */
   onExpandSubagent?: ExpandSubagentHandler;
+  /** Called when a regular tool detail view should be shown. When provided, the built-in modal is not rendered. */
+  onShowToolDetailModal?: ShowToolDetailModalHandler;
 }
 
 // ============================================================================
@@ -824,6 +830,7 @@ export function ToolExecutionItem({
   onArtifactClick,
   expandedInline = false,
   onExpandSubagent,
+  onShowToolDetailModal,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
@@ -866,9 +873,37 @@ export function ToolExecutionItem({
 
   const hasDetails = input || output || hasSubagentMessages;
 
+  const showToolDetail = () => {
+    if (onShowToolDetailModal) {
+      onShowToolDetailModal({
+        name,
+        displayName,
+        input,
+        output,
+        isExecuting,
+        isError,
+        status: statusProp,
+        className,
+        compact,
+        subagentId,
+        toolUseId,
+        subagentMessages,
+        subagentPreviewMessages,
+        renderMessage,
+        artifactInfo,
+        onArtifactClick,
+        expandedInline,
+        onExpandSubagent,
+      });
+      return;
+    }
+
+    setShowModal(true);
+  };
+
   const handleClick = () => {
     if (!isRunning && !isTaskTool) {
-      setShowModal(true);
+      showToolDetail();
     }
   };
 

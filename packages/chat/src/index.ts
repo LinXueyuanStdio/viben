@@ -85,7 +85,7 @@ export type { Artifact, MessageListProps, MessageListHandle } from "./message-li
 export { MessageItem } from "./message-item";
 export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
-export type { ToolExecutionItemProps, ToolExecutionStatus, ArtifactInfo } from "./tool-execution-item";
+export type { ToolExecutionItemProps, ToolExecutionStatus, ArtifactInfo, ShowToolDetailModalHandler } from "./tool-execution-item";
 export { PlanApproval } from "./plan-approval";
 export { QuestionInput } from "./question-input";
 export { CollapsedToolGroup } from "./collapsed-tool-group";

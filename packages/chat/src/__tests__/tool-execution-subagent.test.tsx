@@ -290,4 +290,30 @@ describe("ToolExecutionItem subagent cards", () => {
     expect(screen.queryByText("Found the width constant usage")).not.toBeInTheDocument();
     expect(screen.getByText(/Done/)).toBeInTheDocument();
   });
+
+  test("delegates regular tool detail modal rendering to the host when configured", () => {
+    const onShowToolDetailModal = vi.fn();
+
+    render(
+      <ToolExecutionItem
+        name="Bash"
+        input={{ command: "pnpm test" }}
+        output="ok"
+        onShowToolDetailModal={onShowToolDetailModal}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Bash").closest("[class*='rounded-lg']")!);
+
+    expect(onShowToolDetailModal).toHaveBeenCalledWith(expect.objectContaining({
+      name: "Bash",
+      displayName: undefined,
+      input: { command: "pnpm test" },
+      output: "ok",
+      compact: false,
+      expandedInline: false,
+    }));
+    expect(screen.queryByText("Input")).not.toBeInTheDocument();
+    expect(screen.queryByText("Output")).not.toBeInTheDocument();
+  });
 });
