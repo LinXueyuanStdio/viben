@@ -78,7 +78,6 @@ vi.mock("@viben/chat", () => ({
       {props.inputContent}
     </div>
   ),
-  DefaultExpandedHeaderMoreMenu: () => <button type="button" aria-label="More actions">More actions</button>,
   ExpandedHeader: (props: {
     leftContent?: React.ReactNode;
     centerContent?: React.ReactNode;
@@ -92,27 +91,6 @@ vi.mock("@viben/chat", () => ({
   ),
   ExpandedHeaderModeControls: (props: { moreMenuContent?: React.ReactNode }) => (
     <div data-testid="expanded-header-mode-controls">{props.moreMenuContent}</div>
-  ),
-  ExpandedHeaderNewSessionMenu: () => <button type="button" aria-label="Create new session">Create new session</button>,
-  ExpandedHeaderSessionMenu: (props: {
-    title: string;
-    sessions?: Array<{ id: string; title: string; subtitle?: string }>;
-    assistantAvatar?: React.ReactNode;
-    onSelectSession?: (session: { id: string; title: string; subtitle?: string }) => void;
-  }) => (
-    <div>
-      <button type="button" aria-label="Session menu">
-        {props.assistantAvatar}
-        {props.title}
-      </button>
-      <div>
-        {props.sessions?.map((session) => (
-          <button key={session.id} type="button" onClick={() => props.onSelectSession?.(session)}>
-            {session.title}
-          </button>
-        ))}
-      </div>
-    </div>
   ),
   ChatInput: () => <div data-testid="chat-input" />,
   MessageList: () => <div data-testid="message-list" />,
