@@ -1022,7 +1022,6 @@ describe("ChatApp", () => {
     expect(Array.from(screen.getByTestId("expanded-header-right").children).map((child) => child.getAttribute("data-testid"))).toEqual([
       "compact-mode-button",
       "full-mode-button",
-      "settings-button",
       "more-actions-menu",
     ]);
   });
@@ -1211,7 +1210,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByTestId("compact-mode-button")).toBeInTheDocument();
     expect(screen.queryByTestId("full-mode-button")).not.toBeInTheDocument();
-    expect(screen.getByTestId("settings-button")).toBeInTheDocument();
+    expect(screen.queryByTestId("settings-button")).not.toBeInTheDocument();
     expect(screen.getByTestId("more-actions-menu")).toBeInTheDocument();
   });
 
