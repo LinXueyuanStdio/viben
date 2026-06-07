@@ -103,7 +103,7 @@ export type {
 } from "./command-queue";
 
 // Todo List
-export { TodoList, TodoListPanel, buildTodoListItems } from "./todo-list";
+export { TodoList, TodoListPanel, buildTodoListItems, buildTodoListItemsFromMessages } from "./todo-list";
 export type {
   TodoListItem,
   TodoListItemStatus,

@@ -267,7 +267,7 @@ export function ChatApp({
 
   const idleGreeting = React.useMemo(() => {
     const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT));
-    return t(`chat_app.greetings.`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index]);
+    return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index]);
   }, [t]);
   const compactActivity = React.useMemo(
     () => getCompactActivitySummary(messages, t, idleGreeting),
@@ -766,7 +766,7 @@ function ChatAppMessagePanel({
         onAnswerQuestions={onAnswerQuestions}
       />
       <div className="space-y-2 px-4 pb-2">
-        <TodoListPanel messages={messages} compact />
+        <TodoListPanel messages={messages} messageUpdates={messageUpdates} compact />
         <BackgroundTaskList messages={messages} onTaskClick={handleBackgroundTaskClick} />
       </div>
     </>
@@ -807,7 +807,7 @@ function getToolActivityText(message: AgentMessage, t: Translate): string {
     case "Grep": {
       const pattern = input?.pattern ? truncateText(String(input.pattern), 48) : "";
       return pattern
-        ? chatAppTranslate(t, "chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
+        ? t("chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
         : t("chat_app.activity.searching_workspace", "Searching workspace...");
     }
     case "Glob": {
