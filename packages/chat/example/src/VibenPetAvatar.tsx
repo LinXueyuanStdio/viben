@@ -11,7 +11,6 @@ export type VibenPetAvatarProps = {
   interaction?: PetInteractionState;
 };
 
-type TranslationValues = Record<string, string | number | boolean | null | undefined>;
 type PetStateTransitionKey = `initial-${AssistantPetState}` | `${AssistantPetState}-to-${AssistantPetState}`;
 type MotionValues = {
   x?: number | number[];
@@ -200,19 +199,6 @@ function usePreviousPetState(state: AssistantPetState) {
   return previousState;
 }
 
-function translatePetText(
-  t: ReturnType<typeof useTranslation>["t"],
-  key: string,
-  defaultValue: string,
-  values: TranslationValues = {}
-): string {
-  const translated = t(key, defaultValue, values);
-  return String(translated).replace(/\{\{(\w+)\}\}/g, (_, name: string) => {
-    const replacement = values[name];
-    return replacement === null || replacement === undefined ? `{{${name}}}` : String(replacement);
-  });
-}
-
 function getRightEyePath(path: string) {
   return path.replace(/27/g, "45").replace(/35/g, "53");
 }
@@ -386,14 +372,14 @@ export function VibenPetAvatar({ kind = "dynamic", state, interaction = "idle" }
   const stateTransitionKey = getPetStateTransitionKey(previousState, state);
   const reducedMotion = useReducedMotion() ?? false;
   const meta = PET_STATE_META[state];
-  const stateLabel = translatePetText(t, meta.labelKey, meta.defaultLabel);
+  const stateLabel = t(meta.labelKey, meta.defaultLabel);
   const gradientId = React.useId().replace(/:/g, "");
   const warmGradientId = `${gradientId}-warm`;
   const bodyGradientId = `${gradientId}-body`;
   const glowId = `${gradientId}-glow`;
   const preset = reducedMotion ? getReducedMotionPreset(state) : getPetMotionPreset(state);
   const pose = PET_POSES[state];
-  const ariaLabel = translatePetText(t, "chat_app.pet.aria_label", "Viben pet {{state}}", { state: stateLabel });
+  const ariaLabel = t("chat_app.pet.aria_label", "Viben pet {{state}}", { state: stateLabel });
   const isDynamic = kind === "dynamic";
 
   return (

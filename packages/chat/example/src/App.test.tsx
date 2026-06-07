@@ -121,7 +121,7 @@ vi.mock("react-i18next", () => ({
           "example.components.dismiss": "关闭组件演示",
         },
       };
-      const values = typeof fallback === "object" ? fallback : options;
+      const values = (typeof fallback === "object" ? fallback : options) as Record<string, unknown> | undefined;
       const value = translations[mockLanguage]?.[key] ?? (typeof fallback === "object" ? fallback.defaultValue : fallback) ?? key;
       return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(values?.[name] ?? `{{${name}}}`));
     },

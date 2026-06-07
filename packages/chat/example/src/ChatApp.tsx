@@ -182,19 +182,6 @@ type CompactActivitySummary = {
   text: string;
 };
 
-function chatAppTranslate(
-  t: Translate,
-  key: string,
-  defaultValue: string,
-  values: Record<string, string | number | boolean | null | undefined> = {}
-): string {
-  const translated = t(key, { defaultValue, ...values });
-  return String(translated).replace(/\{\{(\w+)\}\}/g, (_, name: string) => {
-    const replacement = values[name];
-    return replacement === null || replacement === undefined ? `{{${name}}}` : String(replacement);
-  });
-}
-
 export function getAssistantPetState(
   messages: AgentMessage[],
   isStreaming: boolean,
