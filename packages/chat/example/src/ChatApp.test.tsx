@@ -4,6 +4,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import {
   ChatApp,
+  ChatAppFullscreenCommandQueue,
+  ChatAppFullscreenInputPanel,
+  ChatAppFullscreenMessagePanel,
   ChatAppFullscreenPanel,
   ExpandedHeader,
   ExpandedHeaderModeControls,
@@ -133,6 +136,7 @@ vi.mock("react-i18next", () => ({
         "chat_app.header.move_to_window": "Move chat to new window",
         "chat_app.header.show_debug_view": "Show debug view",
         "chat_app.header.show_debug_log": "Show debug log",
+        "chat_app.header.settings": "Settings",
         "chat_app.pet.name": "Viben Sprite",
         "chat_app.pet.state.idle": "Idle",
         "chat_app.pet.state.review": "Review",
@@ -536,7 +540,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("expanded-header-drag-area")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Switch to fullscreen mode" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
     expect(screen.getByTestId("message-list")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
@@ -610,7 +614,7 @@ describe("ChatApp", () => {
         title="Demo session title"
         messages={emptyMessages}
         isStreaming={false}
-        renderCompactActivitySummary={() => "Let’s make progress."}
+        compactSummaryContent="Let’s make progress."
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -622,7 +626,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
   });
 
-  test("compact summary is driven by the renderCompactActivitySummary prop", () => {
+  test("compact summary is driven by the compactSummaryContent prop", () => {
     render(
       <ChatApp
         mode="compact"
@@ -636,7 +640,7 @@ describe("ChatApp", () => {
           },
         ]}
         isStreaming
-        renderCompactActivitySummary={() => "Host controlled status"}
+        compactSummaryContent="Host controlled status"
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -654,7 +658,7 @@ describe("ChatApp", () => {
         mode="compact"
         messages={[{ id: "think-1", type: "thinking", content: "I am checking the active session." }]}
         isStreaming
-        renderCompactActivitySummary={() => (
+        compactSummaryContent={(
           <span data-testid="streamdown-streaming" data-caret="block">I am checking the active session.</span>
         )}
         onModeChange={() => {}}
@@ -933,7 +937,7 @@ describe("ChatApp", () => {
     expect(screen.getByText("OpenAI · Browser")).toBeInTheDocument();
   });
 
-  test("expanded more menu shows sample navigation and debug actions", () => {
+  test("expanded more menu shows settings, sample navigation, and debug actions", () => {
     render(
       <ChatApp
         mode="expanded"
@@ -947,6 +951,7 @@ describe("ChatApp", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More actions" }));
 
+    expect(screen.getByText("Settings")).toBeInTheDocument();
     expect(screen.getByText("Previous step")).toBeInTheDocument();
     expect(screen.getByText("Next step")).toBeInTheDocument();
     expect(screen.getByText("Move chat to new window")).toBeInTheDocument();
@@ -966,13 +971,15 @@ describe("ChatApp", () => {
           <ExpandedHeaderModeControls
             mode="expanded"
             onModeChange={onModeChange}
-            onSettingsClick={onSettingsClick}
+            moreMenuContent={<button type="button" onClick={onSettingsClick}>Settings</button>}
           />
         )}
       />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Create new session" }));
+    expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
 
     expect(onCreateSession).toHaveBeenCalledTimes(1);
