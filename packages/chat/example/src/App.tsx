@@ -47,7 +47,7 @@ import {
   type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
 import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
-import type { ChatAppMode, OverlaySessionItem } from "./ChatApp"
+import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
 
 // ============================================================================
 // Agent Busy Detection
@@ -333,7 +333,7 @@ export function App() {
     }
   }, [formatStats, player.loadSteps])
 
-  const chatAppSessions = useMemo<OverlaySessionItem[]>(
+  const chatAppSessions = useMemo<ChatAppSessionItem[]>(
     () => CLAUDE_CODE_SESSIONS.map((session) => ({
       id: session.id,
       title: session.label,
@@ -342,7 +342,7 @@ export function App() {
     []
   )
 
-  const handleChatAppSessionSelect = useCallback((session: OverlaySessionItem) => {
+  const handleChatAppSessionSelect = useCallback((session: ChatAppSessionItem) => {
     setSelectedChatAppSessionTitle(session.title)
     const claudeSession = CLAUDE_CODE_SESSIONS.find((item) => item.id === session.id)
     if (claudeSession) {
@@ -560,18 +560,18 @@ export function App() {
               </div>
 
               <div className="space-y-1.5">
-                <SectionLabel>{t("example.sections.chatAppMode", "Overlay Mode")}</SectionLabel>
+                <SectionLabel>{t("example.sections.chatAppMode", "Chat App Mode")}</SectionLabel>
                 <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
-                  <ModeButton active={chatAppMode === "floating"} onClick={() => setChatAppMode("floating")} title={t("example.overlay_mode.float", "Float")}>
+                  <ModeButton active={chatAppMode === "floating"} onClick={() => setChatAppMode("floating")} title={t("example.chat_app_mode.float", "Float")}>
                     <Bot className="size-3.5" />
                   </ModeButton>
-                  <ModeButton active={chatAppMode === "compact"} onClick={() => setChatAppMode("compact")} title={t("example.overlay_mode.compact", "Compact")}>
+                  <ModeButton active={chatAppMode === "compact"} onClick={() => setChatAppMode("compact")} title={t("example.chat_app_mode.compact", "Compact")}>
                     <MessageSquare className="size-3.5" />
                   </ModeButton>
-                  <ModeButton active={chatAppMode === "expanded"} onClick={() => setChatAppMode("expanded")} title={t("example.overlay_mode.expanded", "Expanded")}>
+                  <ModeButton active={chatAppMode === "expanded"} onClick={() => setChatAppMode("expanded")} title={t("example.chat_app_mode.expanded", "Expanded")}>
                     <ChevronDown className="size-3.5 rotate-180" />
                   </ModeButton>
-                  <ModeButton active={chatAppMode === "full"} onClick={() => setChatAppMode("full")} title={t("example.overlay_mode.fullscreen", "Fullscreen")}>
+                  <ModeButton active={chatAppMode === "full"} onClick={() => setChatAppMode("full")} title={t("example.chat_app_mode.fullscreen", "Fullscreen")}>
                     <Maximize2 className="size-3.5" />
                   </ModeButton>
                 </div>
