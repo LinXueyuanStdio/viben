@@ -17,7 +17,7 @@ import {
 } from "@viben/chat"
 import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2, Languages } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2, Languages, X } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
 import "react-json-view-lite/dist/index.css"
 import {
@@ -412,6 +412,14 @@ export function App() {
   const isAwaiting = player.isAwaiting
   const isChatAppFull = chatAppMode === "full"
   const hasStandaloneDemoOpen = showPlan || showQuestions || showEmojiPicker || showExecApproval || showCommandQueue
+  const dismissComponentDemo = useCallback(() => {
+    setShowPlan(false)
+    setShowQuestions(false)
+    setShowEmojiPicker(false)
+    setShowExecApproval(false)
+    setShowCommandQueue(false)
+    setApprovalFeedback(null)
+  }, [])
   const handleLanguageChange = useCallback((nextLanguage: ExampleLanguage) => {
     setLanguage(nextLanguage)
     void i18n.changeLanguage(nextLanguage)
@@ -447,6 +455,83 @@ export function App() {
     slashCommands: demoSlashCommands,
     onSlashCommand: handleSlashCommand,
   }
+  const componentDemoItems = [
+    {
+      id: "plan",
+      label: t("example.components.plan_approval", "Plan approval"),
+      description: t("example.components.plan_approval_desc", "Approval flow"),
+      active: showPlan,
+      onClick: () => {
+        setShowPlan(!showPlan)
+        setShowQuestions(false)
+        setShowEmojiPicker(false)
+        setShowExecApproval(false)
+        setShowCommandQueue(false)
+      },
+    },
+    {
+      id: "question",
+      label: t("example.components.question_input", "Question input"),
+      description: t("example.components.question_input_desc", "User prompt"),
+      active: showQuestions,
+      onClick: () => {
+        setShowQuestions(!showQuestions)
+        setShowPlan(false)
+        setShowEmojiPicker(false)
+        setShowExecApproval(false)
+        setShowCommandQueue(false)
+      },
+    },
+    {
+      id: "emoji",
+      label: t("example.components.emoji_picker", "Emoji picker"),
+      description: t("example.components.emoji_picker_desc", "Reaction grid"),
+      active: showEmojiPicker,
+      onClick: () => {
+        setShowEmojiPicker(!showEmojiPicker)
+        setShowPlan(false)
+        setShowQuestions(false)
+        setShowExecApproval(false)
+        setShowCommandQueue(false)
+      },
+    },
+    {
+      id: "exec",
+      label: t("example.components.exec_approval", "Exec approval"),
+      description: showExecApproval
+        ? demoExecApprovals[approvalDemoIdx % demoExecApprovals.length].tool_call.kind || t("example.components.execute_fallback", "execute")
+        : t("example.components.exec_approval_desc", "Permission gate"),
+      active: showExecApproval,
+      onClick: () => {
+        if (!showExecApproval) {
+          setApprovalDemoIdx(0)
+          setApprovalFeedback(null)
+        } else {
+          setApprovalDemoIdx(i => (i + 1) % demoExecApprovals.length)
+          setApprovalFeedback(null)
+        }
+        setShowExecApproval(true)
+        setShowPlan(false)
+        setShowQuestions(false)
+        setShowEmojiPicker(false)
+        setShowCommandQueue(false)
+      },
+    },
+    {
+      id: "queue",
+      label: t("example.components.command_queue", "Command queue"),
+      description: t("example.components.command_queue_desc", "{{count}} queued", { count: standaloneQueueItems.length }),
+      active: showCommandQueue,
+      onClick: () => {
+        setShowCommandQueue(!showCommandQueue)
+        setShowPlan(false)
+        setShowQuestions(false)
+        setShowEmojiPicker(false)
+        setShowExecApproval(false)
+      },
+    },
+  ]
+  const activeComponentDemo = componentDemoItems.find((item) => item.active)
 
   return (
     <LayoutGroup id="viben-chat-overlay-demo">
@@ -644,37 +729,35 @@ export function App() {
             )}
 
             {/* Component Demos */}
-            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-1.5" : "space-y-1.5 xl:col-start-2"}>
-              <SectionLabel>{t("example.sections.components", "Components")}</SectionLabel>
-              <NavButton active={showPlan} onClick={() => { setShowPlan(!showPlan); setShowQuestions(false); setShowEmojiPicker(false); setShowExecApproval(false); setShowCommandQueue(false) }}>
-                PlanApproval
-              </NavButton>
-              <NavButton active={showQuestions} onClick={() => { setShowQuestions(!showQuestions); setShowPlan(false); setShowEmojiPicker(false); setShowExecApproval(false); setShowCommandQueue(false) }}>
-                QuestionInput
-              </NavButton>
-              <NavButton active={showEmojiPicker} onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowPlan(false); setShowQuestions(false); setShowExecApproval(false); setShowCommandQueue(false) }}>
-                EmojiPicker
-              </NavButton>
-              <NavButton active={showExecApproval} onClick={() => {
-                if (!showExecApproval) {
-                  setApprovalDemoIdx(0)
-                  setApprovalFeedback(null)
-                } else {
-                  setApprovalDemoIdx(i => (i + 1) % demoExecApprovals.length)
-                  setApprovalFeedback(null)
-                }
-                setShowExecApproval(true); setShowPlan(false); setShowQuestions(false); setShowEmojiPicker(false); setShowCommandQueue(false)
-              }}>
-                ExecApproval
-                {showExecApproval && (
-                  <span className="ml-auto text-[10px] text-muted-foreground">
-                    {demoExecApprovals[approvalDemoIdx % demoExecApprovals.length].tool_call.kind || "execute"}
-                  </span>
-                )}
-              </NavButton>
-              <NavButton active={showCommandQueue} onClick={() => { setShowCommandQueue(!showCommandQueue); setShowPlan(false); setShowQuestions(false); setShowEmojiPicker(false); setShowExecApproval(false) }}>
-                CommandQueue
-              </NavButton>
+            <DashboardCard className={isChatAppFull ? "px-4 py-4 space-y-3" : "space-y-3 xl:col-start-2"}>
+              <div className="flex items-center justify-between gap-3">
+                <SectionLabel>{t("example.sections.components", "Components")}</SectionLabel>
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {activeComponentDemo?.label ?? t("example.components.none_selected", "No demo selected")}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                {componentDemoItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.onClick}
+                    aria-pressed={item.active}
+                    className={`min-h-14 rounded-md border px-2.5 py-2 text-left transition-colors ${
+                      item.active
+                        ? "border-primary/50 bg-primary/10 text-foreground shadow-sm"
+                        : "border-border/60 bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    <span className="block truncate text-xs font-medium">{item.label}</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{item.description}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+                <span>{t("example.components.available_count", "{{count}} demos", { count: componentDemoItems.length })}</span>
+                <span>{t("example.components.active_hint", "Selection opens on the right")}</span>
+              </div>
             </DashboardCard>
 
             {/* Model Icons */}
