@@ -300,7 +300,7 @@ Gateway 当前没有在该路由实现独立认证；如果部署环境需要认
 | `gateway_url` | string | 传给后端 MCP/工具的 Gateway 地址 |
 | `sandbox_config` | object | 沙箱配置，例如 `{ "enabled": true, "provider": "native" }` |
 
-> 兼容性：代码中同时接受 camelCase 和 snake_case 版本，例如 `agentConfig` 与 `agent_config`。Gateway API 和文件存储规范要求新客户端使用 snake_case。
+> 兼容性：代码中同时接受 camelCase 和 snake_case 版本，例如 `agentConfig` 与 `agent_config`。Gateway API 和文件存储规范要求新客户端使用 snake_case。边界规则是：ACP SDK 标准字段保持 ACP 定义的 camelCase，例如 `sessionId`、`mcpServers`、`toolCallId`、`requestedSchema`；Gateway 查询参数、文件存储字段以及 Viben 扩展字段使用 snake_case，例如 `session_id`、`agent_config_path`、`agent_id`、`user_id`。Viben 扩展中的 `_meta` 保持 ACP/MCP 风格的下划线前缀字段。
 
 **AgentConfigPayload 字段**:
 
@@ -647,7 +647,7 @@ queued -> expired
 
 **SQL 存储**:
 
-steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存中。建议表名为 `acp_steer_prompts`：
+生产环境中 steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存中。当前 core 实现如果 SQLite 初始化失败会回退到进程内 memory store；该 fallback 只适合本地示例或降级运行，不提供跨连接、跨 worker 或进程重启后的可靠消费。建议表名为 `acp_steer_prompts`：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -666,14 +666,14 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 
 **消费规则**:
 
-1. 后端只消费 `status = "queued"` 且匹配 `session_id + agent_id` 的记录。
+1. 当前实现中一个外层 ACP session 绑定一个智能体运行上下文，因此消费按 `session_id` 限定；`agent_id` 用于审计、列表过滤和未来多智能体共享 session 扩展。若未来支持多个智能体共享同一 ACP session，消费条件必须扩展为 `session_id + agent_id`。
 2. 后端按 `created_at ASC` 获取最早一条或一批 steer prompt。
 3. 消费必须使用 SQL 条件更新或事务，确保只有一个 worker 能把记录从 `queued` 改为 `consumed`。
 4. Gateway 每次准备让 Agent 运行前，必须消费当前会话下所有 `queued` steer prompt，并向客户端发送 `session/prompt/consumed` 通知。
-5. Gateway 收到任意工具结束事件时，必须消费当前会话下所有 `queued` steer prompt。工具结束事件包括 `tool_call_update.status = "completed"` 或 `"failed"`；不区分服务端工具、MCP 工具或客户端侧工具。
-6. Gateway 把工具结果交还 Agent 之前，也属于“Agent 再次运行前”的消费检查点。即使客户端侧工具路径没有产生标准 `tool_call_update`，实现也必须在恢复 Agent 执行前消费 steer 队列。
-7. 如果底层执行器支持运行中 steer，后端在消费后立即注入。
-8. 如果底层执行器不支持运行中 steer，后端可以在当前 turn 的安全检查点消费，或作为下一轮 prompt 的前置上下文。
+5. Gateway 收到任意后端工具结束事件时，必须检查当前会话下所有 `queued` steer prompt。工具结束事件包括 `tool_call_update.status = "completed"` 或 `"failed"`。如果存在 queued steer prompt，Gateway 会中断当前 turn，并把这些 steer prompt 安排为最高优先级恢复 prompt；只有恢复 prompt 真正开始前才标记 `consumed`。
+6. Gateway 把客户端侧工具结果交还 Agent 之前，也属于“Agent 再次运行前”的消费检查点。当前实现会在完成客户端侧工具结果前消费 steer 队列，并把 steer 内容作为附加 text content 拼入该 `CallToolResult`，保证 Agent 恢复时能看到追加指令。
+7. 如果底层执行器未来支持运行中 steer，可以替换为原生 steer 注入；但仍必须保证 `consumed` 通知只在内容已经进入 Agent 恢复上下文时发送。
+8. 如果底层执行器不支持运行中 steer，不能只标记 `consumed` 后丢弃内容；必须走工具结果追加或恢复 prompt。
 9. 已 `consumed` 的 steer prompt 不能通过 `session/prompt/cancel` 撤销；客户端应发新的 steer 修正指令，或用 `session/cancel` 取消当前 active prompt。
 
 **消费通知**:
@@ -785,9 +785,9 @@ steer prompt 必须使用 SQL 数据库存储，不能只放在 WebSocket 内存
 
 **触发点**:
 
-- Gateway 在每次 `session/prompt` 交给 Agent 运行前，消费当前会话下所有 `queued` steer prompt。
-- Gateway 在任意工具结束时消费当前会话下所有 `queued` steer prompt；结束状态包括 `completed` 和 `failed`。
-- Gateway 在把客户端侧工具结果传回 Agent 前也必须执行同样的消费检查，以覆盖没有标准工具结束事件的适配器。
+- Gateway 在每次 `session/prompt` 交给 Agent 运行前，消费当前会话下所有 `queued` steer prompt，并把内容合并进本轮 prompt。
+- Gateway 在后端工具结束时检查当前会话下所有 `queued` steer prompt；结束状态包括 `completed` 和 `failed`。当前实现会排入恢复 prompt 并中断当前 turn，恢复 prompt 开始前再消费并通知。
+- Gateway 在把客户端侧工具结果传回 Agent 前也必须执行同样的消费检查，以覆盖没有标准工具结束事件的适配器；当前实现会把 steer 内容追加到工具结果中。
 - 每条被成功消费的 steer prompt 都会触发一条 `session/prompt/consumed` 通知。
 - 已通知的记录状态为 `consumed`，不能再被 `session/prompt/cancel` 撤销。
 
@@ -1223,7 +1223,7 @@ Viben 扩展更新。当后端启动或执行失败时，Gateway 会先尝试发
 
 ### steer_consumed
 
-Viben 扩展更新，表示某条 `session/prompt/steer` 入队记录已经被后端消费。
+Viben 保留扩展更新，表示某条 `session/prompt/steer` 入队记录已经被后端消费。当前实现的主通知路径是独立 JSON-RPC notification `session/prompt/consumed`；客户端应以 `session/prompt/consumed` 为准，`session/update: steer_consumed` 仅用于兼容或未来 UI 状态事件。
 
 ```json
 {
@@ -1517,7 +1517,7 @@ Viben 扩展更新，表示某条已消费 steer prompt 注入或处理失败。
   "method": "_viben/client_tool_call",
   "params": {
     "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
-    "toolUseId": "toolu_02",
+    "toolCallId": "toolu_02",
     "toolName": "GUI_execute",
     "input": {
       "action": "click",
@@ -1534,13 +1534,17 @@ Viben 扩展更新，表示某条已消费 steer prompt 注入或处理失败。
   "jsonrpc": "2.0",
   "id": "client-tool-1",
   "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Clicked submit button"
-      }
-    ],
-    "isError": false
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "toolCallId": "toolu_02",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Clicked submit button"
+        }
+      ],
+      "isError": false
+    }
   }
 }
 ```
@@ -1552,21 +1556,27 @@ Viben 扩展更新，表示某条已消费 steer prompt 注入或处理失败。
   "jsonrpc": "2.0",
   "id": "client-tool-1",
   "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Client tool failed: selector not found"
-      }
-    ],
-    "isError": true
+    "sessionId": "9b0d8286-1f9a-45ea-b818-e6270c620062",
+    "toolCallId": "toolu_02",
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Client tool failed: selector not found"
+        }
+      ],
+      "isError": true
+    }
   }
 }
 ```
 
 **规则**:
 
-- 响应采用 MCP `CallToolResult` 形态：`content` 数组必需，`isError` 可选。
-- 如果客户端返回非 `CallToolResult`，Gateway 会把字符串或 JSON 序列化结果包装成一条 text content。
+- 请求字段使用 `toolCallId`，不是旧的 `toolUseId`。
+- 响应必须使用 envelope：`{ sessionId, toolCallId, result }`。其中 `result` 采用 MCP `CallToolResult` 形态：`content` 数组必需，`isError` 可选。
+- 如果 `sessionId` 或 `toolCallId` 与请求不一致，Gateway 会把该客户端工具结果视为错误结果。
+- 如果 `result` 不是有效 `CallToolResult`，Gateway 会把该客户端工具结果视为错误结果。
 - Gateway 当前为 `GUI_execute` 注册 60 秒等待时间；超时或取消会让等待中的工具结果失败。
 - 客户端不支持该扩展时，应返回 JSON-RPC `-32601`。这会被视为工具失败，而不是协议连接失败。
 
