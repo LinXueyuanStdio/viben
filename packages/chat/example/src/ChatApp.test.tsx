@@ -706,6 +706,38 @@ describe("ChatApp", () => {
     expect(overlay).not.toHaveClass("w-full");
   });
 
+  test("renders surface overlays inside expanded and full chat surfaces", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        surfaceOverlay={<div data-testid="surface-overlay">Tool detail</div>}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-overlay")).toContainElement(screen.getByTestId("surface-overlay"));
+
+    rerender(
+      <ChatApp
+        contained
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        surfaceOverlay={<div data-testid="surface-overlay">Tool detail</div>}
+      />
+    );
+
+    expect(screen.getByTestId("full-overlay")).toContainElement(screen.getByTestId("surface-overlay"));
+  });
+
   test("expanded to fullscreen lets the parent container own the fullscreen width target", () => {
     const { rerender } = render(
       <ChatApp

@@ -15,6 +15,7 @@ import type {
   ChatInputProps,
   CommandQueueItem,
   ExpandSubagentHandler,
+  InspectToolHandler,
   LoadSubagentDetails,
   MessageAttachment,
   PendingExecApproval,
@@ -97,10 +98,12 @@ export interface ChatAppProps {
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
   fullscreenContent?: React.ReactNode;
+  surfaceOverlay?: React.ReactNode;
   compactSummaryContent?: React.ReactNode;
   renderHeader?: (props: ChatAppHeaderRenderProps) => React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
   subagentSheet?: ChatAppSubagentSheetState;
   loadSubagentDetails?: LoadSubagentDetails;
   onModeChange: (mode: ChatAppMode) => void;
@@ -140,6 +143,7 @@ export interface ChatAppFullscreenMessagePanelProps {
   welcomeDescription?: string;
   maxMessageWidth?: string;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
   onApprovePlan?: () => void;
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
@@ -247,10 +251,12 @@ export function ChatApp({
   onInputValueChange,
   inputProps,
   fullscreenContent,
+  surfaceOverlay,
   compactSummaryContent,
   renderHeader,
   messageListRef,
   onExpandSubagent,
+  onInspectTool,
   subagentSheet,
   loadSubagentDetails,
   onModeChange,
@@ -300,6 +306,7 @@ export function ChatApp({
           assistantAvatar={staticAssistantAvatar}
           maxMessageWidth="100%"
           onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
         />
       </motion.div>
       <motion.div
@@ -378,6 +385,7 @@ export function ChatApp({
       context={subagentSheet.context}
       loadSubagentDetails={loadSubagentDetails}
       onExpandSubagent={onExpandSubagent}
+      onInspectTool={onInspectTool}
     />
   ) : null;
 
@@ -396,6 +404,7 @@ export function ChatApp({
       >
         {expandedContent}
         {subagentSheetNode}
+        {surfaceOverlay}
       </motion.div>
     );
   }
@@ -484,7 +493,7 @@ export function ChatApp({
       transition={OVERLAY_TRANSITION}
       initial={false}
       data-transition-role="expand-to-full"
-      className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+      className={`overlay-shared-surface pointer-events-auto relative flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
@@ -492,6 +501,7 @@ export function ChatApp({
     >
       {expandedContent}
       {subagentSheetNode}
+      {surfaceOverlay}
     </motion.div>
   );
 }
@@ -531,6 +541,7 @@ export function ChatAppFullscreenMessagePanel({
   welcomeDescription,
   maxMessageWidth = "760px",
   onExpandSubagent,
+  onInspectTool,
   onApprovePlan,
   onRejectPlan,
   onApprovalDecision,
@@ -552,6 +563,7 @@ export function ChatAppFullscreenMessagePanel({
       welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
       maxMessageWidth={maxMessageWidth}
       onExpandSubagent={onExpandSubagent}
+      onInspectTool={onInspectTool}
       onApprovePlan={onApprovePlan}
       onRejectPlan={onRejectPlan}
       onApprovalDecision={onApprovalDecision}
@@ -737,6 +749,7 @@ function ChatAppMessagePanel({
   welcomeDescription,
   maxMessageWidth = "760px",
   onExpandSubagent,
+  onInspectTool,
   onApprovePlan,
   onRejectPlan,
   onApprovalDecision,
@@ -754,6 +767,7 @@ function ChatAppMessagePanel({
   welcomeDescription?: string;
   maxMessageWidth?: string;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
   onApprovePlan?: () => void;
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
@@ -789,6 +803,7 @@ function ChatAppMessagePanel({
         welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
         maxMessageWidth={maxMessageWidth}
         onExpandSubagent={onExpandSubagent}
+        onInspectTool={onInspectTool}
         onApprovePlan={onApprovePlan}
         onRejectPlan={onRejectPlan}
         onApprovalDecision={onApprovalDecision}
