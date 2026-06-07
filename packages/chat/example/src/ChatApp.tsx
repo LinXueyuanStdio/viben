@@ -303,7 +303,7 @@ export function ChatApp({
         transition={OVERLAY_TRANSITION}
         initial={false}
         data-transition-role="expand-to-full"
-        className={`overlay-shared-surface relative flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
+        className={`overlay-shared-surface flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
           contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.full }}
@@ -400,7 +400,7 @@ export function ChatApp({
       transition={OVERLAY_TRANSITION}
       initial={false}
       data-transition-role="expand-to-full"
-      className={`overlay-shared-surface pointer-events-auto relative flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+      className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}

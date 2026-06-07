@@ -516,6 +516,7 @@ describe("ChatApp", () => {
     expect(overlay).toHaveClass("left-5");
     expect(overlay).toHaveClass("z-20");
     expect(overlay).toHaveClass("overlay-shared-surface");
+    expect(overlay).not.toHaveClass("relative");
     expect(overlay).not.toHaveClass("h-full");
     expect(overlay).not.toHaveClass("w-full");
   });
@@ -570,6 +571,7 @@ describe("ChatApp", () => {
     expect(overlay).toHaveClass("bottom-5");
     expect(overlay).toHaveClass("left-5");
     expect(overlay).toHaveClass("z-50");
+    expect(overlay).not.toHaveClass("relative");
     expect(overlay).toHaveClass("w-[min(440px,calc(100dvw_-_2rem))]");
     expect(overlay).toHaveClass("h-[75dvh]");
     expect(overlay).not.toHaveClass("h-full");

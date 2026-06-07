@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { App } from "./App";
 
@@ -50,8 +50,34 @@ vi.mock("react-i18next", () => ({
           "example.title": "Chat component lab",
           "example.kicker": "Control surface",
           "example.subtitle": "Replay sessions, inspect component states, and switch overlay modes from one control surface.",
+          "example.sidebar.title": "Example guide",
+          "example.sidebar.subtitle": "Project overview",
+          "example.sidebar.description": "A focused playground for the @viben/chat message list, input, session playback, and overlay modes.",
+          "example.sidebar.layout_title": "Layout",
+          "example.sidebar.layout_description": "Floating modes live over the demo area. Fullscreen mode docks the ChatApp between this guide and the control cards.",
+          "example.sidebar.page.player": "Player",
+          "example.sidebar.page.ui_showcase": "UI design showcase",
+          "example.sidebar.collapse": "Collapse sidebar",
+          "example.sidebar.expand": "Expand sidebar",
+          "example.resize_chat_app": "Resize ChatApp width",
           "example.load.session_folder": "Session Folder",
           "example.sections.chatAppMode": "Chat App Mode",
+          "example.sections.sessions": "Claude Code Sessions",
+          "example.sections.components": "Components",
+          "example.sections.modelIcons": "Model Icons",
+          "example.sections.toolExecution": "ToolExecutionItem (4 states)",
+          "example.sections.configPanels": "Config Panels",
+          "example.ui_showcase.title": "UI design showcase",
+          "example.ui_showcase.subtitle": "Display-only component states are grouped separately from the player.",
+          "example.ui_showcase.group.interactions": "Interaction surfaces",
+          "example.ui_showcase.group.feedback": "Feedback states",
+          "example.ui_showcase.group.configuration": "Configuration panels",
+          "example.components.plan_approval": "Plan approval",
+          "example.components.question_input": "Question input",
+          "example.components.emoji_picker": "Emoji picker",
+          "example.components.exec_approval": "Exec approval",
+          "example.components.command_queue": "Command queue",
+          "example.components.dismiss": "Dismiss component demo",
         },
         "zh-CN": {
           "example.language.english": "English",
@@ -59,8 +85,34 @@ vi.mock("react-i18next", () => ({
           "example.title": "聊天组件实验室",
           "example.kicker": "控制面板",
           "example.subtitle": "在同一个控制面板中回放会话、检查组件状态并切换浮层模式。",
+          "example.sidebar.title": "示例指南",
+          "example.sidebar.subtitle": "项目概览",
+          "example.sidebar.description": "@viben/chat 消息列表、输入框、会话回放和浮层模式的集中演示场。",
+          "example.sidebar.layout_title": "布局",
+          "example.sidebar.layout_description": "浮动模式叠在演示区域上方。全屏模式会把 ChatApp 停靠在本指南和控制卡片之间。",
+          "example.sidebar.page.player": "播放器",
+          "example.sidebar.page.ui_showcase": "UI 设计展示",
+          "example.sidebar.collapse": "收起侧边栏",
+          "example.sidebar.expand": "展开侧边栏",
+          "example.resize_chat_app": "调整 ChatApp 宽度",
           "example.load.session_folder": "会话文件夹",
           "example.sections.chatAppMode": "聊天应用模式",
+          "example.sections.sessions": "Claude Code 会话",
+          "example.sections.components": "组件",
+          "example.sections.modelIcons": "模型图标",
+          "example.sections.toolExecution": "ToolExecutionItem（4 种状态）",
+          "example.sections.configPanels": "配置面板",
+          "example.ui_showcase.title": "UI 设计展示",
+          "example.ui_showcase.subtitle": "陈列型组件状态与播放器分开管理。",
+          "example.ui_showcase.group.interactions": "交互界面",
+          "example.ui_showcase.group.feedback": "反馈状态",
+          "example.ui_showcase.group.configuration": "配置面板",
+          "example.components.plan_approval": "计划审批",
+          "example.components.question_input": "问题输入",
+          "example.components.emoji_picker": "表情选择器",
+          "example.components.exec_approval": "执行审批",
+          "example.components.command_queue": "命令队列",
+          "example.components.dismiss": "关闭组件演示",
         },
       };
       const value = translations[mockLanguage]?.[key] ?? fallback ?? key;
@@ -84,9 +136,19 @@ vi.mock("react-json-view-lite", () => ({
   darkStyles: {},
 }));
 
+beforeEach(() => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    writable: true,
+    value: 1400,
+  });
+  window.localStorage.clear();
+});
+
 afterEach(() => {
   mockLanguage = "en";
   changeLanguageMock.mockClear();
+  window.localStorage.clear();
   cleanup();
 });
 
@@ -106,30 +168,26 @@ describe("App overlay layout", () => {
     ]);
   });
 
-  test("renders the controls as a full-screen dashboard surface until fullscreen uses a right rail", () => {
+  test("renders header, collapsible intro sidebar, right demo panel, and floating chat stage", () => {
     render(<App />);
 
+    expect(screen.getByTestId("app-header")).toBeInTheDocument();
     expect(screen.getByTestId("chat-example-shell")).toHaveClass("bg-background");
-    expect(screen.getByTestId("control-panel")).toHaveClass("flex-1");
-    expect(screen.getByTestId("control-panel")).toHaveClass("overflow-hidden");
-    expect(screen.getByTestId("control-panel")).not.toHaveClass("absolute");
-    expect(screen.getByTestId("control-panel")).not.toHaveClass("left-1/2");
-    expect(screen.getByTestId("control-panel")).not.toHaveClass("-translate-x-1/2");
+    expect(screen.getByTestId("intro-sidebar")).toHaveStyle({ width: "280px" });
+    expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("pointer-events-none");
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("fixed");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("absolute");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("inset-0");
+    expect(screen.queryByTestId("fullscreen-chat-resize-handle")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
-    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("order-1");
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("w-[calc(100dvw_-_280px)]");
+    expect(screen.getByTestId("intro-sidebar")).toHaveStyle({ width: "280px" });
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-none");
-    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("fixed");
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
+    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("absolute");
     expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("pointer-events-none");
-    expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
-    expect(screen.getByTestId("control-panel")).toHaveClass("w-[280px]");
-    expect(screen.getByTestId("control-panel")).toHaveClass("border-l");
+    expect(screen.getByTestId("fullscreen-chat-resize-handle")).toHaveAttribute("aria-orientation", "vertical");
   });
 
   test("opens the fullscreen layout before morphing the expanded panel into fullscreen", async () => {
@@ -140,8 +198,8 @@ describe("App overlay layout", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("w-[calc(100dvw_-_280px)]");
-    expect(screen.getByTestId("control-panel")).toHaveClass("order-2");
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
+    expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
     expect(screen.queryByTestId("full-overlay")).not.toBeInTheDocument();
 
@@ -153,19 +211,19 @@ describe("App overlay layout", () => {
   test("keeps floating, compact, and expanded chat overlays out of the dashboard layout", () => {
     render(<App />);
 
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("fixed");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("absolute");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("pointer-events-none");
-    expect(screen.getByTestId("control-panel")).toHaveClass("flex-1");
+    expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Compact" }));
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("fixed");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("absolute");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("pointer-events-none");
-    expect(screen.getByTestId("control-panel")).toHaveClass("flex-1");
+    expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("fixed");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("absolute");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("pointer-events-none");
-    expect(screen.getByTestId("control-panel")).toHaveClass("flex-1");
+    expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
   });
 
   test("does not render the fullscreen session player content before fullscreen mode", async () => {
@@ -191,6 +249,29 @@ describe("App overlay layout", () => {
     expect(screen.getByText("Claude Code: 3bbcc4d2 session replay")).toBeInTheDocument();
   });
 
+  test("switches the left sidebar between player and UI design showcase pages", () => {
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "Player" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Claude Code Sessions")).toBeInTheDocument();
+    expect(screen.queryByText("Display-only component states are grouped separately from the player.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "UI design showcase" }));
+
+    expect(screen.getByRole("button", { name: "UI design showcase" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: "UI design showcase" })).toBeInTheDocument();
+    expect(screen.getByText("Display-only component states are grouped separately from the player.")).toBeInTheDocument();
+    expect(screen.getAllByText("Interaction surfaces").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Feedback states").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Configuration panels").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Plan approval").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Question input").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Emoji picker").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Exec approval").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Command queue").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Claude Code Sessions")).not.toBeInTheDocument();
+  });
+
   test("removes the old overlay stage background from every chat mode", () => {
     render(<App />);
 
@@ -206,22 +287,100 @@ describe("App overlay layout", () => {
     expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("overlay-stage-background");
   });
 
+  test("collapses the example intro sidebar", () => {
+    render(<App />);
+
+    expect(screen.getByTestId("intro-sidebar")).toHaveStyle({ width: "280px" });
+    expect(screen.getByText("Example guide")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+
+    expect(screen.getByTestId("intro-sidebar")).toHaveStyle({ width: "56px" });
+    expect(screen.queryByText("Example guide")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
+  });
+
+  test("resizes the fullscreen ChatApp width from the right content boundary", () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      writable: true,
+      value: 1400,
+    });
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    const stage = screen.getByTestId("chat-app-stage");
+    const handle = screen.getByTestId("fullscreen-chat-resize-handle");
+
+    expect(stage).toHaveStyle({ width: "720px" });
+
+    fireEvent.pointerDown(handle, { clientX: 720 });
+    fireEvent.pointerMove(window, { clientX: 900 });
+    expect(stage).toHaveStyle({ width: "620px" });
+
+    fireEvent.pointerMove(window, { clientX: 100 });
+    expect(stage).toHaveStyle({ width: "440px" });
+
+    fireEvent.pointerMove(window, { clientX: 1300 });
+    expect(stage).toHaveStyle({ width: "760px" });
+    expect(window.localStorage.getItem("viben.chat.example.fullscreen_chat_width")).toBe("760");
+
+    fireEvent.pointerUp(window);
+    fireEvent.pointerMove(window, { clientX: 800 });
+    expect(stage).toHaveStyle({ width: "760px" });
+  });
+
+  test("remembers the fullscreen ChatApp width before entering fullscreen again", () => {
+    window.localStorage.setItem("viben.chat.example.fullscreen_chat_width", "640");
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "640px" });
+
+    const handle = screen.getByTestId("fullscreen-chat-resize-handle");
+    fireEvent.pointerDown(handle, { clientX: 920 });
+    fireEvent.pointerMove(window, { clientX: 960 });
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "680px" });
+    fireEvent.pointerUp(window);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expanded" }));
+    expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "680px" });
+  });
+
+  test("component demo surface can be dismissed", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "UI design showcase" }));
+    fireEvent.click(screen.getByRole("button", { name: /Plan approval/ }));
+
+    expect(screen.getByTestId("component-demo-surface")).toBeInTheDocument();
+    expect(screen.getByTestId("plan-approval")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss component demo" }));
+
+    expect(screen.queryByTestId("component-demo-surface")).not.toBeInTheDocument();
+  });
+
   test("exposes a language switcher for English and Chinese control panel copy", () => {
     render(<App />);
 
     const englishButton = screen.getByRole("button", { name: "English" });
     const chineseButton = screen.getByRole("button", { name: "中文" });
 
-    expect(screen.getByText("Chat component lab")).toBeInTheDocument();
+    expect(screen.getAllByText("Chat component lab").length).toBeGreaterThan(0);
     fireEvent.click(chineseButton);
     expect(changeLanguageMock).toHaveBeenCalledWith("zh-CN");
-    expect(screen.getByText("聊天组件实验室")).toBeInTheDocument();
+    expect(screen.getAllByText("聊天组件实验室").length).toBeGreaterThan(0);
     expect(screen.getByText("会话文件夹")).toBeInTheDocument();
     expect(screen.getByText("聊天应用模式")).toBeInTheDocument();
 
     fireEvent.click(englishButton);
     expect(changeLanguageMock).toHaveBeenCalledWith("en");
-    expect(screen.getByText("Chat component lab")).toBeInTheDocument();
+    expect(screen.getAllByText("Chat component lab").length).toBeGreaterThan(0);
     expect(screen.getByText("Session Folder")).toBeInTheDocument();
     expect(chineseButton).toBeInTheDocument();
   });
