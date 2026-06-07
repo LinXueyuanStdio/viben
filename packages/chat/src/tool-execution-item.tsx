@@ -233,7 +233,8 @@ function formatFriendlySubagentType(subagentType: string | undefined): string {
       if (part.toUpperCase() === part) return part;
       return part.charAt(0).toUpperCase() + part.slice(1);
     })
-    .join(" ") || "Sub-Agent";
+    .join(" ")
+    .trim() || "Sub-Agent";
 }
 
 function formatTranslated(
