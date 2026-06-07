@@ -8,16 +8,13 @@ import {
   ChatAppFullscreenInputPanel,
   ChatAppFullscreenMessagePanel,
   ChatAppFullscreenPanel,
-  DefaultExpandedHeaderMoreMenu,
   EmojiPicker,
   ExpandedHeader,
   ExpandedHeaderModeControls,
-  ExpandedHeaderNewSessionMenu,
-  ExpandedHeaderSessionMenu,
   useCommandQueue,
   useCommandQueueInputRecall,
 } from "@viben/chat"
-import type { AgentMessage, ChatAppMode, ChatAppSessionItem, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
+import type { AgentMessage, ChatAppMode, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen, X } from "lucide-react"
 import {
@@ -70,6 +67,12 @@ import {
 } from "./hooks/app-utils"
 import type { ExampleLanguage, ExampleSidebarPage, FullscreenEntryGeometry } from "./hooks/app-utils"
 import { getAssistantPetState, getPetInteractionForSessionStatus } from "./chat-app-pet-state"
+import {
+  DefaultExpandedHeaderMoreMenu,
+  ExpandedHeaderNewSessionMenu,
+  ExpandedHeaderSessionMenu,
+} from "./chat-app-header"
+import type { ChatAppSessionItem } from "./chat-app-header"
 
 type CompactActivity = {
   kind: "plain" | "thinking"
