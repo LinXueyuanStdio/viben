@@ -2,7 +2,6 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search, Settings } from "lucide-react";
-import { Streamdown } from "streamdown";
 import { BackgroundTaskList, ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet, TodoListPanel } from "@viben/chat";
 import {
   DEFAULT_CHAT_APP_AGENTS,
@@ -37,7 +36,6 @@ export type ChatAppHeaderRenderProps = {
   sessions: OverlaySessionItem[];
   agents: OverlayAgentItem[];
   assistantAvatar: React.ReactNode;
-  headerActions?: OverlayHeaderActions;
   onModeChange: (mode: ChatAppMode) => void;
 };
 
@@ -55,24 +53,37 @@ export interface OverlayAgentItem {
   avatar?: React.ReactNode;
 }
 
-export interface OverlayHeaderActions {
+export interface ExpandedHeaderProps {
+  leftContent?: React.ReactNode;
+  centerContent?: React.ReactNode;
+  rightContent?: React.ReactNode;
+}
+
+export interface ExpandedHeaderSessionMenuProps {
+  title: string;
+  sessions: OverlaySessionItem[];
+  assistantAvatar: React.ReactNode;
+  onSelectSession?: (session: OverlaySessionItem) => void;
+}
+
+export interface ExpandedHeaderNewSessionMenuProps {
+  agents: OverlayAgentItem[];
   onCreateSession?: () => void;
   onNewChat?: () => void;
   onNewChatWindow?: () => void;
+  onSelectAgent?: (agent: OverlayAgentItem) => void;
+}
+
+export interface ExpandedHeaderModeControlsProps {
+  mode: ChatAppMode;
+  onModeChange: (mode: ChatAppMode) => void;
   onSettingsClick?: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
   onMoveToWindow?: () => void;
   onShowDebugView?: () => void;
   onShowDebugLog?: () => void;
-  onSelectSession?: (session: OverlaySessionItem) => void;
-  onSelectAgent?: (agent: OverlayAgentItem) => void;
 }
-
-export type CompactActivitySummary = {
-  kind: "plain" | "thinking";
-  text: string;
-};
 
 export interface ChatAppProps {
   mode: ChatAppMode;
@@ -87,12 +98,11 @@ export interface ChatAppProps {
   assistantAvatars?: AssistantPetAvatarMap;
   sessions?: OverlaySessionItem[];
   agents?: OverlayAgentItem[];
-  headerActions?: OverlayHeaderActions;
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
   fullscreenContent?: React.ReactNode;
-  compactActivity?: CompactActivitySummary;
+  renderCompactActivitySummary?: () => React.ReactNode;
   renderHeader?: (props: ChatAppHeaderRenderProps) => React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   onExpandSubagent?: ExpandSubagentHandler;
@@ -115,7 +125,6 @@ export interface ChatAppSubagentSheetState {
 
 export type ChatAppSessionItem = OverlaySessionItem;
 export type ChatAppAgentItem = OverlayAgentItem;
-export type ChatAppHeaderActions = OverlayHeaderActions;
 
 export interface ChatAppFullscreenPanelProps {
   messages: AgentMessage[];
@@ -220,12 +229,11 @@ export function ChatApp({
   assistantAvatars,
   sessions = DEFAULT_CHAT_APP_SESSIONS,
   agents = DEFAULT_CHAT_APP_AGENTS,
-  headerActions,
   inputValue,
   onInputValueChange,
   inputProps,
   fullscreenContent,
-  compactActivity: compactActivityProp,
+  renderCompactActivitySummary,
   renderHeader,
   messageListRef,
   onExpandSubagent,
@@ -251,10 +259,7 @@ export function ChatApp({
     onInputValueChange?.(value);
   }, [inputValue, onInputValueChange]);
 
-  const compactActivity = compactActivityProp ?? {
-    kind: "plain" as const,
-    text: t("chat_app.activity.ready", "Ready when you are."),
-  };
+  const compactActivitySummary = renderCompactActivitySummary?.() ?? t("chat_app.activity.ready", "Ready when you are.");
   const hasCompactDraft = content.trim().length > 0;
 
   const handleSubmit = React.useCallback(() => {
@@ -309,19 +314,21 @@ export function ChatApp({
     sessions,
     agents,
     assistantAvatar: staticAssistantAvatar,
-    headerActions,
     onModeChange,
   }) : (
     <ExpandedHeader
-      title={title}
-      sessions={sessions}
-      agents={agents}
-      assistantAvatar={staticAssistantAvatar}
-      headerActions={headerActions}
-      onCreateSession={headerActions?.onCreateSession}
-      onSettingsClick={headerActions?.onSettingsClick}
-      mode={mode}
-      onModeChange={onModeChange}
+      leftContent={(
+        <>
+          <ExpandedHeaderSessionMenu
+            title={title}
+            sessions={sessions}
+            assistantAvatar={staticAssistantAvatar}
+          />
+          <ExpandedHeaderNewSessionMenu agents={agents} />
+        </>
+      )}
+      centerContent={<div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />}
+      rightContent={<ExpandedHeaderModeControls mode={mode} onModeChange={onModeChange} />}
     />
   );
 
@@ -433,8 +440,7 @@ export function ChatApp({
         <AgentPopup
           avatar={dynamicAssistantAvatar}
           title={title}
-          activity={compactActivity}
-          isStreaming={isStreaming}
+          summary={compactActivitySummary}
           showMinimize={hasCompactDraft}
           onExpand={() => onModeChange("expanded")}
           onMinimize={() => onModeChange("floating")}
@@ -597,16 +603,14 @@ export function ChatAppFullscreenPanel({
 function AgentPopup({
   avatar,
   title,
-  activity,
-  isStreaming,
+  summary,
   showMinimize,
   onExpand,
   onMinimize,
 }: {
   avatar: React.ReactNode;
   title: string;
-  activity: CompactActivitySummary;
-  isStreaming: boolean;
+  summary: React.ReactNode;
   showMinimize: boolean;
   onExpand: () => void;
   onMinimize: () => void;
@@ -656,21 +660,12 @@ function AgentPopup({
               </div>
             )}
           </div>
-          {activity.kind === "thinking" ? (
-            <div
-              className="mt-2 overflow-hidden truncate whitespace-nowrap text-sm leading-6 text-foreground/85"
-              data-testid="agent-popup-summary"
-            >
-              <Streamdown mode={isStreaming ? "streaming" : "static"} caret={isStreaming ? "block" : undefined}>
-                {activity.text}
-              </Streamdown>
-            </div>
-          ) : (
-            <p className="mt-2 overflow-hidden truncate whitespace-nowrap text-sm leading-6 text-foreground/85" data-testid="agent-popup-summary">
-              {activity.text}
-              {isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
-            </p>
-          )}
+          <div
+            className="mt-2 overflow-hidden truncate whitespace-nowrap text-sm leading-6 text-foreground/85"
+            data-testid="agent-popup-summary"
+          >
+            {summary}
+          </div>
         </div>
       </div>
     </motion.section>
@@ -755,31 +750,37 @@ function ChatAppMessagePanel({
   );
 }
 
-function ExpandedHeader({
+export function ExpandedHeader({
+  leftContent,
+  centerContent,
+  rightContent,
+}: ExpandedHeaderProps) {
+  return (
+    <header
+      data-testid="expanded-header"
+      className="relative flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-card px-3"
+    >
+      <div className="flex shrink-0 items-center gap-1.5" data-testid="expanded-header-left">
+        {leftContent}
+      </div>
+      <div className="flex min-w-0 flex-1 items-center" data-testid="expanded-header-center">
+        {centerContent}
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5" data-testid="expanded-header-right">
+        {rightContent}
+      </div>
+    </header>
+  );
+}
+
+export function ExpandedHeaderSessionMenu({
   title,
   sessions,
-  agents,
   assistantAvatar,
-  headerActions,
-  onCreateSession,
-  onSettingsClick,
-  mode,
-  onModeChange,
-}: {
-  title: string;
-  sessions: OverlaySessionItem[];
-  agents: OverlayAgentItem[];
-  assistantAvatar: React.ReactNode;
-  headerActions?: OverlayHeaderActions;
-  onCreateSession?: () => void;
-  onSettingsClick?: () => void;
-  mode: ChatAppMode;
-  onModeChange: (mode: ChatAppMode) => void;
-}) {
+  onSelectSession,
+}: ExpandedHeaderSessionMenuProps) {
   const { t } = useTranslation();
   const [sessionOpen, setSessionOpen] = React.useState(false);
-  const [newOpen, setNewOpen] = React.useState(false);
-  const [moreOpen, setMoreOpen] = React.useState(false);
   const [selectedSessionTitle, setSelectedSessionTitle] = React.useState(title);
 
   React.useEffect(() => {
@@ -787,57 +788,66 @@ function ExpandedHeader({
   }, [title]);
 
   return (
-    <header
-      data-testid="expanded-header"
-      className="relative flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-card px-3"
-    >
-      <div className="relative" data-testid="session-title-menu">
-        <button
-          type="button"
-          aria-label={t("chat_app.header.session_menu", "Session menu")}
-          onClick={() => setSessionOpen((open) => !open)}
-          className="flex h-8 max-w-[164px] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
-        >
-          <span className="truncate">{selectedSessionTitle}</span>
-          {sessionOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-        </button>
-        {sessionOpen && (
-          <div className="absolute left-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-2 shadow-xl">
-            <label className="flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-2">
-              <Search className="size-4 text-muted-foreground" />
-              <input
-                type="search"
-                aria-label={t("chat_app.header.search_sessions", "Search sessions")}
-                placeholder={t("chat_app.header.search_sessions", "Search sessions")}
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              />
-            </label>
-            <div className="mt-2 space-y-1">
-              {sessions.map((session) => (
-                <button
-                  key={session.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedSessionTitle(session.title);
-                    headerActions?.onSelectSession?.(session);
-                    setSessionOpen(false);
-                  }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent"
-                >
-                  <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
-                    {session.avatar ?? assistantAvatar}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-foreground">{session.title}</span>
-                    {session.subtitle && <span className="block truncate text-[11px] text-muted-foreground">{session.subtitle}</span>}
-                  </span>
-                </button>
-              ))}
-            </div>
+    <div className="relative" data-testid="session-title-menu">
+      <button
+        type="button"
+        aria-label={t("chat_app.header.session_menu", "Session menu")}
+        onClick={() => setSessionOpen((open) => !open)}
+        className="flex h-8 max-w-[164px] items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+      >
+        <span className="truncate">{selectedSessionTitle}</span>
+        {sessionOpen ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+      </button>
+      {sessionOpen && (
+        <div className="absolute left-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-2 shadow-xl">
+          <label className="flex h-9 items-center gap-2 rounded-md border border-border/70 bg-background px-2">
+            <Search className="size-4 text-muted-foreground" />
+            <input
+              type="search"
+              aria-label={t("chat_app.header.search_sessions", "Search sessions")}
+              placeholder={t("chat_app.header.search_sessions", "Search sessions")}
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </label>
+          <div className="mt-2 space-y-1">
+            {sessions.map((session) => (
+              <button
+                key={session.id}
+                type="button"
+                onClick={() => {
+                  setSelectedSessionTitle(session.title);
+                  onSelectSession?.(session);
+                  setSessionOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
+                  {session.avatar ?? assistantAvatar}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-foreground">{session.title}</span>
+                  {session.subtitle && <span className="block truncate text-[11px] text-muted-foreground">{session.subtitle}</span>}
+                </span>
+              </button>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
+export function ExpandedHeaderNewSessionMenu({
+  agents,
+  onCreateSession,
+  onNewChat,
+  onNewChatWindow,
+  onSelectAgent,
+}: ExpandedHeaderNewSessionMenuProps) {
+  const { t } = useTranslation();
+  const [newOpen, setNewOpen] = React.useState(false);
+
+  return (
       <div
         className="relative flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-background"
         data-testid="new-session-split-button"
@@ -861,11 +871,11 @@ function ExpandedHeader({
         </button>
         {newOpen && (
           <div className="absolute right-0 top-10 z-20 w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
-            <MenuButton onClick={headerActions?.onNewChat}>{t("chat_app.header.new_chat", "New chat")}</MenuButton>
-            <MenuButton onClick={headerActions?.onNewChatWindow}>{t("chat_app.header.new_chat_window", "New chat window")}</MenuButton>
+            <MenuButton onClick={onNewChat}>{t("chat_app.header.new_chat", "New chat")}</MenuButton>
+            <MenuButton onClick={onNewChatWindow}>{t("chat_app.header.new_chat_window", "New chat window")}</MenuButton>
             <MenuDivider />
             {agents.map((agent) => (
-              <MenuButton key={agent.id} onClick={() => headerActions?.onSelectAgent?.(agent)}>
+              <MenuButton key={agent.id} onClick={() => onSelectAgent?.(agent)}>
                 <span className="flex items-center gap-2">
                   <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary">
                     {agent.avatar ?? <Bot className="size-4" />}
@@ -880,9 +890,24 @@ function ExpandedHeader({
           </div>
         )}
       </div>
+  );
+}
 
-      <div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />
+export function ExpandedHeaderModeControls({
+  mode,
+  onModeChange,
+  onSettingsClick,
+  onPrevious,
+  onNext,
+  onMoveToWindow,
+  onShowDebugView,
+  onShowDebugLog,
+}: ExpandedHeaderModeControlsProps) {
+  const { t } = useTranslation();
+  const [moreOpen, setMoreOpen] = React.useState(false);
 
+  return (
+    <>
       <button
         type="button"
         aria-label={t("chat_app.header.switch_compact", "Switch to compact mode")}
@@ -926,17 +951,17 @@ function ExpandedHeader({
         </button>
         {moreOpen && (
           <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
-            <MenuButton onClick={headerActions?.onPrevious}>{t("chat_app.header.previous_step", "Previous step")}</MenuButton>
-            <MenuButton onClick={headerActions?.onNext}>{t("chat_app.header.next_step", "Next step")}</MenuButton>
+            <MenuButton onClick={onPrevious}>{t("chat_app.header.previous_step", "Previous step")}</MenuButton>
+            <MenuButton onClick={onNext}>{t("chat_app.header.next_step", "Next step")}</MenuButton>
             <MenuDivider />
-            <MenuButton onClick={headerActions?.onMoveToWindow}>{t("chat_app.header.move_to_window", "Move chat to new window")}</MenuButton>
+            <MenuButton onClick={onMoveToWindow}>{t("chat_app.header.move_to_window", "Move chat to new window")}</MenuButton>
             <MenuDivider />
-            <MenuButton onClick={headerActions?.onShowDebugView}>{t("chat_app.header.show_debug_view", "Show debug view")}</MenuButton>
-            <MenuButton onClick={headerActions?.onShowDebugLog}>{t("chat_app.header.show_debug_log", "Show debug log")}</MenuButton>
+            <MenuButton onClick={onShowDebugView}>{t("chat_app.header.show_debug_view", "Show debug view")}</MenuButton>
+            <MenuButton onClick={onShowDebugLog}>{t("chat_app.header.show_debug_log", "Show debug log")}</MenuButton>
           </div>
         )}
       </div>
-    </header>
+    </>
   );
 }
 

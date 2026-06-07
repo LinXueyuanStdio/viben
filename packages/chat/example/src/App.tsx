@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { LayoutGroup } from "framer-motion"
 import { useTranslation } from "react-i18next"
+import { Streamdown } from "streamdown"
 import {
   EmojiPicker,
   useCommandQueue,
@@ -39,8 +40,15 @@ import {
   type LoadedClaudeCodeSession,
   type ParseStats,
 } from "./claudecode-log-provider"
-import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
-import type { ChatAppMode, ChatAppSessionItem, CompactActivitySummary } from "./ChatApp"
+import {
+  ChatApp,
+  ChatAppFullscreenPanel,
+  ExpandedHeader,
+  ExpandedHeaderModeControls,
+  ExpandedHeaderNewSessionMenu,
+  ExpandedHeaderSessionMenu,
+} from "./ChatApp"
+import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
 import { PlayerButton, ModeButton, SectionLabel, SidebarPageButton } from "./components/common"
 import { PlayerPage } from "./pages/PlayerPage"
 import { UIShowCasesPage, UIShowcaseDemoOverlay } from "./pages/UIShowCasesPage"
@@ -458,7 +466,7 @@ export function App() {
     const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT))
     return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index])
   }, [t])
-  const compactActivity = useMemo<CompactActivitySummary>(() => {
+  const compactActivity = useMemo(() => {
     const formatToolPath = (value: unknown): string => {
       if (!value) return "file"
       const raw = String(value)
@@ -535,6 +543,21 @@ export function App() {
         }
     }
   }, [compactIdleGreeting, player.messages, t])
+  const renderCompactActivitySummary = useCallback(() => {
+    if (compactActivity.kind === "thinking") {
+      return (
+        <Streamdown mode={player.isStreaming ? "streaming" : "static"} caret={player.isStreaming ? "block" : undefined}>
+          {compactActivity.text}
+        </Streamdown>
+      )
+    }
+    return (
+      <>
+        {compactActivity.text}
+        {player.isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
+      </>
+    )
+  }, [compactActivity, player.isStreaming])
   const isComponentDemoActive = (id: UIShowcaseDemoId) => {
     switch (id) {
       case "plan":
@@ -670,13 +693,34 @@ export function App() {
       isStreaming={player.isStreaming}
       playerStatus={player.status}
       pendingUserMessageCount={commandQueue.items.length}
-      compactActivity={compactActivity}
+      renderCompactActivitySummary={renderCompactActivitySummary}
       sessions={chatAppSessions}
-      headerActions={{
-        onSelectSession: handleChatAppSessionSelect,
-        onCreateSession: () => handleChatAppModeChange("expanded"),
-        onSettingsClick: () => setShowToolsPanel((open) => !open),
-      }}
+      renderHeader={(headerProps) => (
+        <ExpandedHeader
+          leftContent={(
+            <>
+              <ExpandedHeaderSessionMenu
+                title={headerProps.title}
+                sessions={headerProps.sessions}
+                assistantAvatar={headerProps.assistantAvatar}
+                onSelectSession={handleChatAppSessionSelect}
+              />
+              <ExpandedHeaderNewSessionMenu
+                agents={headerProps.agents}
+                onCreateSession={() => handleChatAppModeChange("expanded")}
+              />
+            </>
+          )}
+          centerContent={<div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />}
+          rightContent={(
+            <ExpandedHeaderModeControls
+              mode={headerProps.mode}
+              onModeChange={headerProps.onModeChange}
+              onSettingsClick={() => setShowToolsPanel((open) => !open)}
+            />
+          )}
+        />
+      )}
       inputValue={chatInputValue}
       onInputValueChange={setChatInputValue}
       messageListRef={messageListRef}

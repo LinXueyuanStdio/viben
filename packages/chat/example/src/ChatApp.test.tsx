@@ -2,7 +2,16 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { ChatApp, ChatAppFullscreenPanel, getAssistantPetState, getPetInteractionForSessionStatus } from "./ChatApp";
+import {
+  ChatApp,
+  ChatAppFullscreenPanel,
+  ExpandedHeader,
+  ExpandedHeaderModeControls,
+  ExpandedHeaderNewSessionMenu,
+  ExpandedHeaderSessionMenu,
+  getAssistantPetState,
+  getPetInteractionForSessionStatus,
+} from "./ChatApp";
 import type { AgentMessage } from "@viben/chat";
 
 vi.mock("@viben/chat", async () => {
@@ -130,7 +139,7 @@ vi.mock("react-i18next", () => ({
         "chat_app.greetings.0": "Ready when you are.",
         "chat_app.greetings.49": "Let’s make progress.",
       };
-      const values = typeof fallback === "object" ? fallback : options;
+      const values = (typeof fallback === "object" ? fallback : options) as Record<string, unknown> | undefined;
       const value = translations[key] ?? (typeof fallback === "object" ? fallback.defaultValue : fallback) ?? key;
       return value.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(values?.[name] ?? `{{${name}}}`));
     },
@@ -601,7 +610,7 @@ describe("ChatApp", () => {
         title="Demo session title"
         messages={emptyMessages}
         isStreaming={false}
-        compactActivity={{ kind: "plain", text: "Let’s make progress." }}
+        renderCompactActivitySummary={() => "Let’s make progress."}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -613,7 +622,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("agent-popup-summary")).toHaveClass("truncate", "whitespace-nowrap", "overflow-hidden");
   });
 
-  test("compact summary is driven by the compactActivity prop", () => {
+  test("compact summary is driven by the renderCompactActivitySummary prop", () => {
     render(
       <ChatApp
         mode="compact"
@@ -627,7 +636,7 @@ describe("ChatApp", () => {
           },
         ]}
         isStreaming
-        compactActivity={{ kind: "plain", text: "Host controlled status" }}
+        renderCompactActivitySummary={() => "Host controlled status"}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -645,7 +654,9 @@ describe("ChatApp", () => {
         mode="compact"
         messages={[{ id: "think-1", type: "thinking", content: "I am checking the active session." }]}
         isStreaming
-        compactActivity={{ kind: "thinking", text: "I am checking the active session." }}
+        renderCompactActivitySummary={() => (
+          <span data-testid="streamdown-streaming" data-caret="block">I am checking the active session.</span>
+        )}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -860,15 +871,15 @@ describe("ChatApp", () => {
   test("expanded session menu calls selection callback and closes", () => {
     const onSelectSession = vi.fn();
     render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
-        sessions={[{ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" }]}
-        headerActions={{ onSelectSession }}
+      <ExpandedHeader
+        leftContent={(
+          <ExpandedHeaderSessionMenu
+            title="Viben session"
+            sessions={[{ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" }]}
+            assistantAvatar={<span>avatar</span>}
+            onSelectSession={onSelectSession}
+          />
+        )}
       />
     );
 
@@ -946,15 +957,18 @@ describe("ChatApp", () => {
   test("expanded header buttons use configurable callbacks", () => {
     const onCreateSession = vi.fn();
     const onSettingsClick = vi.fn();
+    const onModeChange = vi.fn();
     render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
-        headerActions={{ onCreateSession, onSettingsClick }}
+      <ExpandedHeader
+        leftContent={<ExpandedHeaderNewSessionMenu agents={[]} onCreateSession={onCreateSession} />}
+        centerContent={<div data-testid="expanded-header-drag-area" />}
+        rightContent={(
+          <ExpandedHeaderModeControls
+            mode="expanded"
+            onModeChange={onModeChange}
+            onSettingsClick={onSettingsClick}
+          />
+        )}
       />
     );
 
@@ -965,7 +979,21 @@ describe("ChatApp", () => {
     expect(onSettingsClick).toHaveBeenCalledTimes(1);
   });
 
-  test("expanded header keeps compact and fullscreen buttons after the drag area", () => {
+  test("expanded header exposes left center and right content slots", () => {
+    render(
+      <ExpandedHeader
+        leftContent={<span data-testid="custom-left">Left</span>}
+        centerContent={<span data-testid="custom-center">Center</span>}
+        rightContent={<span data-testid="custom-right">Right</span>}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-header-left")).toContainElement(screen.getByTestId("custom-left"));
+    expect(screen.getByTestId("expanded-header-center")).toContainElement(screen.getByTestId("custom-center"));
+    expect(screen.getByTestId("expanded-header-right")).toContainElement(screen.getByTestId("custom-right"));
+  });
+
+  test("expanded header keeps controls grouped into slots", () => {
     render(
       <ChatApp
         mode="expanded"
@@ -977,11 +1005,14 @@ describe("ChatApp", () => {
       />
     );
 
-    const header = screen.getByTestId("expanded-header");
-    expect(Array.from(header.children).map((child) => child.getAttribute("data-testid"))).toEqual([
+    expect(Array.from(screen.getByTestId("expanded-header-left").children).map((child) => child.getAttribute("data-testid"))).toEqual([
       "session-title-menu",
       "new-session-split-button",
+    ]);
+    expect(Array.from(screen.getByTestId("expanded-header-center").children).map((child) => child.getAttribute("data-testid"))).toEqual([
       "expanded-header-drag-area",
+    ]);
+    expect(Array.from(screen.getByTestId("expanded-header-right").children).map((child) => child.getAttribute("data-testid"))).toEqual([
       "compact-mode-button",
       "full-mode-button",
       "settings-button",
@@ -1226,6 +1257,46 @@ describe("ChatApp", () => {
       title: "Custom session",
       onModeChange,
     }));
+  });
+
+  test("exports expanded header slot content components for composed App usage", () => {
+    const onCreateSession = vi.fn();
+    const onSettingsClick = vi.fn();
+    const onSelectSession = vi.fn();
+    const onModeChange = vi.fn();
+
+    render(
+      <ExpandedHeader
+        leftContent={(
+          <>
+            <ExpandedHeaderSessionMenu
+              title="Composable session"
+              sessions={[{ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" }]}
+              assistantAvatar={<span>avatar</span>}
+              onSelectSession={onSelectSession}
+            />
+            <ExpandedHeaderNewSessionMenu agents={[]} onCreateSession={onCreateSession} />
+          </>
+        )}
+        centerContent={<div data-testid="expanded-header-drag-area" />}
+        rightContent={(
+          <ExpandedHeaderModeControls
+            mode="expanded"
+            onModeChange={onModeChange}
+            onSettingsClick={onSettingsClick}
+          />
+        )}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Create new session" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Session menu" }));
+    fireEvent.click(screen.getByText("Session one"));
+
+    expect(onCreateSession).toHaveBeenCalledTimes(1);
+    expect(onSettingsClick).toHaveBeenCalledTimes(1);
+    expect(onSelectSession).toHaveBeenCalledWith({ id: "session-1", title: "Session one", subtitle: "session-1.jsonl" });
   });
 });
 
