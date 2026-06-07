@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 // @vitest-environment jsdom
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import { ToolExecutionItem } from "../tool-execution-item";
 import type { AgentMessage } from "../types";
@@ -150,8 +150,8 @@ describe("ToolExecutionItem subagent cards", () => {
     expect(screen.getAllByText("Found the width constant usage").length).toBeGreaterThan(0);
   });
 
-  test("shows only the latest five running preview rows", () => {
-    render(
+  test("shows only the latest five running preview rows", async () => {
+    const { rerender } = render(
       <ToolExecutionItem
         name="Agent"
         input={{
@@ -169,10 +169,40 @@ describe("ToolExecutionItem subagent cards", () => {
       />
     );
 
+    const preview = screen.getByTestId("subagent-preview");
+    expect(preview).toHaveClass("overflow-hidden");
+    expect(preview).not.toHaveClass("overflow-y-auto");
+    expect(preview).not.toHaveClass("overflow-y-scroll");
+    expect(screen.getAllByTestId("subagent-preview-slot")).toHaveLength(5);
     expect(screen.queryByText("preview event 1")).not.toBeInTheDocument();
     expect(screen.queryByText("preview event 2")).not.toBeInTheDocument();
     expect(screen.getByText("preview event 3")).toBeInTheDocument();
     expect(screen.getAllByText("preview event 7").length).toBeGreaterThan(0);
+
+    rerender(
+      <ToolExecutionItem
+        name="Agent"
+        input={{
+          description: "Research message width",
+          subagent_type: "Explore",
+        }}
+        toolUseId="tool-preview-window"
+        isExecuting
+        subagentPreviewMessages={Array.from({ length: 8 }, (_, index) => ({
+          id: `preview-${index + 1}`,
+          type: "text",
+          content: `preview event ${index + 1}`,
+        }))}
+        onExpandSubagent={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("preview event 3")).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByTestId("subagent-preview-slot")).toHaveLength(5);
+    expect(screen.getByText("preview event 4")).toBeInTheDocument();
+    expect(screen.getAllByText("preview event 8").length).toBeGreaterThan(0);
   });
 
   test("places the running preview below the task prompt inside collapsible details", () => {
@@ -232,6 +262,8 @@ describe("ToolExecutionItem subagent cards", () => {
       />
     );
 
+    expect(screen.getByTestId("subagent-status-loading")).toBeInTheDocument();
+    expect(screen.getByTestId("subagent-status-activity")).toHaveTextContent("Found the width constant usage");
     expect(screen.getAllByText("Found the width constant usage").length).toBeGreaterThan(0);
     expect(screen.queryByText("Running…")).not.toBeInTheDocument();
 
@@ -253,6 +285,8 @@ describe("ToolExecutionItem subagent cards", () => {
       />
     );
 
+    expect(screen.queryByTestId("subagent-status-loading")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("subagent-status-activity")).not.toBeInTheDocument();
     expect(screen.queryByText("Found the width constant usage")).not.toBeInTheDocument();
     expect(screen.getByText(/Done/)).toBeInTheDocument();
   });

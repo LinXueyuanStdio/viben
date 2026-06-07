@@ -278,6 +278,7 @@ function UserMessage({
   avatar?: React.ReactNode;
   onAvatarClick?: (message: AgentMessage) => void;
 }) {
+  const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   return (
     <motion.div
@@ -288,7 +289,7 @@ function UserMessage({
     >
       <MessageAvatar
         className="h-8 w-8 bg-primary/10"
-        label="User avatar"
+        label={t("chat.avatar.user", "User avatar")}
         message={message}
         onClick={onAvatarClick}
       >
@@ -370,6 +371,10 @@ function ThinkingMessage({
   }, [content]);
 
   const charCount = content.length;
+  const characterCountLabel = t("chat.characterCount", "{{count}} chars", {
+    count: charCount,
+    displayCount: charCount >= 1000 ? `${(charCount / 1000).toFixed(1)}k` : charCount,
+  });
 
   // Short content (≤3 lines): always show fully, no toggle
   if (isShort) {
@@ -434,9 +439,7 @@ function ThinkingMessage({
           </span>
           <span className="text-muted-foreground/30">·</span>
           <span>
-            {charCount >= 1000
-              ? `${(charCount / 1000).toFixed(1)}k chars`
-              : `${charCount} chars`}
+            {characterCountLabel}
           </span>
         </button>
       </div>
@@ -466,6 +469,7 @@ function AssistantMessage({
   avatar?: React.ReactNode;
   onAvatarClick?: (message: AgentMessage) => void;
 }) {
+  const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const markdownComponents = useMemo(
     () => createMarkdownComponents(onLinkClick),
@@ -481,7 +485,7 @@ function AssistantMessage({
     >
       <MessageAvatar
         className="h-8 w-8 bg-secondary"
-        label="Assistant avatar"
+        label={t("chat.avatar.assistant", "Assistant avatar")}
         message={message}
         onClick={onAvatarClick}
       >

@@ -21,6 +21,7 @@ import {
 import { cn } from "@viben/ui";
 import { formatI18nTemplate, getDisplayPath } from "./utils";
 import type { AgentMessage, ContentBlock, ExpandSubagentHandler } from "./types";
+import type { TFunction } from "i18next";
 
 /** Artifact info for linking tool_use messages to artifacts */
 export interface ArtifactInfo {
@@ -721,38 +722,41 @@ function getProgressText(
   }
 }
 
-function getPreviewText(message: AgentMessage): string {
+function getPreviewText(message: AgentMessage, t: TFunction): string {
   if (message.type === "tool_use") {
     const param = getToolParam(message.name || "", message.input);
-    return param ? `${message.name || "Tool"} ${param}` : message.name || "Tool";
+    const toolName = message.name || t("chat.preview.tool", "Tool");
+    return param ? `${toolName} ${param}` : toolName;
   }
   if (message.type === "tool_result") {
     if (typeof message.output === "string") {
-      return message.output.split("\n").find((line) => line.trim())?.trim() || "Tool completed";
+      return message.output.split("\n").find((line) => line.trim())?.trim() || t("chat.preview.toolCompleted", "Tool completed");
     }
-    return "Tool completed";
+    return t("chat.preview.toolCompleted", "Tool completed");
   }
-  if (message.type === "thinking") return message.content || "Thinking";
+  if (message.type === "thinking") return message.content || t("chat.preview.thinking", "Thinking");
   if (message.type === "text") return message.content || "";
-  if (message.type === "error") return message.message || message.content || "Error";
+  if (message.type === "error") return message.message || message.content || t("chat.preview.error", "Error");
   if (message.type === "user") return message.content || "";
   return message.content || message.type;
 }
 
-function getPreviewLabel(message: AgentMessage): string {
-  if (message.type === "tool_use") return message.name || "Tool";
-  if (message.type === "tool_result") return message.isError ? "Error" : "Done";
-  if (message.type === "thinking") return "Thinking";
-  if (message.type === "text") return "Text";
-  if (message.type === "user") return "User";
-  if (message.type === "error") return "Error";
+function getPreviewLabel(message: AgentMessage, t: TFunction): string {
+  if (message.type === "tool_use") return message.name || t("chat.preview.tool", "Tool");
+  if (message.type === "tool_result") return message.isError ? t("chat.preview.error", "Error") : t("chat.preview.done", "Done");
+  if (message.type === "thinking") return t("chat.preview.thinking", "Thinking");
+  if (message.type === "text") return t("chat.preview.text", "Text");
+  if (message.type === "user") return t("chat.preview.user", "User");
+  if (message.type === "error") return t("chat.preview.error", "Error");
   return message.type;
 }
 
 function SubagentPreviewRow({ message }: { message: AgentMessage }) {
+  const { t } = useTranslation();
   const isActive = message.type === "tool_use" && !message.output;
   const isError = message.type === "error" || message.isError;
-  const text = getPreviewText(message);
+  const text = getPreviewText(message, t);
+  const label = getPreviewLabel(message, t);
 
   return (
     <div className="flex min-w-0 items-start gap-1.5 rounded bg-background/60 px-2 py-1 text-[11px]">
@@ -763,7 +767,7 @@ function SubagentPreviewRow({ message }: { message: AgentMessage }) {
         )}
       />
       <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
-        {getPreviewLabel(message)}
+        {label}
       </span>
       <span className="min-w-0 flex-1 truncate text-muted-foreground">
         {text}
@@ -785,6 +789,7 @@ function SubagentPreview({ messages }: { messages: AgentMessage[] }) {
           {visibleMessages.map((message, index) => (
             <motion.div
               key={message.id || `${message.type}-${index}`}
+              data-testid="subagent-preview-slot"
               layout
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -997,7 +1002,7 @@ export function ToolExecutionItem({
     const title = taskInput.description || taskInput.subagent_type || "Sub-Agent";
     const subagentTitle = formatFriendlySubagentType(taskInput.subagent_type);
     const latestSubagentActivity = isRunning && hasSubagentPreviewMessages
-      ? getPreviewText(subagentPreviewMessages![subagentPreviewMessages!.length - 1])
+      ? getPreviewText(subagentPreviewMessages![subagentPreviewMessages!.length - 1], t)
       : "";
     const handleOpenSubagent = () => {
       if (!canOpenSubagent) return;
@@ -1048,7 +1053,7 @@ export function ToolExecutionItem({
                 </span>
               )}
               {canOpenSubagent && (
-                <span className="ml-auto shrink-0 text-muted-foreground">
+                <span className="shrink-0 text-muted-foreground">
                   <Maximize2 className="h-3 w-3" />
                 </span>
               )}
@@ -1074,8 +1079,16 @@ export function ToolExecutionItem({
             <div className="px-2.5 pb-1.5 -mt-0.5">
               <span className="ml-3.5 flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="shrink-0">⎿</span>
-                {status === "executing" && <Loader2 className="h-3 w-3 shrink-0 animate-spin" />}
-                <span className="min-w-0 truncate">
+                {status === "executing" && (
+                  <Loader2
+                    className="h-3 w-3 shrink-0 animate-spin"
+                    data-testid="subagent-status-loading"
+                  />
+                )}
+                <span
+                  className="min-w-0 truncate"
+                  data-testid={status === "executing" ? "subagent-status-activity" : undefined}
+                >
                   {status === "executing"
                     ? latestSubagentActivity || t("chat.subAgentRunning", "Running…")
                     : t("chat.done", "Done")}
