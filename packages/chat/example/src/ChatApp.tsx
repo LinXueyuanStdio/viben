@@ -168,7 +168,6 @@ const OVERLAY_RADIUS = {
 } as const;
 
 const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
-const FULLSCREEN_PANEL_WIDTH_CLASS = "w-[calc(100dvw_-_280px)]";
 const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
 
 type CompactActivitySummary = {
@@ -248,7 +247,7 @@ export function ChatApp({
 
   const defaultExpandedBody = (
     <>
-      <div className="min-h-0 flex-1 overflow-hidden border-y border-border/70">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-border/70" data-testid="expanded-message-panel">
         <ChatAppMessagePanel
           messageListRef={messageListRef}
           messages={messages}
@@ -312,7 +311,7 @@ export function ChatApp({
         transition={OVERLAY_TRANSITION}
         initial={false}
         data-transition-role="expand-to-full"
-        className={`overlay-shared-surface relative flex min-h-0 ${FULLSCREEN_PANEL_WIDTH_CLASS} flex-col overflow-hidden bg-background shadow-none ${
+        className={`overlay-shared-surface relative flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
           contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.full }}

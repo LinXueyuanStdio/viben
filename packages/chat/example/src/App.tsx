@@ -75,6 +75,8 @@ function isAgentBusy(messages: AgentMessage[]): boolean {
 // ============================================================================
 
 const SPEEDS = [0.5, 1, 2, 4, 8]
+const FULLSCREEN_CHAT_STAGE_WIDTH_CLASS = "w-[calc(100dvw_-_280px)]"
+const FULLSCREEN_LAYOUT_DELAY_MS = 40
 
 // ============================================================================
 // Convert flat messages to simple steps (for .jsonl loading)
@@ -204,6 +206,7 @@ export function App() {
   const [standaloneQueuePaused, setStandaloneQueuePaused] = useState(false)
   const [chatInputValue, setChatInputValue] = useState("")
   const [overlayMode, setOverlayMode] = useState<OverlayMode>("floating")
+  const [renderedOverlayMode, setRenderedOverlayMode] = useState<OverlayMode>("floating")
   const [selectedOverlaySessionTitle, setSelectedOverlaySessionTitle] = useState("Viben session")
 
   // ExecApproval cycling demo
@@ -231,6 +234,19 @@ export function App() {
   useEffect(() => {
     player.setSpeed(SPEEDS[speedIdx])
   }, [speedIdx, player.setSpeed])
+
+  useEffect(() => {
+    if (overlayMode !== "full") {
+      setRenderedOverlayMode(overlayMode)
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setRenderedOverlayMode("full")
+    }, FULLSCREEN_LAYOUT_DELAY_MS)
+
+    return () => clearTimeout(timer)
+  }, [overlayMode])
 
   // Theme toggle
   useEffect(() => {
@@ -385,7 +401,7 @@ export function App() {
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
   const isOverlayFull = overlayMode === "full"
-  const showOverlayStageBackground = overlayMode === "expanded"
+  const showOverlayStageBackground = overlayMode === "expanded" && renderedOverlayMode === "expanded"
   const sharedChatInputProps: ChatInputProps = {
     value: chatInputValue,
     onValueChange: setChatInputValue,
@@ -693,7 +709,9 @@ export function App() {
           className={`relative order-1 flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
             showOverlayStageBackground ? "overlay-stage-background " : ""
           }${
-            isOverlayFull ? "flex-1 overflow-hidden opacity-100" : "absolute inset-0 overflow-visible opacity-100"
+            isOverlayFull
+              ? `${FULLSCREEN_CHAT_STAGE_WIDTH_CLASS} flex-none overflow-hidden opacity-100`
+              : "absolute inset-0 overflow-visible opacity-100"
           }`}
         >
           {/* Content area */}
@@ -807,7 +825,7 @@ export function App() {
           </div>
           <ChatApp
             contained
-            mode={overlayMode}
+            mode={renderedOverlayMode}
             title={selectedOverlaySessionTitle}
             messages={player.messages}
             messageUpdates={player.messageUpdates}
