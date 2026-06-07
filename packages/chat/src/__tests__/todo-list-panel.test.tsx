@@ -146,4 +146,63 @@ describe("TodoListPanel", () => {
     expect(screen.getByText("completed")).toBeInTheDocument();
     expect(screen.queryByText("pending")).not.toBeInTheDocument();
   });
+
+  test("assigns sequential string ids to TaskCreate calls before applying TaskUpdate", () => {
+    const messages: AgentMessage[] = [
+      {
+        id: "create-1",
+        type: "tool_use",
+        name: "TaskCreate",
+        toolUseId: "tool-create-1",
+        input: {
+          subject: "Create 4 granular hooks from usePageTabs",
+          description: "Split use-page-tabs.ts into granular hooks.",
+        },
+      },
+      {
+        id: "create-result-1",
+        type: "tool_result",
+        toolUseId: "tool-create-1",
+        output: "Task created successfully",
+      },
+      {
+        id: "create-2",
+        type: "tool_use",
+        name: "TaskCreate",
+        toolUseId: "tool-create-2",
+        input: {
+          subject: "Update GlobalTabBar consumers",
+        },
+      },
+      {
+        id: "update-1",
+        type: "tool_use",
+        name: "TaskUpdate",
+        toolUseId: "tool-update-1",
+        input: { taskId: "1", status: "in_progress" },
+      },
+      {
+        id: "update-2",
+        type: "tool_use",
+        name: "TaskUpdate",
+        toolUseId: "tool-update-2",
+        input: { taskId: "2", status: "completed" },
+      },
+      {
+        id: "update-result-1",
+        type: "tool_result",
+        toolUseId: "tool-update-1",
+        output: "Updated task #1 status",
+      },
+    ];
+
+    render(<TodoListPanel messages={messages} defaultExpanded />);
+
+    expect(screen.getByText("Create 4 granular hooks from usePageTabs")).toBeInTheDocument();
+    expect(screen.getByText("1 in progress")).toBeInTheDocument();
+    expect(screen.getByText("in progress")).toBeInTheDocument();
+    expect(screen.getByText("Update GlobalTabBar consumers")).toBeInTheDocument();
+    expect(screen.getByText("completed")).toBeInTheDocument();
+    expect(screen.queryByText("pending")).not.toBeInTheDocument();
+  });
 });

@@ -27,13 +27,16 @@ function normalizeStatus(value: unknown): TodoListItemStatus {
 }
 
 function getTaskId(input: Record<string, unknown>, fallback: string): string {
+  return getExplicitTaskId(input) ?? fallback;
+}
+
+function getExplicitTaskId(input: Record<string, unknown>): string | undefined {
   return (
     stringValue(input.id) ??
     stringValue(input.task_id) ??
     stringValue(input.taskId) ??
     stringValue(input.todo_id) ??
-    stringValue(input.todoId) ??
-    fallback
+    stringValue(input.todoId)
   );
 }
 
@@ -117,6 +120,8 @@ export function buildTodoListItemsFromMessages(
     }
   }
 
+  let nextTaskCreateId = 1;
+
   for (const message of resolvedMessages) {
     if (message.type !== "tool_use") continue;
     const toolName = message.name;
@@ -141,7 +146,11 @@ export function buildTodoListItemsFromMessages(
 
     if (toolName !== "TaskCreate" && toolName !== "TaskUpdate") continue;
 
-    const id = getTaskId(input, message.toolUseId ?? message.id ?? `${toolName}-${itemsById.size + 1}`);
+    const id = getExplicitTaskId(input) ?? (
+      toolName === "TaskCreate"
+        ? String(nextTaskCreateId++)
+        : message.toolUseId ?? message.id ?? `${toolName}-${itemsById.size + 1}`
+    );
     const existing = itemsById.get(id);
     const content = getTaskContent(input) ?? existing?.content;
     if (!content) continue;
