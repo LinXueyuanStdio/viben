@@ -5,7 +5,7 @@
  * Platform-specific features are handled via callback props.
  */
 
-import type { ReactNode } from "react";
+import type { ClipboardEvent, KeyboardEvent, ReactNode, RefObject } from "react";
 import type {
   MessageAttachment,
   SlashCommand,
@@ -110,6 +110,8 @@ export interface ChatInputProps {
   renderTopToolbar?: (props: ChatInputToolbarRenderProps) => ReactNode;
   /** Replace or extend the default bottom toolbar content. */
   renderBottomToolbar?: (props: ChatInputBottomToolbarRenderProps) => ReactNode;
+  /** Replace the default fullscreen writing mode page. */
+  renderWritingMode?: (props: ChatInputWritingModeRenderProps) => ReactNode;
   /** Callback when cancel/stop button is clicked */
   onCancel?: () => void;
   /** Whether the chat is in loading/streaming state */
@@ -255,10 +257,47 @@ export interface ChatInputToolbarRenderProps {
 export interface ChatInputBottomToolbarRenderProps {
   leftContent: ReactNode;
   editor?: ReactNode;
-  submitControl: ReactNode;
+  submitControl?: ReactNode;
   isLoading?: boolean;
   disabled?: boolean;
   canSubmit: boolean;
+}
+
+export interface ChatInputWritingModeRenderProps {
+  isOpen: boolean;
+  onClose: () => void;
+  content: string;
+  onContentChange: (content: string) => void;
+  attachments: MessageAttachment[];
+  onRemoveAttachment: (id: string) => void;
+  onSend: () => void;
+  onCancel?: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  canSubmit: boolean;
+  placeholder?: string;
+  onEmojiSelect: (emoji: string) => void;
+  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => ReactNode;
+  onFileClick: () => void;
+  onScreenshot?: (hideWindow?: boolean) => void;
+  isScreenshotCapturing?: boolean;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCompositionStart: () => void;
+  onCompositionEnd: () => void;
+  onPaste: (event: ClipboardEvent) => void;
+  showConfigBar?: boolean;
+  agents: AgentOption[];
+  selectedAgentId?: string | null;
+  onAgentChange?: (agentId: string) => void;
+  showAgentSelector?: boolean;
+  models: ModelOption[];
+  selectedModelId?: string | null;
+  onModelChange?: (modelId: string) => void;
+  showModelSelector?: boolean;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  configControls: ReactNode;
+  submitControl: ReactNode;
+  className?: string;
 }
 
 // ============================================================================

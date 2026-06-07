@@ -126,6 +126,7 @@ export function ChatInput({
   renderEmojiPicker,
   renderTopToolbar,
   renderBottomToolbar,
+  renderWritingMode,
 }: ChatInputProps) {
   const { t } = useTranslation();
 
@@ -463,66 +464,6 @@ export function ChatInput({
     ]
   );
 
-  // Render fullscreen writing mode
-  if (isWritingMode && enableWritingMode) {
-    return (
-      <>
-        {/* Hidden file inputs */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageChange}
-          multiple
-        />
-
-        <WritingMode
-          isOpen={isWritingMode}
-          onClose={() => setIsWritingMode(false)}
-          content={content}
-          onContentChange={setContent}
-          attachments={attachments}
-          onRemoveAttachment={removeAttachment}
-          onSend={handleSend}
-          onCancel={onCancel}
-          isLoading={isLoading}
-          disabled={disabled}
-          canSubmit={canSubmit}
-          placeholder={placeholder}
-          onEmojiSelect={insertEmoji}
-          renderEmojiPicker={renderEmojiPicker}
-          onFileClick={handleFileClick}
-          onScreenshot={onScreenshot ? handleScreenshot : undefined}
-          isScreenshotCapturing={isScreenshotCapturing}
-          onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-          onPaste={handlePaste}
-          showConfigBar={shouldShowConfigBar}
-          agents={agents}
-          selectedAgentId={selectedAgentId}
-          onAgentChange={onAgentChange}
-          showAgentSelector={shouldShowAgentSelector}
-          models={models}
-          selectedModelId={selectedModelId}
-          onModelChange={onModelChange}
-          showModelSelector={shouldShowModelSelector}
-          textareaRef={textareaRef}
-          className={className}
-        />
-      </>
-    );
-  }
-
   const toolbarRenderProps = {
     onEmojiSelect: insertEmoji,
     onFileClick: handleFileClick,
@@ -564,6 +505,74 @@ export function ChatInput({
       leftExtraContent={configBarLeftExtra}
     />
   );
+
+  const writingModeProps = {
+    isOpen: isWritingMode,
+    onClose: () => setIsWritingMode(false),
+    content,
+    onContentChange: setContent,
+    attachments,
+    onRemoveAttachment: removeAttachment,
+    onSend: handleSend,
+    onCancel,
+    isLoading,
+    disabled,
+    canSubmit,
+    placeholder,
+    onEmojiSelect: insertEmoji,
+    renderEmojiPicker,
+    onFileClick: handleFileClick,
+    onScreenshot: onScreenshot ? handleScreenshot : undefined,
+    isScreenshotCapturing,
+    onKeyDown: handleKeyDown,
+    onCompositionStart: handleCompositionStart,
+    onCompositionEnd: handleCompositionEnd,
+    onPaste: handlePaste,
+    showConfigBar: shouldShowConfigBar,
+    agents,
+    selectedAgentId,
+    onAgentChange,
+    showAgentSelector: shouldShowAgentSelector,
+    models,
+    selectedModelId,
+    onModelChange,
+    showModelSelector: shouldShowModelSelector,
+    textareaRef,
+    configControls,
+    submitControl,
+    className,
+  };
+
+  // Render fullscreen writing mode
+  if (isWritingMode && enableWritingMode) {
+    return (
+      <>
+        {/* Hidden file inputs */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageChange}
+          multiple
+        />
+
+        {renderWritingMode ? (
+          renderWritingMode(writingModeProps)
+        ) : (
+          <WritingMode {...writingModeProps} />
+        )}
+      </>
+    );
+  }
 
   const editor = (
     <div
@@ -834,12 +843,32 @@ export type {
   QueuedInputRecallItem,
   ChatInputToolbarRenderProps,
   ChatInputBottomToolbarRenderProps,
+  ChatInputWritingModeRenderProps,
 } from "./types";
 export { ChatInputToolbar } from "./toolbar";
 export { ChatInputConfigBar, ChatInputConfigControls, ChatInputSubmitControl } from "./config-bar";
 export { AttachmentPreview } from "./attachment-preview";
 export { SlashCommandMenu } from "./slash-command-menu";
-export { WritingMode } from "./writing-mode";
+export {
+  WritingMode,
+  WritingModeAttachments,
+  WritingModeEditor,
+  WritingModeFooter,
+  WritingModeHeader,
+  WritingModeRoot,
+  WritingModeSubmitControl,
+  WritingModeToolbar,
+} from "./writing-mode";
+export type {
+  WritingModeAttachmentsProps,
+  WritingModeEditorProps,
+  WritingModeFooterProps,
+  WritingModeHeaderProps,
+  WritingModeProps,
+  WritingModeRootProps,
+  WritingModeSubmitControlProps,
+  WritingModeToolbarProps,
+} from "./writing-mode";
 export { HighlightedInput } from "./highlighted-input";
 export {
   useAttachments,

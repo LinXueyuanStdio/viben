@@ -25,6 +25,13 @@ export {
   AttachmentPreview,
   SlashCommandMenu,
   WritingMode,
+  WritingModeAttachments,
+  WritingModeEditor,
+  WritingModeFooter,
+  WritingModeHeader,
+  WritingModeRoot,
+  WritingModeSubmitControl,
+  WritingModeToolbar,
   useAttachments,
   useSlashCommandMenu,
   useResizableHeight,
@@ -46,6 +53,15 @@ export type {
   QueuedInputRecallItem,
   ChatInputToolbarRenderProps,
   ChatInputBottomToolbarRenderProps,
+  ChatInputWritingModeRenderProps,
+  WritingModeAttachmentsProps,
+  WritingModeEditorProps,
+  WritingModeFooterProps,
+  WritingModeHeaderProps,
+  WritingModeProps,
+  WritingModeRootProps,
+  WritingModeSubmitControlProps,
+  WritingModeToolbarProps,
 } from "./chat-input";
 
 // Slash Commands
@@ -85,7 +101,13 @@ export type { Artifact, MessageListProps, MessageListHandle } from "./message-li
 export { MessageItem } from "./message-item";
 export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
-export type { ToolExecutionItemProps, ToolExecutionStatus, ArtifactInfo, ShowToolDetailModalHandler } from "./tool-execution-item";
+export type {
+  ArtifactInfo,
+  InspectToolHandler,
+  ToolExecutionItemProps,
+  ToolExecutionState,
+  ToolExecutionStatus,
+} from "./tool-execution-item";
 export { PlanApproval } from "./plan-approval";
 export { QuestionInput } from "./question-input";
 export { CollapsedToolGroup } from "./collapsed-tool-group";

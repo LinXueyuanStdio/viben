@@ -1,29 +1,32 @@
 /**
- * Writing Mode Component
+ * Writing Mode components
  *
- * Fullscreen writing mode dialog for focused message composition.
+ * Controlled building blocks for focused message composition. ChatInput owns the
+ * state and passes it in; consumers can either use the composed WritingMode or
+ * assemble their own page from the exported parts.
  */
 
 import * as React from "react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  X,
-  Smile,
-  Paperclip,
   Camera,
   ChevronDown,
   EyeOff,
   Loader2,
+  Paperclip,
   Send,
+  Smile,
   Square,
-  Bot,
-  Cpu,
-  Check,
+  X,
 } from "lucide-react";
 import {
-  cn,
   Button,
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -31,81 +34,349 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
 } from "@viben/ui";
 import { AttachmentPreview } from "./attachment-preview";
 import type { MessageAttachment } from "../types";
-import type { AgentOption, ModelOption } from "./types";
+import type { ChatInputWritingModeRenderProps } from "./types";
 
-export interface WritingModeProps {
-  /** Whether writing mode is open */
-  isOpen: boolean;
-  /** Close writing mode */
-  onClose: () => void;
-  /** Current content */
-  content: string;
-  /** Set content */
-  onContentChange: (content: string) => void;
-  /** Attachments */
-  attachments: MessageAttachment[];
-  /** Remove attachment */
-  onRemoveAttachment: (id: string) => void;
-  /** Handle send */
-  onSend: () => void;
-  /** Handle cancel */
-  onCancel?: () => void;
-  /** Loading state */
-  isLoading?: boolean;
-  /** Disabled state */
-  disabled?: boolean;
-  /** Can submit */
-  canSubmit: boolean;
-  /** Placeholder */
-  placeholder?: string;
-  /** Emoji select handler */
-  onEmojiSelect: (emoji: string) => void;
-  /** Render the picker shown inside the emoji popover. Writing mode does not own a picker implementation. */
-  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => React.ReactNode;
-  /** File click handler */
-  onFileClick: () => void;
-  /** Screenshot handler */
-  onScreenshot?: (hideWindow?: boolean) => void;
-  /** Whether screenshot is capturing */
-  isScreenshotCapturing?: boolean;
-  /** Handle key down */
-  onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  /** Handle composition start */
-  onCompositionStart: () => void;
-  /** Handle composition end */
-  onCompositionEnd: () => void;
-  /** Handle paste */
-  onPaste: (e: React.ClipboardEvent) => void;
-  /** Show config bar */
-  showConfigBar?: boolean;
-  /** Agent options */
-  agents?: AgentOption[];
-  /** Selected agent ID */
-  selectedAgentId?: string | null;
-  /** Agent change handler */
-  onAgentChange?: (agentId: string) => void;
-  /** Show agent selector */
-  showAgentSelector?: boolean;
-  /** Model options */
-  models?: ModelOption[];
-  /** Selected model ID */
-  selectedModelId?: string | null;
-  /** Model change handler */
-  onModelChange?: (modelId: string) => void;
-  /** Show model selector */
-  showModelSelector?: boolean;
-  /** Textarea ref */
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  /** Additional className */
+export interface WritingModeRootProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  children: React.ReactNode;
+  className?: string;
+  backdropClassName?: string;
+}
+
+export function WritingModeRoot({
+  isOpen = true,
+  onClose,
+  children,
+  className,
+  backdropClassName,
+}: WritingModeRootProps) {
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div
+        className={cn("fixed inset-0 z-40 bg-background/80 backdrop-blur-sm", backdropClassName)}
+        onClick={onClose}
+      />
+      <div
+        className={cn(
+          "fixed inset-4 z-50 flex flex-col rounded-xl border border-border bg-background shadow-2xl",
+          className
+        )}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
+
+export interface WritingModeHeaderProps {
+  children?: React.ReactNode;
+  onClose?: () => void;
+  closeLabel?: string;
   className?: string;
 }
+
+export function WritingModeHeader({
+  children,
+  onClose,
+  closeLabel,
+  className,
+}: WritingModeHeaderProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className={cn("flex items-center justify-between border-b border-border/50 px-4 py-3", className)}>
+      <div className="flex items-center gap-1">{children}</div>
+      {onClose && (
+        <Button
+          aria-label={closeLabel ?? t("chat.writingMode.close", "Close writing mode")}
+          variant="ghost"
+          size="sm"
+          className="h-9 w-9 p-0"
+          onClick={onClose}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export interface WritingModeToolbarProps {
+  onEmojiSelect: (emoji: string) => void;
+  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => React.ReactNode;
+  onFileClick: () => void;
+  onScreenshot?: (hideWindow?: boolean) => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  isScreenshotCapturing?: boolean;
+  className?: string;
+}
+
+export function WritingModeToolbar({
+  onEmojiSelect,
+  renderEmojiPicker,
+  onFileClick,
+  onScreenshot,
+  isLoading,
+  disabled,
+  isScreenshotCapturing,
+  className,
+}: WritingModeToolbarProps) {
+  const { t } = useTranslation();
+  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+
+  const handleEmojiSelect = useCallback(
+    (emoji: string) => {
+      onEmojiSelect(emoji);
+      setIsEmojiOpen(false);
+    },
+    [onEmojiSelect]
+  );
+
+  return (
+    <div className={cn("flex items-center gap-1", className)}>
+      <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  aria-label={t("chat.emoji", "Emoji")}
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 w-9 p-0"
+                  disabled={isLoading || disabled}
+                >
+                  <Smile className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>{t("chat.emoji", "Emoji")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        {renderEmojiPicker && (
+          <PopoverContent className="w-auto p-2" align="start">
+            {renderEmojiPicker({ onSelect: handleEmojiSelect })}
+          </PopoverContent>
+        )}
+      </Popover>
+
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              aria-label={t("chat.attachFile", "Attach File")}
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 p-0"
+              disabled={isLoading || disabled}
+              onClick={onFileClick}
+            >
+              <Paperclip className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t("chat.attachFile", "Attach File")}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {onScreenshot && (
+        <DropdownMenu>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label={t("chat.screenshot", "Screenshot")}
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 gap-1 px-2"
+                    disabled={isLoading || disabled || isScreenshotCapturing}
+                  >
+                    {isScreenshotCapturing ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Camera className="h-5 w-5" />
+                    )}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{t("chat.screenshot", "Screenshot")}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => onScreenshot(false)}>
+              <Camera className="mr-2 h-4 w-4" />
+              {t("chat.screenshotDirect", "Direct Screenshot")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onScreenshot(true)}>
+              <EyeOff className="mr-2 h-4 w-4" />
+              {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+}
+
+export interface WritingModeAttachmentsProps {
+  attachments: MessageAttachment[];
+  onRemove: (id: string) => void;
+  className?: string;
+}
+
+export function WritingModeAttachments({
+  attachments,
+  onRemove,
+  className,
+}: WritingModeAttachmentsProps) {
+  return (
+    <AttachmentPreview
+      attachments={attachments}
+      onRemove={onRemove}
+      className={cn("border-b border-border/30 px-4 py-3", className)}
+    />
+  );
+}
+
+export interface WritingModeEditorProps {
+  content: string;
+  onContentChange: (content: string) => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCompositionStart: () => void;
+  onCompositionEnd: () => void;
+  onPaste: (event: React.ClipboardEvent) => void;
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  placeholder?: string;
+  isLoading?: boolean;
+  disabled?: boolean;
+  className?: string;
+  textareaClassName?: string;
+}
+
+export function WritingModeEditor({
+  content,
+  onContentChange,
+  onKeyDown,
+  onCompositionStart,
+  onCompositionEnd,
+  onPaste,
+  textareaRef,
+  placeholder,
+  isLoading,
+  disabled,
+  className,
+  textareaClassName,
+}: WritingModeEditorProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className={cn("min-h-0 flex-1 p-4", className)}>
+      <textarea
+        ref={textareaRef}
+        value={content}
+        onChange={(event) => onContentChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        onCompositionStart={onCompositionStart}
+        onCompositionEnd={onCompositionEnd}
+        onPaste={onPaste}
+        placeholder={placeholder || t("chat.inputPlaceholder")}
+        className={cn(
+          "h-full w-full resize-none border-0 bg-transparent text-lg leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none",
+          textareaClassName
+        )}
+        disabled={isLoading || disabled}
+        autoFocus
+      />
+    </div>
+  );
+}
+
+export interface WritingModeSubmitControlProps {
+  onSend: () => void;
+  onCancel?: () => void;
+  isLoading?: boolean;
+  canSubmit: boolean;
+  className?: string;
+}
+
+export function WritingModeSubmitControl({
+  onSend,
+  onCancel,
+  isLoading,
+  canSubmit,
+  className,
+}: WritingModeSubmitControlProps) {
+  const { t } = useTranslation();
+
+  return isLoading ? (
+    <Button
+      size="sm"
+      variant="destructive"
+      className={cn("h-9 px-4", className)}
+      onClick={onCancel}
+    >
+      <Square className="mr-2 h-4 w-4" />
+      {t("common.stop", "Stop")}
+    </Button>
+  ) : (
+    <Button
+      size="sm"
+      className={cn("h-9 px-4", className)}
+      disabled={!canSubmit}
+      onClick={onSend}
+    >
+      <Send className="mr-2 h-4 w-4" />
+      {t("chat.send", "Send")}
+    </Button>
+  );
+}
+
+export interface WritingModeFooterProps {
+  showConfigBar?: boolean;
+  configControls?: React.ReactNode;
+  submitControl: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export function WritingModeFooter({
+  showConfigBar,
+  configControls,
+  submitControl,
+  children,
+  className,
+}: WritingModeFooterProps) {
+  if (children) {
+    return (
+      <div className={cn("border-t border-border/50 px-4 py-3", className)}>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex items-center border-t border-border/50 px-4 py-3",
+        showConfigBar ? "justify-between bg-muted/30" : "justify-end",
+        className
+      )}
+    >
+      {showConfigBar && <div className="flex min-w-0 items-center gap-2">{configControls}</div>}
+      <div className="flex items-center gap-2">{submitControl}</div>
+    </div>
+  );
+}
+
+export type WritingModeProps = ChatInputWritingModeRenderProps;
 
 export function WritingMode({
   isOpen,
@@ -130,319 +401,54 @@ export function WritingMode({
   onCompositionEnd,
   onPaste,
   showConfigBar,
-  agents = [],
-  selectedAgentId,
-  onAgentChange,
-  showAgentSelector,
-  models = [],
-  selectedModelId,
-  onModelChange,
-  showModelSelector,
   textareaRef,
+  configControls,
   className,
 }: WritingModeProps) {
-  const { t } = useTranslation();
-  const [isEmojiOpen, setIsEmojiOpen] = useState(false);
-
-  if (!isOpen) {
-    return null;
-  }
-
-  const handleEmojiSelect = (emoji: string) => {
-    onEmojiSelect(emoji);
-    setIsEmojiOpen(false);
-  };
-
-  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
-  const selectedModel = models.find((m) => m.id === selectedModelId);
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
-        onClick={onClose}
-      />
-      {/* Writing mode container */}
-      <div
-        className={cn(
-          "fixed inset-4 z-50 flex flex-col bg-background rounded-xl border border-border shadow-2xl",
-          className
-        )}
-      >
-        {/* Top: Toolbar + Close button */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          <div className="flex items-center gap-1">
-            {/* Emoji */}
-            <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 p-0"
-                        disabled={isLoading || disabled}
-                      >
-                        <Smile className="h-5 w-5" />
-                      </Button>
-                    </PopoverTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("chat.emoji", "Emoji")}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              {renderEmojiPicker && (
-                <PopoverContent className="w-auto p-2" align="start">
-                  {renderEmojiPicker({ onSelect: handleEmojiSelect })}
-                </PopoverContent>
-              )}
-            </Popover>
-
-            {/* File */}
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0"
-                    disabled={isLoading || disabled}
-                    onClick={onFileClick}
-                  >
-                    <Paperclip className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("chat.attachFile", "Attach File")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            {/* Screenshot */}
-            {onScreenshot && (
-              <DropdownMenu>
-                <TooltipProvider delayDuration={300}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-9 px-2 gap-1"
-                          disabled={isLoading || disabled || isScreenshotCapturing}
-                        >
-                          {isScreenshotCapturing ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            <Camera className="h-5 w-5" />
-                          )}
-                          <ChevronDown className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {t("chat.screenshot", "Screenshot")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => onScreenshot(false)}>
-                    <Camera className="h-4 w-4 mr-2" />
-                    {t("chat.screenshotDirect", "Direct Screenshot")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onScreenshot(true)}>
-                    <EyeOff className="h-4 w-4 mr-2" />
-                    {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-
-          {/* Close button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 w-9 p-0"
-            onClick={onClose}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Attachment Preview */}
-        <AttachmentPreview
-          attachments={attachments}
-          onRemove={onRemoveAttachment}
-          className="px-4 py-3 border-b border-border/30"
+    <WritingModeRoot isOpen={isOpen} onClose={onClose} className={className}>
+      <WritingModeHeader onClose={onClose}>
+        <WritingModeToolbar
+          onEmojiSelect={onEmojiSelect}
+          renderEmojiPicker={renderEmojiPicker}
+          onFileClick={onFileClick}
+          onScreenshot={onScreenshot}
+          isLoading={isLoading}
+          disabled={disabled}
+          isScreenshotCapturing={isScreenshotCapturing}
         />
+      </WritingModeHeader>
 
-        {/* Middle: Large textarea */}
-        <div className="flex-1 p-4 min-h-0">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => onContentChange(e.target.value)}
-            onKeyDown={onKeyDown}
-            onCompositionStart={onCompositionStart}
-            onCompositionEnd={onCompositionEnd}
-            onPaste={onPaste}
-            placeholder={placeholder || t("chat.inputPlaceholder")}
-            className="w-full h-full resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-lg leading-relaxed"
-            disabled={isLoading || disabled}
-            autoFocus
+      <WritingModeAttachments
+        attachments={attachments}
+        onRemove={onRemoveAttachment}
+      />
+
+      <WritingModeEditor
+        content={content}
+        onContentChange={onContentChange}
+        onKeyDown={onKeyDown}
+        onCompositionStart={onCompositionStart}
+        onCompositionEnd={onCompositionEnd}
+        onPaste={onPaste}
+        textareaRef={textareaRef}
+        placeholder={placeholder}
+        isLoading={isLoading}
+        disabled={disabled}
+      />
+
+      <WritingModeFooter
+        showConfigBar={showConfigBar}
+        configControls={configControls}
+        submitControl={(
+          <WritingModeSubmitControl
+            onSend={onSend}
+            onCancel={onCancel}
+            isLoading={isLoading}
+            canSubmit={canSubmit}
           />
-        </div>
-
-        {/* Bottom: Config bar or simple send button */}
-        {showConfigBar ? (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 bg-muted/30">
-            <div className="flex items-center gap-2">
-              {/* Agent Selector */}
-              {showAgentSelector && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 px-3 gap-1.5"
-                      disabled={isLoading || disabled}
-                    >
-                      <Bot className="h-4 w-4" />
-                      <span className="max-w-[100px] truncate">
-                        {selectedAgent?.name || t("chat.selectAgent", "Agent")}
-                      </span>
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-1" align="start">
-                    {agents.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        {t("chat.noAgents", "No agents")}
-                      </div>
-                    ) : (
-                      agents.map((agent) => (
-                        <Button
-                          key={agent.id}
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-8"
-                          onClick={() => onAgentChange?.(agent.id)}
-                        >
-                          {agent.id === selectedAgentId && (
-                            <Check className="h-3.5 w-3.5" />
-                          )}
-                          <span
-                            className={agent.id !== selectedAgentId ? "ml-5" : ""}
-                          >
-                            {agent.name}
-                          </span>
-                        </Button>
-                      ))
-                    )}
-                  </PopoverContent>
-                </Popover>
-              )}
-
-              {/* Model Selector */}
-              {showModelSelector && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 px-3 gap-1.5"
-                      disabled={isLoading || disabled}
-                    >
-                      <Cpu className="h-4 w-4" />
-                      <span className="max-w-[100px] truncate">
-                        {selectedModel?.name || t("chat.selectModel", "Model")}
-                      </span>
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-56 p-1" align="start">
-                    {models.length === 0 ? (
-                      <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                        {t("chat.noModels", "No models")}
-                      </div>
-                    ) : (
-                      models.map((model) => (
-                        <Button
-                          key={model.id}
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start gap-2 h-8"
-                          onClick={() => onModelChange?.(model.id)}
-                        >
-                          {model.id === selectedModelId && (
-                            <Check className="h-3.5 w-3.5" />
-                          )}
-                          <span
-                            className={model.id !== selectedModelId ? "ml-5" : ""}
-                          >
-                            {model.name}
-                          </span>
-                        </Button>
-                      ))
-                    )}
-                  </PopoverContent>
-                </Popover>
-              )}
-            </div>
-
-            {/* Send/Stop Button */}
-            <div className="flex items-center gap-2">
-              {isLoading ? (
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="h-9 px-4"
-                  onClick={onCancel}
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  {t("common.stop", "Stop")}
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  className="h-9 px-4"
-                  disabled={!canSubmit}
-                  onClick={onSend}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  {t("chat.send", "Send")}
-                </Button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-end px-4 py-3 border-t border-border/50">
-            {isLoading ? (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-9 px-4"
-                onClick={onCancel}
-              >
-                <Square className="h-4 w-4 mr-2" />
-                {t("common.stop", "Stop")}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                className="h-9 px-4"
-                disabled={!canSubmit}
-                onClick={onSend}
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {t("chat.send", "Send")}
-              </Button>
-            )}
-          </div>
         )}
-      </div>
-    </>
+      />
+    </WritingModeRoot>
   );
 }

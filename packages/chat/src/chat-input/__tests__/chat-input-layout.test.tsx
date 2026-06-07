@@ -118,11 +118,12 @@ describe("ChatInput layout", () => {
 
   test("custom writing mode renderer can replace the default writing mode page", async () => {
     const { ChatInput } = await import("../index");
+    const onValueChange = vi.fn();
 
     render(
       <ChatInput
         value="draft"
-        onValueChange={() => {}}
+        onValueChange={onValueChange}
         onSend={() => {}}
         showTopToolbar
         enableWritingMode
@@ -146,8 +147,53 @@ describe("ChatInput layout", () => {
     expect(screen.getByTestId("custom-writing-mode")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Update draft" }));
+    expect(onValueChange).toHaveBeenCalledWith("draft!");
+
     fireEvent.click(screen.getByRole("button", { name: "Close writing mode" }));
 
     expect(screen.queryByTestId("custom-writing-mode")).not.toBeInTheDocument();
+  });
+
+  test("writing mode parts can be composed without ChatInput state", async () => {
+    const {
+      WritingModeRoot,
+      WritingModeHeader,
+      WritingModeEditor,
+      WritingModeFooter,
+      WritingModeSubmitControl,
+    } = await import("../index");
+    const onContentChange = vi.fn();
+    const onSend = vi.fn();
+
+    render(
+      <WritingModeRoot>
+        <WritingModeHeader>
+          <span>Custom composer</span>
+        </WritingModeHeader>
+        <WritingModeEditor
+          content="draft"
+          onContentChange={onContentChange}
+          onKeyDown={() => {}}
+          onCompositionStart={() => {}}
+          onCompositionEnd={() => {}}
+          onPaste={() => {}}
+        />
+        <WritingModeFooter
+          submitControl={
+            <WritingModeSubmitControl
+              onSend={onSend}
+              canSubmit
+            />
+          }
+        />
+      </WritingModeRoot>
+    );
+
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "updated" } });
+    fireEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(screen.getByText("Custom composer")).toBeInTheDocument();
+    expect(onContentChange).toHaveBeenCalledWith("updated");
+    expect(onSend).toHaveBeenCalled();
   });
 });
