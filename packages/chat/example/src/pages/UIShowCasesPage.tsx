@@ -215,10 +215,10 @@ export function UIShowCasesPage({
       <DashboardCard className="space-y-3">
         <SectionLabel>{t("example.sections.toolExecution", "ToolExecutionItem (4 states)")}</SectionLabel>
         <div className="space-y-1">
-          <ToolExecutionItem state={{ name: "Grep", displayName: "Grep", input: { pattern: "TODO" }, status: "queued" }} compact />
-          <ToolExecutionItem state={{ name: "Bash", displayName: "Bash", input: { command: "pnpm test" }, status: "executing" }} compact />
-          <ToolExecutionItem state={{ name: "Read", displayName: "Read", input: { file_path: "/src/App.tsx" }, output: "File content here...", status: "success" }} compact />
-          <ToolExecutionItem state={{ name: "Write", displayName: "Write", input: { file_path: "/src/utils.ts" }, output: "Permission denied", status: "error", isError: true }} compact />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Grep", input: { pattern: "TODO" } } }} status="queued" compact />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Bash", input: { command: "pnpm test" } } }} status="executing" compact />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Read", input: { file_path: "/src/App.tsx" } }, result: { type: "tool_result", output: "File content here..." } }} status="success" compact />
+          <ToolExecutionItem tool={{ message: { type: "tool_use", name: "Write", input: { file_path: "/src/utils.ts" } }, result: { type: "tool_result", output: "Permission denied", isError: true } }} status="error" compact />
         </div>
       </DashboardCard>
 

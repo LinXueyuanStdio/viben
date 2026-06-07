@@ -131,6 +131,9 @@ export interface ChatAppFullscreenMessagePanelProps {
   messages: AgentMessage[];
   messageUpdates?: Record<string, Partial<AgentMessage>>;
   isStreaming?: boolean;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   assistantAvatar?: React.ReactNode;
   welcomeTitle?: string;
