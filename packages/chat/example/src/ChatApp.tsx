@@ -182,18 +182,32 @@ type CompactActivitySummary = {
   text: string;
 };
 
+function chatAppTranslate(
+  t: Translate,
+  key: string,
+  defaultValue: string,
+  values: Record<string, string | number | boolean | null | undefined> = {}
+): string {
+  const translated = t(key, { defaultValue, ...values });
+  return String(translated).replace(/\{\{(\w+)\}\}/g, (_, name: string) => {
+    const replacement = values[name];
+    return replacement === null || replacement === undefined ? `{{${name}}}` : String(replacement);
+  });
+}
+
 export function getAssistantPetState(
   messages: AgentMessage[],
   isStreaming: boolean,
-  playerStatus: SessionPlayerStatus = "idle"
+  playerStatus: SessionPlayerStatus = "idle",
+  hasPendingUserMessages = false
 ): AssistantPetState {
   if (messages.length === 0) return "idle";
   if (isStreaming) return "review";
+  if (hasPendingUserMessages || playerStatus === "playing") return "waiting";
   const latestStatefulMessage = [...messages].reverse().find((message) =>
     message.type !== "summary" && message.type !== "plan_mode"
   );
   if (latestStatefulMessage && (latestStatefulMessage.type === "error" || latestStatefulMessage.isError)) return "failed";
-  if (playerStatus === "playing") return "waiting";
   if (playerStatus === "paused") return "waving";
   return "idle";
 }
