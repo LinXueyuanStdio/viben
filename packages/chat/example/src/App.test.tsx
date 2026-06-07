@@ -51,7 +51,7 @@ vi.mock("react-i18next", () => ({
           "example.kicker": "Control surface",
           "example.subtitle": "Replay sessions, inspect component states, and switch overlay modes from one control surface.",
           "example.load.session_folder": "Session Folder",
-          "example.sections.overlayMode": "Overlay Mode",
+          "example.sections.chatAppMode": "Chat App Mode",
         },
         "zh-CN": {
           "example.language.english": "English",
@@ -60,7 +60,7 @@ vi.mock("react-i18next", () => ({
           "example.kicker": "控制面板",
           "example.subtitle": "在同一个控制面板中回放会话、检查组件状态并切换浮层模式。",
           "example.load.session_folder": "会话文件夹",
-          "example.sections.overlayMode": "浮层模式",
+          "example.sections.chatAppMode": "聊天应用模式",
         },
       };
       const value = translations[mockLanguage]?.[key] ?? fallback ?? key;
@@ -217,7 +217,7 @@ describe("App overlay layout", () => {
     expect(changeLanguageMock).toHaveBeenCalledWith("zh-CN");
     expect(screen.getByText("聊天组件实验室")).toBeInTheDocument();
     expect(screen.getByText("会话文件夹")).toBeInTheDocument();
-    expect(screen.getByText("浮层模式")).toBeInTheDocument();
+    expect(screen.getByText("聊天应用模式")).toBeInTheDocument();
 
     fireEvent.click(englishButton);
     expect(changeLanguageMock).toHaveBeenCalledWith("en");
