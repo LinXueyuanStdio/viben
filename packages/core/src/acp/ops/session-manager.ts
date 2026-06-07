@@ -552,10 +552,12 @@ export class AcpSessionManager {
     });
 
     const backend = await this.ensureBackend(session, request);
-    await this.consumeQueuedSteerPrompts(session.id);
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    const promptWithSteer = mergePromptWithSteerBlocks(request.prompt, steerPrompts);
     const response = await backend.prompt({
       ...request,
       sessionId: backend.backendSessionId,
+      prompt: promptWithSteer,
     });
 
     if (session.status === "cancelled") {
@@ -866,6 +868,20 @@ function mergeSteerPromptBlocks(prompts: AcpSteerPromptView[]): AcpContentBlock[
     .filter((content) => content.length > 0)
     .join("\n\n");
   return text ? [{ type: "text", text }] : [];
+}
+
+function mergePromptWithSteerBlocks(
+  prompt: AcpContentBlock[],
+  steerPrompts: AcpSteerPromptView[]
+): AcpContentBlock[] {
+  const steerPrompt = mergeSteerPromptBlocks(steerPrompts);
+  if (steerPrompt.length === 0) return prompt;
+
+  const promptText = promptBlocksToText(prompt).trim();
+  const steerText = promptBlocksToText(steerPrompt).trim();
+  if (!promptText) return steerPrompt;
+  if (!steerText) return prompt;
+  return [{ type: "text", text: `${promptText}\n\n${steerText}` }];
 }
 
 function blockToPromptText(block: AcpContentBlock): string {

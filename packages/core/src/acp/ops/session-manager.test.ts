@@ -641,6 +641,34 @@ describe("AcpSessionManager", () => {
     );
   });
 
+  it("injects queued steer prompts into the next normal agent prompt", async () => {
+    const adapter = new CapturingBackendAdapter();
+    const connection = createCapturingConnection();
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+    const queued = await manager.steerPrompt({
+      sessionId: session.sessionId,
+      agentId: "agent-alpha",
+      userId: "user-1",
+      prompt: [{ type: "text", text: "also include this steer" }],
+    });
+
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "run the normal prompt" }],
+    });
+
+    expect(adapter.backendSession?.prompts.map((request) => request.prompt)).toEqual([
+      [{ type: "text", text: "run the normal prompt\n\nalso include this steer" }],
+    ]);
+    expect(connection.updates.map((notification) => notification.update)).toContainEqual(
+      expect.objectContaining({ sessionUpdate: "session/prompt/consumed", promptId: queued.promptId })
+    );
+  });
+
   it.each(["completed", "failed"])(
     "consumes queued steer prompts when any tool call finishes with %s",
     async (status) => {
