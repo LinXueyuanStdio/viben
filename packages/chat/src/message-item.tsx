@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit, BarChart3 } from "lucide-react";
 import { cn } from "@viben/ui";
-import type { AgentMessage, ExpandSubagentHandler, MessageAttachment, SummaryMessageData } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, InspectToolHandler, MessageAttachment, SummaryMessageData } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanSummary } from "./plan-approval";
 import { QuestionInput } from "./question-input";
@@ -33,6 +33,8 @@ export interface MessageItemProps {
   toolExpandedInline?: boolean;
   /** Callback to expand subagent messages in a side panel */
   onExpandSubagent?: ExpandSubagentHandler;
+  /** Called when a regular tool card asks the host to show inspect/details UI. */
+  onInspectTool?: InspectToolHandler;
   /** Whether this is the latest thinking message (starts expanded) */
   isLatestThinking?: boolean;
   /** Custom renderer for summary messages. */
@@ -664,6 +666,7 @@ function MessageItemImpl({
   maxWidth,
   toolExpandedInline,
   onExpandSubagent,
+  onInspectTool,
   isLatestThinking,
   renderSummary,
   userAvatar,
@@ -718,25 +721,18 @@ function MessageItemImpl({
         maxWidth="100%"
         toolExpandedInline={toolExpandedInline}
         onExpandSubagent={onExpandSubagent}
+        onInspectTool={onInspectTool}
       />
     );
 
     content = (
       <ToolExecutionItem
-        state={{
-          name: message.name || "unknown",
-          input: message.input,
-          toolUseId: message.toolUseId,
-          output: message.output,
-          status: !hasOutput ? "executing" : message.isError ? "error" : "success",
-          isError: message.isError,
-          subagentId: message.subagentId,
-          subagentMessages: message.subagentMessages,
-          subagentPreviewMessages: message.subagentPreviewMessages,
-        }}
+        tool={{ message }}
+        status={!hasOutput ? "executing" : message.isError ? "error" : "success"}
         renderMessage={renderSubagentMessage}
         expandedInline={toolExpandedInline}
         onExpandSubagent={onExpandSubagent}
+        onInspectTool={onInspectTool}
       />
     );
   }
@@ -744,13 +740,15 @@ function MessageItemImpl({
   else if (message.type === "tool_result") {
     content = (
       <ToolExecutionItem
-        state={{
-          name: t("chat.toolResult.label", "Tool Result"),
-          output: message.output,
-          status: message.isError ? "error" : "success",
-          isError: message.isError,
+        tool={{
+          message: {
+            ...message,
+            name: message.name || t("chat.toolResult.label", "Tool Result"),
+          },
         }}
+        status={message.isError ? "error" : "success"}
         expandedInline={toolExpandedInline}
+        onInspectTool={onInspectTool}
       />
     );
   }
@@ -836,6 +834,7 @@ export function areMessageItemPropsEqual(
   if (prev.isLatestThinking !== next.isLatestThinking) return false;
   if (prev.renderSummary !== next.renderSummary) return false;
   if (prev.toolExpandedInline !== next.toolExpandedInline) return false;
+  if (prev.onInspectTool !== next.onInspectTool) return false;
   if (prev.userAvatar !== next.userAvatar) return false;
   if (prev.assistantAvatar !== next.assistantAvatar) return false;
   if (prev.onUserAvatarClick !== next.onUserAvatarClick) return false;

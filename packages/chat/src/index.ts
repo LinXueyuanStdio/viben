@@ -103,9 +103,7 @@ export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
 export type {
   ArtifactInfo,
-  InspectToolHandler,
   ToolExecutionItemProps,
-  ToolExecutionState,
   ToolExecutionStatus,
 } from "./tool-execution-item";
 export { PlanApproval } from "./plan-approval";

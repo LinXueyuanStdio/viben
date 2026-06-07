@@ -14,7 +14,7 @@ import { isMessageStatic } from "./utils/is-message-static";
 import { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
 import { StreamingTextBlock } from "./streaming-text-block";
 import { useVirtualScroll } from "./hooks/use-virtual-scroll";
-import type { AgentMessage, ExpandSubagentHandler, PendingQuestion, SummaryMessageData, TaskPlan } from "./types";
+import type { AgentMessage, ExpandSubagentHandler, InspectToolHandler, PendingQuestion, SummaryMessageData, TaskPlan, ToolWithResult } from "./types";
 
 /** Artifact definition for linking with tool_use messages */
 export interface Artifact {
@@ -112,6 +112,10 @@ export interface MessageListProps {
    */
   onExpandSubagent?: ExpandSubagentHandler;
   /**
+   * Called when a regular tool card asks the host to show inspect/details UI.
+   */
+  onInspectTool?: InspectToolHandler;
+  /**
    * Custom renderer for summary messages. Defaults to a compact generic key/value card.
    */
   renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
@@ -123,13 +127,6 @@ export interface MessageListProps {
   onUserAvatarClick?: (message: AgentMessage) => void;
   /** Called when an assistant text/result message avatar is clicked. */
   onAssistantAvatarClick?: (message: AgentMessage) => void;
-}
-
-// Types for message grouping
-interface ToolWithResult {
-  message: AgentMessage;
-  globalIndex: number;
-  result?: AgentMessage;
 }
 
 interface TaskMessageGroup {
@@ -186,6 +183,24 @@ function getArtifactInfoForMessage(
   };
 }
 
+function applyToolMessageUpdates(
+  tools: ToolWithResult[],
+  messageUpdates?: Record<string, Partial<AgentMessage>>
+): ToolWithResult[] {
+  if (!messageUpdates) return tools;
+  return tools.map((tool) => {
+    const update = tool.message.id ? messageUpdates[tool.message.id] : undefined;
+    if (!update) return tool;
+    return {
+      ...tool,
+      message: {
+        ...tool.message,
+        ...update,
+      },
+    };
+  });
+}
+
 /** Tool names that are considered "read-only" and can be auto-collapsed */
 const COLLAPSIBLE_TOOL_NAMES = new Set(["Read", "Glob", "Grep"]);
 
@@ -195,16 +210,16 @@ const COLLAPSIBLE_TOOL_NAMES = new Set(["Read", "Glob", "Grep"]);
  */
 function CollapsedToolRun({
   tools,
-  messageUpdates,
   artifacts,
   onArtifactClick,
   onExpandSubagent,
+  onInspectTool,
 }: {
   tools: ToolWithResult[];
-  messageUpdates?: Record<string, Partial<AgentMessage>>;
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
 }) {
   const [expanded, setExpanded] = useState(false);
   const isExecuting = tools.some((t) => !t.result);
@@ -221,27 +236,21 @@ function CollapsedToolRun({
       expanded={expanded}
       onToggle={() => setExpanded((prev) => !prev)}
     >
-      {tools.map(({ message, globalIndex, result }) => (
+      {tools.map((tool) => {
+        const { message, globalIndex, result } = tool;
+        return (
         <ToolExecutionItem
           key={globalIndex}
-          state={{
-            name: message.name || "unknown",
-            displayName: message.name,
-            input: message.input,
-            toolUseId: message.toolUseId,
-            subagentId: message.subagentId,
-            subagentMessages: message.subagentMessages,
-            subagentPreviewMessages: message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined,
-            output: result?.output,
-            status: !result ? "executing" : result.isError ? "error" : "success",
-            isError: result?.isError,
-          }}
+          tool={tool}
+          status={!result ? "executing" : result.isError ? "error" : "success"}
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
           onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
         />
-      ))}
+      );
+      })}
     </CollapsedToolGroup>
   );
 }
@@ -256,8 +265,10 @@ function renderToolsWithCollapsing(
   artifacts?: Artifact[],
   onArtifactClick?: (artifactId: string) => void,
   onExpandSubagent?: ExpandSubagentHandler,
+  onInspectTool?: InspectToolHandler,
 ): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
+  const resolvedTools = applyToolMessageUpdates(tools, messageUpdates);
   let collapsibleRun: ToolWithResult[] = [];
 
   const flushRun = () => {
@@ -266,10 +277,10 @@ function renderToolsWithCollapsing(
         <CollapsedToolRun
           key={`collapsed-${collapsibleRun[0].globalIndex}`}
           tools={collapsibleRun}
-          messageUpdates={messageUpdates}
           artifacts={artifacts}
           onArtifactClick={onArtifactClick}
           onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
         />
       );
     } else if (collapsibleRun.length === 1) {
@@ -277,29 +288,20 @@ function renderToolsWithCollapsing(
       elements.push(
         <ToolExecutionItem
           key={globalIndex}
-          state={{
-            name: message.name || "unknown",
-            displayName: message.name,
-            input: message.input,
-            toolUseId: message.toolUseId,
-            subagentId: message.subagentId,
-            subagentMessages: message.subagentMessages,
-            subagentPreviewMessages: message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined,
-            output: result?.output,
-            status: !result ? "executing" : result.isError ? "error" : "success",
-            isError: result?.isError,
-          }}
+          tool={collapsibleRun[0]}
+          status={!result ? "executing" : result.isError ? "error" : "success"}
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
           onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
         />
       );
     }
     collapsibleRun = [];
   };
 
-  for (const tool of tools) {
+  for (const tool of resolvedTools) {
     if (COLLAPSIBLE_TOOL_NAMES.has(tool.message.name || "")) {
       collapsibleRun.push(tool);
     } else {
@@ -308,22 +310,13 @@ function renderToolsWithCollapsing(
       elements.push(
         <ToolExecutionItem
           key={globalIndex}
-          state={{
-            name: message.name || "unknown",
-            displayName: message.name,
-            input: message.input,
-            toolUseId: message.toolUseId,
-            subagentId: message.subagentId,
-            subagentMessages: message.subagentMessages,
-            subagentPreviewMessages: message.id ? messageUpdates?.[message.id]?.subagentPreviewMessages : undefined,
-            output: result?.output,
-            status: !result ? "executing" : result.isError ? "error" : "success",
-            isError: result?.isError,
-          }}
+          tool={tool}
+          status={!result ? "executing" : result.isError ? "error" : "success"}
           compact
           artifactInfo={getArtifactInfoForMessage(message, artifacts)}
           onArtifactClick={onArtifactClick}
           onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
         />
       );
     }
@@ -446,14 +439,16 @@ const MemoizedToolList = React.memo(function MemoizedToolList({
   artifacts,
   onArtifactClick,
   onExpandSubagent,
+  onInspectTool,
 }: {
   tools: ToolWithResult[];
   messageUpdates?: Record<string, Partial<AgentMessage>>;
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
 }) {
-  return <>{renderToolsWithCollapsing(tools, messageUpdates, artifacts, onArtifactClick, onExpandSubagent)}</>;
+  return <>{renderToolsWithCollapsing(tools, messageUpdates, artifacts, onArtifactClick, onExpandSubagent, onInspectTool)}</>;
 });
 
 function getMessageWidthStyle(maxMessageWidth?: string): React.CSSProperties {
@@ -496,6 +491,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   artifacts,
   onArtifactClick,
   onExpandSubagent,
+  onInspectTool,
 }: {
   title: string;
   description: string;
@@ -506,6 +502,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   artifacts?: Artifact[];
   onArtifactClick?: (artifactId: string) => void;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
 }) {
   const { t } = useTranslation();
   // Default: collapsed when completed, expanded when running or in progress
@@ -571,6 +568,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
                 artifacts={artifacts}
                 onArtifactClick={onArtifactClick}
                 onExpandSubagent={onExpandSubagent}
+                onInspectTool={onInspectTool}
               />
             </div>
           )}
@@ -1025,6 +1023,7 @@ interface MessageRowProps {
   maxMessageWidth?: string;
   toolExpandedInline?: boolean;
   onExpandSubagent?: ExpandSubagentHandler;
+  onInspectTool?: InspectToolHandler;
   renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
   userAvatar?: React.ReactNode;
   assistantAvatar?: React.ReactNode;
@@ -1048,6 +1047,7 @@ const MessageRow = React.memo(function MessageRow({
   maxMessageWidth,
   toolExpandedInline,
   onExpandSubagent,
+  onInspectTool,
   renderSummary,
   userAvatar,
   assistantAvatar,
@@ -1094,6 +1094,7 @@ const MessageRow = React.memo(function MessageRow({
           maxWidth={maxMessageWidth}
           toolExpandedInline={toolExpandedInline}
           onExpandSubagent={onExpandSubagent}
+          onInspectTool={onInspectTool}
           isLatestThinking={index === lastThinkingIdx}
           renderSummary={renderSummary}
           userAvatar={userAvatar}
@@ -1135,6 +1136,7 @@ const MessageRow = React.memo(function MessageRow({
       prev.assistantAvatar === next.assistantAvatar &&
       prev.onUserAvatarClick === next.onUserAvatarClick &&
       prev.onAssistantAvatarClick === next.onAssistantAvatarClick
+      && prev.onInspectTool === next.onInspectTool
     );
   }
   // Non-static: always re-render
@@ -1200,6 +1202,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   pendingApproval: _pendingApproval,
   onApprovalDecision: _onApprovalDecision,
   onExpandSubagent,
+  onInspectTool,
   renderSummary,
   userAvatar,
   assistantAvatar,
@@ -1510,6 +1513,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
     onArtifactClick,
     onUserAvatarClick,
     onAssistantAvatarClick,
+    onInspectTool,
   });
   handlersRef.current = {
     onLinkClick,
@@ -1517,6 +1521,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
     onArtifactClick,
     onUserAvatarClick,
     onAssistantAvatarClick,
+    onInspectTool,
   };
 
   // Stable wrappers — empty deps, references never change
@@ -1542,6 +1547,10 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   }, []);
   const stableOnAssistantAvatarClick = useCallback((message: AgentMessage) => {
     handlersRef.current.onAssistantAvatarClick?.(message);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const stableOnInspectTool = useCallback((message: AgentMessage) => {
+    handlersRef.current.onInspectTool?.(message);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1650,6 +1659,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                       artifacts={artifacts}
                       onArtifactClick={onArtifactClick}
                       onExpandSubagent={stableOnExpandSubagent}
+                      onInspectTool={stableOnInspectTool}
                     />
                   </MessageWidthShell>
                 </div>
@@ -1673,6 +1683,7 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                     maxMessageWidth={maxMessageWidth}
                     toolExpandedInline={toolExpandedInline}
                     onExpandSubagent={stableOnExpandSubagent}
+                    onInspectTool={stableOnInspectTool}
                     renderSummary={renderSummary}
                     userAvatar={userAvatar}
                     assistantAvatar={assistantAvatar}

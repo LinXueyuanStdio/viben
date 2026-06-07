@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@viben/ui";
 import { getDisplayPath } from "./utils";
-import type { AgentMessage, ContentBlock, ExpandSubagentHandler } from "./types";
+import type { AgentMessage, ContentBlock, ExpandSubagentHandler, InspectToolHandler, ToolWithResult } from "./types";
 import type { TFunction } from "i18next";
 
 /** Artifact info for linking tool_use messages to artifacts */
@@ -32,31 +32,13 @@ export interface ArtifactInfo {
 /** Execution status for a tool call */
 export type ToolExecutionStatus = "queued" | "executing" | "success" | "error";
 
-export interface ToolExecutionState {
-  name: string;
-  displayName?: string;
-  input?: Record<string, unknown>;
-  output?: string | ContentBlock[];
-  status: ToolExecutionStatus;
-  /** Subagent ID for Task tool calls */
-  subagentId?: string;
-  /** Parent tool_use ID for matching external subagent loaders */
-  toolUseId?: string;
-  /** Recursively loaded subagent messages for Task tool calls */
-  subagentMessages?: AgentMessage[];
-  /** Temporary running transcript preview for Task/Agent calls. Hidden once the call completes. */
-  subagentPreviewMessages?: AgentMessage[];
-  /** Whether the completed tool result is an error. Used to distinguish expected warnings from actual failures. */
-  isError?: boolean;
-}
-
-export type InspectToolHandler = () => void;
-
 export interface ToolExecutionItemProps {
-  state: ToolExecutionState;
+  tool: ToolWithResult;
   className?: string;
   /** Compact mode for use within task groups */
   compact?: boolean;
+  /** Explicit execution status. If omitted, it is inferred from the message output/error state. */
+  status?: ToolExecutionStatus;
   /** Render function for subagent messages */
   renderMessage?: (message: AgentMessage, index: number) => React.ReactNode;
   /** Artifact info when this tool created/modified a file */
@@ -69,6 +51,25 @@ export interface ToolExecutionItemProps {
   onExpandSubagent?: ExpandSubagentHandler;
   /** Called when the user asks to inspect this tool. */
   onInspectTool?: InspectToolHandler;
+}
+
+function resolveToolExecutionStatus(
+  message: AgentMessage,
+  result: AgentMessage | undefined,
+  status?: ToolExecutionStatus
+): ToolExecutionStatus {
+  if (status) return status;
+  if (result) return result.isError ? "error" : "success";
+  if (message.type === "tool_use") {
+    if (message.output === undefined) return "executing";
+    return message.isError ? "error" : "success";
+  }
+  if (message.type === "tool_result") {
+    return message.isError ? "error" : "success";
+  }
+  if (message.isError) return "error";
+  if (message.output !== undefined) return "success";
+  return "queued";
 }
 
 // ============================================================================
@@ -666,9 +667,10 @@ function SubagentPreview({ messages }: { messages: AgentMessage[] }) {
 // ============================================================================
 
 export function ToolExecutionItem({
-  state,
+  tool,
   className,
   compact = false,
+  status,
   renderMessage,
   artifactInfo,
   onArtifactClick,
@@ -676,18 +678,17 @@ export function ToolExecutionItem({
   onExpandSubagent,
   onInspectTool,
 }: ToolExecutionItemProps) {
-  const {
-    name,
-    displayName,
-    input,
-    output,
-    status: resolvedStatus,
-    subagentId,
-    toolUseId,
-    subagentMessages,
-    subagentPreviewMessages,
-    isError,
-  } = state;
+  const { message, result } = tool;
+  const name = message.name || "unknown";
+  const displayName = message.name;
+  const input = message.input;
+  const output = result?.output ?? message.output;
+  const resolvedStatus = resolveToolExecutionStatus(message, result, status);
+  const subagentId = message.subagentId;
+  const toolUseId = message.toolUseId;
+  const subagentMessages = message.subagentMessages;
+  const subagentPreviewMessages = message.subagentPreviewMessages;
+  const isError = result?.isError ?? message.isError;
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
@@ -727,7 +728,7 @@ export function ToolExecutionItem({
 
   const handleClick = () => {
     if (!isRunning && !isTaskTool) {
-      onInspectTool?.();
+      onInspectTool?.(message);
     }
   };
 

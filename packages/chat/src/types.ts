@@ -113,6 +113,12 @@ export interface AgentMessage {
   timestamp?: number; // Unix timestamp (ms) for turn separator display
 }
 
+export interface ToolWithResult {
+  message: AgentMessage;
+  result?: AgentMessage;
+  globalIndex?: number;
+}
+
 /** Context passed when opening a Task/Agent subagent transcript. */
 export interface SubagentOpenContext {
   subagentId?: string;
@@ -137,6 +143,8 @@ export type ExpandSubagentHandler = (
   messages: AgentMessage[],
   context?: SubagentOpenContext
 ) => void;
+
+export type InspectToolHandler = (message: AgentMessage) => void;
 
 // ============================================================================
 // Streaming Text Types
