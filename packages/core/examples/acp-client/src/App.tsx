@@ -226,12 +226,20 @@ export function App() {
   const slashCommands = activeSession?.slashCommands ?? [];
   const sessionResult = activeSession?.sessionResult ?? null;
   const promptResult = activeSession?.promptResult ?? null;
+  const hasQueuedUserBlocker = Boolean(activeSession?.uiStepQueue.some(isUserBlockingUiStep));
   const isTurnActive = Boolean(
     activeSession?.promptInFlight ||
     activeSession?.uiStepQueue.length ||
     activeSession?.pendingPlan ||
     activeSession?.pendingApproval ||
     activeSession?.pendingQuestion
+  );
+  const isAgentRunning = Boolean(
+    activeSession?.promptInFlight &&
+    !hasQueuedUserBlocker &&
+    !pendingPlan &&
+    !pendingApproval &&
+    !pendingQuestion
   );
   const steerQueueItems = sessionId ? steerQueuesBySessionId[sessionId] ?? [] : [];
   const steerQueuePaused = sessionId ? steerQueuePausedBySessionId[sessionId] ?? false : false;
@@ -1044,6 +1052,7 @@ export function App() {
             steerQueueItems={steerQueueItems}
             steerQueuePaused={steerQueuePaused}
             isStreaming={isTurnActive}
+            isAgentRunning={isAgentRunning}
             prompt={prompt}
             onPromptChange={setPrompt}
             onSendPrompt={(content) => void sendPromptText(content)}
@@ -1391,7 +1400,7 @@ export function App() {
                   messages={messages}
                   streamingText={streamingText}
                   messageUpdates={messageUpdates}
-                  isStreaming={isTurnActive}
+                  isStreaming={isAgentRunning}
                   pendingPlan={pendingPlan}
                   pendingQuestions={pendingQuestion}
                   artifacts={artifacts}
@@ -1602,6 +1611,7 @@ function AcpChatSurface({
   steerQueueItems,
   steerQueuePaused,
   isStreaming,
+  isAgentRunning,
   prompt,
   onPromptChange,
   onSendPrompt,
@@ -1647,6 +1657,7 @@ function AcpChatSurface({
   steerQueueItems: CommandQueueItem[];
   steerQueuePaused: boolean;
   isStreaming: boolean;
+  isAgentRunning: boolean;
   prompt: string;
   onPromptChange: (value: string) => void;
   onSendPrompt: (content: string) => void;
@@ -1703,7 +1714,7 @@ function AcpChatSurface({
           messages={messages}
           streamingText={streamingText}
           messageUpdates={messageUpdates}
-          isStreaming={isStreaming}
+          isStreaming={isAgentRunning}
           pendingPlan={pendingPlan}
           artifacts={artifacts}
           onExpandSubagent={onExpandSubagent}
@@ -2544,6 +2555,12 @@ function buildChatSkillConfigs(commands: SlashCommand[]): SkillConfig[] {
     description: command.description,
     enabled: true,
   }));
+}
+
+function isUserBlockingUiStep(step: AcpUiStep): boolean {
+  return step.kind === "approval" ||
+    step.kind === "question" ||
+    (step.kind === "plan" && step.plan.approvalStatus === "pending");
 }
 
 function buildChatContextBreakdown(
