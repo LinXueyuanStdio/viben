@@ -35,6 +35,4 @@ export interface BackgroundTaskListProps {
   className?: string;
   defaultExpanded?: boolean;
   onTaskClick?: (task: BackgroundTaskItem) => void;
-  /** @deprecated Use onTaskClick. */
-  onOpenTask?: (task: BackgroundTaskItem) => void;
 }

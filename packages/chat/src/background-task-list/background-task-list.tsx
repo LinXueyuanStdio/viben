@@ -208,7 +208,6 @@ export function BackgroundTaskList({
   className,
   defaultExpanded = true,
   onTaskClick,
-  onOpenTask,
 }: BackgroundTaskListProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(defaultExpanded);
@@ -223,7 +222,6 @@ export function BackgroundTaskList({
 
   const handleOpenTask = (task: BackgroundTaskItem) => {
     onTaskClick?.(task);
-    onOpenTask?.(task);
   };
 
   return (
