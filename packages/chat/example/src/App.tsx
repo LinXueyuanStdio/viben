@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
-import { LayoutGroup, motion } from "framer-motion"
+import { LayoutGroup } from "framer-motion"
 import { useTranslation } from "react-i18next"
 import {
   EmojiPicker,
@@ -17,9 +17,11 @@ import {
   demoSlashCommands,
   demoContextBreakdown,
   demoCommandQueueItems,
+  demoBackgroundTaskItems,
   demoExecApprovals,
   demoPlan,
   demoQuestions,
+  demoTodoListMessages,
   parseSessionJsonl,
   parseSessionFolder,
 } from "./demo-data"
@@ -108,24 +110,6 @@ function readStoredFullscreenChatWidth() {
 function storeFullscreenChatWidth(width: number) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(FULLSCREEN_CHAT_WIDTH_STORAGE_KEY, String(Math.round(width)))
-}
-
-function getFullscreenEntryInitial(geometry: FullscreenEntryGeometry | null) {
-  return geometry
-    ? {
-        opacity: 0.98,
-        x: geometry.x,
-        y: geometry.y,
-        width: geometry.width,
-        height: geometry.height,
-      }
-    : {
-        opacity: 0.96,
-        x: -28,
-        y: 32,
-        width: FULLSCREEN_CHAT_DEFAULT_WIDTH,
-        height: "75%",
-      }
 }
 
 // ============================================================================
@@ -268,6 +252,7 @@ export function App() {
     clampFullscreenChatWidth(readStoredFullscreenChatWidth(), EXAMPLE_SIDEBAR_EXPANDED_WIDTH)
   )
   const [fullscreenEntryGeometry, setFullscreenEntryGeometry] = useState<FullscreenEntryGeometry | null>(null)
+  const [fullscreenDockVisible, setFullscreenDockVisible] = useState(false)
   const isResizingChatRef = useRef(false)
 
   // ExecApproval cycling demo
@@ -291,6 +276,7 @@ export function App() {
   // Refs
   const messageListRef = useRef<MessageListHandle>(null)
   const chatExampleShellRef = useRef<HTMLDivElement>(null)
+  const fullscreenModeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Sync speed to player
   useEffect(() => {
@@ -300,17 +286,13 @@ export function App() {
   useEffect(() => {
     if (chatAppMode !== "full") {
       setRenderedChatAppMode(chatAppMode)
+      setFullscreenDockVisible(false)
       return
     }
 
     const sidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
     setFullscreenChatWidth((width) => clampFullscreenChatWidth(width, sidebarWidth))
-
-    const timer = setTimeout(() => {
-      setRenderedChatAppMode("full")
-    }, FULLSCREEN_LAYOUT_DELAY_MS)
-
-    return () => clearTimeout(timer)
+    setRenderedChatAppMode("full")
   }, [chatAppMode, introSidebarOpen])
 
   // Theme toggle
@@ -341,6 +323,14 @@ export function App() {
       stopResize()
     }
   }, [introSidebarOpen])
+
+  useEffect(() => {
+    return () => {
+      if (fullscreenModeTimerRef.current) {
+        clearTimeout(fullscreenModeTimerRef.current)
+      }
+    }
+  }, [])
 
   // ===== Implicit user message routing =====
   // When a step emits user messages, route based on agent busy state:
@@ -494,6 +484,7 @@ export function App() {
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
   const isChatAppFull = chatAppMode === "full"
+  const shouldShowFullscreenDock = isChatAppFull || fullscreenDockVisible
   const isUiShowcasePage = sidebarPage === "ui-showcase"
   const dismissComponentDemo = useCallback(() => {
     setShowPlan(false)
@@ -523,14 +514,29 @@ export function App() {
     }
   }, [introSidebarOpen])
   const handleChatAppModeChange = useCallback((nextMode: ChatAppMode) => {
+    if (fullscreenModeTimerRef.current) {
+      clearTimeout(fullscreenModeTimerRef.current)
+      fullscreenModeTimerRef.current = null
+    }
+
     if (nextMode === "full") {
       const sidebarWidth = introSidebarOpen ? EXAMPLE_SIDEBAR_EXPANDED_WIDTH : EXAMPLE_SIDEBAR_COLLAPSED_WIDTH
       const nextWidth = clampFullscreenChatWidth(fullscreenChatWidth, sidebarWidth)
       setFullscreenChatWidth(nextWidth)
       storeFullscreenChatWidth(nextWidth)
       setFullscreenEntryGeometry(getFullscreenEntryGeometry(nextWidth))
+      setFullscreenDockVisible(true)
+      fullscreenModeTimerRef.current = setTimeout(() => {
+        setRenderedChatAppMode("full")
+        setChatAppMode("full")
+        setFullscreenDockVisible(false)
+        fullscreenModeTimerRef.current = null
+      }, FULLSCREEN_LAYOUT_DELAY_MS)
+      return
     } else {
+      setFullscreenDockVisible(false)
       setFullscreenEntryGeometry(null)
+      setRenderedChatAppMode(nextMode)
     }
     setChatAppMode(nextMode)
   }, [fullscreenChatWidth, getFullscreenEntryGeometry, introSidebarOpen])
@@ -650,6 +656,8 @@ export function App() {
       plan={demoPlan}
       questions={demoQuestions}
       execApprovals={demoExecApprovals}
+      todoListMessages={demoTodoListMessages}
+      backgroundTaskItems={demoBackgroundTaskItems}
       approvalDemoIdx={approvalDemoIdx}
       approvalFeedback={approvalFeedback}
       standaloneQueueItems={standaloneQueueItems}
@@ -956,27 +964,19 @@ export function App() {
           </div>
         </aside>
 
-        {isChatAppFull && (
+        {shouldShowFullscreenDock && (
           <div
-            data-testid="chat-app-stage"
+            data-testid={isChatAppFull ? "chat-app-stage" : "fullscreen-chat-dock"}
             data-transition-origin="expanded-bottom-left"
             data-entry-geometry={fullscreenEntryGeometry ? "measured" : "fallback"}
             className="relative h-full min-w-0 flex-none overflow-hidden border-r bg-background transition-[width] duration-300"
             style={{ width: fullscreenChatWidth }}
           >
-            <motion.div
-              className="h-full overflow-hidden bg-background"
-              initial={getFullscreenEntryInitial(fullscreenEntryGeometry)}
-              animate={{ opacity: 1, x: 0, y: 0, width: fullscreenChatWidth, height: "100%" }}
-              exit={{ opacity: 0.96, x: fullscreenEntryGeometry?.x ?? -20, y: fullscreenEntryGeometry?.y ?? 24 }}
-              transition={{ duration: 0.34, ease: [0.4, 0, 0.2, 1] }}
-            >
-              {chatAppNode}
-            </motion.div>
+            {isChatAppFull ? chatAppNode : null}
           </div>
         )}
 
-        {isChatAppFull && (
+        {shouldShowFullscreenDock && (
           <button
             type="button"
             role="separator"
@@ -1001,17 +1001,19 @@ export function App() {
             {demoPanelContent}
           </div>
           {componentDemoOverlay}
-          {!isChatAppFull && (
-            <div
-              data-testid="chat-app-stage"
-              className="pointer-events-none absolute inset-0 z-20 overflow-visible bg-transparent"
-            >
-              <div className="pointer-events-auto">
-                {chatAppNode}
-              </div>
-            </div>
-          )}
         </main>
+
+        {!isChatAppFull && (
+          <div
+            data-testid="chat-app-stage"
+            className="pointer-events-none absolute inset-y-0 right-0 z-40 overflow-visible bg-transparent"
+            style={{ left: introSidebarWidth }}
+          >
+            <div className="pointer-events-auto">
+              {chatAppNode}
+            </div>
+          </div>
+        )}
       </div>
     </div>
     </LayoutGroup>

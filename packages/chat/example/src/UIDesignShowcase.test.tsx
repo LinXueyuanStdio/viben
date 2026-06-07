@@ -6,10 +6,12 @@ import type { CommandQueueItem } from "@viben/chat";
 import { UIShowCasesPage } from "./components/UIShowCasesPage";
 
 vi.mock("@viben/chat", () => ({
+  BackgroundTaskList: () => <div data-testid="background-task-list" />,
   ContextDetailsPopover: () => <div data-testid="context-details-popover" />,
   SkillsConfigPopover: () => <div data-testid="skills-config-popover" />,
   ToolExecutionItem: () => <div data-testid="tool-execution-item" />,
   ToolsConfigPopover: () => <div data-testid="tools-config-popover" />,
+  TodoListPanel: () => <div data-testid="todo-list-panel" />,
   getModelIcon: () => <span data-testid="model-icon" />,
 }));
 
@@ -67,6 +69,8 @@ describe("UIShowCasesPage", () => {
     expect(screen.getByRole("heading", { name: "UI design showcase" })).toBeInTheDocument();
     expect(screen.getAllByText("Interaction surfaces").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Plan approval").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Todo list").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Background tasks").length).toBeGreaterThan(0);
     expect(screen.getAllByText("ToolExecutionItem (4 states)").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Config Panels").length).toBeGreaterThan(0);
   });
