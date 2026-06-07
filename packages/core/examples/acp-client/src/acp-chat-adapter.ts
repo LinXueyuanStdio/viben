@@ -209,10 +209,12 @@ export function permissionDecisionToUiSteps(request: PermissionRequestLog): AcpU
   });
 }
 
-export function elicitationRequestToUiSteps(request: ElicitationRequest): AcpUiStep[] {
+export function elicitationRequestToUiSteps(request: ElicitationRequest, pendingQuestion?: PendingQuestion): AcpUiStep[] {
+  const plan = elicitationRequestToPendingPlan(request);
+  if (plan) return [{ kind: "plan", plan }];
   return [{
     kind: "question",
-    question: elicitationRequestToPendingQuestion(request),
+    question: pendingQuestion ?? elicitationRequestToPendingQuestion(request),
   }];
 }
 
@@ -243,7 +245,7 @@ export function elicitationRequestToPendingQuestion(request: ElicitationRequest)
   }
   const fields = getElicitationFormFields(request);
   return {
-    id: createStepId("elicitation"),
+    id: request.elicitationId ?? createStepId("elicitation"),
     questions: fields.length === 0
       ? [{
           header: request.requestedSchema?.title ?? "ACP Elicitation",
@@ -253,6 +255,36 @@ export function elicitationRequestToPendingQuestion(request: ElicitationRequest)
         }]
       : fields.map((field) => propertyToQuestion(request.message, field)),
   };
+}
+
+export function elicitationRequestToPendingPlan(request: ElicitationRequest): TaskPlan | null {
+  const input = isRecord(request.rawInput) ? request.rawInput : {};
+  const planInput = isRecord(input.plan) ? input.plan : input;
+  const entries = Array.isArray(planInput.entries) ? planInput.entries : Array.isArray(planInput.steps) ? planInput.steps : [];
+  const isPlanLike = entries.length > 0 || readString(planInput.planId) || readString(planInput.goal);
+  if (!isPlanLike || !isPlanApprovalElicitation(request)) return null;
+  const steps: TaskPlanStep[] = entries.flatMap((entry, index) => {
+    if (!isRecord(entry)) return [];
+    const description = readString(entry.content) ?? readString(entry.description) ?? readString(entry.title);
+    if (!description) return [];
+    return [{ id: readString(entry.id) ?? `step-${index + 1}`, description, status: normalizePlanStepStatus(readString(entry.status)) }];
+  });
+  return {
+    id: request.elicitationId ?? readString(planInput.planId) ?? readString(planInput.id) ?? createStepId("plan-elicitation"),
+    goal: readString(planInput.goal) ?? readString(planInput.title) ?? request.message,
+    steps,
+    notes: readString(planInput.notes),
+    approvalStatus: "pending",
+  };
+}
+
+function isPlanApprovalElicitation(request: ElicitationRequest): boolean {
+  const haystack = [
+    request.message,
+    request.requestedSchema?.title ?? "",
+    request.requestedSchema?.description ?? "",
+  ].join(" ").toLowerCase();
+  return haystack.includes("plan");
 }
 
 export function getElicitationFormFields(request: ElicitationRequest): ElicitationFormField[] {

@@ -47,6 +47,7 @@ import {
   acpSessionUpdateToUiSteps,
   clientToolCallToUiSteps,
   clientToolRequestedToUiSteps,
+  elicitationRequestToPendingPlan,
   elicitationRequestToPendingQuestion,
   elicitationRequestToUiSteps,
   elicitationResultToUiSteps,
@@ -104,12 +105,14 @@ interface ToolApprovalDialogState {
 }
 
 interface PermissionDialogState {
+  id: string;
   request: PermissionDecisionRequest;
   selectedOptionId: string;
   resolve: (result: PermissionDecisionResult) => void;
 }
 
 interface ElicitationDialogState {
+  id: string;
   request: ElicitationRequest;
   pendingQuestion: PendingQuestion;
   formFields: ElicitationFormField[];
@@ -199,8 +202,10 @@ export function App() {
   const [actions, setActions] = useState<GuiActionDefinition[]>(DEFAULT_ACTIONS);
   const [selectedActionId, setSelectedActionId] = useState(DEFAULT_ACTIONS[0]?.id ?? "");
   const [toolDialog, setToolDialog] = useState<ToolApprovalDialogState | null>(null);
-  const [permissionDialog, setPermissionDialog] = useState<PermissionDialogState | null>(null);
-  const [elicitationDialog, setElicitationDialog] = useState<ElicitationDialogState | null>(null);
+  const [permissionDialogs, setPermissionDialogs] = useState<Record<string, PermissionDialogState>>({});
+  const [activePermissionDialogId, setActivePermissionDialogId] = useState<string | null>(null);
+  const [elicitationDialogs, setElicitationDialogs] = useState<Record<string, ElicitationDialogState>>({});
+  const [activeElicitationDialogId, setActiveElicitationDialogId] = useState<string | null>(null);
   const [subagentSheet, setSubagentSheet] = useState<SubagentSheetState | null>(null);
   const [artifactDialog, setArtifactDialog] = useState<ArtifactDialogState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -222,6 +227,8 @@ export function App() {
   const pendingApproval = activeSession?.pendingApproval ?? null;
   const pendingQuestion = activeSession?.pendingQuestion ?? null;
   const pendingPlan = activeSession?.pendingPlan ?? null;
+  const permissionDialog = activePermissionDialogId ? permissionDialogs[activePermissionDialogId] ?? null : null;
+  const elicitationDialog = activeElicitationDialogId ? elicitationDialogs[activeElicitationDialogId] ?? null : null;
   const artifacts = activeSession?.artifacts ?? [];
   const slashCommands = activeSession?.slashCommands ?? [];
   const sessionResult = activeSession?.sessionResult ?? null;
@@ -371,29 +378,40 @@ export function App() {
   }, []);
 
   const requestPermissionDecision = useCallback((request: PermissionDecisionRequest): Promise<PermissionDecisionResult> => {
-    enqueueUiSteps(setSessionsById, request.sessionId, permissionRequestToUiSteps(request));
+    const steps = permissionRequestToUiSteps(request);
+    const approval = steps.find((step) => step.kind === "approval")?.approval;
+    const dialogId = approval?.id ?? request.toolCallId;
+    enqueueUiSteps(setSessionsById, request.sessionId, steps);
     return new Promise((resolve) => {
       const selected = selectInitialPermissionOption(request.options);
-      setPermissionDialog({
+      const dialog: PermissionDialogState = {
+        id: dialogId,
         request,
         selectedOptionId: selected ? permissionOptionId(selected, request.options.indexOf(selected)) : "",
         resolve,
-      });
+      };
+      setPermissionDialogs((current) => ({ ...current, [dialogId]: dialog }));
+      setActivePermissionDialogId((current) => current ?? dialogId);
     });
   }, []);
 
   const requestElicitationResponse = useCallback((request: ElicitationRequest): Promise<ElicitationResponse> => {
-    enqueueUiSteps(setSessionsById, request.sessionId, elicitationRequestToUiSteps(request));
+    const pendingQuestion = elicitationRequestToPendingQuestion(request);
+    const pendingPlan = elicitationRequestToPendingPlan(request);
+    const dialogId = pendingPlan?.id ?? pendingQuestion.id;
+    enqueueUiSteps(setSessionsById, request.sessionId, elicitationRequestToUiSteps(request, pendingQuestion));
     return new Promise((resolve) => {
-      const pendingQuestion = elicitationRequestToPendingQuestion(request);
       const formFields = getElicitationFormFields(request);
-      setElicitationDialog({
+      const dialog: ElicitationDialogState = {
+        id: dialogId,
         request,
         pendingQuestion,
         formFields,
         answersText: prettyJson(buildDefaultElicitationContent(formFields)),
         resolve,
-      });
+      };
+      setElicitationDialogs((current) => ({ ...current, [dialogId]: dialog }));
+      setActiveElicitationDialogId((current) => current ?? dialogId);
     });
   }, []);
 
@@ -711,11 +729,13 @@ export function App() {
     }
     if (permissionDialog) {
       permissionDialog.resolve({ outcome: "cancelled" });
-      setPermissionDialog(null);
+      setPermissionDialogs((current) => removeRecordKey(current, permissionDialog.id));
+      setActivePermissionDialogId((current) => current === permissionDialog.id ? null : current);
     }
     if (elicitationDialog) {
       elicitationDialog.resolve({ action: { action: "cancel" } });
-      setElicitationDialog(null);
+      setElicitationDialogs((current) => removeRecordKey(current, elicitationDialog.id));
+      setActiveElicitationDialogId((current) => current === elicitationDialog.id ? null : current);
     }
     updateSession(setSessionsById, sessionId, (session) => ({
       ...session,
@@ -814,14 +834,16 @@ export function App() {
       optionId: permissionDialog.selectedOptionId || "allow",
     });
     resolveSessionApproval(setSessionsById, permissionDialog.request.sessionId);
-    setPermissionDialog(null);
+    setPermissionDialogs((current) => removeRecordKey(current, permissionDialog.id));
+    setActivePermissionDialogId(null);
   }, [permissionDialog]);
 
   const cancelPermissionDialog = useCallback(() => {
     if (!permissionDialog) return;
     permissionDialog.resolve({ outcome: "cancelled" });
     resolveSessionApproval(setSessionsById, permissionDialog.request.sessionId);
-    setPermissionDialog(null);
+    setPermissionDialogs((current) => removeRecordKey(current, permissionDialog.id));
+    setActivePermissionDialogId(null);
   }, [permissionDialog]);
 
   const submitElicitationDialog = useCallback(() => {
@@ -830,25 +852,29 @@ export function App() {
     const content = normalizeElicitationContent(parsed, elicitationDialog.formFields);
     elicitationDialog.resolve({ action: { action: "accept", content } });
     resolveSessionQuestion(setSessionsById, elicitationDialog.request.sessionId);
-    setElicitationDialog(null);
+    setElicitationDialogs((current) => removeRecordKey(current, elicitationDialog.id));
+    setActiveElicitationDialogId(null);
   }, [elicitationDialog]);
 
   const declineElicitationDialog = useCallback(() => {
     if (!elicitationDialog) return;
     elicitationDialog.resolve({ action: { action: "decline" } });
     resolveSessionQuestion(setSessionsById, elicitationDialog.request.sessionId);
-    setElicitationDialog(null);
+    setElicitationDialogs((current) => removeRecordKey(current, elicitationDialog.id));
+    setActiveElicitationDialogId(null);
   }, [elicitationDialog]);
 
   const cancelElicitationDialog = useCallback(() => {
     if (!elicitationDialog) return;
     elicitationDialog.resolve({ action: { action: "cancel" } });
     resolveSessionQuestion(setSessionsById, elicitationDialog.request.sessionId);
-    setElicitationDialog(null);
+    setElicitationDialogs((current) => removeRecordKey(current, elicitationDialog.id));
+    setActiveElicitationDialogId(null);
   }, [elicitationDialog]);
 
   const handleApprovalDecision = useCallback((decision: string) => {
-    const dialog = permissionDialog;
+    const dialogId = pendingApproval?.id;
+    const dialog = dialogId ? permissionDialogs[dialogId] : null;
     if (!dialog) return;
     const selectedOptionId = resolvePermissionDecisionOption(dialog.request.options, decision);
     dialog.resolve(
@@ -857,20 +883,29 @@ export function App() {
         : { outcome: "selected", optionId: selectedOptionId }
     );
     resolveSessionApproval(setSessionsById, dialog.request.sessionId);
-    setPermissionDialog(null);
-  }, [permissionDialog]);
+    setPermissionDialogs((current) => removeRecordKey(current, dialog.id));
+    setActivePermissionDialogId((current) => current === dialog.id ? null : current);
+  }, [pendingApproval, permissionDialogs]);
 
   const handleQuestionAnswers = useCallback((answers: Record<string, string[]>) => {
-    const dialog = elicitationDialog;
+    const dialogId = pendingQuestion?.id;
+    const dialog = dialogId ? elicitationDialogs[dialogId] : null;
     if (!dialog) return;
     const content = answersToElicitationContent(answers, dialog.formFields);
     dialog.resolve({ action: { action: "accept", content } });
     resolveSessionQuestion(setSessionsById, dialog.request.sessionId);
-    setElicitationDialog(null);
-  }, [elicitationDialog]);
+    setElicitationDialogs((current) => removeRecordKey(current, dialog.id));
+    setActiveElicitationDialogId((current) => current === dialog.id ? null : current);
+  }, [elicitationDialogs, pendingQuestion]);
 
   const handleApprovePlan = useCallback(() => {
     if (!sessionId) return;
+    const dialog = pendingPlan?.id ? elicitationDialogs[pendingPlan.id] : null;
+    if (dialog) {
+      dialog.resolve({ action: { action: "accept", content: { decision: "approved" } } });
+      setElicitationDialogs((current) => removeRecordKey(current, dialog.id));
+      setActiveElicitationDialogId((current) => current === dialog.id ? null : current);
+    }
     updateSession(setSessionsById, sessionId, (session) => ({
       ...session,
       pendingPlan: null,
@@ -880,11 +915,17 @@ export function App() {
           : message
       ),
     }));
-    void sendSteerPromptText("Plan approved. Continue.");
-  }, [sendSteerPromptText, sessionId]);
+    if (!dialog) void sendSteerPromptText("Plan approved. Continue.");
+  }, [elicitationDialogs, pendingPlan, sendSteerPromptText, sessionId]);
 
   const handleRejectPlan = useCallback(() => {
     if (!sessionId) return;
+    const dialog = pendingPlan?.id ? elicitationDialogs[pendingPlan.id] : null;
+    if (dialog) {
+      dialog.resolve({ action: { action: "decline" } });
+      setElicitationDialogs((current) => removeRecordKey(current, dialog.id));
+      setActiveElicitationDialogId((current) => current === dialog.id ? null : current);
+    }
     updateSession(setSessionsById, sessionId, (session) => ({
       ...session,
       pendingPlan: null,
@@ -894,8 +935,8 @@ export function App() {
           : message
       ),
     }));
-    void sendSteerPromptText("Plan rejected. Stop and ask for revised instructions.");
-  }, [sendSteerPromptText, sessionId]);
+    if (!dialog) void sendSteerPromptText("Plan rejected. Stop and ask for revised instructions.");
+  }, [elicitationDialogs, pendingPlan, sendSteerPromptText, sessionId]);
 
   const handleExpandSubagent = useCallback<ExpandSubagentHandler>((title, subagentType, subagentMessages, context) => {
     setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
@@ -1541,7 +1582,10 @@ export function App() {
       {permissionDialog && viewMode === "inspector" && (
         <PermissionApprovalModal
           dialog={permissionDialog}
-          onSelect={(optionId) => setPermissionDialog((current) => current ? { ...current, selectedOptionId: optionId } : current)}
+          onSelect={(optionId) => setPermissionDialogs((current) => ({
+            ...current,
+            [permissionDialog.id]: { ...permissionDialog, selectedOptionId: optionId },
+          }))}
           onSubmit={submitPermissionDialog}
           onCancel={cancelPermissionDialog}
         />
@@ -1549,7 +1593,10 @@ export function App() {
       {elicitationDialog && viewMode === "inspector" && (
         <ElicitationApprovalModal
           dialog={elicitationDialog}
-          onChangeAnswers={(value) => setElicitationDialog((current) => current ? { ...current, answersText: value } : current)}
+          onChangeAnswers={(value) => setElicitationDialogs((current) => ({
+            ...current,
+            [elicitationDialog.id]: { ...elicitationDialog, answersText: value },
+          }))}
           onSubmit={submitElicitationDialog}
           onDecline={declineElicitationDialog}
           onCancel={cancelElicitationDialog}
@@ -1760,7 +1807,7 @@ function AcpChatSurface({
                 key="approval"
                 approval={pendingApproval}
                 onDecision={onApprovalDecision}
-                enableKeyboard
+                enableKeyboard={false}
               />
             ) : pendingQuestion ? (
               <QuestionInput
@@ -2747,6 +2794,11 @@ function isElicitationContentValue(value: unknown): value is ElicitationContentV
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function removeRecordKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const { [key]: _removed, ...rest } = record;
+  return rest;
 }
 
 function actionToDetail(action: GuiActionDefinition) {
