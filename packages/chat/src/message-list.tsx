@@ -9,7 +9,7 @@ import { ToolExecutionItem } from "./tool-execution-item";
 import type { ArtifactInfo } from "./tool-execution-item";
 import { CollapsedToolGroup } from "./collapsed-tool-group";
 import type { PendingExecApproval } from "./exec-approval";
-import { formatI18nTemplate, getDisplayPath } from "./utils";
+import { getDisplayPath } from "./utils";
 import { isMessageStatic } from "./utils/is-message-static";
 import { MessageLookupsProvider, useMessageLookups } from "./message-lookups-context";
 import { StreamingTextBlock } from "./streaming-text-block";
@@ -146,11 +146,6 @@ interface OtherMessageGroup {
 }
 
 type MessageGroup = TaskMessageGroup | OtherMessageGroup;
-type MessageListTranslate = (
-  key: string,
-  fallback?: string | { defaultValue?: string; count?: number },
-  options?: Record<string, unknown>
-) => string;
 
 function isRenderableSimpleMessage(message: AgentMessage): boolean {
   if (message.type === "result" || message.type === "text" || message.type === "thinking") {
@@ -361,15 +356,15 @@ function TurnSeparator({ timestamp }: { timestamp?: number }) {
 function useTaskGroupSummary(
   tools: ToolWithResult[],
   isCompleted: boolean,
-  isRunning: boolean,
-  t: MessageListTranslate
+  isRunning: boolean
 ): string {
+  const { t } = useTranslation();
   return useMemo(() => {
     if (!isCompleted && isRunning) {
       return t("chat.taskGroup.running", {
         count: tools.length,
         defaultValue: `Running... (${tools.length} steps)`,
-      }).replace("{{count}}", String(tools.length));
+      });
     }
 
     // Build summary from tool categories
@@ -429,7 +424,7 @@ function useTaskGroupSummary(
       return t("chat.showSteps", {
         count: tools.length,
         defaultValue: `Show ${tools.length} steps`,
-      }).replace("{{count}}", String(tools.length));
+      });
     }
 
     return parts.join(", ");
@@ -518,7 +513,7 @@ const TaskGroupComponent = React.memo(function TaskGroupComponent({
   }, [isCompleted, isRunning]);
 
   // Build summarized text for collapsed state
-  const collapsedSummary = useTaskGroupSummary(tools, isCompleted, isRunning, t);
+  const collapsedSummary = useTaskGroupSummary(tools, isCompleted, isRunning);
 
   return (
     <div className="min-w-0 space-y-2">
