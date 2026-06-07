@@ -400,10 +400,10 @@ export class AcpWebSocketClient {
   async steerPrompt(params: SteerPromptParams): Promise<SteerPromptResult> {
     return await this.request("session/prompt/steer", {
       sessionId: params.sessionId,
-      agentId: params.agentId || undefined,
-      userId: params.userId || undefined,
+      agent_id: params.agentId || undefined,
+      user_id: params.userId || undefined,
       prompt: [{ type: "text", text: params.text }],
-      meta: params.meta,
+      _meta: params.meta,
     }) as SteerPromptResult;
   }
 
