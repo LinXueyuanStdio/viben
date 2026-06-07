@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { LayoutGroup } from "framer-motion"
+import { Streamdown } from "streamdown"
 import { useTranslation } from "react-i18next"
 import {
   EmojiPicker,
@@ -35,11 +36,26 @@ import {
   type LoadedClaudeCodeSession,
   type ParseStats,
 } from "./claudecode-log-provider"
-import { ChatApp } from "./ChatApp"
+import {
+  ChatApp,
+  ChatAppFullscreenCommandQueue,
+  ChatAppFullscreenInputPanel,
+  ChatAppFullscreenMessagePanel,
+  ChatAppFullscreenPanel,
+  DefaultExpandedHeaderMoreMenu,
+  ExpandedHeader,
+  ExpandedHeaderModeControls,
+  ExpandedHeaderNewSessionMenu,
+  ExpandedHeaderSessionMenu,
+} from "./ChatApp"
 import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
 import { PlayerButton, ModeButton, SectionLabel, SidebarPageButton } from "./components/common"
 import { PlayerPage } from "./pages/PlayerPage"
 import { UIShowCasesPage, UIShowcaseDemoOverlay } from "./pages/UIShowCasesPage"
+import {
+  CHAT_APP_COMPACT_GREETING_COUNT,
+  CHAT_APP_COMPACT_GREETING_FALLBACKS,
+} from "./ChatAppDemoData"
 import { UI_DESIGN_SHOWCASE_DEMOS } from "./UIDesignShowcaseData"
 import type { UIShowcaseDemoId } from "./UIDesignShowcaseData"
 import {
@@ -55,11 +71,11 @@ import {
   storeFullscreenChatWidth,
 } from "./hooks/app-utils"
 import type { ExampleLanguage, ExampleSidebarPage, FullscreenEntryGeometry } from "./hooks/app-utils"
-import {
-  useCompactSummaryContent,
-  useExpandedHeaderRenderer,
-  useFullscreenContent,
-} from "./hooks/chat-app-composition"
+
+type CompactActivity = {
+  kind: "plain" | "thinking"
+  text: string
+}
 
 // ============================================================================
 // App
@@ -455,11 +471,105 @@ export function App() {
     slashCommands: demoSlashCommands,
     onSlashCommand: handleSlashCommand,
   }
-  const compactSummaryContent = useCompactSummaryContent({
-    messages: player.messages,
-    isStreaming: player.isStreaming,
-    t,
-  })
+  const compactIdleGreeting = useMemo(() => {
+    const index = Math.min(CHAT_APP_COMPACT_GREETING_COUNT - 1, Math.floor(Math.random() * CHAT_APP_COMPACT_GREETING_COUNT))
+    return t(`chat_app.greetings.${index}`, CHAT_APP_COMPACT_GREETING_FALLBACKS[index])
+  }, [t])
+
+  const compactActivity = useMemo<CompactActivity>(() => {
+    const formatToolPath = (value: unknown): string => {
+      if (!value) return "file"
+      const raw = String(value)
+      const packageIndex = raw.indexOf("packages/")
+      return packageIndex >= 0 ? raw.slice(packageIndex) : raw.split("/").filter(Boolean).slice(-3).join("/") || "file"
+    }
+    const truncate = (value: string, maxLength: number): string =>
+      value.length > maxLength ? `${value.slice(0, maxLength - 3)}...` : value
+    const latest = [...player.messages].reverse().find((message) =>
+      (message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error") &&
+      (message.content || message.message || message.name)
+    )
+
+    if (!latest) return { kind: "plain", text: compactIdleGreeting }
+    if (latest.type === "thinking") {
+      return { kind: "thinking", text: latest.content || t("chat_app.activity.thinking", "Thinking...") }
+    }
+    if (latest.type === "error") {
+      return { kind: "plain", text: latest.message || latest.content || t("chat_app.activity.needs_attention", "Something needs attention.") }
+    }
+    if (latest.type !== "tool_use") {
+      return { kind: "plain", text: latest.content || latest.message || t("chat_app.activity.working", "Working...") }
+    }
+
+    const input = latest.input
+    switch (latest.name) {
+      case "Bash": {
+        const command = input?.command ? truncate(String(input.command).trim(), 72) : ""
+        return {
+          kind: "plain",
+          text: command
+            ? t("chat_app.activity.running_command_named", "Running {{command}}", { command })
+            : t("chat_app.activity.running_command", "Running command..."),
+        }
+      }
+      case "Read":
+        return { kind: "plain", text: t("chat_app.activity.reading_file", "Reading {{file}}...", { file: formatToolPath(input?.file_path) }) }
+      case "Write":
+        return { kind: "plain", text: t("chat_app.activity.writing_file", "Writing {{file}}...", { file: formatToolPath(input?.file_path) }) }
+      case "Edit":
+      case "MultiEdit":
+        return { kind: "plain", text: t("chat_app.activity.editing_file", "Editing {{file}}...", { file: formatToolPath(input?.file_path) }) }
+      case "Grep": {
+        const pattern = input?.pattern ? truncate(String(input.pattern), 48) : ""
+        return {
+          kind: "plain",
+          text: pattern
+            ? t("chat_app.activity.searching_for", "Searching for \"{{pattern}}\"...", { pattern })
+            : t("chat_app.activity.searching_workspace", "Searching workspace..."),
+        }
+      }
+      case "Glob": {
+        const pattern = input?.pattern ? truncate(String(input.pattern), 48) : ""
+        return {
+          kind: "plain",
+          text: pattern
+            ? t("chat_app.activity.finding", "Finding {{pattern}}...", { pattern })
+            : t("chat_app.activity.finding_files", "Finding files..."),
+        }
+      }
+      case "WebSearch":
+        return { kind: "plain", text: t("chat_app.activity.searching_web", "Searching the web...") }
+      case "WebFetch":
+        return { kind: "plain", text: t("chat_app.activity.fetching_page", "Fetching page content...") }
+      case "Task":
+      case "Agent":
+        return { kind: "plain", text: t("chat_app.activity.running_agent_task", "Running a delegated agent task...") }
+      default:
+        return {
+          kind: "plain",
+          text: latest.name
+            ? t("chat_app.activity.running_tool", "Running {{name}}...", { name: latest.name })
+            : t("chat_app.activity.working", "Working..."),
+        }
+    }
+  }, [compactIdleGreeting, player.messages, t])
+
+  const renderCompactActivitySummary = () => {
+    if (compactActivity.kind === "thinking") {
+      return (
+        <Streamdown mode={player.isStreaming ? "streaming" : "static"} caret={player.isStreaming ? "block" : undefined}>
+          {compactActivity.text}
+        </Streamdown>
+      )
+    }
+    return (
+      <>
+        {compactActivity.text}
+        {player.isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
+      </>
+    )
+  }
+
   const isComponentDemoActive = (id: UIShowcaseDemoId) => {
     switch (id) {
       case "plan":
