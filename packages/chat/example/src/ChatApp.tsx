@@ -300,7 +300,6 @@ export function ChatApp({
       context={subagentSheet.context}
       loadSubagentDetails={loadSubagentDetails}
       onExpandSubagent={onExpandSubagent}
-      className="w-[min(420px,85%)]"
     />
   ) : null;
 
@@ -383,7 +382,6 @@ export function ChatApp({
           isStreaming={isStreaming}
           onExpand={() => onModeChange("expanded")}
           onMinimize={() => onModeChange("floating")}
-          onFullScreen={() => onModeChange("full")}
         />
         <CompactChatInput
           variant="compact"
@@ -532,7 +530,6 @@ function AgentPopup({
   isStreaming,
   onExpand,
   onMinimize,
-  onFullScreen,
 }: {
   avatar: React.ReactNode;
   petState: AssistantPetState;
@@ -540,7 +537,6 @@ function AgentPopup({
   isStreaming: boolean;
   onExpand: () => void;
   onMinimize: () => void;
-  onFullScreen: () => void;
 }) {
   return (
     <motion.section
@@ -582,17 +578,6 @@ function AgentPopup({
                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Minimize2 className="size-3.5" />
-              </button>
-              <button
-                type="button"
-                aria-label="Open fullscreen chat"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onFullScreen();
-                }}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <Maximize2 className="size-3.5" />
               </button>
             </div>
           </div>

@@ -334,6 +334,10 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("message-list-streaming")).toHaveTextContent("true");
     expect(screen.getByTestId("message-list-updates")).toHaveTextContent("1");
     expect(screen.getByTestId("message-list-has-expand-subagent")).toHaveTextContent("true");
+    expect(screen.getByTestId("expanded-message-panel")).toHaveClass("flex");
+    expect(screen.getByTestId("expanded-message-panel")).toHaveClass("flex-col");
+    expect(screen.getByTestId("expanded-message-panel")).toHaveClass("min-h-0");
+    expect(screen.getByTestId("expanded-message-panel")).toHaveClass("overflow-hidden");
     expect(screen.queryByText("Read is running...")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Open subagent" }));
@@ -411,7 +415,7 @@ describe("ChatApp", () => {
     expect(overlay).not.toHaveClass("w-full");
   });
 
-  test("expanded to fullscreen uses a fixed fullscreen width target for the shared surface", () => {
+  test("expanded to fullscreen lets the parent container own the fullscreen width target", () => {
     const { rerender } = render(
       <ChatApp
         contained
@@ -440,8 +444,8 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("full-overlay")).toHaveAttribute("data-transition-role", "expand-to-full");
-    expect(screen.getByTestId("full-overlay")).toHaveClass("w-[calc(100dvw_-_280px)]");
-    expect(screen.getByTestId("full-overlay")).not.toHaveClass("w-full");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("w-full");
+    expect(screen.getByTestId("full-overlay")).not.toHaveClass("w-[calc(100dvw_-_280px)]");
   });
 
   test("expanded mode is a viewport anchored floating panel when not contained", () => {
@@ -500,11 +504,7 @@ describe("ChatApp", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open fullscreen chat" }));
-
-    expect(onModeChange).toHaveBeenCalledTimes(1);
-    expect(onModeChange).toHaveBeenCalledWith("full");
-    expect(onModeChange).not.toHaveBeenCalledWith("expanded");
+    expect(screen.queryByRole("button", { name: "Open fullscreen chat" })).not.toBeInTheDocument();
   });
 
   test("expanded session title menu shows search and session samples", () => {
@@ -777,7 +777,8 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("full-overlay")).toHaveClass("absolute");
     expect(screen.getByTestId("full-overlay")).toHaveClass("inset-y-0");
     expect(screen.getByTestId("full-overlay")).toHaveClass("right-0");
-    expect(screen.getByTestId("full-overlay")).toHaveClass("w-[calc(100dvw_-_280px)]");
+    expect(screen.getByTestId("full-overlay")).toHaveClass("w-full");
+    expect(screen.getByTestId("full-overlay")).not.toHaveClass("w-[calc(100dvw_-_280px)]");
     expect(screen.getByTestId("full-overlay")).toHaveClass("shadow-none");
     expect(screen.getByTestId("custom-fullscreen-panel")).toBeInTheDocument();
   });
@@ -802,7 +803,6 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("subagent-sheet")).toHaveAttribute("data-contained", "true");
-    expect(screen.getByTestId("subagent-sheet")).toHaveClass("w-[min(420px,85%)]");
     expect(screen.getByTestId("expanded-overlay")).toContainElement(screen.getByTestId("subagent-sheet"));
   });
 
