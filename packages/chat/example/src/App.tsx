@@ -47,8 +47,10 @@ import {
   ExpandedHeaderModeControls,
   ExpandedHeaderNewSessionMenu,
   ExpandedHeaderSessionMenu,
+  getAssistantPetState,
 } from "./ChatApp"
 import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
+import { VibenPetAvatar } from "./VibenPetAvatar"
 import { PlayerButton, ModeButton, SectionLabel, SidebarPageButton } from "./components/common"
 import { PlayerPage } from "./pages/PlayerPage"
 import { UIShowCasesPage, UIShowcaseDemoOverlay } from "./pages/UIShowCasesPage"
@@ -403,6 +405,26 @@ export function App() {
     [inspectedToolMessage, player.messages]
   )
 
+  const handleApprovePlan = useCallback(() => {
+    console.log("Plan approved")
+    player.resolvePlan(true)
+  }, [player.resolvePlan])
+
+  const handleRejectPlan = useCallback(() => {
+    console.log("Plan rejected")
+    player.resolvePlan(false)
+  }, [player.resolvePlan])
+
+  const handleApprovalDecision = useCallback((decision: string, feedback?: string) => {
+    console.log("Exec decision:", decision, "Feedback:", feedback)
+    player.resolveApproval(decision, feedback)
+  }, [player.resolveApproval])
+
+  const handleAnswerQuestions = useCallback((answers: Record<string, string[]>) => {
+    console.log("Answers:", answers)
+    player.resolveQuestion(answers)
+  }, [player.resolveQuestion])
+
   const activeSheetLiveMessages = useMemo(() => {
     const toolUseId = sheetData?.context?.toolUseId
     if (!toolUseId) return undefined
@@ -634,7 +656,7 @@ export function App() {
     }
   }, [compactIdleGreeting, player.messages, t])
 
-  const renderCompactActivitySummary = () => {
+  const compactActivitySummaryContent = useMemo(() => {
     if (compactActivity.kind === "thinking") {
       return (
         <Streamdown mode={player.isStreaming ? "streaming" : "static"} caret={player.isStreaming ? "block" : undefined}>
@@ -648,7 +670,7 @@ export function App() {
         {player.isStreaming && <span className="ml-1 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-primary" />}
       </>
     )
-  }
+  }, [compactActivity.kind, compactActivity.text, player.isStreaming])
 
   const isComponentDemoActive = (id: UIShowcaseDemoId) => {
     switch (id) {
@@ -775,6 +797,66 @@ export function App() {
     />
   )
 
+  const chatAppStatusContent = useMemo(() => (
+    <ChatAppFullscreenCommandQueue
+      commandQueueItems={commandQueue.items}
+      commandQueuePaused={commandQueue.isPaused}
+      onCommandQueueRemove={commandQueue.remove}
+      onCommandQueueClear={commandQueue.clear}
+      onCommandQueuePause={commandQueue.pause}
+      onCommandQueueResume={commandQueue.resume}
+    />
+  ), [
+    commandQueue.clear,
+    commandQueue.isPaused,
+    commandQueue.items,
+    commandQueue.pause,
+    commandQueue.remove,
+    commandQueue.resume,
+  ])
+  const chatAppHeaderAvatar = useMemo(() => {
+    const petState = getAssistantPetState(player.messages, player.isStreaming, player.status, commandQueue.items.length > 0)
+    return <VibenPetAvatar kind="static" state={petState} interaction="idle" />
+  }, [commandQueue.items.length, player.isStreaming, player.messages, player.status])
+
+  const chatAppHeaderContent = useMemo(() => (
+    <ExpandedHeader
+      leftContent={(
+        <>
+          <ExpandedHeaderSessionMenu
+            title={selectedChatAppSessionTitle}
+            sessions={chatAppSessions}
+            assistantAvatar={chatAppHeaderAvatar}
+            onSelectSession={handleChatAppSessionSelect}
+          />
+          <ExpandedHeaderNewSessionMenu
+            agents={demoAgents}
+            onCreateSession={() => handleChatAppModeChange("expanded")}
+          />
+        </>
+      )}
+      centerContent={<div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />}
+      rightContent={(
+        <ExpandedHeaderModeControls
+          mode={renderedChatAppMode}
+          onModeChange={handleChatAppModeChange}
+          moreMenuContent={(
+            <DefaultExpandedHeaderMoreMenu
+              onSettingsClick={() => setShowToolsPanel((open) => !open)}
+            />
+          )}
+        />
+      )}
+    />
+  ), [
+    chatAppHeaderAvatar,
+    chatAppSessions,
+    handleChatAppModeChange,
+    handleChatAppSessionSelect,
+    renderedChatAppMode,
+    selectedChatAppSessionTitle,
+  ])
+
   const chatAppNode = (
     <ChatApp
       contained
@@ -785,38 +867,8 @@ export function App() {
       isStreaming={player.isStreaming}
       playerStatus={player.status}
       pendingUserMessageCount={commandQueue.items.length}
-      compactSummaryContent={renderCompactActivitySummary()}
-      sessions={chatAppSessions}
-      renderHeader={(headerProps) => (
-        <ExpandedHeader
-          leftContent={(
-            <>
-              <ExpandedHeaderSessionMenu
-                title={headerProps.title}
-                sessions={headerProps.sessions}
-                assistantAvatar={headerProps.assistantAvatar}
-                onSelectSession={handleChatAppSessionSelect}
-              />
-              <ExpandedHeaderNewSessionMenu
-                agents={headerProps.agents}
-                onCreateSession={() => handleChatAppModeChange("expanded")}
-              />
-            </>
-          )}
-          centerContent={<div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />}
-          rightContent={(
-            <ExpandedHeaderModeControls
-              mode={headerProps.mode}
-              onModeChange={headerProps.onModeChange}
-              moreMenuContent={(
-                <DefaultExpandedHeaderMoreMenu
-                  onSettingsClick={() => setShowToolsPanel((open) => !open)}
-                />
-              )}
-            />
-          )}
-        />
-      )}
+      compactSummaryContent={compactActivitySummaryContent}
+      headerContent={chatAppHeaderContent}
       inputValue={chatInputValue}
       onInputValueChange={setChatInputValue}
       messageListRef={messageListRef}
@@ -836,6 +888,14 @@ export function App() {
       onSend={handleSend}
       onCancel={player.pause}
       inputProps={sharedChatInputProps}
+      statusContent={chatAppStatusContent}
+      pendingPlan={player.pendingPlan}
+      pendingApproval={player.pendingApproval}
+      pendingQuestion={player.pendingQuestion}
+      onApprovePlan={handleApprovePlan}
+      onRejectPlan={handleRejectPlan}
+      onApprovalDecision={handleApprovalDecision}
+      onAnswerQuestions={handleAnswerQuestions}
       fullscreenContent={(
         <ChatAppFullscreenPanel
           messageContent={(
@@ -849,55 +909,22 @@ export function App() {
               messageListRef={messageListRef}
               onExpandSubagent={handleExpandSubagent}
               onInspectTool={handleInspectTool}
-              onApprovePlan={() => {
-                console.log("Plan approved")
-                player.resolvePlan(true)
-              }}
-              onRejectPlan={() => {
-                console.log("Plan rejected")
-                player.resolvePlan(false)
-              }}
-              onApprovalDecision={(decision, feedback) => {
-                console.log("Exec decision:", decision, "Feedback:", feedback)
-                player.resolveApproval(decision, feedback)
-              }}
-              onAnswerQuestions={(answers) => {
-                console.log("Answers:", answers)
-                player.resolveQuestion(answers)
-              }}
+              onApprovePlan={handleApprovePlan}
+              onRejectPlan={handleRejectPlan}
+              onApprovalDecision={handleApprovalDecision}
+              onAnswerQuestions={handleAnswerQuestions}
             />
           )}
-          statusContent={(
-            <ChatAppFullscreenCommandQueue
-              commandQueueItems={commandQueue.items}
-              commandQueuePaused={commandQueue.isPaused}
-              onCommandQueueRemove={commandQueue.remove}
-              onCommandQueueClear={commandQueue.clear}
-              onCommandQueuePause={commandQueue.pause}
-              onCommandQueueResume={commandQueue.resume}
-            />
-          )}
+          statusContent={chatAppStatusContent}
           inputContent={(
             <ChatAppFullscreenInputPanel
               pendingPlan={player.pendingPlan}
               pendingApproval={player.pendingApproval}
               pendingQuestion={player.pendingQuestion}
-              onApprovePlan={() => {
-                console.log("Plan approved")
-                player.resolvePlan(true)
-              }}
-              onRejectPlan={() => {
-                console.log("Plan rejected")
-                player.resolvePlan(false)
-              }}
-              onApprovalDecision={(decision, feedback) => {
-                console.log("Exec decision:", decision, "Feedback:", feedback)
-                player.resolveApproval(decision, feedback)
-              }}
-              onAnswerQuestions={(answers) => {
-                console.log("Answers:", answers)
-                player.resolveQuestion(answers)
-              }}
+              onApprovePlan={handleApprovePlan}
+              onRejectPlan={handleRejectPlan}
+              onApprovalDecision={handleApprovalDecision}
+              onAnswerQuestions={handleAnswerQuestions}
               inputProps={sharedChatInputProps}
             />
           )}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import {
   ChatApp,
   ChatAppFullscreenCommandQueue,
@@ -17,9 +17,40 @@ import {
 } from "./ChatApp";
 import type { AgentMessage } from "@viben/chat";
 
+const {
+  mockBuildBackgroundTasksFromMessages,
+  mockBuildTodoListItemsFromMessages,
+} = vi.hoisted(() => ({
+  mockBuildBackgroundTasksFromMessages: vi.fn((messages: unknown[] = []) => (
+    messages.length > 0
+      ? [{
+          id: "bg-agent-1",
+          kind: "agent",
+          description: "Background agent",
+          status: "running",
+          messages: [{ id: "bg-sub-1", type: "text", content: "background detail" }],
+          sourceMessage: {
+            id: "agent-tool",
+            type: "tool_use",
+            name: "Agent",
+            toolUseId: "tool-bg-1",
+            subagentId: "sub-bg-1",
+          },
+        }]
+      : []
+  )),
+  mockBuildTodoListItemsFromMessages: vi.fn((messages: unknown[] = []) => (
+    messages.length > 0
+      ? [{ id: "derived-todo", content: "Derived todo", status: "pending" }]
+      : []
+  )),
+}));
+
 vi.mock("@viben/chat", async () => {
   const React = await import("react");
   return {
+    buildBackgroundTasksFromMessages: mockBuildBackgroundTasksFromMessages,
+    buildTodoListItemsFromMessages: mockBuildTodoListItemsFromMessages,
     ChatInput: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "overlay-chat-input-props" },
@@ -56,25 +87,12 @@ vi.mock("@viben/chat", async () => {
     BackgroundTaskList: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "background-task-list" },
-      React.createElement("span", null, String((props.messages as unknown[] | undefined)?.length ?? 0)),
+      React.createElement("span", null, String((props.tasks as unknown[] | undefined)?.length ?? 0)),
       React.createElement(
         "button",
         {
           type: "button",
-          onClick: () => (props.onTaskClick as ((task: unknown) => void) | undefined)?.({
-            id: "bg-agent-1",
-            kind: "agent",
-            description: "Background agent",
-            status: "running",
-            messages: [{ id: "bg-sub-1", type: "text", content: "background detail" }],
-            sourceMessage: {
-              id: "agent-tool",
-              type: "tool_use",
-              name: "Agent",
-              toolUseId: "tool-bg-1",
-              subagentId: "sub-bg-1",
-            },
-          }),
+          onClick: () => (props.onTaskClick as ((task: unknown) => void) | undefined)?.((props.tasks as unknown[] | undefined)?.[0]),
         },
         "Open background task"
       )
@@ -120,7 +138,7 @@ vi.mock("@viben/chat", async () => {
     TodoListPanel: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "todo-list-panel" },
-      String((props.messages as unknown[] | undefined)?.length ?? 0)
+      String((props.items as unknown[] | undefined)?.length ?? 0)
     ),
   };
 });
@@ -162,6 +180,31 @@ const messages: AgentMessage[] = [
 ];
 
 const emptyMessages: AgentMessage[] = [];
+const pendingPlan = {
+  goal: "Review proposed changes",
+  steps: [{ id: "step-1", description: "Inspect the diff", status: "pending" as const }],
+};
+const pendingApproval = {
+  id: "approval-1",
+  tool_call: { kind: "execute" as const, command: "pnpm test" },
+  options: [{ id: "allow_once", label: "Allow" }],
+};
+const pendingQuestion = {
+  id: "question-1",
+  questions: [
+    {
+      header: "Direction",
+      question: "Which path should the demo take?",
+      options: [{ label: "Compact" }],
+      multiSelect: false,
+    },
+  ],
+};
+
+beforeEach(() => {
+  mockBuildBackgroundTasksFromMessages.mockClear();
+  mockBuildTodoListItemsFromMessages.mockClear();
+});
 
 describe("ChatApp", () => {
   test("floating mode renders only the assistant avatar button", () => {
@@ -209,6 +252,54 @@ describe("ChatApp", () => {
     expect(screen.queryByText("Agent")).not.toBeInTheDocument();
     expect(screen.queryByText("Model")).not.toBeInTheDocument();
     expect(screen.queryByText("Skills")).not.toBeInTheDocument();
+  });
+
+  test("compact input renders pending interaction panels instead of the chat editor", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        pendingPlan={pendingPlan}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("plan-approval"));
+    expect(screen.queryByTestId("overlay-chat-input-props")).not.toBeInTheDocument();
+
+    rerender(
+      <ChatApp
+        contained
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        pendingApproval={pendingApproval}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("exec-approval"));
+
+    rerender(
+      <ChatApp
+        contained
+        mode="compact"
+        messages={messages}
+        isStreaming={false}
+        pendingQuestion={pendingQuestion}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("question-input"));
   });
 
   test("floating and compact keep avatar stable while the surface morphs", () => {
@@ -314,8 +405,46 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("todo-list-panel")).toHaveTextContent(String(messages.length));
-    expect(screen.getByTestId("background-task-list")).toHaveTextContent(String(messages.length));
+    expect(screen.getByTestId("todo-list-panel")).toHaveTextContent("1");
+    expect(screen.getByTestId("background-task-list")).toHaveTextContent("1");
+    expect(mockBuildTodoListItemsFromMessages).toHaveBeenCalledWith(messages, undefined);
+    expect(mockBuildBackgroundTasksFromMessages).toHaveBeenCalledWith(messages);
+  });
+
+  test("does not recompute message-derived task summaries while typing in the expanded input", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="expanded"
+        inputValue=""
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onInputValueChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(mockBuildTodoListItemsFromMessages).toHaveBeenCalledTimes(1);
+    expect(mockBuildBackgroundTasksFromMessages).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <ChatApp
+        contained
+        mode="expanded"
+        inputValue="draft"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onInputValueChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(mockBuildTodoListItemsFromMessages).toHaveBeenCalledTimes(1);
+    expect(mockBuildBackgroundTasksFromMessages).toHaveBeenCalledTimes(1);
   });
 
   test("uses legacy custom pet avatars only for static surfaces", () => {
@@ -555,6 +684,25 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("expanded-overlay").querySelector("[data-shared-element='overlay-header']")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-message-panel")).toHaveAttribute("data-shared-element", "overlay-message-panel");
     expect(screen.getByTestId("expanded-chat-input-container")).toHaveAttribute("data-shared-element", "overlay-input-panel");
+  });
+
+  test("expanded body renders status content and pending input panels", () => {
+    render(
+      <ChatApp
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        statusContent={<div data-testid="expanded-status-content">Queued command</div>}
+        pendingApproval={pendingApproval}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-message-panel")).toContainElement(screen.getByTestId("expanded-status-content"));
+    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("exec-approval"));
+    expect(screen.queryByTestId("overlay-chat-input-props")).not.toBeInTheDocument();
   });
 
   test("expanded message list uses the same reusable message panel as fullscreen", () => {

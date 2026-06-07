@@ -2,11 +2,20 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search } from "lucide-react";
-import { BackgroundTaskList, ChatInput, CommandQueuePanel, EmojiPicker, ExecApproval, MessageList, PlanApproval, QuestionInput, SubagentSheet, TodoListPanel } from "@viben/chat";
 import {
-  DEFAULT_CHAT_APP_AGENTS,
-  DEFAULT_CHAT_APP_SESSIONS,
-} from "./ChatAppDemoData";
+  BackgroundTaskList,
+  ChatInput,
+  CommandQueuePanel,
+  EmojiPicker,
+  ExecApproval,
+  MessageList,
+  PlanApproval,
+  QuestionInput,
+  SubagentSheet,
+  TodoListPanel,
+  buildBackgroundTasksFromMessages,
+  buildTodoListItemsFromMessages,
+} from "@viben/chat";
 import { VibenPetAvatar } from "./VibenPetAvatar";
 import type { AssistantPetState, PetInteractionState } from "./VibenPetAvatar";
 import type {
@@ -31,15 +40,6 @@ export type AssistantPetAvatarSet = {
   dynamic?: AssistantPetAvatarMap;
   static?: AssistantPetAvatarMap;
 };
-export type ChatAppHeaderRenderProps = {
-  mode: ChatAppMode;
-  title: string;
-  sessions: OverlaySessionItem[];
-  agents: OverlayAgentItem[];
-  assistantAvatar: React.ReactNode;
-  onModeChange: (mode: ChatAppMode) => void;
-};
-
 export interface OverlaySessionItem {
   id: string;
   title: string;
@@ -92,20 +92,26 @@ export interface ChatAppProps {
   pendingUserMessageCount?: number;
   assistantPetAvatars?: AssistantPetAvatarSet;
   assistantAvatars?: AssistantPetAvatarMap;
-  sessions?: OverlaySessionItem[];
-  agents?: OverlayAgentItem[];
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
+  headerContent?: React.ReactNode;
   fullscreenContent?: React.ReactNode;
   surfaceOverlay?: React.ReactNode;
+  statusContent?: React.ReactNode;
   compactSummaryContent?: React.ReactNode;
-  renderHeader?: (props: ChatAppHeaderRenderProps) => React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   onExpandSubagent?: ExpandSubagentHandler;
   onInspectTool?: InspectToolHandler;
   subagentSheet?: ChatAppSubagentSheetState;
   loadSubagentDetails?: LoadSubagentDetails;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
+  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
   onModeChange: (mode: ChatAppMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
@@ -245,20 +251,26 @@ export function ChatApp({
   pendingUserMessageCount = 0,
   assistantPetAvatars,
   assistantAvatars,
-  sessions = DEFAULT_CHAT_APP_SESSIONS,
-  agents = DEFAULT_CHAT_APP_AGENTS,
   inputValue,
   onInputValueChange,
   inputProps,
+  headerContent,
   fullscreenContent,
   surfaceOverlay,
+  statusContent,
   compactSummaryContent,
-  renderHeader,
   messageListRef,
   onExpandSubagent,
   onInspectTool,
   subagentSheet,
   loadSubagentDetails,
+  pendingPlan,
+  pendingApproval,
+  pendingQuestion,
+  onApprovePlan,
+  onRejectPlan,
+  onApprovalDecision,
+  onAnswerQuestions,
   onModeChange,
   onSend,
   onCancel,
@@ -307,7 +319,15 @@ export function ChatApp({
           maxMessageWidth="100%"
           onExpandSubagent={onExpandSubagent}
           onInspectTool={onInspectTool}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onAnswerQuestions}
         />
+        {statusContent}
       </motion.div>
       <motion.div
         layoutId="viben-overlay-input-panel"
@@ -324,51 +344,30 @@ export function ChatApp({
           onSend={handleSubmit}
           onCancel={onCancel}
           inputProps={getExpandedChatInputProps(inputProps)}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onAnswerQuestions}
         />
       </motion.div>
     </>
   );
 
-  const headerContent = renderHeader ? renderHeader({
-    mode,
-    title,
-    sessions,
-    agents,
-    assistantAvatar: staticAssistantAvatar,
-    onModeChange,
-  }) : (
-    <ExpandedHeader
-      leftContent={(
-        <>
-          <ExpandedHeaderSessionMenu
-            title={title}
-            sessions={sessions}
-            assistantAvatar={staticAssistantAvatar}
-          />
-          <ExpandedHeaderNewSessionMenu agents={agents} />
-        </>
-      )}
-      centerContent={<div className="min-w-0 flex-1 cursor-move" data-testid="expanded-header-drag-area" />}
-      rightContent={(
-        <ExpandedHeaderModeControls
-          mode={mode}
-          onModeChange={onModeChange}
-          moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
-        />
-      )}
-    />
-  );
-
   const expandedContent = (
     <>
-      <motion.div
-        layoutId="viben-overlay-header"
-        transition={INTERNAL_LAYOUT_TRANSITION}
-        className="shrink-0"
-        data-shared-element="overlay-header"
-      >
-        {headerContent}
-      </motion.div>
+      {headerContent ? (
+        <motion.div
+          layoutId="viben-overlay-header"
+          transition={INTERNAL_LAYOUT_TRANSITION}
+          className="shrink-0"
+          data-shared-element="overlay-header"
+        >
+          {headerContent}
+        </motion.div>
+      ) : null}
       {mode === "full" && fullscreenContent ? fullscreenContent : defaultExpandedBody}
     </>
   );
@@ -482,6 +481,13 @@ export function ChatApp({
           onSend={handleSubmit}
           onCancel={onCancel}
           inputProps={inputProps}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onAnswerQuestions}
         />
       </motion.div>
     );
@@ -493,7 +499,7 @@ export function ChatApp({
       transition={OVERLAY_TRANSITION}
       initial={false}
       data-transition-role="expand-to-full"
-      className={`overlay-shared-surface pointer-events-auto relative flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+      className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
         contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
       }`}
       style={{ borderRadius: OVERLAY_RADIUS.expanded }}
@@ -623,44 +629,75 @@ export function ChatAppFullscreenInputPanel({
         data-testid="fullscreen-chat-input-shell"
       >
         <div className="w-full" data-testid="fullscreen-chat-input-container">
-          <AnimatePresence mode="wait">
-            {pendingPlan ? (
-              <PlanApproval
-                key="plan"
-                plan={pendingPlan}
-                isPending
-                onApprove={onApprovePlan}
-                onReject={onRejectPlan}
-              />
-            ) : pendingApproval ? (
-              <ExecApproval
-                key="approval"
-                approval={pendingApproval}
-                onDecision={(decision, feedback) => onApprovalDecision?.(decision, feedback)}
-                enableKeyboard
-              />
-            ) : pendingQuestion ? (
-              <QuestionInput
-                key="question"
-                questions={pendingQuestion}
-                onSubmit={(answers) => onAnswerQuestions?.(answers)}
-              />
-            ) : (
-              <motion.div
-                key="input"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.15 }}
-              >
-                <ChatInput
-                  {...getExpandedChatInputProps(inputProps)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <ChatAppPendingInputContent
+            inputProps={getExpandedChatInputProps(inputProps)}
+            pendingPlan={pendingPlan}
+            pendingApproval={pendingApproval}
+            pendingQuestion={pendingQuestion}
+            onApprovePlan={onApprovePlan}
+            onRejectPlan={onRejectPlan}
+            onApprovalDecision={onApprovalDecision}
+            onAnswerQuestions={onAnswerQuestions}
+          />
         </div>
       </motion.div>
+  );
+}
+
+function ChatAppPendingInputContent({
+  inputProps,
+  pendingPlan,
+  pendingApproval,
+  pendingQuestion,
+  onApprovePlan,
+  onRejectPlan,
+  onApprovalDecision,
+  onAnswerQuestions,
+}: {
+  inputProps: ChatInputProps;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
+  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
+}) {
+  return (
+    <AnimatePresence mode="wait">
+      {pendingPlan ? (
+        <PlanApproval
+          key="plan"
+          plan={pendingPlan}
+          isPending
+          onApprove={onApprovePlan}
+          onReject={onRejectPlan}
+        />
+      ) : pendingApproval ? (
+        <ExecApproval
+          key="approval"
+          approval={pendingApproval}
+          onDecision={(decision, feedback) => onApprovalDecision?.(decision, feedback)}
+          enableKeyboard
+        />
+      ) : pendingQuestion ? (
+        <QuestionInput
+          key="question"
+          questions={pendingQuestion}
+          onSubmit={(answers) => onAnswerQuestions?.(answers)}
+        />
+      ) : (
+        <motion.div
+          key="input"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.15 }}
+        >
+          <ChatInput {...inputProps} />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -774,6 +811,14 @@ function ChatAppMessagePanel({
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }) {
   const { t } = useTranslation();
+  const todoItems = React.useMemo(
+    () => buildTodoListItemsFromMessages(messages, messageUpdates),
+    [messageUpdates, messages]
+  );
+  const backgroundTasks = React.useMemo(
+    () => buildBackgroundTasksFromMessages(messages).map(({ now: _now, ...task }) => task),
+    [messages]
+  );
   const handleBackgroundTaskClick = React.useCallback((task: BackgroundTaskItem) => {
     onExpandSubagent?.(
       task.description,
@@ -810,8 +855,8 @@ function ChatAppMessagePanel({
         onAnswerQuestions={onAnswerQuestions}
       />
       <div className="space-y-2 px-4 pb-2">
-        <TodoListPanel messages={messages} messageUpdates={messageUpdates} compact />
-        <BackgroundTaskList messages={messages} onTaskClick={handleBackgroundTaskClick} />
+        <TodoListPanel items={todoItems} compact />
+        <BackgroundTaskList tasks={backgroundTasks} onTaskClick={handleBackgroundTaskClick} />
       </div>
     </>
   );
@@ -1067,6 +1112,13 @@ function CompactChatInput({
   onSend,
   onCancel,
   inputProps,
+  pendingPlan,
+  pendingApproval,
+  pendingQuestion,
+  onApprovePlan,
+  onRejectPlan,
+  onApprovalDecision,
+  onAnswerQuestions,
 }: {
   variant: "compact" | "expanded";
   value: string;
@@ -1075,11 +1127,57 @@ function CompactChatInput({
   onSend: () => void;
   onCancel: () => void;
   inputProps?: Partial<ChatInputProps>;
+  pendingPlan?: TaskPlan | null;
+  pendingApproval?: PendingExecApproval | null;
+  pendingQuestion?: PendingQuestion | null;
+  onApprovePlan?: () => void;
+  onRejectPlan?: () => void;
+  onApprovalDecision?: (decision: string, feedback?: string) => void;
+  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }) {
   const { t } = useTranslation();
   const shellClassName = variant === "compact"
     ? `overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`
     : `overlay-input-shell w-full bg-transparent ${isStreaming ? "overlay-input-shell--running" : ""}`;
+  const resolvedInputProps: ChatInputProps = {
+    ...(variant === "expanded" ? getExpandedChatInputProps(inputProps) : inputProps),
+    value,
+    onValueChange,
+    onSend: (content, attachments) => {
+      if (inputProps?.onSend) {
+        inputProps.onSend(content, attachments);
+        return;
+      }
+      onSend();
+    },
+    onCancel: inputProps?.onCancel ?? onCancel,
+    isLoading: isStreaming,
+    allowSendWhileLoading: true,
+    placeholder: inputProps?.placeholder ?? (
+      isStreaming
+        ? t("chat_app.input.placeholder.queue", "Queue a message...")
+        : t("chat_app.input.placeholder.default", "Ask Viben...")
+    ),
+    layoutVariant: variant === "expanded" ? (inputProps?.layoutVariant ?? "expanded") : "compact",
+    showTopToolbar: variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false,
+    showConfigBar: variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true,
+    renderEmojiPicker: inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />),
+    renderBottomToolbar: variant === "compact" ? (({ editor, submitControl }) => (
+      <>
+        {editor}
+        {submitControl}
+      </>
+    )) : inputProps?.renderBottomToolbar,
+    defaultHeight: variant === "compact" ? 48 : inputProps?.defaultHeight,
+    minHeight: variant === "compact" ? 48 : inputProps?.minHeight,
+    maxHeight: variant === "compact" ? 48 : inputProps?.maxHeight,
+    showResizeHandle: false,
+    enableWritingMode: variant === "expanded",
+    hideAgentSelector: variant === "compact" ? true : inputProps?.hideAgentSelector,
+    hideModelSelector: variant === "compact" ? true : inputProps?.hideModelSelector,
+    hideExecutorSelector: variant === "compact" ? true : inputProps?.hideExecutorSelector,
+    className: `bg-background ${inputProps?.className ?? ""}`,
+  };
 
   return (
     <section
@@ -1087,44 +1185,15 @@ function CompactChatInput({
       data-variant={variant}
       className={shellClassName}
     >
-      <ChatInput
-        {...(variant === "expanded" ? getExpandedChatInputProps(inputProps) : inputProps)}
-        value={value}
-        onValueChange={onValueChange}
-        onSend={(content, attachments) => {
-          if (inputProps?.onSend) {
-            inputProps.onSend(content, attachments);
-            return;
-          }
-          onSend();
-        }}
-        onCancel={inputProps?.onCancel ?? onCancel}
-        isLoading={isStreaming}
-        allowSendWhileLoading
-        placeholder={inputProps?.placeholder ?? (
-          isStreaming
-            ? t("chat_app.input.placeholder.queue", "Queue a message...")
-            : t("chat_app.input.placeholder.default", "Ask Viben...")
-        )}
-        layoutVariant={variant === "expanded" ? (inputProps?.layoutVariant ?? "expanded") : "compact"}
-        showTopToolbar={variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false}
-        showConfigBar={variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true}
-        renderEmojiPicker={inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />)}
-        renderBottomToolbar={variant === "compact" ? (({ editor, submitControl }) => (
-          <>
-            {editor}
-            {submitControl}
-          </>
-        )) : inputProps?.renderBottomToolbar}
-        defaultHeight={variant === "compact" ? 48 : inputProps?.defaultHeight}
-        minHeight={variant === "compact" ? 48 : inputProps?.minHeight}
-        maxHeight={variant === "compact" ? 48 : inputProps?.maxHeight}
-        showResizeHandle={false}
-        enableWritingMode={variant === "expanded"}
-        hideAgentSelector={variant === "compact" ? true : inputProps?.hideAgentSelector}
-        hideModelSelector={variant === "compact" ? true : inputProps?.hideModelSelector}
-        hideExecutorSelector={variant === "compact" ? true : inputProps?.hideExecutorSelector}
-        className={`bg-background ${inputProps?.className ?? ""}`}
+      <ChatAppPendingInputContent
+        inputProps={resolvedInputProps}
+        pendingPlan={pendingPlan}
+        pendingApproval={pendingApproval}
+        pendingQuestion={pendingQuestion}
+        onApprovePlan={onApprovePlan}
+        onRejectPlan={onRejectPlan}
+        onApprovalDecision={onApprovalDecision}
+        onAnswerQuestions={onAnswerQuestions}
       />
     </section>
   );
