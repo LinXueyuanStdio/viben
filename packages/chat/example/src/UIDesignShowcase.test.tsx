@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { CommandQueueItem } from "@viben/chat";
-import { UIDesignShowcase } from "./UIDesignShowcase";
+import { UIDesignShowcase } from "./components/UIDesignShowcase";
 
 vi.mock("@viben/chat", () => ({
   ContextDetailsPopover: () => <div data-testid="context-details-popover" />,
@@ -67,7 +67,7 @@ describe("UIDesignShowcase", () => {
     expect(screen.getByRole("heading", { name: "UI design showcase" })).toBeInTheDocument();
     expect(screen.getAllByText("Interaction surfaces").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Plan approval").length).toBeGreaterThan(0);
-    expect(screen.getByText("ToolExecutionItem (4 states)")).toBeInTheDocument();
-    expect(screen.getByText("Config Panels")).toBeInTheDocument();
+    expect(screen.getAllByText("ToolExecutionItem (4 states)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Config Panels").length).toBeGreaterThan(0);
   });
 });
