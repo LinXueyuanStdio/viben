@@ -90,6 +90,7 @@ const EXAMPLE_COPY = {
     subtitle: "在同一个控制面板中回放会话、检查组件状态并切换浮层模式。",
   },
 } as const
+type ExampleLanguage = keyof typeof EXAMPLE_COPY
 
 // ============================================================================
 // Convert flat messages to simple steps (for .jsonl loading)
@@ -168,7 +169,7 @@ export function App() {
   const { t, i18n } = useTranslation()
   // Theme
   const [dark, setDark] = useState(true)
-  const [language, setLanguage] = useState(i18n.language.startsWith("zh") ? "zh-CN" : "en")
+  const [language, setLanguage] = useState<ExampleLanguage>(i18n.language.startsWith("zh") ? "zh-CN" : "en")
 
   // Step player (event-driven state machine)
   const player = useStepPlayer(demoSteps)
@@ -418,7 +419,7 @@ export function App() {
   const isOverlayFull = overlayMode === "full"
   const hasStandaloneDemoOpen = showPlan || showQuestions || showEmojiPicker || showExecApproval || showCommandQueue
   const exampleCopy = EXAMPLE_COPY[language]
-  const handleLanguageChange = useCallback((nextLanguage: "en" | "zh-CN") => {
+  const handleLanguageChange = useCallback((nextLanguage: ExampleLanguage) => {
     setLanguage(nextLanguage)
     void i18n.changeLanguage(nextLanguage)
   }, [i18n])
