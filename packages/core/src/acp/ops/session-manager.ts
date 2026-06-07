@@ -368,8 +368,7 @@ export class AcpSessionManager {
 
   async interruptSession(request: AcpInterruptSessionRequest): Promise<AcpInterruptSessionResponse> {
     const session = this.requireSession(request.sessionId);
-    const steerPrompts = await this.listQueuedSteerPrompts(session.id);
-    const promptIds = steerPrompts.map((item) => item.promptId);
+    const promptIds = await this.enqueueQueuedSteerResume(session);
     if (promptIds.length === 0) {
       this.interruptCurrentExecution(session);
       return {
@@ -379,21 +378,7 @@ export class AcpSessionManager {
       };
     }
 
-    const resumeItem: AcpPromptQueueItem = {
-      kind: "steer_resume",
-      promptIds,
-      resolve: () => {},
-      reject: (error) => {
-        log.warn({ err: error, sessionId: session.id, promptIds }, "ACP interrupt resume prompt failed");
-      },
-    };
-
-    if (session.prompt_running) {
-      this.enqueuePromptItem(session, resumeItem, "front");
-      this.interruptCurrentExecution(session);
-    } else {
-      this.enqueuePromptItem(session, resumeItem, "back");
-    }
+    this.interruptCurrentExecution(session);
 
     return {
       interrupted: true,
@@ -417,6 +402,26 @@ export class AcpSessionManager {
       cursor = String(records.length);
     }
     return records.map((record) => steerRecordToView(record));
+  }
+
+  private async enqueueQueuedSteerResume(session: AcpSession): Promise<string[]> {
+    const steerPrompts = await this.listQueuedSteerPrompts(session.id);
+    const promptIds = steerPrompts.map((item) => item.promptId);
+    if (promptIds.length === 0) return [];
+
+    if (!session.prompt_queue.some((item) => item.kind === "steer_resume")) {
+      const resumeItem: AcpPromptQueueItem = {
+        kind: "steer_resume",
+        promptIds,
+        resolve: () => {},
+        reject: (error) => {
+          log.warn({ err: error, sessionId: session.id, promptIds }, "ACP steer resume prompt failed");
+        },
+      };
+      this.enqueuePromptItem(session, resumeItem, session.prompt_running ? "front" : "back");
+    }
+
+    return promptIds;
   }
 
   async cancelSession(sessionId: string): Promise<boolean> {
@@ -636,7 +641,10 @@ export class AcpSessionManager {
 
     const update = notification.update;
     if (update.sessionUpdate === "tool_call_update" && isFinishedToolStatus(update.status)) {
-      await this.consumeQueuedSteerPrompts(session.id);
+      const promptIds = await this.enqueueQueuedSteerResume(session);
+      if (promptIds.length > 0) {
+        this.interruptCurrentExecution(session);
+      }
       return;
     }
 
@@ -675,8 +683,12 @@ export class AcpSessionManager {
       input,
     });
     const result = normalizeClientToolResponse(response, session.id, toolCallId);
-    await this.consumeQueuedSteerPrompts(session.id);
-    const accepted = clientToolCompletionRegistry.complete(toolCallId, session.id, result);
+    const steerPrompts = await this.consumeQueuedSteerPrompts(session.id);
+    const accepted = clientToolCompletionRegistry.complete(
+      toolCallId,
+      session.id,
+      mergeToolResultWithSteerPrompts(result, steerPrompts)
+    );
     if (!accepted) {
       log.warn({ sessionId: session.id, toolCallId }, "ACP client tool completion was not accepted");
     }
@@ -684,7 +696,10 @@ export class AcpSessionManager {
 
   private resolveClientToolCallId(session: AcpSession, toolName: string, fallbackToolCallId: string): string {
     if (!isAcpClientSideBridgeTool(toolName)) return fallbackToolCallId;
-    const pending = session.pending_client_side_bridge_tool_calls.shift();
+    const index = session.pending_client_side_bridge_tool_calls.findIndex((pending) => pending.toolName === toolName);
+    const pending = index >= 0
+      ? session.pending_client_side_bridge_tool_calls.splice(index, 1)[0]
+      : session.pending_client_side_bridge_tool_calls.shift();
     if (!pending) return fallbackToolCallId;
     if (pending.toolCallId !== fallbackToolCallId) {
       log.debug({
@@ -880,6 +895,21 @@ function mergePromptWithSteerBlocks(
   if (!promptText) return steerPrompt;
   if (!steerText) return prompt;
   return [{ type: "text", text: `${promptText}\n\n${steerText}` }];
+}
+
+function mergeToolResultWithSteerPrompts(
+  result: CallToolResult,
+  steerPrompts: AcpSteerPromptView[]
+): CallToolResult {
+  const steerPrompt = mergeSteerPromptBlocks(steerPrompts);
+  if (steerPrompt.length === 0) return result;
+  return {
+    ...result,
+    content: [
+      ...result.content,
+      ...steerPrompt,
+    ],
+  };
 }
 
 function blockToPromptText(block: AcpContentBlock): string {

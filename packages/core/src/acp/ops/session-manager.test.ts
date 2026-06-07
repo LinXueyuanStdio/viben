@@ -592,6 +592,52 @@ describe("AcpSessionManager", () => {
     });
   });
 
+  it("matches MCP bridge client tool ids by tool name when backend tool calls arrive out of order", async () => {
+    const connection = createCapturingConnection();
+    const adapter = new HookedBackendAdapter(async (context) => {
+      await context.onSessionUpdate?.({
+        sessionId: "backend-session",
+        update: {
+          sessionUpdate: "tool_call",
+          toolCallId: "backend-gui-tool-1",
+          title: "mcp__client_side__GUI_execute",
+          status: "pending",
+        },
+      } as BackendNotification);
+      await context.onSessionUpdate?.({
+        sessionId: "backend-session",
+        update: {
+          sessionUpdate: "tool_call",
+          toolCallId: "backend-bash-tool-1",
+          title: "mcp__client_side__ClientSideBash",
+          status: "pending",
+        },
+      } as BackendNotification);
+    });
+    const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore());
+    const session = await manager.createSession(
+      { cwd: "/tmp", mcpServers: [], agent_config: { name: "agent-alpha" } },
+      connection
+    );
+
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "run client tools" }],
+    });
+    await manager.requestClientTool(
+      session.sessionId,
+      "mcp__client_side__ClientSideBash",
+      { script: "echo ok" },
+      "bridge-local-bash-tool"
+    );
+
+    expect(connection.clientRequests.at(-1)?.params).toMatchObject({
+      sessionId: session.sessionId,
+      toolCallId: "backend-bash-tool-1",
+      toolName: "mcp__client_side__ClientSideBash",
+    });
+  });
+
   it("returns an error when a client tool response envelope has mismatched ids", async () => {
     const manager = new AcpSessionManager(new CapturingBackendAdapter(), new InMemoryAcpSteerPromptStore());
     const connection = createCapturingConnection();
