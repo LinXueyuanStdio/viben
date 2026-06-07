@@ -161,8 +161,10 @@
   - 修复：
     - spec 已标注 `session/update: steer_consumed` 为保留/兼容扩展，主路径以 `session/prompt/consumed` 为准。
 
-- [ ] **`session/prompt/consumed` 测试没有验证真实 JSON-RPC notification envelope**
+- [x] **`session/prompt/consumed` 测试没有验证真实 JSON-RPC notification envelope**
   - 现有 test double 把 `notifyClient()` 映射成 fake `sessionUpdate` 形态。
+  - 修复：
+    - `/ws/agent/acp` route-level 集成测试已验证真实 WebSocket JSON-RPC `session/prompt/consumed` notification envelope。
 
 - [x] **Esc 在 permission pending 时有键盘处理冲突**
   - 全局 Esc interrupt 与 `ExecApproval enableKeyboard` 的 Escape reject 可能同时触发。
