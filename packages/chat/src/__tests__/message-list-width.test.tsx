@@ -102,6 +102,26 @@ describe("MessageList width", () => {
     expect(content).not.toHaveClass("overflow-hidden");
   });
 
+  test("interpolates running indicator fallback variables when host translation does not", () => {
+    render(
+      <MessageList
+        isStreaming
+        messages={[
+          {
+            id: "edit-1",
+            type: "tool_use",
+            name: "Edit",
+            toolUseId: "tool-edit-1",
+            input: { file_path: "/root/viben/packages/chat/example/src/ChatApp.tsx" },
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText("Editing chat/example/src/ChatApp.tsx...")).toBeInTheDocument();
+    expect(screen.queryByText("Editing {{file}}...")).not.toBeInTheDocument();
+  });
+
   test("passes custom user and assistant avatars through to rendered messages", () => {
     const onUserAvatarClick = vi.fn();
     const onAssistantAvatarClick = vi.fn();
