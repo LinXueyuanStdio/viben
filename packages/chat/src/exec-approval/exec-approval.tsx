@@ -2,7 +2,7 @@ import * as React from "react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Shield, Terminal, FileEdit, Eye } from "lucide-react";
+import { ChevronDown, ChevronUp, Shield, Terminal, FileEdit, Eye } from "lucide-react";
 import { cn, Button } from "@viben/ui";
 import type { PendingExecApproval } from "./types";
 
@@ -35,11 +35,17 @@ export function ExecApproval({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [pendingDecision, setPendingDecision] = useState<string>("allow_once");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const kind = approval.tool_call.kind || "execute";
   const config = kindConfig[kind] || kindConfig.execute;
   const Icon = config.icon;
+  const command = approval.tool_call.command ||
+    approval.tool_call.title ||
+    t("chat.execApproval.unknownCommand", "Unknown command");
+  const detailRows = buildApprovalDetailRows(approval);
+  const hasMoreDetails = detailRows.length > 0 || approval.tool_call.input !== undefined;
 
   const submitDecision = useCallback(
     (decision: string) => {
@@ -183,34 +189,70 @@ export function ExecApproval({
       className={cn("rounded-lg border bg-card p-4 shadow-sm", className)}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3">
-        <div
-          className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-md",
-            config.bg,
-          )}
-        >
+      <div className="mb-3 flex items-start gap-3">
+        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-md", config.bg)}>
           <Shield className={cn("h-4 w-4", config.color)} />
         </div>
-        <span className="text-sm font-medium">
-          {t("chat.execApproval.title", "Permission Required")}
-        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">
+              {t("chat.execApproval.title", "Permission Required")}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {kind}
+            </span>
+          </div>
+          {approval.tool_call.title && (
+            <div className="mt-0.5 break-words text-xs text-muted-foreground">
+              {approval.tool_call.title}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tool call info */}
-      <div className="mb-3 rounded-md bg-code-block p-2.5">
+      <div className="mb-3 rounded-md border border-border/50 bg-code-block p-3">
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4 shrink-0", config.color)} />
-          <span className="text-sm font-mono truncate">
-            {approval.tool_call.command ||
-              approval.tool_call.title ||
-              t("chat.execApproval.unknownCommand", "Unknown command")}
+          <span className="min-w-0 break-words font-mono text-sm leading-5">
+            {command}
           </span>
         </div>
-        {approval.tool_call.cwd && (
-          <p className="mt-1 text-xs text-muted-foreground ml-6 truncate">
-            {approval.tool_call.cwd}
-          </p>
+        {detailRows.length > 0 && (
+          <dl className="mt-3 grid gap-2 border-t border-border/40 pt-3 sm:grid-cols-2">
+            {detailRows.slice(0, detailsOpen ? detailRows.length : 4).map((row) => (
+              <div key={row.label} className="min-w-0">
+                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {row.label}
+                </dt>
+                <dd className="mt-0.5 break-words font-mono text-xs text-foreground">
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {detailsOpen && approval.tool_call.input !== undefined && (
+          <div className="mt-3 border-t border-border/40 pt-3">
+            <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {t("chat.execApproval.input", "Input")}
+            </div>
+            <pre className="max-h-48 overflow-auto rounded-md bg-background/70 p-2 text-xs leading-5 text-foreground">
+              {formatApprovalValue(approval.tool_call.input)}
+            </pre>
+          </div>
+        )}
+        {hasMoreDetails && (
+          <button
+            type="button"
+            className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            onClick={() => setDetailsOpen((current) => !current)}
+          >
+            {detailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {detailsOpen
+              ? t("chat.execApproval.hideDetails", "Hide details")
+              : t("chat.execApproval.showDetails", "Show details")}
+          </button>
         )}
       </div>
 
@@ -317,4 +359,34 @@ export function ExecApproval({
       </AnimatePresence>
     </motion.div>
   );
+}
+
+function buildApprovalDetailRows(approval: PendingExecApproval): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [];
+  if (approval.tool_call.toolName) {
+    rows.push({ label: "Tool", value: approval.tool_call.toolName });
+  }
+  if (approval.tool_call.toolCallId) {
+    rows.push({ label: "Tool Call ID", value: approval.tool_call.toolCallId });
+  } else if (approval.id) {
+    rows.push({ label: "Approval ID", value: approval.id });
+  }
+  if (approval.tool_call.cwd) {
+    rows.push({ label: "Working Directory", value: approval.tool_call.cwd });
+  }
+  for (const detail of approval.tool_call.details ?? []) {
+    if (!detail.label || !detail.value) continue;
+    if (rows.some((row) => row.label === detail.label && row.value === detail.value)) continue;
+    rows.push(detail);
+  }
+  return rows;
+}
+
+function formatApprovalValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }

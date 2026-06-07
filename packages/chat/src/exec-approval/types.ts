@@ -6,6 +6,13 @@ export interface PendingExecApproval {
     kind?: "read" | "edit" | "execute";
     command?: string;
     cwd?: string;
+    toolCallId?: string;
+    toolName?: string;
+    input?: unknown;
+    details?: Array<{
+      label: string;
+      value: string;
+    }>;
   };
   options: Array<{ id: string; label: string }>;
 }
