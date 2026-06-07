@@ -473,6 +473,9 @@ describe("ChatApp", () => {
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
     expect(screen.getByTestId("message-list")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-overlay").querySelector("[data-shared-element='overlay-header']")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-message-panel")).toHaveAttribute("data-shared-element", "overlay-message-panel");
+    expect(screen.getByTestId("expanded-chat-input-container")).toHaveAttribute("data-shared-element", "overlay-input-panel");
   });
 
   test("expanded message list uses the same reusable message panel as fullscreen", () => {
@@ -633,12 +636,70 @@ describe("ChatApp", () => {
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
+        fullscreenContent={(
+          <ChatAppFullscreenPanel
+            messages={messages}
+            isStreaming={false}
+            inputProps={{
+              value: "",
+              onValueChange: () => {},
+              onSend: () => {},
+              onCancel: () => {},
+            }}
+          />
+        )}
       />
     );
 
     expect(screen.getByTestId("full-overlay")).toHaveAttribute("data-transition-role", "expand-to-full");
     expect(screen.getByTestId("full-overlay")).toHaveClass("w-full");
     expect(screen.getByTestId("full-overlay")).not.toHaveClass("w-[calc(100dvw_-_280px)]");
+  });
+
+  test("expanded and full modes expose shared elements for internal layout animation", () => {
+    const { rerender } = render(
+      <ChatApp
+        contained
+        mode="expanded"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+      />
+    );
+
+    expect(screen.getByTestId("expanded-overlay").querySelector("[data-shared-element='overlay-header']")).toBeInTheDocument();
+    expect(screen.getByTestId("expanded-message-panel")).toHaveAttribute("data-shared-element", "overlay-message-panel");
+    expect(screen.getByTestId("expanded-chat-input-container")).toHaveAttribute("data-shared-element", "overlay-input-panel");
+
+    rerender(
+      <ChatApp
+        contained
+        mode="full"
+        messages={messages}
+        isStreaming={false}
+        onModeChange={() => {}}
+        onSend={() => {}}
+        onCancel={() => {}}
+        fullscreenContent={(
+          <ChatAppFullscreenPanel
+            messages={messages}
+            isStreaming={false}
+            inputProps={{
+              value: "",
+              onValueChange: () => {},
+              onSend: () => {},
+              onCancel: () => {},
+            }}
+          />
+        )}
+      />
+    );
+
+    expect(screen.getByTestId("full-overlay").querySelector("[data-shared-element='overlay-header']")).toBeInTheDocument();
+    expect(screen.getByTestId("fullscreen-message-panel")).toHaveAttribute("data-shared-element", "overlay-message-panel");
+    expect(screen.getByTestId("fullscreen-chat-input-shell")).toHaveAttribute("data-shared-element", "overlay-input-panel");
   });
 
   test("expanded mode is a viewport anchored floating panel when not contained", () => {

@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { CommandQueueItem } from "@viben/chat";
-import { UIShowCasesPage } from "./components/UIShowCasesPage";
+import { UIShowCasesPage } from "./pages/UIShowCasesPage";
 
 vi.mock("@viben/chat", () => ({
   BackgroundTaskList: () => <div data-testid="background-task-list" />,

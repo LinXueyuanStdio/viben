@@ -34,6 +34,15 @@ export type AssistantPetAvatarSet = {
   dynamic?: AssistantPetAvatarMap;
   static?: AssistantPetAvatarMap;
 };
+export type ChatAppHeaderRenderProps = {
+  mode: ChatAppMode;
+  title: string;
+  sessions: OverlaySessionItem[];
+  agents: OverlayAgentItem[];
+  assistantAvatar: React.ReactNode;
+  headerActions?: OverlayHeaderActions;
+  onModeChange: (mode: ChatAppMode) => void;
+};
 
 export interface OverlaySessionItem {
   id: string;
@@ -81,6 +90,7 @@ export interface ChatAppProps {
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
   fullscreenContent?: React.ReactNode;
+  renderHeader?: (props: ChatAppHeaderRenderProps) => React.ReactNode;
   messageListRef?: React.ComponentPropsWithRef<typeof MessageList>["ref"];
   onExpandSubagent?: ExpandSubagentHandler;
   subagentSheet?: ChatAppSubagentSheetState;
@@ -151,6 +161,12 @@ const PANEL_FADE_TRANSITION = {
   ease: [0.4, 0, 0.2, 1],
 } as const;
 
+const INTERNAL_LAYOUT_TRANSITION = {
+  type: "tween",
+  duration: 0.28,
+  ease: [0.4, 0, 0.2, 1],
+} as const;
+
 const OVERLAY_RADIUS = {
   floating: 999,
   compact: 24,
@@ -209,6 +225,7 @@ export function ChatApp({
   onInputValueChange,
   inputProps,
   fullscreenContent,
+  renderHeader,
   messageListRef,
   onExpandSubagent,
   subagentSheet,
@@ -252,7 +269,13 @@ export function ChatApp({
 
   const defaultExpandedBody = (
     <>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain border-y border-border/70" data-testid="expanded-message-panel">
+      <motion.div
+        layoutId="viben-overlay-message-panel"
+        transition={INTERNAL_LAYOUT_TRANSITION}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain border-y border-border/70"
+        data-shared-element="overlay-message-panel"
+        data-testid="expanded-message-panel"
+      >
         <ChatAppMessagePanel
           messageListRef={messageListRef}
           messages={messages}
@@ -262,8 +285,14 @@ export function ChatApp({
           maxMessageWidth="100%"
           onExpandSubagent={onExpandSubagent}
         />
-      </div>
-      <div className="w-full shrink-0 border-t border-border" data-testid="expanded-chat-input-container">
+      </motion.div>
+      <motion.div
+        layoutId="viben-overlay-input-panel"
+        transition={INTERNAL_LAYOUT_TRANSITION}
+        className="w-full shrink-0 border-t border-border"
+        data-shared-element="overlay-input-panel"
+        data-testid="expanded-chat-input-container"
+      >
         <CompactChatInput
           variant="expanded"
           value={content}
@@ -273,23 +302,42 @@ export function ChatApp({
           onCancel={onCancel}
           inputProps={getExpandedChatInputProps(inputProps)}
         />
-      </div>
+      </motion.div>
     </>
+  );
+
+  const headerContent = renderHeader ? renderHeader({
+    mode,
+    title,
+    sessions,
+    agents,
+    assistantAvatar: staticAssistantAvatar,
+    headerActions,
+    onModeChange,
+  }) : (
+    <ExpandedHeader
+      title={title}
+      sessions={sessions}
+      agents={agents}
+      assistantAvatar={staticAssistantAvatar}
+      headerActions={headerActions}
+      onCreateSession={headerActions?.onCreateSession}
+      onSettingsClick={headerActions?.onSettingsClick}
+      mode={mode}
+      onModeChange={onModeChange}
+    />
   );
 
   const expandedContent = (
     <>
-      <ExpandedHeader
-        title={title}
-        sessions={sessions}
-        agents={agents}
-        assistantAvatar={staticAssistantAvatar}
-        headerActions={headerActions}
-        onCreateSession={headerActions?.onCreateSession}
-        onSettingsClick={headerActions?.onSettingsClick}
-        mode={mode}
-        onModeChange={onModeChange}
-      />
+      <motion.div
+        layoutId="viben-overlay-header"
+        transition={INTERNAL_LAYOUT_TRANSITION}
+        className="shrink-0"
+        data-shared-element="overlay-header"
+      >
+        {headerContent}
+      </motion.div>
       {mode === "full" && fullscreenContent ? fullscreenContent : defaultExpandedBody}
     </>
   );
@@ -456,7 +504,13 @@ export function ChatAppFullscreenPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col">
+      <motion.div
+        layoutId="viben-overlay-message-panel"
+        transition={INTERNAL_LAYOUT_TRANSITION}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        data-shared-element="overlay-message-panel"
+        data-testid="fullscreen-message-panel"
+      >
         <ChatAppMessagePanel
           messageListRef={messageListRef}
           messages={messages}
@@ -491,9 +545,15 @@ export function ChatAppFullscreenPanel({
             />
           </div>
         )}
-      </div>
+      </motion.div>
 
-      <div className="w-full border-t border-border" data-testid="fullscreen-chat-input-shell">
+      <motion.div
+        layoutId="viben-overlay-input-panel"
+        transition={INTERNAL_LAYOUT_TRANSITION}
+        className="w-full border-t border-border"
+        data-shared-element="overlay-input-panel"
+        data-testid="fullscreen-chat-input-shell"
+      >
         <div className="w-full" data-testid="fullscreen-chat-input-container">
           <AnimatePresence mode="wait">
             {pendingPlan ? (
@@ -532,7 +592,7 @@ export function ChatAppFullscreenPanel({
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -558,8 +618,8 @@ function AgentPopup({
   return (
     <motion.section
       data-testid="agent-popup"
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18 }}
       className="overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
       onClick={onExpand}

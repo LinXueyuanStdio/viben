@@ -27,7 +27,6 @@ import {
 } from "./demo-data"
 import { demoSteps } from "./demo-steps"
 import { useStepPlayer } from "./use-step-player"
-import type { DemoStep } from "./use-step-player"
 import {
   CLAUDE_CODE_SESSIONS,
   loadClaudeCodeSession,
@@ -35,151 +34,27 @@ import {
   type ClaudeCodeSessionManifestItem,
   type LoadedClaudeCodeSession,
   type ParseStats,
-  type SubagentPreviewEvent,
 } from "./claudecode-log-provider"
 import { ChatApp, ChatAppFullscreenPanel } from "./ChatApp"
 import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
-import { PlayerPage } from "./components/PlayerPage"
-import { UIShowCasesPage, UIShowcaseDemoOverlay } from "./components/UIShowCasesPage"
+import { PlayerButton, ModeButton, SectionLabel, SidebarPageButton } from "./components/common"
+import { PlayerPage } from "./pages/PlayerPage"
+import { UIShowCasesPage, UIShowcaseDemoOverlay } from "./pages/UIShowCasesPage"
 import { UI_DESIGN_SHOWCASE_DEMOS } from "./UIDesignShowcaseData"
 import type { UIShowcaseDemoId } from "./UIDesignShowcaseData"
-
-// ============================================================================
-// Agent Busy Detection
-// ============================================================================
-
-/**
- * Derive agent busy state from message content.
- * Agent is busy when there are unresolved tool_use calls (no matching tool_result).
- * This drives command queue behavior: busy → enqueue, idle → auto-dequeue.
- */
-function isAgentBusy(messages: AgentMessage[]): boolean {
-  const pendingToolUseIds = new Set<string>()
-  for (const msg of messages) {
-    if (msg.type === "tool_use" && msg.toolUseId) {
-      pendingToolUseIds.add(msg.toolUseId)
-    }
-    if (msg.type === "tool_result" && msg.toolUseId) {
-      pendingToolUseIds.delete(msg.toolUseId)
-    }
-  }
-  return pendingToolUseIds.size > 0
-}
-
-// ============================================================================
-// Player Speeds
-// ============================================================================
-
-const SPEEDS = [0.5, 1, 2, 4, 8]
-const FULLSCREEN_LAYOUT_DELAY_MS = 40
-const EXAMPLE_SIDEBAR_EXPANDED_WIDTH = 280
-const EXAMPLE_SIDEBAR_COLLAPSED_WIDTH = 56
-const FULLSCREEN_CHAT_MIN_WIDTH = 440
-const FULLSCREEN_CHAT_DEFAULT_WIDTH = 720
-const FULLSCREEN_CHAT_MAX_WIDTH = 1040
-const DEMO_PANEL_MIN_WIDTH = 360
-const FULLSCREEN_CHAT_WIDTH_STORAGE_KEY = "viben.chat.example.fullscreen_chat_width"
-type ExampleLanguage = "en" | "zh-CN"
-type ExampleSidebarPage = "player" | "ui-showcase"
-type FullscreenEntryGeometry = {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-function getFullscreenChatMaxWidth(sidebarWidth: number) {
-  if (typeof window === "undefined") return FULLSCREEN_CHAT_MAX_WIDTH
-  return Math.min(
-    FULLSCREEN_CHAT_MAX_WIDTH,
-    Math.max(FULLSCREEN_CHAT_MIN_WIDTH, window.innerWidth - sidebarWidth - DEMO_PANEL_MIN_WIDTH)
-  )
-}
-
-function clampFullscreenChatWidth(width: number, sidebarWidth: number) {
-  return Math.min(getFullscreenChatMaxWidth(sidebarWidth), Math.max(FULLSCREEN_CHAT_MIN_WIDTH, width))
-}
-
-function readStoredFullscreenChatWidth() {
-  if (typeof window === "undefined") return FULLSCREEN_CHAT_DEFAULT_WIDTH
-  const stored = window.localStorage.getItem(FULLSCREEN_CHAT_WIDTH_STORAGE_KEY)
-  const parsed = stored ? Number.parseInt(stored, 10) : Number.NaN
-  return Number.isFinite(parsed) ? parsed : FULLSCREEN_CHAT_DEFAULT_WIDTH
-}
-
-function storeFullscreenChatWidth(width: number) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(FULLSCREEN_CHAT_WIDTH_STORAGE_KEY, String(Math.round(width)))
-}
-
-// ============================================================================
-// Convert flat messages to simple steps (for .jsonl loading)
-// ============================================================================
-
-function messagesToSteps(messages: AgentMessage[]): DemoStep[] {
-  return messages.map((msg) => ({
-    messages: [msg],
-    delayMs: msg.type === "user" ? 800 : msg.type === "text" ? 1200 : msg.type === "thinking" ? 600 : 400,
-  }))
-}
-
-function buildClaudeCodePlaybackSteps(
-  messages: AgentMessage[],
-  events: SubagentPreviewEvent[]
-): DemoStep[] {
-  if (events.length === 0) return messagesToSteps(messages)
-
-  const eventsByParent = new Map<string, SubagentPreviewEvent[]>()
-  for (const event of events) {
-    const list = eventsByParent.get(event.parentToolUseId) ?? []
-    list.push(event)
-    eventsByParent.set(event.parentToolUseId, list)
-  }
-
-  const steps: DemoStep[] = []
-  const updates: Record<string, Partial<AgentMessage>> = {}
-
-  for (const message of messages) {
-    steps.push({
-      messages: [message],
-      delayMs: message.type === "user" ? 800 : message.type === "text" ? 1200 : message.type === "thinking" ? 600 : 400,
-      messageUpdates: { ...updates },
-    })
-
-    if (message.type === "tool_use" && (message.name === "Agent" || message.name === "Task") && message.toolUseId && message.id) {
-      const previewMessages: AgentMessage[] = []
-      for (const event of eventsByParent.get(message.toolUseId) ?? []) {
-        previewMessages.push(...event.messages)
-        updates[message.id] = { subagentPreviewMessages: [...previewMessages] }
-        steps.push({
-          messages: [],
-          delayMs: 450,
-          messageUpdates: { ...updates },
-        })
-      }
-    }
-
-    if (message.type === "tool_result" && message.toolUseId) {
-      for (const agentMessage of messages) {
-        if (
-          agentMessage.type === "tool_use" &&
-          (agentMessage.name === "Agent" || agentMessage.name === "Task") &&
-          agentMessage.toolUseId === message.toolUseId &&
-          agentMessage.id
-        ) {
-          delete updates[agentMessage.id]
-          steps[steps.length - 1] = {
-            ...steps[steps.length - 1],
-            messageUpdates: { ...updates },
-          }
-          break
-        }
-      }
-    }
-  }
-
-  return steps
-}
+import {
+  EXAMPLE_SIDEBAR_COLLAPSED_WIDTH,
+  EXAMPLE_SIDEBAR_EXPANDED_WIDTH,
+  FULLSCREEN_LAYOUT_DELAY_MS,
+  SPEEDS,
+  buildClaudeCodePlaybackSteps,
+  clampFullscreenChatWidth,
+  isAgentBusy,
+  messagesToSteps,
+  readStoredFullscreenChatWidth,
+  storeFullscreenChatWidth,
+} from "./hooks/app-utils"
+import type { ExampleLanguage, ExampleSidebarPage, FullscreenEntryGeometry } from "./hooks/app-utils"
 
 // ============================================================================
 // App
@@ -1017,91 +892,5 @@ export function App() {
       </div>
     </div>
     </LayoutGroup>
-  )
-}
-
-// ============================================================================
-// Sub-components
-// ============================================================================
-
-function Divider() {
-  return <div className="mx-4 border-t" />
-}
-
-function DashboardCard({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <section className={`rounded-lg border bg-card p-4 shadow-sm ${className ?? ""}`}>
-      {children}
-    </section>
-  )
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
-      {children}
-    </h3>
-  )
-}
-
-function SidebarPageButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`min-h-8 rounded-md px-2 text-xs font-medium transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function PlayerButton({ onClick, title, children }: { onClick: () => void; title?: string; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-    >
-      {children}
-    </button>
-  )
-}
-
-function NavButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-        active
-          ? "bg-accent text-foreground"
-          : "text-foreground/70 hover:bg-accent hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function ModeButton({ active, onClick, title, children }: { active: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-      className={`flex h-8 items-center justify-center rounded-md transition-colors ${
-        active
-          ? "bg-background text-foreground shadow-sm"
-          : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
   )
 }

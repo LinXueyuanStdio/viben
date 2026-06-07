@@ -10,6 +10,9 @@ const changeLanguageMock = vi.fn((language: string) => {
 });
 
 vi.mock("@viben/chat", () => ({
+  BackgroundTaskList: (props: { messages?: unknown[] }) => (
+    <div data-testid="background-task-list">{props.messages?.length ?? 0}</div>
+  ),
   CommandQueuePanel: (props: { items?: unknown[] }) => (
     <div data-testid="command-queue-panel">{props.items?.length ?? 0}</div>
   ),
@@ -22,6 +25,9 @@ vi.mock("@viben/chat", () => ({
   QuestionInput: () => <div data-testid="question-input" />,
   SkillsConfigPopover: () => <div data-testid="skills-config-popover" />,
   SubagentSheet: () => null,
+  TodoListPanel: (props: { messages?: unknown[] }) => (
+    <div data-testid="todo-list-panel">{props.messages?.length ?? 0}</div>
+  ),
   ToolExecutionItem: () => <div data-testid="tool-execution-item" />,
   ToolsConfigPopover: () => <div data-testid="tools-config-popover" />,
   getModelIcon: () => <span data-testid="model-icon" />,
@@ -168,7 +174,7 @@ describe("App overlay layout", () => {
     ]);
   });
 
-  test("renders header, collapsible intro sidebar, right demo panel, and floating chat stage", () => {
+  test("renders header, collapsible intro sidebar, right demo panel, and floating chat stage", async () => {
     render(<App />);
 
     expect(screen.getByTestId("app-header")).toBeInTheDocument();
@@ -177,18 +183,23 @@ describe("App overlay layout", () => {
     expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("pointer-events-none");
     expect(screen.getByTestId("chat-app-stage")).toHaveClass("absolute");
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("inset-0");
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ left: "280px" });
     expect(screen.queryByTestId("fullscreen-chat-resize-handle")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
     expect(screen.getByTestId("intro-sidebar")).toHaveStyle({ width: "280px" });
-    expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-none");
-    expect(screen.getByTestId("chat-app-stage")).toHaveAttribute("data-transition-origin", "expanded-bottom-left");
-    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
-    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("absolute");
-    expect(screen.getByTestId("chat-app-stage")).not.toHaveClass("pointer-events-none");
+    expect(screen.getByTestId("fullscreen-chat-dock")).toHaveClass("flex-none");
+    expect(screen.getByTestId("fullscreen-chat-dock")).toHaveAttribute("data-transition-origin", "expanded-bottom-left");
+    expect(screen.getByTestId("fullscreen-chat-dock")).toHaveStyle({ width: "720px" });
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("absolute");
+    expect(screen.getByTestId("chat-app-stage")).toHaveClass("pointer-events-none");
     expect(screen.getByTestId("fullscreen-chat-resize-handle")).toHaveAttribute("aria-orientation", "vertical");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("chat-app-stage")).toHaveClass("flex-none");
+    });
+    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
   });
 
   test("opens the fullscreen layout before morphing the expanded panel into fullscreen", async () => {
@@ -222,8 +233,8 @@ describe("App overlay layout", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
 
-    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "720px" });
-    expect(screen.getByTestId("chat-app-stage")).toHaveAttribute("data-entry-geometry", "measured");
+    expect(screen.getByTestId("fullscreen-chat-dock")).toHaveStyle({ width: "720px" });
+    expect(screen.getByTestId("fullscreen-chat-dock")).toHaveAttribute("data-entry-geometry", "measured");
     expect(screen.getByTestId("right-demo-panel")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
     expect(screen.queryByTestId("full-overlay")).not.toBeInTheDocument();
@@ -325,7 +336,7 @@ describe("App overlay layout", () => {
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
   });
 
-  test("resizes the fullscreen ChatApp width from the right content boundary", () => {
+  test("resizes the fullscreen ChatApp width from the right content boundary", async () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       writable: true,
@@ -334,6 +345,9 @@ describe("App overlay layout", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
+    });
     const stage = screen.getByTestId("chat-app-stage");
     const handle = screen.getByTestId("fullscreen-chat-resize-handle");
 
@@ -355,12 +369,15 @@ describe("App overlay layout", () => {
     expect(stage).toHaveStyle({ width: "760px" });
   });
 
-  test("remembers the fullscreen ChatApp width before entering fullscreen again", () => {
+  test("remembers the fullscreen ChatApp width before entering fullscreen again", async () => {
     window.localStorage.setItem("viben.chat.example.fullscreen_chat_width", "640");
 
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
+    await waitFor(() => {
+      expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
+    });
     expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "640px" });
 
     const handle = screen.getByTestId("fullscreen-chat-resize-handle");
@@ -373,7 +390,10 @@ describe("App overlay layout", () => {
     expect(screen.getByTestId("expanded-overlay")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Fullscreen" }));
-    expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "680px" });
+    expect(screen.getByTestId("fullscreen-chat-dock")).toHaveStyle({ width: "680px" });
+    await waitFor(() => {
+      expect(screen.getByTestId("chat-app-stage")).toHaveStyle({ width: "680px" });
+    });
   });
 
   test("component demo surface can be dismissed", () => {
