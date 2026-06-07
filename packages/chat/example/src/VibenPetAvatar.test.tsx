@@ -2,7 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { VibenPetAvatar, getPetStateTransitionKey } from "./VibenPetAvatar";
+import { VibenPetAvatar, getPetLocalMotion, getPetStateTransitionKey } from "./VibenPetAvatar";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -38,5 +38,21 @@ describe("VibenPetAvatar", () => {
     expect(getPetStateTransitionKey("idle", "review")).toBe("idle-to-review");
     expect(getPetStateTransitionKey("review", "idle")).toBe("review-to-idle");
     expect(getPetStateTransitionKey("failed", "waving")).toBe("failed-to-waving");
+  });
+
+  test("defines nonlinear local motion beyond whole-avatar transform", () => {
+    expect(getPetLocalMotion("waiting")).toMatchObject({
+      bodyPath: { d: expect.arrayContaining(["M31 33 L40 57 L49 33"]) },
+      leftBracket: { d: expect.arrayContaining(["M18 31 L7 22 L25 25"]) },
+      rightBracket: { d: expect.arrayContaining(["M62 31 L73 22 L55 25"]) },
+      eyes: { d: expect.arrayContaining(["M27 40 H35"]) },
+      mouth: { d: expect.arrayContaining(["M32 57 Q40 53 48 57"]) },
+    });
+
+    expect(getPetLocalMotion("failed")).toMatchObject({
+      leftBracket: { d: expect.arrayContaining(["M18 31 L10 18 L25 27"]) },
+      rightBracket: { d: expect.arrayContaining(["M62 31 L70 18 L55 27"]) },
+      status: { cx: expect.arrayContaining([59, 63, 61]) },
+    });
   });
 });
