@@ -30,6 +30,34 @@ type PetTransition = {
   duration: number;
 };
 
+type PathLocalMotion = {
+  d?: string[];
+  rotate?: number[];
+  x?: number[];
+  y?: number[];
+  opacity?: number[];
+};
+
+type CircleLocalMotion = {
+  cx?: number[];
+  cy?: number[];
+  r?: number[];
+  scale?: number[];
+  opacity?: number[];
+};
+
+type PetLocalMotion = {
+  leftBracket?: PathLocalMotion;
+  rightBracket?: PathLocalMotion;
+  bodyPath?: PathLocalMotion;
+  leftAngle?: PathLocalMotion;
+  rightAngle?: PathLocalMotion;
+  eyes?: PathLocalMotion;
+  mouth?: PathLocalMotion;
+  status?: CircleLocalMotion;
+  duration: number;
+};
+
 const PET_STATE_META: Record<AssistantPetState, PetStateMeta> = {
   idle: {
     labelKey: "chat_app.pet.state.idle",
@@ -122,6 +150,75 @@ const PET_STATE_TRANSITIONS: Partial<Record<`${AssistantPetState}-to-${Assistant
   },
 };
 
+const PET_LOCAL_MOTION: Record<AssistantPetState, PetLocalMotion> = {
+  idle: {
+    bodyPath: { d: ["M31 33 L40 55 L49 33", "M31 33 L40 54 L49 33", "M31 33 L40 55 L49 33"] },
+    leftAngle: { x: [0, -0.6, 0], opacity: [0.96, 0.82, 0.96] },
+    rightAngle: { x: [0, 0.6, 0], opacity: [0.96, 0.82, 0.96] },
+    eyes: { d: ["M27 42 Q31 39 35 42", "M27 42 Q31 40 35 42", "M27 42 Q31 39 35 42"] },
+    mouth: { d: ["M31 55 Q40 59 49 55", "M31 55 Q40 58 49 55", "M31 55 Q40 59 49 55"] },
+    duration: 2.8,
+  },
+  waiting: {
+    leftBracket: {
+      d: ["M18 31 L8 20 L24 24", "M18 31 L7 22 L25 25", "M18 31 L8 20 L24 24"],
+      rotate: [0, -4, 0],
+    },
+    rightBracket: {
+      d: ["M62 31 L72 20 L56 24", "M62 31 L73 22 L55 25", "M62 31 L72 20 L56 24"],
+      rotate: [0, 4, 0],
+    },
+    bodyPath: { d: ["M31 33 L40 55 L49 33", "M31 33 L40 57 L49 33", "M31 33 L40 55 L49 33"] },
+    leftAngle: { d: ["M21 36 L12 43 L21 50", "M21 35 L10 43 L21 51", "M21 36 L12 43 L21 50"] },
+    rightAngle: { d: ["M59 36 L68 43 L59 50", "M59 35 L70 43 L59 51", "M59 36 L68 43 L59 50"] },
+    eyes: { d: ["M27 41 H35", "M27 40 H35", "M27 41 H35"] },
+    mouth: { d: ["M32 56 Q40 54 48 56", "M32 57 Q40 53 48 57", "M32 56 Q40 54 48 56"] },
+    status: { cx: [61, 61.8, 61], cy: [20, 18.8, 20], r: [5, 6.2, 5] },
+    duration: 0.95,
+  },
+  review: {
+    leftBracket: { y: [0, -1.5, 0], rotate: [0, -2, 0] },
+    rightBracket: { y: [0, 1.5, 0], rotate: [0, 2, 0] },
+    bodyPath: { d: ["M31 33 L40 55 L49 33", "M31 31 L40 55 L49 35", "M31 33 L40 55 L49 33"] },
+    leftAngle: { d: ["M21 36 L12 43 L21 50", "M21 34 L13 43 L21 52", "M21 36 L12 43 L21 50"] },
+    rightAngle: { d: ["M59 36 L68 43 L59 50", "M59 38 L67 43 L59 48", "M59 36 L68 43 L59 50"] },
+    eyes: { d: ["M27 42 Q31 39 35 42", "M27 40 Q31 43 35 40", "M27 42 Q31 39 35 42"] },
+    mouth: { d: ["M31 55 Q40 52 49 55", "M31 55 Q40 58 49 55", "M31 55 Q40 52 49 55"] },
+    status: { scale: [0.85, 1.18, 0.85], opacity: [0.75, 1, 0.75] },
+    duration: 0.85,
+  },
+  waving: {
+    leftBracket: { rotate: [-7, 7, -7], y: [0, -2, 0] },
+    rightBracket: { rotate: [7, -7, 7], y: [0, -2, 0] },
+    bodyPath: { d: ["M31 33 L40 55 L49 33", "M30 34 L40 55 L50 34", "M31 33 L40 55 L49 33"] },
+    leftAngle: { rotate: [-5, 5, -5] },
+    rightAngle: { rotate: [5, -5, 5] },
+    eyes: { d: ["M27 41 Q31 44 35 41", "M27 42 Q31 45 35 42", "M27 41 Q31 44 35 41"] },
+    mouth: { d: ["M31 54 Q40 61 49 54", "M31 53 Q40 62 49 53", "M31 54 Q40 61 49 54"] },
+    status: { cy: [20, 18.5, 20], scale: [1, 1.08, 1] },
+    duration: 0.7,
+  },
+  failed: {
+    leftBracket: {
+      d: ["M18 31 L8 20 L24 24", "M18 31 L10 18 L25 27", "M18 31 L7 23 L23 22"],
+      x: [0, -1.5, 1, 0],
+      rotate: [0, -8, 5, 0],
+    },
+    rightBracket: {
+      d: ["M62 31 L72 20 L56 24", "M62 31 L70 18 L55 27", "M62 31 L73 23 L57 22"],
+      x: [0, 1.5, -1, 0],
+      rotate: [0, 8, -5, 0],
+    },
+    bodyPath: { d: ["M31 33 L40 55 L49 33", "M32 35 L40 52 L48 35", "M31 33 L40 55 L49 33"] },
+    leftAngle: { d: ["M21 36 L12 43 L21 50", "M22 38 L11 43 L22 48", "M21 36 L12 43 L21 50"] },
+    rightAngle: { d: ["M59 36 L68 43 L59 50", "M58 38 L69 43 L58 48", "M59 36 L68 43 L59 50"] },
+    eyes: { d: ["M27 39 L35 45 M35 39 L27 45", "M26 39 L36 45 M36 39 L26 45", "M27 39 L35 45 M35 39 L27 45"] },
+    mouth: { d: ["M31 58 Q40 53 49 58", "M31 59 Q40 51 49 59", "M31 58 Q40 53 49 58"] },
+    status: { cx: [61, 59, 63, 61], cy: [20, 19, 21, 20], r: [5, 6, 4.7, 5] },
+    duration: 0.46,
+  },
+};
+
 export function getPetStateTransitionKey(previousState: AssistantPetState | undefined, nextState: AssistantPetState): PetStateTransitionKey {
   return previousState ? `${previousState}-to-${nextState}` : `initial-${nextState}`;
 }
@@ -148,12 +245,17 @@ function getStateTransition(key: PetStateTransitionKey): PetTransition {
   return PET_STATE_TRANSITIONS[key as `${AssistantPetState}-to-${AssistantPetState}`] ?? DEFAULT_STATE_TRANSITION;
 }
 
+export function getPetLocalMotion(state: AssistantPetState): PetLocalMotion {
+  return PET_LOCAL_MOTION[state];
+}
+
 export function VibenPetAvatar({ state, interaction }: { state: AssistantPetState; interaction: PetInteractionState }) {
   const { t } = useTranslation();
   const previousState = usePreviousPetState(state);
   const stateTransitionKey = getPetStateTransitionKey(previousState, state);
   const stateTransition = getStateTransition(stateTransitionKey);
   const meta = PET_STATE_META[state];
+  const localMotion = getPetLocalMotion(state);
   const stateLabel = t(meta.labelKey, meta.defaultLabel);
   const gradientId = React.useId().replace(/:/g, "");
   const warmGradientId = `${gradientId}-warm`;
@@ -206,8 +308,8 @@ export function VibenPetAvatar({ state, interaction }: { state: AssistantPetStat
             strokeWidth="5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            animate={state === "waving" ? { rotate: [-7, 7, -7] } : undefined}
-            transition={{ duration: 0.7, repeat: state === "waving" ? Infinity : 0 }}
+            animate={localMotion.leftBracket}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
             style={{ transformOrigin: "21px 28px" }}
           />
           <motion.path
@@ -217,25 +319,72 @@ export function VibenPetAvatar({ state, interaction }: { state: AssistantPetStat
             strokeWidth="5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            animate={state === "waving" ? { rotate: [7, -7, 7] } : undefined}
-            transition={{ duration: 0.7, repeat: state === "waving" ? Infinity : 0 }}
+            animate={localMotion.rightBracket}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
             style={{ transformOrigin: "59px 28px" }}
           />
           <circle cx="40" cy="41" r="29" fill={`url(#${bodyGradientId})`} stroke={`url(#${warmGradientId})`} strokeWidth="3" />
           <path d="M28 25 L40 35 L52 25" fill="none" stroke={`url(#${warmGradientId})`} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
-          <path d="M31 33 L40 55 L49 33" fill="none" stroke="oklch(0.22 0.04 220)" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M21 36 L12 43 L21 50" fill="none" stroke="#FDB813" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
-          <path d="M59 36 L68 43 L59 50" fill="none" stroke="#38B2AC" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.96" />
-          <path d={meta.eye} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
-          <path d={meta.eye.replace(/27/g, "45").replace(/35/g, "53")} stroke="oklch(0.19 0.03 230)" strokeWidth="3" strokeLinecap="round" fill="none" />
+          <motion.path
+            d="M31 33 L40 55 L49 33"
+            fill="none"
+            stroke="oklch(0.22 0.04 220)"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            animate={localMotion.bodyPath}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.path
+            d="M21 36 L12 43 L21 50"
+            fill="none"
+            stroke="#FDB813"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.96"
+            animate={localMotion.leftAngle}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
+            style={{ transformOrigin: "17px 43px" }}
+          />
+          <motion.path
+            d="M59 36 L68 43 L59 50"
+            fill="none"
+            stroke="#38B2AC"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.96"
+            animate={localMotion.rightAngle}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
+            style={{ transformOrigin: "63px 43px" }}
+          />
+          <motion.path
+            d={meta.eye}
+            stroke="oklch(0.19 0.03 230)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            fill="none"
+            animate={localMotion.eyes}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.path
+            d={meta.eye.replace(/27/g, "45").replace(/35/g, "53")}
+            stroke="oklch(0.19 0.03 230)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            fill="none"
+            animate={localMotion.eyes?.d ? { ...localMotion.eyes, d: localMotion.eyes.d.map((path) => path.replace(/27/g, "45").replace(/35/g, "53")) } : localMotion.eyes}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
+          />
           <motion.path
             d={meta.mouth}
             stroke="oklch(0.19 0.03 230)"
             strokeWidth="3"
             strokeLinecap="round"
             fill="none"
-            animate={state === "review" ? { d: ["M31 55 Q40 52 49 55", "M31 55 Q40 58 49 55", "M31 55 Q40 52 49 55"] } : undefined}
-            transition={{ duration: 0.7, repeat: state === "review" ? Infinity : 0 }}
+            animate={localMotion.mouth}
+            transition={{ duration: localMotion.duration, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.circle
             cx="61"
@@ -245,10 +394,8 @@ export function VibenPetAvatar({ state, interaction }: { state: AssistantPetStat
             stroke="oklch(0.99 0.01 95)"
             strokeWidth="2"
             initial={{ scale: stateTransition.status?.scale?.[0] ?? 1, opacity: stateTransition.status?.opacity?.[0] ?? 1 }}
-            animate={state === "waiting" || state === "review"
-              ? { scale: [0.85, 1.18, 0.85], opacity: [0.75, 1, 0.75] }
-              : stateTransition.status}
-            transition={{ duration: state === "waiting" || state === "review" ? 0.9 : stateTransition.duration, repeat: state === "waiting" || state === "review" ? Infinity : 0 }}
+            animate={localMotion.status ?? stateTransition.status}
+            transition={{ duration: localMotion.status ? localMotion.duration : stateTransition.duration, repeat: localMotion.status ? Infinity : 0, ease: "easeInOut" }}
           />
           {state === "failed" && (
             <path d="M23 64 H57" stroke="oklch(0.66 0.2 28)" strokeWidth="4" strokeLinecap="round" opacity="0.75" />
