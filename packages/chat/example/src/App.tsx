@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react"
 import { LayoutGroup } from "framer-motion"
+import { useTranslation } from "react-i18next"
 import {
   PlanApproval,
   QuestionInput,
@@ -16,7 +17,7 @@ import {
 } from "@viben/chat"
 import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2 } from "lucide-react"
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Upload, Sun, Moon, ChevronDown, Plus, Bot, MessageSquare, Maximize2, Languages } from "lucide-react"
 import { JsonView, darkStyles } from "react-json-view-lite"
 import "react-json-view-lite/dist/index.css"
 import {
@@ -77,6 +78,18 @@ function isAgentBusy(messages: AgentMessage[]): boolean {
 const SPEEDS = [0.5, 1, 2, 4, 8]
 const FULLSCREEN_CHAT_STAGE_WIDTH_CLASS = "w-[calc(100dvw_-_280px)]"
 const FULLSCREEN_LAYOUT_DELAY_MS = 40
+const EXAMPLE_COPY = {
+  en: {
+    title: "Chat component lab",
+    kicker: "Control surface",
+    subtitle: "Replay sessions, inspect component states, and switch overlay modes from one control surface.",
+  },
+  "zh-CN": {
+    title: "聊天组件实验室",
+    kicker: "控制面板",
+    subtitle: "在同一个控制面板中回放会话、检查组件状态并切换浮层模式。",
+  },
+} as const
 
 // ============================================================================
 // Convert flat messages to simple steps (for .jsonl loading)
@@ -152,8 +165,10 @@ function buildClaudeCodePlaybackSteps(
 // ============================================================================
 
 export function App() {
+  const { t, i18n } = useTranslation()
   // Theme
   const [dark, setDark] = useState(true)
+  const [language, setLanguage] = useState(i18n.language.startsWith("zh") ? "zh-CN" : "en")
 
   // Step player (event-driven state machine)
   const player = useStepPlayer(demoSteps)
@@ -401,7 +416,12 @@ export function App() {
   const isPlaying = player.status === "playing"
   const isAwaiting = player.isAwaiting
   const isOverlayFull = overlayMode === "full"
-  const showOverlayStageBackground = overlayMode === "expanded" && renderedOverlayMode === "expanded"
+  const hasStandaloneDemoOpen = showPlan || showQuestions || showEmojiPicker || showExecApproval || showCommandQueue
+  const exampleCopy = EXAMPLE_COPY[language]
+  const handleLanguageChange = useCallback((nextLanguage: "en" | "zh-CN") => {
+    setLanguage(nextLanguage)
+    void i18n.changeLanguage(nextLanguage)
+  }, [i18n])
   const sharedChatInputProps: ChatInputProps = {
     value: chatInputValue,
     onValueChange: setChatInputValue,
@@ -437,30 +457,68 @@ export function App() {
   return (
     <LayoutGroup id="viben-chat-overlay-demo">
     <div className="flex h-screen flex-col">
-      <div className="relative flex flex-1 overflow-hidden" data-testid="chat-example-shell">
+      <div className="relative flex flex-1 overflow-hidden bg-background" data-testid="chat-example-shell">
         <aside
           data-testid="control-panel"
-          className={`flex h-full w-[280px] shrink-0 flex-col bg-card transition-all duration-300 ${
+          className={`flex h-full shrink-0 flex-col bg-background transition-all duration-300 ${
           isOverlayFull
-            ? "order-2 border-l"
-            : "absolute left-1/2 top-1/2 z-10 max-h-[min(760px,calc(100vh-3rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border shadow-2xl"
+            ? "order-2 w-[280px] border-l"
+            : "order-1 flex-1 overflow-hidden"
         }`}
         >
           {/* Sidebar header */}
-          <div className="flex h-12 shrink-0 items-center justify-between border-b px-4">
-            <span className="text-sm font-semibold">@viben/chat</span>
-            <button
-              onClick={() => setDark(!dark)}
-              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-            </button>
+          <div className="flex h-14 shrink-0 items-center justify-between border-b px-5">
+            <div className="min-w-0">
+              <span className="block text-sm font-semibold">@viben/chat</span>
+              {!isOverlayFull && (
+                <span className="block truncate text-xs text-muted-foreground">{exampleCopy.kicker}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {!isOverlayFull && (
+                <div className="flex items-center gap-1 rounded-lg border bg-card p-1" aria-label={t("example.language.label", "Language")}>
+                  <Languages className="ml-1 size-3.5 text-muted-foreground" />
+                  <button
+                    type="button"
+                    onClick={() => handleLanguageChange("en")}
+                    className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                      language.startsWith("en") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    {t("example.language.english", "English")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLanguageChange("zh-CN")}
+                    className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                      language.startsWith("zh") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    {t("example.language.chinese", "中文")}
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => setDark(!dark)}
+                className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                aria-label={dark ? t("example.theme.light", "Light mode") : t("example.theme.dark", "Dark mode")}
+              >
+                {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              </button>
+            </div>
           </div>
 
           {/* Sidebar scrollable body */}
-          <div className="flex-1 overflow-y-auto">
+          <div className={`flex-1 overflow-y-auto ${isOverlayFull ? "" : "p-5"}`}>
+            <div className={isOverlayFull ? "" : "grid gap-4 xl:grid-cols-[minmax(320px,420px)_minmax(360px,1fr)_minmax(320px,420px)]"}>
             {/* Player section */}
-            <div className="px-4 py-4 space-y-3">
+            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-4"}>
+              {!isOverlayFull && (
+                <div className="space-y-1">
+                  <h1 className="text-xl font-semibold text-foreground">{exampleCopy.title}</h1>
+                  <p className="text-sm text-muted-foreground">{exampleCopy.subtitle}</p>
+                </div>
+              )}
               <div className="flex gap-2">
                 <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed px-2 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                   <Upload className="size-3.5" />
@@ -483,7 +541,7 @@ export function App() {
               )}
 
               <div className="space-y-1.5">
-                <SectionLabel>Claude Code Sessions</SectionLabel>
+                <SectionLabel>{t("example.sections.sessions", "Claude Code Sessions")}</SectionLabel>
                 {CLAUDE_CODE_SESSIONS.map((session) => (
                   <button
                     key={session.id}
@@ -497,10 +555,10 @@ export function App() {
                     } disabled:cursor-wait disabled:opacity-60`}
                   >
                     <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{session.label}</span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                        {session.subagents.length} subagents · real JSONL
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{session.label}</span>
+                        <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                        {t("example.session.meta", "{{count}} subagents · real JSONL", { count: session.subagents.length })}
                       </span>
                     </span>
                   </button>
@@ -508,7 +566,7 @@ export function App() {
               </div>
 
               <div className="space-y-1.5">
-                <SectionLabel>Overlay Mode</SectionLabel>
+                <SectionLabel>{t("example.sections.overlayMode", "Overlay Mode")}</SectionLabel>
                 <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1">
                   <ModeButton active={overlayMode === "floating"} onClick={() => setOverlayMode("floating")} title="Float">
                     <Bot className="size-3.5" />
@@ -530,7 +588,7 @@ export function App() {
                 <div className="flex items-center justify-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-1">
                   <div className="size-2 rounded-full bg-amber-500 animate-pulse" />
                   <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                    Waiting for user action
+                    {t("example.status.waiting", "Waiting for user action")}
                   </span>
                 </div>
               )}
@@ -579,26 +637,21 @@ export function App() {
                   {player.stepIndex}/{player.totalSteps}
                 </span>
               </div>
-            </div>
+            </DashboardCard>
 
             {/* Now Playing - current message raw JSON with syntax highlighting */}
             {player.messages.length > 0 && (
-              <>
-                <Divider />
-                <div className="px-3 py-3 space-y-2">
-                  <SectionLabel>Now Playing</SectionLabel>
+              <DashboardCard className={isOverlayFull ? "mx-3 my-3 space-y-2" : "space-y-2 xl:col-start-2 xl:row-span-2"}>
+                  <SectionLabel>{t("example.sections.nowPlaying", "Now Playing")}</SectionLabel>
                   <div className="rounded-lg border bg-muted/30 p-2 overflow-x-auto overflow-y-auto max-h-[240px] text-[10px] [&_*]:!text-[10px] [&_*]:!leading-relaxed">
                     <JsonView data={player.messages[player.messages.length - 1]} style={darkStyles} />
                   </div>
-                </div>
-              </>
+              </DashboardCard>
             )}
 
-            <Divider />
-
             {/* Component Demos */}
-            <div className="px-4 py-4 space-y-1.5">
-              <SectionLabel>Components</SectionLabel>
+            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-1.5" : "space-y-1.5 xl:col-start-2"}>
+              <SectionLabel>{t("example.sections.components", "Components")}</SectionLabel>
               <NavButton active={showPlan} onClick={() => { setShowPlan(!showPlan); setShowQuestions(false); setShowEmojiPicker(false); setShowExecApproval(false); setShowCommandQueue(false) }}>
                 PlanApproval
               </NavButton>
@@ -628,13 +681,11 @@ export function App() {
               <NavButton active={showCommandQueue} onClick={() => { setShowCommandQueue(!showCommandQueue); setShowPlan(false); setShowQuestions(false); setShowEmojiPicker(false); setShowExecApproval(false) }}>
                 CommandQueue
               </NavButton>
-            </div>
-
-            <Divider />
+            </DashboardCard>
 
             {/* Model Icons */}
-            <div className="px-4 py-4 space-y-3">
-              <SectionLabel>Model Icons</SectionLabel>
+            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
+              <SectionLabel>{t("example.sections.modelIcons", "Model Icons")}</SectionLabel>
               <div className="flex flex-wrap gap-1.5">
                 {demoModels.map(m => (
                   <div key={m.id} className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
@@ -643,26 +694,22 @@ export function App() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <Divider />
+            </DashboardCard>
 
             {/* ToolExecutionItem */}
-            <div className="px-4 py-4 space-y-3">
-              <SectionLabel>ToolExecutionItem (4 states)</SectionLabel>
+            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
+              <SectionLabel>{t("example.sections.toolExecution", "ToolExecutionItem (4 states)")}</SectionLabel>
               <div className="space-y-1">
                 <ToolExecutionItem name="Grep" displayName="Grep" input={{ pattern: "TODO" }} status="queued" compact />
                 <ToolExecutionItem name="Bash" displayName="Bash" input={{ command: "pnpm test" }} status="executing" compact />
                 <ToolExecutionItem name="Read" displayName="Read" input={{ file_path: "/src/App.tsx" }} output="File content here..." status="success" compact />
                 <ToolExecutionItem name="Write" displayName="Write" input={{ file_path: "/src/utils.ts" }} output="Permission denied" status="error" isError compact />
               </div>
-            </div>
-
-            <Divider />
+            </DashboardCard>
 
             {/* Config Panels */}
-            <div className="px-4 py-4 space-y-3">
-              <SectionLabel>Config Panels</SectionLabel>
+            <DashboardCard className={isOverlayFull ? "px-4 py-4 space-y-3" : "space-y-3"}>
+              <SectionLabel>{t("example.sections.configPanels", "Config Panels")}</SectionLabel>
               <div className="space-y-2">
                 <CollapsibleSection
                   title={`Tools (${tools.filter(t => t.enabled).length}/${tools.length})`}
@@ -699,6 +746,7 @@ export function App() {
                   />
                 </CollapsibleSection>
               </div>
+            </DashboardCard>
             </div>
           </div>
         </aside>
@@ -706,16 +754,14 @@ export function App() {
         {/* ===== Chat Column ===== */}
         <div
           data-testid="chat-app-stage"
-          className={`relative order-1 flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
-            showOverlayStageBackground ? "overlay-stage-background " : ""
-          }${
+          className={`flex min-w-0 flex-col bg-background transition-[width,opacity,transform] duration-300 ${
             isOverlayFull
-              ? `${FULLSCREEN_CHAT_STAGE_WIDTH_CLASS} flex-none overflow-hidden opacity-100`
-              : "absolute inset-0 overflow-visible opacity-100"
+              ? `relative order-1 ${FULLSCREEN_CHAT_STAGE_WIDTH_CLASS} flex-none overflow-hidden opacity-100`
+              : "pointer-events-none fixed inset-0 z-20 overflow-visible bg-transparent opacity-100"
           }`}
         >
           {/* Content area */}
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className={`flex min-h-0 flex-1 flex-col ${!isOverlayFull && !hasStandaloneDemoOpen ? "pointer-events-none" : "pointer-events-auto"}`}>
             {showPlan ? (
               <div className="flex flex-1 items-center justify-center p-8">
                 <div className="w-full max-w-lg">
@@ -823,75 +869,77 @@ export function App() {
               </div>
             ) : null}
           </div>
-          <ChatApp
-            contained
-            mode={renderedOverlayMode}
-            title={selectedOverlaySessionTitle}
-            messages={player.messages}
-            messageUpdates={player.messageUpdates}
-            isStreaming={player.isStreaming}
-            playerStatus={player.status}
-            pendingUserMessageCount={commandQueue.items.length}
-            sessions={overlaySessions}
-            headerActions={{
-              onSelectSession: handleOverlaySessionSelect,
-              onCreateSession: () => setOverlayMode("expanded"),
-              onSettingsClick: () => setShowToolsPanel((open) => !open),
-            }}
-            inputValue={chatInputValue}
-            onInputValueChange={setChatInputValue}
-            messageListRef={messageListRef}
-            onExpandSubagent={handleExpandSubagent}
-            loadSubagentDetails={loadSubagentDetails}
-            subagentSheet={sheetData ? {
-              open: true,
-              onClose: () => setSheetData(null),
-              title: sheetData.title,
-              subagentType: sheetData.subagentType,
-              messages: sheetData.messages,
-              liveMessages: activeSheetLiveMessages,
-              context: sheetData.context,
-            } : undefined}
-            onModeChange={setOverlayMode}
-            onSend={handleSend}
-            onCancel={player.pause}
-            inputProps={sharedChatInputProps}
-            fullscreenContent={(
-              <ChatAppFullscreenPanel
-                messages={player.messages}
-                messageUpdates={player.messageUpdates}
-                isStreaming={player.isStreaming}
-                pendingPlan={player.pendingPlan}
-                pendingApproval={player.pendingApproval}
-                pendingQuestion={player.pendingQuestion}
-                commandQueueItems={commandQueue.items}
-                commandQueuePaused={commandQueue.isPaused}
-                messageListRef={messageListRef}
-                onExpandSubagent={handleExpandSubagent}
-                onApprovePlan={() => {
-                  console.log("Plan approved")
-                  player.resolvePlan(true)
-                }}
-                onRejectPlan={() => {
-                  console.log("Plan rejected")
-                  player.resolvePlan(false)
-                }}
-                onApprovalDecision={(decision, feedback) => {
-                  console.log("Exec decision:", decision, "Feedback:", feedback)
-                  player.resolveApproval(decision, feedback)
-                }}
-                onAnswerQuestions={(answers) => {
-                  console.log("Answers:", answers)
-                  player.resolveQuestion(answers)
-                }}
-                onCommandQueueRemove={commandQueue.remove}
-                onCommandQueueClear={commandQueue.clear}
-                onCommandQueuePause={commandQueue.pause}
-                onCommandQueueResume={commandQueue.resume}
-                inputProps={sharedChatInputProps}
-              />
-            )}
-          />
+          <div className={isOverlayFull ? "contents" : "pointer-events-auto"}>
+            <ChatApp
+              contained
+              mode={renderedOverlayMode}
+              title={selectedOverlaySessionTitle}
+              messages={player.messages}
+              messageUpdates={player.messageUpdates}
+              isStreaming={player.isStreaming}
+              playerStatus={player.status}
+              pendingUserMessageCount={commandQueue.items.length}
+              sessions={overlaySessions}
+              headerActions={{
+                onSelectSession: handleOverlaySessionSelect,
+                onCreateSession: () => setOverlayMode("expanded"),
+                onSettingsClick: () => setShowToolsPanel((open) => !open),
+              }}
+              inputValue={chatInputValue}
+              onInputValueChange={setChatInputValue}
+              messageListRef={messageListRef}
+              onExpandSubagent={handleExpandSubagent}
+              loadSubagentDetails={loadSubagentDetails}
+              subagentSheet={sheetData ? {
+                open: true,
+                onClose: () => setSheetData(null),
+                title: sheetData.title,
+                subagentType: sheetData.subagentType,
+                messages: sheetData.messages,
+                liveMessages: activeSheetLiveMessages,
+                context: sheetData.context,
+              } : undefined}
+              onModeChange={setOverlayMode}
+              onSend={handleSend}
+              onCancel={player.pause}
+              inputProps={sharedChatInputProps}
+              fullscreenContent={(
+                <ChatAppFullscreenPanel
+                  messages={player.messages}
+                  messageUpdates={player.messageUpdates}
+                  isStreaming={player.isStreaming}
+                  pendingPlan={player.pendingPlan}
+                  pendingApproval={player.pendingApproval}
+                  pendingQuestion={player.pendingQuestion}
+                  commandQueueItems={commandQueue.items}
+                  commandQueuePaused={commandQueue.isPaused}
+                  messageListRef={messageListRef}
+                  onExpandSubagent={handleExpandSubagent}
+                  onApprovePlan={() => {
+                    console.log("Plan approved")
+                    player.resolvePlan(true)
+                  }}
+                  onRejectPlan={() => {
+                    console.log("Plan rejected")
+                    player.resolvePlan(false)
+                  }}
+                  onApprovalDecision={(decision, feedback) => {
+                    console.log("Exec decision:", decision, "Feedback:", feedback)
+                    player.resolveApproval(decision, feedback)
+                  }}
+                  onAnswerQuestions={(answers) => {
+                    console.log("Answers:", answers)
+                    player.resolveQuestion(answers)
+                  }}
+                  onCommandQueueRemove={commandQueue.remove}
+                  onCommandQueueClear={commandQueue.clear}
+                  onCommandQueuePause={commandQueue.pause}
+                  onCommandQueueResume={commandQueue.resume}
+                  inputProps={sharedChatInputProps}
+                />
+              )}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -905,6 +953,14 @@ export function App() {
 
 function Divider() {
   return <div className="mx-4 border-t" />
+}
+
+function DashboardCard({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <section className={`rounded-lg border bg-card p-4 shadow-sm ${className ?? ""}`}>
+      {children}
+    </section>
+  )
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
