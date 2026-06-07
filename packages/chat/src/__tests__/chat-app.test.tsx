@@ -8,14 +8,13 @@ import {
   ChatAppFullscreenInputPanel,
   ChatAppFullscreenMessagePanel,
   ChatAppFullscreenPanel,
+  DefaultExpandedHeaderMoreMenu,
   ExpandedHeader,
   ExpandedHeaderModeControls,
   ExpandedHeaderNewSessionMenu,
   ExpandedHeaderSessionMenu,
-  getAssistantPetState,
-  getPetInteractionForSessionStatus,
-} from "./ChatApp";
-import type { AgentMessage } from "@viben/chat";
+} from "../chat-app";
+import type { AgentMessage } from "../types";
 
 const {
   mockBuildBackgroundTasksFromMessages,
@@ -46,11 +45,9 @@ const {
   )),
 }));
 
-vi.mock("@viben/chat", async () => {
+vi.mock("../chat-input", async () => {
   const React = await import("react");
   return {
-    buildBackgroundTasksFromMessages: mockBuildBackgroundTasksFromMessages,
-    buildTodoListItemsFromMessages: mockBuildTodoListItemsFromMessages,
     ChatInput: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "overlay-chat-input-props" },
@@ -79,11 +76,24 @@ vi.mock("@viben/chat", async () => {
       }),
       React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
     ),
+  };
+});
+
+vi.mock("../command-queue", async () => {
+  const React = await import("react");
+  return {
     CommandQueuePanel: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "command-queue-panel" },
       String((props.items as unknown[] | undefined)?.length ?? 0)
     ),
+  };
+});
+
+vi.mock("../background-task-list", async () => {
+  const React = await import("react");
+  return {
+    buildBackgroundTasksFromMessages: mockBuildBackgroundTasksFromMessages,
     BackgroundTaskList: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "background-task-list" },
@@ -97,8 +107,26 @@ vi.mock("@viben/chat", async () => {
         "Open background task"
       )
     ),
+  };
+});
+
+vi.mock("../exec-approval", async () => {
+  const React = await import("react");
+  return {
     ExecApproval: () => React.createElement("div", { "data-testid": "exec-approval" }, "ExecApproval"),
+  };
+});
+
+vi.mock("../emoji-picker", async () => {
+  const React = await import("react");
+  return {
     EmojiPicker: () => React.createElement("div", { "data-testid": "emoji-picker" }, "EmojiPicker"),
+  };
+});
+
+vi.mock("../message-list", async () => {
+  const React = await import("react");
+  return {
     MessageList: React.forwardRef((props: Record<string, unknown>, _ref) => React.createElement(
       "div",
       { "data-testid": "message-list" },
@@ -122,8 +150,26 @@ vi.mock("@viben/chat", async () => {
         "Open subagent"
       )
     )),
+  };
+});
+
+vi.mock("../plan-approval", async () => {
+  const React = await import("react");
+  return {
     PlanApproval: () => React.createElement("div", { "data-testid": "plan-approval" }, "PlanApproval"),
+  };
+});
+
+vi.mock("../question-input", async () => {
+  const React = await import("react");
+  return {
     QuestionInput: () => React.createElement("div", { "data-testid": "question-input" }, "QuestionInput"),
+  };
+});
+
+vi.mock("../subagent-sheet", async () => {
+  const React = await import("react");
+  return {
     SubagentSheet: (props: Record<string, unknown>) => props.open
       ? React.createElement(
         "div",
@@ -135,6 +181,13 @@ vi.mock("@viben/chat", async () => {
         String(props.title)
       )
       : null,
+  };
+});
+
+vi.mock("../todo-list", async () => {
+  const React = await import("react");
+  return {
+    buildTodoListItemsFromMessages: mockBuildTodoListItemsFromMessages,
     TodoListPanel: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "todo-list-panel" },
@@ -200,6 +253,51 @@ const pendingQuestion = {
     },
   ],
 };
+const sampleSessions = [
+  { id: "session-1", title: "Session one", subtitle: "session-1.jsonl" },
+  { id: "session-2", title: "Session two", subtitle: "session-2.jsonl" },
+];
+const sampleAgents = [
+  { id: "claude-code", name: "Claude Code", type: "agent & executor" },
+  { id: "openai-browser", name: "OpenAI · Browser", type: "agent & executor" },
+];
+
+function createHeaderContent({
+  mode = "expanded",
+  title = "Viben session",
+  sessions = sampleSessions,
+  agents = sampleAgents,
+  onModeChange = () => {},
+}: {
+  mode?: "floating" | "compact" | "expanded" | "full";
+  title?: string;
+  sessions?: typeof sampleSessions;
+  agents?: typeof sampleAgents;
+  onModeChange?: (mode: "floating" | "compact" | "expanded" | "full") => void;
+} = {}) {
+  return (
+    <ExpandedHeader
+      leftContent={(
+        <>
+          <ExpandedHeaderSessionMenu
+            title={title}
+            sessions={sessions}
+            assistantAvatar={<span>avatar</span>}
+          />
+          <ExpandedHeaderNewSessionMenu agents={agents} />
+        </>
+      )}
+      centerContent={<div data-testid="expanded-header-drag-area" />}
+      rightContent={(
+        <ExpandedHeaderModeControls
+          mode={mode}
+          onModeChange={onModeChange}
+          moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
+        />
+      )}
+    />
+  );
+}
 
 beforeEach(() => {
   mockBuildBackgroundTasksFromMessages.mockClear();
@@ -214,6 +312,7 @@ describe("ChatApp", () => {
         mode="floating"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -385,9 +484,7 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Session menu" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Switch to compact mode" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Switch to fullscreen mode" })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("expanded-header")).not.toBeInTheDocument();
     expect(screen.getByTestId("message-list")).toBeInTheDocument();
     expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
   });
@@ -399,6 +496,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -447,7 +545,7 @@ describe("ChatApp", () => {
     expect(mockBuildBackgroundTasksFromMessages).toHaveBeenCalledTimes(1);
   });
 
-  test("uses legacy custom pet avatars only for static surfaces", () => {
+  test("uses the explicit static assistant avatar for message surfaces", () => {
     render(
       <ChatApp
         mode="expanded"
@@ -456,16 +554,14 @@ describe("ChatApp", () => {
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
-        assistantAvatars={{
-          review: <span data-testid="custom-review-pet">Review pet</span>,
-        }}
+        staticAssistantAvatar={<span data-testid="custom-static-avatar">Static avatar</span>}
       />
     );
 
-    expect(screen.getByTestId("custom-review-pet")).toBeInTheDocument();
+    expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("custom-static-avatar"));
   });
 
-  test("keeps the default dynamic pet when only legacy static avatars are provided", () => {
+  test("does not render a fallback avatar when no dynamic assistant avatar is provided", () => {
     render(
       <ChatApp
         mode="floating"
@@ -474,26 +570,14 @@ describe("ChatApp", () => {
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
-        assistantAvatars={{
-          review: <span data-testid="legacy-static-review-pet">Static review pet</span>,
-        }}
       />
     );
 
-    expect(screen.getByTestId("viben-pet-avatar")).toHaveAttribute("data-avatar-kind", "dynamic");
-    expect(screen.queryByTestId("legacy-static-review-pet")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("viben-pet-avatar")).not.toBeInTheDocument();
+    expect(screen.getByTestId("floating-overlay-avatar")).toBeEmptyDOMElement();
   });
 
-  test("uses dynamic pet avatars for overlay modes and static state avatars for the message list", () => {
-    const assistantPetAvatars = {
-      dynamic: {
-        review: <span data-testid="custom-dynamic-review-pet">Dynamic review pet</span>,
-      },
-      static: {
-        review: <span data-testid="custom-static-review-pet">Static review pet</span>,
-      },
-    };
-
+  test("uses dynamic assistant avatars for overlay modes and static assistant avatars for the message list", () => {
     const { rerender } = render(
       <ChatApp
         mode="floating"
@@ -502,12 +586,13 @@ describe("ChatApp", () => {
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
-        assistantPetAvatars={assistantPetAvatars}
+        dynamicAssistantAvatar={<span data-testid="custom-dynamic-avatar">Dynamic avatar</span>}
+        staticAssistantAvatar={<span data-testid="custom-static-avatar">Static avatar</span>}
       />
     );
 
-    expect(screen.getByTestId("custom-dynamic-review-pet")).toBeInTheDocument();
-    expect(screen.queryByTestId("custom-static-review-pet")).not.toBeInTheDocument();
+    expect(screen.getByTestId("custom-dynamic-avatar")).toBeInTheDocument();
+    expect(screen.queryByTestId("custom-static-avatar")).not.toBeInTheDocument();
 
     rerender(
       <ChatApp
@@ -517,12 +602,13 @@ describe("ChatApp", () => {
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
-        assistantPetAvatars={assistantPetAvatars}
+        dynamicAssistantAvatar={<span data-testid="custom-dynamic-avatar">Dynamic avatar</span>}
+        staticAssistantAvatar={<span data-testid="custom-static-avatar">Static avatar</span>}
       />
     );
 
-    expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("custom-static-review-pet"));
-    expect(screen.queryByTestId("custom-dynamic-review-pet")).not.toBeInTheDocument();
+    expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("custom-static-avatar"));
+    expect(screen.queryByTestId("custom-dynamic-avatar")).not.toBeInTheDocument();
   });
 
   test("passes static pet avatars into fullscreen message lists", () => {
@@ -551,21 +637,24 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("message-list-assistant-avatar")).toContainElement(screen.getByTestId("fullscreen-static-pet"));
   });
 
-  test("maps pending queued user messages to waiting state for static and dynamic pets", () => {
+  test("renders the pending queued user message badge with externally supplied avatars", () => {
     render(
       <ChatApp
-        mode="expanded"
+        mode="floating"
         messages={messages}
         isStreaming={false}
         pendingUserMessageCount={2}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
+        dynamicAssistantAvatar={<span data-testid="dynamic-avatar" data-avatar-kind="dynamic" />}
+        staticAssistantAvatar={<span data-testid="static-avatar" data-avatar-kind="static" />}
       />
     );
 
-    const staticAvatar = screen.getByTestId("message-list-assistant-avatar").querySelector("[data-avatar-kind='static']");
-    expect(staticAvatar).toHaveAttribute("aria-label", "Viben pet Waiting");
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByTestId("floating-overlay-avatar")).toContainElement(screen.getByTestId("dynamic-avatar"));
+    expect(screen.queryByTestId("static-avatar")).not.toBeInTheDocument();
   });
 
   test("floating avatar expands to compact mode when clicked", () => {
@@ -662,6 +751,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -835,6 +925,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -861,6 +952,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -876,6 +968,7 @@ describe("ChatApp", () => {
         mode="full"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({ mode: "full" })}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -893,6 +986,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -908,6 +1002,7 @@ describe("ChatApp", () => {
         mode="full"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({ mode: "full" })}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -941,6 +1036,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent()}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -957,6 +1053,7 @@ describe("ChatApp", () => {
         mode="full"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({ mode: "full" })}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -1014,6 +1111,7 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({ onModeChange })}
         onModeChange={onModeChange}
         onSend={() => {}}
         onCancel={() => {}}
@@ -1049,6 +1147,13 @@ describe("ChatApp", () => {
         mode="expanded"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({
+          sessions: [
+            { id: "2c88f85a-690d-49ca-95f4-c3aa71da1da8", title: "Claude Code: breadcrumb navigation debug", subtitle: "2c88f85a...jsonl" },
+            { id: "2e83fc8b-a852-4530-a5f3-497bcafa9da6", title: "Claude Code: 2e83fc8b session replay", subtitle: "2e83fc8b...jsonl" },
+            { id: "3bbcc4d2-0267-4938-98c3-c06a380828ba", title: "Claude Code: 3bbcc4d2 session replay", subtitle: "3bbcc4d2...jsonl" },
+          ],
+        })}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -1090,17 +1195,14 @@ describe("ChatApp", () => {
 
   test("expanded session menu shows the selected session title after selection", () => {
     render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
-        sessions={[
-          { id: "session-1", title: "Session one", subtitle: "session-1.jsonl" },
-          { id: "session-2", title: "Session two", subtitle: "session-2.jsonl" },
-        ]}
+      <ExpandedHeader
+        leftContent={(
+          <ExpandedHeaderSessionMenu
+            title="Viben session"
+            sessions={sampleSessions}
+            assistantAvatar={<span>avatar</span>}
+          />
+        )}
       />
     );
 
@@ -1112,13 +1214,12 @@ describe("ChatApp", () => {
 
   test("expanded new-session menu shows creation actions and agent samples", () => {
     render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
+      <ExpandedHeader
+        leftContent={(
+          <ExpandedHeaderNewSessionMenu
+            agents={sampleAgents}
+          />
+        )}
       />
     );
 
@@ -1133,13 +1234,14 @@ describe("ChatApp", () => {
 
   test("expanded more menu shows settings, sample navigation, and debug actions", () => {
     render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
+      <ExpandedHeader
+        rightContent={(
+          <ExpandedHeaderModeControls
+            mode="expanded"
+            onModeChange={() => {}}
+            moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
+          />
+        )}
       />
     );
 
@@ -1196,13 +1298,25 @@ describe("ChatApp", () => {
 
   test("expanded header keeps controls grouped into slots", () => {
     render(
-      <ChatApp
-        mode="expanded"
-        messages={messages}
-        isStreaming={false}
-        onModeChange={() => {}}
-        onSend={() => {}}
-        onCancel={() => {}}
+      <ExpandedHeader
+        leftContent={(
+          <>
+            <ExpandedHeaderSessionMenu
+              title="Viben session"
+              sessions={sampleSessions}
+              assistantAvatar={<span>avatar</span>}
+            />
+            <ExpandedHeaderNewSessionMenu agents={sampleAgents} />
+          </>
+        )}
+        centerContent={<div data-testid="expanded-header-drag-area" />}
+        rightContent={(
+          <ExpandedHeaderModeControls
+            mode="expanded"
+            onModeChange={() => {}}
+            moreMenuContent={<DefaultExpandedHeaderMoreMenu />}
+          />
+        )}
       />
     );
 
@@ -1320,6 +1434,7 @@ describe("ChatApp", () => {
         mode="full"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({ mode: "full" })}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -1392,6 +1507,7 @@ describe("ChatApp", () => {
         mode="full"
         messages={messages}
         isStreaming={false}
+        headerContent={createHeaderContent({ mode: "full" })}
         onModeChange={() => {}}
         onSend={() => {}}
         onCancel={() => {}}
@@ -1408,26 +1524,25 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("more-actions-menu")).toBeInTheDocument();
   });
 
-  test("allows expanded and full headers to be replaced with custom UI and interactions", () => {
+  test("allows expanded and full headers to be provided as direct slot content", () => {
     const onModeChange = vi.fn();
-    const renderHeader = vi.fn((props: { title: string; mode: string; onModeChange: (mode: "floating" | "compact" | "expanded" | "full") => void }) => (
+    const expandedHeader = (
       <div data-testid="custom-overlay-header">
-        <span>{props.title}</span>
-        <span>{props.mode}</span>
-        <button type="button" onClick={() => props.onModeChange("compact")}>Custom compact</button>
+        <span>Custom session</span>
+        <span>expanded</span>
+        <button type="button" onClick={() => onModeChange("compact")}>Custom compact</button>
       </div>
-    ));
+    );
 
     const { rerender } = render(
       <ChatApp
         mode="expanded"
-        title="Custom session"
         messages={messages}
         isStreaming={false}
+        headerContent={expandedHeader}
         onModeChange={onModeChange}
         onSend={() => {}}
         onCancel={() => {}}
-        renderHeader={renderHeader}
       />
     );
 
@@ -1441,22 +1556,21 @@ describe("ChatApp", () => {
     rerender(
       <ChatApp
         mode="full"
-        title="Custom session"
         messages={messages}
         isStreaming={false}
+        headerContent={(
+          <div data-testid="custom-overlay-header">
+            <span>Custom session</span>
+            <span>full</span>
+          </div>
+        )}
         onModeChange={onModeChange}
         onSend={() => {}}
         onCancel={() => {}}
-        renderHeader={renderHeader}
       />
     );
 
     expect(screen.getByTestId("custom-overlay-header")).toHaveTextContent("full");
-    expect(renderHeader).toHaveBeenLastCalledWith(expect.objectContaining({
-      mode: "full",
-      title: "Custom session",
-      onModeChange,
-    }));
   });
 
   test("exports expanded header slot content components for composed App usage", () => {
@@ -1555,36 +1669,5 @@ describe("ChatAppFullscreenPanel", () => {
     expect(screen.getByTestId("slash-count")).toHaveTextContent("1");
     expect(screen.getByTestId("queued-count")).toHaveTextContent("1");
     expect(screen.getByTestId("input-class-name")).toHaveTextContent("shared-expanded-input");
-  });
-});
-
-describe("getAssistantPetState", () => {
-  test("maps playback and messages to pet animation states", () => {
-    expect(getAssistantPetState([], false, "idle")).toBe("idle");
-    expect(getAssistantPetState(messages, true, "playing")).toBe("review");
-    expect(getAssistantPetState(messages, false, "playing")).toBe("waiting");
-    expect(getAssistantPetState(messages, false, "paused")).toBe("waving");
-    expect(getAssistantPetState(messages, false, "idle")).toBe("idle");
-  });
-
-  test("does not stay failed after later successful activity", () => {
-    expect(getAssistantPetState([
-      { id: "error-1", type: "error", message: "API error" },
-      { id: "text-1", type: "text", content: "Recovered and continuing." },
-    ], false, "idle")).toBe("idle");
-    expect(getAssistantPetState([
-      { id: "text-1", type: "text", content: "Working." },
-      { id: "error-1", type: "error", message: "API error" },
-    ], false, "idle")).toBe("failed");
-  });
-});
-
-describe("getPetInteractionForSessionStatus", () => {
-  test("maps session playback status to @viben/pet interaction states", () => {
-    expect(getPetInteractionForSessionStatus("idle", false, false)).toBe("idle");
-    expect(getPetInteractionForSessionStatus("playing", false, false)).toBe("waiting");
-    expect(getPetInteractionForSessionStatus("playing", true, false)).toBe("waiting");
-    expect(getPetInteractionForSessionStatus("paused", false, false)).toBe("hover");
-    expect(getPetInteractionForSessionStatus("idle", false, true)).toBe("waiting");
   });
 });

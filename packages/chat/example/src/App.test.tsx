@@ -2,6 +2,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type * as React from "react";
 import { App } from "./App";
 
 let mockLanguage = "en";
@@ -10,8 +11,14 @@ const changeLanguageMock = vi.fn((language: string) => {
 });
 
 vi.mock("@viben/chat", () => ({
-  BackgroundTaskList: (props: { messages?: unknown[] }) => (
-    <div data-testid="background-task-list">{props.messages?.length ?? 0}</div>
+  BackgroundTaskList: (props: { messages?: unknown[]; tasks?: unknown[] }) => (
+    <div data-testid="background-task-list">{props.tasks?.length ?? props.messages?.length ?? 0}</div>
+  ),
+  buildBackgroundTasksFromMessages: (messages: unknown[] = []) => (
+    messages.length > 0 ? [{ id: "background-task", kind: "agent", description: "Background task", status: "running" }] : []
+  ),
+  buildTodoListItemsFromMessages: (messages: unknown[] = []) => (
+    messages.length > 0 ? [{ id: "todo", content: "Todo", status: "pending" }] : []
   ),
   CommandQueuePanel: (props: { items?: unknown[] }) => (
     <div data-testid="command-queue-panel">{props.items?.length ?? 0}</div>
@@ -19,14 +26,102 @@ vi.mock("@viben/chat", () => ({
   ContextDetailsPopover: () => <div data-testid="context-details-popover" />,
   EmojiPicker: () => <div data-testid="emoji-picker" />,
   ExecApproval: () => <div data-testid="exec-approval" />,
+  ChatApp: (props: {
+    mode: "floating" | "compact" | "expanded" | "full";
+    headerContent?: React.ReactNode;
+    fullscreenContent?: React.ReactNode;
+    dynamicAssistantAvatar?: React.ReactNode;
+    staticAssistantAvatar?: React.ReactNode;
+    onModeChange?: (mode: "floating" | "compact" | "expanded" | "full") => void;
+  }) => {
+    if (props.mode === "full") {
+      return (
+        <div data-testid="full-overlay">
+          {props.headerContent}
+          {props.fullscreenContent}
+        </div>
+      );
+    }
+    if (props.mode === "expanded") {
+      return (
+        <div data-testid="expanded-overlay">
+          {props.headerContent}
+        </div>
+      );
+    }
+    if (props.mode === "compact") {
+      return <div data-testid="compact-overlay">{props.dynamicAssistantAvatar}</div>;
+    }
+    return (
+      <div data-testid="floating-overlay">
+        <button type="button" aria-label="Open compact chat" onClick={() => props.onModeChange?.("compact")}>
+          {props.dynamicAssistantAvatar}
+        </button>
+      </div>
+    );
+  },
+  ChatAppFullscreenCommandQueue: (props: { commandQueueItems?: unknown[] }) => (
+    <div data-testid="fullscreen-command-queue">{props.commandQueueItems?.length ?? 0}</div>
+  ),
+  ChatAppFullscreenInputPanel: () => <div data-testid="chat-input" />,
+  ChatAppFullscreenMessagePanel: (props: { assistantAvatar?: React.ReactNode }) => (
+    <div data-testid="message-list">{props.assistantAvatar}</div>
+  ),
+  ChatAppFullscreenPanel: (props: {
+    messageContent: React.ReactNode;
+    statusContent?: React.ReactNode;
+    inputContent: React.ReactNode;
+  }) => (
+    <div data-testid="fullscreen-panel">
+      {props.messageContent}
+      {props.statusContent}
+      {props.inputContent}
+    </div>
+  ),
+  DefaultExpandedHeaderMoreMenu: () => <button type="button" aria-label="More actions">More actions</button>,
+  ExpandedHeader: (props: {
+    leftContent?: React.ReactNode;
+    centerContent?: React.ReactNode;
+    rightContent?: React.ReactNode;
+  }) => (
+    <div data-testid="expanded-header">
+      {props.leftContent}
+      {props.centerContent}
+      {props.rightContent}
+    </div>
+  ),
+  ExpandedHeaderModeControls: (props: { moreMenuContent?: React.ReactNode }) => (
+    <div data-testid="expanded-header-mode-controls">{props.moreMenuContent}</div>
+  ),
+  ExpandedHeaderNewSessionMenu: () => <button type="button" aria-label="Create new session">Create new session</button>,
+  ExpandedHeaderSessionMenu: (props: {
+    title: string;
+    sessions?: Array<{ id: string; title: string; subtitle?: string }>;
+    assistantAvatar?: React.ReactNode;
+    onSelectSession?: (session: { id: string; title: string; subtitle?: string }) => void;
+  }) => (
+    <div>
+      <button type="button" aria-label="Session menu">
+        {props.assistantAvatar}
+        {props.title}
+      </button>
+      <div>
+        {props.sessions?.map((session) => (
+          <button key={session.id} type="button" onClick={() => props.onSelectSession?.(session)}>
+            {session.title}
+          </button>
+        ))}
+      </div>
+    </div>
+  ),
   ChatInput: () => <div data-testid="chat-input" />,
   MessageList: () => <div data-testid="message-list" />,
   PlanApproval: () => <div data-testid="plan-approval" />,
   QuestionInput: () => <div data-testid="question-input" />,
   SkillsConfigPopover: () => <div data-testid="skills-config-popover" />,
   SubagentSheet: () => null,
-  TodoListPanel: (props: { messages?: unknown[] }) => (
-    <div data-testid="todo-list-panel">{props.messages?.length ?? 0}</div>
+  TodoListPanel: (props: { messages?: unknown[]; items?: unknown[] }) => (
+    <div data-testid="todo-list-panel">{props.items?.length ?? props.messages?.length ?? 0}</div>
   ),
   ToolExecutionItem: () => <div data-testid="tool-execution-item" />,
   ToolsConfigPopover: () => <div data-testid="tools-config-popover" />,

@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, test } from "vitest";
-import type { ChatAppMode, ChatAppProps } from "./ChatApp";
+import type { ChatAppMode, ChatAppProps } from "@viben/chat";
 
-type ExportedTypeNames = keyof typeof import("./ChatApp");
+type ExportedTypeNames = keyof typeof import("@viben/chat");
 
 expectTypeOf<ChatAppProps["mode"]>().toEqualTypeOf<ChatAppMode>();
 expectTypeOf<ChatAppProps["onModeChange"]>().toEqualTypeOf<(mode: ChatAppMode) => void>();

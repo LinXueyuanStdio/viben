@@ -1,4 +1,4 @@
-import type { ChatAppAgentItem, ChatAppSessionItem } from "./ChatApp";
+import type { ChatAppAgentItem, ChatAppSessionItem } from "@viben/chat";
 
 export const DEFAULT_CHAT_APP_SESSIONS: ChatAppSessionItem[] = [
   {

@@ -2,44 +2,32 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, ChevronUp, Maximize2, Minimize2, MoreHorizontal, Plus, Search } from "lucide-react";
-import {
-  BackgroundTaskList,
-  ChatInput,
-  CommandQueuePanel,
-  EmojiPicker,
-  ExecApproval,
-  MessageList,
-  PlanApproval,
-  QuestionInput,
-  SubagentSheet,
-  TodoListPanel,
-  buildBackgroundTasksFromMessages,
-  buildTodoListItemsFromMessages,
-} from "@viben/chat";
-import { VibenPetAvatar } from "./VibenPetAvatar";
-import type { AssistantPetState, PetInteractionState } from "./VibenPetAvatar";
+import { BackgroundTaskList, buildBackgroundTasksFromMessages } from "./background-task-list";
+import { ChatInput } from "./chat-input";
+import { CommandQueuePanel } from "./command-queue";
+import { EmojiPicker } from "./emoji-picker";
+import { ExecApproval } from "./exec-approval";
+import { MessageList } from "./message-list";
+import { PlanApproval } from "./plan-approval";
+import { QuestionInput } from "./question-input";
+import { SubagentSheet } from "./subagent-sheet";
+import { TodoListPanel, buildTodoListItemsFromMessages } from "./todo-list";
+import type { BackgroundTaskItem } from "./background-task-list";
+import type { ChatInputProps } from "./chat-input";
+import type { CommandQueueItem } from "./command-queue";
+import type { PendingExecApproval } from "./exec-approval";
 import type {
   AgentMessage,
-  BackgroundTaskItem,
-  ChatInputProps,
-  CommandQueueItem,
   ExpandSubagentHandler,
   InspectToolHandler,
   LoadSubagentDetails,
   MessageAttachment,
-  PendingExecApproval,
   PendingQuestion,
   SubagentOpenContext,
   TaskPlan,
-} from "@viben/chat";
+} from "./types";
 
 export type ChatAppMode = "floating" | "compact" | "expanded" | "full";
-export type SessionPlayerStatus = "idle" | "playing" | "paused";
-export type AssistantPetAvatarMap = Partial<Record<AssistantPetState, React.ReactNode>>;
-export type AssistantPetAvatarSet = {
-  dynamic?: AssistantPetAvatarMap;
-  static?: AssistantPetAvatarMap;
-};
 export interface OverlaySessionItem {
   id: string;
   title: string;
@@ -88,10 +76,9 @@ export interface ChatAppProps {
   isStreaming: boolean;
   contained?: boolean;
   title?: string;
-  playerStatus?: SessionPlayerStatus;
   pendingUserMessageCount?: number;
-  assistantPetAvatars?: AssistantPetAvatarSet;
-  assistantAvatars?: AssistantPetAvatarMap;
+  dynamicAssistantAvatar?: React.ReactNode;
+  staticAssistantAvatar?: React.ReactNode;
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
@@ -213,33 +200,6 @@ const OVERLAY_RADIUS = {
 const OVERLAY_PANEL_WIDTH_CLASS = "w-[min(440px,calc(100dvw_-_2rem))]";
 const EXPANDED_PANEL_HEIGHT_CLASS = "h-[75dvh]";
 
-export function getAssistantPetState(
-  messages: AgentMessage[],
-  isStreaming: boolean,
-  playerStatus: SessionPlayerStatus = "idle",
-  hasPendingUserMessages = false
-): AssistantPetState {
-  if (messages.length === 0) return "idle";
-  if (isStreaming) return "review";
-  if (hasPendingUserMessages || playerStatus === "playing") return "waiting";
-  const latestStatefulMessage = [...messages].reverse().find((message) =>
-    message.type !== "summary" && message.type !== "plan_mode"
-  );
-  if (latestStatefulMessage && (latestStatefulMessage.type === "error" || latestStatefulMessage.isError)) return "failed";
-  if (playerStatus === "paused") return "waving";
-  return "idle";
-}
-
-export function getPetInteractionForSessionStatus(
-  playerStatus: SessionPlayerStatus = "idle",
-  isStreaming = false,
-  hasPendingUserMessages = false
-): PetInteractionState {
-  if (isStreaming || hasPendingUserMessages || playerStatus === "playing") return "waiting";
-  if (playerStatus === "paused") return "hover";
-  return "idle";
-}
-
 export function ChatApp({
   mode,
   messages,
@@ -247,10 +207,9 @@ export function ChatApp({
   isStreaming,
   contained = false,
   title = "Viben session",
-  playerStatus = "idle",
   pendingUserMessageCount = 0,
-  assistantPetAvatars,
-  assistantAvatars,
+  dynamicAssistantAvatar,
+  staticAssistantAvatar,
   inputValue,
   onInputValueChange,
   inputProps,
@@ -276,14 +235,6 @@ export function ChatApp({
   onCancel,
 }: ChatAppProps) {
   const { t } = useTranslation();
-  const petState = getAssistantPetState(messages, isStreaming, playerStatus, pendingUserMessageCount > 0);
-  const petInteraction = getPetInteractionForSessionStatus(playerStatus, isStreaming, pendingUserMessageCount > 0);
-  const dynamicAssistantAvatar = assistantPetAvatars?.dynamic?.[petState] ?? (
-    <VibenPetAvatar kind="dynamic" state={petState} interaction={petInteraction} />
-  );
-  const staticAssistantAvatar = assistantPetAvatars?.static?.[petState] ?? assistantAvatars?.[petState] ?? (
-    <VibenPetAvatar kind="static" state={petState} interaction="idle" />
-  );
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
   const content = inputValue ?? uncontrolledInput;
   const setContent = React.useCallback((value: string) => {

@@ -3,11 +3,21 @@ import { LayoutGroup } from "framer-motion"
 import { Streamdown } from "streamdown"
 import { useTranslation } from "react-i18next"
 import {
+  ChatApp,
+  ChatAppFullscreenCommandQueue,
+  ChatAppFullscreenInputPanel,
+  ChatAppFullscreenMessagePanel,
+  ChatAppFullscreenPanel,
+  DefaultExpandedHeaderMoreMenu,
   EmojiPicker,
+  ExpandedHeader,
+  ExpandedHeaderModeControls,
+  ExpandedHeaderNewSessionMenu,
+  ExpandedHeaderSessionMenu,
   useCommandQueue,
   useCommandQueueInputRecall,
 } from "@viben/chat"
-import type { AgentMessage, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
+import type { AgentMessage, ChatAppMode, ChatAppSessionItem, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen, X } from "lucide-react"
 import {
@@ -36,20 +46,6 @@ import {
   type LoadedClaudeCodeSession,
   type ParseStats,
 } from "./claudecode-log-provider"
-import {
-  ChatApp,
-  ChatAppFullscreenCommandQueue,
-  ChatAppFullscreenInputPanel,
-  ChatAppFullscreenMessagePanel,
-  ChatAppFullscreenPanel,
-  DefaultExpandedHeaderMoreMenu,
-  ExpandedHeader,
-  ExpandedHeaderModeControls,
-  ExpandedHeaderNewSessionMenu,
-  ExpandedHeaderSessionMenu,
-  getAssistantPetState,
-} from "./ChatApp"
-import type { ChatAppMode, ChatAppSessionItem } from "./ChatApp"
 import { VibenPetAvatar } from "./VibenPetAvatar"
 import { PlayerButton, ModeButton, SectionLabel, SidebarPageButton } from "./components/common"
 import { PlayerPage } from "./pages/PlayerPage"
@@ -73,6 +69,7 @@ import {
   storeFullscreenChatWidth,
 } from "./hooks/app-utils"
 import type { ExampleLanguage, ExampleSidebarPage, FullscreenEntryGeometry } from "./hooks/app-utils"
+import { getAssistantPetState, getPetInteractionForSessionStatus } from "./chat-app-pet-state"
 
 type CompactActivity = {
   kind: "plain" | "thinking"
@@ -814,10 +811,27 @@ export function App() {
     commandQueue.remove,
     commandQueue.resume,
   ])
-  const chatAppHeaderAvatar = useMemo(() => {
-    const petState = getAssistantPetState(player.messages, player.isStreaming, player.status, commandQueue.items.length > 0)
-    return <VibenPetAvatar kind="static" state={petState} interaction="idle" />
-  }, [commandQueue.items.length, player.isStreaming, player.messages, player.status])
+  const hasPendingChatAppMessages = commandQueue.items.length > 0
+  const chatAppPetState = useMemo(
+    () => getAssistantPetState(player.messages, player.isStreaming, player.status, hasPendingChatAppMessages),
+    [hasPendingChatAppMessages, player.isStreaming, player.messages, player.status]
+  )
+  const chatAppPetInteraction = useMemo(
+    () => getPetInteractionForSessionStatus(player.status, player.isStreaming, hasPendingChatAppMessages),
+    [hasPendingChatAppMessages, player.isStreaming, player.status]
+  )
+  const chatAppHeaderAvatar = useMemo(
+    () => <VibenPetAvatar kind="static" state={chatAppPetState} interaction="idle" />,
+    [chatAppPetState]
+  )
+  const dynamicAssistantAvatar = useMemo(
+    () => <VibenPetAvatar kind="dynamic" state={chatAppPetState} interaction={chatAppPetInteraction} />,
+    [chatAppPetInteraction, chatAppPetState]
+  )
+  const staticAssistantAvatar = useMemo(
+    () => <VibenPetAvatar kind="static" state={chatAppPetState} interaction="idle" />,
+    [chatAppPetState]
+  )
 
   const chatAppHeaderContent = useMemo(() => (
     <ExpandedHeader
@@ -830,7 +844,11 @@ export function App() {
             onSelectSession={handleChatAppSessionSelect}
           />
           <ExpandedHeaderNewSessionMenu
-            agents={demoAgents}
+            agents={demoAgents.map((agent) => ({
+              id: agent.id,
+              name: agent.name,
+              type: agent.description ?? "agent & executor",
+            }))}
             onCreateSession={() => handleChatAppModeChange("expanded")}
           />
         </>
@@ -865,8 +883,9 @@ export function App() {
       messages={player.messages}
       messageUpdates={player.messageUpdates}
       isStreaming={player.isStreaming}
-      playerStatus={player.status}
       pendingUserMessageCount={commandQueue.items.length}
+      dynamicAssistantAvatar={dynamicAssistantAvatar}
+      staticAssistantAvatar={staticAssistantAvatar}
       compactSummaryContent={compactActivitySummaryContent}
       headerContent={chatAppHeaderContent}
       inputValue={chatInputValue}
@@ -903,6 +922,7 @@ export function App() {
               messages={player.messages}
               messageUpdates={player.messageUpdates}
               isStreaming={player.isStreaming}
+              assistantAvatar={staticAssistantAvatar}
               pendingPlan={player.pendingPlan}
               pendingApproval={player.pendingApproval}
               pendingQuestion={player.pendingQuestion}
