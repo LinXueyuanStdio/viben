@@ -119,19 +119,6 @@ code {
   text-transform: uppercase;
 }
 
-.json-editor {
-  min-height: 360px;
-  max-height: min(560px, calc(100vh - 260px));
-  resize: vertical;
-  background: var(--color-code-block);
-  color: var(--color-code-foreground);
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.55;
-  white-space: pre;
-}
-
 .permission-side {
   min-width: 0;
 }
