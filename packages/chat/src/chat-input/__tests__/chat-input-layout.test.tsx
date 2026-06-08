@@ -14,40 +14,31 @@ vi.mock("../../model-icons", () => ({
 }));
 
 describe("ChatInput layout", () => {
-  test("compact layout renders the editor inline inside the bottom toolbar", async () => {
+  test("compact layout renders single-line input with + button and submit control", async () => {
     const { ChatInput } = await import("../index");
 
-    const { container } = render(
+    render(
       <ChatInput
         value=""
         onValueChange={() => {}}
         onSend={() => {}}
         layoutVariant="compact"
         showTopToolbar={false}
-        showConfigBar
-        agents={[{ id: "agent", name: "Agent" }]}
-        selectedAgentId="agent"
-        models={[{ id: "model", name: "Model" }]}
-        selectedModelId="model"
+        showBottomToolbar={false}
       />
     );
 
-    const compactToolbar = screen.getByTestId("chat-input-compact-toolbar");
-    const editor = container.querySelector(".viben-chat-input-editor");
-    const configControls = screen.getByTestId("chat-input-config-controls");
+    const compactRow = screen.getByTestId("compact-chat-input-row");
+    const inputField = screen.getByTestId("compact-chat-input-field");
     const submitControl = screen.getByTestId("chat-input-submit-control");
 
-    expect(compactToolbar).toContainElement(configControls);
-    expect(compactToolbar).toContainElement(editor as HTMLElement);
-    expect(compactToolbar).toContainElement(submitControl);
-    expect(editor?.compareDocumentPosition(configControls) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(configControls.compareDocumentPosition(submitControl)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(screen.getByRole("textbox")).toHaveAttribute("rows", "1");
+    expect(compactRow).toContainElement(inputField);
+    expect(compactRow).toContainElement(submitControl);
     expect(screen.queryByTestId("chat-input-toolbar")).not.toBeInTheDocument();
   });
 
   test("expanded layout renders top toolbar, editor, and bottom toolbar as three rows", async () => {
-    const { ChatInput } = await import("../index");
+    const { ChatInput, ChatInputTopToolbar, ChatInputBottomToolbar } = await import("../index");
 
     const { container } = render(
       <ChatInput
@@ -56,7 +47,20 @@ describe("ChatInput layout", () => {
         onSend={() => {}}
         layoutVariant="expanded"
         showTopToolbar
-        showConfigBar
+        showBottomToolbar
+        topToolbar={
+          <ChatInputTopToolbar
+            onEmojiSelect={() => {}}
+            onFileClick={() => {}}
+          />
+        }
+        bottomToolbar={
+          <ChatInputBottomToolbar
+            leftContent={<span>Config</span>}
+            onSend={() => {}}
+            canSubmit={false}
+          />
+        }
       />
     );
 
@@ -80,7 +84,6 @@ describe("ChatInput layout", () => {
         layoutVariant="expanded"
         showTopToolbar={false}
         showBottomToolbar={false}
-        showConfigBar={false}
       />
     );
 
@@ -91,7 +94,7 @@ describe("ChatInput layout", () => {
     expect(container.querySelector(".viben-chat-input-editor")).toBeInTheDocument();
   });
 
-  test("custom toolbar renderers can replace default toolbar content", async () => {
+  test("custom toolbar content can be provided directly as ReactNode", async () => {
     const { ChatInput } = await import("../index");
 
     render(
@@ -100,58 +103,21 @@ describe("ChatInput layout", () => {
         onValueChange={() => {}}
         onSend={() => {}}
         showTopToolbar
-        showConfigBar
-        renderTopToolbar={() => <div data-testid="custom-top">Top actions</div>}
-        renderBottomToolbar={({ leftContent, submitControl }) => (
-          <>
-            <div data-testid="custom-bottom-left">{leftContent}</div>
-            <div data-testid="custom-bottom-right">{submitControl}</div>
-          </>
-        )}
+        showBottomToolbar
+        topToolbar={<div data-testid="custom-top">Top actions</div>}
+        bottomToolbar={
+          <div data-testid="custom-bottom">
+            <div data-testid="custom-bottom-left">Left</div>
+            <div data-testid="custom-bottom-right">Right</div>
+          </div>
+        }
       />
     );
 
     expect(screen.getByTestId("custom-top")).toBeInTheDocument();
-    expect(screen.getByTestId("custom-bottom-left")).toContainElement(screen.getByTestId("chat-input-config-controls"));
-    expect(screen.getByTestId("custom-bottom-right")).toContainElement(screen.getByTestId("chat-input-submit-control"));
-  });
-
-  test("custom writing mode renderer can replace the default writing mode page", async () => {
-    const { ChatInput } = await import("../index");
-    const onValueChange = vi.fn();
-
-    render(
-      <ChatInput
-        value="draft"
-        onValueChange={onValueChange}
-        onSend={() => {}}
-        showTopToolbar
-        enableWritingMode
-        renderWritingMode={({ content, onContentChange, onClose }) => (
-          <div data-testid="custom-writing-mode">
-            <button type="button" onClick={() => onContentChange(`${content}!`)}>
-              Update draft
-            </button>
-            <button type="button" onClick={onClose}>
-              Close writing mode
-            </button>
-          </div>
-        )}
-      />
-    );
-
-    const toolbar = screen.getByTestId("chat-input-toolbar");
-    const toolbarButtons = toolbar.querySelectorAll("button");
-    fireEvent.click(toolbarButtons[toolbarButtons.length - 1]);
-
-    expect(screen.getByTestId("custom-writing-mode")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Update draft" }));
-    expect(onValueChange).toHaveBeenCalledWith("draft!");
-
-    fireEvent.click(screen.getByRole("button", { name: "Close writing mode" }));
-
-    expect(screen.queryByTestId("custom-writing-mode")).not.toBeInTheDocument();
+    expect(screen.getByTestId("custom-bottom")).toBeInTheDocument();
+    expect(screen.getByTestId("custom-bottom-left")).toBeInTheDocument();
+    expect(screen.getByTestId("custom-bottom-right")).toBeInTheDocument();
   });
 
   test("writing mode parts can be composed without ChatInput state", async () => {

@@ -37,7 +37,6 @@ import {
 } from "@viben/ui";
 import { AttachmentPreview } from "./attachment-preview";
 import type { MessageAttachment } from "../types";
-import type { ChatInputWritingModeRenderProps } from "./types";
 
 export interface WritingModeRootProps {
   isOpen?: boolean;
@@ -342,7 +341,7 @@ export function WritingModeSubmitControl({
 export interface WritingModeFooterProps {
   showConfigBar?: boolean;
   configControls?: React.ReactNode;
-  submitControl: React.ReactNode;
+  submitControl?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
 }
@@ -376,7 +375,27 @@ export function WritingModeFooter({
   );
 }
 
-export type WritingModeProps = ChatInputWritingModeRenderProps;
+export interface WritingModeProps {
+  isOpen: boolean;
+  onClose: () => void;
+  content: string;
+  onContentChange: (content: string) => void;
+  attachments: MessageAttachment[];
+  onRemoveAttachment: (id: string) => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onCompositionStart: () => void;
+  onCompositionEnd: () => void;
+  onPaste: (event: React.ClipboardEvent) => void;
+  /** Top toolbar slot (shown in header, left of close button) */
+  topToolbar?: React.ReactNode;
+  /** Bottom toolbar slot (shown in footer) */
+  bottomToolbar?: React.ReactNode;
+  isLoading?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  className?: string;
+}
 
 export function WritingMode({
   isOpen,
@@ -385,38 +404,22 @@ export function WritingMode({
   onContentChange,
   attachments,
   onRemoveAttachment,
-  onSend,
-  onCancel,
-  isLoading,
-  disabled,
-  canSubmit,
-  placeholder,
-  onEmojiSelect,
-  renderEmojiPicker,
-  onFileClick,
-  onScreenshot,
-  isScreenshotCapturing,
   onKeyDown,
   onCompositionStart,
   onCompositionEnd,
   onPaste,
-  showConfigBar,
+  topToolbar,
+  bottomToolbar,
+  isLoading,
+  disabled,
+  placeholder,
   textareaRef,
-  configControls,
   className,
 }: WritingModeProps) {
   return (
     <WritingModeRoot isOpen={isOpen} onClose={onClose} className={className}>
       <WritingModeHeader onClose={onClose}>
-        <WritingModeToolbar
-          onEmojiSelect={onEmojiSelect}
-          renderEmojiPicker={renderEmojiPicker}
-          onFileClick={onFileClick}
-          onScreenshot={onScreenshot}
-          isLoading={isLoading}
-          disabled={disabled}
-          isScreenshotCapturing={isScreenshotCapturing}
-        />
+        {topToolbar}
       </WritingModeHeader>
 
       <WritingModeAttachments
@@ -437,18 +440,9 @@ export function WritingMode({
         disabled={disabled}
       />
 
-      <WritingModeFooter
-        showConfigBar={showConfigBar}
-        configControls={configControls}
-        submitControl={(
-          <WritingModeSubmitControl
-            onSend={onSend}
-            onCancel={onCancel}
-            isLoading={isLoading}
-            canSubmit={canSubmit}
-          />
-        )}
-      />
+      <WritingModeFooter>
+        {bottomToolbar}
+      </WritingModeFooter>
     </WritingModeRoot>
   );
 }

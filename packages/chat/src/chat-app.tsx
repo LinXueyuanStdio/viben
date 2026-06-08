@@ -1,9 +1,21 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Maximize2, Minimize2, MoreHorizontal } from "lucide-react";
+import {
+  Maximize2,
+  Minimize2,
+  MoreHorizontal,
+} from "lucide-react";
+import { cn } from "@viben/ui";
 import { BackgroundTaskList, buildBackgroundTasksFromMessages } from "./background-task-list";
-import { ChatInput } from "./chat-input";
+import {
+  ChatInput,
+  ChatInputTopToolbar,
+  ChatInputBottomToolbar,
+  WritingMode,
+  useAttachments,
+  useIMEComposition,
+} from "./chat-input";
 import { CommandQueuePanel } from "./command-queue";
 import { EmojiPicker } from "./emoji-picker";
 import { ExecApproval } from "./exec-approval";
@@ -14,6 +26,7 @@ import { SubagentSheet } from "./subagent-sheet";
 import { TodoListPanel, buildTodoListItemsFromMessages } from "./todo-list";
 import type { BackgroundTaskItem } from "./background-task-list";
 import type { ChatInputProps } from "./chat-input";
+import type { TasksSummary, BackgroundTasksSummary } from "./chat-input/top-toolbar";
 import type { CommandQueueItem } from "./command-queue";
 import type { PendingExecApproval } from "./exec-approval";
 import type { Artifact } from "./message-list";
@@ -29,6 +42,7 @@ import type {
 } from "./types";
 
 export type ChatAppMode = "floating" | "compact" | "expanded" | "full";
+
 export interface ExpandedHeaderProps {
   leftContent?: React.ReactNode;
   centerContent?: React.ReactNode;
@@ -55,6 +69,18 @@ export interface ChatAppProps {
   inputValue?: string;
   onInputValueChange?: (value: string) => void;
   inputProps?: Partial<ChatInputProps>;
+  /** Custom top toolbar content for expanded mode. If not provided, uses default. */
+  topToolbar?: React.ReactNode;
+  /** Custom bottom toolbar content for expanded mode. If not provided, uses default. */
+  bottomToolbar?: React.ReactNode;
+  /** Left content slot for default bottom toolbar (used when bottomToolbar is not provided) */
+  bottomToolbarLeftContent?: React.ReactNode;
+  /** Enable fullscreen writing mode in expanded mode */
+  enableWritingMode?: boolean;
+  /** Screenshot callback for toolbar */
+  onScreenshot?: (hideWindow?: boolean) => Promise<MessageAttachment | null>;
+  /** Open file dialog callback */
+  onOpenFile?: () => Promise<MessageAttachment[] | null>;
   headerContent?: React.ReactNode;
   fullscreenContent?: React.ReactNode;
   surfaceOverlay?: React.ReactNode;
@@ -86,6 +112,7 @@ export interface ChatAppSubagentSheetState {
   messages: AgentMessage[];
   liveMessages?: AgentMessage[];
   context?: SubagentOpenContext;
+  loadSubagentDetails?: LoadSubagentDetails;
   onClose: () => void;
 }
 
@@ -122,9 +149,7 @@ export interface ChatAppFullscreenCommandQueueProps {
   commandQueueItems?: CommandQueueItem[];
   onCommandQueueRemove?: (id: string) => void;
   onCommandQueueClear?: () => void;
-  /** Hide individual item remove buttons */
   hideItemRemove?: boolean;
-  /** Called when user wants to recall queue items to input */
   onCommandQueueRecall?: (items: CommandQueueItem[]) => void;
 }
 
@@ -152,11 +177,6 @@ const OVERLAY_AVATAR_TRANSITION = {
 
 const FLOAT_OVERLAY_TRANSITION = {
   duration: 0.2,
-  ease: [0.4, 0, 0.2, 1],
-} as const;
-
-const PANEL_FADE_TRANSITION = {
-  duration: 0.18,
   ease: [0.4, 0, 0.2, 1],
 } as const;
 
@@ -190,6 +210,12 @@ export function ChatApp({
   inputValue,
   onInputValueChange,
   inputProps,
+  topToolbar,
+  bottomToolbar,
+  bottomToolbarLeftContent,
+  enableWritingMode = true,
+  onScreenshot,
+  onOpenFile,
   headerContent,
   fullscreenContent,
   surfaceOverlay,
@@ -215,21 +241,307 @@ export function ChatApp({
 }: ChatAppProps) {
   const { t } = useTranslation();
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
+  const [isWritingMode, setIsWritingMode] = React.useState(false);
+  const [isScreenshotCapturing, setIsScreenshotCapturing] = React.useState(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
   const content = inputValue ?? uncontrolledInput;
   const setContent = React.useCallback((value: string) => {
     if (inputValue === undefined) setUncontrolledInput(value);
     onInputValueChange?.(value);
   }, [inputValue, onInputValueChange]);
 
+  const {
+    attachments,
+    addAttachment,
+    removeAttachment,
+    clearAttachments,
+    isAnyLoading: isAttachmentLoading,
+  } = useAttachments();
+
+  const { isComposing, handleCompositionStart, handleCompositionEnd } = useIMEComposition();
+
   const compactActivitySummary = compactSummaryContent ?? t("chat_app.activity.ready", "Ready when you are.");
   const hasCompactDraft = content.trim().length > 0;
 
+  // Tasks summary for top toolbar
+  const todoItems = React.useMemo(
+    () => buildTodoListItemsFromMessages(messages, messageUpdates),
+    [messageUpdates, messages]
+  );
+
+  const backgroundTasks = React.useMemo(
+    () => buildBackgroundTasksFromMessages(messages).map(({ now: _now, ...task }) => task),
+    [messages]
+  );
+
+  const tasksSummary: TasksSummary | undefined = React.useMemo(() => {
+    if (todoItems.length === 0) return undefined;
+    const completedCount = todoItems.filter((item) => item.status === "completed").length;
+    return {
+      items: todoItems,
+      completedCount,
+      totalCount: todoItems.length,
+    };
+  }, [todoItems]);
+
+  const backgroundTasksSummary: BackgroundTasksSummary | undefined = React.useMemo(() => {
+    if (backgroundTasks.length === 0) return undefined;
+    const runningCount = backgroundTasks.filter((task) => task.status === "running").length;
+    return {
+      items: backgroundTasks,
+      runningCount,
+      totalCount: backgroundTasks.length,
+    };
+  }, [backgroundTasks]);
+
+  const handleBackgroundTaskClick = React.useCallback((task: BackgroundTaskItem) => {
+    onExpandSubagent?.(
+      task.description,
+      task.kind,
+      task.messages ?? [],
+      {
+        subagentId: task.sourceMessage?.subagentId,
+        toolUseId: task.sourceMessage?.toolUseId ?? task.id,
+        parentMessage: task.sourceMessage,
+        messages: task.messages,
+      }
+    );
+  }, [onExpandSubagent]);
+
+  const renderTasksPopup = React.useCallback(() => (
+    <div className="rounded-lg border border-border bg-popover shadow-xl">
+      <TodoListPanel items={todoItems} defaultExpanded />
+    </div>
+  ), [todoItems]);
+
+  const renderBackgroundTasksPopup = React.useCallback(() => (
+    <div className="rounded-lg border border-border bg-popover shadow-xl">
+      <BackgroundTaskList tasks={backgroundTasks} onTaskClick={handleBackgroundTaskClick} defaultExpanded />
+    </div>
+  ), [backgroundTasks, handleBackgroundTaskClick]);
+
+  // Screenshot handler
+  const handleScreenshot = React.useCallback(
+    async (hideWindow?: boolean) => {
+      if (!onScreenshot) return;
+      setIsScreenshotCapturing(true);
+      try {
+        const attachment = await onScreenshot(hideWindow);
+        if (attachment) {
+          addAttachment(attachment);
+        }
+      } catch (error) {
+        console.error("[ChatApp] Screenshot failed:", error);
+      } finally {
+        setIsScreenshotCapturing(false);
+      }
+    },
+    [onScreenshot, addAttachment]
+  );
+
+  // Insert emoji at cursor
+  const insertEmoji = React.useCallback(
+    (emoji: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        setContent(content + emoji);
+        return;
+      }
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.substring(0, start) + emoji + content.substring(end);
+      setContent(newContent);
+      requestAnimationFrame(() => {
+        if (textarea) {
+          const newPosition = start + emoji.length;
+          textarea.setSelectionRange(newPosition, newPosition);
+          textarea.focus();
+        }
+      });
+    },
+    [content, setContent]
+  );
+
+  // File click handler for top toolbar
+  const handleFileClick = React.useCallback(async () => {
+    if (onOpenFile) {
+      const openedAttachments = await onOpenFile();
+      if (openedAttachments && openedAttachments.length > 0) {
+        openedAttachments.forEach((a) => addAttachment(a));
+      }
+    }
+  }, [onOpenFile, addAttachment]);
+
+  const canSubmit = (content.trim().length > 0 || attachments.length > 0) && !isAttachmentLoading;
+
   const handleSubmit = React.useCallback(() => {
     const trimmed = content.trim();
-    if (!trimmed) return;
-    onSend(trimmed);
+    if (!trimmed && attachments.length === 0) return;
+    onSend(trimmed, attachments.length > 0 ? attachments : undefined);
     setContent("");
-  }, [content, onSend, setContent]);
+    clearAttachments();
+    setIsWritingMode(false);
+  }, [content, attachments, onSend, setContent, clearAttachments]);
+
+  // WritingMode keyboard handler
+  const handleWritingModeKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Escape") {
+        setIsWritingMode(false);
+        return;
+      }
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !isComposing) {
+        event.preventDefault();
+        if (canSubmit) {
+          handleSubmit();
+        }
+      }
+    },
+    [isComposing, canSubmit, handleSubmit]
+  );
+
+  // WritingMode paste handler
+  const handleWritingModePaste = React.useCallback(
+    async (event: React.ClipboardEvent) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          event.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const data = e.target?.result as string;
+              if (data) {
+                addAttachment({
+                  id,
+                  type: "image",
+                  name: file.name || "pasted-image.png",
+                  data,
+                  mimeType: file.type || "image/png",
+                });
+              }
+            };
+            reader.readAsDataURL(file);
+          }
+          break;
+        }
+      }
+    },
+    [addAttachment]
+  );
+
+  // Default top toolbar (for ChatInput)
+  const defaultTopToolbar = (
+    <ChatInputTopToolbar
+      onEmojiSelect={insertEmoji}
+      onFileClick={handleFileClick}
+      onScreenshot={onScreenshot ? handleScreenshot : undefined}
+      onExpandClick={enableWritingMode ? () => setIsWritingMode(true) : undefined}
+      isLoading={isStreaming}
+      disabled={false}
+      isScreenshotCapturing={isScreenshotCapturing}
+      showExpand={enableWritingMode}
+      tasksSummary={tasksSummary}
+      backgroundTasksSummary={backgroundTasksSummary}
+      renderTasksPopup={renderTasksPopup}
+      renderBackgroundTasksPopup={renderBackgroundTasksPopup}
+      renderEmojiPicker={(pickerProps) => <EmojiPicker {...pickerProps} />}
+    />
+  );
+
+  // WritingMode top toolbar (no expand button since already in fullscreen)
+  const writingModeTopToolbar = (
+    <ChatInputTopToolbar
+      onEmojiSelect={insertEmoji}
+      onFileClick={handleFileClick}
+      onScreenshot={onScreenshot ? handleScreenshot : undefined}
+      isLoading={isStreaming}
+      disabled={false}
+      isScreenshotCapturing={isScreenshotCapturing}
+      showExpand={false}
+      tasksSummary={tasksSummary}
+      backgroundTasksSummary={backgroundTasksSummary}
+      renderTasksPopup={renderTasksPopup}
+      renderBackgroundTasksPopup={renderBackgroundTasksPopup}
+      renderEmojiPicker={(pickerProps) => <EmojiPicker {...pickerProps} />}
+    />
+  );
+
+  // Default bottom toolbar with external leftContent slot
+  const defaultBottomToolbar = (
+    <ChatInputBottomToolbar
+      leftContent={bottomToolbarLeftContent}
+      onSend={handleSubmit}
+      onCancel={onCancel}
+      isLoading={isStreaming}
+      canSubmit={canSubmit}
+      allowSendWhileLoading
+    />
+  );
+
+  const resolvedTopToolbar = topToolbar ?? defaultTopToolbar;
+  const resolvedBottomToolbar = bottomToolbar ?? defaultBottomToolbar;
+  const resolvedWritingModeTopToolbar = topToolbar ?? writingModeTopToolbar;
+
+
+  const expandedInputProps: ChatInputProps = {
+    ...inputProps,
+    value: content,
+    onValueChange: setContent,
+    onSend: handleSubmit,
+    onCancel,
+    isLoading: isStreaming,
+    allowSendWhileLoading: true,
+    placeholder: inputProps?.placeholder ?? (
+      isStreaming
+        ? t("chat_app.input.placeholder.queue", "Queue a message...")
+        : t("chat_app.input.placeholder.default", "Ask Viben...")
+    ),
+    layoutVariant: "expanded",
+    showTopToolbar: true,
+    showBottomToolbar: true,
+    topToolbar: resolvedTopToolbar,
+    bottomToolbar: resolvedBottomToolbar,
+    attachments,
+    onAttachmentsChange: (newAttachments) => {
+      // Attachments are managed by useAttachments hook
+    },
+    isAttachmentLoading,
+    textareaRef,
+    className: `bg-background ${inputProps?.className ?? ""}`,
+  };
+
+  const compactInputProps: ChatInputProps = {
+    ...inputProps,
+    value: content,
+    onValueChange: setContent,
+    onSend: handleSubmit,
+    onCancel,
+    isLoading: isStreaming,
+    allowSendWhileLoading: true,
+    placeholder: inputProps?.placeholder ?? (
+      isStreaming
+        ? t("chat_app.input.placeholder.queue", "Queue a message...")
+        : t("chat_app.input.placeholder.default", "Ask Viben...")
+    ),
+    layoutVariant: "compact",
+    onRequestExpand: () => onModeChange("expanded"),
+    showTopToolbar: false,
+    showBottomToolbar: false,
+    onOpenFile,
+    attachments,
+    onAttachmentsChange: (newAttachments) => {
+      // Sync attachments - ChatInput manages them internally but we keep track
+    },
+    isAttachmentLoading,
+    textareaRef,
+    className: `bg-background ${inputProps?.className ?? ""}`,
+  };
 
   const defaultExpandedBody = (
     <>
@@ -269,14 +581,8 @@ export function ChatApp({
         data-shared-element="overlay-input-panel"
         data-testid="expanded-chat-input-container"
       >
-        <CompactChatInput
-          variant="expanded"
-          value={content}
-          isStreaming={isStreaming}
-          onValueChange={setContent}
-          onSend={handleSubmit}
-          onCancel={onCancel}
-          inputProps={getExpandedChatInputProps(inputProps)}
+        <ChatAppPendingInputContent
+          inputProps={expandedInputProps}
           pendingPlan={pendingPlan}
           pendingApproval={pendingApproval}
           pendingQuestion={pendingQuestion}
@@ -315,133 +621,167 @@ export function ChatApp({
       messages={subagentSheet.messages}
       liveMessages={subagentSheet.liveMessages}
       context={subagentSheet.context}
-      loadSubagentDetails={loadSubagentDetails}
+      loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
       onExpandSubagent={onExpandSubagent}
       onInspectTool={onInspectTool}
     />
   ) : null;
 
+  // WritingMode fullscreen overlay
+  const writingModeNode = enableWritingMode && isWritingMode ? (
+    <WritingMode
+      isOpen={isWritingMode}
+      onClose={() => setIsWritingMode(false)}
+      content={content}
+      onContentChange={setContent}
+      attachments={attachments}
+      onRemoveAttachment={removeAttachment}
+      onKeyDown={handleWritingModeKeyDown}
+      onCompositionStart={handleCompositionStart}
+      onCompositionEnd={handleCompositionEnd}
+      onPaste={handleWritingModePaste}
+      topToolbar={resolvedWritingModeTopToolbar}
+      bottomToolbar={resolvedBottomToolbar}
+      isLoading={isStreaming}
+      disabled={false}
+      placeholder={inputProps?.placeholder ?? t("chat_app.input.placeholder.default", "Ask Viben...")}
+      textareaRef={textareaRef}
+    />
+  ) : null;
+
   if (mode === "full") {
     return (
-      <motion.div
-        layoutId="viben-overlay-surface"
-        transition={OVERLAY_TRANSITION}
-        initial={false}
-        data-transition-role="expand-to-full"
-        className={`overlay-shared-surface flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
-          contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
-        }`}
-        style={{ borderRadius: OVERLAY_RADIUS.full }}
-        data-testid="full-overlay"
-      >
-        {expandedContent}
-        {subagentSheetNode}
-        {surfaceOverlay}
-      </motion.div>
+      <>
+        <motion.div
+          layoutId="viben-overlay-surface"
+          transition={OVERLAY_TRANSITION}
+          initial={false}
+          data-transition-role="expand-to-full"
+          className={`overlay-shared-surface flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
+            contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
+          }`}
+          style={{ borderRadius: OVERLAY_RADIUS.full }}
+          data-testid="full-overlay"
+        >
+          {expandedContent}
+          {subagentSheetNode}
+          {surfaceOverlay}
+        </motion.div>
+        {writingModeNode}
+      </>
     );
   }
 
   if (mode === "floating") {
     return (
-      <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
-        <motion.button
-          type="button"
-          aria-label={t("chat_app.overlay.open_compact", "Open compact chat")}
-          onClick={() => onModeChange("compact")}
-          onMouseEnter={() => onModeChange("compact")}
-          initial={{ opacity: 0, x: 10, y: -10 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          exit={{ opacity: 0, x: 14, y: -14 }}
-          transition={FLOAT_OVERLAY_TRANSITION}
-          data-transition-role="float-fade"
-          data-testid="floating-overlay-surface"
-          className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          style={{ borderRadius: OVERLAY_RADIUS.floating }}
-        >
-          <motion.div
-            className="size-14"
-            data-testid="floating-overlay-avatar"
-            data-shared-element="overlay-avatar"
-            data-transition-role="avatar-fade"
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={OVERLAY_AVATAR_TRANSITION}
+      <>
+        <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
+          <motion.button
+            type="button"
+            aria-label={t("chat_app.overlay.open_compact", "Open compact chat")}
+            onClick={() => onModeChange("compact")}
+            onMouseEnter={() => onModeChange("compact")}
+            initial={{ opacity: 0, x: 10, y: -10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: 14, y: -14 }}
+            transition={FLOAT_OVERLAY_TRANSITION}
+            data-transition-role="float-fade"
+            data-testid="floating-overlay-surface"
+            className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            style={{ borderRadius: OVERLAY_RADIUS.floating }}
           >
-            {dynamicAssistantAvatar}
-          </motion.div>
-          {pendingUserMessageCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-              {pendingUserMessageCount > 9 ? "9+" : pendingUserMessageCount}
-            </span>
-          )}
-        </motion.button>
-      </div>
+            <motion.div
+              className="size-14"
+              data-testid="floating-overlay-avatar"
+              data-shared-element="overlay-avatar"
+              data-transition-role="avatar-fade"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={OVERLAY_AVATAR_TRANSITION}
+            >
+              {dynamicAssistantAvatar}
+            </motion.div>
+            {pendingUserMessageCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+                {pendingUserMessageCount > 9 ? "9+" : pendingUserMessageCount}
+              </span>
+            )}
+          </motion.button>
+        </div>
+        {writingModeNode}
+      </>
     );
   }
 
   if (mode === "compact") {
     return (
-      <motion.div
-        layoutId="viben-overlay-surface"
-        transition={OVERLAY_TRANSITION}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0 }}
-        data-shared-surface="overlay"
-        data-transition-role="panel-fade"
-        onMouseLeave={() => {
-          if (!hasCompactDraft) onModeChange("floating");
-        }}
-        className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
-          contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
-        }`}
-        style={{ borderRadius: OVERLAY_RADIUS.compact }}
-        data-testid="compact-overlay"
-      >
-        <AgentPopup
-          avatar={dynamicAssistantAvatar}
-          title={title}
-          summary={compactActivitySummary}
-          showMinimize={hasCompactDraft}
-          onExpand={() => onModeChange("expanded")}
-          onMinimize={() => onModeChange("floating")}
-        />
-        <CompactChatInput
-          variant="compact"
-          value={content}
-          isStreaming={isStreaming}
-          onValueChange={setContent}
-          onSend={handleSubmit}
-          onCancel={onCancel}
-          inputProps={inputProps}
-          pendingPlan={pendingPlan}
-          pendingApproval={pendingApproval}
-          pendingQuestion={pendingQuestion}
-          onApprovePlan={onApprovePlan}
-          onRejectPlan={onRejectPlan}
-          onApprovalDecision={onApprovalDecision}
-          onAnswerQuestions={onAnswerQuestions}
-        />
-      </motion.div>
+      <>
+        <motion.div
+          layoutId="viben-overlay-surface"
+          transition={OVERLAY_TRANSITION}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          data-shared-surface="overlay"
+          data-transition-role="panel-fade"
+          onMouseLeave={() => {
+            if (!hasCompactDraft) onModeChange("floating");
+          }}
+          className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
+            contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
+          }`}
+          style={{ borderRadius: OVERLAY_RADIUS.compact }}
+          data-testid="compact-overlay"
+        >
+          <AgentPopup
+            avatar={dynamicAssistantAvatar}
+            title={title}
+            summary={compactActivitySummary}
+            showMinimize={hasCompactDraft}
+            onExpand={() => onModeChange("expanded")}
+            onMinimize={() => onModeChange("floating")}
+          />
+          <section
+            data-testid="compact-chat-input"
+            data-variant="compact"
+            className={`overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`}
+          >
+            <ChatAppPendingInputContent
+              inputProps={compactInputProps}
+              pendingPlan={pendingPlan}
+              pendingApproval={pendingApproval}
+              pendingQuestion={pendingQuestion}
+              onApprovePlan={onApprovePlan}
+              onRejectPlan={onRejectPlan}
+              onApprovalDecision={onApprovalDecision}
+              onAnswerQuestions={onAnswerQuestions}
+            />
+          </section>
+        </motion.div>
+        {writingModeNode}
+      </>
     );
   }
 
   return (
-    <motion.div
-      layoutId="viben-overlay-surface"
-      transition={OVERLAY_TRANSITION}
-      initial={false}
-      data-transition-role="expand-to-full"
-      className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
-        contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
-      }`}
-      style={{ borderRadius: OVERLAY_RADIUS.expanded }}
-      data-testid="expanded-overlay"
-    >
-      {expandedContent}
-      {subagentSheetNode}
-      {surfaceOverlay}
-    </motion.div>
+    <>
+      <motion.div
+        layoutId="viben-overlay-surface"
+        transition={OVERLAY_TRANSITION}
+        initial={false}
+        data-transition-role="expand-to-full"
+        className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+          contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
+        }`}
+        style={{ borderRadius: OVERLAY_RADIUS.expanded }}
+        data-testid="expanded-overlay"
+      >
+        {expandedContent}
+        {subagentSheetNode}
+        {surfaceOverlay}
+      </motion.div>
+      {writingModeNode}
+    </>
   );
 }
 
@@ -558,26 +898,26 @@ export function ChatAppFullscreenInputPanel({
   onAnswerQuestions,
 }: ChatAppFullscreenInputPanelProps) {
   return (
-      <motion.div
-        layoutId="viben-overlay-input-panel"
-        transition={INTERNAL_LAYOUT_TRANSITION}
-        className="w-full border-t border-border"
-        data-shared-element="overlay-input-panel"
-        data-testid="fullscreen-chat-input-shell"
-      >
-        <div className="w-full" data-testid="fullscreen-chat-input-container">
-          <ChatAppPendingInputContent
-            inputProps={getExpandedChatInputProps(inputProps)}
-            pendingPlan={pendingPlan}
-            pendingApproval={pendingApproval}
-            pendingQuestion={pendingQuestion}
-            onApprovePlan={onApprovePlan}
-            onRejectPlan={onRejectPlan}
-            onApprovalDecision={onApprovalDecision}
-            onAnswerQuestions={onAnswerQuestions}
-          />
-        </div>
-      </motion.div>
+    <motion.div
+      layoutId="viben-overlay-input-panel"
+      transition={INTERNAL_LAYOUT_TRANSITION}
+      className="w-full border-t border-border"
+      data-shared-element="overlay-input-panel"
+      data-testid="fullscreen-chat-input-shell"
+    >
+      <div className="w-full" data-testid="fullscreen-chat-input-container">
+        <ChatAppPendingInputContent
+          inputProps={inputProps}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={onApprovePlan}
+          onRejectPlan={onRejectPlan}
+          onApprovalDecision={onApprovalDecision}
+          onAnswerQuestions={onAnswerQuestions}
+        />
+      </div>
+    </motion.div>
   );
 }
 
@@ -754,57 +1094,30 @@ function ChatAppMessagePanel({
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
 }) {
   const { t } = useTranslation();
-  const todoItems = React.useMemo(
-    () => buildTodoListItemsFromMessages(messages, messageUpdates),
-    [messageUpdates, messages]
-  );
-  const backgroundTasks = React.useMemo(
-    () => buildBackgroundTasksFromMessages(messages).map(({ now: _now, ...task }) => task),
-    [messages]
-  );
-  const handleBackgroundTaskClick = React.useCallback((task: BackgroundTaskItem) => {
-    onExpandSubagent?.(
-      task.description,
-      task.kind,
-      task.messages ?? [],
-      {
-        subagentId: task.sourceMessage?.subagentId,
-        toolUseId: task.sourceMessage?.toolUseId ?? task.id,
-        parentMessage: task.sourceMessage,
-        messages: task.messages,
-      }
-    );
-  }, [onExpandSubagent]);
 
   return (
-    <>
-      <MessageList
-        ref={messageListRef}
-        messages={messages}
-        messageUpdates={messageUpdates}
-        isStreaming={isStreaming}
-        streamingText={streamingText}
-        assistantAvatar={assistantAvatar}
-        artifacts={artifacts}
-        pendingPlan={pendingPlan}
-        pendingApproval={pendingApproval}
-        pendingQuestions={pendingQuestion}
-        welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
-        welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
-        maxMessageWidth={maxMessageWidth}
-        onExpandSubagent={onExpandSubagent}
-        onInspectTool={onInspectTool}
-        onArtifactClick={onArtifactClick}
-        onApprovePlan={onApprovePlan}
-        onRejectPlan={onRejectPlan}
-        onApprovalDecision={onApprovalDecision}
-        onAnswerQuestions={onAnswerQuestions}
-      />
-      <div className="space-y-2 px-4 pb-2">
-        <TodoListPanel items={todoItems} compact />
-        <BackgroundTaskList tasks={backgroundTasks} onTaskClick={handleBackgroundTaskClick} />
-      </div>
-    </>
+    <MessageList
+      ref={messageListRef}
+      messages={messages}
+      messageUpdates={messageUpdates}
+      isStreaming={isStreaming}
+      streamingText={streamingText}
+      assistantAvatar={assistantAvatar}
+      artifacts={artifacts}
+      pendingPlan={pendingPlan}
+      pendingApproval={pendingApproval}
+      pendingQuestions={pendingQuestion}
+      welcomeTitle={welcomeTitle ?? t("chat_app.fullscreen.welcome_title", "@viben/chat Session Player")}
+      welcomeDescription={welcomeDescription ?? t("chat_app.fullscreen.welcome_description", "Press Play to replay the demo session, or load a .jsonl file.")}
+      maxMessageWidth={maxMessageWidth}
+      onExpandSubagent={onExpandSubagent}
+      onInspectTool={onInspectTool}
+      onArtifactClick={onArtifactClick}
+      onApprovePlan={onApprovePlan}
+      onRejectPlan={onRejectPlan}
+      onApprovalDecision={onApprovalDecision}
+      onAnswerQuestions={onAnswerQuestions}
+    />
   );
 }
 
@@ -880,111 +1193,4 @@ export function ExpandedHeaderModeControls({
       </div>
     </>
   );
-}
-
-function CompactChatInput({
-  variant,
-  value,
-  isStreaming,
-  onValueChange,
-  onSend,
-  onCancel,
-  inputProps,
-  pendingPlan,
-  pendingApproval,
-  pendingQuestion,
-  onApprovePlan,
-  onRejectPlan,
-  onApprovalDecision,
-  onAnswerQuestions,
-}: {
-  variant: "compact" | "expanded";
-  value: string;
-  isStreaming: boolean;
-  onValueChange: (value: string) => void;
-  onSend: () => void;
-  onCancel: () => void;
-  inputProps?: Partial<ChatInputProps>;
-  pendingPlan?: TaskPlan | null;
-  pendingApproval?: PendingExecApproval | null;
-  pendingQuestion?: PendingQuestion | null;
-  onApprovePlan?: () => void;
-  onRejectPlan?: () => void;
-  onApprovalDecision?: (decision: string, feedback?: string) => void;
-  onAnswerQuestions?: (answers: Record<string, string[]>) => void;
-}) {
-  const { t } = useTranslation();
-  const shellClassName = variant === "compact"
-    ? `overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`
-    : `overlay-input-shell w-full bg-transparent ${isStreaming ? "overlay-input-shell--running" : ""}`;
-  const resolvedInputProps: ChatInputProps = {
-    ...(variant === "expanded" ? getExpandedChatInputProps(inputProps) : inputProps),
-    value,
-    onValueChange,
-    onSend: (content, attachments) => {
-      if (inputProps?.onSend) {
-        inputProps.onSend(content, attachments);
-        return;
-      }
-      onSend();
-    },
-    onCancel: inputProps?.onCancel ?? onCancel,
-    isLoading: isStreaming,
-    allowSendWhileLoading: true,
-    placeholder: inputProps?.placeholder ?? (
-      isStreaming
-        ? t("chat_app.input.placeholder.queue", "Queue a message...")
-        : t("chat_app.input.placeholder.default", "Ask Viben...")
-    ),
-    layoutVariant: variant === "expanded" ? (inputProps?.layoutVariant ?? "expanded") : "compact",
-    showTopToolbar: variant === "expanded" ? (inputProps?.showTopToolbar ?? true) : false,
-    showConfigBar: variant === "expanded" ? (inputProps?.showConfigBar ?? true) : true,
-    renderEmojiPicker: inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />),
-    renderBottomToolbar: variant === "compact" ? (({ editor, submitControl }) => (
-      <>
-        {editor}
-        {submitControl}
-      </>
-    )) : inputProps?.renderBottomToolbar,
-    defaultHeight: variant === "compact" ? 48 : inputProps?.defaultHeight,
-    minHeight: variant === "compact" ? 48 : inputProps?.minHeight,
-    maxHeight: variant === "compact" ? 48 : inputProps?.maxHeight,
-    showResizeHandle: false,
-    enableWritingMode: variant === "expanded",
-    hideAgentSelector: variant === "compact" ? true : inputProps?.hideAgentSelector,
-    hideModelSelector: variant === "compact" ? true : inputProps?.hideModelSelector,
-    hideExecutorSelector: variant === "compact" ? true : inputProps?.hideExecutorSelector,
-    className: `bg-background ${inputProps?.className ?? ""}`,
-  };
-
-  return (
-    <section
-      data-testid="compact-chat-input"
-      data-variant={variant}
-      className={shellClassName}
-    >
-      <ChatAppPendingInputContent
-        inputProps={resolvedInputProps}
-        pendingPlan={pendingPlan}
-        pendingApproval={pendingApproval}
-        pendingQuestion={pendingQuestion}
-        onApprovePlan={onApprovePlan}
-        onRejectPlan={onRejectPlan}
-        onApprovalDecision={onApprovalDecision}
-        onAnswerQuestions={onAnswerQuestions}
-      />
-    </section>
-  );
-}
-
-function getExpandedChatInputProps(inputProps: ChatInputProps): ChatInputProps;
-function getExpandedChatInputProps(inputProps?: Partial<ChatInputProps>): Partial<ChatInputProps>;
-function getExpandedChatInputProps(inputProps?: Partial<ChatInputProps>): Partial<ChatInputProps> {
-  return {
-    ...inputProps,
-    layoutVariant: inputProps?.layoutVariant ?? "expanded",
-    showTopToolbar: inputProps?.showTopToolbar ?? true,
-    showConfigBar: inputProps?.showConfigBar ?? true,
-    renderEmojiPicker: inputProps?.renderEmojiPicker ?? ((props) => <EmojiPicker {...props} />),
-  };
 }

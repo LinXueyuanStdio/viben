@@ -11,15 +11,18 @@ import {
   EmojiPicker,
   ExpandedHeader,
   ExpandedHeaderModeControls,
+  TripleSelector,
   useCommandQueue,
   useCommandQueueInputRecall,
 } from "@viben/chat"
+import type { SelectorOption, TripleSelectorValue } from "@viben/chat"
 import type { AgentMessage, ChatAppMode, ChatInputProps, MessageListHandle, CommandQueueItem, MessageAttachment, SlashCommand, SlashCommandSelection } from "@viben/chat"
 import type { ExpandSubagentHandler, SubagentOpenContext } from "@viben/chat"
 import { Play, Pause, SkipForward, SkipBack, RotateCcw, Zap, Sun, Moon, ChevronDown, Bot, MessageSquare, Maximize2, Languages, GripVertical, PanelLeftClose, PanelLeftOpen, X } from "lucide-react"
 import {
   demoAgents,
   demoModels,
+  demoProviders,
   demoTools,
   demoSkills,
   demoSlashCommands,
@@ -210,9 +213,58 @@ export function App() {
 
   // Interactive state for standalone component demos
   const [selectedAgentId, setSelectedAgentId] = useState("coder")
+  const [selectedProviderId, setSelectedProviderId] = useState("anthropic")
   const [selectedModelId, setSelectedModelId] = useState("claude-opus-4-6")
   const [tools, setTools] = useState(demoTools)
   const [skills, setSkills] = useState(demoSkills)
+
+  // TripleSelector value and options (Agent -> Provider -> Model)
+  const tripleSelectorValue = useMemo<TripleSelectorValue>(() => ({
+    first: selectedAgentId,
+    second: selectedProviderId,
+    third: selectedModelId,
+  }), [selectedAgentId, selectedProviderId, selectedModelId])
+
+  const agentTypeOptions = useMemo<SelectorOption[]>(() =>
+    demoAgents.map((agent) => ({
+      id: agent.id,
+      label: agent.name,
+      description: agent.description,
+    })),
+  [])
+
+  const providerOptions = useMemo<SelectorOption[]>(() =>
+    demoProviders.map((provider) => ({
+      id: provider.id,
+      label: provider.name,
+    })),
+  [])
+
+  const modelOptions = useMemo<SelectorOption[]>(() =>
+    demoModels
+      .filter((model) => model.provider === selectedProviderId)
+      .map((model) => ({
+        id: model.id,
+        label: model.name,
+      })),
+  [selectedProviderId])
+
+  const handleTripleSelectorChange = useCallback((value: TripleSelectorValue) => {
+    if (value.first !== selectedAgentId) {
+      setSelectedAgentId(value.first ?? "coder")
+    }
+    if (value.second !== selectedProviderId) {
+      setSelectedProviderId(value.second ?? "anthropic")
+      // Reset model when provider changes
+      const firstModelOfProvider = demoModels.find((m) => m.provider === value.second)
+      if (firstModelOfProvider) {
+        setSelectedModelId(firstModelOfProvider.id)
+      }
+    }
+    if (value.third && value.third !== selectedModelId) {
+      setSelectedModelId(value.third)
+    }
+  }, [selectedAgentId, selectedProviderId, selectedModelId])
 
   // Standalone component demos
   const [showPlan, setShowPlan] = useState(false)
@@ -559,23 +611,6 @@ export function App() {
     placeholder: player.isStreaming ? t("example.chat_input.placeholder.queue", "Type to queue a message...") : t("example.chat_input.placeholder.default", "Type a message..."),
     layoutVariant: "expanded",
     showTopToolbar: true,
-    showConfigBar: true,
-    renderEmojiPicker: (props) => <EmojiPicker {...props} />,
-    hideExecutorSelector: true,
-    agents: demoAgents.map(a => ({ ...a, model: undefined })),
-    selectedAgentId,
-    onAgentChange: setSelectedAgentId,
-    models: demoModels,
-    selectedModelId,
-    onModelChange: setSelectedModelId,
-    tools,
-    onToggleTool: handleToggleTool,
-    enabledToolsCount: tools.filter(t => t.enabled).length,
-    skills,
-    onToggleSkill: handleToggleSkill,
-    enabledSkillsCount: skills.filter(s => s.enabled).length,
-    contextTokens: 20000,
-    contextBreakdown: demoContextBreakdown,
     slashCommands: demoSlashCommands,
     onSlashCommand: handleSlashCommand,
   }
@@ -874,6 +909,23 @@ export function App() {
     selectedChatAppSessionTitle,
   ])
 
+  const tripleSelectorNode = (
+    <TripleSelector
+      compact
+      firstOptions={agentTypeOptions}
+      firstLabel={t("chat.agentType", "Agent Type")}
+      firstPlaceholder={t("chat.selectAgent", "Select agent...")}
+      secondOptions={providerOptions}
+      secondLabel={t("chat.provider", "Provider")}
+      secondPlaceholder={t("chat.selectProvider", "Select provider...")}
+      thirdOptions={modelOptions}
+      thirdLabel={t("chat.model", "Model")}
+      thirdPlaceholder={t("chat.selectModel", "Select model...")}
+      value={tripleSelectorValue}
+      onChange={handleTripleSelectorChange}
+    />
+  )
+
   const chatAppNode = (
     <ChatApp
       contained
@@ -906,6 +958,7 @@ export function App() {
       onSend={handleSend}
       onCancel={player.pause}
       inputProps={sharedChatInputProps}
+      bottomToolbarLeftContent={tripleSelectorNode}
       statusContent={chatAppStatusContent}
       pendingPlan={player.pendingPlan}
       pendingApproval={player.pendingApproval}

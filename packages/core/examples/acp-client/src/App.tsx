@@ -36,8 +36,10 @@ import {
   PlanApproval,
   QuestionInput,
   SubagentSheet,
+  TripleSelector,
 } from "@viben/chat";
-import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, TaskPlan, ToolConfig } from "@viben/chat";
+import type { SelectorOption, TripleSelectorValue } from "@viben/chat";
+import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, LoadedSubagentDetails, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, SubagentOpenContext, TaskPlan, ToolConfig } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -74,6 +76,7 @@ import {
   slashCommandsToUiSteps,
   systemTextToMessages,
   systemTextToUiSteps,
+  userPromptToMessages,
   userPromptToUiSteps,
   type AcpUiStep,
   type ElicitationFormField,
@@ -342,7 +345,7 @@ export function App() {
   }, [sessionsById]);
 
   const appendTraffic = useCallback((entry: TrafficEntry) => {
-    setTraffic((current) => [entry, ...current].slice(0, 120));
+    setTraffic((current) => [entry, ...current]);
   }, []);
 
   const appendSessionUpdate = useCallback((notification: AcpSessionUpdate) => {
@@ -357,7 +360,7 @@ export function App() {
   const appendClientToolCall = useCallback((call: ClientToolCall) => {
     updateSession(setSessionsById, call.sessionId, (session) => ({
       ...session,
-      clientToolCalls: [call, ...session.clientToolCalls].slice(0, 50),
+      clientToolCalls: [call, ...session.clientToolCalls],
       lastActiveAt: new Date().toISOString(),
     }));
     enqueueUiSteps(setSessionsById, call.sessionId, clientToolCallToUiSteps(call));
@@ -366,7 +369,7 @@ export function App() {
   const appendPermissionRequest = useCallback((request: PermissionRequestLog) => {
     updateSession(setSessionsById, request.sessionId, (session) => ({
       ...session,
-      permissionRequests: [request, ...session.permissionRequests].slice(0, 50),
+      permissionRequests: [request, ...session.permissionRequests],
       lastActiveAt: new Date().toISOString(),
     }));
     enqueueUiSteps(setSessionsById, request.sessionId, permissionDecisionToUiSteps(request));
@@ -375,7 +378,7 @@ export function App() {
   const appendElicitationRequest = useCallback((request: ElicitationRequestLog) => {
     updateSession(setSessionsById, request.sessionId, (session) => ({
       ...session,
-      elicitationRequests: [request, ...session.elicitationRequests].slice(0, 50),
+      elicitationRequests: [request, ...session.elicitationRequests],
       lastActiveAt: new Date().toISOString(),
     }));
     enqueueUiSteps(setSessionsById, request.sessionId, elicitationResultToUiSteps(request));
@@ -384,18 +387,28 @@ export function App() {
   const appendSteerPromptConsumed = useCallback((result: ConsumedSteerPromptResult & { sessionId: string }) => {
     setSteerResult(result);
     setSteerPromptId((current) => current || result.promptId);
+    // Find the steer prompt content from the queue before removing it
+    const steerItem = steerQueuesBySessionId[result.sessionId]?.find((item) => item.id === result.promptId);
     setSteerQueuesBySessionId((current) => ({
       ...current,
       [result.sessionId]: (current[result.sessionId] ?? []).filter((item) => item.id !== result.promptId),
     }));
-    // Use appendUiMessagesImmediately to ensure steer events appear in correct chronological order
-    // rather than being delayed by the queue's 80ms timer
-    appendUiMessagesImmediately(
-      setSessionsById,
-      result.sessionId,
-      systemTextToMessages(`Steer prompt consumed: ${result.promptId}`)
-    );
-  }, []);
+    // Display steer prompt as user message (with user avatar) if content is available,
+    // otherwise fall back to system message
+    if (steerItem?.content) {
+      appendUiMessagesImmediately(
+        setSessionsById,
+        result.sessionId,
+        userPromptToMessages(steerItem.content)
+      );
+    } else {
+      appendUiMessagesImmediately(
+        setSessionsById,
+        result.sessionId,
+        systemTextToMessages(`Steer prompt consumed: ${result.promptId}`)
+      );
+    }
+  }, [steerQueuesBySessionId]);
 
   const executeClientTool = useCallback(
     (request: ClientToolExecutionRequest): CallToolResult => {
@@ -986,6 +999,45 @@ export function App() {
     setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
   }, []);
 
+  const handleLoadSubagentDetails = useCallback<LoadSubagentDetails>(async (context: SubagentOpenContext): Promise<LoadedSubagentDetails> => {
+    // Try to load subagent messages from messageUpdates
+    const liveMessages = resolveLiveSubagentMessages(sessionsById, {
+      title: "",
+      messages: [],
+      context,
+    });
+    if (liveMessages && liveMessages.length > 0) {
+      // Try to find the parent message to extract title and subagent type
+      const toolUseId = context.toolUseId;
+      const subagentId = context.subagentId;
+      let title: string | undefined;
+      let subagentType: string | undefined;
+      for (const session of Object.values(sessionsById)) {
+        const parent = session.uiMessages.find((message) =>
+          message.type === "tool_use" &&
+          (message.name === "Task" || message.name === "Agent") &&
+          (
+            (toolUseId && message.toolUseId === toolUseId) ||
+            (subagentId && (message.subagentId === subagentId || message.toolUseId === subagentId))
+          )
+        );
+        if (parent) {
+          const input = parent.input as { description?: string; subagent_type?: string } | undefined;
+          title = input?.description ?? parent.name;
+          subagentType = input?.subagent_type;
+          break;
+        }
+      }
+      return {
+        title,
+        subagentType,
+        messages: liveMessages,
+      };
+    }
+    // Return empty if no messages found
+    return { messages: [] };
+  }, [sessionsById]);
+
   const handleInspectTool = useCallback<InspectToolHandler>((message) => {
     const result = message.toolUseId
       ? messages.find((candidate) => candidate.type === "tool_result" && candidate.toolUseId === message.toolUseId)
@@ -1164,6 +1216,7 @@ export function App() {
             onSelectSession={(id) => setActiveSessionId(id)}
             subagentSheet={subagentSheet}
             liveSubagentMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
+            loadSubagentDetails={handleLoadSubagentDetails}
             onCloseSubagentSheet={() => setSubagentSheet(null)}
             onExpandSubagent={handleExpandSubagent}
             onInspectTool={handleInspectTool}
@@ -1402,7 +1455,6 @@ export function App() {
                 minHeight={150}
                 maxHeight={420}
                 heightStorageKey="viben_acp_prompt_input_height"
-                enableWritingMode
               />
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -1668,6 +1720,7 @@ export function App() {
           messages={subagentSheet?.messages ?? []}
           liveMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
           context={subagentSheet?.context}
+          loadSubagentDetails={handleLoadSubagentDetails}
           onExpandSubagent={handleExpandSubagent}
         />
       )}
@@ -1742,6 +1795,7 @@ function AcpChatSurface({
   onSelectSession,
   subagentSheet,
   liveSubagentMessages,
+  loadSubagentDetails,
   onCloseSubagentSheet,
   onExpandSubagent,
   onInspectTool,
@@ -1793,6 +1847,7 @@ function AcpChatSurface({
   onSelectSession: (id: string) => void;
   subagentSheet: SubagentSheetState | null;
   liveSubagentMessages?: AgentMessage[];
+  loadSubagentDetails?: LoadSubagentDetails;
   onCloseSubagentSheet: () => void;
   onExpandSubagent: ExpandSubagentHandler;
   onInspectTool: InspectToolHandler;
@@ -1807,16 +1862,6 @@ function AcpChatSurface({
   busy: boolean;
 }) {
   const modelOptions = useMemo<ModelOption[]>(() => buildModelOptions(model), [model]);
-  const executorOptions = useMemo<ExecutorOption[]>(() => BACKEND_OPTIONS.map((backend) => ({
-    id: backend.value,
-    name: backend.label,
-  })), []);
-  const agentOptions = useMemo(() => [{
-    id: "acp-agent",
-    name: "ACP Agent",
-    description: executorType,
-    model,
-  }], [executorType, model]);
   const activeTitle = sessions.find((session) => session.id === sessionId)?.title ?? "ACP Chat";
   const assistantAvatar = useMemo(() => (
     <div className="flex size-full items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -1846,6 +1891,60 @@ function AcpChatSurface({
     onRecallSteerQueue(items, value);
   }, [onPromptChange, onRecallSteerQueue]);
 
+  // TripleSelector options (Executor -> Provider -> Model)
+  const executorSelectorOptions = useMemo<SelectorOption[]>(() =>
+    BACKEND_OPTIONS.map((backend) => ({
+      id: backend.value,
+      label: backend.label,
+    })),
+  []);
+
+  const providerSelectorOptions = useMemo<SelectorOption[]>(() => [
+    { id: "anthropic", label: "Anthropic" },
+    { id: "openai", label: "OpenAI" },
+    { id: "google", label: "Google AI" },
+    { id: "ollama", label: "Ollama" },
+  ], []);
+
+  const modelSelectorOptions = useMemo<SelectorOption[]>(() =>
+    modelOptions.map((m) => ({
+      id: m.id,
+      label: m.name,
+    })),
+  [modelOptions]);
+
+  const tripleSelectorValue = useMemo<TripleSelectorValue>(() => ({
+    first: executorType,
+    second: "anthropic", // Default provider for now
+    third: model,
+  }), [executorType, model]);
+
+  const handleTripleSelectorChange = useCallback((value: TripleSelectorValue) => {
+    if (value.first && value.first !== executorType) {
+      onExecutorTypeChange(value.first);
+    }
+    if (value.third && value.third !== model) {
+      onModelChange(value.third);
+    }
+  }, [executorType, model, onExecutorTypeChange, onModelChange]);
+
+  const tripleSelectorNode = (
+    <TripleSelector
+      compact
+      firstOptions={executorSelectorOptions}
+      firstLabel="Executor"
+      firstPlaceholder="Select executor..."
+      secondOptions={providerSelectorOptions}
+      secondLabel="Provider"
+      secondPlaceholder="Select provider..."
+      thirdOptions={modelSelectorOptions}
+      thirdLabel="Model"
+      thirdPlaceholder="Select model..."
+      value={tripleSelectorValue}
+      onChange={handleTripleSelectorChange}
+    />
+  );
+
   const sharedInputProps = useMemo<Partial<ChatInputProps>>(() => ({
     value: prompt,
     onValueChange: onPromptChange,
@@ -1861,58 +1960,23 @@ function AcpChatSurface({
     slashCommands,
     onSlashCommand: handleSlashCommand,
     showTopToolbar: true,
-    showConfigBar: true,
-    hideAgentSelector: false,
-    agents: agentOptions,
-    selectedAgentId: "acp-agent",
-    onAgentChange: () => undefined,
-    models: modelOptions,
-    selectedModelId: model,
-    onModelChange,
-    executors: executorOptions,
-    selectedExecutor: executorType,
-    onExecutorChange: onExecutorTypeChange,
-    tools,
-    onToggleTool: () => undefined,
-    enabledToolsCount: tools.filter((tool) => tool.enabled).length,
-    skills,
-    onToggleSkill: () => undefined,
-    enabledSkillsCount: skills.filter((skill) => skill.enabled).length,
-    contextTokens: estimateContextTokens(contextBreakdown),
-    contextBreakdown,
-    configBarLeftExtra: (
-      <span className="hidden rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground sm:inline-flex">
-        {slashCommands.length} commands
-      </span>
-    ),
     showResizeHandle: true,
     defaultHeight: 132,
     minHeight: 96,
     maxHeight: 360,
     heightStorageKey: "viben_acp_chat_input_height",
-    enableWritingMode: true,
   }), [
-    agentOptions,
     connected,
-    contextBreakdown,
-    executorOptions,
-    executorType,
     handleRecallQueue,
     handleSend,
     handleSlashCommand,
     isStreaming,
-    model,
-    modelOptions,
     onCancelTurn,
-    onExecutorTypeChange,
-    onModelChange,
     onPromptChange,
     prompt,
     sessionId,
-    skills,
     slashCommands,
     steerQueueItems,
-    tools,
   ]);
 
   const statusContent = (
@@ -2079,6 +2143,7 @@ function AcpChatSurface({
         inputValue={prompt}
         onInputValueChange={onPromptChange}
         inputProps={sharedInputProps}
+        bottomToolbarLeftContent={tripleSelectorNode}
         statusContent={statusContent}
         fullscreenContent={fullscreenContent}
         pendingPlan={pendingPlan}
@@ -2096,6 +2161,7 @@ function AcpChatSurface({
           messages: subagentSheet.messages,
           liveMessages: liveSubagentMessages,
           context: subagentSheet.context,
+          loadSubagentDetails,
         } : undefined}
         onExpandSubagent={onExpandSubagent}
         onInspectTool={onInspectTool}

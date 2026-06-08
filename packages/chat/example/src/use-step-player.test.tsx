@@ -61,6 +61,23 @@ describe("useStepPlayer", () => {
     ]);
   });
 
+  test("keeps Claude Code interrupt notices in the message list instead of the command queue", () => {
+    const steps: DemoStep[] = [
+      { messages: [{ id: "tool-use", type: "tool_use", name: "Read", toolUseId: "tool-1" }] },
+      { messages: [{ id: "interrupt", type: "user", content: "[Request interrupted by user]" }] },
+    ];
+
+    const { result } = renderHook(() => useStepPlayer(steps));
+
+    act(() => {
+      result.current.next();
+      result.current.next();
+    });
+
+    expect(result.current.messages.map((message) => message.id)).toEqual(["tool-use", "interrupt"]);
+    expect(result.current.queuedUserMessages).toEqual([]);
+  });
+
   test("auto playback does not stall before the tool result that releases queued scripted users", () => {
     vi.useFakeTimers();
 

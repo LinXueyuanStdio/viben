@@ -20,8 +20,10 @@ export type { ModelIconOptions } from "./model-icons";
 // ChatInput - Main chat input component
 export {
   ChatInput,
-  ChatInputToolbar,
-  ChatInputConfigBar,
+  useChatInput,
+  ChatInputTopToolbar,
+  ChatInputBottomToolbar,
+  ChatInputSubmitControl,
   AttachmentPreview,
   SlashCommandMenu,
   WritingMode,
@@ -44,6 +46,10 @@ export type {
 } from "./chat-input";
 export type {
   ChatInputProps,
+  ChatInputContextValue,
+  ChatInputTopToolbarProps,
+  ChatInputBottomToolbarProps,
+  ChatInputSubmitControlProps,
   SlashCommandMenuProps,
   AgentOption,
   ModelOption,
@@ -51,9 +57,12 @@ export type {
   GlobalChatConfig,
   ChatConfigVisibility,
   QueuedInputRecallItem,
-  ChatInputToolbarRenderProps,
-  ChatInputBottomToolbarRenderProps,
-  ChatInputWritingModeRenderProps,
+  TasksSummary,
+  BackgroundTasksSummary,
+} from "./chat-input";
+
+// WritingMode types (exported from writing-mode.tsx)
+export type {
   WritingModeAttachmentsProps,
   WritingModeEditorProps,
   WritingModeFooterProps,
@@ -202,3 +211,12 @@ export type {
 // Virtual Scroll
 export { useVirtualScroll } from "./hooks/use-virtual-scroll";
 export type { UseVirtualScrollOptions, UseVirtualScrollResult } from "./hooks/use-virtual-scroll";
+
+// Selectors
+export { SingleSelector, TripleSelector } from "./selector";
+export type {
+  SelectorOption,
+  SingleSelectorProps,
+  TripleSelectorProps,
+  TripleSelectorValue,
+} from "./selector";

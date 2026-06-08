@@ -45,26 +45,31 @@ const {
 vi.mock("../chat-input", async () => {
   const React = await import("react");
   return {
+    useAttachments: () => ({
+      attachments: [],
+      addAttachment: vi.fn(),
+      clearAttachments: vi.fn(),
+      isAnyLoading: false,
+    }),
     ChatInput: (props: Record<string, unknown>) => React.createElement(
       "div",
       { "data-testid": "overlay-chat-input-props" },
       React.createElement("span", { "data-testid": "show-top-toolbar" }, String(props.showTopToolbar)),
+      React.createElement("span", { "data-testid": "show-bottom-toolbar" }, String(props.showBottomToolbar)),
       React.createElement("span", { "data-testid": "layout-variant" }, String(props.layoutVariant)),
-      React.createElement("span", { "data-testid": "show-config-bar" }, String(props.showConfigBar)),
-      React.createElement("span", { "data-testid": "has-emoji-renderer" }, String(typeof props.renderEmojiPicker === "function")),
-      React.createElement("span", { "data-testid": "hide-agent-selector" }, String(props.hideAgentSelector)),
-      React.createElement("span", { "data-testid": "hide-model-selector" }, String(props.hideModelSelector)),
+      React.createElement("span", { "data-testid": "has-top-toolbar" }, String(props.topToolbar != null)),
+      React.createElement("span", { "data-testid": "has-bottom-toolbar" }, String(props.bottomToolbar != null)),
       React.createElement("span", { "data-testid": "slash-count" }, String((props.slashCommands as unknown[] | undefined)?.length ?? 0)),
       React.createElement("span", { "data-testid": "queued-count" }, String((props.queuedInputRecallItems as unknown[] | undefined)?.length ?? 0)),
       React.createElement("span", { "data-testid": "default-height" }, String(props.defaultHeight)),
       React.createElement("span", { "data-testid": "min-height" }, String(props.minHeight)),
       React.createElement("span", { "data-testid": "max-height" }, String(props.maxHeight)),
       React.createElement("span", { "data-testid": "input-class-name" }, String(props.className)),
-      props.showConfigBar && !props.renderBottomToolbar
-        ? React.createElement("div", { "data-testid": "chat-input-config-controls" })
+      props.topToolbar
+        ? React.createElement("div", { "data-testid": "chat-input-top-toolbar" })
         : null,
-      typeof props.renderBottomToolbar === "function"
-        ? React.createElement("div", { "data-testid": "custom-bottom-toolbar" })
+      props.bottomToolbar
+        ? React.createElement("div", { "data-testid": "chat-input-bottom-toolbar" })
         : null,
       React.createElement("input", {
         "aria-label": "Mock chat value",
@@ -73,6 +78,8 @@ vi.mock("../chat-input", async () => {
       }),
       React.createElement("button", { type: "button", onClick: () => (props.onSend as (content: string) => void)("mock send") }, "Mock send")
     ),
+    ChatInputTopToolbar: () => React.createElement("div", { "data-testid": "chat-input-toolbar" }),
+    ChatInputBottomToolbar: () => React.createElement("div", { "data-testid": "chat-input-config-controls" }),
   };
 });
 
@@ -114,12 +121,6 @@ vi.mock("../exec-approval", async () => {
   };
 });
 
-vi.mock("../emoji-picker", async () => {
-  const React = await import("react");
-  return {
-    EmojiPicker: () => React.createElement("div", { "data-testid": "emoji-picker" }, "EmojiPicker"),
-  };
-});
 
 vi.mock("../message-list", async () => {
   const React = await import("react");
@@ -304,7 +305,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("floating-overlay")).toHaveClass("left-6");
     expect(screen.getByTestId("floating-overlay")).toHaveClass("bottom-6");
     expect(screen.queryByTestId("agent-popup")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("compact-chat-input")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("overlay-chat-input-props")).not.toBeInTheDocument();
   });
 
   test("compact mode renders agent popup above the one-line chat input", () => {
@@ -324,7 +325,7 @@ describe("ChatApp", () => {
     expect(surface).toHaveClass("left-5");
     expect(surface).toHaveClass("bottom-5");
     expect(surface.children[0]).toHaveAttribute("data-testid", "agent-popup");
-    expect(surface.children[1]).toHaveAttribute("data-testid", "compact-chat-input");
+    expect(surface.children[1]).toHaveAttribute("data-testid", "overlay-chat-input-props");
     expect(screen.getByTestId("agent-popup-title")).toHaveTextContent("Viben session");
     expect(screen.queryByText("Viben Sprite")).not.toBeInTheDocument();
     expect(screen.queryByText("Idle")).not.toBeInTheDocument();
@@ -348,7 +349,7 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("plan-approval"));
+    expect(screen.getByTestId("overlay-chat-input-props")).toContainElement(screen.getByTestId("plan-approval"));
     expect(screen.queryByTestId("overlay-chat-input-props")).not.toBeInTheDocument();
 
     rerender(
@@ -364,7 +365,7 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("exec-approval"));
+    expect(screen.getByTestId("overlay-chat-input-props")).toContainElement(screen.getByTestId("exec-approval"));
 
     rerender(
       <ChatApp
@@ -379,7 +380,7 @@ describe("ChatApp", () => {
       />
     );
 
-    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("question-input"));
+    expect(screen.getByTestId("overlay-chat-input-props")).toContainElement(screen.getByTestId("question-input"));
   });
 
   test("floating and compact keep avatar stable while the surface morphs", () => {
@@ -467,7 +468,7 @@ describe("ChatApp", () => {
     expect(screen.getByTestId("full-overlay")).toBeInTheDocument();
     expect(screen.queryByTestId("expanded-header")).not.toBeInTheDocument();
     expect(screen.getByTestId("message-list")).toBeInTheDocument();
-    expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
+    expect(screen.getByTestId("overlay-chat-input-props")).toBeInTheDocument();
   });
 
   test("renders todo and background task summaries from the ChatApp message stream", () => {
@@ -749,7 +750,7 @@ describe("ChatApp", () => {
     expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
     expect(screen.getByTestId("message-list")).toBeInTheDocument();
-    expect(screen.getByTestId("compact-chat-input")).toBeInTheDocument();
+    expect(screen.getByTestId("overlay-chat-input-props")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-overlay").querySelector("[data-shared-element='overlay-header']")).toBeInTheDocument();
     expect(screen.getByTestId("expanded-message-panel")).toHaveAttribute("data-shared-element", "overlay-message-panel");
     expect(screen.getByTestId("expanded-chat-input-container")).toHaveAttribute("data-shared-element", "overlay-input-panel");
@@ -770,7 +771,7 @@ describe("ChatApp", () => {
     );
 
     expect(screen.getByTestId("expanded-message-panel")).toContainElement(screen.getByTestId("expanded-status-content"));
-    expect(screen.getByTestId("compact-chat-input")).toContainElement(screen.getByTestId("exec-approval"));
+    expect(screen.getByTestId("overlay-chat-input-props")).toContainElement(screen.getByTestId("exec-approval"));
     expect(screen.queryByTestId("overlay-chat-input-props")).not.toBeInTheDocument();
   });
 
@@ -1222,10 +1223,8 @@ describe("ChatApp", () => {
 
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("false");
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("compact");
-    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
-    expect(screen.getByTestId("has-emoji-renderer")).toHaveTextContent("true");
-    expect(screen.getByTestId("hide-agent-selector")).toHaveTextContent("true");
-    expect(screen.getByTestId("hide-model-selector")).toHaveTextContent("true");
+    expect(screen.getByTestId("show-bottom-toolbar")).toHaveTextContent("true");
+    expect(screen.getByTestId("has-bottom-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("slash-count")).toHaveTextContent("1");
     expect(screen.getByTestId("queued-count")).toHaveTextContent("1");
     expect(screen.getByTestId("default-height")).toHaveTextContent("48");
@@ -1247,7 +1246,7 @@ describe("ChatApp", () => {
 
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
-    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
+    expect(screen.getByTestId("show-bottom-toolbar")).toHaveTextContent("true");
     expect(screen.getByTestId("chat-input-config-controls")).toBeInTheDocument();
     expect(screen.getByTestId("default-height")).toHaveTextContent("undefined");
     expect(screen.getByTestId("min-height")).toHaveTextContent("undefined");
@@ -1266,7 +1265,7 @@ describe("ChatApp", () => {
       />
     );
 
-    const input = screen.getByTestId("compact-chat-input");
+    const input = screen.getByTestId("overlay-chat-input-props");
     expect(input).toHaveAttribute("data-variant", "expanded");
     expect(input).not.toHaveClass("rounded-xl");
     expect(input).not.toHaveClass("border");
@@ -1286,7 +1285,7 @@ describe("ChatApp", () => {
     );
 
     const inputContainer = screen.getByTestId("expanded-chat-input-container");
-    const input = screen.getByTestId("compact-chat-input");
+    const input = screen.getByTestId("overlay-chat-input-props");
     expect(inputContainer).toHaveClass("w-full");
     expect(inputContainer).not.toHaveClass("p-3");
     expect(input).toHaveClass("w-full");
@@ -1494,7 +1493,7 @@ describe("ChatAppFullscreenPanel", () => {
     expect(screen.getByTestId("message-list-count")).toHaveTextContent("2");
     expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
     expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
-    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
+    expect(screen.getByTestId("show-bottom-toolbar")).toHaveTextContent("true");
   });
 
   test("uses the same expanded chat input configuration and full width container", () => {
@@ -1520,9 +1519,6 @@ describe("ChatAppFullscreenPanel", () => {
     expect(screen.getByTestId("fullscreen-chat-input-shell")).not.toHaveClass("py-2");
     expect(screen.getByTestId("fullscreen-chat-input-container")).toHaveClass("w-full");
     expect(screen.getByTestId("fullscreen-chat-input-container")).not.toHaveClass("max-w-[760px]");
-    expect(screen.getByTestId("show-top-toolbar")).toHaveTextContent("true");
-    expect(screen.getByTestId("layout-variant")).toHaveTextContent("expanded");
-    expect(screen.getByTestId("show-config-bar")).toHaveTextContent("true");
     expect(screen.getByTestId("slash-count")).toHaveTextContent("1");
     expect(screen.getByTestId("queued-count")).toHaveTextContent("1");
     expect(screen.getByTestId("input-class-name")).toHaveTextContent("shared-expanded-input");

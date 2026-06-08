@@ -87,6 +87,19 @@ export function systemTextToMessages(content: string): AgentMessage[] {
   }];
 }
 
+/**
+ * Create user messages that can be appended directly to uiMessages.
+ * Use this for steer prompts that have been consumed by the agent.
+ */
+export function userPromptToMessages(content: string): AgentMessage[] {
+  return [{
+    id: createStepId("user"),
+    type: "user",
+    content,
+    timestamp: Date.now(),
+  }];
+}
+
 export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUiStep[] {
   const update = notification.update;
   switch (update.sessionUpdate) {
@@ -661,6 +674,7 @@ function readMetaString(meta: unknown, key: string): string | undefined {
  * - update._meta.subagent_id
  * - update._meta.parentToolCallId
  * - update._meta.parent_tool_call_id
+ * - update._meta.claudeCode.parentToolUseId (Claude Code format)
  */
 function extractSubagentId(update: Record<string, unknown>): string | undefined {
   return (
@@ -671,8 +685,16 @@ function extractSubagentId(update: Record<string, unknown>): string | undefined 
     readMetaString(update._meta, "subagentId") ??
     readMetaString(update._meta, "subagent_id") ??
     readMetaString(update._meta, "parentToolCallId") ??
-    readMetaString(update._meta, "parent_tool_call_id")
+    readMetaString(update._meta, "parent_tool_call_id") ??
+    readClaudeCodeParentToolUseId(update._meta)
   );
+}
+
+function readClaudeCodeParentToolUseId(meta: unknown): string | undefined {
+  if (!isRecord(meta)) return undefined;
+  const claudeCode = meta.claudeCode;
+  if (!isRecord(claudeCode)) return undefined;
+  return readString(claudeCode.parentToolUseId);
 }
 
 function createStepId(prefix: string): string {

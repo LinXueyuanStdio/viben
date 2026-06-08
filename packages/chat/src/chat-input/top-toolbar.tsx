@@ -1,11 +1,12 @@
 /**
- * ChatInput Toolbar Component
+ * ChatInput Top Toolbar Component
  *
- * Top toolbar with emoji picker, file attachment, screenshot, and expand buttons.
+ * Top toolbar with emoji picker, file attachment, screenshot, expand buttons,
+ * and optional task/background task popup triggers.
  */
 
 import type { ReactNode } from "react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Smile,
@@ -15,6 +16,8 @@ import {
   ChevronDown,
   EyeOff,
   Loader2,
+  ListTodo,
+  Clock3,
 } from "lucide-react";
 import {
   cn,
@@ -31,8 +34,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@viben/ui";
+import type { TodoListItem } from "../todo-list/types";
+import type { BackgroundTaskItem } from "../background-task-list/types";
 
-export interface ChatInputToolbarProps {
+export interface TasksSummary {
+  items: TodoListItem[];
+  completedCount: number;
+  totalCount: number;
+}
+
+export interface BackgroundTasksSummary {
+  items: BackgroundTaskItem[];
+  runningCount: number;
+  totalCount: number;
+}
+
+export interface ChatInputTopToolbarProps {
   /** Callback when emoji is selected */
   onEmojiSelect: (emoji: string) => void;
   /** Render the picker shown inside the emoji popover. Toolbar does not own a picker implementation. */
@@ -59,9 +76,17 @@ export interface ChatInputToolbarProps {
   children?: ReactNode;
   /** Additional CSS class */
   className?: string;
+  /** Tasks summary for displaying task button */
+  tasksSummary?: TasksSummary;
+  /** Background tasks summary for displaying background tasks button */
+  backgroundTasksSummary?: BackgroundTasksSummary;
+  /** Render custom tasks popup content */
+  renderTasksPopup?: () => ReactNode;
+  /** Render custom background tasks popup content */
+  renderBackgroundTasksPopup?: () => ReactNode;
 }
 
-export function ChatInputToolbar({
+export function ChatInputTopToolbar({
   onEmojiSelect,
   renderEmojiPicker,
   onFileClick,
@@ -75,9 +100,17 @@ export function ChatInputToolbar({
   endActions,
   children,
   className,
-}: ChatInputToolbarProps) {
+  tasksSummary,
+  backgroundTasksSummary,
+  renderTasksPopup,
+  renderBackgroundTasksPopup,
+}: ChatInputTopToolbarProps) {
   const { t } = useTranslation();
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const [isTasksHovered, setIsTasksHovered] = useState(false);
+  const [isBackgroundTasksHovered, setIsBackgroundTasksHovered] = useState(false);
+  const tasksHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const backgroundTasksHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleEmojiSelect = useCallback(
     (emoji: string) => {
@@ -86,6 +119,35 @@ export function ChatInputToolbar({
     },
     [onEmojiSelect]
   );
+
+  const handleTasksMouseEnter = useCallback(() => {
+    if (tasksHoverTimeoutRef.current) {
+      clearTimeout(tasksHoverTimeoutRef.current);
+    }
+    setIsTasksHovered(true);
+  }, []);
+
+  const handleTasksMouseLeave = useCallback(() => {
+    tasksHoverTimeoutRef.current = setTimeout(() => {
+      setIsTasksHovered(false);
+    }, 150);
+  }, []);
+
+  const handleBackgroundTasksMouseEnter = useCallback(() => {
+    if (backgroundTasksHoverTimeoutRef.current) {
+      clearTimeout(backgroundTasksHoverTimeoutRef.current);
+    }
+    setIsBackgroundTasksHovered(true);
+  }, []);
+
+  const handleBackgroundTasksMouseLeave = useCallback(() => {
+    backgroundTasksHoverTimeoutRef.current = setTimeout(() => {
+      setIsBackgroundTasksHovered(false);
+    }, 150);
+  }, []);
+
+  const showTasksButton = tasksSummary && tasksSummary.totalCount > 0;
+  const showBackgroundTasksButton = backgroundTasksSummary && backgroundTasksSummary.totalCount > 0;
 
   return (
     <div
@@ -189,6 +251,78 @@ export function ChatInputToolbar({
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Tasks Button */}
+        {showTasksButton && (
+          <div
+            className="relative"
+            onMouseEnter={handleTasksMouseEnter}
+            onMouseLeave={handleTasksMouseLeave}
+          >
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs font-normal"
+                  >
+                    <ListTodo className="h-3.5 w-3.5" />
+                    <span>
+                      {t("chat.tasks", "Tasks")} ({tasksSummary.completedCount}/{tasksSummary.totalCount})
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("chat.tasks.tooltip", "View tasks")}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {isTasksHovered && renderTasksPopup && (
+              <div
+                className="absolute bottom-full right-0 z-50 mb-1 min-w-[280px] max-w-[360px]"
+                onMouseEnter={handleTasksMouseEnter}
+                onMouseLeave={handleTasksMouseLeave}
+              >
+                {renderTasksPopup()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Background Tasks Button */}
+        {showBackgroundTasksButton && (
+          <div
+            className="relative"
+            onMouseEnter={handleBackgroundTasksMouseEnter}
+            onMouseLeave={handleBackgroundTasksMouseLeave}
+          >
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs font-normal"
+                  >
+                    <Clock3 className="h-3.5 w-3.5" />
+                    <span>
+                      {t("chat.backgroundTasks", "Background Tasks")} ({backgroundTasksSummary.totalCount})
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{t("chat.backgroundTasks.tooltip", "View background tasks")}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {isBackgroundTasksHovered && renderBackgroundTasksPopup && (
+              <div
+                className="absolute bottom-full right-0 z-50 mb-1 min-w-[320px] max-w-[400px]"
+                onMouseEnter={handleBackgroundTasksMouseEnter}
+                onMouseLeave={handleBackgroundTasksMouseLeave}
+              >
+                {renderBackgroundTasksPopup()}
+              </div>
+            )}
+          </div>
+        )}
+
         {endActions}
 
         {/* Expand Button */}

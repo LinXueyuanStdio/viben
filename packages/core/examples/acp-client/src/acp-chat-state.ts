@@ -258,12 +258,16 @@ export function resolveLiveSubagentMessages(
   sheet: SubagentSheetState | null
 ): AgentMessage[] | undefined {
   const toolUseId = sheet?.context?.toolUseId;
-  if (!toolUseId) return undefined;
+  const subagentId = sheet?.context?.subagentId;
+  if (!toolUseId && !subagentId) return undefined;
   for (const session of Object.values(sessionsById)) {
     const parent = session.uiMessages.find((message) =>
       message.type === "tool_use" &&
       (message.name === "Task" || message.name === "Agent") &&
-      message.toolUseId === toolUseId &&
+      (
+        (toolUseId && message.toolUseId === toolUseId) ||
+        (subagentId && (message.subagentId === subagentId || message.toolUseId === subagentId))
+      ) &&
       message.id
     );
     if (parent?.id) {

@@ -5,7 +5,7 @@
  * Platform-specific features are handled via callback props.
  */
 
-import type { ClipboardEvent, KeyboardEvent, ReactNode, RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import type {
   MessageAttachment,
   SlashCommand,
@@ -101,17 +101,12 @@ export interface ChatInputProps {
   /** Called after queued inputs are merged into the editor. Use this to clear/cancel the backing queue. */
   onQueuedInputRecall?: (items: QueuedInputRecallItem[], value: string) => void;
 
-  // === Custom Content Slots ===
-  /** Extra content to render at the left side of the config bar (after built-in selectors) */
-  configBarLeftExtra?: ReactNode;
-  /** Render an emoji picker UI when the toolbar emoji button is opened. */
-  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => ReactNode;
-  /** Replace the default top toolbar content. */
-  renderTopToolbar?: (props: ChatInputToolbarRenderProps) => ReactNode;
-  /** Replace or extend the default bottom toolbar content. */
-  renderBottomToolbar?: (props: ChatInputBottomToolbarRenderProps) => ReactNode;
-  /** Replace the default fullscreen writing mode page. */
-  renderWritingMode?: (props: ChatInputWritingModeRenderProps) => ReactNode;
+  // === Toolbar Slots ===
+  /** Top toolbar content. Shown when showTopToolbar is true. */
+  topToolbar?: ReactNode;
+  /** Bottom toolbar content. Shown when showBottomToolbar is true. */
+  bottomToolbar?: ReactNode;
+
   /** Callback when cancel/stop button is clicked */
   onCancel?: () => void;
   /** Whether the chat is in loading/streaming state */
@@ -134,20 +129,20 @@ export interface ChatInputProps {
   autoFocus?: boolean;
 
   // === Layout Control ===
-  /** Show top toolbar (emoji, file/screenshot, expand) */
+  /** Show top toolbar area */
   showTopToolbar?: boolean;
-  /**
-   * Show the bottom toolbar. Defaults to true. When false, neither the config
-   * toolbar nor the basic attachment/send action row is rendered.
-   */
+  /** Show the bottom toolbar. Defaults to true. */
   showBottomToolbar?: boolean;
-  /** Show bottom toolbar/config bar (agent, model, tools, skills, context, send) */
-  showConfigBar?: boolean;
   /**
    * Input layout. "expanded" renders top toolbar, editor, bottom toolbar.
-   * "compact" renders the editor inline inside the bottom toolbar.
+   * "compact" renders a single-line input with + button (left) and submit (right).
    */
   layoutVariant?: "expanded" | "compact";
+  /**
+   * Called when user requests multi-line mode (shift+enter in compact mode).
+   * ChatApp should switch to expanded mode when this fires.
+   */
+  onRequestExpand?: () => void;
   /** Show resize handle for adjustable height */
   showResizeHandle?: boolean;
   /** Initial height in pixels when resize handle is enabled */
@@ -158,72 +153,16 @@ export interface ChatInputProps {
   maxHeight?: number;
   /** Optional localStorage key for persisted resize height */
   heightStorageKey?: string;
-  /** Enable fullscreen writing mode */
-  enableWritingMode?: boolean;
 
-  // === Selector Visibility Override ===
-  /** Force hide agent selector even if showConfigBar is true */
-  hideAgentSelector?: boolean;
-  /** Force hide model selector even if showConfigBar is true */
-  hideModelSelector?: boolean;
-  /** Force hide executor selector even if showConfigBar is true */
-  hideExecutorSelector?: boolean;
-
-  // === Agent/Model/Executor Selection ===
-  /** Available agents for selection */
-  agents?: AgentOption[];
-  /** Currently selected agent ID */
-  selectedAgentId?: string | null;
-  /** Callback when agent is selected */
-  onAgentChange?: (agentId: string) => void;
-  /** Callback when agent settings button is clicked */
-  onAgentSettings?: (agentId: string) => void;
-  /** Available models for selection */
-  models?: ModelOption[];
-  /** Currently selected model ID */
-  selectedModelId?: string | null;
-  /** Callback when model is selected */
-  onModelChange?: (modelId: string) => void;
-  /** Available executors for selection */
-  executors?: ExecutorOption[];
-  /** Currently selected executor ID */
-  selectedExecutor?: string;
-  /** Callback when executor is selected */
-  onExecutorChange?: (executorId: string) => void;
-
-  // === Tools/Skills ===
-  /** Available tools for configuration */
-  tools?: ToolConfig[];
-  /** Callback when tool is toggled */
-  onToggleTool?: (toolId: string, enabled: boolean) => void;
-  /** Number of enabled tools (used when tools array not provided) */
-  enabledToolsCount?: number;
-  /** Callback when tools button is clicked (when no inline config) */
-  onToolsClick?: () => void;
-  /** Available skills for configuration */
-  skills?: SkillConfig[];
-  /** Callback when skill is toggled */
-  onToggleSkill?: (skillId: string, enabled: boolean) => void;
-  /** Number of enabled skills (used when skills array not provided) */
-  enabledSkillsCount?: number;
-  /** Callback when skills button is clicked (when no inline config) */
-  onSkillsClick?: () => void;
-
-  // === Context ===
-  /** Current context token count */
-  contextTokens?: number;
-  /** Context token breakdown for details popover */
-  contextBreakdown?: ContextTokenBreakdown;
-  /** Callback when context button is clicked */
-  onContextClick?: () => void;
+  // === Attachments ===
+  /** Controlled attachments list */
+  attachments?: MessageAttachment[];
+  /** Callback when attachments change */
+  onAttachmentsChange?: (attachments: MessageAttachment[]) => void;
+  /** Whether any attachment is loading */
+  isAttachmentLoading?: boolean;
 
   // === Platform-specific Callbacks ===
-  /**
-   * Screenshot callback. If not provided, screenshot button is hidden.
-   * @param hideWindow - Whether to hide the window before taking screenshot
-   * @returns Promise resolving to attachment or null
-   */
-  onScreenshot?: (hideWindow?: boolean) => Promise<MessageAttachment | null>;
   /**
    * Open file dialog callback. If not provided, uses native file input.
    * @returns Promise resolving to attachments or null
@@ -242,62 +181,31 @@ export interface ChatInputProps {
   onSlashCommand?: SlashCommandHandler;
   /** Custom slash command menu renderer. If omitted, ChatInput renders the default menu. */
   renderSlashCommandMenu?: (props: SlashCommandMenuProps) => ReactNode;
+
+  // === Refs (for external control) ===
+  /** Ref to the textarea element */
+  textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  /** Ref to the container element */
+  containerRef?: RefObject<HTMLDivElement | null>;
 }
 
-export interface ChatInputToolbarRenderProps {
-  onEmojiSelect: (emoji: string) => void;
-  onFileClick: () => void;
-  onScreenshot?: (hideWindow?: boolean) => void;
-  onExpandClick?: () => void;
-  isLoading?: boolean;
-  disabled?: boolean;
-  isScreenshotCapturing?: boolean;
-}
-
-export interface ChatInputBottomToolbarRenderProps {
-  leftContent: ReactNode;
-  editor?: ReactNode;
-  submitControl?: ReactNode;
-  isLoading?: boolean;
-  disabled?: boolean;
-  canSubmit: boolean;
-}
-
-export interface ChatInputWritingModeRenderProps {
-  isOpen: boolean;
-  onClose: () => void;
+/** Context provided to toolbar components via ChatInputContext */
+export interface ChatInputContextValue {
   content: string;
-  onContentChange: (content: string) => void;
+  setContent: (value: string | ((prev: string) => string)) => void;
   attachments: MessageAttachment[];
-  onRemoveAttachment: (id: string) => void;
-  onSend: () => void;
-  onCancel?: () => void;
+  addAttachment: (attachment: MessageAttachment) => void;
+  addFiles: (files: FileList | File[], isImage?: boolean) => Promise<void>;
+  removeAttachment: (id: string) => void;
+  clearAttachments: () => void;
+  isAnyLoading: boolean;
+  canSubmit: boolean;
+  handleSend: () => void;
+  handleFileClick?: () => void;
   isLoading?: boolean;
   disabled?: boolean;
-  canSubmit: boolean;
-  placeholder?: string;
-  onEmojiSelect: (emoji: string) => void;
-  renderEmojiPicker?: (props: { onSelect: (emoji: string) => void }) => ReactNode;
-  onFileClick: () => void;
-  onScreenshot?: (hideWindow?: boolean) => void;
-  isScreenshotCapturing?: boolean;
-  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
-  onCompositionStart: () => void;
-  onCompositionEnd: () => void;
-  onPaste: (event: ClipboardEvent) => void;
-  showConfigBar?: boolean;
-  agents: AgentOption[];
-  selectedAgentId?: string | null;
-  onAgentChange?: (agentId: string) => void;
-  showAgentSelector?: boolean;
-  models: ModelOption[];
-  selectedModelId?: string | null;
-  onModelChange?: (modelId: string) => void;
-  showModelSelector?: boolean;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  configControls: ReactNode;
-  submitControl: ReactNode;
-  className?: string;
+  insertAtCursor: (text: string) => void;
 }
 
 // ============================================================================

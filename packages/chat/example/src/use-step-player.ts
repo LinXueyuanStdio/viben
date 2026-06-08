@@ -118,6 +118,12 @@ function hasPendingToolCalls(messages: AgentMessage[]): boolean {
   return pendingToolUseIds.size > 0
 }
 
+function isReplayUserNotice(message: AgentMessage): boolean {
+  if (message.type !== "user") return false
+  const content = message.content?.trim()
+  return content === "[Request interrupted by user]"
+}
+
 function buildStateUpTo(steps: DemoStep[], endIndex: number): {
   messages: AgentMessage[];
   messageUpdates: Record<string, Partial<AgentMessage>>;
@@ -161,7 +167,8 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       const newIndex = state.stepIndex + 1
       const done = newIndex >= steps.length
 
-      const userMsgs = step.messages.filter(msg => msg.type === "user")
+      const userMsgs = step.messages.filter(msg => msg.type === "user" && !isReplayUserNotice(msg))
+      const replayNoticeMsgs = step.messages.filter(isReplayUserNotice)
       const agentMsgs = step.messages.filter(msg => msg.type !== "user")
       const nextMessageUpdates = step.messageUpdates ?? state.messageUpdates
 
@@ -170,7 +177,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       const hasAgentOutput = state.messages.some(m => m.type !== "user")
 
       if (hasAgentOutput && userMsgs.length > 0) {
-        const nextMessages = [...state.messages, ...agentMsgs]
+        const nextMessages = [...state.messages, ...agentMsgs, ...replayNoticeMsgs]
         if (hasPendingToolCalls(nextMessages)) {
           return {
             ...state,
@@ -206,7 +213,7 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
         ...state,
         status: done ? "idle" : "playing",
         stepIndex: newIndex,
-        messages: [...state.messages, ...step.messages],
+        messages: [...state.messages, ...agentMsgs, ...replayNoticeMsgs, ...userMsgs],
         messageUpdates: nextMessageUpdates,
         pendingUserMessages: [],
         pendingApproval: step.awaitsInteraction?.type === "approval" ? step.awaitsInteraction.approval : null,
@@ -227,9 +234,10 @@ function reducer(state: PlayerState, action: PlayerAction): PlayerState {
       if (state.stepIndex >= steps.length) return state
 
       const step = steps[state.stepIndex]
-      const userMsgs = step.messages.filter(msg => msg.type === "user")
+      const userMsgs = step.messages.filter(msg => msg.type === "user" && !isReplayUserNotice(msg))
+      const replayNoticeMsgs = step.messages.filter(isReplayUserNotice)
       const agentMsgs = step.messages.filter(msg => msg.type !== "user")
-      const nextMessages = [...state.messages, ...agentMsgs]
+      const nextMessages = [...state.messages, ...agentMsgs, ...replayNoticeMsgs]
       const newIndex = state.stepIndex + 1
 
       if (userMsgs.length > 0 && state.messages.some(m => m.type !== "user") && hasPendingToolCalls(nextMessages)) {

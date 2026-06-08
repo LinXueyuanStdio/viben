@@ -7,39 +7,28 @@
  * Base functionality (always present):
  * - Auto-resizing textarea (40-200px)
  * - Attachment preview area
- * - Bottom action bar with add button and send button
  * - IME composition handling
  * - Paste image support
  *
  * Features controlled by props:
- * - showTopToolbar: Emoji/File/Screenshot/Expand toolbar
- * - showConfigBar: Agent, Model, Tools, Skills, Context selectors and send button
+ * - topToolbar: Custom top toolbar content (ReactNode)
+ * - bottomToolbar: Custom bottom toolbar content (ReactNode)
  * - showResizeHandle: Draggable height adjustment
- * - enableWritingMode: Fullscreen writing mode
+ *
+ * The component exports sub-components (ChatInputTopToolbar, ChatInputBottomToolbar,
+ * ChatInputConfigControls, ChatInputSubmitControl) for consumers to compose
+ * their own toolbars.
  */
 
 import * as React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Plus,
-  Paperclip,
-  Image,
-  Shield,
-} from "lucide-react";
-import {
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@viben/ui";
+import { Shield, Plus } from "lucide-react";
+import { cn, Button } from "@viben/ui";
 
-import { ChatInputToolbar } from "./toolbar";
-import { ChatInputConfigBar, ChatInputConfigControls, ChatInputSubmitControl } from "./config-bar";
 import { AttachmentPreview } from "./attachment-preview";
+import { ChatInputSubmitControl } from "./bottom-toolbar";
 import { SlashCommandMenu } from "./slash-command-menu";
-import { WritingMode } from "./writing-mode";
 import { HighlightedInput } from "./highlighted-input";
 import {
   useAttachments,
@@ -48,11 +37,21 @@ import {
   useIMEComposition,
   useAutoFocus,
 } from "./hooks";
-import type { ChatInputProps } from "./types";
+import type { ChatInputProps, ChatInputContextValue } from "./types";
 import { findSlashCommand, formatSlashCommandInput, parseSlashCommandInput } from "../slash-commands";
 import { mergeQueuedInputRecallItems } from "../command-queue/merge-queued-content";
 
 const DEFAULT_QUEUE_RECALL_JOINER = "\n\n";
+
+const ChatInputContext = createContext<ChatInputContextValue | null>(null);
+
+export function useChatInput() {
+  const context = useContext(ChatInputContext);
+  if (!context) {
+    throw new Error("useChatInput must be used within a ChatInput component");
+  }
+  return context;
+}
 
 export function ChatInput({
   // Basic Props
@@ -77,56 +76,30 @@ export function ChatInput({
   // Layout Control
   showTopToolbar = false,
   showBottomToolbar = true,
-  showConfigBar = false,
   layoutVariant = "expanded",
+  onRequestExpand,
   showResizeHandle = false,
   defaultHeight,
   minHeight,
   maxHeight,
   heightStorageKey,
-  enableWritingMode = false,
-  // Selector Visibility Override
-  hideAgentSelector = false,
-  hideModelSelector = false,
-  hideExecutorSelector = false,
-  // Agent/Model/Executor
-  agents = [],
-  selectedAgentId = null,
-  onAgentChange,
-  onAgentSettings,
-  models = [],
-  selectedModelId = null,
-  onModelChange,
-  executors = [],
-  selectedExecutor = "CLAUDE_CODE",
-  onExecutorChange,
-  // Tools/Skills
-  tools = [],
-  onToggleTool,
-  enabledToolsCount = 0,
-  onToolsClick,
-  skills = [],
-  onToggleSkill,
-  enabledSkillsCount = 0,
-  onSkillsClick,
-  // Context
-  contextTokens = 0,
-  contextBreakdown,
-  onContextClick,
+  // Attachments
+  attachments: controlledAttachments,
+  onAttachmentsChange,
+  isAttachmentLoading: externalAttachmentLoading,
   // Platform-specific callbacks
-  onScreenshot,
   onOpenFile,
   onPaste: customOnPaste,
   // Slash Commands
   slashCommands = [],
   onSlashCommand,
   renderSlashCommandMenu,
-  // Custom Content Slots
-  configBarLeftExtra,
-  renderEmojiPicker,
-  renderTopToolbar,
-  renderBottomToolbar,
-  renderWritingMode,
+  // Toolbar Slots
+  topToolbar,
+  bottomToolbar,
+  // Refs
+  textareaRef: externalTextareaRef,
+  containerRef: externalContainerRef,
 }: ChatInputProps) {
   const { t } = useTranslation();
 
@@ -144,24 +117,72 @@ export function ChatInput({
     },
     [content, isControlled, onValueChange]
   );
-  const [isWritingMode, setIsWritingMode] = useState(false);
-  const [isScreenshotCapturing, setIsScreenshotCapturing] = useState(false);
 
   // Refs
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = externalTextareaRef ?? internalTextareaRef;
+  const containerRef = externalContainerRef ?? internalContainerRef;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Hooks
+  // Hooks - use controlled attachments if provided
   const {
-    attachments,
+    attachments: internalAttachments,
     addFiles,
     addAttachment,
     removeAttachment,
     clearAttachments,
-    isAnyLoading,
+    isAnyLoading: internalIsAnyLoading,
   } = useAttachments();
+
+  const attachments = controlledAttachments ?? internalAttachments;
+  const isAnyLoading = externalAttachmentLoading ?? internalIsAnyLoading;
+
+  // Sync attachments if controlled
+  useEffect(() => {
+    if (controlledAttachments !== undefined && onAttachmentsChange) {
+      // When using controlled attachments, delegate to parent
+    }
+  }, [controlledAttachments, onAttachmentsChange]);
+
+  const handleAddAttachment = useCallback(
+    (attachment: Parameters<typeof addAttachment>[0]) => {
+      if (onAttachmentsChange && controlledAttachments) {
+        onAttachmentsChange([...controlledAttachments, attachment]);
+      } else {
+        addAttachment(attachment);
+      }
+    },
+    [addAttachment, controlledAttachments, onAttachmentsChange]
+  );
+
+  const handleAddFiles = useCallback(
+    async (files: FileList | File[], isImage?: boolean) => {
+      // For now, use internal addFiles - parent can listen via onAttachmentsChange
+      await addFiles(files, isImage);
+    },
+    [addFiles]
+  );
+
+  const handleRemoveAttachment = useCallback(
+    (id: string) => {
+      if (onAttachmentsChange && controlledAttachments) {
+        onAttachmentsChange(controlledAttachments.filter((a) => a.id !== id));
+      } else {
+        removeAttachment(id);
+      }
+    },
+    [controlledAttachments, onAttachmentsChange, removeAttachment]
+  );
+
+  const handleClearAttachments = useCallback(() => {
+    if (onAttachmentsChange) {
+      onAttachmentsChange([]);
+    } else {
+      clearAttachments();
+    }
+  }, [clearAttachments, onAttachmentsChange]);
 
   const {
     isOpen: isSlashMenuOpen,
@@ -180,7 +201,10 @@ export function ChatInput({
       const nextValue = formatSlashCommandInput(command, args);
       setContent(nextValue);
       handleSlashContentChange(nextValue);
-      requestAnimationFrame(() => textareaRef.current?.focus());
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current ?? internalTextareaRef.current;
+        textarea?.focus();
+      });
     },
     enabled: slashCommands.length > 0 && !!onSlashCommand,
   });
@@ -199,43 +223,30 @@ export function ChatInput({
     handleCompositionEnd,
   } = useIMEComposition();
 
-  useAutoFocus(textareaRef, {
+  useAutoFocus(textareaRef as React.RefObject<HTMLTextAreaElement>, {
     autoFocus,
     focusOnLoadComplete: true,
     isLoading,
   });
 
-  // Determine if we have toolbar/config bar features enabled
-  const shouldShowBottomToolbar = showBottomToolbar;
-  const shouldShowConfigBar = shouldShowBottomToolbar && showConfigBar;
-  const hasToolbar = showTopToolbar || shouldShowBottomToolbar || showResizeHandle;
+  // Determine if we have toolbar features enabled
+  const hasToolbar = showTopToolbar || showBottomToolbar || showResizeHandle;
   const isCompactLayout = layoutVariant === "compact";
-
-  // Determine selector visibility
-  const shouldShowAgentSelector = !hideAgentSelector;
-  const shouldShowModelSelector = !hideModelSelector;
-  const shouldShowExecutorSelector = !hideExecutorSelector && executors.length > 0 && !!onExecutorChange;
 
   // Auto-resize textarea based on content (only for non-toolbar mode)
   useEffect(() => {
-    if (hasToolbar && !isWritingMode) return;
+    if (hasToolbar) return;
 
-    const textarea = textareaRef.current;
+    const textarea = textareaRef.current ?? internalTextareaRef.current;
     if (!textarea) return;
 
-    // Reset height to auto to get the correct scrollHeight
     textarea.style.height = "auto";
-
-    // Calculate the new height (min 40px, max 200px)
-    const maxHeight = 200;
-    const minHeight = 40;
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
-
+    const maxH = 200;
+    const minH = 40;
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, minH), maxH);
     textarea.style.height = `${newHeight}px`;
-
-    // Enable/disable overflow based on content height
-    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
-  }, [content, hasToolbar, isWritingMode]);
+    textarea.style.overflowY = textarea.scrollHeight > maxH ? "auto" : "hidden";
+  }, [content, hasToolbar, textareaRef]);
 
   // Content change handler
   const handleContentChange = useCallback(
@@ -244,7 +255,7 @@ export function ChatInput({
       setContent(newContent);
       handleSlashContentChange(newContent);
     },
-    [handleSlashContentChange]
+    [handleSlashContentChange, setContent]
   );
 
   useEffect(() => {
@@ -254,17 +265,15 @@ export function ChatInput({
   // Paste handler
   const handlePaste = useCallback(
     async (e: React.ClipboardEvent) => {
-      // Try custom paste handler first
       if (customOnPaste) {
-        const attachments = await customOnPaste(e);
-        if (attachments && attachments.length > 0) {
+        const pastedAttachments = await customOnPaste(e);
+        if (pastedAttachments && pastedAttachments.length > 0) {
           e.preventDefault();
-          attachments.forEach((a) => addAttachment(a));
+          pastedAttachments.forEach((a) => handleAddAttachment(a));
           return;
         }
       }
 
-      // Default paste handling for images
       const items = e.clipboardData.items;
       const imageFiles: File[] = [];
 
@@ -280,83 +289,62 @@ export function ChatInput({
 
       if (imageFiles.length > 0) {
         e.preventDefault();
-        await addFiles(imageFiles, true);
+        await handleAddFiles(imageFiles, true);
       }
     },
-    [customOnPaste, addAttachment, addFiles]
+    [customOnPaste, handleAddAttachment, handleAddFiles]
   );
 
   // File input handlers
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      addFiles(e.target.files);
+      handleAddFiles(e.target.files);
       e.target.value = "";
     }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      addFiles(e.target.files, true);
+      handleAddFiles(e.target.files, true);
       e.target.value = "";
     }
   };
 
-  // File button click handler
+  // File button click handler (exposed via context)
   const handleFileClick = useCallback(async () => {
     if (onOpenFile) {
-      const attachments = await onOpenFile();
-      if (attachments && attachments.length > 0) {
-        attachments.forEach((a) => addAttachment(a));
+      const openedAttachments = await onOpenFile();
+      if (openedAttachments && openedAttachments.length > 0) {
+        openedAttachments.forEach((a) => handleAddAttachment(a));
       }
     } else {
       fileInputRef.current?.click();
     }
-  }, [onOpenFile, addAttachment]);
+  }, [onOpenFile, handleAddAttachment]);
 
-  // Screenshot handler
-  const handleScreenshot = useCallback(
-    async (hideWindow?: boolean) => {
-      if (!onScreenshot) return;
-
-      setIsScreenshotCapturing(true);
-      try {
-        const attachment = await onScreenshot(hideWindow);
-        if (attachment) {
-          addAttachment(attachment);
-        }
-      } catch (error) {
-        console.error("[ChatInput] Screenshot failed:", error);
-      } finally {
-        setIsScreenshotCapturing(false);
-      }
-    },
-    [onScreenshot, addAttachment]
-  );
-
-  // Emoji insert handler
-  const insertEmoji = useCallback(
-    (emoji: string) => {
-      const textarea = textareaRef.current;
+  // Insert at cursor (for emoji, etc.)
+  const insertAtCursor = useCallback(
+    (text: string) => {
+      const textarea = textareaRef.current ?? internalTextareaRef.current;
       if (!textarea) {
-        setContent((prev) => prev + emoji);
+        setContent((prev) => prev + text);
         return;
       }
 
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      const newContent = content.substring(0, start) + emoji + content.substring(end);
+      const newContent = content.substring(0, start) + text + content.substring(end);
       setContent(newContent);
 
-      // Set cursor position after emoji
       requestAnimationFrame(() => {
         if (textarea) {
-          const newPosition = start + emoji.length;
+          const newPosition = start + text.length;
           textarea.setSelectionRange(newPosition, newPosition);
           textarea.focus();
         }
       });
     },
-    [content]
+    [content, setContent, textareaRef]
   );
 
   // Submit validation
@@ -377,13 +365,12 @@ export function ChatInput({
     const parsedCommand = parseSlashCommandInput(text);
     const slashCommand = parsedCommand ? findSlashCommand(slashCommands, parsedCommand.name) : undefined;
 
-    // Clear state first
     setContent("");
-    clearAttachments();
+    handleClearAttachments();
 
-    // Reset textarea height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
+    const textarea = textareaRef.current ?? internalTextareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
     }
 
     if (slashCommand && onSlashCommand) {
@@ -396,24 +383,24 @@ export function ChatInput({
       return;
     }
 
-    // Call onSend
     onSend(text, messageAttachments);
-  }, [canSubmit, isLoading, allowSendWhileLoading, content, attachments, slashCommands, clearAttachments, onSlashCommand, onSend]);
-
-  const submitControl = (
-    <ChatInputSubmitControl
-      onSend={handleSend}
-      onCancel={onCancel}
-      isLoading={isLoading}
-      canSubmit={canSubmit}
-      allowSendWhileLoading={allowSendWhileLoading}
-    />
-  );
+  }, [
+    canSubmit,
+    isLoading,
+    allowSendWhileLoading,
+    content,
+    attachments,
+    slashCommands,
+    handleClearAttachments,
+    onSlashCommand,
+    onSend,
+    setContent,
+    textareaRef,
+  ]);
 
   // Key down handler
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Handle slash command navigation first
       if (handleSlashKeyDown(e)) {
         return;
       }
@@ -425,7 +412,7 @@ export function ChatInput({
           if (recalledValue) {
             setContent(recalledValue);
             requestAnimationFrame(() => {
-              const textarea = textareaRef.current;
+              const textarea = textareaRef.current ?? internalTextareaRef.current;
               if (!textarea) return;
               const nextCursorPosition = recalledValue.length;
               textarea.focus();
@@ -439,140 +426,52 @@ export function ChatInput({
         return;
       }
 
-      // Don't send on Enter during IME composition
-      if (e.key === "Enter" && !e.shiftKey && !isComposing) {
-        e.preventDefault();
-        handleSend();
-      }
-
-      // Exit writing mode with Escape
-      if (e.key === "Escape" && isWritingMode) {
-        setIsWritingMode(false);
+      if (e.key === "Enter") {
+        if (e.shiftKey && isCompactLayout && onRequestExpand) {
+          e.preventDefault();
+          onRequestExpand();
+          return;
+        }
+        if (!e.shiftKey && !isComposing) {
+          e.preventDefault();
+          handleSend();
+        }
       }
     },
     [
       content,
       handleSlashKeyDown,
       isComposing,
+      isCompactLayout,
       handleSend,
-      isWritingMode,
       onRecallQueuedInput,
+      onRequestExpand,
       onQueuedInputRecall,
       queuedInputRecallItems,
       queuedInputRecallJoiner,
       setContent,
+      textareaRef,
     ]
   );
 
-  const toolbarRenderProps = {
-    onEmojiSelect: insertEmoji,
-    onFileClick: handleFileClick,
-    onScreenshot: onScreenshot ? handleScreenshot : undefined,
-    onExpandClick: enableWritingMode ? () => setIsWritingMode(true) : undefined,
-    isLoading,
-    disabled,
-    isScreenshotCapturing,
-  };
-
-  const configControls = (
-    <ChatInputConfigControls
-      agents={agents}
-      selectedAgentId={selectedAgentId}
-      onAgentChange={onAgentChange}
-      onAgentSettings={onAgentSettings}
-      showAgentSelector={shouldShowAgentSelector}
-      models={models}
-      selectedModelId={selectedModelId}
-      onModelChange={onModelChange}
-      showModelSelector={shouldShowModelSelector}
-      executors={executors}
-      selectedExecutor={selectedExecutor}
-      onExecutorChange={onExecutorChange}
-      showExecutorSelector={shouldShowExecutorSelector}
-      tools={tools}
-      onToggleTool={onToggleTool}
-      enabledToolsCount={enabledToolsCount}
-      onToolsClick={onToolsClick}
-      skills={skills}
-      onToggleSkill={onToggleSkill}
-      enabledSkillsCount={enabledSkillsCount}
-      onSkillsClick={onSkillsClick}
-      contextTokens={contextTokens}
-      contextBreakdown={contextBreakdown}
-      onContextClick={onContextClick}
-      isLoading={isLoading}
-      disabled={disabled}
-      leftExtraContent={configBarLeftExtra}
-    />
-  );
-
-  const writingModeProps = {
-    isOpen: isWritingMode,
-    onClose: () => setIsWritingMode(false),
+  // Context value for child components
+  const contextValue: ChatInputContextValue = {
     content,
-    onContentChange: setContent,
+    setContent,
     attachments,
-    onRemoveAttachment: removeAttachment,
-    onSend: handleSend,
-    onCancel,
+    addAttachment: handleAddAttachment,
+    addFiles: handleAddFiles,
+    removeAttachment: handleRemoveAttachment,
+    clearAttachments: handleClearAttachments,
+    isAnyLoading,
+    canSubmit,
+    handleSend,
+    handleFileClick,
     isLoading,
     disabled,
-    canSubmit,
-    placeholder,
-    onEmojiSelect: insertEmoji,
-    renderEmojiPicker,
-    onFileClick: handleFileClick,
-    onScreenshot: onScreenshot ? handleScreenshot : undefined,
-    isScreenshotCapturing,
-    onKeyDown: handleKeyDown,
-    onCompositionStart: handleCompositionStart,
-    onCompositionEnd: handleCompositionEnd,
-    onPaste: handlePaste,
-    showConfigBar: shouldShowConfigBar,
-    agents,
-    selectedAgentId,
-    onAgentChange,
-    showAgentSelector: shouldShowAgentSelector,
-    models,
-    selectedModelId,
-    onModelChange,
-    showModelSelector: shouldShowModelSelector,
-    textareaRef,
-    configControls,
-    submitControl,
-    className,
+    textareaRef: textareaRef as React.RefObject<HTMLTextAreaElement | null>,
+    insertAtCursor,
   };
-
-  // Render fullscreen writing mode
-  if (isWritingMode && enableWritingMode) {
-    return (
-      <>
-        {/* Hidden file inputs */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageChange}
-          multiple
-        />
-
-        {renderWritingMode ? (
-          renderWritingMode(writingModeProps)
-        ) : (
-          <WritingMode {...writingModeProps} />
-        )}
-      </>
-    );
-  }
 
   const editor = (
     <div
@@ -583,7 +482,6 @@ export function ChatInput({
       )}
       style={hasToolbar && !isCompactLayout ? { height: inputHeight } : undefined}
     >
-      {/* Slash Command Menu */}
       {renderSlashCommandMenu ? (
         renderSlashCommandMenu({
           commands: filteredCommands,
@@ -592,7 +490,7 @@ export function ChatInput({
           onHover: handleSlashHover,
           isOpen: isSlashMenuOpen,
           query: slashQuery,
-          anchorRef: containerRef as React.RefObject<HTMLElement>,
+          anchorRef: (containerRef as React.RefObject<HTMLElement>) ?? (internalContainerRef as React.RefObject<HTMLElement>),
         })
       ) : (
         <SlashCommandMenu
@@ -602,12 +500,12 @@ export function ChatInput({
           onHover={handleSlashHover}
           isOpen={isSlashMenuOpen}
           query={slashQuery}
-          anchorRef={containerRef as React.RefObject<HTMLElement>}
+          anchorRef={(containerRef as React.RefObject<HTMLElement>) ?? (internalContainerRef as React.RefObject<HTMLElement>)}
         />
       )}
 
       <HighlightedInput
-        ref={textareaRef}
+        ref={(textareaRef as React.RefObject<HTMLTextAreaElement>) ?? internalTextareaRef}
         value={content}
         onChange={handleContentChange}
         onKeyDown={handleKeyDown}
@@ -648,192 +546,127 @@ export function ChatInput({
     </div>
   );
 
-  // Render unified input (with optional toolbar/config bar)
   return (
-    <div
-      ref={containerRef}
-      className={cn("w-full bg-background", className)}
-    >
-      {/* Hidden file inputs */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
-        onChange={handleFileChange}
-        className="hidden"
-      />
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleImageChange}
-        multiple
-      />
+    <ChatInputContext.Provider value={contextValue}>
+      <div
+        ref={(containerRef as React.RefObject<HTMLDivElement>) ?? internalContainerRef}
+        className={cn("w-full bg-background", className)}
+      >
+        {/* Resize handle */}
+        {showResizeHandle && (
+          <div
+            className="h-1 cursor-ns-resize hover:bg-primary/20 transition-colors"
+            onMouseDown={handleResizeStart}
+          />
+        )}
 
-      {/* Resize handle */}
-      {showResizeHandle && (
-        <div
-          className="h-1 cursor-ns-resize hover:bg-primary/20 transition-colors"
-          onMouseDown={handleResizeStart}
+        {/* Top Toolbar */}
+        {showTopToolbar && !isCompactLayout && topToolbar}
+
+        {/* Hidden file inputs */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
+          onChange={handleFileChange}
+          className="hidden"
         />
-      )}
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageChange}
+          multiple
+        />
 
-      {/* Top Toolbar */}
-      {showTopToolbar && !isCompactLayout && (
-        renderTopToolbar ? (
-          <ChatInputToolbar {...toolbarRenderProps} renderEmojiPicker={renderEmojiPicker}>
-            {renderTopToolbar(toolbarRenderProps)}
-          </ChatInputToolbar>
-        ) : (
-          <ChatInputToolbar
-            {...toolbarRenderProps}
-            renderEmojiPicker={renderEmojiPicker}
-            showExpand={enableWritingMode}
-          />
-        )
-      )}
+        {/* Attachment Preview */}
+        <AttachmentPreview
+          attachments={attachments}
+          onRemove={handleRemoveAttachment}
+        />
 
-      {/* Attachment Preview */}
-      <AttachmentPreview
-        attachments={attachments}
-        onRemove={removeAttachment}
-      />
-
-      {/* Blocked reason indicator */}
-      {((disabled && blockedReason) || (!disabled && sendDisabled && sendBlockedReason)) && (
-        <div className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground border-b border-border/40">
-          <Shield className="size-3 text-amber-500" />
-          <span>{disabled ? blockedReason : sendBlockedReason}</span>
-        </div>
-      )}
-
-      {!isCompactLayout && editor}
-
-      {/* Bottom Config Bar (when enabled) */}
-      {shouldShowConfigBar && !isCompactLayout && (
-        renderBottomToolbar ? (
-          <div data-testid="chat-input-bottom-toolbar" className="flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30">
-            {renderBottomToolbar({
-              leftContent: configControls,
-              submitControl,
-              isLoading,
-              disabled,
-              canSubmit,
-            })}
+        {/* Blocked reason indicator */}
+        {((disabled && blockedReason) || (!disabled && sendDisabled && sendBlockedReason)) && (
+          <div className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground border-b border-border/40">
+            <Shield className="size-3 text-amber-500" />
+            <span>{disabled ? blockedReason : sendBlockedReason}</span>
           </div>
-        ) : (
-          <ChatInputConfigBar
-            agents={agents}
-            selectedAgentId={selectedAgentId}
-            onAgentChange={onAgentChange}
-            onAgentSettings={onAgentSettings}
-            showAgentSelector={shouldShowAgentSelector}
-            models={models}
-            selectedModelId={selectedModelId}
-            onModelChange={onModelChange}
-            showModelSelector={shouldShowModelSelector}
-            executors={executors}
-            selectedExecutor={selectedExecutor}
-            onExecutorChange={onExecutorChange}
-            showExecutorSelector={shouldShowExecutorSelector}
-            tools={tools}
-            onToggleTool={onToggleTool}
-            enabledToolsCount={enabledToolsCount}
-            onToolsClick={onToolsClick}
-            skills={skills}
-            onToggleSkill={onToggleSkill}
-            enabledSkillsCount={enabledSkillsCount}
-            onSkillsClick={onSkillsClick}
-            contextTokens={contextTokens}
-            contextBreakdown={contextBreakdown}
-            onContextClick={onContextClick}
-            onSend={handleSend}
-            onCancel={onCancel}
-            isLoading={isLoading}
-            disabled={disabled}
-            canSubmit={canSubmit}
-            allowSendWhileLoading={allowSendWhileLoading}
-            leftExtraContent={configBarLeftExtra}
-          />
-        )
-      )}
+        )}
 
-      {shouldShowBottomToolbar && isCompactLayout && (
-        <div data-testid="chat-input-compact-toolbar" className="flex min-w-0 items-center gap-2 border-t border-border/30 bg-muted/30 px-2 py-2">
-          {renderBottomToolbar ? (
-            renderBottomToolbar({
-              leftContent: configControls,
-              editor,
-              submitControl,
-              isLoading,
-              disabled,
-              canSubmit,
-            })
-          ) : (
-            <>
-              {editor}
-              {shouldShowConfigBar && configControls}
-              {submitControl}
-            </>
-          )}
-        </div>
-      )}
+        {/* Expanded layout: editor shown separately */}
+        {!isCompactLayout && editor}
 
-      {/* Bottom Actions (when no config bar) */}
-      {shouldShowBottomToolbar && !showConfigBar && !isCompactLayout && (
-        <div
-          data-testid="chat-input-basic-actions"
-          className={cn(
-            "flex items-center justify-between px-4",
-            hasToolbar ? "py-2" : "pb-3"
-          )}
-        >
-          {/* Add Button with Dropdown */}
-          <div className="flex items-center gap-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                disabled={isLoading || disabled}
-                className={cn(
-                  "flex items-center justify-center transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-                  "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground size-8 rounded-full border"
-                )}
-              >
-                <Plus className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" sideOffset={8} className="z-50 w-56">
-                <DropdownMenuItem
-                  onSelect={() => imageInputRef.current?.click()}
-                  className="cursor-pointer gap-3 py-2.5"
-                >
-                  <Image className="size-4" />
-                  <span>{t("chat.attachImage")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={handleFileClick}
-                  className="cursor-pointer gap-3 py-2.5"
-                >
-                  <Paperclip className="size-4" />
-                  <span>{t("chat.attachFile")}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        {/* Compact layout: single-line with + button, input, submit */}
+        {isCompactLayout && (
+          <div className="flex h-12 items-center gap-2 px-2" data-testid="compact-chat-input-row">
+            {/* Plus button for file attachment */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              disabled={disabled || (isLoading && !allowSendWhileLoading)}
+              onClick={handleFileClick}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+
+            {/* Input field */}
+            <input
+              ref={textareaRef as unknown as React.RefObject<HTMLInputElement | null>}
+              type="text"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (e.shiftKey && onRequestExpand) {
+                    e.preventDefault();
+                    onRequestExpand();
+                    return;
+                  }
+                  if (!e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }
+              }}
+              onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLInputElement>}
+              placeholder={placeholder || t("chat.inputPlaceholder")}
+              disabled={disabled || (isLoading && !allowSendWhileLoading)}
+              className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+              data-testid="compact-chat-input-field"
+            />
+
+            {/* Attachment count badge */}
+            {attachments.length > 0 && (
+              <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {attachments.length}
+              </span>
+            )}
+
+            {/* Submit / Stop buttons */}
+            <ChatInputSubmitControl
+              onSend={handleSend}
+              onCancel={onCancel}
+              isLoading={isLoading}
+              canSubmit={canSubmit}
+              allowSendWhileLoading={allowSendWhileLoading}
+            />
           </div>
+        )}
 
-          {/* Submit/Stop Button */}
-          <div className="flex items-center gap-1">
-            {submitControl}
-          </div>
-        </div>
-      )}
-    </div>
+        {/* Bottom Toolbar (only for expanded layout) */}
+        {showBottomToolbar && !isCompactLayout && bottomToolbar}
+      </div>
+    </ChatInputContext.Provider>
   );
 }
 
 // Re-export types and sub-components for consumers
 export type {
   ChatInputProps,
+  ChatInputContextValue,
   SlashCommandMenuProps,
   AgentOption,
   ModelOption,
@@ -841,12 +674,17 @@ export type {
   GlobalChatConfig,
   ChatConfigVisibility,
   QueuedInputRecallItem,
-  ChatInputToolbarRenderProps,
-  ChatInputBottomToolbarRenderProps,
-  ChatInputWritingModeRenderProps,
 } from "./types";
-export { ChatInputToolbar } from "./toolbar";
-export { ChatInputConfigBar, ChatInputConfigControls, ChatInputSubmitControl } from "./config-bar";
+export { ChatInputTopToolbar } from "./top-toolbar";
+export type { ChatInputTopToolbarProps, TasksSummary, BackgroundTasksSummary } from "./top-toolbar";
+export {
+  ChatInputBottomToolbar,
+  ChatInputSubmitControl,
+} from "./bottom-toolbar";
+export type {
+  ChatInputBottomToolbarProps,
+  ChatInputSubmitControlProps,
+} from "./bottom-toolbar";
 export { AttachmentPreview } from "./attachment-preview";
 export { SlashCommandMenu } from "./slash-command-menu";
 export {

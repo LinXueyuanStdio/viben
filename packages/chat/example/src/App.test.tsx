@@ -103,6 +103,7 @@ vi.mock("@viben/chat", () => ({
   ),
   ToolExecutionItem: () => <div data-testid="tool-execution-item" />,
   ToolsConfigPopover: () => <div data-testid="tools-config-popover" />,
+  TripleSelector: () => <div data-testid="triple-selector" />,
   getModelIcon: () => <span data-testid="model-icon" />,
   useCommandQueue: () => ({
     items: [],
