@@ -169,9 +169,10 @@ function isUserBlockingUiStep(step: { kind: string; plan?: { approvalStatus?: st
   );
 }
 
-function shortId(id: string): string {
-  return id.length <= 12 ? id : `${id.slice(0, 8)}...${id.slice(-4)}`;
-}
+// Note: shortId is available for future use in UI formatting
+// function shortId(id: string): string {
+//   return id.length <= 12 ? id : `${id.slice(0, 8)}...${id.slice(-4)}`;
+// }
 
 function readSessionId(value: unknown): string | null {
   if (typeof value === "object" && value !== null && typeof (value as { sessionId?: unknown }).sessionId === "string") {

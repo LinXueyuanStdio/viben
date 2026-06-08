@@ -270,13 +270,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     [mode]
   );
 
-  const [inputValue, setInputValue] = useMemo(() => {
-    let value = "";
-    const setValue = (v: string | ((prev: string) => string)) => {
-      value = typeof v === "function" ? v(value) : v;
-    };
-    return [value, setValue] as const;
-  }, []);
+  // Track input value locally for submit control
+  const inputValue = "";
 
   const handleSend = useCallback(
     (content: string, _attachments?: MessageAttachment[]) => {

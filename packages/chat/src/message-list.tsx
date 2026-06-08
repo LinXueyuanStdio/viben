@@ -808,8 +808,11 @@ function truncate(str: string, maxLen: number): string {
   return str.slice(0, maxLen) + "...";
 }
 
+const RUNNING_INDICATOR_DISPLAY_THRESHOLD_SECONDS = 15;
+
 /**
  * Running indicator component - shows current activity with elapsed time
+ * Only displayed after 15 seconds of running to avoid flashing for quick operations
  */
 const RunningIndicator = React.memo(function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
   const { t } = useTranslation();
@@ -935,6 +938,18 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
     }
   }, [lastToolUse, t]);
 
+  // Format elapsed time in human-friendly format
+  const formatElapsed = (seconds: number): string => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
+  };
+
   return (
     <div className="flex items-center gap-2 py-2">
       {/* Spinning loader */}
@@ -963,8 +978,8 @@ const RunningIndicator = React.memo(function RunningIndicator({ messages }: { me
       </div>
       <div className="flex flex-col">
         <span className="text-muted-foreground text-sm">{activityText}</span>
-        {elapsed >= 3 && (
-          <span className="text-muted-foreground/60 text-xs">{elapsed}s</span>
+        {elapsed >= RUNNING_INDICATOR_DISPLAY_THRESHOLD_SECONDS && (
+          <span className="text-muted-foreground/60 text-xs">{formatElapsed(elapsed)}</span>
         )}
       </div>
     </div>

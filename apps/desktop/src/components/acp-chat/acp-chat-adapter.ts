@@ -2,7 +2,6 @@ import type { AgentMessage, ContentBlock, PendingQuestion, SlashCommand, TaskPla
 import type { PendingExecApproval } from "@viben/chat";
 import type {
   AcpSessionUpdate,
-  CallToolResult,
   ClientToolCall,
   ClientToolExecutionRequest,
   ElicitationPropertySchema,
