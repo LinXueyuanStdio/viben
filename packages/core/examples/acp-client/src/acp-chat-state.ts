@@ -103,6 +103,24 @@ export function enqueueUiSteps(
   }));
 }
 
+/**
+ * Append messages directly to uiMessages without going through the queue.
+ * Use this for events that should appear immediately in chronological order,
+ * such as steer-related events (queued, consumed).
+ */
+export function appendUiMessagesImmediately(
+  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  sessionId: string,
+  messages: AgentMessage[]
+): void {
+  if (messages.length === 0) return;
+  updateSession(setSessionsById, sessionId, (session) => ({
+    ...session,
+    uiMessages: [...session.uiMessages, ...messages],
+    lastActiveAt: new Date().toISOString(),
+  }));
+}
+
 export function appendSessionStreamingText(
   setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
   sessionId: string,
@@ -262,7 +280,7 @@ function isSubagentChildStep(session: UiSessionState, step: AcpUiStep): boolean 
     return Boolean(findSubagentParentMessage(session.uiMessages, message));
   }
   if (message.type === "tool_result" && message.toolUseId) {
-    return Boolean(findSubagentParentForToolResult(session.uiMessages, message.toolUseId, session.messageUpdates));
+    return Boolean(findSubagentParentForToolResult(session.uiMessages, message.toolUseId, session.messageUpdates, message.subagentId));
   }
   return false;
 }
@@ -279,7 +297,7 @@ function mergeMessageUpdates(
     return appendSubagentPreviewMessage(current, parent.id, subagentPreviewMessageFromToolUse(step.message));
   }
   if (step.message.type === "tool_result" && step.message.toolUseId) {
-    const parent = findSubagentParentForToolResult(messages, step.message.toolUseId, current);
+    const parent = findSubagentParentForToolResult(messages, step.message.toolUseId, current, step.message.subagentId);
     if (!parent?.id) return current;
     return appendSubagentPreviewMessage(current, parent.id, subagentPreviewMessageFromToolResult(step.message));
   }
@@ -309,18 +327,31 @@ function findSubagentParentMessage(messages: AgentMessage[], candidate: AgentMes
   return messages.find((message) =>
     message.type === "tool_use" &&
     (message.name === "Task" || message.name === "Agent") &&
-    message.subagentId === subagentId
+    (message.subagentId === subagentId || message.toolUseId === subagentId)
   );
 }
 
 function findSubagentParentForToolResult(
   messages: AgentMessage[],
   toolUseId: string,
-  messageUpdates?: Record<string, Partial<AgentMessage>>
+  messageUpdates?: Record<string, Partial<AgentMessage>>,
+  resultSubagentId?: string
 ): AgentMessage | undefined {
+  // First try to find via tool_use in main messages
   const tool = messages.find((message) => message.type === "tool_use" && message.toolUseId === toolUseId);
   if (tool) return findSubagentParentMessage(messages, tool);
 
+  // If tool_result has subagentId, try direct matching against Task/Agent messages
+  if (resultSubagentId) {
+    const directMatch = messages.find((message) =>
+      message.type === "tool_use" &&
+      (message.name === "Task" || message.name === "Agent") &&
+      (message.subagentId === resultSubagentId || message.toolUseId === resultSubagentId)
+    );
+    if (directMatch) return directMatch;
+  }
+
+  // Look in subagentPreviewMessages for the tool_use
   for (const parent of messages) {
     if (parent.type !== "tool_use" || (parent.name !== "Task" && parent.name !== "Agent") || !parent.id) continue;
     const previewTool = messageUpdates?.[parent.id]?.subagentPreviewMessages?.find((message) =>

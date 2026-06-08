@@ -34,8 +34,6 @@ export interface UseCommandQueueOptions {
 export interface UseCommandQueueReturn {
   /** Current queue items */
   items: CommandQueueItem[];
-  /** Whether auto-execution is paused */
-  isPaused: boolean;
   /** Whether there are pending commands */
   hasPendingCommands: boolean;
   /** Route a message: immediate send, steer, or queue */
@@ -52,10 +50,6 @@ export interface UseCommandQueueReturn {
   recall: () => CommandQueueItem[];
   /** Reorder items (drag-and-drop) */
   reorder: (activeId: string, overId: string) => void;
-  /** Pause auto-execution */
-  pause: () => void;
-  /** Resume auto-execution */
-  resume: () => void;
 }
 
 export interface UseCommandQueueInputRecallOptions {

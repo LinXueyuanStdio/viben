@@ -221,7 +221,6 @@ export function App() {
   const [showExecApproval, setShowExecApproval] = useState(false)
   const [showCommandQueue, setShowCommandQueue] = useState(false)
   const [standaloneQueueItems, setStandaloneQueueItems] = useState<CommandQueueItem[]>(demoCommandQueueItems)
-  const [standaloneQueuePaused, setStandaloneQueuePaused] = useState(false)
   const [chatInputValue, setChatInputValue] = useState("")
   const [chatAppMode, setChatAppMode] = useState<ChatAppMode>("floating")
   const [renderedChatAppMode, setRenderedChatAppMode] = useState<ChatAppMode>("floating")
@@ -765,7 +764,6 @@ export function App() {
       approvalDemoIdx={approvalDemoIdx}
       approvalFeedback={approvalFeedback}
       standaloneQueueItems={standaloneQueueItems}
-      standaloneQueuePaused={standaloneQueuePaused}
       onDismiss={dismissComponentDemo}
       onPlanApprove={() => setShowPlan(false)}
       onPlanReject={() => setShowPlan(false)}
@@ -796,29 +794,20 @@ export function App() {
         }
         setStandaloneQueueItems(prev => [...prev, newItem])
       }}
-      onToggleQueuePaused={() => setStandaloneQueuePaused(p => !p)}
       onClearQueue={() => setStandaloneQueueItems([])}
       onRemoveQueueItem={(id) => setStandaloneQueueItems(prev => prev.filter(it => it.id !== id))}
-      onPauseQueue={() => setStandaloneQueuePaused(true)}
-      onResumeQueue={() => setStandaloneQueuePaused(false)}
     />
   )
 
   const chatAppStatusContent = useMemo(() => (
     <ChatAppFullscreenCommandQueue
       commandQueueItems={visibleCommandQueueItems}
-      commandQueuePaused={commandQueue.isPaused}
       onCommandQueueRemove={commandQueue.remove}
       onCommandQueueClear={commandQueue.clear}
-      onCommandQueuePause={commandQueue.pause}
-      onCommandQueueResume={commandQueue.resume}
     />
   ), [
     commandQueue.clear,
-    commandQueue.isPaused,
-    commandQueue.pause,
     commandQueue.remove,
-    commandQueue.resume,
     visibleCommandQueueItems,
   ])
   const hasPendingChatAppMessages = visibleCommandQueueItems.length > 0

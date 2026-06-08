@@ -24,7 +24,7 @@ import type {
   CommandQueueItem,
   ModelOption,
 } from "@viben/chat"
-import { ChevronDown, Pause, Play, Plus, X } from "lucide-react"
+import { ChevronDown, Plus, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { UI_DESIGN_SHOWCASE_DEMOS, UI_DESIGN_SHOWCASE_GROUPS } from "../UIDesignShowcaseData"
 import type { UIShowcaseDemoId } from "../UIDesignShowcaseData"
@@ -69,7 +69,6 @@ export type UIShowcaseDemoOverlayProps = {
   approvalDemoIdx: number
   approvalFeedback: string | null
   standaloneQueueItems: CommandQueueItem[]
-  standaloneQueuePaused: boolean
   onDismiss: () => void
   onPlanApprove: () => void
   onPlanReject: () => void
@@ -77,11 +76,8 @@ export type UIShowcaseDemoOverlayProps = {
   onEmojiSelect: (emoji: string) => void
   onExecDecision: (decision: string, feedback?: string) => void
   onAddQueueItem: () => void
-  onToggleQueuePaused: () => void
   onClearQueue: () => void
   onRemoveQueueItem: (id: string) => void
-  onPauseQueue: () => void
-  onResumeQueue: () => void
 }
 
 export function UIShowCasesPage({
@@ -278,7 +274,6 @@ export function UIShowcaseDemoOverlay({
   approvalDemoIdx,
   approvalFeedback,
   standaloneQueueItems,
-  standaloneQueuePaused,
   onDismiss,
   onPlanApprove,
   onPlanReject,
@@ -286,11 +281,8 @@ export function UIShowcaseDemoOverlay({
   onEmojiSelect,
   onExecDecision,
   onAddQueueItem,
-  onToggleQueuePaused,
   onClearQueue,
   onRemoveQueueItem,
-  onPauseQueue,
-  onResumeQueue,
 }: UIShowcaseDemoOverlayProps) {
   const { t } = useTranslation()
   if (!activeDemoId) return null
@@ -361,14 +353,6 @@ export function UIShowcaseDemoOverlay({
                 </button>
                 <button
                   type="button"
-                  onClick={onToggleQueuePaused}
-                  className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground ${standaloneQueuePaused ? "text-amber-500" : "text-muted-foreground"}`}
-                >
-                  {standaloneQueuePaused ? <Play className="size-3" /> : <Pause className="size-3" />}
-                  {standaloneQueuePaused ? t("example.command_queue.resume", "Resume") : t("example.command_queue.pause", "Pause")}
-                </button>
-                <button
-                  type="button"
                   onClick={onClearQueue}
                   className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
                 >
@@ -378,11 +362,8 @@ export function UIShowcaseDemoOverlay({
             </div>
             <CommandQueuePanel
               items={standaloneQueueItems}
-              isPaused={standaloneQueuePaused}
               onRemove={onRemoveQueueItem}
               onClear={onClearQueue}
-              onPause={onPauseQueue}
-              onResume={onResumeQueue}
             />
             {standaloneQueueItems.length === 0 && (
               <p className="py-4 text-center text-[11px] text-muted-foreground">

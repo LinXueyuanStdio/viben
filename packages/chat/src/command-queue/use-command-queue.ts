@@ -12,7 +12,6 @@ const STORAGE_PREFIX = "viben-command-queue/";
 
 interface CommandQueueState {
   items: CommandQueueItem[];
-  isPaused: boolean;
 }
 
 function loadState(id: string): CommandQueueState {
@@ -22,12 +21,12 @@ function loadState(id: string): CommandQueueState {
   } catch {
     // ignore
   }
-  return { items: [], isPaused: false };
+  return { items: [] };
 }
 
 function saveState(id: string, state: CommandQueueState) {
   try {
-    if (state.items.length === 0 && !state.isPaused) {
+    if (state.items.length === 0) {
       sessionStorage.removeItem(STORAGE_PREFIX + id);
     } else {
       sessionStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(state));
@@ -63,7 +62,7 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
   useEffect(() => {
     if (!enabled) return;
     if (isBusy) return;
-    if (state.isPaused || state.items.length === 0) return;
+    if (state.items.length === 0) return;
 
     // Dequeue first item
     const [first, ...rest] = state.items;
@@ -71,14 +70,13 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
     setState((prev) => ({ ...prev, items: rest }));
 
     onSend(first.content, first.attachments).catch((err) => {
-      // Restore item and pause on failure
+      // Restore item on failure
       setState((prev) => ({
         items: [first, ...prev.items],
-        isPaused: true,
       }));
       onError?.(err instanceof Error ? err : new Error(String(err)), first);
     });
-  }, [enabled, isBusy, state.isPaused, state.items.length, onSend, onError]);
+  }, [enabled, isBusy, state.items.length, onSend, onError]);
 
   const enqueue = useCallback(
     (content: string, attachments?: MessageAttachment[]): CommandQueueItem | null => {
@@ -169,17 +167,8 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
     });
   }, []);
 
-  const pause = useCallback(() => {
-    setState((prev) => ({ ...prev, isPaused: true }));
-  }, []);
-
-  const resume = useCallback(() => {
-    setState((prev) => ({ ...prev, isPaused: false }));
-  }, []);
-
   return {
     items: state.items,
-    isPaused: state.isPaused,
     hasPendingCommands: state.items.length > 0,
     send,
     enqueue,
@@ -188,7 +177,5 @@ export function useCommandQueue(options: UseCommandQueueOptions): UseCommandQueu
     clear,
     recall,
     reorder,
-    pause,
-    resume,
   };
 }

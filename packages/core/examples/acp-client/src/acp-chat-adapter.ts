@@ -74,6 +74,19 @@ export function systemTextToUiSteps(content: string): AcpUiStep[] {
   }];
 }
 
+/**
+ * Create system messages that can be appended directly to uiMessages.
+ * Use this for events that need to appear immediately in chronological order.
+ */
+export function systemTextToMessages(content: string): AgentMessage[] {
+  return [{
+    id: createStepId("system"),
+    type: "text",
+    content,
+    timestamp: Date.now(),
+  }];
+}
+
 export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUiStep[] {
   const update = notification.update;
   switch (update.sessionUpdate) {
@@ -98,7 +111,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         name: normalizeToolName(update.title),
         toolUseId: update.toolCallId,
         input: normalizeToolInput(update.rawInput, normalizeToolName(update.title)),
-        subagentId: readString(update.subagentId) ?? readMetaString(update._meta, "subagentId"),
+        subagentId: extractSubagentId(update),
         timestamp: Date.now(),
       });
     case "tool_call_update":
@@ -109,7 +122,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
           name: normalizeToolName(update.title),
           toolUseId: update.toolCallId,
           input: normalizeToolInput(update.rawInput, normalizeToolName(update.title)),
-          subagentId: readString(update.subagentId) ?? readMetaString(update._meta, "subagentId"),
+          subagentId: extractSubagentId(update),
           timestamp: Date.now(),
         });
       }
@@ -119,6 +132,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         toolUseId: update.toolCallId,
         output: toolUpdateOutput(update),
         isError: update.status === "failed" || update.status === "error",
+        subagentId: extractSubagentId(update),
         timestamp: Date.now(),
       });
     case "plan": {
@@ -326,6 +340,15 @@ function availableCommandsToSlashCommands(value: unknown): SlashCommand[] {
   });
 }
 
+/**
+ * Create a UiStep to set slash commands from the given array.
+ * Use this when extracting commands from session/new or session/load responses.
+ */
+export function slashCommandsToUiSteps(commands: SlashCommand[]): AcpUiStep[] {
+  if (commands.length === 0) return [];
+  return [{ kind: "slash_commands", commands }];
+}
+
 function appendTextChunk(current: AgentMessage[], type: "text" | "thinking", text: string): AgentMessage[] {
   if (!text) return current;
   const previous = current[current.length - 1];
@@ -345,8 +368,14 @@ function upsertToolUse(current: AgentMessage[], toolUse: AgentMessage): AgentMes
 function upsertToolResult(current: AgentMessage[], toolResult: AgentMessage): AgentMessage[] {
   if (!toolResult.toolUseId) return [...current, toolResult];
   const existingIndex = current.findIndex((step) => step.type === "tool_result" && step.toolUseId === toolResult.toolUseId);
-  if (existingIndex === -1) return [...current, toolResult];
-  return current.map((step, index) => (index === existingIndex ? { ...step, ...toolResult } : step));
+  if (existingIndex !== -1) {
+    return current.map((step, index) => (index === existingIndex ? { ...step, ...toolResult } : step));
+  }
+  const toolUseIndex = current.findIndex((step) => step.type === "tool_use" && step.toolUseId === toolResult.toolUseId);
+  if (toolUseIndex === -1) {
+    return [...current, toolResult];
+  }
+  return [...current.slice(0, toolUseIndex + 1), toolResult, ...current.slice(toolUseIndex + 1)];
 }
 
 function messageStep(merge: MessageStepMerge, message: AgentMessage): AcpUiStep[] {
@@ -619,6 +648,31 @@ function readString(value: unknown): string | undefined {
 function readMetaString(meta: unknown, key: string): string | undefined {
   if (!isRecord(meta)) return undefined;
   return readString(meta[key]);
+}
+
+/**
+ * Extract subagentId from an ACP session update.
+ * Looks in multiple places as different backends may use different field names:
+ * - update.subagentId
+ * - update.subagent_id
+ * - update.parentToolCallId
+ * - update.parent_tool_call_id
+ * - update._meta.subagentId
+ * - update._meta.subagent_id
+ * - update._meta.parentToolCallId
+ * - update._meta.parent_tool_call_id
+ */
+function extractSubagentId(update: Record<string, unknown>): string | undefined {
+  return (
+    readString(update.subagentId) ??
+    readString(update.subagent_id) ??
+    readString(update.parentToolCallId) ??
+    readString(update.parent_tool_call_id) ??
+    readMetaString(update._meta, "subagentId") ??
+    readMetaString(update._meta, "subagent_id") ??
+    readMetaString(update._meta, "parentToolCallId") ??
+    readMetaString(update._meta, "parent_tool_call_id")
+  );
 }
 
 function createStepId(prefix: string): string {

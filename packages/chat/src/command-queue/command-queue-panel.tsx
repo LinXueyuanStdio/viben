@@ -1,31 +1,31 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { X, Pause, Play, Trash2, ListOrdered } from "lucide-react";
+import { X, Trash2, ListOrdered } from "lucide-react";
 import { cn, Button, Badge } from "@viben/ui";
 import type { CommandQueueItem } from "./types";
 
 export interface CommandQueuePanelProps {
   items: CommandQueueItem[];
-  isPaused: boolean;
   onRemove: (id: string) => void;
   onUpdate?: (id: string, content: string) => void;
   onClear: () => void;
-  onPause: () => void;
-  onResume: () => void;
   className?: string;
   /** Compact mode - shows minimal info, suitable for embedding between message list and input */
   compact?: boolean;
+  /** Hide individual item remove buttons */
+  hideItemRemove?: boolean;
+  /** Called when user wants to recall items to input instead of clearing */
+  onRecall?: (items: CommandQueueItem[]) => void;
 }
 
 export function CommandQueuePanel({
   items,
-  isPaused,
   onRemove,
   onClear,
-  onPause,
-  onResume,
   className,
   compact,
+  hideItemRemove,
+  onRecall,
 }: CommandQueuePanelProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
@@ -50,25 +50,12 @@ export function CommandQueuePanel({
           >
             {items.length} {t("chat.commandQueue.queued", "queued")}
           </button>
-          {isPaused && (
-            <span className="text-[10px] text-amber-500 font-medium">
-              {t("chat.commandQueue.paused", "Paused")}
-            </span>
-          )}
           <div className="ml-auto flex items-center gap-1">
             <button
               type="button"
-              onClick={isPaused ? onResume : onPause}
-              className="p-0.5 hover:bg-accent rounded cursor-pointer"
-              title={isPaused ? t("chat.commandQueue.resume", "Resume") : t("chat.commandQueue.pause", "Pause")}
-            >
-              {isPaused ? <Play className="size-3" /> : <Pause className="size-3" />}
-            </button>
-            <button
-              type="button"
-              onClick={onClear}
+              onClick={() => onRecall ? onRecall(items) : onClear()}
               className="p-0.5 hover:bg-accent rounded cursor-pointer text-muted-foreground"
-              title={t("chat.commandQueue.clear", "Clear")}
+              title={onRecall ? t("chat.commandQueue.recall", "Recall to input") : t("chat.commandQueue.clear", "Clear")}
             >
               <X className="size-3" />
             </button>
@@ -76,25 +63,27 @@ export function CommandQueuePanel({
         </div>
         {/* Expandable item list */}
         {expanded && (
-          <div className="px-3 pb-2 max-h-24 overflow-y-auto border-t border-border/20 text-left">
+          <div className="px-3 pb-2 max-h-32 overflow-y-auto border-t border-border/20 text-left">
             {items.map((item, idx) => (
               <div
                 key={item.id}
-                className="flex items-center gap-2 py-0.5 text-left text-xs"
+                className="flex items-start gap-2 py-1 text-left text-xs"
               >
-                <span className="text-muted-foreground shrink-0 text-left">
+                <span className="text-muted-foreground shrink-0 text-left pt-0.5">
                   {idx + 1}.
                 </span>
-                <span className="truncate flex-1 text-left">
+                <span className="flex-1 text-left whitespace-pre-wrap break-words line-clamp-3">
                   {item.content}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  className="shrink-0 p-0.5 cursor-pointer hover:bg-accent rounded"
-                >
-                  <X className="size-3" />
-                </button>
+                {!hideItemRemove && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(item.id)}
+                    className="shrink-0 p-0.5 cursor-pointer hover:bg-accent rounded"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -115,28 +104,14 @@ export function CommandQueuePanel({
           <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
             {items.length}
           </Badge>
-          {isPaused && (
-            <Badge variant="outline" className="h-4 px-1.5 text-[10px] text-amber-500 border-amber-500/30">
-              {t("chat.commandQueue.paused", "Paused")}
-            </Badge>
-          )}
         </div>
         <div className="flex items-center gap-0.5">
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0"
-            onClick={isPaused ? onResume : onPause}
-            title={isPaused ? t("chat.commandQueue.resume", "Resume") : t("chat.commandQueue.pause", "Pause")}
-          >
-            {isPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
             className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-            onClick={onClear}
-            title={t("chat.commandQueue.clear", "Clear")}
+            onClick={() => onRecall ? onRecall(items) : onClear()}
+            title={onRecall ? t("chat.commandQueue.recall", "Recall to input") : t("chat.commandQueue.clear", "Clear")}
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -144,27 +119,32 @@ export function CommandQueuePanel({
       </div>
 
       {/* Item List */}
-      <div className="max-h-32 overflow-y-auto space-y-0.5 text-left">
+      <div className="max-h-40 overflow-y-auto space-y-0.5 text-left">
         {items.map((item, idx) => (
           <div
             key={item.id}
-            className="flex items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-muted/50 group"
+            className={cn(
+              "flex items-start gap-2 rounded-md px-2 py-1 text-left text-xs",
+              !hideItemRemove && "hover:bg-muted/50 group"
+            )}
           >
-            <span className="text-muted-foreground w-4 shrink-0 text-left">
+            <span className="text-muted-foreground w-4 shrink-0 text-left pt-0.5">
               {idx + 1}
             </span>
-            <span className="flex-1 truncate text-left">{item.content}</span>
+            <span className="flex-1 text-left whitespace-pre-wrap break-words line-clamp-4">{item.content}</span>
             {item.attachments && item.attachments.length > 0 && (
-              <span className="shrink-0 text-muted-foreground">
+              <span className="shrink-0 text-muted-foreground pt-0.5">
                 +{item.attachments.length} {t("chat.commandQueue.files", "files")}
               </span>
             )}
-            <button
-              onClick={() => onRemove(item.id)}
-              className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-            >
-              <X className="h-3 w-3" />
-            </button>
+            {!hideItemRemove && (
+              <button
+                onClick={() => onRemove(item.id)}
+                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive pt-0.5"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
           </div>
         ))}
       </div>

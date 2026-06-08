@@ -71,6 +71,8 @@ import {
   getElicitationFormFields,
   permissionDecisionToUiSteps,
   permissionRequestToUiSteps,
+  slashCommandsToUiSteps,
+  systemTextToMessages,
   systemTextToUiSteps,
   userPromptToUiSteps,
   type AcpUiStep,
@@ -78,6 +80,7 @@ import {
 } from "./acp-chat-adapter";
 import {
   appendSessionStreamingText,
+  appendUiMessagesImmediately,
   applyQueuedUiStep,
   createUiSession,
   drainSessionUiStepQueue,
@@ -199,7 +202,7 @@ const DEFAULT_ACTIONS: GuiActionDefinition[] = [
 
 export function App() {
   const [wsUrl, setWsUrl] = useState(DEFAULT_WS_URL);
-  const [cwd, setCwd] = useState("/root/viben");
+  const [cwd, setCwd] = useState("/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben");
   const [agentConfigPath, setAgentConfigPath] = useState("");
   const [executorType, setExecutorType] = useState("CLAUDE_CODE");
   const [model, setModel] = useState(DEFAULT_MODEL);
@@ -212,7 +215,6 @@ export function App() {
   const [steerPromptText, setSteerPromptText] = useState("Use the latest user instruction as steering context for the current turn.");
   const [steerPromptId, setSteerPromptId] = useState("");
   const [steerQueuesBySessionId, setSteerQueuesBySessionId] = useState<Record<string, CommandQueueItem[]>>({});
-  const [steerQueuePausedBySessionId, setSteerQueuePausedBySessionId] = useState<Record<string, boolean>>({});
   const [steerResult, setSteerResult] = useState<unknown>(null);
   const [viewMode, setViewMode] = useState<"chat" | "inspector">("chat");
   const [chatAppMode, setChatAppMode] = useState<ChatAppMode>("expanded");
@@ -279,7 +281,6 @@ export function App() {
     !pendingQuestion
   );
   const steerQueueItems = sessionId ? steerQueuesBySessionId[sessionId] ?? [] : [];
-  const steerQueuePaused = sessionId ? steerQueuePausedBySessionId[sessionId] ?? false : false;
   const selectedAction = actions.find((action) => action.id === selectedActionId) ?? actions[0] ?? null;
   const actionSummaries = useMemo(() => buildActionSummaries(actions), [actions]);
   const chatTools = useMemo(() => buildChatToolConfigs(actions), [actions]);
@@ -387,10 +388,12 @@ export function App() {
       ...current,
       [result.sessionId]: (current[result.sessionId] ?? []).filter((item) => item.id !== result.promptId),
     }));
-    enqueueUiSteps(
+    // Use appendUiMessagesImmediately to ensure steer events appear in correct chronological order
+    // rather than being delayed by the queue's 80ms timer
+    appendUiMessagesImmediately(
       setSessionsById,
       result.sessionId,
-      systemTextToUiSteps(`Steer prompt consumed: ${result.promptId}`)
+      systemTextToMessages(`Steer prompt consumed: ${result.promptId}`)
     );
   }, []);
 
@@ -525,6 +528,11 @@ export function App() {
       setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
       setActiveSessionId(id);
       enqueueUiSteps(setSessionsById, id, systemTextToUiSteps(`Session ready: ${id}`));
+      // Extract and set slash commands from session response if available
+      const commands = readSessionAvailableCommands(session);
+      if (commands) {
+        enqueueUiSteps(setSessionsById, id, slashCommandsToUiSteps(commands));
+      }
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
@@ -554,6 +562,11 @@ export function App() {
       setSessionOrder((current) => [loadedId, ...current.filter((item) => item !== loadedId)]);
       setActiveSessionId(loadedId);
       enqueueUiSteps(setSessionsById, loadedId, systemTextToUiSteps(`Session loaded: ${loadedId}`));
+      // Extract and set slash commands from session response if available
+      const commands = readSessionAvailableCommands(session);
+      if (commands) {
+        enqueueUiSteps(setSessionsById, loadedId, slashCommandsToUiSteps(commands));
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : String(loadError));
     }
@@ -611,7 +624,9 @@ export function App() {
     if (!text) return null;
 
     setError(null);
-    enqueueUiSteps(setSessionsById, sessionId, systemTextToUiSteps(`Steer queued: ${text}`));
+    // Use appendUiMessagesImmediately to ensure "Steer queued" appears immediately
+    // rather than being delayed by the queue's 80ms timer
+    appendUiMessagesImmediately(setSessionsById, sessionId, systemTextToMessages(`Steer queued: ${text}`));
     try {
       const result = await clientRef.current?.steerPrompt({
         sessionId,
@@ -646,14 +661,6 @@ export function App() {
     setSteerQueuesBySessionId((current) => ({
       ...current,
       [sessionId]: updater(current[sessionId] ?? []),
-    }));
-  }, [sessionId]);
-
-  const setActiveSteerQueuePaused = useCallback((paused: boolean) => {
-    if (!sessionId) return;
-    setSteerQueuePausedBySessionId((current) => ({
-      ...current,
-      [sessionId]: paused,
     }));
   }, [sessionId]);
 
@@ -837,11 +844,6 @@ export function App() {
         return next;
       });
       setSteerQueuesBySessionId((current) => {
-        const next = { ...current };
-        delete next[sessionId];
-        return next;
-      });
-      setSteerQueuePausedBySessionId((current) => {
         const next = { ...current };
         delete next[sessionId];
         return next;
@@ -1140,7 +1142,6 @@ export function App() {
             artifacts={artifacts}
             error={error}
             steerQueueItems={steerQueueItems}
-            steerQueuePaused={steerQueuePaused}
             isStreaming={isTurnActive}
             isAgentRunning={isAgentRunning}
             prompt={prompt}
@@ -1169,8 +1170,6 @@ export function App() {
             onArtifactClick={handleArtifactClick}
             onRemoveSteerQueueItem={removeSteerQueueItem}
             onClearSteerQueue={clearSteerQueue}
-            onPauseSteerQueue={() => setActiveSteerQueuePaused(true)}
-            onResumeSteerQueue={() => setActiveSteerQueuePaused(false)}
             onCreateSession={createSession}
             onConnect={connect}
             onLoadSession={loadSession}
@@ -1445,11 +1444,12 @@ export function App() {
             <Panel title="Steer Queue" description="Send and inspect Viben ACP session/prompt/* extension requests.">
               <CommandQueuePanel
                 items={steerQueueItems}
-                isPaused={steerQueuePaused}
                 onRemove={removeSteerQueueItem}
                 onClear={clearSteerQueue}
-                onPause={() => setActiveSteerQueuePaused(true)}
-                onResume={() => setActiveSteerQueuePaused(false)}
+                onRecall={(items) => {
+                  const value = items.map((item) => item.content.trim()).filter(Boolean).join("\n\n");
+                  void recallSteerQueue(items, (v) => setSteerPromptText(v));
+                }}
                 compact
                 className="mb-3 rounded-lg border border-border"
               />
@@ -1721,7 +1721,6 @@ function AcpChatSurface({
   artifacts,
   error,
   steerQueueItems,
-  steerQueuePaused,
   isStreaming,
   isAgentRunning,
   prompt,
@@ -1749,8 +1748,6 @@ function AcpChatSurface({
   onArtifactClick,
   onRemoveSteerQueueItem,
   onClearSteerQueue,
-  onPauseSteerQueue,
-  onResumeSteerQueue,
   onCreateSession,
   onConnect,
   onLoadSession,
@@ -1775,7 +1772,6 @@ function AcpChatSurface({
   artifacts: Artifact[];
   error: string | null;
   steerQueueItems: CommandQueueItem[];
-  steerQueuePaused: boolean;
   isStreaming: boolean;
   isAgentRunning: boolean;
   prompt: string;
@@ -1803,8 +1799,6 @@ function AcpChatSurface({
   onArtifactClick: (artifactId: string) => void;
   onRemoveSteerQueueItem: (id: string) => void;
   onClearSteerQueue: () => void;
-  onPauseSteerQueue: () => void;
-  onResumeSteerQueue: () => void;
   onCreateSession: () => void;
   onConnect: () => void;
   onLoadSession: () => void;
@@ -1924,11 +1918,13 @@ function AcpChatSurface({
   const statusContent = (
     <ChatAppFullscreenCommandQueue
       commandQueueItems={steerQueueItems}
-      commandQueuePaused={steerQueuePaused}
       onCommandQueueRemove={onRemoveSteerQueueItem}
       onCommandQueueClear={onClearSteerQueue}
-      onCommandQueuePause={onPauseSteerQueue}
-      onCommandQueueResume={onResumeSteerQueue}
+      hideItemRemove
+      onCommandQueueRecall={(items) => {
+        const value = items.map((item) => item.content.trim()).filter(Boolean).join("\n\n");
+        onRecallSteerQueue(items, value);
+      }}
     />
   );
 
@@ -3316,6 +3312,27 @@ function readSessionId(value: unknown): string | null {
     return (value as { sessionId: string }).sessionId;
   }
   return null;
+}
+
+function readSessionAvailableCommands(value: unknown): SlashCommand[] | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  // Try different possible field names for commands
+  const commands = record.availableCommands ?? record.available_commands ?? record.commands ?? record.slashCommands ?? record.slash_commands;
+  if (!Array.isArray(commands)) return null;
+  const parsed = commands.flatMap((cmd): SlashCommand[] => {
+    if (typeof cmd !== "object" || cmd === null) return [];
+    const name = (cmd as Record<string, unknown>).name;
+    if (typeof name !== "string" || !name.trim()) return [];
+    const description = (cmd as Record<string, unknown>).description;
+    const input = (cmd as Record<string, unknown>).input;
+    return [{
+      name,
+      description: typeof description === "string" ? description : "",
+      input: typeof input === "object" && input !== null && !Array.isArray(input) ? input as Record<string, unknown> : null,
+    }];
+  });
+  return parsed.length > 0 ? parsed : null;
 }
 
 function copyText(text: string): void {

@@ -120,11 +120,12 @@ export interface ChatAppFullscreenMessagePanelProps {
 
 export interface ChatAppFullscreenCommandQueueProps {
   commandQueueItems?: CommandQueueItem[];
-  commandQueuePaused?: boolean;
   onCommandQueueRemove?: (id: string) => void;
   onCommandQueueClear?: () => void;
-  onCommandQueuePause?: () => void;
-  onCommandQueueResume?: () => void;
+  /** Hide individual item remove buttons */
+  hideItemRemove?: boolean;
+  /** Called when user wants to recall queue items to input */
+  onCommandQueueRecall?: (items: CommandQueueItem[]) => void;
 }
 
 export interface ChatAppFullscreenInputPanelProps {
@@ -518,11 +519,10 @@ export function ChatAppFullscreenMessagePanel({
 
 export function ChatAppFullscreenCommandQueue({
   commandQueueItems = [],
-  commandQueuePaused = false,
   onCommandQueueRemove,
   onCommandQueueClear,
-  onCommandQueuePause,
-  onCommandQueueResume,
+  hideItemRemove,
+  onCommandQueueRecall,
 }: ChatAppFullscreenCommandQueueProps) {
   const { t } = useTranslation();
   const noop = React.useCallback(() => {}, []);
@@ -538,11 +538,10 @@ export function ChatAppFullscreenCommandQueue({
       </div>
       <CommandQueuePanel
         items={commandQueueItems}
-        isPaused={commandQueuePaused}
         onRemove={onCommandQueueRemove ?? noopRemove}
         onClear={onCommandQueueClear ?? noop}
-        onPause={onCommandQueuePause ?? noop}
-        onResume={onCommandQueueResume ?? noop}
+        hideItemRemove={hideItemRemove}
+        onRecall={onCommandQueueRecall}
       />
     </div>
   );
