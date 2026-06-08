@@ -22,12 +22,17 @@ import {
   X,
 } from "lucide-react";
 import {
+  BackgroundTaskList,
+  buildBackgroundTasksFromMessages,
+  buildTodoListItemsFromMessages,
   ChatApp,
   ChatAppFullscreenCommandQueue,
   ChatAppFullscreenInputPanel,
   ChatAppFullscreenMessagePanel,
   ChatAppFullscreenPanel,
   ChatInput,
+  ChatInputBottomToolbar,
+  ChatInputTopToolbar,
   CommandQueuePanel,
   ExecApproval,
   ExpandedHeader,
@@ -36,10 +41,11 @@ import {
   PlanApproval,
   QuestionInput,
   SubagentSheet,
+  TodoListPanel,
   TripleSelector,
 } from "@viben/chat";
 import type { SelectorOption, TripleSelectorValue } from "@viben/chat";
-import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, LoadedSubagentDetails, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, SubagentOpenContext, TaskPlan, ToolConfig } from "@viben/chat";
+import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, LoadedSubagentDetails, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, SubagentOpenContext, TaskPlan, ToolConfig, BackgroundTaskItem, TasksSummary, BackgroundTasksSummary } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import {
   AcpWebSocketClient,
@@ -1945,6 +1951,93 @@ function AcpChatSurface({
     />
   );
 
+  // Build todo items and background tasks from messages
+  const todoItems = useMemo(
+    () => buildTodoListItemsFromMessages(messages, messageUpdates),
+    [messages, messageUpdates]
+  );
+
+  const backgroundTasks = useMemo(
+    () => buildBackgroundTasksFromMessages(messages).map(({ now: _now, ...task }) => task),
+    [messages]
+  );
+
+  const tasksSummary: TasksSummary | undefined = useMemo(() => {
+    if (todoItems.length === 0) return undefined;
+    const completedCount = todoItems.filter((item) => item.status === "completed").length;
+    return {
+      items: todoItems,
+      completedCount,
+      totalCount: todoItems.length,
+    };
+  }, [todoItems]);
+
+  const backgroundTasksSummary: BackgroundTasksSummary | undefined = useMemo(() => {
+    if (backgroundTasks.length === 0) return undefined;
+    const runningCount = backgroundTasks.filter((task) => task.status === "running").length;
+    return {
+      items: backgroundTasks,
+      runningCount,
+      totalCount: backgroundTasks.length,
+    };
+  }, [backgroundTasks]);
+
+  const handleBackgroundTaskClick = useCallback((task: BackgroundTaskItem) => {
+    onExpandSubagent(
+      task.description,
+      task.kind,
+      task.messages ?? [],
+      {
+        subagentId: task.sourceMessage?.subagentId,
+        toolUseId: task.sourceMessage?.toolUseId ?? task.id,
+        parentMessage: task.sourceMessage,
+        messages: task.messages,
+      }
+    );
+  }, [onExpandSubagent]);
+
+  const renderTasksPopup = useCallback(() => (
+    <div className="rounded-lg border border-border bg-popover shadow-xl">
+      <TodoListPanel items={todoItems} defaultExpanded />
+    </div>
+  ), [todoItems]);
+
+  const renderBackgroundTasksPopup = useCallback(() => (
+    <div className="rounded-lg border border-border bg-popover shadow-xl">
+      <BackgroundTaskList tasks={backgroundTasks} onTaskClick={handleBackgroundTaskClick} defaultExpanded />
+    </div>
+  ), [backgroundTasks, handleBackgroundTaskClick]);
+
+  // Top toolbar with tasks and background tasks popups
+  const topToolbar = useMemo(() => (
+    <ChatInputTopToolbar
+      onEmojiSelect={(emoji) => {
+        onPromptChange(prompt + emoji);
+      }}
+      onFileClick={() => {
+        // File handling is done by ChatInput internally
+      }}
+      isLoading={isStreaming}
+      disabled={false}
+      tasksSummary={tasksSummary}
+      backgroundTasksSummary={backgroundTasksSummary}
+      renderTasksPopup={renderTasksPopup}
+      renderBackgroundTasksPopup={renderBackgroundTasksPopup}
+    />
+  ), [backgroundTasksSummary, isStreaming, onPromptChange, prompt, renderBackgroundTasksPopup, renderTasksPopup, tasksSummary]);
+
+  // Bottom toolbar with triple selector
+  const bottomToolbar = useMemo(() => (
+    <ChatInputBottomToolbar
+      leftContent={tripleSelectorNode}
+      onSend={() => handleSend(prompt)}
+      onCancel={onCancelTurn}
+      isLoading={isStreaming}
+      canSubmit={!(!connected || !sessionId) && prompt.trim().length > 0}
+      allowSendWhileLoading
+    />
+  ), [connected, handleSend, isStreaming, onCancelTurn, prompt, sessionId, tripleSelectorNode]);
+
   const sharedInputProps = useMemo<Partial<ChatInputProps>>(() => ({
     value: prompt,
     onValueChange: onPromptChange,
@@ -1960,12 +2053,16 @@ function AcpChatSurface({
     slashCommands,
     onSlashCommand: handleSlashCommand,
     showTopToolbar: true,
+    showBottomToolbar: true,
+    topToolbar,
+    bottomToolbar,
     showResizeHandle: true,
     defaultHeight: 132,
     minHeight: 96,
     maxHeight: 360,
     heightStorageKey: "viben_acp_chat_input_height",
   }), [
+    bottomToolbar,
     connected,
     handleRecallQueue,
     handleSend,
@@ -1977,6 +2074,7 @@ function AcpChatSurface({
     sessionId,
     slashCommands,
     steerQueueItems,
+    topToolbar,
   ]);
 
   const statusContent = (

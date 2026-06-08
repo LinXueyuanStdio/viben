@@ -42,6 +42,8 @@ export interface WritingModeRootProps {
   isOpen?: boolean;
   onClose?: () => void;
   children: React.ReactNode;
+  /** When true, renders relative to parent container instead of fixed fullscreen */
+  contained?: boolean;
   className?: string;
   backdropClassName?: string;
 }
@@ -50,10 +52,30 @@ export function WritingModeRoot({
   isOpen = true,
   onClose,
   children,
+  contained = false,
   className,
   backdropClassName,
 }: WritingModeRootProps) {
   if (!isOpen) return null;
+
+  if (contained) {
+    return (
+      <>
+        <div
+          className={cn("absolute inset-0 z-40 bg-background/80 backdrop-blur-sm", backdropClassName)}
+          onClick={onClose}
+        />
+        <div
+          className={cn(
+            "absolute inset-2 z-50 flex flex-col rounded-xl border border-border bg-background shadow-2xl",
+            className
+          )}
+        >
+          {children}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -390,11 +412,14 @@ export interface WritingModeProps {
   topToolbar?: React.ReactNode;
   /** Bottom toolbar slot (shown in footer) */
   bottomToolbar?: React.ReactNode;
+  /** When true, renders relative to parent container instead of fixed fullscreen */
+  contained?: boolean;
   isLoading?: boolean;
   disabled?: boolean;
   placeholder?: string;
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
   className?: string;
+  backdropClassName?: string;
 }
 
 export function WritingMode({
@@ -410,14 +435,16 @@ export function WritingMode({
   onPaste,
   topToolbar,
   bottomToolbar,
+  contained,
   isLoading,
   disabled,
   placeholder,
   textareaRef,
   className,
+  backdropClassName,
 }: WritingModeProps) {
   return (
-    <WritingModeRoot isOpen={isOpen} onClose={onClose} className={className}>
+    <WritingModeRoot isOpen={isOpen} onClose={onClose} contained={contained} className={className} backdropClassName={backdropClassName}>
       <WritingModeHeader onClose={onClose}>
         {topToolbar}
       </WritingModeHeader>

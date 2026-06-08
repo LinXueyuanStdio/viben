@@ -111,6 +111,7 @@ export function ChatInputTopToolbar({
   const [isBackgroundTasksHovered, setIsBackgroundTasksHovered] = useState(false);
   const tasksHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backgroundTasksHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
 
   const handleEmojiSelect = useCallback(
     (emoji: string) => {
@@ -151,9 +152,10 @@ export function ChatInputTopToolbar({
 
   return (
     <div
+      ref={toolbarRef}
       data-testid="chat-input-toolbar"
       className={cn(
-        "flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/30",
+        "relative flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/30",
         className
       )}
     >
@@ -254,7 +256,6 @@ export function ChatInputTopToolbar({
         {/* Tasks Button */}
         {showTasksButton && (
           <div
-            className="relative"
             onMouseEnter={handleTasksMouseEnter}
             onMouseLeave={handleTasksMouseLeave}
           >
@@ -272,25 +273,28 @@ export function ChatInputTopToolbar({
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t("chat.tasks.tooltip", "View tasks")}</TooltipContent>
+                <TooltipContent side="bottom">{t("chat.tasks.tooltip", "View tasks")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            {isTasksHovered && renderTasksPopup && (
-              <div
-                className="absolute bottom-full right-0 z-50 mb-1 min-w-[280px] max-w-[360px]"
-                onMouseEnter={handleTasksMouseEnter}
-                onMouseLeave={handleTasksMouseLeave}
-              >
-                {renderTasksPopup()}
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Tasks Popup - positioned relative to toolbar, full width and centered */}
+        {isTasksHovered && renderTasksPopup && (
+          <div
+            className="absolute left-0 right-0 bottom-full z-50 mb-1 px-2"
+            onMouseEnter={handleTasksMouseEnter}
+            onMouseLeave={handleTasksMouseLeave}
+          >
+            <div className="mx-auto max-w-full">
+              {renderTasksPopup()}
+            </div>
           </div>
         )}
 
         {/* Background Tasks Button */}
         {showBackgroundTasksButton && (
           <div
-            className="relative"
             onMouseEnter={handleBackgroundTasksMouseEnter}
             onMouseLeave={handleBackgroundTasksMouseLeave}
           >
@@ -308,18 +312,22 @@ export function ChatInputTopToolbar({
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t("chat.backgroundTasks.tooltip", "View background tasks")}</TooltipContent>
+                <TooltipContent side="bottom">{t("chat.backgroundTasks.tooltip", "View background tasks")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            {isBackgroundTasksHovered && renderBackgroundTasksPopup && (
-              <div
-                className="absolute bottom-full right-0 z-50 mb-1 min-w-[320px] max-w-[400px]"
-                onMouseEnter={handleBackgroundTasksMouseEnter}
-                onMouseLeave={handleBackgroundTasksMouseLeave}
-              >
-                {renderBackgroundTasksPopup()}
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Background Tasks Popup - positioned relative to toolbar, full width and centered */}
+        {isBackgroundTasksHovered && renderBackgroundTasksPopup && (
+          <div
+            className="absolute left-0 right-0 bottom-full z-50 mb-1 px-2"
+            onMouseEnter={handleBackgroundTasksMouseEnter}
+            onMouseLeave={handleBackgroundTasksMouseLeave}
+          >
+            <div className="mx-auto max-w-full">
+              {renderBackgroundTasksPopup()}
+            </div>
           </div>
         )}
 

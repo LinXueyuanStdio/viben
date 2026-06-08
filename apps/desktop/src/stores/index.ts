@@ -40,3 +40,4 @@ export {
 } from "./tab-store";
 export { useUiStore } from "./ui-store";
 export { useOverlayStore } from "./overlay-store";
+export { useChatModeStore, type ChatAppMode } from "./chat-mode-store";

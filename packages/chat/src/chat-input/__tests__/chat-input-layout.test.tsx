@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
@@ -118,6 +118,31 @@ describe("ChatInput layout", () => {
     expect(screen.getByTestId("custom-bottom")).toBeInTheDocument();
     expect(screen.getByTestId("custom-bottom-left")).toBeInTheDocument();
     expect(screen.getByTestId("custom-bottom-right")).toBeInTheDocument();
+  });
+
+  test("dropped files are added as attachments", async () => {
+    const { ChatInput } = await import("../index");
+    const file = new File(["hello"], "notes.txt", { type: "text/plain" });
+
+    render(
+      <ChatInput
+        value=""
+        onValueChange={() => {}}
+        onSend={() => {}}
+        layoutVariant="expanded"
+      />
+    );
+
+    fireEvent.drop(screen.getByRole("textbox"), {
+      dataTransfer: {
+        files: [file],
+        types: ["Files"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("notes.txt")).toBeInTheDocument();
+    });
   });
 
   test("writing mode parts can be composed without ChatInput state", async () => {

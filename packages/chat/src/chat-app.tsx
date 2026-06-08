@@ -627,7 +627,7 @@ export function ChatApp({
     />
   ) : null;
 
-  // WritingMode fullscreen overlay
+  // WritingMode overlay - contained within ChatApp container
   const writingModeNode = enableWritingMode && isWritingMode ? (
     <WritingMode
       isOpen={isWritingMode}
@@ -642,6 +642,7 @@ export function ChatApp({
       onPaste={handleWritingModePaste}
       topToolbar={resolvedWritingModeTopToolbar}
       bottomToolbar={resolvedBottomToolbar}
+      contained
       isLoading={isStreaming}
       disabled={false}
       placeholder={inputProps?.placeholder ?? t("chat_app.input.placeholder.default", "Ask Viben...")}
@@ -651,137 +652,130 @@ export function ChatApp({
 
   if (mode === "full") {
     return (
-      <>
-        <motion.div
-          layoutId="viben-overlay-surface"
-          transition={OVERLAY_TRANSITION}
-          initial={false}
-          data-transition-role="expand-to-full"
-          className={`overlay-shared-surface flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
-            contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
-          }`}
-          style={{ borderRadius: OVERLAY_RADIUS.full }}
-          data-testid="full-overlay"
-        >
-          {expandedContent}
-          {subagentSheetNode}
-          {surfaceOverlay}
-        </motion.div>
-        {writingModeNode}
-      </>
-    );
-  }
-
-  if (mode === "floating") {
-    return (
-      <>
-        <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
-          <motion.button
-            type="button"
-            aria-label={t("chat_app.overlay.open_compact", "Open compact chat")}
-            onClick={() => onModeChange("compact")}
-            onMouseEnter={() => onModeChange("compact")}
-            initial={{ opacity: 0, x: 10, y: -10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, x: 14, y: -14 }}
-            transition={FLOAT_OVERLAY_TRANSITION}
-            data-transition-role="float-fade"
-            data-testid="floating-overlay-surface"
-            className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            style={{ borderRadius: OVERLAY_RADIUS.floating }}
-          >
-            <motion.div
-              className="size-14"
-              data-testid="floating-overlay-avatar"
-              data-shared-element="overlay-avatar"
-              data-transition-role="avatar-fade"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={OVERLAY_AVATAR_TRANSITION}
-            >
-              {dynamicAssistantAvatar}
-            </motion.div>
-            {pendingUserMessageCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-                {pendingUserMessageCount > 9 ? "9+" : pendingUserMessageCount}
-              </span>
-            )}
-          </motion.button>
-        </div>
-        {writingModeNode}
-      </>
-    );
-  }
-
-  if (mode === "compact") {
-    return (
-      <>
-        <motion.div
-          layoutId="viben-overlay-surface"
-          transition={OVERLAY_TRANSITION}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          data-shared-surface="overlay"
-          data-transition-role="panel-fade"
-          onMouseLeave={() => {
-            if (!hasCompactDraft) onModeChange("floating");
-          }}
-          className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
-            contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
-          }`}
-          style={{ borderRadius: OVERLAY_RADIUS.compact }}
-          data-testid="compact-overlay"
-        >
-          <AgentPopup
-            avatar={dynamicAssistantAvatar}
-            title={title}
-            summary={compactActivitySummary}
-            showMinimize={hasCompactDraft}
-            onExpand={() => onModeChange("expanded")}
-            onMinimize={() => onModeChange("floating")}
-          />
-          <section
-            data-testid="compact-chat-input"
-            data-variant="compact"
-            className={`overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`}
-          >
-            <ChatAppPendingInputContent
-              inputProps={compactInputProps}
-              pendingPlan={pendingPlan}
-              pendingApproval={pendingApproval}
-              pendingQuestion={pendingQuestion}
-              onApprovePlan={onApprovePlan}
-              onRejectPlan={onRejectPlan}
-              onApprovalDecision={onApprovalDecision}
-              onAnswerQuestions={onAnswerQuestions}
-            />
-          </section>
-        </motion.div>
-        {writingModeNode}
-      </>
-    );
-  }
-
-  return (
-    <>
       <motion.div
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
         data-transition-role="expand-to-full"
-        className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
-          contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
+        className={`overlay-shared-surface flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
+          contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
         }`}
-        style={{ borderRadius: OVERLAY_RADIUS.expanded }}
-        data-testid="expanded-overlay"
+        style={{ borderRadius: OVERLAY_RADIUS.full }}
+        data-testid="full-overlay"
       >
         {expandedContent}
         {subagentSheetNode}
         {surfaceOverlay}
+        {writingModeNode}
       </motion.div>
+    );
+  }
+
+  // For floating mode, WritingMode should expand to full mode first
+  if (mode === "floating") {
+    return (
+      <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
+        <motion.button
+          type="button"
+          aria-label={t("chat_app.overlay.open_compact", "Open compact chat")}
+          onClick={() => onModeChange("compact")}
+          onMouseEnter={() => onModeChange("compact")}
+          initial={{ opacity: 0, x: 10, y: -10 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          exit={{ opacity: 0, x: 14, y: -14 }}
+          transition={FLOAT_OVERLAY_TRANSITION}
+          data-transition-role="float-fade"
+          data-testid="floating-overlay-surface"
+          className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          style={{ borderRadius: OVERLAY_RADIUS.floating }}
+        >
+          <motion.div
+            className="size-14"
+            data-testid="floating-overlay-avatar"
+            data-shared-element="overlay-avatar"
+            data-transition-role="avatar-fade"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={OVERLAY_AVATAR_TRANSITION}
+          >
+            {dynamicAssistantAvatar}
+          </motion.div>
+          {pendingUserMessageCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+              {pendingUserMessageCount > 9 ? "9+" : pendingUserMessageCount}
+            </span>
+          )}
+        </motion.button>
+      </div>
+    );
+  }
+
+  // Compact mode - WritingMode not shown (too small), user should expand first
+  if (mode === "compact") {
+    return (
+      <motion.div
+        layoutId="viben-overlay-surface"
+        transition={OVERLAY_TRANSITION}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+        data-shared-surface="overlay"
+        data-transition-role="panel-fade"
+        onMouseLeave={() => {
+          if (!hasCompactDraft) onModeChange("floating");
+        }}
+        className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
+          contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
+        }`}
+        style={{ borderRadius: OVERLAY_RADIUS.compact }}
+        data-testid="compact-overlay"
+      >
+        <AgentPopup
+          avatar={dynamicAssistantAvatar}
+          title={title}
+          summary={compactActivitySummary}
+          showMinimize={hasCompactDraft}
+          onExpand={() => onModeChange("expanded")}
+          onMinimize={() => onModeChange("floating")}
+        />
+        <section
+          data-testid="compact-chat-input"
+          data-variant="compact"
+          className={`overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`}
+        >
+          <ChatAppPendingInputContent
+            inputProps={compactInputProps}
+            pendingPlan={pendingPlan}
+            pendingApproval={pendingApproval}
+            pendingQuestion={pendingQuestion}
+            onApprovePlan={onApprovePlan}
+            onRejectPlan={onRejectPlan}
+            onApprovalDecision={onApprovalDecision}
+            onAnswerQuestions={onAnswerQuestions}
+          />
+        </section>
+      </motion.div>
+    );
+  }
+
+  // expanded mode (default)
+  return (
+    <motion.div
+      layoutId="viben-overlay-surface"
+      transition={OVERLAY_TRANSITION}
+      initial={false}
+      data-transition-role="expand-to-full"
+      className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+        contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
+      }`}
+      style={{ borderRadius: OVERLAY_RADIUS.expanded }}
+      data-testid="expanded-overlay"
+    >
+      {expandedContent}
+      {subagentSheetNode}
+      {surfaceOverlay}
       {writingModeNode}
-    </>
+    </motion.div>
   );
 }
 

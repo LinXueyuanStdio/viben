@@ -211,20 +211,10 @@ export function ExecApproval({
       <div className="mb-3 rounded-md border border-border/50 bg-code-block p-3">
         <div className="flex items-center gap-2">
           <Icon className={cn("h-4 w-4 shrink-0", config.color)} />
-          <span className="min-w-0 break-words font-mono text-sm leading-5">
+          <span className="min-w-0 break-words font-mono text-sm leading-5 text-foreground">
             {command}
           </span>
         </div>
-        {approval.tool_call.input !== undefined && (
-          <div className="mt-3 border-t border-border/40 pt-3">
-            <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              {t("chat.execApproval.input", "Input")}
-            </div>
-            <pre className="max-h-48 overflow-auto rounded-md bg-background/70 p-2 text-xs leading-5 text-foreground">
-              {formatApprovalValue(approval.tool_call.input)}
-            </pre>
-          </div>
-        )}
       </div>
 
       {/* Action buttons */}

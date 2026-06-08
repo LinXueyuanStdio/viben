@@ -45,6 +45,11 @@ const DEFAULT_QUEUE_RECALL_JOINER = "\n\n";
 
 const ChatInputContext = createContext<ChatInputContextValue | null>(null);
 
+function hasDraggedFiles(event: React.DragEvent<HTMLElement>) {
+  const types = Array.from(event.dataTransfer.types ?? []);
+  return types.includes("Files") || event.dataTransfer.files.length > 0;
+}
+
 export function useChatInput() {
   const context = useContext(ChatInputContext);
   if (!context) {
@@ -106,6 +111,7 @@ export function ChatInput({
   // State
   const isControlled = value !== undefined;
   const [uncontrolledContent, setUncontrolledContent] = useState(defaultValue);
+  const [isDragOver, setIsDragOver] = useState(false);
   const content = isControlled ? value : uncontrolledContent;
   const setContent = useCallback(
     (nextValue: string | ((previousValue: string) => string)) => {
@@ -125,6 +131,7 @@ export function ChatInput({
   const containerRef = externalContainerRef ?? internalContainerRef;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const dragDepthRef = useRef(0);
 
   // Hooks - use controlled attachments if provided
   const {
@@ -232,6 +239,7 @@ export function ChatInput({
   // Determine if we have toolbar features enabled
   const hasToolbar = showTopToolbar || showBottomToolbar || showResizeHandle;
   const isCompactLayout = layoutVariant === "compact";
+  const isInputDisabled = disabled || (isLoading && !allowSendWhileLoading);
 
   // Auto-resize textarea based on content (only for non-toolbar mode)
   useEffect(() => {
@@ -309,6 +317,72 @@ export function ChatInput({
       e.target.value = "";
     }
   };
+
+  const handleDragEnter = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current += 1;
+
+    if (!isInputDisabled) {
+      setIsDragOver(true);
+    }
+  }, [isInputDisabled]);
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = isInputDisabled ? "none" : "copy";
+
+    if (!isInputDisabled) {
+      setIsDragOver(true);
+    }
+  }, [isInputDisabled]);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+
+    const relatedTarget = event.relatedTarget;
+    const isStillInside =
+      typeof Node !== "undefined" &&
+      relatedTarget instanceof Node &&
+      event.currentTarget.contains(relatedTarget);
+
+    if (dragDepthRef.current === 0 || !isStillInside) {
+      dragDepthRef.current = 0;
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = 0;
+    setIsDragOver(false);
+
+    if (isInputDisabled || event.dataTransfer.files.length === 0) {
+      return;
+    }
+
+    await handleAddFiles(event.dataTransfer.files);
+  }, [handleAddFiles, isInputDisabled]);
 
   // File button click handler (exposed via context)
   const handleFileClick = useCallback(async () => {
@@ -541,7 +615,7 @@ export function ChatInput({
               : undefined
         }
         rows={isCompactLayout ? 1 : 2}
-        disabled={(isLoading && !allowSendWhileLoading) || disabled}
+        disabled={isInputDisabled}
       />
     </div>
   );
@@ -550,7 +624,16 @@ export function ChatInput({
     <ChatInputContext.Provider value={contextValue}>
       <div
         ref={(containerRef as React.RefObject<HTMLDivElement>) ?? internalContainerRef}
-        className={cn("w-full bg-background", className)}
+        className={cn(
+          "w-full bg-background transition-[box-shadow,border-color] duration-150",
+          isDragOver && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background",
+          className
+        )}
+        data-drag-over={isDragOver ? "true" : undefined}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {/* Resize handle */}
         {showResizeHandle && (
@@ -606,7 +689,7 @@ export function ChatInput({
               variant="ghost"
               size="icon"
               className="h-8 w-8 shrink-0"
-              disabled={disabled || (isLoading && !allowSendWhileLoading)}
+              disabled={isInputDisabled}
               onClick={handleFileClick}
             >
               <Plus className="h-4 w-4" />
@@ -633,7 +716,7 @@ export function ChatInput({
               }}
               onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLInputElement>}
               placeholder={placeholder || t("chat.inputPlaceholder")}
-              disabled={disabled || (isLoading && !allowSendWhileLoading)}
+              disabled={isInputDisabled}
               className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               data-testid="compact-chat-input-field"
             />

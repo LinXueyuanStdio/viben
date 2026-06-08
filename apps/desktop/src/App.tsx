@@ -40,9 +40,6 @@ import {
   WorkspacePage,
   WorkspaceWebPage,
   OsPage,
-  ConnectPage,
-  DeviceListPage,
-  MobileChatPage,
   DevicePairPage,
 } from "@/pages";
 
@@ -56,9 +53,7 @@ const SkillsMarketPage = lazy(() =>
 );
 
 import { useTranslation } from "react-i18next";
-import { isMobile } from "@/lib/platform";
-import { MobileLayout } from "@/components/mobile/mobile-layout";
-import { useMemo, Component, type ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 /**
  * Loading fallback component for lazy-loaded pages
@@ -119,171 +114,131 @@ class AppErrorBoundary extends Component<
 }
 
 function App() {
-  // Memoize platform detection to avoid repeated calls during re-renders
-  const mobile = useMemo(() => {
-    try {
-      const result = isMobile();
-      console.log("[App] isMobile() returned:", result);
-      return result;
-    } catch (e) {
-      console.error("[App] isMobile() failed:", e);
-      // Fallback: check user agent
-      const ua = navigator.userAgent.toLowerCase();
-      const fallbackResult = ua.includes("android") || ua.includes("iphone") || ua.includes("ipad");
-      console.log("[App] isMobile() fallback result:", fallbackResult, "ua:", ua);
-      return fallbackResult;
-    }
-  }, []);
-
-  // Log whether PetWindowManager will be rendered
-  console.log("[App] mobile:", mobile, "=> PetWindowManager will be rendered:", !mobile);
-
   return (
     <AppErrorBoundary>
       <BrowserRouter>
         <Routes>
-          {mobile ? (
-            <>
-              {/* Mobile routes with bottom tab layout */}
-              <Route path="/m" element={<MobileLayout />}>
-                <Route path="connect" element={<ConnectPage />} />
-                <Route path="devices" element={<DeviceListPage />} />
-                <Route path="chat" element={<MobileChatPage />} />
-                <Route index element={<Navigate to="connect" replace />} />
-              </Route>
-              {/* Root redirects to mobile connect */}
-              <Route path="*" element={<Navigate to="/m/connect" replace />} />
-            </>
-          ) : (
-            <>
-              {/* Main app routes with layout */}
-              <Route path="/" element={<AppLayout />}>
-                {/* Default route redirects to global workspace */}
-                <Route index element={<HomeRedirect />} />
+          {/* Main app routes with layout */}
+          <Route path="/" element={<AppLayout />}>
+            {/* Default route redirects to global workspace */}
+            <Route index element={<HomeRedirect />} />
 
-                {/* MCP Services routes - with secondary navigation layout */}
-                <Route path="mcp-services" element={<McpServicesLayout />}>
-                  <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="data-sources" element={<ProvidersPage />} />
-                  <Route path="search-service" element={<SearchServicePage />} />
-                  <Route path="page-debug" element={<PageDebugPage />} />
-                  <Route path="logs" element={<LogsPage />} />
-                  {/* Default redirect for /mcp-services */}
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                </Route>
+            {/* MCP Services routes - with secondary navigation layout */}
+            <Route path="mcp-services" element={<McpServicesLayout />}>
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="data-sources" element={<ProvidersPage />} />
+              <Route path="search-service" element={<SearchServicePage />} />
+              <Route path="page-debug" element={<PageDebugPage />} />
+              <Route path="logs" element={<LogsPage />} />
+              {/* Default redirect for /mcp-services */}
+              <Route index element={<Navigate to="dashboard" replace />} />
+            </Route>
 
-                {/* Legacy route redirects for backward compatibility */}
-                <Route path="providers" element={<Navigate to="/mcp-services/data-sources" replace />} />
-                <Route path="search-service" element={<Navigate to="/mcp-services/search-service" replace />} />
-                <Route path="logs" element={<Navigate to="/mcp-services/logs" replace />} />
-                <Route path="agents" element={<Navigate to="/mcp-services/dashboard" replace />} />
+            {/* Legacy route redirects for backward compatibility */}
+            <Route path="providers" element={<Navigate to="/mcp-services/data-sources" replace />} />
+            <Route path="search-service" element={<Navigate to="/mcp-services/search-service" replace />} />
+            <Route path="logs" element={<Navigate to="/mcp-services/logs" replace />} />
+            <Route path="agents" element={<Navigate to="/mcp-services/dashboard" replace />} />
 
-                {/* OS - iPad-style GPU-rendered OS */}
-                <Route path="os" element={<OsPage />} />
+            {/* OS - iPad-style GPU-rendered OS */}
+            <Route path="os" element={<OsPage />} />
 
-                {/* Top-level MCP routes (unchanged) */}
-                <Route path="inspector" element={<InspectorPage />} />
-                <Route
-                  path="mcp-marketplace"
-                  element={
-                    <Suspense fallback={<PageLoadingFallback />}>
-                      <MarketplacePage />
-                    </Suspense>
-                  }
-                />
+            {/* Top-level MCP routes (unchanged) */}
+            <Route path="inspector" element={<InspectorPage />} />
+            <Route
+              path="mcp-marketplace"
+              element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <MarketplacePage />
+                </Suspense>
+              }
+            />
 
-                {/* Skills routes */}
-                <Route
-                  path="skills-market"
-                  element={
-                    <Suspense fallback={<PageLoadingFallback />}>
-                      <SkillsMarketPage />
-                    </Suspense>
-                  }
-                />
+            {/* Skills routes */}
+            <Route
+              path="skills-market"
+              element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <SkillsMarketPage />
+                </Suspense>
+              }
+            />
 
-                {/* Observability routes */}
-                <Route path="chat-monitor" element={<ChatMonitorPage />} />
+            {/* Observability routes */}
+            <Route path="chat-monitor" element={<ChatMonitorPage />} />
 
-                {/* Device pairing */}
-                <Route path="devices/pair" element={<DevicePairPage />} />
+            {/* Device pairing */}
+            <Route path="devices/pair" element={<DevicePairPage />} />
 
-                {/* Documents, Settings and About */}
-                <Route path="documents" element={<DocumentsPage />} />
-                <Route path="settings" element={<SettingsPage />}>
-                  <Route index element={null} />
-                  <Route path="general" element={null} />
-                  <Route path="account" element={null} />
-                  <Route path="shortcuts" element={null} />
-                  <Route path="notifications" element={null} />
-                  <Route path="gateway" element={null} />
-                  <Route path="channels" element={null} />
-                  <Route path="executors" element={null} />
-                  <Route path="model" element={null} />
-                  <Route path="agents" element={null} />
-                  <Route path="mcp" element={null} />
-                  <Route path="skills" element={null} />
-                  <Route path="sandbox" element={null} />
-                  <Route path="environment" element={null} />
-                  <Route path="terminalFonts" element={null} />
-                  <Route path="overlay" element={null} />
-                  <Route path="voice" element={null} />
-                  <Route path="pet" element={null} />
-                  <Route path="storage" element={null} />
-                  <Route path="developer" element={null} />
-                  <Route path="about" element={null} />
-                </Route>
-                <Route path="about" element={<AboutPage />} />
+            {/* Documents, Settings and About */}
+            <Route path="documents" element={<DocumentsPage />} />
+            <Route path="settings" element={<SettingsPage />}>
+              <Route index element={null} />
+              <Route path="general" element={null} />
+              <Route path="account" element={null} />
+              <Route path="shortcuts" element={null} />
+              <Route path="notifications" element={null} />
+              <Route path="gateway" element={null} />
+              <Route path="channels" element={null} />
+              <Route path="executors" element={null} />
+              <Route path="model" element={null} />
+              <Route path="agents" element={null} />
+              <Route path="mcp" element={null} />
+              <Route path="skills" element={null} />
+              <Route path="sandbox" element={null} />
+              <Route path="environment" element={null} />
+              <Route path="terminalFonts" element={null} />
+              <Route path="overlay" element={null} />
+              <Route path="voice" element={null} />
+              <Route path="pet" element={null} />
+              <Route path="storage" element={null} />
+              <Route path="developer" element={null} />
+              <Route path="about" element={null} />
+            </Route>
+            <Route path="about" element={<AboutPage />} />
 
-                {/* Detail pages with query params: ?workspace_path=...&agent_id=... */}
-                <Route path="agent/:agentId" element={<AgentDetailPage />} />
-                <Route path="executor/:executorType" element={<ExecutorDetailPage />} />
-                <Route path="skill/:skillId" element={<SkillDetailPage />} />
-                <Route path="mcp-server/:serverName" element={<McpServerDetailPage />} />
-                <Route path="subagent/:configId" element={<SubAgentDetailPage />} />
-                <Route path="prompt/:promptId" element={<PromptDetailPage />} />
-                <Route path="command/:commandId" element={<CommandDetailPage />} />
+            {/* Detail pages with query params: ?workspace_path=...&agent_id=... */}
+            <Route path="agent/:agentId" element={<AgentDetailPage />} />
+            <Route path="executor/:executorType" element={<ExecutorDetailPage />} />
+            <Route path="skill/:skillId" element={<SkillDetailPage />} />
+            <Route path="mcp-server/:serverName" element={<McpServerDetailPage />} />
+            <Route path="subagent/:configId" element={<SubAgentDetailPage />} />
+            <Route path="prompt/:promptId" element={<PromptDetailPage />} />
+            <Route path="command/:commandId" element={<CommandDetailPage />} />
 
-                {/* Creator routes (require authentication, handled in sidebar visibility) */}
-                <Route path="publish" element={<PublishPage />} />
-                <Route path="my-packages" element={<MyPackagesPage />} />
-                <Route path="analytics" element={<AnalyticsPage />} />
+            {/* Creator routes (require authentication, handled in sidebar visibility) */}
+            <Route path="publish" element={<PublishPage />} />
+            <Route path="my-packages" element={<MyPackagesPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
 
-                {/* Workspace routes */}
-                <Route path="workspace" element={<Navigate to="/workspace/global" replace />} />
-                <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
-                <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
-                <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
-                <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
-                <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
-                <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
-                <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
-                <Route path="workspace/:workspaceId/executor/:executorType" element={<ExecutorDetailPage />} />
-                <Route path="workspace/:workspaceId/pages/*" element={<WorkspacePage />} />
-                <Route path="workspace/:workspaceId/web" element={<WorkspaceWebPage />} />
-                <Route path="workspace/:workspaceId/agent" element={<WorkspaceAgentsPage />} />
-                <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
-                <Route path="workspace/:workspaceId/chat-monitor" element={<ChatMonitorPage />} />
+            {/* Workspace routes */}
+            <Route path="workspace" element={<Navigate to="/workspace/global" replace />} />
+            <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
+            <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
+            <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
+            <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
+            <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
+            <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
+            <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
+            <Route path="workspace/:workspaceId/executor/:executorType" element={<ExecutorDetailPage />} />
+            <Route path="workspace/:workspaceId/pages/*" element={<WorkspacePage />} />
+            <Route path="workspace/:workspaceId/web" element={<WorkspaceWebPage />} />
+            <Route path="workspace/:workspaceId/agent" element={<WorkspaceAgentsPage />} />
+            <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
+            <Route path="workspace/:workspaceId/chat-monitor" element={<ChatMonitorPage />} />
 
-                {/* Catch-all redirect to workspace */}
-                <Route path="*" element={<Navigate to="/workspace" replace />} />
-              </Route>
+            {/* Catch-all redirect to workspace */}
+            <Route path="*" element={<Navigate to="/workspace" replace />} />
+          </Route>
 
-              {/* Onboarding - separate full-screen wizard without layout */}
-              <Route path="/onboarding" element={<OnboardingPage />} />
-            </>
-          )}
+          {/* Onboarding - separate full-screen wizard without layout */}
+          <Route path="/onboarding" element={<OnboardingPage />} />
         </Routes>
       </BrowserRouter>
-      {/* Desktop-only components - these use Tauri plugins not available on mobile */}
-      {!mobile && (
-        <>
-          <OverlayRoot />
-          <ActionApprovalDialog />
-          <PresentationActionProvider />
-          <PetWindowManager />
-        </>
-      )}
+      <OverlayRoot />
+      <ActionApprovalDialog />
+      <PresentationActionProvider />
+      <PetWindowManager />
     </AppErrorBoundary>
   );
 }
