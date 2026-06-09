@@ -82,17 +82,17 @@ export function AppLayout() {
             <main className="relative min-h-0 flex-1 overflow-auto">
               <Outlet />
             </main>
+
+            {/* ChatApp in floating/compact/expanded mode: positioned in bottom-left of pages area */}
+            {isChatFloating && (
+              <AcpChat
+                mode={chatMode}
+                onModeChange={setChatMode}
+                contained
+              />
+            )}
           </div>
         </div>
-
-        {/* ChatApp in floating/compact/expanded mode: fixed overlay (outside main layout to avoid overflow issues) */}
-        {isChatFloating && (
-          <AcpChat
-            mode={chatMode}
-            onModeChange={setChatMode}
-            contained={false}
-          />
-        )}
       </div>
     </NavigationShellProvider>
   );

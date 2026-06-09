@@ -976,76 +976,28 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     />
   );
 
-  // For non-contained floating modes, render ChatApp directly without wrapper
-  // to avoid overflow:hidden issues with fixed positioning
-  if (!contained && (mode === "floating" || mode === "compact" || mode === "expanded")) {
-    return (
-      <>
-        {error && (
-          <div className="fixed left-20 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
-            {error}
-          </div>
-        )}
-        <ChatApp
-          contained={false}
-          mode={mode}
-          title={activeTitle}
-          messages={messages}
-          messageUpdates={messageUpdates}
-          isStreaming={isAgentRunning}
-          streamingText={streamingText}
-          pendingUserMessageCount={steerQueueItems.length}
-          dynamicAssistantAvatar={dynamicAssistantAvatar}
-          staticAssistantAvatar={staticAssistantAvatar}
-          artifacts={artifacts}
-          compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
-          headerContent={headerContent}
-          inputProps={sharedInputProps}
-          bottomToolbarLeftContent={bottomToolbarLeftContent}
-          statusContent={statusContent}
-          fullscreenContent={fullscreenContent}
-          pendingPlan={pendingPlan}
-          pendingApproval={pendingApproval}
-          pendingQuestion={pendingQuestion}
-          onApprovePlan={handleApprovePlan}
-          onRejectPlan={handleRejectPlan}
-          onApprovalDecision={handleApprovalDecision}
-          onAnswerQuestions={handleQuestionAnswers}
-          subagentSheet={
-            subagentSheet
-              ? {
-                  open: true,
-                  onClose: closeSubagentSheet,
-                  title: subagentSheet.title,
-                  subagentType: subagentSheet.subagentType,
-                  messages: subagentSheet.messages,
-                  liveMessages: liveSubagentMessages,
-                  context: subagentSheet.context,
-                }
-              : undefined
-          }
-          onExpandSubagent={handleExpandSubagent}
-          onModeChange={onModeChange}
-          onSend={handleSend}
-          onCancel={interrupt}
-        />
-      </>
-    );
-  }
+  // Determine if we need a sized container
+  // - full mode or contained: needs full height container
+  // - floating/compact/expanded with contained: ChatApp uses absolute positioning, parent needs to be the positioning context
+  const needsSizedContainer = contained || mode === "full";
+  const isFloatingMode = mode === "floating" || mode === "compact" || mode === "expanded";
 
   return (
     <div
       className={cn(
-        "relative overflow-hidden",
-        // Only apply full height and min-height for contained/full modes
-        contained || mode === "full" ? "h-full min-h-[560px] bg-background" : "",
+        "relative",
+        // For floating modes with contained=true, we need pointer-events-none on container
+        // so clicks pass through to content below, but ChatApp itself has pointer-events-auto
+        isFloatingMode && contained && "pointer-events-none absolute inset-0 z-20",
+        // For full mode or non-floating contained, use full height
+        needsSizedContainer && !isFloatingMode && "h-full min-h-[560px] overflow-hidden bg-background",
         className
       )}
     >
       {error && (
         <div
           className={cn(
-            "z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg",
+            "pointer-events-auto z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg",
             contained ? "absolute left-4 right-4 top-4" : "fixed left-20 right-4 top-4"
           )}
         >
@@ -1055,7 +1007,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       {!connected && mode === "floating" ? (
         <button
           className={cn(
-            "btn-primary z-30",
+            "btn-primary pointer-events-auto z-30",
             contained ? "absolute bottom-6 left-6" : "fixed bottom-6 left-6"
           )}
           onClick={connect}
@@ -1068,7 +1020,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       {connected && !sessionId && mode !== "floating" ? (
         <div
           className={cn(
-            "z-40 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur",
+            "pointer-events-auto z-40 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur",
             contained ? "absolute right-5 top-5" : "fixed right-5 top-16"
           )}
         >
@@ -1122,7 +1074,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         onCancel={interrupt}
       />
       {mode === "floating" ? (
-        <div className={cn("z-30 flex gap-2", contained ? "absolute bottom-6 right-6" : "fixed bottom-6 right-6")}>
+        <div className={cn("pointer-events-auto z-30 flex gap-2", contained ? "absolute bottom-6 right-6" : "fixed bottom-6 right-6")}>
           <button className="btn-secondary" onClick={() => onModeChange("compact")}>
             <MessageSquare size={16} />
             Open
