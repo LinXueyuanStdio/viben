@@ -5,6 +5,80 @@ import type { KnownModel } from "./types";
 export type { KnownModel } from "./types";
 
 export const KNOWN_MODELS: KnownModel[] = [
+  // Media Models
+  {
+    id: "gpt-image-2",
+    name: "gpt-image-2",
+    provider: "openai",
+    category: "media",
+    surface: "image",
+    capabilities: ["t2i", "i2i", "inpaint"],
+    description: "OpenAI image generation model",
+  },
+  {
+    id: "gpt-image-1.5",
+    name: "gpt-image-1.5",
+    provider: "openai",
+    category: "media",
+    surface: "image",
+    capabilities: ["t2i", "i2i"],
+    description: "OpenAI faster image generation model",
+  },
+  {
+    id: "dall-e-3",
+    name: "DALL-E 3",
+    provider: "openai",
+    category: "media",
+    surface: "image",
+    capabilities: ["t2i"],
+    description: "OpenAI classic image generation model",
+  },
+  {
+    id: "doubao-seedance-2-0-260128",
+    name: "Seedance 2.0",
+    provider: "volcengine",
+    category: "media",
+    surface: "video",
+    capabilities: ["t2v", "i2v", "audio"],
+    description: "Volcengine Seedance video generation model",
+  },
+  {
+    id: "veo-3-fal",
+    name: "Veo 3 (Fal)",
+    provider: "fal",
+    category: "media",
+    surface: "video",
+    capabilities: ["t2v", "audio"],
+    description: "Fal-routed Google Veo 3 video generation model",
+  },
+  {
+    id: "suno-v5",
+    name: "Suno v5",
+    provider: "suno",
+    category: "media",
+    surface: "music",
+    capabilities: ["music"],
+    description: "Suno music generation model",
+  },
+  {
+    id: "elevenlabs-v3",
+    name: "ElevenLabs v3",
+    provider: "elevenlabs",
+    category: "media",
+    surface: "speech",
+    capabilities: ["tts", "voice_clone"],
+    description: "ElevenLabs voice generation model",
+  },
+  {
+    id: "elevenlabs-sfx",
+    name: "ElevenLabs SFX",
+    provider: "elevenlabs",
+    category: "media",
+    surface: "sfx",
+    capabilities: ["sfx"],
+    description: "ElevenLabs sound effect generation model",
+  },
+
   // OpenAI Models
   {
     id: "gpt-4o",

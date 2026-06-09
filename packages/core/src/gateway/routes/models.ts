@@ -11,6 +11,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { homedir } from "node:os";
 import { modelManager } from "../../models";
 import { providerManager } from "../../providers";
+import type { ModelCategory, ModelSurface } from "../../models/types";
 import type { ModelConfig, Model } from "../../types";
 
 // ============================================================================
@@ -27,6 +28,9 @@ interface ModelResponse {
   provider: string;
   provider_id: string;
   provider_name: string;
+  category?: string;
+  surface?: string;
+  capabilities?: string[];
   description?: string;
   context_window?: number;
   max_output_tokens?: number;
@@ -46,6 +50,10 @@ interface ModelsQuery {
   workspace_path?: string;
   include_global?: string;
   include_provider_predefined?: string;
+  provider_id?: string;
+  provider?: string;
+  category?: string;
+  surface?: string;
 }
 
 /**
@@ -85,6 +93,9 @@ async function toSnakeCaseModel(model: Model): Promise<ModelResponse> {
     provider: model.provider,
     provider_id: model.provider,
     provider_name: model.provider,
+    category: model.category,
+    surface: model.surface,
+    capabilities: model.capabilities,
     description: model.description,
     context_window: model.contextLength,
     max_output_tokens: model.maxOutputTokens,
@@ -102,6 +113,10 @@ interface CreateModelBody {
   id: string;
   name: string;
   provider: string;
+  provider_id?: string;
+  category?: ModelCategory;
+  surface?: ModelSurface;
+  capabilities?: string[];
   description?: string;
   context_window?: number;
   max_output_tokens?: number;
@@ -117,6 +132,7 @@ interface UpdateModelBody {
 
 interface SetDefaultBody {
   model_id: string;
+  surface?: ModelSurface;
 }
 
 interface CreateAliasBody {
@@ -165,7 +181,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     request: FastifyRequest<{ Body: SetDefaultBody }>,
     reply: FastifyReply
   ) => {
-    const { model_id } = request.body;
+    const { model_id, surface } = request.body;
 
     if (!model_id) {
       reply.code(400);
@@ -173,6 +189,15 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     }
 
     try {
+      if (surface) {
+        await modelManager.setDefaultForSurface(surface, model_id);
+        return {
+          success: true,
+          default_model_id: model_id,
+          surface,
+        };
+      }
+
       await modelManager.setDefault(model_id);
       return {
         success: true,
@@ -374,6 +399,10 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
           workspace_path: { type: "string", description: "Workspace path for context" },
           include_global: { type: "string", description: "Include global models (default: true)" },
           include_provider_predefined: { type: "string", description: "Include provider predefined models" },
+          provider_id: { type: "string", description: "Filter by provider ID" },
+          provider: { type: "string", description: "Filter by provider type or ID" },
+          category: { type: "string", enum: ["llm", "media"], description: "Filter by model category" },
+          surface: { type: "string", enum: ["chat", "image", "video", "music", "speech", "sfx"], description: "Filter by media surface" },
         },
       },
       response: {
@@ -391,6 +420,9 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
                   provider: { type: "string" },
                   provider_id: { type: "string" },
                   provider_name: { type: "string" },
+                  category: { type: "string" },
+                  surface: { type: "string" },
+                  capabilities: { type: "array", items: { type: "string" } },
                   description: { type: "string" },
                   context_window: { type: "number" },
                   max_output_tokens: { type: "number" },
@@ -409,7 +441,15 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
   }, async (
     request: FastifyRequest<{ Querystring: ModelsQuery }>
   ) => {
-    const { workspace_path, include_global, include_provider_predefined } = request.query;
+    const {
+      workspace_path,
+      include_global,
+      include_provider_predefined,
+      provider_id,
+      provider,
+      category,
+      surface,
+    } = request.query;
 
     // Parse boolean query params (default: true for include_global, false for include_provider_predefined)
     const _includeGlobal = include_global !== "false";
@@ -418,8 +458,17 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     // For now, workspace_path is not used as we use global config
     // In future, this could scope models to a specific workspace
 
-    const models = await modelManager.listModels();
-    const defaultModelId = await modelManager.getDefault();
+    const hasFilters = Boolean(provider_id || provider || category || surface);
+    const models = hasFilters
+      ? await modelManager.listModelsFiltered({
+          provider: provider_id ?? provider,
+          category: category as ModelCategory | undefined,
+          surface: surface as ModelSurface | undefined,
+        })
+      : await modelManager.listModels();
+    const defaultModelId = surface
+      ? await modelManager.getDefaultForSurface(surface as ModelSurface)
+      : await modelManager.getDefault();
     // Transform to response format with availability info
     const modelResponses = await Promise.all(models.map(m => toSnakeCaseModel(m)));
 
@@ -573,7 +622,10 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         await modelManager.createModel({
           id,
           name: config.name || id,
-          provider: config.provider || "custom",
+          provider: config.provider_id || config.provider || "custom",
+          category: config.category,
+          surface: config.surface,
+          capabilities: config.capabilities,
           description: config.description,
           contextWindow: config.context_window,
           maxOutputTokens: config.max_output_tokens,

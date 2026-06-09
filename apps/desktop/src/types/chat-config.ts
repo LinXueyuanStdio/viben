@@ -68,4 +68,5 @@ export interface ChatContextInfo {
 export interface ChatSelectorVisibility {
   showAgentSelector: boolean;
   showModelSelector: boolean;
+  showExecutorSelector: boolean;
 }

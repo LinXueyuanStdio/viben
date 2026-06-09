@@ -10,29 +10,31 @@ import {
 import { useVoiceStore } from "@/stores/voice-store";
 import { useWakeWord } from "@/hooks/use-wake-word";
 import { useTranslation } from "react-i18next";
+import { useChatModeStore } from "@/stores/chat-mode-store";
 
 interface WakeWordTaskButtonProps {
   collapsed: boolean;
-  onCreateTask: () => void;
+  onCreateTask?: () => void; // Optional: can be used for long press or context menu
   disabled: boolean;
 }
 
 /**
- * Wake word + new-task button for the sidebar bottom area.
+ * Wake word + chat toggle button for the sidebar bottom area.
  *
  * - Text shows the configured wake word (e.g. "你好微本").
- * - Clicking the button body opens the create-task dialog.
+ * - Clicking the button body toggles acp-chat mode between floating and expanded.
  * - A listening-status icon inside the button toggles wake-word
  *   listening on/off. In collapsed mode the whole icon changes color
  *   and glows; in expanded mode a small check badge appears.
  */
 export function WakeWordTaskButton({
   collapsed,
-  onCreateTask,
+  onCreateTask: _onCreateTask,
   disabled,
 }: WakeWordTaskButtonProps) {
   const { t } = useTranslation();
   const config = useVoiceStore((s) => s.config);
+  const toggleMode = useChatModeStore((s) => s.toggleMode);
   const [error, setError] = useState<string | null>(null);
 
   const wakeWord = useWakeWord(
@@ -93,7 +95,7 @@ export function WakeWordTaskButton({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={onCreateTask}
+                onClick={toggleMode}
                 disabled={disabled}
                 className={cn(
                   "relative flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
@@ -128,7 +130,7 @@ export function WakeWordTaskButton({
     <div className="mt-4">
       <button
         type="button"
-        onClick={onCreateTask}
+        onClick={toggleMode}
         disabled={disabled}
         className={cn(
           "group relative w-full flex items-center justify-center gap-2 rounded-md border-2 px-3 py-2 text-sm font-medium",

@@ -265,6 +265,62 @@ providers:
       const defaultProvider = result?.data?.providers.find((p) => p.id === "my-default");
       expect(defaultProvider?.isDefault).toBe(true);
     });
+
+    it("should read legacy type field and filter media providers by surface", async () => {
+      await ctx.tempDir.writeFile(
+        "providers.yaml",
+        `providers:
+  legacy-media:
+    type: fal
+    category: media
+    name: legacy-media
+    surfaces:
+      - image
+      - video
+    enabled: true
+    created_at: "2024-01-01T00:00:00Z"
+    updated_at: "2024-01-01T00:00:00Z"
+  chat-provider:
+    provider_type: openai
+    category: llm
+    name: chat-provider
+    surfaces:
+      - chat
+    enabled: true
+    created_at: "2024-01-01T00:00:00Z"
+    updated_at: "2024-01-01T00:00:00Z"
+`
+      );
+
+      const result = (await ctx.runJson([
+        "provider",
+        "list",
+        "--category",
+        "media",
+        "--surface",
+        "image",
+      ])) as {
+        success: boolean;
+        data: {
+          providers: Array<{
+            id: string;
+            type: string;
+            category: string;
+            surfaces: string[];
+          }>;
+        };
+      };
+
+      expect(result?.success).toBe(true);
+      expect(result?.data?.providers).toEqual([
+        expect.objectContaining({
+          id: "legacy-media",
+          type: "fal",
+          category: "media",
+          surfaces: ["image", "video"],
+        }),
+      ]);
+    });
   });
 
   // ===========================================================================
@@ -378,6 +434,51 @@ providers:
       expect(result?.success).toBe(true);
       expect(result?.data?.provider?.id).toBe("json-provider");
       expect(result?.data?.provider?.type).toBe("openai");
+    });
+
+    it("should create media provider with category and surfaces", async () => {
+      await ctx.tempDir.writeFile("providers.yaml", "providers: {}");
+
+      const result = (await ctx.runJson([
+        "provider",
+        "create",
+        "-n",
+        "fal-media",
+        "-t",
+        "fal",
+        "--category",
+        "media",
+        "--surface",
+        "image",
+        "--surface",
+        "video",
+        "-k",
+        "env:FAL_KEY",
+      ])) as {
+        success: boolean;
+        data: {
+          provider: {
+            id: string;
+            type: string;
+            category: string;
+            surfaces: string[];
+          };
+        };
+      };
+
+      expect(result?.success).toBe(true);
+      expect(result?.data?.provider).toMatchObject({
+        id: "fal-media",
+        type: "fal",
+        category: "media",
+        surfaces: ["image", "video"],
+      });
+
+      const content = await ctx.tempDir.readFile("providers.yaml");
+      expect(content).toContain("provider_type: fal");
+      expect(content).toContain("category: media");
+      expect(content).toContain("- image");
+      expect(content).toContain("- video");
     });
 
     it("should reject invalid provider type", async () => {

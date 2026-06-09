@@ -322,13 +322,7 @@ export function AgentDebugTab({
             placeholder={t("inputPlaceholder", "Type a message...")}
             className="rounded-none border-0"
             autoFocus
-            showTopToolbar
-            showConfigBar
             showResizeHandle
-            useGlobalConfig
-            hideAgentSelector
-            hideExecutorSelector
-            hideModelSelector
           />
         </div>
       </div>

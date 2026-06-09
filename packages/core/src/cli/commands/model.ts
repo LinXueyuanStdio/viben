@@ -14,6 +14,41 @@ import {
   handleCommandError,
 } from "../lib";
 import { modelManager, KNOWN_MODELS, DEFAULT_ALIASES } from "../../models";
+import type { ModelCategory, ModelSurface } from "../../models";
+
+const MODEL_CATEGORIES: ModelCategory[] = ["llm", "media"];
+const MODEL_SURFACES: ModelSurface[] = [
+  "chat",
+  "image",
+  "video",
+  "music",
+  "speech",
+  "sfx",
+];
+
+function collectValues(value: string, previous: string[] | undefined): string[] {
+  return [...(previous ?? []), value];
+}
+
+function parseCategory(category: string | undefined): ModelCategory | undefined {
+  if (category === undefined) return undefined;
+  if (MODEL_CATEGORIES.includes(category as ModelCategory)) {
+    return category as ModelCategory;
+  }
+  throw new Error(
+    `Invalid model category: ${category}. Valid categories: ${MODEL_CATEGORIES.join(", ")}`
+  );
+}
+
+function parseSurface(surface: string | undefined): ModelSurface | undefined {
+  if (surface === undefined) return undefined;
+  if (MODEL_SURFACES.includes(surface as ModelSurface)) {
+    return surface as ModelSurface;
+  }
+  throw new Error(
+    `Invalid model surface: ${surface}. Valid surfaces: ${MODEL_SURFACES.join(", ")}`
+  );
+}
 
 /**
  * Get output context from command
@@ -56,14 +91,21 @@ export function registerModelCommand(program: Command): void {
     .command("list")
     .description("List all known models")
     .option("-p, --provider <provider>", "Filter by provider")
-    .action(async function (this: Command, options: { provider?: string }) {
+    .option("--category <category>", "Filter by model category (llm, media)")
+    .option("--surface <surface>", "Filter by model surface")
+    .action(async function (
+      this: Command,
+      options: { provider?: string; category?: string; surface?: string }
+    ) {
       const ctx = getContext(this);
       try {
-        let models = await modelManager.listModels();
-
-        if (options.provider) {
-          models = models.filter((m) => m.provider === options.provider);
-        }
+        const category = parseCategory(options.category);
+        const surface = parseSurface(options.surface);
+        const models = await modelManager.listModelsFiltered({
+          provider: options.provider,
+          category,
+          surface,
+        });
 
         const defaultModel = await modelManager.getDefault();
 
@@ -75,14 +117,15 @@ export function registerModelCommand(program: Command): void {
 
           outputTable(
             ctx,
-            ["ID", "Name", "Provider", "Context", "Input", "Output", "Default"],
+            ["ID", "Name", "Provider", "Category", "Surface", "Caps", "Context", "Default"],
             models.map((m) => [
               m.id,
               m.name,
               m.provider,
+              m.category ?? "llm",
+              m.surface ?? "chat",
+              m.capabilities?.join(",") ?? "-",
               formatContextLength(m.contextLength),
-              formatPrice(m.inputPrice),
-              formatPrice(m.outputPrice),
               defaultModel === m.id ? chalk.green("Yes") : "",
             ])
           );
@@ -210,19 +253,84 @@ export function registerModelCommand(program: Command): void {
     .command("set-default")
     .description("Set the default model")
     .requiredOption("-n, --name <model>", "Model ID or alias")
-    .action(async function (this: Command, options: { name: string }) {
+    .option("--surface <surface>", "Set default for a specific surface")
+    .action(async function (this: Command, options: { name: string; surface?: string }) {
       const modelId = options.name;
       const ctx = getContext(this);
       try {
         // Resolve alias to actual model ID
         const resolved = await modelManager.resolveAlias(modelId);
-        await modelManager.setDefault(resolved);
+        const surface = parseSurface(options.surface);
+        if (surface) {
+          await modelManager.setDefaultForSurface(surface, resolved);
+        } else {
+          await modelManager.setDefault(resolved);
+        }
 
-        output(ctx, successResponse({ default: resolved }), () => {
-          outputSuccess(ctx, `Set "${resolved}" as default model`);
+        output(ctx, successResponse({ default: resolved, surface }), () => {
+          outputSuccess(
+            ctx,
+            surface
+              ? `Set "${resolved}" as default ${surface} model`
+              : `Set "${resolved}" as default model`
+          );
           if (resolved !== modelId) {
             console.log(chalk.gray(`(resolved from alias: ${modelId})`));
           }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model create
+  model
+    .command("create")
+    .description("Create a custom model")
+    .requiredOption("-n, --name <model>", "Model ID")
+    .requiredOption("--provider <provider>", "Provider ID or type")
+    .option("--display-name <displayName>", "Display name")
+    .option("--category <category>", "Model category (llm, media)")
+    .option("--surface <surface>", "Model surface")
+    .option("--capability <capability>", "Capability tag", collectValues)
+    .option("--description <description>", "Description")
+    .option("--context-window <tokens>", "Context window", parseInt)
+    .option("--max-output-tokens <tokens>", "Max output tokens", parseInt)
+    .option("-d, --default", "Set as default model")
+    .action(async function (
+      this: Command,
+      options: {
+        name: string;
+        provider: string;
+        displayName?: string;
+        category?: string;
+        surface?: string;
+        capability?: string[];
+        description?: string;
+        contextWindow?: number;
+        maxOutputTokens?: number;
+        default?: boolean;
+      }
+    ) {
+      const ctx = getContext(this);
+      try {
+        const category = parseCategory(options.category);
+        const surface = parseSurface(options.surface);
+        const created = await modelManager.createModel({
+          id: options.name,
+          name: options.displayName ?? options.name,
+          provider: options.provider,
+          category,
+          surface,
+          capabilities: options.capability,
+          description: options.description,
+          contextWindow: options.contextWindow,
+          maxOutputTokens: options.maxOutputTokens,
+          setAsDefault: options.default,
+        });
+
+        output(ctx, successResponse({ model: created }), () => {
+          outputSuccess(ctx, `Created model "${created.id}"`);
         });
       } catch (error) {
         handleCommandError(ctx, error);

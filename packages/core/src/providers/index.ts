@@ -5,14 +5,91 @@ import { getProvidersPath } from "../config/paths";
 import { readYaml, writeYaml, fileExists } from "../config/yaml";
 import type {
   Provider,
+  ProviderCategory,
   ProviderType,
   ProviderStatus,
+  ProviderSurface,
   CreateProviderOptions,
 } from "../types";
 import type { ProvidersFile, ProviderEntry } from "./types";
 import { DEFAULT_BASE_URLS } from "./types";
 
 export * from "./types";
+
+const LLM_PROVIDER_TYPES = new Set<ProviderType>([
+  "openai",
+  "anthropic",
+  "azure",
+  "ollama",
+  "openrouter",
+  "google",
+  "custom",
+]);
+
+function normalizeProviderCategory(
+  category: string | undefined,
+  type: ProviderType
+): ProviderCategory {
+  if (category === "media" || category === "llm") {
+    return category;
+  }
+  return LLM_PROVIDER_TYPES.has(type) ? "llm" : "media";
+}
+
+function normalizeSurfaces(
+  surfaces: string[] | undefined,
+  category: ProviderCategory
+): ProviderSurface[] {
+  const valid = new Set<ProviderSurface>([
+    "chat",
+    "image",
+    "video",
+    "music",
+    "speech",
+    "sfx",
+  ]);
+  const normalized = (surfaces ?? []).filter((surface): surface is ProviderSurface =>
+    valid.has(surface as ProviderSurface)
+  );
+
+  if (normalized.length > 0) {
+    return [...new Set(normalized)];
+  }
+
+  return category === "llm" ? ["chat"] : [];
+}
+
+function providerTypeFromEntry(entry: ProviderEntry): ProviderType {
+  return (entry.provider_type ?? entry.type) as ProviderType;
+}
+
+function providerFromEntry(
+  id: string,
+  entry: ProviderEntry,
+  defaultId: string | undefined
+): Provider {
+  const type = providerTypeFromEntry(entry);
+  const category = normalizeProviderCategory(entry.category, type);
+  return {
+    id,
+    type,
+    category,
+    name: entry.name,
+    apiKey: entry.api_key,
+    base_url: entry.base_url,
+    apiVersion: entry.api_version,
+    deployment: entry.deployment,
+    timeout: entry.timeout,
+    max_retries: entry.max_retries,
+    headers: entry.headers,
+    surfaces: normalizeSurfaces(entry.surfaces, category),
+    supportsCustomModel: entry.supports_custom_model,
+    isDefault: defaultId === id,
+    enabled: entry.enabled,
+    created_at: entry.created_at,
+    updated_at: entry.updated_at,
+  };
+}
 
 /**
  * ProviderManager handles provider CRUD operations
@@ -62,22 +139,7 @@ export class ProviderManager {
     const providers: Provider[] = [];
 
     for (const [id, entry] of Object.entries(config.providers)) {
-      providers.push({
-        id,
-        type: entry.provider_type as ProviderType,
-        name: entry.name,
-        apiKey: entry.api_key,
-        base_url: entry.base_url,
-        apiVersion: entry.api_version,
-        deployment: entry.deployment,
-        timeout: entry.timeout,
-        max_retries: entry.max_retries,
-        headers: entry.headers,
-        isDefault: config.default === id,
-        enabled: entry.enabled,
-        created_at: entry.created_at,
-        updated_at: entry.updated_at,
-      });
+      providers.push(providerFromEntry(id, entry, config.default));
     }
 
     return providers;
@@ -94,22 +156,7 @@ export class ProviderManager {
       return null;
     }
 
-    return {
-      id,
-      type: entry.provider_type as ProviderType,
-      name: entry.name,
-      apiKey: entry.api_key,
-      base_url: entry.base_url,
-      apiVersion: entry.api_version,
-      deployment: entry.deployment,
-      timeout: entry.timeout,
-      max_retries: entry.max_retries,
-      headers: entry.headers,
-      isDefault: config.default === id,
-      enabled: entry.enabled,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
-    };
+    return providerFromEntry(id, entry, config.default);
   }
 
   /**
@@ -124,8 +171,10 @@ export class ProviderManager {
     }
 
     const now = new Date().toISOString();
+    const category = normalizeProviderCategory(options.category, options.type);
     const entry: ProviderEntry = {
       provider_type: options.type,
+      category,
       name: options.name,
       api_key: options.apiKey,
       base_url: options.base_url || DEFAULT_BASE_URLS[options.type],
@@ -134,6 +183,8 @@ export class ProviderManager {
       timeout: options.timeout,
       max_retries: options.max_retries,
       headers: options.headers,
+      surfaces: normalizeSurfaces(options.surfaces, category),
+      supports_custom_model: options.supportsCustomModel,
       enabled: true,
       created_at: now,
       updated_at: now,
@@ -151,6 +202,7 @@ export class ProviderManager {
     return {
       id,
       type: options.type,
+      category,
       name: options.name,
       apiKey: options.apiKey,
       base_url: entry.base_url,
@@ -159,6 +211,8 @@ export class ProviderManager {
       timeout: entry.timeout,
       max_retries: entry.max_retries,
       headers: entry.headers,
+      surfaces: entry.surfaces as ProviderSurface[],
+      supportsCustomModel: entry.supports_custom_model,
       isDefault: config.default === id,
       enabled: true,
       created_at: now,
@@ -181,9 +235,15 @@ export class ProviderManager {
     }
 
     const now = new Date().toISOString();
+    const updatedType = updates.type || providerTypeFromEntry(entry);
+    const category = normalizeProviderCategory(
+      updates.category ?? entry.category,
+      updatedType
+    );
     const updated: ProviderEntry = {
       ...entry,
-      provider_type: updates.type || entry.provider_type,
+      provider_type: updatedType,
+      category,
       name: updates.name || entry.name,
       api_key: updates.apiKey ?? entry.api_key,
       base_url: updates.base_url ?? entry.base_url,
@@ -192,28 +252,16 @@ export class ProviderManager {
       timeout: updates.timeout ?? entry.timeout,
       max_retries: updates.max_retries ?? entry.max_retries,
       headers: updates.headers ?? entry.headers,
+      surfaces: normalizeSurfaces(updates.surfaces ?? entry.surfaces, category),
+      supports_custom_model:
+        updates.supportsCustomModel ?? entry.supports_custom_model,
       updated_at: now,
     };
 
     config.providers[id] = updated;
     await this.saveConfig(config);
 
-    return {
-      id,
-      type: updated.provider_type as ProviderType,
-      name: updated.name,
-      apiKey: updated.api_key,
-      base_url: updated.base_url,
-      apiVersion: updated.api_version,
-      deployment: updated.deployment,
-      timeout: updated.timeout,
-      max_retries: updated.max_retries,
-      headers: updated.headers,
-      isDefault: config.default === id,
-      enabled: updated.enabled,
-      created_at: updated.created_at,
-      updated_at: now,
-    };
+    return providerFromEntry(id, updated, config.default);
   }
 
   /**

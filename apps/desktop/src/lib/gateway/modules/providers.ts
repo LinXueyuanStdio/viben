@@ -9,6 +9,7 @@ import type {
   ProviderResponse,
   CreateProviderOptions,
   ProviderUpdate,
+  ProviderListOptions,
   ProvidersListResponse,
   ProviderStatus,
   ApiKeyProvidersResponse,
@@ -24,9 +25,23 @@ import type {
  * List all providers
  */
 export async function listProviders(
-  baseUrl: string
+  baseUrl: string,
+  options?: ProviderListOptions
 ): Promise<ProvidersListResponse> {
-  const response = await fetch(`${baseUrl}/api/providers`, {
+  const params = new URLSearchParams();
+  if (options?.category) {
+    params.set("category", options.category);
+  }
+  if (options?.surface) {
+    params.set("surface", options.surface);
+  }
+
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/providers?${queryString}`
+    : `${baseUrl}/api/providers`;
+
+  const response = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -91,6 +106,9 @@ export async function createProvider(
       timeout: options.timeout,
       max_retries: options.maxRetries,
       headers: options.headers,
+      category: options.category,
+      surfaces: options.surfaces,
+      supports_custom_model: options.supportsCustomModel,
       set_as_default: options.setAsDefault,
     }),
   });
@@ -132,6 +150,9 @@ export async function updateProvider(
         timeout: updates.timeout,
         max_retries: updates.maxRetries,
         headers: updates.headers,
+        category: updates.category,
+        surfaces: updates.surfaces,
+        supports_custom_model: updates.supportsCustomModel,
       }),
     }
   );

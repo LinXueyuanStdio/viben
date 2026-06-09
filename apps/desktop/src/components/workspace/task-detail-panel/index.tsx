@@ -736,7 +736,6 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             artifacts={agentArtifacts}
             error={agentError}
             phase={agentPhase}
-            taskStatus={task.status}
             slashCommands={agentSlashCommands}
             placeholder={t("workspace.agentChatPlaceholder", "Ask about this task...")}
             waitingForApprovalText={t("chat.waitingForApproval")}

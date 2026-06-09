@@ -4,12 +4,30 @@
 import { getModelsPath } from "../config/paths";
 import { readYaml, writeYaml, fileExists } from "../config/yaml";
 import type { Model, ModelConfig } from "../types";
-import type { ModelsFile, ModelConfigEntry, ModelEntry } from "./types";
+import type {
+  ModelCategory,
+  ModelConfigEntry,
+  ModelEntry,
+  ModelSurface,
+  ModelsFile,
+} from "./types";
 import { KNOWN_MODELS, DEFAULT_ALIASES, getKnownModel } from "./known-models";
 
 export * from "./types";
 export * from "./known-models";
 export * from "./discovery";
+
+function normalizeModelCategory(category: ModelCategory | undefined): ModelCategory {
+  return category ?? "llm";
+}
+
+function normalizeModelSurface(
+  surface: ModelSurface | undefined,
+  category: ModelCategory
+): ModelSurface | undefined {
+  if (surface) return surface;
+  return category === "llm" ? "chat" : undefined;
+}
 
 /**
  * ModelManager handles model configuration and aliases
@@ -30,6 +48,7 @@ export class ModelManager {
       this.config = {
         aliases: { ...DEFAULT_ALIASES },
         fallbacks: [],
+        fallbacks_by_surface: {},
         configs: {},
         custom_models: {},
         disabled_models: [],
@@ -46,6 +65,7 @@ export class ModelManager {
       // Merge loaded aliases with defaults (loaded takes precedence)
       aliases: { ...DEFAULT_ALIASES, ...(loaded?.aliases || {}) },
       fallbacks: loaded?.fallbacks || [],
+      fallbacks_by_surface: loaded?.fallbacks_by_surface || {},
       // Handle both field names: Rust uses model_config, TypeScript uses configs
       configs: loaded?.configs || loaded?.model_config || {},
       // Custom models added by user
@@ -91,6 +111,12 @@ export class ModelManager {
         id: known.id,
         name: known.name,
         provider: known.provider,
+        category: normalizeModelCategory(known.category),
+        surface: normalizeModelSurface(
+          known.surface,
+          normalizeModelCategory(known.category)
+        ),
+        capabilities: known.capabilities,
         description: known.description,
         contextLength: known.contextLength,
         maxOutputTokens: known.maxOutputTokens,
@@ -108,6 +134,12 @@ export class ModelManager {
         id,
         name: entry.name,
         provider: entry.provider,
+        category: normalizeModelCategory(entry.category),
+        surface: normalizeModelSurface(
+          entry.surface,
+          normalizeModelCategory(entry.category)
+        ),
+        capabilities: entry.capabilities,
         description: entry.description,
         contextLength: entry.context_window,
         maxOutputTokens: entry.max_output_tokens,
@@ -129,6 +161,24 @@ export class ModelManager {
     return all.filter((m) => m.provider === provider);
   }
 
+  async listModelsFiltered(filters: {
+    provider?: string;
+    category?: ModelCategory;
+    surface?: ModelSurface;
+  }): Promise<Model[]> {
+    let models = await this.listModels();
+    if (filters.provider) {
+      models = models.filter((m) => m.provider === filters.provider);
+    }
+    if (filters.category) {
+      models = models.filter((m) => normalizeModelCategory(m.category) === filters.category);
+    }
+    if (filters.surface) {
+      models = models.filter((m) => m.surface === filters.surface);
+    }
+    return models;
+  }
+
   /**
    * Get a model by ID
    */
@@ -143,6 +193,12 @@ export class ModelManager {
         id,
         name: customEntry.name,
         provider: customEntry.provider,
+        category: normalizeModelCategory(customEntry.category),
+        surface: normalizeModelSurface(
+          customEntry.surface,
+          normalizeModelCategory(customEntry.category)
+        ),
+        capabilities: customEntry.capabilities,
         description: customEntry.description,
         contextLength: customEntry.context_window,
         maxOutputTokens: customEntry.max_output_tokens,
@@ -162,6 +218,12 @@ export class ModelManager {
         id: known.id,
         name: known.name,
         provider: known.provider,
+        category: normalizeModelCategory(known.category),
+        surface: normalizeModelSurface(
+          known.surface,
+          normalizeModelCategory(known.category)
+        ),
+        capabilities: known.capabilities,
         description: known.description,
         contextLength: known.contextLength,
         maxOutputTokens: known.maxOutputTokens,
@@ -182,6 +244,9 @@ export class ModelManager {
     id: string;
     name: string;
     provider: string;
+    category?: ModelCategory;
+    surface?: ModelSurface;
+    capabilities?: string[];
     description?: string;
     contextWindow?: number;
     maxOutputTokens?: number;
@@ -198,6 +263,12 @@ export class ModelManager {
     const entry: ModelEntry = {
       name: options.name,
       provider: options.provider,
+      category: normalizeModelCategory(options.category),
+      surface: normalizeModelSurface(
+        options.surface,
+        normalizeModelCategory(options.category)
+      ),
+      capabilities: options.capabilities,
       description: options.description,
       context_window: options.contextWindow,
       max_output_tokens: options.maxOutputTokens,
@@ -220,6 +291,9 @@ export class ModelManager {
       id: options.id,
       name: entry.name,
       provider: entry.provider,
+      category: entry.category,
+      surface: entry.surface,
+      capabilities: entry.capabilities,
       description: entry.description,
       contextLength: entry.context_window,
       maxOutputTokens: entry.max_output_tokens,
@@ -370,6 +444,31 @@ export class ModelManager {
     await this.saveConfig(config);
   }
 
+  async getDefaultForSurface(surface: ModelSurface): Promise<string | undefined> {
+    const config = await this.loadConfig();
+    if (surface === "chat") {
+      return config.defaults?.llm ?? config.default;
+    }
+    return config.defaults?.media?.[surface];
+  }
+
+  async setDefaultForSurface(surface: ModelSurface, model: string): Promise<void> {
+    const config = await this.loadConfig();
+    if (!config.defaults) {
+      config.defaults = {};
+    }
+    if (surface === "chat") {
+      config.defaults.llm = model;
+      config.default = model;
+    } else {
+      config.defaults.media = {
+        ...(config.defaults.media ?? {}),
+        [surface]: model,
+      };
+    }
+    await this.saveConfig(config);
+  }
+
   // ========================================================================
   // Aliases
   // ========================================================================
@@ -498,6 +597,14 @@ export class ModelManager {
       topP: modelConfig.topP,
       frequencyPenalty: modelConfig.frequencyPenalty,
       presencePenalty: modelConfig.presencePenalty,
+      provider: modelConfig.provider,
+      category: modelConfig.category,
+      surface: modelConfig.surface,
+      capabilities: modelConfig.capabilities,
+      duration_seconds: modelConfig.duration_seconds,
+      aspect_ratio: modelConfig.aspect_ratio,
+      size: modelConfig.size,
+      voice_id: modelConfig.voice_id,
     };
 
     await this.saveConfig(config);
@@ -531,6 +638,12 @@ export class ModelManager {
           id: resolved,
           name: customEntry.name,
           provider: customEntry.provider,
+          category: normalizeModelCategory(customEntry.category),
+          surface: normalizeModelSurface(
+            customEntry.surface,
+            normalizeModelCategory(customEntry.category)
+          ),
+          capabilities: customEntry.capabilities,
           description: customEntry.description,
           contextLength: customEntry.context_window,
           maxOutputTokens: customEntry.max_output_tokens,
@@ -555,6 +668,12 @@ export class ModelManager {
       id: known.id,
       name: known.name,
       provider: known.provider,
+      category: normalizeModelCategory(known.category),
+      surface: normalizeModelSurface(
+        known.surface,
+        normalizeModelCategory(known.category)
+      ),
+      capabilities: known.capabilities,
       description: known.description,
       contextLength: known.contextLength,
       maxOutputTokens: known.maxOutputTokens,

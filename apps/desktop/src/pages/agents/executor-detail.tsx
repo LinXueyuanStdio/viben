@@ -611,14 +611,7 @@ export function ExecutorDetailPage() {
                     : t("settingsAgents.sendMessage")
               }
               autoFocus
-              showTopToolbar
-              showConfigBar
               showResizeHandle
-              enableWritingMode
-              hideAgentSelector
-              hideModelSelector
-              hideExecutorSelector
-              useGlobalConfig
               slashCommands={slashCommands}
               onSlashCommand={handleSlashCommand}
             />

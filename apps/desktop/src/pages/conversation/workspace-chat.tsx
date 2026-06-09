@@ -204,13 +204,9 @@ export function WorkspaceChatPage() {
               isLoadingExecutorSessions={chat.isLoadingExecutorSessions}
               executorMessagesAsAgentMessages={chat.executorMessagesAsAgentMessages}
               isLoadingExecutorMessages={chat.isLoadingExecutorMessages}
-              executorModels={chat.executorModels}
-              selectedExecutorModelId={chat.selectedExecutorModelId}
-              executorSessionStats={chat.executorSessionStats}
               gatewayConnected={chat.gatewayConnected}
               onSelectSession={(sessionId) => chat.setSelectedExecutorSessionId(sessionId)}
               onRefreshSessions={chat.refreshExecutorSessions}
-              onModelChange={chat.setSelectedExecutorModelId}
               onCheckGateway={chat.checkGatewayConnection}
               onOpenSearchDialog={() => chat.setIsSearchDialogOpen(true)}
               onExecutorAvatarClick={() => {
@@ -249,11 +245,8 @@ export function WorkspaceChatPage() {
               isLoadingSessions={chat.isLoadingSessions}
               commandQueue={chat.commandQueue ? {
                 items: chat.commandQueue.items,
-                isPaused: chat.commandQueue.isPaused,
                 onRemove: chat.commandQueue.remove,
                 onClear: chat.commandQueue.clear,
-                onPause: chat.commandQueue.pause,
-                onResume: chat.commandQueue.resume,
               } : undefined}
               slashCommands={chat.slashCommands}
               onSelectSession={(sessionId) => chat.setSelectedConversationId(sessionId)}

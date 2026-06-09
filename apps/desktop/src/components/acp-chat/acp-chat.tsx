@@ -5,19 +5,28 @@
  * for communicating with the Viben Gateway's ACP endpoint.
  */
 
-import { useCallback, useMemo } from "react";
+// ReactNode is used in callback render prop types
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   EthernetPort,
+  ExternalLink,
   FolderPlus,
+  FolderTree,
+  ListTodo,
   Loader2,
   Maximize2,
   MessageSquare,
+  Mic,
+  MicOff,
   Minimize2,
   Plug,
   Plus,
   RotateCcw,
+  Settings2,
 } from "lucide-react";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   buildBackgroundTasksFromMessages,
   buildTodoListItemsFromMessages,
@@ -47,7 +56,16 @@ import type {
   TasksSummary,
   TripleSelectorValue,
 } from "@viben/chat";
-import { cn } from "@viben/ui";
+import { PetSprite, type PetConfig, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
+import { cn, Popover, PopoverContent, PopoverTrigger, Switch, Label } from "@viben/ui";
+import { loadPetFromPublic } from "@/lib/pet-loader";
+import { getGatewayClient } from "@/lib/gateway";
+import { openAndReadFiles } from "@/lib/tauri-file-attach";
+import { EmojiTab } from "@/components/ui/icon-picker/tabs/emoji-tab";
+import { ScreenshotDropdown } from "@/components/chat/screenshot-dropdown";
+import { useScreenshot } from "@/hooks/use-screenshot";
+import { useVoiceAgent } from "@/hooks/use-voice-agent";
+import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useAcpSession } from "./use-acp-session";
 
 const BACKEND_OPTIONS = [
@@ -169,6 +187,18 @@ function AcpHeaderNewSessionMenu({ onCreateSession, onSelectExecutor }: AcpHeade
   );
 }
 
+async function openFloatingWindow() {
+  try {
+    const petWindow = await WebviewWindow.getByLabel("pet-window");
+    if (petWindow) {
+      await petWindow.show();
+      await petWindow.setFocus();
+    }
+  } catch (err) {
+    console.error("[AcpChat] Failed to open floating window:", err);
+  }
+}
+
 function shortId(id: string): string {
   return id.length <= 8 ? id : id.slice(0, 8);
 }
@@ -212,6 +242,9 @@ function buildModelOptions(currentModel: string) {
 }
 
 export function AcpChat({ mode, onModeChange, contained = false, className, wsUrl, defaultCwd }: AcpChatProps) {
+  const { t } = useTranslation();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const acp = useAcpSession({
     wsUrl,
     defaultCwd,
@@ -261,20 +294,169 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const sessionId = activeSessionId;
   const activeTitle = sessions.find((session) => session.id === sessionId)?.title ?? "ACP Chat";
 
-  const assistantAvatar = useMemo(
-    () => (
+  // Attachments state
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+
+  // Settings state
+  const [worktree, setWorktree] = useState(false);
+  const [backgroundTask, setBackgroundTask] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Sandbox config from store
+  const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
+
+  // Screenshot hook
+  const {
+    takeScreenshot,
+    startRegionScreenshot,
+    listMonitors,
+    listWindows,
+    takeWindowScreenshot,
+    isCapturing: isScreenshotCapturing,
+  } = useScreenshot({
+    onSuccess: (attachment) => {
+      setAttachments((prev) => [...prev, attachment]);
+    },
+    onError: (error) => {
+      console.error("[AcpChat] Screenshot failed:", error);
+    },
+  });
+
+  // Voice agent hook
+  const voice = useVoiceAgent();
+
+  // Handle emoji insertion (ChatInputTopToolbar manages its own popover state)
+  const handleEmojiInsert = useCallback((emoji: string) => {
+    const ta = textareaRef.current;
+    if (ta) {
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const currentValue = ta.value;
+      const newContent = currentValue.slice(0, start) + emoji + currentValue.slice(end);
+      // Trigger change event for ChatInput
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value"
+      )?.set;
+      if (nativeInputValueSetter) {
+        nativeInputValueSetter.call(ta, newContent);
+        const event = new Event("input", { bubbles: true });
+        ta.dispatchEvent(event);
+      }
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = start + emoji.length;
+        ta.focus();
+      });
+    }
+  }, []);
+
+  // Handle file attachment
+  const handleAttachFile = useCallback(async () => {
+    const result = await openAndReadFiles();
+    if (result) {
+      setAttachments((prev) => [...prev, ...result]);
+    }
+  }, []);
+
+  const [pet, setPet] = useState<PetConfig | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPet() {
+      try {
+        const gatewayClient = getGatewayClient();
+        const data = await gatewayClient.get<{ config: { current: string | null; enabled: boolean } }>("/api/pet/config");
+        const cfg = data.config;
+
+        if (!mounted || !cfg?.enabled || !cfg.current) return;
+
+        try {
+          const petData = await loadPetFromPublic(cfg.current);
+          if (mounted) setPet(petData);
+        } catch {
+          const { pet: petInfo } = await gatewayClient.get<{
+            pet: {
+              id: string;
+              metadata: { display_name: string; description: string };
+              spritesheet_url: string;
+            };
+          }>(`/api/pet/show/${encodeURIComponent(cfg.current)}`);
+
+          let spritesheetSrc = petInfo.spritesheet_url;
+          if (spritesheetSrc.startsWith("/api/")) {
+            spritesheetSrc = `${gatewayClient.getBaseUrl()}${spritesheetSrc}`;
+          }
+
+          if (mounted) {
+            setPet({
+              id: petInfo.id,
+              name: petInfo.metadata.display_name,
+              description: petInfo.metadata.description,
+              accent: "#6366f1",
+              greeting: `Hi! I'm ${petInfo.metadata.display_name}.`,
+              spritesheet: spritesheetSrc,
+              atlas: {
+                cols: 8,
+                rows: 9,
+                cellWidth: 192,
+                cellHeight: 208,
+                animations: STANDARD_ANIMATIONS,
+              },
+              ambient: PET_DEFAULTS.ambient,
+              idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[AcpChat] Failed to load pet:", err);
+      }
+    }
+
+    loadPet();
+    return () => { mounted = false; };
+  }, []);
+
+  const staticAssistantAvatar = useMemo(() => {
+    if (pet) {
+      return (
+        <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
+          <PetSprite pet={pet} rowId="idle" size={mode === "floating" ? 56 : 36} />
+        </div>
+      );
+    }
+    return (
       <div className="flex size-full items-center justify-center rounded-full bg-primary text-primary-foreground">
         <EthernetPort size={mode === "floating" ? 28 : 18} />
       </div>
-    ),
-    [mode]
-  );
+    );
+  }, [mode, pet]);
+
+  const dynamicAssistantAvatar = useMemo(() => {
+    if (pet) {
+      return (
+        <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
+          <PetSprite pet={pet} rowId="alert" size={mode === "floating" ? 56 : 36} />
+        </div>
+      );
+    }
+    return (
+      <div className="flex size-full items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <EthernetPort size={mode === "floating" ? 28 : 18} />
+      </div>
+    );
+  }, [mode, pet]);
 
   // Track input value locally for submit control
   const inputValue = "";
 
   const handleSend = useCallback(
-    (content: string, _attachments?: MessageAttachment[]) => {
+    (content: string, _messageAttachments?: MessageAttachment[]) => {
+      // TODO: ACP session doesn't support attachments yet
+      // When supported, merge: [...attachments, ...(messageAttachments ?? [])]
+      // Clear attachments after sending
+      setAttachments([]);
+
       if (isTurnActive) {
         void sendSteerPrompt(content);
         return;
@@ -429,26 +611,197 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     [backgroundTasks, handleBackgroundTaskClick]
   );
 
+  // Render emoji picker for top toolbar
+  const renderEmojiPicker = useCallback(
+    (props: { onSelect: (emoji: string) => void }) => (
+      <EmojiTab onSelect={props.onSelect} />
+    ),
+    []
+  );
+
+  // Screenshot dropdown for top toolbar extraActions
+  const screenshotDropdownNode = useMemo(
+    () => (
+      <ScreenshotDropdown
+        takeScreenshot={takeScreenshot}
+        startRegionScreenshot={startRegionScreenshot}
+        listMonitors={listMonitors}
+        listWindows={listWindows}
+        takeWindowScreenshot={takeWindowScreenshot}
+        isCapturing={isScreenshotCapturing}
+        contentClassName="z-[10001]"
+      />
+    ),
+    [takeScreenshot, startRegionScreenshot, listMonitors, listWindows, takeWindowScreenshot, isScreenshotCapturing]
+  );
+
   const topToolbar = useMemo(
     () => (
       <ChatInputTopToolbar
-        onEmojiSelect={() => {}}
-        onFileClick={() => {}}
+        onEmojiSelect={handleEmojiInsert}
+        renderEmojiPicker={renderEmojiPicker}
+        onFileClick={handleAttachFile}
         isLoading={isTurnActive}
         disabled={false}
         tasksSummary={tasksSummary}
         backgroundTasksSummary={backgroundTasksSummary}
         renderTasksPopup={renderTasksPopup}
         renderBackgroundTasksPopup={renderBackgroundTasksPopup}
+        extraActions={screenshotDropdownNode}
       />
     ),
-    [backgroundTasksSummary, isTurnActive, renderBackgroundTasksPopup, renderTasksPopup, tasksSummary]
+    [
+      backgroundTasksSummary,
+      handleAttachFile,
+      handleEmojiInsert,
+      isTurnActive,
+      renderBackgroundTasksPopup,
+      renderEmojiPicker,
+      renderTasksPopup,
+      screenshotDropdownNode,
+      tasksSummary,
+    ]
+  );
+
+  // Settings popover node
+  const settingsPopoverNode = useMemo(
+    () => (
+      <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "h-7 w-7 flex items-center justify-center rounded-full",
+              "bg-muted/50 hover:bg-muted/80 transition-colors",
+              "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[240px] p-3 z-[10001]" side="top" align="center">
+          <div className="space-y-3">
+            {/* Sandbox toggle */}
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="acp-sandbox"
+                className={cn(
+                  "text-xs font-medium cursor-pointer transition-colors",
+                  sandboxConfig.enabled ? "text-amber-500" : "text-muted-foreground"
+                )}
+              >
+                {t("chat.sandbox")}
+              </Label>
+              <Switch
+                id="acp-sandbox"
+                checked={sandboxConfig.enabled}
+                onCheckedChange={setSandboxEnabled}
+                className="data-[state=checked]:bg-amber-500"
+              />
+            </div>
+            {/* Worktree toggle */}
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="acp-worktree"
+                className={cn(
+                  "text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-colors",
+                  worktree ? "text-blue-500" : "text-muted-foreground"
+                )}
+              >
+                <FolderTree className="h-3.5 w-3.5" />
+                {t("chat.worktree")}
+              </Label>
+              <Switch
+                id="acp-worktree"
+                checked={worktree}
+                onCheckedChange={setWorktree}
+                className="data-[state=checked]:bg-blue-500"
+              />
+            </div>
+            {/* Background task toggle */}
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="acp-background-task"
+                className={cn(
+                  "text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-colors",
+                  backgroundTask ? "text-green-500" : "text-muted-foreground"
+                )}
+              >
+                <ListTodo className="h-3.5 w-3.5" />
+                {t("chat.backgroundTask.title")}
+              </Label>
+              <Switch
+                id="acp-background-task"
+                checked={backgroundTask}
+                onCheckedChange={setBackgroundTask}
+                className="data-[state=checked]:bg-green-500"
+              />
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    ),
+    [backgroundTask, sandboxConfig.enabled, setSandboxEnabled, settingsOpen, t, worktree]
+  );
+
+  // Voice input button node
+  const voiceInputNode = useMemo(
+    () => (
+      <button
+        type="button"
+        onClick={async () => {
+          if (voice.isConnected) {
+            await voice.disconnect();
+          } else {
+            await voice.connect();
+          }
+        }}
+        className={cn(
+          "h-7 w-7 flex items-center justify-center rounded-full",
+          "transition-colors",
+          voice.isListening
+            ? "bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse"
+            : voice.state === "connecting"
+              ? "bg-amber-500/20 text-amber-500"
+              : "hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+        )}
+        title={
+          voice.isListening
+            ? t("chat.voiceListening")
+            : voice.state === "connecting"
+              ? t("chat.voiceConnecting")
+              : t("chat.voiceInput")
+        }
+      >
+        {voice.state === "connecting" ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : voice.isConnected ? (
+          <MicOff className="h-3.5 w-3.5" />
+        ) : (
+          <Mic className="h-3.5 w-3.5" />
+        )}
+      </button>
+    ),
+    [t, voice]
+  );
+
+  // Combined bottom toolbar left content
+  const bottomToolbarLeftContent = useMemo(
+    () => (
+      <div className="flex items-center gap-1.5">
+        {tripleSelectorNode}
+        {settingsPopoverNode}
+        <div className="flex-1" />
+        {voiceInputNode}
+      </div>
+    ),
+    [settingsPopoverNode, tripleSelectorNode, voiceInputNode]
   );
 
   const bottomToolbar = useMemo(
     () => (
       <ChatInputBottomToolbar
-        leftContent={tripleSelectorNode}
+        leftContent={bottomToolbarLeftContent}
         onSend={() => handleSend(inputValue)}
         onCancel={interrupt}
         isLoading={isTurnActive}
@@ -456,7 +809,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         allowSendWhileLoading
       />
     ),
-    [connected, handleSend, inputValue, interrupt, isTurnActive, sessionId, tripleSelectorNode]
+    [bottomToolbarLeftContent, connected, handleSend, inputValue, interrupt, isTurnActive, sessionId]
   );
 
   const sharedInputProps = useMemo<Partial<ChatInputProps>>(
@@ -485,8 +838,16 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       minHeight: 96,
       maxHeight: 360,
       heightStorageKey: "viben_acp_chat_input_height",
+      // Attachments
+      attachments,
+      onAttachmentsChange: setAttachments,
+      // Platform-specific callbacks for file dialog
+      onOpenFile: openAndReadFiles,
+      // Expose textarea ref for emoji insertion
+      textareaRef,
     }),
     [
+      attachments,
       bottomToolbar,
       connected,
       handleRecallQueue,
@@ -542,6 +903,9 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
               <MenuActionButton onClick={() => onModeChange("full")} icon={<Maximize2 size={14} />}>
                 Fullscreen mode
               </MenuActionButton>
+              <MenuActionButton onClick={openFloatingWindow} icon={<ExternalLink size={14} />}>
+                Open in new window
+              </MenuActionButton>
               <div className="my-1 border-t border-border" />
               {!connected ? (
                 <MenuActionButton
@@ -582,7 +946,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           messageUpdates={messageUpdates}
           isStreaming={isAgentRunning}
           streamingText={streamingText}
-          assistantAvatar={assistantAvatar}
+          assistantAvatar={staticAssistantAvatar}
           artifacts={artifacts}
           pendingPlan={pendingPlan}
           pendingApproval={pendingApproval}
@@ -613,20 +977,44 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   );
 
   return (
-    <div className={cn("relative h-full min-h-[560px] overflow-hidden bg-background", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden",
+        // Only apply full height and min-height for contained/full modes
+        contained || mode === "full" ? "h-full min-h-[560px] bg-background" : "",
+        className
+      )}
+    >
       {error && (
-        <div className="absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+        <div
+          className={cn(
+            "z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg",
+            contained ? "absolute left-4 right-4 top-4" : "fixed left-20 right-4 top-4"
+          )}
+        >
           {error}
         </div>
       )}
       {!connected && mode === "floating" ? (
-        <button className="btn-primary absolute bottom-6 left-6 z-30" onClick={connect} disabled={busy}>
+        <button
+          className={cn(
+            "btn-primary z-30",
+            contained ? "absolute bottom-6 left-6" : "fixed bottom-6 left-6"
+          )}
+          onClick={connect}
+          disabled={busy}
+        >
           {busy ? <Loader2 className="animate-spin" size={16} /> : <Plug size={16} />}
           Connect ACP
         </button>
       ) : null}
       {connected && !sessionId && mode !== "floating" ? (
-        <div className="absolute right-5 top-5 z-40 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur">
+        <div
+          className={cn(
+            "z-40 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur",
+            contained ? "absolute right-5 top-5" : "fixed right-5 top-16"
+          )}
+        >
           <button className="btn-primary" onClick={createSession}>
             <FolderPlus size={16} />
             New Session
@@ -642,13 +1030,13 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         isStreaming={isAgentRunning}
         streamingText={streamingText}
         pendingUserMessageCount={steerQueueItems.length}
-        dynamicAssistantAvatar={assistantAvatar}
-        staticAssistantAvatar={assistantAvatar}
+        dynamicAssistantAvatar={dynamicAssistantAvatar}
+        staticAssistantAvatar={staticAssistantAvatar}
         artifacts={artifacts}
         compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
         headerContent={headerContent}
         inputProps={sharedInputProps}
-        bottomToolbarLeftContent={tripleSelectorNode}
+        bottomToolbarLeftContent={bottomToolbarLeftContent}
         statusContent={statusContent}
         fullscreenContent={fullscreenContent}
         pendingPlan={pendingPlan}
@@ -677,7 +1065,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         onCancel={interrupt}
       />
       {mode === "floating" ? (
-        <div className="absolute bottom-6 right-6 z-30 flex gap-2">
+        <div className={cn("z-30 flex gap-2", contained ? "absolute bottom-6 right-6" : "fixed bottom-6 right-6")}>
           <button className="btn-secondary" onClick={() => onModeChange("compact")}>
             <MessageSquare size={16} />
             Open

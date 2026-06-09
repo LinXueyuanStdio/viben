@@ -191,6 +191,11 @@ async function main() {
     if (message.error) {
       console.error("\n=== Error received ===");
       console.error(JSON.stringify(message.error, null, 2));
+      console.log("\nNote: OpenClaw ACP backend requires 'openclaw' command to be installed.");
+      console.log("Install with: pip install openclaw or cargo install openclaw");
+      console.log("Dump saved to:", OUTPUT_FILE);
+      ws.close();
+      process.exit(1);
     }
   });
 

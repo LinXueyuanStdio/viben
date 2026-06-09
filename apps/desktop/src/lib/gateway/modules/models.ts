@@ -10,6 +10,8 @@ import type {
   CreateModelOptions,
   ModelUpdate,
   DefaultModelResponse,
+  ModelCategory,
+  ModelSurface,
 } from "../types";
 
 // ============================================================================
@@ -20,9 +22,30 @@ import type {
  * List all models
  */
 export async function listModels(
-  baseUrl: string
+  baseUrl: string,
+  options?: {
+    providerId?: string;
+    category?: ModelCategory;
+    surface?: ModelSurface;
+  }
 ): Promise<ModelResponse[]> {
-  const response = await fetch(`${baseUrl}/api/models`, {
+  const params = new URLSearchParams();
+  if (options?.providerId) {
+    params.set("provider_id", options.providerId);
+  }
+  if (options?.category) {
+    params.set("category", options.category);
+  }
+  if (options?.surface) {
+    params.set("surface", options.surface);
+  }
+
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/models?${queryString}`
+    : `${baseUrl}/api/models`;
+
+  const response = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -154,9 +177,19 @@ export async function deleteModel(
  * Get default model
  */
 export async function getDefaultModel(
-  baseUrl: string
+  baseUrl: string,
+  surface?: ModelSurface
 ): Promise<DefaultModelResponse> {
-  const response = await fetch(`${baseUrl}/api/models/default`, {
+  const params = new URLSearchParams();
+  if (surface) {
+    params.set("surface", surface);
+  }
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/models/default?${queryString}`
+    : `${baseUrl}/api/models/default`;
+
+  const response = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
@@ -177,9 +210,10 @@ export async function getDefaultModel(
  * Convenience wrapper that returns just the ID
  */
 export async function getDefaultModelId(
-  baseUrl: string
+  baseUrl: string,
+  surface?: ModelSurface
 ): Promise<string | null> {
-  const result = await getDefaultModel(baseUrl);
+  const result = await getDefaultModel(baseUrl, surface);
   return result.default_model_id;
 }
 
@@ -188,7 +222,8 @@ export async function getDefaultModelId(
  */
 export async function setDefaultModel(
   baseUrl: string,
-  modelId: string
+  modelId: string,
+  surface?: ModelSurface
 ): Promise<void> {
   const response = await fetch(`${baseUrl}/api/models/default`, {
     method: "PUT",
@@ -196,7 +231,7 @@ export async function setDefaultModel(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ model_id: modelId }),
+    body: JSON.stringify({ model_id: modelId, surface }),
   });
 
   if (!response.ok) {

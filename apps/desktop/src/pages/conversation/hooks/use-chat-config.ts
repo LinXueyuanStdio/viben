@@ -283,19 +283,21 @@ export function useChatConfig(options?: UseChatConfigOptions): UseChatConfigRetu
   const visibility = useMemo((): ChatSelectorVisibility => {
     switch (context.type) {
       case "agent-debug":
-        // Hide both selectors in agent debug mode
+        // Hide all selectors in agent debug mode
         return {
           showAgentSelector: false,
           showModelSelector: false,
+          showExecutorSelector: false,
         };
 
       case "workspace":
       case "default":
       default:
-        // Show both selectors
+        // Show all selectors
         return {
           showAgentSelector: true,
           showModelSelector: true,
+          showExecutorSelector: true,
         };
     }
   }, [context.type]);

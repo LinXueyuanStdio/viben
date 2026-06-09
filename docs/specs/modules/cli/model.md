@@ -608,7 +608,7 @@ Available Media Models:
 - [ ] `/api/models` response 包含 `category`、`surface`、`capabilities`、`provider_id`
 - [ ] Desktop 设置页 model section 能配置媒体 Provider 和媒体模型
 - [ ] Desktop 不直接读写 YAML，所有配置经 Gateway API
-
+ 
 ---
 
 ## Related Documents

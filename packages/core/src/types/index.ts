@@ -305,11 +305,36 @@ export type ProviderType =
   | "ollama"
   | "openrouter"
   | "google"
+  | "volcengine"
+  | "grok"
+  | "nanobanana"
+  | "imagerouter"
+  | "custom-image"
+  | "fal"
+  | "leonardo"
+  | "minimax"
+  | "elevenlabs"
+  | "fishaudio"
+  | "senseaudio"
+  | "aihubmix"
+  | "suno"
+  | "udio"
   | "custom";
+
+export type ProviderCategory = "llm" | "media";
+
+export type ProviderSurface =
+  | "chat"
+  | "image"
+  | "video"
+  | "music"
+  | "speech"
+  | "sfx";
 
 export interface Provider {
   id: string;
   type: ProviderType;
+  category: ProviderCategory;
   name: string;
   apiKey?: string;
   base_url?: string;
@@ -323,6 +348,8 @@ export interface Provider {
   max_retries?: number;
   /** Custom headers for requests */
   headers?: Record<string, string>;
+  surfaces: ProviderSurface[];
+  supportsCustomModel?: boolean;
   isDefault: boolean;
   enabled: boolean;
   created_at: string;
@@ -331,6 +358,7 @@ export interface Provider {
 
 export interface ProviderConfig {
   type: ProviderType;
+  category?: ProviderCategory;
   name: string;
   apiKey?: string;
   base_url?: string;
@@ -339,6 +367,8 @@ export interface ProviderConfig {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supportsCustomModel?: boolean;
 }
 
 export interface ProviderStatus {
@@ -351,6 +381,7 @@ export interface ProviderStatus {
 
 export interface CreateProviderOptions {
   type: ProviderType;
+  category?: ProviderCategory;
   name: string;
   apiKey?: string;
   base_url?: string;
@@ -359,6 +390,8 @@ export interface CreateProviderOptions {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supportsCustomModel?: boolean;
   setAsDefault?: boolean;
 }
 
@@ -367,6 +400,7 @@ export interface CreateProviderOptions {
  */
 export interface ProviderUpdate {
   type?: ProviderType;
+  category?: ProviderCategory;
   name?: string;
   apiKey?: string;
   base_url?: string;
@@ -375,6 +409,8 @@ export interface ProviderUpdate {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supportsCustomModel?: boolean;
 }
 
 // ============================================================================
@@ -388,6 +424,9 @@ export interface Model {
   id: string;
   name: string;
   provider: string;
+  category?: "llm" | "media";
+  surface?: "chat" | "image" | "video" | "music" | "speech" | "sfx";
+  capabilities?: string[];
   description?: string;
   contextLength?: number;
   maxOutputTokens?: number;
@@ -409,6 +448,14 @@ export interface ModelConfig {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
+  provider?: string;
+  category?: "llm" | "media";
+  surface?: "chat" | "image" | "video" | "music" | "speech" | "sfx";
+  capabilities?: string[];
+  duration_seconds?: number;
+  aspect_ratio?: string;
+  size?: string;
+  voice_id?: string;
 }
 
 export interface ModelAlias {

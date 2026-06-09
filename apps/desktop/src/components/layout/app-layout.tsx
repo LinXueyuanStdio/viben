@@ -84,15 +84,11 @@ export function AppLayout() {
 
               {/* ChatApp in floating/compact/expanded mode: overlay in bottom-left of pages area */}
               {isChatFloating && (
-                <div className="pointer-events-none absolute inset-0 z-30">
-                  <div className="pointer-events-auto absolute bottom-4 left-4">
-                    <AcpChat
-                      mode={chatMode}
-                      onModeChange={setChatMode}
-                      contained
-                    />
-                  </div>
-                </div>
+                <AcpChat
+                  mode={chatMode}
+                  onModeChange={setChatMode}
+                  contained={false}
+                />
               )}
             </main>
           </div>

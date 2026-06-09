@@ -13,7 +13,7 @@ import {
   handleCommandError,
 } from "../lib";
 import { providerManager, DEFAULT_BASE_URLS, ENV_VAR_NAMES } from "../../providers";
-import type { ProviderType } from "../../types";
+import type { ProviderCategory, ProviderSurface, ProviderType } from "../../types";
 
 /**
  * Get output context from command
@@ -37,8 +37,58 @@ const PROVIDER_TYPES: ProviderType[] = [
   "ollama",
   "openrouter",
   "google",
+  "volcengine",
+  "grok",
+  "nanobanana",
+  "imagerouter",
+  "custom-image",
+  "fal",
+  "leonardo",
+  "minimax",
+  "elevenlabs",
+  "fishaudio",
+  "senseaudio",
+  "aihubmix",
+  "suno",
+  "udio",
   "custom",
 ];
+
+const PROVIDER_CATEGORIES: ProviderCategory[] = ["llm", "media"];
+const PROVIDER_SURFACES: ProviderSurface[] = [
+  "chat",
+  "image",
+  "video",
+  "music",
+  "speech",
+  "sfx",
+];
+
+function collectValues(value: string, previous: string[] | undefined): string[] {
+  return [...(previous ?? []), value];
+}
+
+function parseCategory(category: string | undefined): ProviderCategory | undefined {
+  if (category === undefined) return undefined;
+  if (PROVIDER_CATEGORIES.includes(category as ProviderCategory)) {
+    return category as ProviderCategory;
+  }
+  throw new Error(
+    `Invalid provider category: ${category}. Valid categories: ${PROVIDER_CATEGORIES.join(", ")}`
+  );
+}
+
+function parseSurfaces(surfaces: string[] | undefined): ProviderSurface[] | undefined {
+  if (surfaces === undefined) return undefined;
+  for (const surface of surfaces) {
+    if (!PROVIDER_SURFACES.includes(surface as ProviderSurface)) {
+      throw new Error(
+        `Invalid provider surface: ${surface}. Valid surfaces: ${PROVIDER_SURFACES.join(", ")}`
+      );
+    }
+  }
+  return surfaces as ProviderSurface[];
+}
 
 /**
  * Register provider command and subcommands
@@ -52,10 +102,34 @@ export function registerProviderCommand(program: Command): void {
   provider
     .command("list")
     .description("List all configured providers")
-    .action(async function (this: Command) {
+    .option("--category <category>", "Filter by provider category (llm, media)")
+    .option("--surface <surface>", "Filter by supported surface")
+    .action(async function (
+      this: Command,
+      options: { category?: string; surface?: string }
+    ) {
       const ctx = getContext(this);
       try {
-        const providers = await providerManager.listProviders();
+        const category = parseCategory(options.category);
+        const surface = options.surface;
+        if (
+          surface !== undefined &&
+          !PROVIDER_SURFACES.includes(surface as ProviderSurface)
+        ) {
+          throw new Error(
+            `Invalid provider surface: ${surface}. Valid surfaces: ${PROVIDER_SURFACES.join(", ")}`
+          );
+        }
+
+        let providers = await providerManager.listProviders();
+        if (category) {
+          providers = providers.filter((p) => p.category === category);
+        }
+        if (surface) {
+          providers = providers.filter((p) =>
+            p.surfaces.includes(surface as ProviderSurface)
+          );
+        }
         const defaultId = await providerManager.getDefault();
 
         output(ctx, successResponse({ providers, default: defaultId }), () => {
@@ -69,10 +143,12 @@ export function registerProviderCommand(program: Command): void {
 
           outputTable(
             ctx,
-            ["ID", "Type", "Base URL", "Default", "Enabled"],
+            ["ID", "Category", "Type", "Surfaces", "Base URL", "Default", "Enabled"],
             providers.map((p) => [
               p.id,
+              p.category,
               p.type,
+              p.surfaces.join(",") || "-",
               p.base_url || chalk.gray("(default)"),
               p.isDefault ? chalk.green("Yes") : "",
               p.enabled ? "Yes" : chalk.red("No"),
@@ -90,6 +166,8 @@ export function registerProviderCommand(program: Command): void {
     .description("Create a new provider")
     .option("-n, --name <name>", "Provider name (auto-generated if not provided)")
     .option("-t, --type <type>", `Provider type (${PROVIDER_TYPES.join(", ")})`)
+    .option("--category <category>", "Provider category (llm, media)")
+    .option("--surface <surface>", "Supported surface", collectValues)
     .option("-u, --base-url <url>", "Custom base URL")
     .option("-k, --api-key <key>", "API key")
     .option("-c, --config <file>", "Config file path")
@@ -102,6 +180,8 @@ export function registerProviderCommand(program: Command): void {
       options: {
         name?: string;
         type?: string;
+        category?: string;
+        surface?: string[];
         baseUrl?: string;
         apiKey?: string;
         config?: string;
@@ -120,6 +200,8 @@ export function registerProviderCommand(program: Command): void {
             `Invalid provider type: ${type}. Valid types: ${PROVIDER_TYPES.join(", ")}`
           );
         }
+        const category = parseCategory(options.category);
+        const surfaces = parseSurfaces(options.surface);
 
         // Auto-generate name if not provided: type-timestamp
         const name = options.name || `${type}-${Date.now()}`;
@@ -132,11 +214,13 @@ export function registerProviderCommand(program: Command): void {
 
         const provider = await providerManager.createProvider({
           type,
+          category,
           name,
           apiKey,
           base_url: options.baseUrl || DEFAULT_BASE_URLS[type],
           timeout: options.timeout,
           max_retries: options.maxRetries,
+          surfaces,
           setAsDefault: options.default,
         });
 
@@ -270,7 +354,9 @@ export function registerProviderCommand(program: Command): void {
           console.log(chalk.bold(`Provider: ${p.id}`));
           outputKeyValue(ctx, {
             Type: p.type,
+            Category: p.category,
             Name: p.name,
+            Surfaces: p.surfaces.join(", ") || "-",
             "Base URL": p.base_url || "(default)",
             "API Key": p.apiKey ? "********" : chalk.gray("(not set)"),
             "API Version": p.apiVersion || "-",
@@ -294,6 +380,8 @@ export function registerProviderCommand(program: Command): void {
     .description("Update a provider")
     .requiredOption("-n, --name <name>", "Provider name to update")
     .option("-t, --type <type>", "Provider type")
+    .option("--category <category>", "Provider category (llm, media)")
+    .option("--surface <surface>", "Supported surface", collectValues)
     .option("-u, --base-url <url>", "Custom base URL")
     .option("-k, --api-key <key>", "API key")
     .option("--display-name <displayName>", "Display name")
@@ -304,6 +392,8 @@ export function registerProviderCommand(program: Command): void {
       options: {
         name: string;
         type?: string;
+        category?: string;
+        surface?: string[];
         baseUrl?: string;
         apiKey?: string;
         displayName?: string;
@@ -319,14 +409,18 @@ export function registerProviderCommand(program: Command): void {
             `Invalid provider type: ${options.type}. Valid types: ${PROVIDER_TYPES.join(", ")}`
           );
         }
+        const category = parseCategory(options.category);
+        const surfaces = parseSurfaces(options.surface);
 
         const provider = await providerManager.updateProvider(options.name, {
           type: options.type as ProviderType | undefined,
+          category,
           name: options.displayName,
           apiKey: options.apiKey,
           base_url: options.baseUrl,
           timeout: options.timeout,
           max_retries: options.maxRetries,
+          surfaces,
         });
 
         output(ctx, successResponse({ provider }), () => {

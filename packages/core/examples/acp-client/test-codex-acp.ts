@@ -191,6 +191,11 @@ async function main() {
     if (message.error) {
       console.error("\n=== Error received ===");
       console.error(JSON.stringify(message.error, null, 2));
+      console.log("\nNote: Codex ACP backend requires @zed-industries/codex-acp package.");
+      console.log("The package may not be available or installed.");
+      console.log("Dump saved to:", OUTPUT_FILE);
+      ws.close();
+      process.exit(1);
     }
   });
 

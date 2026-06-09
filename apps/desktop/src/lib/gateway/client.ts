@@ -1197,8 +1197,8 @@ export class GatewayClient {
   /**
    * List all models
    */
-  async listModels(): Promise<ModelResponse[]> {
-    return listModels(this.baseUrl);
+  async listModels(options?: { providerId?: string; category?: ModelCategory; surface?: ModelSurface }): Promise<ModelResponse[]> {
+    return listModels(this.baseUrl, options);
   }
 
   /**
@@ -1235,22 +1235,22 @@ export class GatewayClient {
   /**
    * Get default model
    */
-  async getDefaultModel(): Promise<DefaultModelResponse> {
-    return getDefaultModel(this.baseUrl);
+  async getDefaultModel(surface?: ModelSurface): Promise<DefaultModelResponse> {
+    return getDefaultModel(this.baseUrl, surface);
   }
 
   /**
    * Set default model
    */
-  async setDefaultModel(modelId: string): Promise<void> {
-    return setDefaultModel(this.baseUrl, modelId);
+  async setDefaultModel(modelId: string, surface?: ModelSurface): Promise<void> {
+    return setDefaultModel(this.baseUrl, modelId, surface);
   }
 
   /**
    * Get default model ID (convenience method)
    */
-  async getDefaultModelId(): Promise<string | null> {
-    return getDefaultModelId(this.baseUrl);
+  async getDefaultModelId(surface?: ModelSurface): Promise<string | null> {
+    return getDefaultModelId(this.baseUrl, surface);
   }
 
   /**
@@ -1274,8 +1274,8 @@ export class GatewayClient {
   /**
    * List all providers
    */
-  async listProviders(): Promise<ProvidersListResponse> {
-    return listProviders(this.baseUrl);
+  async listProviders(options?: ProviderListOptions): Promise<ProvidersListResponse> {
+    return listProviders(this.baseUrl, options);
   }
 
   /**
@@ -1544,7 +1544,14 @@ export class GatewayClient {
    * Get models
    */
   async getModels(
-    options?: { workspacePath?: string; includeGlobal?: boolean; includeProviderPredefined?: boolean }
+    options?: {
+      workspacePath?: string;
+      includeGlobal?: boolean;
+      includeProviderPredefined?: boolean;
+      providerId?: string;
+      category?: ModelCategory;
+      surface?: ModelSurface;
+    }
   ): Promise<WorkspaceModelsResponse> {
     return getModels(this.baseUrl, options);
   }

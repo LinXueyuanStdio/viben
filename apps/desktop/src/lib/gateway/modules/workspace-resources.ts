@@ -12,6 +12,8 @@ import type {
   ChatListResponse,
   AgentDetails,
   AgentResponse,
+  ModelCategory,
+  ModelSurface,
 } from "../types";
 
 // ============================================================================
@@ -73,6 +75,9 @@ export async function getModels(
     includeGlobal?: boolean;
     /** Include predefined models for reference (used in Settings > Models) */
     includeProviderPredefined?: boolean;
+    providerId?: string;
+    category?: ModelCategory;
+    surface?: ModelSurface;
   }
 ): Promise<WorkspaceModelsResponse> {
   const params = new URLSearchParams();
@@ -84,6 +89,15 @@ export async function getModels(
   }
   if (options?.includeProviderPredefined) {
     params.set("include_provider_predefined", "true");
+  }
+  if (options?.providerId) {
+    params.set("provider_id", options.providerId);
+  }
+  if (options?.category) {
+    params.set("category", options.category);
+  }
+  if (options?.surface) {
+    params.set("surface", options.surface);
   }
 
   const queryString = params.toString();

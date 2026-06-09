@@ -22,8 +22,11 @@ import type { Model, ModelConfig } from "../../types";
 vi.mock("../../models", () => ({
   modelManager: {
     listModels: vi.fn(),
+    listModelsFiltered: vi.fn(),
     getDefault: vi.fn(),
+    getDefaultForSurface: vi.fn(),
     setDefault: vi.fn(),
+    setDefaultForSurface: vi.fn(),
     getModelInfo: vi.fn(),
     resolveAlias: vi.fn(),
     getModelConfig: vi.fn(),
@@ -70,8 +73,20 @@ const mockModels: Model[] = [
     id: "gpt-4o",
     name: "GPT-4o",
     provider: "openai",
+    category: "llm",
+    surface: "chat",
     contextLength: 128000,
     maxOutputTokens: 4096,
+    isDefault: false,
+    enabled: true,
+  },
+  {
+    id: "gpt-image-2",
+    name: "gpt-image-2",
+    provider: "openai",
+    category: "media",
+    surface: "image",
+    capabilities: ["t2i", "i2i"],
     isDefault: false,
     enabled: true,
   },
@@ -303,6 +318,34 @@ describe("Model Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.workspace_path).toBe("/test/workspace");
     });
+
+    it("should filter media models with snake_case query params", async () => {
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue([mockModels[2]]);
+      vi.mocked(modelManager.getDefaultForSurface).mockResolvedValue("gpt-image-2");
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models?category=media&surface=image&provider_id=openai",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.models).toEqual([
+        expect.objectContaining({
+          id: "gpt-image-2",
+          category: "media",
+          surface: "image",
+          capabilities: ["t2i", "i2i"],
+          provider_id: "openai",
+        }),
+      ]);
+      expect(body.default_model_id).toBe("gpt-image-2");
+      expect(modelManager.listModelsFiltered).toHaveBeenCalledWith({
+        provider: "openai",
+        category: "media",
+        surface: "image",
+      });
+    });
   });
 
   // ============================================================================
@@ -432,6 +475,26 @@ describe("Model Routes", () => {
       expect(body.success).toBe(true);
       expect(body.default_model_id).toBe("gpt-4o");
       expect(modelManager.setDefault).toHaveBeenCalledWith("gpt-4o");
+    });
+
+    it("should set the default model for a media surface", async () => {
+      vi.mocked(modelManager.setDefaultForSurface).mockResolvedValue(undefined);
+
+      const response = await fastify.inject({
+        method: "PUT",
+        url: "/api/models/default",
+        payload: { model_id: "gpt-image-2", surface: "image" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(true);
+      expect(body.default_model_id).toBe("gpt-image-2");
+      expect(body.surface).toBe("image");
+      expect(modelManager.setDefaultForSurface).toHaveBeenCalledWith(
+        "image",
+        "gpt-image-2"
+      );
     });
 
     it("should return 400 when model_id is missing", async () => {

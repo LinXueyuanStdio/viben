@@ -784,12 +784,7 @@ export function DebugChatPanel({
                         : undefined
                     }
                     autoFocus
-                    showTopToolbar
-                    showConfigBar
                     showResizeHandle
-                    enableWritingMode
-                    hideAgentSelector
-                    hideModelSelector
                     slashCommands={slashCommands}
                     onSlashCommand={handleSlashCommand}
                   />

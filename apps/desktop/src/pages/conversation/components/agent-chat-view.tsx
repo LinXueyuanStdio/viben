@@ -59,11 +59,8 @@ interface AgentChatViewProps {
   // Command Queue
   commandQueue?: {
     items: CommandQueueItem[];
-    isPaused: boolean;
     onRemove: (id: string) => void;
     onClear: () => void;
-    onPause: () => void;
-    onResume: () => void;
   };
 
   // Slash commands
@@ -158,7 +155,8 @@ export function AgentChatView({
   onNavigateToAgentSettings,
   onOpenSessionFolder,
   onArchiveConversation,
-  onAgentSettings,
+  // TODO: onAgentSettings will be used when DesktopChatInput is updated to create internal toolbars
+  onAgentSettings: _onAgentSettings,
   messageColumnMaxWidth = MESSAGE_COLUMN_MAX_WIDTH,
   headerless = false,
 }: AgentChatViewProps) {
@@ -329,11 +327,8 @@ export function AgentChatView({
         >
           <CommandQueuePanel
             items={commandQueue.items}
-            isPaused={commandQueue.isPaused}
             onRemove={commandQueue.onRemove}
             onClear={commandQueue.onClear}
-            onPause={commandQueue.onPause}
-            onResume={commandQueue.onResume}
           />
         </div>
       )}
@@ -401,18 +396,11 @@ export function AgentChatView({
                 }
                 autoFocus
                 showTopToolbar
-                showConfigBar
+                showBottomToolbar
                 showResizeHandle
-                enableWritingMode
                 allowSendWhileLoading={!!onSteerMessage}
-                useGlobalConfig
-                hideAgentSelector
-                hideExecutorSelector
-                hideModelSelector
-                showSandboxToggle
                 slashCommands={slashCommands}
                 onSlashCommand={onSlashCommand}
-                onAgentSettings={(agentId) => onAgentSettings(agentId)}
               />
             </motion.div>
           )}

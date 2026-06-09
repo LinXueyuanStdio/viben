@@ -230,6 +230,59 @@ disabled_models: []
       expect(result?.success).toBe(true);
       expect(result?.data?.models?.every((m) => m.provider === "anthropic")).toBe(true);
     });
+
+    it("should create and list media models by surface", async () => {
+      await ctx.run([
+        "model",
+        "create",
+        "-n",
+        "fal-custom-image",
+        "--provider",
+        "fal-media",
+        "--category",
+        "media",
+        "--surface",
+        "image",
+        "--capability",
+        "t2i",
+      ]);
+
+      const result = (await ctx.runJson([
+        "model",
+        "list",
+        "--category",
+        "media",
+        "--surface",
+        "image",
+      ])) as {
+        success: boolean;
+        data: {
+          models: Array<{
+            id: string;
+            provider: string;
+            category: string;
+            surface: string;
+            capabilities: string[];
+          }>;
+        };
+      };
+
+      expect(result?.success).toBe(true);
+      expect(result?.data?.models).toContainEqual(
+        expect.objectContaining({
+          id: "fal-custom-image",
+          provider: "fal-media",
+          category: "media",
+          surface: "image",
+          capabilities: ["t2i"],
+        })
+      );
+
+      const content = await ctx.tempDir.readFile("models.yaml");
+      expect(content).toContain("category: media");
+      expect(content).toContain("surface: image");
+      expect(content).toContain("- t2i");
+    });
   });
 
   // ===========================================================================
@@ -278,6 +331,31 @@ disabled_models: []
 
       expect(result?.success).toBe(true);
       expect(result?.data?.default).toBe("gpt-4o");
+    });
+
+    it("should set default model for a media surface", async () => {
+      const result = (await ctx.runJson([
+        "model",
+        "set-default",
+        "-n",
+        "gpt-image-2",
+        "--surface",
+        "image",
+      ])) as {
+        success: boolean;
+        data: { default: string; surface: string };
+      };
+
+      expect(result?.success).toBe(true);
+      expect(result?.data).toMatchObject({
+        default: "gpt-image-2",
+        surface: "image",
+      });
+
+      const content = await ctx.tempDir.readFile("models.yaml");
+      expect(content).toContain("defaults:");
+      expect(content).toContain("media:");
+      expect(content).toContain("image: gpt-image-2");
     });
   });
 

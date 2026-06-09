@@ -10,7 +10,14 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { providerManager } from "../../providers";
 import { modelManager } from "../../models";
 import { discoverModels } from "../../models/discovery";
-import type { Provider, ProviderType, CreateProviderOptions, ProviderStatus } from "../../types";
+import type {
+  Provider,
+  ProviderCategory,
+  ProviderSurface,
+  ProviderType,
+  CreateProviderOptions,
+  ProviderStatus,
+} from "../../types";
 
 // ============================================================================
 // Types
@@ -22,6 +29,7 @@ import type { Provider, ProviderType, CreateProviderOptions, ProviderStatus } fr
 interface ProviderResponse {
   id: string;
   type: string;
+  category: string;
   name: string;
   api_key?: string;
   base_url?: string;
@@ -30,6 +38,8 @@ interface ProviderResponse {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces: string[];
+  supports_custom_model?: boolean;
   is_default: boolean;
   enabled: boolean;
   created_at: string;
@@ -43,6 +53,7 @@ function toSnakeCaseProvider(provider: Provider): ProviderResponse {
   return {
     id: provider.id,
     type: provider.type,
+    category: provider.category,
     name: provider.name,
     api_key: provider.apiKey,
     base_url: provider.base_url,
@@ -51,6 +62,8 @@ function toSnakeCaseProvider(provider: Provider): ProviderResponse {
     timeout: provider.timeout,
     max_retries: provider.max_retries,
     headers: provider.headers,
+    surfaces: provider.surfaces,
+    supports_custom_model: provider.supportsCustomModel,
     is_default: provider.isDefault,
     enabled: provider.enabled,
     created_at: provider.created_at,
@@ -63,6 +76,7 @@ function toSnakeCaseProvider(provider: Provider): ProviderResponse {
  */
 interface CreateProviderBody {
   type: string;
+  category?: ProviderCategory;
   name: string;
   api_key?: string;
   base_url?: string;
@@ -71,6 +85,8 @@ interface CreateProviderBody {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supports_custom_model?: boolean;
   set_as_default?: boolean;
 }
 
@@ -79,6 +95,7 @@ interface CreateProviderBody {
  */
 interface UpdateProviderBody {
   type?: string;
+  category?: ProviderCategory;
   name?: string;
   api_key?: string;
   base_url?: string;
@@ -87,6 +104,13 @@ interface UpdateProviderBody {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supports_custom_model?: boolean;
+}
+
+interface ProvidersQuery {
+  category?: ProviderCategory;
+  surface?: ProviderSurface;
 }
 
 /**
@@ -246,6 +270,13 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
     schema: {
       description: "List all providers",
       tags: ["providers"],
+      querystring: {
+        type: "object",
+        properties: {
+          category: { type: "string", enum: ["llm", "media"], description: "Filter by provider category" },
+          surface: { type: "string", enum: ["chat", "image", "video", "music", "speech", "sfx"], description: "Filter by supported surface" },
+        },
+      },
       response: {
         200: {
           type: "object",
@@ -257,8 +288,11 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
                 properties: {
                   id: { type: "string" },
                   type: { type: "string" },
+                  category: { type: "string" },
                   name: { type: "string" },
                   base_url: { type: "string" },
+                  surfaces: { type: "array", items: { type: "string" } },
+                  supports_custom_model: { type: "boolean" },
                   is_default: { type: "boolean" },
                   enabled: { type: "boolean" },
                   created_at: { type: "string", format: "date-time" },
@@ -272,8 +306,17 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
         },
       },
     },
-  }, async () => {
-    const providers = await providerManager.listProviders();
+  }, async (
+    request: FastifyRequest<{ Querystring: ProvidersQuery }>
+  ) => {
+    const { category, surface } = request.query;
+    let providers = await providerManager.listProviders();
+    if (category) {
+      providers = providers.filter((provider) => provider.category === category);
+    }
+    if (surface) {
+      providers = providers.filter((provider) => provider.surfaces.includes(surface));
+    }
     const defaultProviderId = await providerManager.getDefault();
     return {
       providers: providers.map((p) => toSnakeCaseProvider(p)),
@@ -302,6 +345,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
       try {
         const options: CreateProviderOptions = {
           type: body.type as ProviderType,
+          category: body.category,
           name: body.name,
           apiKey: body.api_key,
           base_url: body.base_url,
@@ -310,6 +354,8 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
           timeout: body.timeout,
           max_retries: body.max_retries,
           headers: body.headers,
+          surfaces: body.surfaces,
+          supportsCustomModel: body.supports_custom_model,
           setAsDefault: body.set_as_default,
         };
 
@@ -346,8 +392,11 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
             properties: {
               id: { type: "string" },
               type: { type: "string" },
+              category: { type: "string" },
               name: { type: "string" },
               base_url: { type: "string" },
+              surfaces: { type: "array", items: { type: "string" } },
+              supports_custom_model: { type: "boolean" },
               is_default: { type: "boolean" },
               enabled: { type: "boolean" },
               created_at: { type: "string", format: "date-time" },
@@ -395,6 +444,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
       try {
         const updates: Partial<CreateProviderOptions> = {
           type: body.type as ProviderType | undefined,
+          category: body.category,
           name: body.name,
           apiKey: body.api_key,
           base_url: body.base_url,
@@ -403,6 +453,8 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
           timeout: body.timeout,
           max_retries: body.max_retries,
           headers: body.headers,
+          surfaces: body.surfaces,
+          supportsCustomModel: body.supports_custom_model,
         };
 
         const provider = await providerManager.updateProvider(id, updates);

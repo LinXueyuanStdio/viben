@@ -31,7 +31,6 @@ export interface AgentChatTabProps {
   artifacts: Artifact[];
   error: string | null | undefined;
   phase: AgentPhase;
-  taskStatus: string;
   slashCommands: SlashCommand[];
   placeholder: string;
   waitingForApprovalText: string;
@@ -54,7 +53,6 @@ export function AgentChatTab({
   artifacts,
   error,
   phase,
-  taskStatus,
   slashCommands,
   placeholder,
   waitingForApprovalText,
@@ -179,14 +177,7 @@ export function AgentChatTab({
                       : placeholder
                 }
                 autoFocus={false}
-                showTopToolbar
-                showConfigBar
                 showResizeHandle
-                enableWritingMode
-                useGlobalConfig
-                hideAgentSelector={taskStatus !== "backlog"}
-                hideModelSelector={taskStatus !== "backlog"}
-                hideExecutorSelector={taskStatus !== "backlog"}
                 slashCommands={slashCommands}
                 onSlashCommand={onSlashCommand}
               />

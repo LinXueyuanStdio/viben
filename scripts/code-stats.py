@@ -71,6 +71,11 @@ EXCLUDE_FILES = {
     "code-stats.json",
 }
 
+# File extensions to exclude (data dumps, logs, etc.)
+EXCLUDE_EXTS = {
+    "jsonl",
+}
+
 # Patterns for low-information files to exclude from Top Files
 TOP_FILES_EXCLUDE_PATTERNS = [
     "i18n/locales/",
@@ -204,6 +209,10 @@ def should_exclude(path: Path) -> bool:
         return True
     # Check excluded files
     if path.name in EXCLUDE_FILES:
+        return True
+    # Check excluded extensions
+    ext = get_extension(path.name)
+    if ext in EXCLUDE_EXTS:
         return True
     return False
 

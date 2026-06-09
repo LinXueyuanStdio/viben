@@ -5,7 +5,6 @@
  * implementations for platform features:
  * - Screenshot capture via Tauri invoke
  * - File dialog via @tauri-apps/plugin-dialog
- * - Paste handling (uses default browser handling)
  * - Global config mode (via useChatConfig hook)
  *
  * Usage:
@@ -14,22 +13,31 @@
  *
  * <DesktopChatInput
  *   onSend={handleSend}
- *   showConfigBar
- *   // ... other props from ChatInput
- * />
- *
- * // With global config mode (auto-loads agents/models from store)
- * <DesktopChatInput
- *   onSend={handleSend}
- *   showConfigBar
+ *   showTopToolbar
+ *   showBottomToolbar
  *   useGlobalConfig
+ *   // ... other props from ChatInput
  * />
  * ```
  */
 
-import { useCallback, useMemo } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ChatInput, type ChatInputProps, type MessageAttachment, type ExecutorOption } from "@viben/chat";
+import {
+  ChatInput,
+  ChatInputTopToolbar,
+  ChatInputBottomToolbar,
+  SingleSelector,
+  useChatInput,
+  EmojiPicker,
+  type ChatInputProps,
+  type MessageAttachment,
+  type AgentOption,
+  type ModelOption,
+  type ExecutorOption,
+  type SelectorOption,
+} from "@viben/chat";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { saveScreenshotToTempFile } from "@/hooks/use-screenshot";
 import { useChatConfig } from "../hooks/use-chat-config";
@@ -54,14 +62,12 @@ interface ScreenshotResult {
 
 /**
  * Props for DesktopChatInput
- * Extends ChatInputProps with desktop-specific features:
- * - useGlobalConfig: Automatically loads agents/models from global store
- * - showSandboxToggle: Shows sandbox toggle in config bar
- * Omits platform-specific callbacks as they are implemented internally
+ * Extends ChatInputProps with desktop-specific features.
+ * Omits platform-specific callbacks as they are implemented internally.
  */
 export interface DesktopChatInputProps extends Omit<
   ChatInputProps,
-  "onScreenshot" | "onOpenFile" | "onPaste"
+  "onOpenFile" | "onPaste" | "topToolbar" | "bottomToolbar"
 > {
   /**
    * Use global config mode.
@@ -69,11 +75,52 @@ export interface DesktopChatInputProps extends Omit<
    * via useChatConfig hook. Props can still override the global values.
    */
   useGlobalConfig?: boolean;
+
   /**
-   * Show sandbox toggle in the config bar.
+   * Show sandbox toggle in the bottom toolbar.
    * When true, displays a toggle for sandbox mode with provider selection.
    */
   showSandboxToggle?: boolean;
+
+  // === Agent/Model/Executor Config ===
+  /** Available agents for selection */
+  agents?: AgentOption[];
+  /** Currently selected agent ID */
+  selectedAgentId?: string | null;
+  /** Callback when agent selection changes */
+  onAgentChange?: (agentId: string) => void;
+  /** Available models for selection */
+  models?: ModelOption[];
+  /** Currently selected model ID */
+  selectedModelId?: string | null;
+  /** Callback when model selection changes */
+  onModelChange?: (modelId: string) => void;
+  /** Available executors for selection */
+  executors?: ExecutorOption[];
+  /** Currently selected executor ID */
+  selectedExecutor?: string;
+  /** Callback when executor selection changes */
+  onExecutorChange?: (executorId: string) => void;
+
+  // === Visibility ===
+  /** Hide the agent selector */
+  hideAgentSelector?: boolean;
+  /** Hide the model selector */
+  hideModelSelector?: boolean;
+  /** Hide the executor selector */
+  hideExecutorSelector?: boolean;
+
+  // === Custom Content ===
+  /** Extra content to render in the bottom toolbar's left side (after selectors) */
+  bottomToolbarLeftExtra?: ReactNode;
+  /** Extra actions to render in the top toolbar */
+  topToolbarExtraActions?: ReactNode;
+
+  // === Toolbar Customization (override the generated toolbars) ===
+  /** Custom top toolbar. If provided, replaces the generated top toolbar. */
+  topToolbar?: ReactNode;
+  /** Custom bottom toolbar. If provided, replaces the generated bottom toolbar. */
+  bottomToolbar?: ReactNode;
 }
 
 // ============================================================================
@@ -91,7 +138,7 @@ export interface DesktopChatInputProps extends Omit<
 export function DesktopChatInput({
   useGlobalConfig = false,
   showSandboxToggle = false,
-  // Agent/Model props that can be overridden
+  // Agent/Model/Executor props
   agents: propAgents,
   selectedAgentId: propSelectedAgentId,
   onAgentChange: propOnAgentChange,
@@ -106,9 +153,24 @@ export function DesktopChatInput({
   hideModelSelector: propHideModelSelector,
   hideExecutorSelector: propHideExecutorSelector,
   // Custom content
-  configBarLeftExtra: propConfigBarLeftExtra,
+  bottomToolbarLeftExtra,
+  topToolbarExtraActions,
+  // Toolbar overrides
+  topToolbar: customTopToolbar,
+  bottomToolbar: customBottomToolbar,
+  // ChatInput props
+  onSend,
+  onCancel,
+  isLoading,
+  allowSendWhileLoading,
+  disabled,
+  showTopToolbar = true,
+  showBottomToolbar = true,
   ...props
 }: DesktopChatInputProps) {
+  // Screenshot capturing state
+  const [isScreenshotCapturing, setIsScreenshotCapturing] = useState(false);
+
   // Get global config if enabled
   const chatConfig = useChatConfig();
 
@@ -138,13 +200,17 @@ export function DesktopChatInput({
       ? propHideAgentSelector
       : useGlobalConfig && !propAgents
         ? !chatConfig.visibility.showAgentSelector
-        : false;
+        : true; // Hide by default when not using global config
   const hideModelSelector =
     propHideModelSelector !== undefined
       ? propHideModelSelector
       : useGlobalConfig && !propModels
         ? !chatConfig.visibility.showModelSelector
-        : false;
+        : true; // Hide by default when not using global config
+  const hideExecutorSelector =
+    propHideExecutorSelector !== undefined
+      ? propHideExecutorSelector
+      : true; // Hide by default
 
   /**
    * Take a screenshot using Tauri backend
@@ -154,6 +220,7 @@ export function DesktopChatInput({
    */
   const handleScreenshot = useCallback(
     async (hideWindow?: boolean): Promise<MessageAttachment | null> => {
+      setIsScreenshotCapturing(true);
       try {
         const result = await invoke<ScreenshotResult>("take_screenshot", {
           hideWindow: hideWindow ?? false,
@@ -182,6 +249,8 @@ export function DesktopChatInput({
       } catch (err) {
         console.error("[DesktopChatInput] Screenshot failed:", err);
         return null;
+      } finally {
+        setIsScreenshotCapturing(false);
       }
     },
     []
@@ -198,41 +267,271 @@ export function DesktopChatInput({
     return openAndReadFiles();
   }, []);
 
-  // Build config bar extra content
-  const configBarLeftExtra = useMemo(() => {
-    // If custom content provided, use that
-    if (propConfigBarLeftExtra) {
-      return propConfigBarLeftExtra;
+  // Convert AgentOption[] to SelectorOption[] for SingleSelector
+  const agentSelectorOptions: SelectorOption[] = useMemo(
+    () =>
+      agents.map((agent) => ({
+        id: agent.id,
+        label: agent.name,
+        description: agent.description,
+        icon: "icon" in agent ? agent.icon : undefined,
+      })),
+    [agents]
+  );
+
+  // Convert ModelOption[] to SelectorOption[] for SingleSelector
+  const modelSelectorOptions: SelectorOption[] = useMemo(
+    () =>
+      models.map((model) => ({
+        id: model.id,
+        label: model.name,
+        description: model.provider,
+        icon: "icon" in model ? model.icon : undefined,
+      })),
+    [models]
+  );
+
+  // Convert ExecutorOption[] to SelectorOption[] for SingleSelector
+  const executorSelectorOptions: SelectorOption[] = useMemo(
+    () =>
+      executors.map((executor) => ({
+        id: executor.id,
+        label: executor.name,
+        description: executor.description,
+        icon: executor.icon,
+      })),
+    [executors]
+  );
+
+  // Build bottom toolbar left content with selectors
+  const bottomToolbarLeftContent = useMemo(() => {
+    return (
+      <div className="flex items-center gap-1">
+        {/* Agent Selector */}
+        {!hideAgentSelector && agentSelectorOptions.length > 0 && (
+          <SingleSelector
+            options={agentSelectorOptions}
+            value={selectedAgentId}
+            onChange={onAgentChange}
+            placeholder="Agent"
+            disabled={isLoading || disabled}
+          />
+        )}
+
+        {/* Model Selector */}
+        {!hideModelSelector && modelSelectorOptions.length > 0 && (
+          <SingleSelector
+            options={modelSelectorOptions}
+            value={selectedModelId}
+            onChange={onModelChange}
+            placeholder="Model"
+            disabled={isLoading || disabled}
+          />
+        )}
+
+        {/* Executor Selector */}
+        {!hideExecutorSelector && executorSelectorOptions.length > 0 && (
+          <SingleSelector
+            options={executorSelectorOptions}
+            value={selectedExecutor ?? null}
+            onChange={onExecutorChange}
+            placeholder="Executor"
+            disabled={isLoading || disabled}
+          />
+        )}
+
+        {/* Sandbox Toggle */}
+        {showSandboxToggle && <SandboxToggle />}
+
+        {/* Extra content */}
+        {bottomToolbarLeftExtra}
+      </div>
+    );
+  }, [
+    hideAgentSelector,
+    agentSelectorOptions,
+    selectedAgentId,
+    onAgentChange,
+    hideModelSelector,
+    modelSelectorOptions,
+    selectedModelId,
+    onModelChange,
+    hideExecutorSelector,
+    executorSelectorOptions,
+    selectedExecutor,
+    onExecutorChange,
+    showSandboxToggle,
+    bottomToolbarLeftExtra,
+    isLoading,
+    disabled,
+  ]);
+
+  // Build top toolbar - requires ChatInput context for insertAtCursor
+  // We need to wrap this in a component that can access the context
+  const topToolbar = useMemo(() => {
+    if (customTopToolbar !== undefined) {
+      return customTopToolbar;
     }
-    // Otherwise show built-in toggles
-    if (showSandboxToggle) {
-      return <SandboxToggle />;
+    // Return a component that will be rendered inside ChatInput context
+    return (
+      <DesktopChatInputTopToolbar
+        onScreenshot={handleScreenshot}
+        onOpenFile={handleOpenFile}
+        isLoading={isLoading}
+        disabled={disabled}
+        isScreenshotCapturing={isScreenshotCapturing}
+        extraActions={topToolbarExtraActions}
+      />
+    );
+  }, [
+    customTopToolbar,
+    handleScreenshot,
+    handleOpenFile,
+    isLoading,
+    disabled,
+    isScreenshotCapturing,
+    topToolbarExtraActions,
+  ]);
+
+  // Build bottom toolbar
+  const bottomToolbar = useMemo(() => {
+    if (customBottomToolbar !== undefined) {
+      return customBottomToolbar;
     }
-    return undefined;
-  }, [propConfigBarLeftExtra, showSandboxToggle]);
+    return (
+      <DesktopChatInputBottomToolbar
+        leftContent={bottomToolbarLeftContent}
+        onCancel={onCancel}
+        isLoading={isLoading}
+        allowSendWhileLoading={allowSendWhileLoading}
+      />
+    );
+  }, [
+    customBottomToolbar,
+    bottomToolbarLeftContent,
+    onCancel,
+    isLoading,
+    allowSendWhileLoading,
+  ]);
 
   return (
     <ChatInput
       {...props}
-      agents={agents}
-      selectedAgentId={selectedAgentId}
-      onAgentChange={onAgentChange}
-      models={models}
-      selectedModelId={selectedModelId}
-      onModelChange={onModelChange}
-      executors={executors}
-      selectedExecutor={selectedExecutor}
-      onExecutorChange={onExecutorChange}
-      hideAgentSelector={hideAgentSelector}
-      hideModelSelector={hideModelSelector}
-      hideExecutorSelector={propHideExecutorSelector}
-      onScreenshot={handleScreenshot}
+      onSend={onSend}
+      onCancel={onCancel}
+      isLoading={isLoading}
+      allowSendWhileLoading={allowSendWhileLoading}
+      disabled={disabled}
       onOpenFile={handleOpenFile}
-      configBarLeftExtra={configBarLeftExtra}
+      showTopToolbar={showTopToolbar}
+      showBottomToolbar={showBottomToolbar}
+      topToolbar={topToolbar}
+      bottomToolbar={bottomToolbar}
     />
   );
 }
 
 // ============================================================================
-// Helpers
+// Internal Sub-components
 // ============================================================================
+
+interface DesktopChatInputTopToolbarProps {
+  onScreenshot: (hideWindow?: boolean) => Promise<MessageAttachment | null>;
+  onOpenFile: () => Promise<MessageAttachment[] | null>;
+  isLoading?: boolean;
+  disabled?: boolean;
+  isScreenshotCapturing?: boolean;
+  extraActions?: ReactNode;
+}
+
+/**
+ * Internal top toolbar component that uses ChatInput context
+ */
+function DesktopChatInputTopToolbar({
+  onScreenshot,
+  onOpenFile,
+  isLoading,
+  disabled,
+  isScreenshotCapturing,
+  extraActions,
+}: DesktopChatInputTopToolbarProps) {
+  const { insertAtCursor, addAttachment, handleFileClick } = useChatInput();
+
+  const handleEmojiSelect = useCallback(
+    (emoji: string) => {
+      insertAtCursor(emoji);
+    },
+    [insertAtCursor]
+  );
+
+  const handleFileClickWithFallback = useCallback(async () => {
+    // Use the platform-specific file open if provided
+    const attachments = await onOpenFile();
+    if (attachments && attachments.length > 0) {
+      attachments.forEach((a) => addAttachment(a));
+    } else if (handleFileClick) {
+      // Fallback to context's handleFileClick (native file input)
+      handleFileClick();
+    }
+  }, [onOpenFile, addAttachment, handleFileClick]);
+
+  const handleScreenshotWithAttachment = useCallback(
+    async (hideWindow?: boolean) => {
+      const attachment = await onScreenshot(hideWindow);
+      if (attachment) {
+        addAttachment(attachment);
+      }
+    },
+    [onScreenshot, addAttachment]
+  );
+
+  const renderEmojiPicker = useCallback(
+    ({ onSelect }: { onSelect: (emoji: string) => void }) => (
+      <EmojiPicker onSelect={onSelect} />
+    ),
+    []
+  );
+
+  return (
+    <ChatInputTopToolbar
+      onEmojiSelect={handleEmojiSelect}
+      renderEmojiPicker={renderEmojiPicker}
+      onFileClick={handleFileClickWithFallback}
+      onScreenshot={handleScreenshotWithAttachment}
+      isLoading={isLoading}
+      disabled={disabled}
+      isScreenshotCapturing={isScreenshotCapturing}
+      extraActions={extraActions}
+    />
+  );
+}
+
+interface DesktopChatInputBottomToolbarProps {
+  leftContent: ReactNode;
+  onCancel?: () => void;
+  isLoading?: boolean;
+  allowSendWhileLoading?: boolean;
+}
+
+/**
+ * Internal bottom toolbar component that uses ChatInput context
+ */
+function DesktopChatInputBottomToolbar({
+  leftContent,
+  onCancel,
+  isLoading,
+  allowSendWhileLoading,
+}: DesktopChatInputBottomToolbarProps) {
+  const { canSubmit, handleSend } = useChatInput();
+
+  return (
+    <ChatInputBottomToolbar
+      leftContent={leftContent}
+      onSend={handleSend}
+      onCancel={onCancel}
+      isLoading={isLoading}
+      canSubmit={canSubmit}
+      allowSendWhileLoading={allowSendWhileLoading}
+    />
+  );
+}

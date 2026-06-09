@@ -17,13 +17,47 @@ export type ProviderType =
   | "openrouter"
   | "ollama"
   | "azure"
-  | "bedrock"
+  | "volcengine"
+  | "grok"
+  | "nanobanana"
+  | "imagerouter"
+  | "custom-image"
+  | "fal"
+  | "leonardo"
+  | "minimax"
+  | "elevenlabs"
+  | "fishaudio"
+  | "senseaudio"
+  | "aihubmix"
+  | "suno"
+  | "udio"
   | "custom";
+
+export type ProviderCategory = "llm" | "media";
+
+export type ProviderSurface =
+  | "chat"
+  | "image"
+  | "video"
+  | "music"
+  | "speech"
+  | "sfx";
+
+export type ModelCategory = "llm" | "media";
+
+export type ModelSurface =
+  | "chat"
+  | "image"
+  | "video"
+  | "music"
+  | "speech"
+  | "sfx";
 
 /** Provider response from gateway */
 export interface ProviderResponse {
   id: string;
   type: ProviderType;
+  category: ProviderCategory;
   name: string;
   api_key?: string;
   base_url?: string;
@@ -32,6 +66,8 @@ export interface ProviderResponse {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces: ProviderSurface[];
+  supports_custom_model?: boolean;
   is_default: boolean;
   enabled: boolean;
   created_at: string;
@@ -41,6 +77,7 @@ export interface ProviderResponse {
 /** Options for creating a provider */
 export interface CreateProviderOptions {
   type: ProviderType;
+  category?: ProviderCategory;
   name: string;
   apiKey?: string;
   baseUrl?: string;
@@ -49,12 +86,15 @@ export interface CreateProviderOptions {
   timeout?: number;
   maxRetries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supportsCustomModel?: boolean;
   setAsDefault?: boolean;
 }
 
 /** Options for updating a provider */
 export interface ProviderUpdate {
   type?: ProviderType;
+  category?: ProviderCategory;
   name?: string;
   apiKey?: string;
   baseUrl?: string;
@@ -63,6 +103,13 @@ export interface ProviderUpdate {
   timeout?: number;
   maxRetries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supportsCustomModel?: boolean;
+}
+
+export interface ProviderListOptions {
+  category?: ProviderCategory;
+  surface?: ProviderSurface;
 }
 
 /** Provider status from test */
@@ -105,6 +152,10 @@ export interface CreateModelOptions {
   id: string;
   name: string;
   provider: ProviderType;
+  provider_id?: string;
+  category?: ModelCategory;
+  surface?: ModelSurface;
+  capabilities?: string[];
   description?: string;
   context_window?: number;
   max_output_tokens?: number;
@@ -126,6 +177,9 @@ export interface ModelResponse {
   provider: string;
   provider_id: string;
   provider_name: string;
+  category?: ModelCategory;
+  surface?: ModelSurface;
+  capabilities?: string[];
   description?: string;
   context_window?: number;
   max_output_tokens?: number;
@@ -141,6 +195,7 @@ export interface ModelResponse {
 /** Response for default model */
 export interface DefaultModelResponse {
   default_model_id: string | null;
+  surface?: ModelSurface;
 }
 
 /** Discovered model from provider API */

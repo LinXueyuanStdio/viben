@@ -38,24 +38,12 @@ interface ExecutorChatViewProps {
   executorMessagesAsAgentMessages: AgentMessage[];
   isLoadingExecutorMessages: boolean;
 
-  // Models
-  executorModels: Array<{ id: string; name: string; provider: string; provider_id: string }>;
-  selectedExecutorModelId: string | null;
-
-  // Stats
-  executorSessionStats: {
-    toolsCount: number;
-    skillsCount: number;
-    estimatedTokens: number;
-  };
-
   // Gateway
   gatewayConnected: boolean | null;
 
   // Callbacks
   onSelectSession: (sessionId: string) => void;
   onRefreshSessions: () => void;
-  onModelChange: (modelId: string) => void;
   onCheckGateway: () => void;
   onOpenSearchDialog: () => void;
   onExecutorAvatarClick: () => void;
@@ -179,13 +167,9 @@ export function ExecutorChatView({
   isLoadingExecutorSessions,
   executorMessagesAsAgentMessages,
   isLoadingExecutorMessages,
-  executorModels,
-  selectedExecutorModelId,
-  executorSessionStats,
   gatewayConnected,
   onSelectSession,
   onRefreshSessions,
-  onModelChange,
   onCheckGateway,
   onOpenSearchDialog,
   onExecutorAvatarClick,
@@ -292,17 +276,6 @@ export function ExecutorChatView({
           onSend={() => {}}
           disabled
           placeholder={t("executor.readOnlyHint", "Executor sessions are read-only")}
-          showConfigBar
-          hideAgentSelector
-          hideExecutorSelector
-          models={executorModels}
-          selectedModelId={selectedExecutorModelId}
-          onModelChange={onModelChange}
-          enabledToolsCount={executorSessionStats.toolsCount}
-          onToolsClick={() => {}}
-          enabledSkillsCount={executorSessionStats.skillsCount}
-          onSkillsClick={() => {}}
-          contextTokens={executorSessionStats.estimatedTokens}
         />
       </div>
 
