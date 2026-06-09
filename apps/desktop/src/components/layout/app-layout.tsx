@@ -17,6 +17,8 @@ import {
 import { ActionNavigationHandlerProvider } from "@/components/action-system";
 import { TabRouterBridge } from "@/components/navigation/tab-router-bridge";
 import { installTabStoreStorageSync } from "@/stores/tab-store";
+import { AcpChat } from "@/components/acp-chat";
+import { useChatModeStore } from "@/stores/chat-mode-store";
 
 export function AppLayout() {
   useEffect(() => installTabStoreStorageSync(), []);
@@ -45,6 +47,11 @@ export function AppLayout() {
   // Initialize desktop deep link listener
   useDesktopDeepLink();
 
+  // Chat mode state
+  const { mode: chatMode, setMode: setChatMode } = useChatModeStore();
+  const isChatFull = chatMode === "full";
+  const isChatFloating = chatMode === "floating" || chatMode === "compact" || chatMode === "expanded";
+
   return (
     <NavigationShellProvider>
       <div className="flex h-screen flex-col">
@@ -53,13 +60,40 @@ export function AppLayout() {
         {/* Global Tab Bar at top */}
         <GlobalTabBar />
 
-        {/* Rest of the existing layout */}
+        {/* Main layout: [sidebar][ChatApp?][pages] */}
         <div className="relative flex flex-1 overflow-hidden">
           <Sidebar />
-          <div className="flex min-w-0 flex-1 flex-col bg-background theme-transition">
+
+          {/* ChatApp in full mode: occupies independent column between sidebar and pages */}
+          {isChatFull && (
+            <div className="flex h-full w-[420px] shrink-0 flex-col border-r border-border bg-background">
+              <AcpChat
+                mode={chatMode}
+                onModeChange={setChatMode}
+                contained
+                className="h-full"
+              />
+            </div>
+          )}
+
+          {/* Pages area with optional floating ChatApp */}
+          <div className="relative flex min-w-0 flex-1 flex-col bg-background theme-transition">
             <GlobalBreadcrumbShell />
-            <main className="min-h-0 flex-1 overflow-auto">
+            <main className="relative min-h-0 flex-1 overflow-auto">
               <Outlet />
+
+              {/* ChatApp in floating/compact/expanded mode: overlay in bottom-left of pages area */}
+              {isChatFloating && (
+                <div className="pointer-events-none absolute inset-0 z-30">
+                  <div className="pointer-events-auto absolute bottom-4 left-4">
+                    <AcpChat
+                      mode={chatMode}
+                      onModeChange={setChatMode}
+                      contained
+                    />
+                  </div>
+                </div>
+              )}
             </main>
           </div>
         </div>
