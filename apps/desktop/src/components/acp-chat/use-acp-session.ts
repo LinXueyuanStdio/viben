@@ -365,6 +365,34 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const liveSubagentMessages = resolveLiveSubagentMessages(sessionsById, subagentSheet);
 
+  // Auto-connect on mount and maintain connection
+  useEffect(() => {
+    let mounted = true;
+
+    const autoConnect = async () => {
+      if (status === "idle" || status === "closed" || status === "error") {
+        try {
+          const client = ensureClient();
+          await client.connect(wsUrl);
+          if (mounted) {
+            const initialized = await client.initialize();
+            setInitializeResult(initialized);
+          }
+        } catch (err) {
+          if (mounted) {
+            setError(err instanceof Error ? err.message : String(err));
+          }
+        }
+      }
+    };
+
+    void autoConnect();
+
+    return () => {
+      mounted = false;
+    };
+  }, [ensureClient, status, wsUrl]);
+
   // Drain UI step queue effect
   useEffect(() => {
     const sessionEntries = Object.values(sessionsById);
@@ -635,28 +663,64 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const sendPrompt = useCallback(
     async (content: string) => {
-      if (!sessionId) return;
       const text = content.trim();
       if (!text) return;
 
       setError(null);
-      enqueueUiSteps(setSessionsById, sessionId, userPromptToUiSteps(text));
-      updateSession(setSessionsById, sessionId, (session) => ({
+
+      // Auto-create session if none exists
+      let targetSessionId = sessionId;
+      if (!targetSessionId) {
+        try {
+          const client = ensureClient();
+          // Ensure connected
+          if (status !== "connected") {
+            await client.connect(wsUrl);
+            if (!initializeResult) {
+              const initialized = await client.initialize();
+              setInitializeResult(initialized);
+            }
+          }
+          // Create session
+          const session = await client.newSession({
+            cwd,
+            agent_config: buildAgentConfig(),
+          });
+          const id = readSessionId(session);
+          if (!id) throw new Error("session/new did not return sessionId");
+          const record = createUiSession(id, cwd, session);
+          setSessionsById((current) => ({ ...current, [id]: record }));
+          setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
+          setActiveSessionId(id);
+          targetSessionId = id;
+          // Don't show "Session ready" system message for auto-created sessions
+          const commands = readSessionAvailableCommands(session);
+          if (commands) {
+            enqueueUiSteps(setSessionsById, id, slashCommandsToUiSteps(commands));
+          }
+        } catch (sessionError) {
+          setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
+          return;
+        }
+      }
+
+      enqueueUiSteps(setSessionsById, targetSessionId, userPromptToUiSteps(text));
+      updateSession(setSessionsById, targetSessionId, (session) => ({
         ...session,
         promptInFlight: true,
         promptResult: null,
         lastActiveAt: new Date().toISOString(),
       }));
       try {
-        const result = await clientRef.current?.prompt(sessionId, text);
-        updateSession(setSessionsById, sessionId, (session) => ({
+        const result = await clientRef.current?.prompt(targetSessionId, text);
+        updateSession(setSessionsById, targetSessionId, (session) => ({
           ...flushSessionStreamingText(drainSessionUiStepQueue(session)),
           promptInFlight: false,
           promptResult: result,
           lastActiveAt: new Date().toISOString(),
         }));
       } catch (promptError) {
-        updateSession(setSessionsById, sessionId, (session) => ({
+        updateSession(setSessionsById, targetSessionId, (session) => ({
           ...flushSessionStreamingText(drainSessionUiStepQueue(session)),
           promptInFlight: false,
           lastActiveAt: new Date().toISOString(),
@@ -664,7 +728,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(promptError instanceof Error ? promptError.message : String(promptError));
       }
     },
-    [sessionId]
+    [buildAgentConfig, cwd, ensureClient, initializeResult, sessionId, status, wsUrl]
   );
 
   const sendSteerPrompt = useCallback(

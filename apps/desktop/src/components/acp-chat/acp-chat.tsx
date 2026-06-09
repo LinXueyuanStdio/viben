@@ -976,21 +976,72 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     />
   );
 
-  // Determine if we need a sized container
-  // - full mode or contained: needs full height container
-  // - floating/compact/expanded with contained: ChatApp uses absolute positioning, parent needs to be the positioning context
-  const needsSizedContainer = contained || mode === "full";
+  // Determine container styles based on mode
   const isFloatingMode = mode === "floating" || mode === "compact" || mode === "expanded";
+
+  // For floating modes, we need a full-size overlay container that:
+  // 1. Covers the entire parent area (absolute inset-0)
+  // 2. Allows clicks to pass through (pointer-events-none)
+  // 3. ChatApp inside uses absolute positioning relative to this container
+  if (isFloatingMode && contained) {
+    return (
+      <div className={cn("pointer-events-none absolute inset-0 z-20", className)}>
+        {error && (
+          <div className="pointer-events-auto absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+            {error}
+          </div>
+        )}
+        <ChatApp
+          contained
+          mode={mode}
+          title={activeTitle}
+          messages={messages}
+          messageUpdates={messageUpdates}
+          isStreaming={isAgentRunning}
+          streamingText={streamingText}
+          pendingUserMessageCount={steerQueueItems.length}
+          dynamicAssistantAvatar={dynamicAssistantAvatar}
+          staticAssistantAvatar={staticAssistantAvatar}
+          artifacts={artifacts}
+          compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
+          headerContent={headerContent}
+          inputProps={sharedInputProps}
+          bottomToolbarLeftContent={bottomToolbarLeftContent}
+          statusContent={statusContent}
+          fullscreenContent={fullscreenContent}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={handleApprovePlan}
+          onRejectPlan={handleRejectPlan}
+          onApprovalDecision={handleApprovalDecision}
+          onAnswerQuestions={handleQuestionAnswers}
+          subagentSheet={
+            subagentSheet
+              ? {
+                  open: true,
+                  onClose: closeSubagentSheet,
+                  title: subagentSheet.title,
+                  subagentType: subagentSheet.subagentType,
+                  messages: subagentSheet.messages,
+                  liveMessages: liveSubagentMessages,
+                  context: subagentSheet.context,
+                }
+              : undefined
+          }
+          onExpandSubagent={handleExpandSubagent}
+          onModeChange={onModeChange}
+          onSend={handleSend}
+          onCancel={interrupt}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
       className={cn(
-        "relative",
-        // For floating modes with contained=true, we need pointer-events-none on container
-        // so clicks pass through to content below, but ChatApp itself has pointer-events-auto
-        isFloatingMode && contained && "pointer-events-none absolute inset-0 z-20",
-        // For full mode or non-floating contained, use full height
-        needsSizedContainer && !isFloatingMode && "h-full min-h-[560px] overflow-hidden bg-background",
+        "relative h-full min-h-[560px] overflow-hidden bg-background",
         className
       )}
     >
