@@ -15,6 +15,7 @@ import type {
   TaskPlan,
 } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
@@ -291,10 +292,16 @@ function formatJson(value: unknown): string {
 export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSessionReturn {
   const {
     wsUrl = DEFAULT_WS_URL,
-    defaultCwd = "",
+    defaultCwd,
     defaultModel = DEFAULT_MODEL,
     defaultExecutorType = "CLAUDE_CODE",
   } = options;
+
+  // 获取当前活动的 workspace 路径作为默认工作目录
+  const getActiveWorkspace = useWorkspaceStore((state) => state.getActiveWorkspace);
+  const activeWorkspace = getActiveWorkspace();
+  // 优先使用 props 传入的 defaultCwd，其次使用活动 workspace 的路径
+  const resolvedDefaultCwd = defaultCwd ?? activeWorkspace?.path ?? "";
 
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -310,7 +317,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const [initializeResult, setInitializeResult] = useState<unknown>(null);
   const [executorType, setExecutorType] = useState(defaultExecutorType);
   const [model, setModel] = useState(defaultModel);
-  const [cwd, setCwd] = useState(defaultCwd);
+  const [cwd, setCwd] = useState(resolvedDefaultCwd);
 
   const clientRef = useRef<AcpWebSocketClient | null>(null);
 
@@ -365,33 +372,14 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const liveSubagentMessages = resolveLiveSubagentMessages(sessionsById, subagentSheet);
 
-  // Auto-connect on mount and maintain connection
+  // 当 workspace 切换时自动更新 cwd（仅在没有活动 session 时同步）
   useEffect(() => {
-    let mounted = true;
-
-    const autoConnect = async () => {
-      if (status === "idle" || status === "closed" || status === "error") {
-        try {
-          const client = ensureClient();
-          await client.connect(wsUrl);
-          if (mounted) {
-            const initialized = await client.initialize();
-            setInitializeResult(initialized);
-          }
-        } catch (err) {
-          if (mounted) {
-            setError(err instanceof Error ? err.message : String(err));
-          }
-        }
-      }
-    };
-
-    void autoConnect();
-
-    return () => {
-      mounted = false;
-    };
-  }, [ensureClient, status, wsUrl]);
+    // 只有在没有活动 session 时才自动同步 workspace 路径到 cwd
+    // 避免在已有 session 时意外更改工作目录
+    if (!activeSessionId && resolvedDefaultCwd && resolvedDefaultCwd !== cwd) {
+      setCwd(resolvedDefaultCwd);
+    }
+  }, [activeSessionId, resolvedDefaultCwd, cwd]);
 
   // Drain UI step queue effect
   useEffect(() => {
@@ -568,6 +556,71 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     requestElicitationResponse,
     requestPermissionDecision,
   ]);
+
+  // Auto-connect and auto-create session on mount
+  useEffect(() => {
+    let mounted = true;
+
+    const autoConnectAndCreateSession = async () => {
+      console.log("[ACP] Auto-connect starting...", { wsUrl, status });
+      try {
+        console.log("[ACP] Ensuring client...");
+        const client = ensureClient();
+        console.log("[ACP] Client ensured, connecting to:", wsUrl);
+        await client.connect(wsUrl);
+        console.log("[ACP] WebSocket connected, initializing...");
+        if (!mounted) return;
+
+        const initialized = await client.initialize();
+        console.log("[ACP] Initialize result:", initialized);
+        setInitializeResult(initialized);
+
+        // Auto-create a session after successful connection
+        if (!mounted) return;
+        console.log("[ACP] Auto-creating session...");
+
+        // Build agent config inline since buildAgentConfig callback is defined later
+        const agentConfig: AgentConfigPayload = {
+          executor_type: executorType,
+          model: model.trim() || undefined,
+          permission_mode: "default",
+          mcp_servers: ["client_side"],
+        };
+
+        const session = await client.newSession({
+          cwd,
+          agent_config: agentConfig,
+        });
+        const id = readSessionId(session);
+        if (!id) throw new Error("session/new did not return sessionId");
+        if (!mounted) return;
+
+        const record = createUiSession(id, cwd, session);
+        setSessionsById((current) => ({ ...current, [id]: record }));
+        setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
+        setActiveSessionId(id);
+        enqueueUiSteps(setSessionsById, id, systemTextToUiSteps(`Session ready: ${id}`));
+        const commands = readSessionAvailableCommands(session);
+        if (commands) {
+          enqueueUiSteps(setSessionsById, id, slashCommandsToUiSteps(commands));
+        }
+        console.log("[ACP] Session created:", id);
+      } catch (err) {
+        console.error("[ACP] Auto-connect/session error:", err);
+        if (mounted) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      }
+    };
+
+    void autoConnectAndCreateSession();
+
+    return () => {
+      console.log("[ACP] Auto-connect effect cleanup");
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return {

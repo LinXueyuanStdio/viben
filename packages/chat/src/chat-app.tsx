@@ -17,8 +17,11 @@ import {
   useIMEComposition,
 } from "./chat-input";
 import { CommandQueuePanel } from "./command-queue";
+import { ResizeHandles } from "./components/resize-handles";
 import { EmojiPicker } from "./emoji-picker";
 import { ExecApproval } from "./exec-approval";
+import { useResizablePanel } from "./hooks/use-resizable-panel";
+import type { ResizeDirection } from "./hooks/use-resizable-panel";
 import { MessageList } from "./message-list";
 import { PlanApproval } from "./plan-approval";
 import { QuestionInput } from "./question-input";
@@ -103,6 +106,22 @@ export interface ChatAppProps {
   onModeChange: (mode: ChatAppMode) => void;
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel: () => void;
+  /** Enable resize handles for expanded mode (default: true) */
+  enableExpandedResize?: boolean;
+  /** Storage key for persisting expanded panel size */
+  expandedSizeStorageKey?: string;
+  /** Default width for expanded mode (default: 440) */
+  expandedDefaultWidth?: number;
+  /** Default height for expanded mode (default: 560) */
+  expandedDefaultHeight?: number;
+  /** Minimum width for expanded mode (default: 320) */
+  expandedMinWidth?: number;
+  /** Maximum width for expanded mode (default: 800) */
+  expandedMaxWidth?: number;
+  /** Minimum height for expanded mode (default: 400) */
+  expandedMinHeight?: number;
+  /** Maximum height for expanded mode (default: 900) */
+  expandedMaxHeight?: number;
 }
 
 export interface ChatAppSubagentSheetState {
@@ -238,12 +257,45 @@ export function ChatApp({
   onModeChange,
   onSend,
   onCancel,
+  enableExpandedResize = true,
+  expandedSizeStorageKey = "viben_chat_expanded_size",
+  expandedDefaultWidth = 440,
+  expandedDefaultHeight = 560,
+  expandedMinWidth = 320,
+  expandedMaxWidth = 800,
+  expandedMinHeight = 400,
+  expandedMaxHeight = 900,
 }: ChatAppProps) {
   const { t } = useTranslation();
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
   const [isWritingMode, setIsWritingMode] = React.useState(false);
   const [isScreenshotCapturing, setIsScreenshotCapturing] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  // Resizable panel for expanded mode
+  const {
+    width: expandedWidth,
+    height: expandedHeight,
+    isResizing,
+    handleResizeStart,
+  } = useResizablePanel({
+    storageKey: expandedSizeStorageKey,
+    defaultWidth: expandedDefaultWidth,
+    defaultHeight: expandedDefaultHeight,
+    minWidth: expandedMinWidth,
+    maxWidth: expandedMaxWidth,
+    minHeight: expandedMinHeight,
+    maxHeight: expandedMaxHeight,
+    enabled: enableExpandedResize && mode === "expanded",
+  });
+
+  // Wrapped resize handler for ResizeHandles component
+  const handleResizeStartWrapper = React.useCallback(
+    (e: React.MouseEvent, direction: ResizeDirection) => {
+      handleResizeStart(e, direction);
+    },
+    [handleResizeStart]
+  );
 
   const content = inputValue ?? uncontrolledInput;
   const setContent = React.useCallback((value: string) => {
@@ -484,9 +536,9 @@ export function ChatApp({
     />
   );
 
-  const resolvedTopToolbar = topToolbar ?? defaultTopToolbar;
-  const resolvedBottomToolbar = bottomToolbar ?? defaultBottomToolbar;
-  const resolvedWritingModeTopToolbar = topToolbar ?? writingModeTopToolbar;
+  const resolvedTopToolbar = topToolbar ?? inputProps?.topToolbar ?? defaultTopToolbar;
+  const resolvedBottomToolbar = bottomToolbar ?? inputProps?.bottomToolbar ?? defaultBottomToolbar;
+  const resolvedWritingModeTopToolbar = topToolbar ?? inputProps?.topToolbar ?? writingModeTopToolbar;
 
 
   const expandedInputProps: ChatInputProps = {
@@ -674,7 +726,7 @@ export function ChatApp({
   // For floating mode, WritingMode should expand to full mode first
   if (mode === "floating") {
     return (
-      <div className={contained ? "absolute bottom-6 left-6 z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
+      <div className={contained ? "z-20" : "fixed bottom-6 left-6 z-50"} data-testid="floating-overlay">
         <motion.button
           type="button"
           aria-label={t("chat_app.overlay.open_compact", "Open compact chat")}
@@ -725,7 +777,7 @@ export function ChatApp({
           if (!hasCompactDraft) onModeChange("floating");
         }}
         className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
-          contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
+          contained ? "z-20" : "fixed bottom-5 left-5 z-50"
         }`}
         style={{ borderRadius: OVERLAY_RADIUS.compact }}
         data-testid="compact-overlay"
@@ -759,22 +811,45 @@ export function ChatApp({
   }
 
   // expanded mode (default)
+  // Use dynamic size from useResizablePanel when resize is enabled
+  const expandedStyle: React.CSSProperties = enableExpandedResize
+    ? {
+        width: expandedWidth,
+        height: expandedHeight,
+        borderRadius: OVERLAY_RADIUS.expanded,
+      }
+    : { borderRadius: OVERLAY_RADIUS.expanded };
+
+  // Class names for expanded mode - use fixed classes when resize is disabled
+  const expandedClassName = enableExpandedResize
+    ? `overlay-shared-surface pointer-events-auto flex min-h-0 flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+        contained ? "z-20" : "fixed bottom-5 left-5 z-50"
+      }`
+    : `overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
+        contained ? "z-20" : "fixed bottom-5 left-5 z-50"
+      }`;
+
   return (
     <motion.div
       layoutId="viben-overlay-surface"
       transition={OVERLAY_TRANSITION}
       initial={false}
       data-transition-role="expand-to-full"
-      className={`overlay-shared-surface pointer-events-auto flex min-h-0 ${EXPANDED_PANEL_HEIGHT_CLASS} ${OVERLAY_PANEL_WIDTH_CLASS} flex-col overflow-hidden rounded-2xl bg-background shadow-2xl ${
-        contained ? "absolute bottom-5 left-5 z-20" : "fixed bottom-5 left-5 z-50"
-      }`}
-      style={{ borderRadius: OVERLAY_RADIUS.expanded }}
+      className={expandedClassName}
+      style={expandedStyle}
       data-testid="expanded-overlay"
     >
       {expandedContent}
       {subagentSheetNode}
       {surfaceOverlay}
       {writingModeNode}
+      {/* Resize handles for expanded mode */}
+      {enableExpandedResize && (
+        <ResizeHandles
+          onResizeStart={handleResizeStartWrapper}
+          isResizing={isResizing}
+        />
+      )}
     </motion.div>
   );
 }

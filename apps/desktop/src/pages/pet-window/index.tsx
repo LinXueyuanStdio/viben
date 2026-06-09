@@ -2,27 +2,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getCurrentWindow, PhysicalPosition, availableMonitors } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { PetSprite, type PetConfig, type PetInteraction, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
-import { loadPetFromPublic } from "@/lib/pet-loader";
+import { PetSprite, type PetConfig, type PetInteraction } from "@viben/pet";
+import { fetchPetConfigFromGateway, loadPetConfig, type PetConfigResponse } from "@/lib/pet-loader";
 import { getGatewayClient } from "@/lib/gateway";
-
-interface PetConfigResponse {
-  current: string | null;
-  enabled: boolean;
-  preferences: {
-    size: number;
-    position: { right: number; bottom: number } | null;
-  };
-}
-
-async function fetchPetConfig(): Promise<PetConfigResponse | null> {
-  try {
-    const data = await getGatewayClient().get<{ config: PetConfigResponse }>("/api/pet/config");
-    return data.config;
-  } catch {
-    return null;
-  }
-}
 
 async function updatePetPosition(right: number, bottom: number): Promise<void> {
   try {
@@ -59,7 +41,7 @@ export default function PetWindowPage() {
     let mounted = true;
 
     async function init() {
-      const cfg = await fetchPetConfig();
+      const cfg = await fetchPetConfigFromGateway();
       if (!mounted) return;
 
       setConfig(cfg);
@@ -73,43 +55,7 @@ export default function PetWindowPage() {
       }
 
       try {
-        let petData: PetConfig;
-        try {
-          petData = await loadPetFromPublic(cfg.current);
-        } catch {
-          const gatewayClient = getGatewayClient();
-          const { pet: petInfo } = await gatewayClient.get<{
-            pet: {
-              id: string;
-              metadata: {
-                display_name: string;
-                description: string;
-              };
-              spritesheet_url: string;
-            };
-          }>(`/api/pet/show/${encodeURIComponent(cfg.current)}`);
-          let spritesheetSrc = petInfo.spritesheet_url;
-          if (spritesheetSrc.startsWith("/api/")) {
-            spritesheetSrc = `${gatewayClient.getBaseUrl()}${spritesheetSrc}`;
-          }
-          petData = {
-            id: petInfo.id,
-            name: petInfo.metadata.display_name,
-            description: petInfo.metadata.description,
-            accent: "#6366f1",
-            greeting: `Hi! I'm ${petInfo.metadata.display_name}.`,
-            spritesheet: spritesheetSrc,
-            atlas: {
-              cols: 8,
-              rows: 9,
-              cellWidth: 192,
-              cellHeight: 208,
-              animations: STANDARD_ANIMATIONS,
-            },
-            ambient: PET_DEFAULTS.ambient,
-            idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
-          };
-        }
+        const petData = await loadPetConfig(cfg.current);
         if (!mounted) return;
         setPet(petData);
 
@@ -124,7 +70,7 @@ export default function PetWindowPage() {
           let x: number;
           let y: number;
 
-          if (cfg.preferences.position) {
+          if (cfg.preferences?.position) {
             x = screenWidth - cfg.preferences.position.right - WINDOW_SIZE;
             y = screenHeight - cfg.preferences.position.bottom - WINDOW_SIZE;
           } else {

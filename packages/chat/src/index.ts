@@ -212,6 +212,16 @@ export type {
 export { useVirtualScroll } from "./hooks/use-virtual-scroll";
 export type { UseVirtualScrollOptions, UseVirtualScrollResult } from "./hooks/use-virtual-scroll";
 
+// Resizable Panel
+export { useResizablePanel } from "./hooks/use-resizable-panel";
+export type {
+  ResizeDirection,
+  UseResizablePanelOptions,
+  UseResizablePanelReturn,
+} from "./hooks/use-resizable-panel";
+export { ResizeHandles } from "./components/resize-handles";
+export type { ResizeHandlesProps } from "./components/resize-handles";
+
 // Selectors
 export { SingleSelector, TripleSelector } from "./selector";
 export type {

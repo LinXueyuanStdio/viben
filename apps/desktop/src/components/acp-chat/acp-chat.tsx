@@ -6,7 +6,7 @@
  */
 
 // ReactNode is used in callback render prop types
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
@@ -38,7 +38,6 @@ import {
   ChatAppFullscreenPanel,
   ChatInputBottomToolbar,
   ChatInputTopToolbar,
-  ExpandedHeader,
   ExpandedHeaderModeControls,
   TodoListPanel,
   TripleSelector,
@@ -56,10 +55,9 @@ import type {
   TasksSummary,
   TripleSelectorValue,
 } from "@viben/chat";
-import { PetSprite, type PetConfig, STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
+import { PetSprite } from "@viben/pet";
 import { cn, Popover, PopoverContent, PopoverTrigger, Switch, Label } from "@viben/ui";
-import { loadPetFromPublic } from "@/lib/pet-loader";
-import { getGatewayClient } from "@/lib/gateway";
+import { usePet } from "@/hooks";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { EmojiTab } from "@/components/ui/icon-picker/tabs/emoji-tab";
 import { ScreenshotDropdown } from "@/components/chat/screenshot-dropdown";
@@ -67,7 +65,10 @@ import { useScreenshot } from "@/hooks/use-screenshot";
 import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useAcpSession } from "./use-acp-session";
+import { useAcpChatConfig } from "./use-acp-chat-config";
+import { DraggableExpandedHeader } from "./draggable-expanded-header";
 
+// Executor 后端选项
 const BACKEND_OPTIONS = [
   { value: "CLAUDE_CODE", label: "Claude ACP" },
   { value: "OPENCLAW", label: "OpenClaw ACP" },
@@ -305,6 +306,26 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // Sandbox config from store
   const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
 
+  // Provider state (用于 provider/model 级联选择)
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+
+  // 使用 ACP Chat 配置 hook，从 API 获取 provider/model 数据并处理约束
+  const {
+    providerOptions,
+    modelOptions: apiModelOptions,
+    isLoading: configLoading,
+    error: configError,
+  } = useAcpChatConfig({
+    executorType,
+    selectedProviderId,
+    selectedModelId: model,
+    onProviderChange: setSelectedProviderId,
+    onModelChange: setModel,
+  });
+
+  // Combine session error with config error for display
+  const displayError = error || configError;
+
   // Screenshot hook
   const {
     takeScreenshot,
@@ -358,64 +379,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     }
   }, []);
 
-  const [pet, setPet] = useState<PetConfig | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadPet() {
-      try {
-        const gatewayClient = getGatewayClient();
-        const data = await gatewayClient.get<{ config: { current: string | null; enabled: boolean } }>("/api/pet/config");
-        const cfg = data.config;
-
-        if (!mounted || !cfg?.enabled || !cfg.current) return;
-
-        try {
-          const petData = await loadPetFromPublic(cfg.current);
-          if (mounted) setPet(petData);
-        } catch {
-          const { pet: petInfo } = await gatewayClient.get<{
-            pet: {
-              id: string;
-              metadata: { display_name: string; description: string };
-              spritesheet_url: string;
-            };
-          }>(`/api/pet/show/${encodeURIComponent(cfg.current)}`);
-
-          let spritesheetSrc = petInfo.spritesheet_url;
-          if (spritesheetSrc.startsWith("/api/")) {
-            spritesheetSrc = `${gatewayClient.getBaseUrl()}${spritesheetSrc}`;
-          }
-
-          if (mounted) {
-            setPet({
-              id: petInfo.id,
-              name: petInfo.metadata.display_name,
-              description: petInfo.metadata.description,
-              accent: "#6366f1",
-              greeting: `Hi! I'm ${petInfo.metadata.display_name}.`,
-              spritesheet: spritesheetSrc,
-              atlas: {
-                cols: 8,
-                rows: 9,
-                cellWidth: 192,
-                cellHeight: 208,
-                animations: STANDARD_ANIMATIONS,
-              },
-              ambient: PET_DEFAULTS.ambient,
-              idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
-            });
-          }
-        }
-      } catch (err) {
-        console.error("[AcpChat] Failed to load pet:", err);
-      }
-    }
-
-    loadPet();
-    return () => { mounted = false; };
-  }, []);
+  const { pet } = usePet();
 
   const staticAssistantAvatar = useMemo(() => {
     if (pet) {
@@ -486,6 +450,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   );
 
   // TripleSelector options
+  // 1. Executor 选项 (静态列表)
   const executorSelectorOptions = useMemo<SelectorOption[]>(
     () =>
       BACKEND_OPTIONS.map((backend) => ({
@@ -495,61 +460,69 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     []
   );
 
-  const providerSelectorOptions = useMemo<SelectorOption[]>(
-    () => [
-      { id: "anthropic", label: "Anthropic" },
-      { id: "openai", label: "OpenAI" },
-      { id: "google", label: "Google AI" },
-      { id: "ollama", label: "Ollama" },
-    ],
-    []
-  );
+  // 2. Provider 选项 (从 API 获取，已根据 executor 约束过滤)
+  // providerOptions 来自 useAcpChatConfig hook
 
-  const modelOptions = useMemo(() => buildModelOptions(model), [model]);
-  const modelSelectorOptions = useMemo<SelectorOption[]>(
-    () =>
-      modelOptions.map((m) => ({
-        id: m.id,
-        label: m.name,
-      })),
-    [modelOptions]
-  );
+  // 3. Model 选项 (从 API 获取，已根据 executor 和 provider 过滤)
+  // 如果 API 没有返回数据，使用本地 fallback
+  const modelSelectorOptions = useMemo<SelectorOption[]>(() => {
+    if (apiModelOptions.length > 0) {
+      return apiModelOptions;
+    }
+    // Fallback: 使用静态模型列表
+    const fallbackModels = buildModelOptions(model);
+    return fallbackModels.map((m) => ({
+      id: m.id,
+      label: m.name,
+    }));
+  }, [apiModelOptions, model]);
 
+  // TripleSelector 当前值
   const tripleSelectorValue = useMemo<TripleSelectorValue>(
     () => ({
       first: executorType,
-      second: "anthropic",
+      second: selectedProviderId,
       third: model,
     }),
-    [executorType, model]
+    [executorType, selectedProviderId, model]
   );
 
+  // TripleSelector 变更处理
   const handleTripleSelectorChange = useCallback(
     (value: TripleSelectorValue) => {
+      // 1. Executor 变更
       if (value.first && value.first !== executorType) {
         setExecutorType(value.first);
+        // Provider 和 Model 会在 useAcpChatConfig hook 中自动调整
       }
+      // 2. Provider 变更
+      if (value.second !== selectedProviderId) {
+        setSelectedProviderId(value.second);
+        // Model 会在 useAcpChatConfig hook 中自动调整
+      }
+      // 3. Model 变更
       if (value.third && value.third !== model) {
         setModel(value.third);
       }
     },
-    [executorType, model, setExecutorType, setModel]
+    [executorType, selectedProviderId, model, setExecutorType, setModel]
   );
 
   const tripleSelectorNode = (
     <TripleSelector
       compact
       firstOptions={executorSelectorOptions}
-      firstLabel="Executor"
-      firstPlaceholder="Select executor..."
-      secondOptions={providerSelectorOptions}
-      secondLabel="Provider"
-      secondPlaceholder="Select provider..."
+      firstLabel={t("chat.executor", "Executor")}
+      firstPlaceholder={t("chat.selectExecutor", "Select executor...")}
+      secondOptions={providerOptions}
+      secondLabel={t("chat.provider", "Provider")}
+      secondPlaceholder={t("chat.selectProvider", "Select provider...")}
       thirdOptions={modelSelectorOptions}
-      thirdLabel="Model"
-      thirdPlaceholder="Select model..."
+      thirdLabel={t("chat.model", "Model")}
+      thirdPlaceholder={t("chat.selectModel", "Select model...")}
       value={tripleSelectorValue}
       onChange={handleTripleSelectorChange}
+      isLoading={configLoading}
     />
   );
 
@@ -876,7 +849,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   );
 
   const headerContent = (
-    <ExpandedHeader
+    <DraggableExpandedHeader
       leftContent={
         <>
           <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
@@ -979,16 +952,15 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // Determine container styles based on mode
   const isFloatingMode = mode === "floating" || mode === "compact" || mode === "expanded";
 
-  // For floating modes, we need a full-size overlay container that:
-  // 1. Covers the entire parent area (absolute inset-0)
-  // 2. Allows clicks to pass through (pointer-events-none)
-  // 3. ChatApp inside uses absolute positioning relative to this container
+  // For floating modes in contained context:
+  // ChatApp handles its own absolute positioning (bottom-6 left-6)
+  // No wrapper div needed - ChatApp renders directly as a positioned element
   if (isFloatingMode && contained) {
     return (
-      <div className={cn("pointer-events-none absolute inset-0 z-20", className)}>
-        {error && (
-          <div className="pointer-events-auto absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
-            {error}
+      <>
+        {displayError && (
+          <div className="absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+            {displayError}
           </div>
         )}
         <ChatApp
@@ -1034,7 +1006,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           onSend={handleSend}
           onCancel={interrupt}
         />
-      </div>
+      </>
     );
   }
 
@@ -1045,42 +1017,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         className
       )}
     >
-      {error && (
-        <div
-          className={cn(
-            "pointer-events-auto z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg",
-            contained ? "absolute left-4 right-4 top-4" : "fixed left-20 right-4 top-4"
-          )}
-        >
-          {error}
-        </div>
-      )}
-      {!connected && mode === "floating" ? (
-        <button
-          className={cn(
-            "btn-primary pointer-events-auto z-30",
-            contained ? "absolute bottom-6 left-6" : "fixed bottom-6 left-6"
-          )}
-          onClick={connect}
-          disabled={busy}
-        >
-          {busy ? <Loader2 className="animate-spin" size={16} /> : <Plug size={16} />}
-          Connect ACP
-        </button>
-      ) : null}
-      {connected && !sessionId && mode !== "floating" ? (
-        <div
-          className={cn(
-            "pointer-events-auto z-40 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/95 p-3 shadow-lg backdrop-blur",
-            contained ? "absolute right-5 top-5" : "fixed right-5 top-16"
-          )}
-        >
-          <button className="btn-primary" onClick={createSession}>
-            <FolderPlus size={16} />
-            New Session
-          </button>
-        </div>
-      ) : null}
       <ChatApp
         contained={contained}
         mode={mode}
@@ -1124,18 +1060,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         onSend={handleSend}
         onCancel={interrupt}
       />
-      {mode === "floating" ? (
-        <div className={cn("pointer-events-auto z-30 flex gap-2", contained ? "absolute bottom-6 right-6" : "fixed bottom-6 right-6")}>
-          <button className="btn-secondary" onClick={() => onModeChange("compact")}>
-            <MessageSquare size={16} />
-            Open
-          </button>
-          <button className="btn-secondary" onClick={() => onModeChange("expanded")}>
-            <Maximize2 size={16} />
-            Expanded
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

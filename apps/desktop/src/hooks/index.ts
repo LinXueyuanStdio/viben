@@ -435,3 +435,7 @@ export { usePlatform } from "./use-platform";
 
 // Pet Window
 export { usePetWindow } from "./use-pet-window";
+
+// Pet
+export { usePet } from "./use-pet";
+export type { PetConfigResponse, UsePetResult } from "./use-pet";

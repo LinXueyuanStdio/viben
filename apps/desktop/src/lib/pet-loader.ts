@@ -2,6 +2,16 @@ import type { PetConfig } from "@viben/pet";
 import { STANDARD_ANIMATIONS, PET_DEFAULTS } from "@viben/pet";
 import { readDir } from "@tauri-apps/plugin-fs";
 import { resolveResource } from "@tauri-apps/api/path";
+import { getGatewayClient } from "./gateway";
+
+export interface PetConfigResponse {
+  current: string | null;
+  enabled: boolean;
+  preferences?: {
+    size?: number;
+    position?: { right: number; bottom: number } | null;
+  };
+}
 
 interface RawPetJson {
   id: string;
@@ -127,4 +137,57 @@ export async function loadAllBuiltinPets(): Promise<BuiltinPetMetadata[]> {
   const petIds = await discoverBuiltinPets();
   const results = await Promise.all(petIds.map(loadBuiltinPetMetadata));
   return results.filter((p): p is BuiltinPetMetadata => p !== null);
+}
+
+/**
+ * Fetch the pet configuration from the gateway
+ */
+export async function fetchPetConfigFromGateway(): Promise<PetConfigResponse | null> {
+  try {
+    const data = await getGatewayClient().get<{ config: PetConfigResponse }>("/api/pet/config");
+    return data.config;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load a PetConfig from either public assets or gateway API
+ */
+export async function loadPetConfig(petId: string): Promise<PetConfig> {
+  try {
+    return await loadPetFromPublic(petId);
+  } catch {
+    const gatewayClient = getGatewayClient();
+    const { pet: petInfo } = await gatewayClient.get<{
+      pet: {
+        id: string;
+        metadata: { display_name: string; description: string };
+        spritesheet_url: string;
+      };
+    }>(`/api/pet/show/${encodeURIComponent(petId)}`);
+
+    let spritesheetSrc = petInfo.spritesheet_url;
+    if (spritesheetSrc.startsWith("/api/")) {
+      spritesheetSrc = `${gatewayClient.getBaseUrl()}${spritesheetSrc}`;
+    }
+
+    return {
+      id: petInfo.id,
+      name: petInfo.metadata.display_name,
+      description: petInfo.metadata.description,
+      accent: "#6366f1",
+      greeting: `Hi! I'm ${petInfo.metadata.display_name}.`,
+      spritesheet: spritesheetSrc,
+      atlas: {
+        cols: 8,
+        rows: 9,
+        cellWidth: 192,
+        cellHeight: 208,
+        animations: STANDARD_ANIMATIONS,
+      },
+      ambient: PET_DEFAULTS.ambient,
+      idleTimeoutMs: PET_DEFAULTS.idleTimeoutMs,
+    };
+  }
 }

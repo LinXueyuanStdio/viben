@@ -41,3 +41,4 @@ export {
 export { useUiStore } from "./ui-store";
 export { useOverlayStore } from "./overlay-store";
 export { useChatModeStore, type ChatAppMode } from "./chat-mode-store";
+export { useChatPositionStore, type SnapPosition } from "./chat-position-store";

@@ -293,14 +293,20 @@ export class AcpWebSocketClient {
   }
 
   async connect(url: string): Promise<void> {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    console.log("[ACP-Client] connect() called", { url, currentStatus: this.status, wsState: this.ws?.readyState });
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log("[ACP-Client] Already connected, skipping");
+      return;
+    }
     this.setStatus("connecting");
 
     await new Promise<void>((resolve, reject) => {
+      console.log("[ACP-Client] Creating WebSocket...", { url, protocol: "acp.v1" });
       const ws = new WebSocket(url, ["acp.v1"]);
       this.ws = ws;
 
       const timer = setTimeout(() => {
+        console.error("[ACP-Client] WebSocket connect timeout after 15s");
         reject(new Error(`WebSocket connect timed out: ${url}`));
         try {
           ws.close();
@@ -310,6 +316,7 @@ export class AcpWebSocketClient {
       }, 15_000);
 
       ws.addEventListener("open", () => {
+        console.log("[ACP-Client] WebSocket open event");
         clearTimeout(timer);
         this.setStatus("connected");
         resolve();
@@ -320,13 +327,15 @@ export class AcpWebSocketClient {
       });
 
       ws.addEventListener("close", (event) => {
+        console.log("[ACP-Client] WebSocket close event", { code: event.code, reason: event.reason });
         clearTimeout(timer);
         this.rejectAll(new Error(`WebSocket closed (${event.code} ${event.reason || "no reason"})`));
         this.ws = null;
         this.setStatus(this.status === "error" ? "error" : "closed");
       });
 
-      ws.addEventListener("error", () => {
+      ws.addEventListener("error", (event) => {
+        console.error("[ACP-Client] WebSocket error event", event);
         clearTimeout(timer);
         const error = new Error("WebSocket connection failed");
         this.rejectAll(error);
@@ -335,6 +344,7 @@ export class AcpWebSocketClient {
         reject(error);
       });
     });
+    console.log("[ACP-Client] connect() completed successfully");
   }
 
   disconnect(): void {
@@ -345,7 +355,8 @@ export class AcpWebSocketClient {
   }
 
   initialize(): Promise<unknown> {
-    return this.request("initialize", {
+    console.log("[ACP-Client] initialize() called");
+    const params = {
       protocolVersion: 1,
       clientCapabilities: {
         fs: {
@@ -368,16 +379,31 @@ export class AcpWebSocketClient {
         title: "Viben Core ACP Client Example",
         version: "0.1.0",
       },
+    };
+    console.log("[ACP-Client] initialize params:", params);
+    return this.request("initialize", params).then((result) => {
+      console.log("[ACP-Client] initialize result:", result);
+      return result;
+    }).catch((error) => {
+      console.error("[ACP-Client] initialize error:", error);
+      throw error;
     });
   }
 
   newSession(params: SessionCreateParams): Promise<unknown> {
+    console.log("[ACP-Client] newSession() called", params);
     return this.request("session/new", {
       cwd: params.cwd,
       mcpServers: params.mcpServers ?? [],
       agent_config_path: params.agent_config_path || undefined,
       agent_dir: params.agent_dir || undefined,
       agent_config: params.agent_config,
+    }).then((result) => {
+      console.log("[ACP-Client] newSession result:", result);
+      return result;
+    }).catch((error) => {
+      console.error("[ACP-Client] newSession error:", error);
+      throw error;
     });
   }
 
@@ -744,6 +770,7 @@ export class AcpWebSocketClient {
   }
 
   private setStatus(status: ConnectionStatus): void {
+    console.log("[ACP-Client] Status change:", this.status, "->", status);
     this.status = status;
     this.callbacks.onStatus(status);
   }
