@@ -976,6 +976,63 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     />
   );
 
+  // For non-contained floating modes, render ChatApp directly without wrapper
+  // to avoid overflow:hidden issues with fixed positioning
+  if (!contained && (mode === "floating" || mode === "compact" || mode === "expanded")) {
+    return (
+      <>
+        {error && (
+          <div className="fixed left-20 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+            {error}
+          </div>
+        )}
+        <ChatApp
+          contained={false}
+          mode={mode}
+          title={activeTitle}
+          messages={messages}
+          messageUpdates={messageUpdates}
+          isStreaming={isAgentRunning}
+          streamingText={streamingText}
+          pendingUserMessageCount={steerQueueItems.length}
+          dynamicAssistantAvatar={dynamicAssistantAvatar}
+          staticAssistantAvatar={staticAssistantAvatar}
+          artifacts={artifacts}
+          compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
+          headerContent={headerContent}
+          inputProps={sharedInputProps}
+          bottomToolbarLeftContent={bottomToolbarLeftContent}
+          statusContent={statusContent}
+          fullscreenContent={fullscreenContent}
+          pendingPlan={pendingPlan}
+          pendingApproval={pendingApproval}
+          pendingQuestion={pendingQuestion}
+          onApprovePlan={handleApprovePlan}
+          onRejectPlan={handleRejectPlan}
+          onApprovalDecision={handleApprovalDecision}
+          onAnswerQuestions={handleQuestionAnswers}
+          subagentSheet={
+            subagentSheet
+              ? {
+                  open: true,
+                  onClose: closeSubagentSheet,
+                  title: subagentSheet.title,
+                  subagentType: subagentSheet.subagentType,
+                  messages: subagentSheet.messages,
+                  liveMessages: liveSubagentMessages,
+                  context: subagentSheet.context,
+                }
+              : undefined
+          }
+          onExpandSubagent={handleExpandSubagent}
+          onModeChange={onModeChange}
+          onSend={handleSend}
+          onCancel={interrupt}
+        />
+      </>
+    );
+  }
+
   return (
     <div
       className={cn(

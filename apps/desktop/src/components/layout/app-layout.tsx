@@ -76,23 +76,23 @@ export function AppLayout() {
             </div>
           )}
 
-          {/* Pages area with optional floating ChatApp */}
+          {/* Pages area */}
           <div className="relative flex min-w-0 flex-1 flex-col bg-background theme-transition">
             <GlobalBreadcrumbShell />
             <main className="relative min-h-0 flex-1 overflow-auto">
               <Outlet />
-
-              {/* ChatApp in floating/compact/expanded mode: overlay in bottom-left of pages area */}
-              {isChatFloating && (
-                <AcpChat
-                  mode={chatMode}
-                  onModeChange={setChatMode}
-                  contained={false}
-                />
-              )}
             </main>
           </div>
         </div>
+
+        {/* ChatApp in floating/compact/expanded mode: fixed overlay (outside main layout to avoid overflow issues) */}
+        {isChatFloating && (
+          <AcpChat
+            mode={chatMode}
+            onModeChange={setChatMode}
+            contained={false}
+          />
+        )}
       </div>
     </NavigationShellProvider>
   );
