@@ -32,18 +32,30 @@ export function DraggableExpandedHeader({
   const { dragHandlers, isDragging, enabled } = useChatDragContext();
 
   // 窗口模式下的拖拽处理
+  // 仅在点击空白区域时开始拖拽，避免与子元素的点击事件冲突
   const handleWindowDrag = useCallback(async (e: React.MouseEvent) => {
+    // 只响应左键
     if (e.button !== 0) return;
+    // 如果点击的是按钮或其他交互元素，不触发拖拽
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("[data-no-drag]")) {
+      return;
+    }
     e.preventDefault();
-    const win = getCurrentWindow();
-    await win.startDragging();
+    try {
+      const win = getCurrentWindow();
+      await win.startDragging();
+    } catch (err) {
+      console.error("[DraggableExpandedHeader] startDragging failed:", err);
+    }
   }, []);
 
   // 窗口模式：使用 Tauri 窗口拖拽
+  // 即使 centerContent 为 null，也需要保持可拖拽的空白区域
   if (windowMode) {
     const windowDraggableCenterContent = (
       <div
-        className="flex min-w-0 flex-1 items-center cursor-move select-none"
+        className="flex min-w-0 flex-1 items-center cursor-move select-none h-full"
         onMouseDown={handleWindowDrag}
         data-tauri-drag-region
       >
@@ -61,9 +73,10 @@ export function DraggableExpandedHeader({
   }
 
   // 浮动模式：使用 ChatDragContext
+  // 即使 centerContent 为 null，也需要保持可拖拽的空白区域
   const draggableCenterContent = enabled && dragHandlers ? (
     <div
-      className="flex min-w-0 flex-1 items-center cursor-grab active:cursor-grabbing select-none"
+      className="flex min-w-0 flex-1 items-center cursor-grab active:cursor-grabbing select-none h-full"
       {...dragHandlers}
       style={{ cursor: isDragging ? "grabbing" : "grab" }}
       data-drag-handle
@@ -71,7 +84,9 @@ export function DraggableExpandedHeader({
       {centerContent}
     </div>
   ) : (
-    centerContent
+    <div className="flex min-w-0 flex-1 items-center h-full">
+      {centerContent}
+    </div>
   );
 
   return (

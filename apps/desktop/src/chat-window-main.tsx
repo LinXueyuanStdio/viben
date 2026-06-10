@@ -1,10 +1,11 @@
+import "./i18n";
+import "./index.css";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ChatWindowPage from "@/pages/chat-window";
 import { Toaster } from "@/components/ui/toaster";
-import "./i18n";
-import "./index.css";
 
 const queryClient = new QueryClient({
   defaultOptions: {

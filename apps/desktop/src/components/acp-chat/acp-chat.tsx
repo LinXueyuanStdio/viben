@@ -6,7 +6,7 @@
  */
 
 // ReactNode is used in callback render prop types
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
@@ -15,6 +15,7 @@ import {
   ExternalLink,
   FolderPlus,
   FolderTree,
+  GripVertical,
   ListTodo,
   Loader2,
   Maximize2,
@@ -94,6 +95,12 @@ const SNAP_SPRING = {
   damping: 30,
   mass: 1,
 };
+
+/** Full 模式下的默认宽度配置 */
+const FULL_MODE_DEFAULT_WIDTH = 420;
+const FULL_MODE_MIN_WIDTH = 320;
+const FULL_MODE_MAX_WIDTH = 800;
+const FULL_MODE_STORAGE_KEY = "viben_acp_chat_full_width";
 
 /** 根据吸附位置获取动画的初始/目标位置 */
 function getPositionConfig(position: SnapPosition, margin: number) {
@@ -235,18 +242,6 @@ function AcpHeaderNewSessionMenu({ onCreateSession, onSelectExecutor }: AcpHeade
   );
 }
 
-async function openFloatingWindow() {
-  try {
-    const petWindow = await WebviewWindow.getByLabel("pet-window");
-    if (petWindow) {
-      await petWindow.show();
-      await petWindow.setFocus();
-    }
-  } catch (err) {
-    console.error("[AcpChat] Failed to open floating window:", err);
-  }
-}
-
 function shortId(id: string): string {
   return id.length <= 8 ? id : id.slice(0, 8);
 }
@@ -293,6 +288,87 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Full mode resize state (external handle, width only)
+  const [fullWidth, setFullWidth] = useState(FULL_MODE_DEFAULT_WIDTH);
+  const [isFullResizing, setIsFullResizing] = useState(false);
+  const fullResizeRef = useRef({
+    isDragging: false,
+    startX: 0,
+    startWidth: FULL_MODE_DEFAULT_WIDTH,
+    latestWidth: FULL_MODE_DEFAULT_WIDTH,
+  });
+
+  // Load saved width from localStorage on mount
+  useEffect(() => {
+    if (!enableFullResize) return;
+    try {
+      const saved = localStorage.getItem(FULL_MODE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.width === "number") {
+          const savedWidth = Math.min(Math.max(parsed.width, FULL_MODE_MIN_WIDTH), FULL_MODE_MAX_WIDTH);
+          setFullWidth(savedWidth);
+          fullResizeRef.current.latestWidth = savedWidth;
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [enableFullResize]);
+
+  // Full mode resize handlers
+  const handleFullResizeStart = useCallback((e: React.MouseEvent) => {
+    if (!enableFullResize) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    fullResizeRef.current = {
+      isDragging: true,
+      startX: e.clientX,
+      startWidth: fullWidth,
+      latestWidth: fullWidth,
+    };
+    setIsFullResizing(true);
+
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!fullResizeRef.current.isDragging) return;
+
+      const deltaX = moveEvent.clientX - fullResizeRef.current.startX;
+      const newWidth = Math.min(
+        Math.max(fullResizeRef.current.startWidth + deltaX, FULL_MODE_MIN_WIDTH),
+        FULL_MODE_MAX_WIDTH
+      );
+      fullResizeRef.current.latestWidth = newWidth;
+      setFullWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (fullResizeRef.current.isDragging) {
+        fullResizeRef.current.isDragging = false;
+        setIsFullResizing(false);
+
+        // Save to localStorage using the latest width from ref
+        try {
+          localStorage.setItem(FULL_MODE_STORAGE_KEY, JSON.stringify({ width: fullResizeRef.current.latestWidth }));
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [enableFullResize, fullWidth]);
 
   // Draggable chat support for floating modes
   const isFloatingMode = mode === "floating" || mode === "compact" || mode === "expanded";
@@ -454,7 +530,11 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const staticAssistantAvatar = useMemo(() => {
     if (pet) {
       if (mode === "floating") {
-        return <PetSprite pet={pet} rowId="idle" size={56} />;
+        return (
+          <div className="flex size-full items-center justify-center overflow-hidden">
+            <PetSprite pet={pet} rowId="idle" size={56} />
+          </div>
+        );
       }
       return (
         <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
@@ -472,7 +552,11 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const dynamicAssistantAvatar = useMemo(() => {
     if (pet) {
       if (mode === "floating") {
-        return <PetSprite pet={pet} rowId="waving" size={56} />;
+        return (
+          <div className="flex size-full items-center justify-center overflow-hidden">
+            <PetSprite pet={pet} rowId="waving" size={56} />
+          </div>
+        );
       }
       return (
         <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
@@ -929,13 +1013,15 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     <DraggableExpandedHeader
       windowMode
       leftContent={
-        <>
-          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
-          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectExecutor={setExecutorType} />
-        </>
+        <ChatWindowControls />
       }
       centerContent={null}
-      rightContent={<ChatWindowControls />}
+      rightContent={
+        <>
+          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectExecutor={setExecutorType} />
+          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+        </>
+      }
     />
   );
 
@@ -1106,6 +1192,21 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // 吸附位置配置（仅在非拖拽时使用）
   const positionConfig = getPositionConfig(snapPosition, FLOATING_MARGIN);
 
+  // For standalone window mode: render full-screen, no floating wrapper
+  if (windowMode) {
+    return (
+      <ChatDragProvider value={dragContextValue}>
+        <div className={cn("flex h-full w-full flex-col overflow-hidden", className)}>
+          {displayError && (
+            <div className="absolute left-4 right-4 top-14 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+              {displayError}
+            </div>
+          )}
+          <ChatApp contained {...chatAppProps} />
+        </div>
+      </ChatDragProvider>
+    );
+  }
 
   // For floating modes: render with draggable container and snap animation
   if (isFloatingMode) {
@@ -1113,7 +1214,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       <ChatDragProvider value={dragContextValue}>
         <div
           ref={containerRef}
-          className="absolute inset-0 pointer-events-none z-20"
+          className={cn("absolute inset-0 pointer-events-none z-20", className)}
           data-testid="draggable-chat-container"
         >
           {displayError && (
@@ -1137,16 +1238,71 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     );
   }
 
-  // For full mode or non-contained: render without draggable wrapper
+  // For full mode or non-contained: render with external resize handle
+  // We use our own resize handle instead of ChatApp's internal one
+  const fullModeStyle: React.CSSProperties = enableFullResize
+    ? { width: fullWidth, flexShrink: 0 }
+    : {};
+
+  // Don't pass enableFullResize to ChatApp - we handle it externally
+  const fullModeProps = { ...chatAppProps, enableFullResize: false };
+
   return (
     <ChatDragProvider value={dragContextValue}>
       <div
         className={cn(
-          "relative h-full min-h-[560px] overflow-hidden bg-background",
+          "group/resize relative h-full min-h-[560px] bg-background",
+          enableFullResize ? "flex-shrink-0" : "overflow-hidden",
           className
         )}
+        style={fullModeStyle}
       >
-        <ChatApp contained={contained} {...chatAppProps} />
+        <ChatApp contained={contained} {...fullModeProps} />
+
+        {/*
+          External resize handle:
+          - Positioned at right edge, extends 2px into adjacent element for easier targeting
+          - Zero visual width when not hovered (doesn't push content)
+          - Shows line + grip on hover
+        */}
+        {enableFullResize && (
+          <div
+            className={cn(
+              // Position: right-0 places left edge at container's right edge
+              // Then we use translate to center the handle across the boundary
+              "absolute right-0 top-0 bottom-0 z-50 translate-x-1/2",
+              // Width for hover detection area
+              "w-3 cursor-ew-resize",
+              "group/handle"
+            )}
+            onMouseDown={handleFullResizeStart}
+            data-resize-handle="full-right"
+          >
+            {/* Visual indicator line - shows on hover/drag */}
+            <div
+              className={cn(
+                "absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 transition-all duration-150",
+                isFullResizing
+                  ? "bg-primary"
+                  : "bg-transparent group-hover/handle:bg-border"
+              )}
+            />
+
+            {/* Grip handle - appears on hover, centered vertically */}
+            <div
+              className={cn(
+                "absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2",
+                "flex h-8 w-4 items-center justify-center rounded-md",
+                "transition-all duration-150",
+                isFullResizing
+                  ? "bg-primary text-primary-foreground opacity-100"
+                  : "bg-muted/90 border border-border text-muted-foreground opacity-0 group-hover/handle:opacity-100"
+              )}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          </div>
+        )}
       </div>
     </ChatDragProvider>
   );

@@ -52,27 +52,33 @@ export function ChatWindowControls() {
     };
   }, []);
 
-  const handleMinimize = async () => {
+  const handleMinimize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     try {
       await getCurrentWindow().minimize();
-    } catch (e) {
-      console.error("[ChatWindowControls] minimize failed:", e);
+    } catch (err) {
+      console.error("[ChatWindowControls] minimize failed:", err);
     }
   };
 
-  const handleMaximize = async () => {
+  const handleMaximize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     try {
       await getCurrentWindow().toggleMaximize();
-    } catch (e) {
-      console.error("[ChatWindowControls] toggleMaximize failed:", e);
+    } catch (err) {
+      console.error("[ChatWindowControls] toggleMaximize failed:", err);
     }
   };
 
-  const handleClose = async () => {
+  const handleClose = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     try {
       await getCurrentWindow().hide();
-    } catch (e) {
-      console.error("[ChatWindowControls] close failed:", e);
+    } catch (err) {
+      console.error("[ChatWindowControls] close failed:", err);
     }
   };
 

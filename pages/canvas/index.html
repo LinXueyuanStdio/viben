@@ -1162,17 +1162,20 @@ ${p.substring(0,15e3)} ... (截断)
             }
 
             function waitForCanvasActions() {
+                var win = window;
+                var setIntervalFn = win.setInterval.bind(win);
+                var clearIntervalFn = win.clearInterval.bind(win);
                 return new Promise(function (resolve, reject) {
                     var startedAt = Date.now();
-                    var timer = window.setInterval(function () {
-                        var actions = window.__TAPNOW_CANVAS_ACTIONS__;
+                    var timer = setIntervalFn(function () {
+                        var actions = win.__TAPNOW_CANVAS_ACTIONS__;
                         if (actions && typeof actions.createNode === "function") {
-                            window.clearInterval(timer);
+                            clearIntervalFn(timer);
                             resolve(actions);
                             return;
                         }
                         if (Date.now() - startedAt > 10000) {
-                            window.clearInterval(timer);
+                            clearIntervalFn(timer);
                             reject(new Error("canvas action bridge is not ready"));
                         }
                     }, 50);

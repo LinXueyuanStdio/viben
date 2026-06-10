@@ -79,7 +79,7 @@
         "skipTaskbar": true,
         "resizable": true,
         "shadow": true,
-        "focus": false,
+        "focus": true,
         "url": "/chat-window.html"
       }
     ],

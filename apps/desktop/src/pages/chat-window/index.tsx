@@ -3,8 +3,12 @@ import { useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { AcpChat } from "@/components/acp-chat";
+import { useTheme } from "@/hooks";
 
 export default function ChatWindowPage() {
+  // Initialize theme for this window
+  useTheme();
+
   // Hide window on blur (click outside)
   useEffect(() => {
     let mounted = true;
@@ -42,7 +46,7 @@ export default function ChatWindowPage() {
 
   return (
     <AcpChat
-      mode="expanded"
+      mode="full"
       onModeChange={() => {}}
       contained
       className="h-screen w-screen"

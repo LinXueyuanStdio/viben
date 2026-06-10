@@ -757,7 +757,7 @@ export function ChatApp({
           "overlay-shared-surface relative flex min-h-0 flex-col bg-background shadow-none",
           contained ? "z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full",
           !enableFullResize && "w-full",
-          enableFullResize ? "overflow-visible" : "overflow-hidden"
+          "overflow-hidden"
         )}
         style={fullStyle}
         data-testid="full-overlay"
@@ -766,20 +766,21 @@ export function ChatApp({
         {subagentSheetNode}
         {surfaceOverlay}
         {writingModeNode}
-        {/* Right edge resize handle - straddles the edge, extends outside container */}
+        {/* Right edge resize handle - inside container but overlays content edge */}
         {enableFullResize && (
           <div
             className={cn(
-              "group absolute -right-1.5 top-0 bottom-0 z-40 flex w-3 cursor-col-resize items-center justify-center",
-              isFullResizing && "bg-primary/20"
+              "group absolute right-0 top-0 bottom-0 z-40 w-1 cursor-col-resize",
+              "flex items-center justify-center",
+              isFullResizing && "bg-primary/30"
             )}
             onMouseDown={handleFullResizeMouseDown}
             data-resize-handle="e"
           >
-            {/* Hover/drag indicator line centered on edge */}
+            {/* Hover/drag indicator line */}
             <div
               className={cn(
-                "absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors",
+                "absolute inset-y-0 w-0.5 transition-colors",
                 isFullResizing ? "bg-primary" : "bg-transparent group-hover:bg-border"
               )}
             />
