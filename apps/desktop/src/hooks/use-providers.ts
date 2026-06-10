@@ -16,11 +16,36 @@ export type ProviderType =
   | "ollama"
   | "openrouter"
   | "google"
+  | "volcengine"
+  | "grok"
+  | "nanobanana"
+  | "imagerouter"
+  | "custom-image"
+  | "fal"
+  | "leonardo"
+  | "minimax"
+  | "elevenlabs"
+  | "fishaudio"
+  | "senseaudio"
+  | "aihubmix"
+  | "suno"
+  | "udio"
   | "custom";
+
+export type ProviderCategory = "llm" | "media";
+
+export type ProviderSurface =
+  | "chat"
+  | "image"
+  | "video"
+  | "music"
+  | "speech"
+  | "sfx";
 
 export interface Provider {
   id: string;
   provider_type: ProviderType;
+  category: ProviderCategory;
   name: string;
   api_key?: string;
   base_url?: string;
@@ -29,6 +54,8 @@ export interface Provider {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces: ProviderSurface[];
+  supports_custom_model?: boolean;
   is_default: boolean;
   enabled: boolean;
   created_at: string;
@@ -37,6 +64,7 @@ export interface Provider {
 
 export interface CreateProviderOptions {
   provider_type: ProviderType;
+  category?: ProviderCategory;
   name: string;
   api_key?: string;
   base_url?: string;
@@ -45,12 +73,15 @@ export interface CreateProviderOptions {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supports_custom_model?: boolean;
   set_as_default?: boolean;
 }
 
 export interface ProviderUpdate {
   name?: string;
   provider_type?: ProviderType;
+  category?: ProviderCategory;
   api_key?: string;
   base_url?: string;
   api_version?: string;
@@ -58,6 +89,8 @@ export interface ProviderUpdate {
   timeout?: number;
   max_retries?: number;
   headers?: Record<string, string>;
+  surfaces?: ProviderSurface[];
+  supports_custom_model?: boolean;
 }
 
 export interface ProviderStatus {
@@ -73,6 +106,7 @@ function transformProviderResponse(response: ProviderResponse): Provider {
   return {
     id: response.id,
     provider_type: response.type as ProviderType,
+    category: response.category,
     name: response.name,
     api_key: response.api_key,
     base_url: response.base_url,
@@ -81,6 +115,8 @@ function transformProviderResponse(response: ProviderResponse): Provider {
     timeout: response.timeout,
     max_retries: response.max_retries,
     headers: response.headers,
+    surfaces: response.surfaces,
+    supports_custom_model: response.supports_custom_model,
     is_default: response.is_default,
     enabled: response.enabled,
     created_at: response.created_at,
@@ -96,6 +132,20 @@ export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   ollama: "http://localhost:11434",
   openrouter: "https://openrouter.ai/api/v1",
   google: "https://generativelanguage.googleapis.com/v1beta",
+  volcengine: "https://ark.cn-beijing.volces.com/api/v3",
+  grok: "https://api.x.ai/v1",
+  nanobanana: "https://generativelanguage.googleapis.com",
+  imagerouter: "https://api.imagerouter.io/v1/openai",
+  "custom-image": "",
+  fal: "https://fal.run",
+  leonardo: "https://cloud.leonardo.ai/api/rest/v1",
+  minimax: "https://api.minimaxi.chat/v1",
+  elevenlabs: "https://api.elevenlabs.io",
+  fishaudio: "https://api.fish.audio",
+  senseaudio: "https://api.senseaudio.cn",
+  aihubmix: "https://aihubmix.com/v1",
+  suno: "",
+  udio: "",
   custom: "",
 };
 
@@ -107,6 +157,20 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   ollama: "Ollama",
   openrouter: "OpenRouter",
   google: "Google AI",
+  volcengine: "Volcengine",
+  grok: "Grok",
+  nanobanana: "Nano Banana",
+  imagerouter: "ImageRouter",
+  "custom-image": "Custom Image",
+  fal: "fal.ai",
+  leonardo: "Leonardo AI",
+  minimax: "MiniMax",
+  elevenlabs: "ElevenLabs",
+  fishaudio: "Fish Audio",
+  senseaudio: "SenseAudio",
+  aihubmix: "AIHubMix",
+  suno: "Suno",
+  udio: "Udio",
   custom: "Custom",
 };
 
@@ -169,6 +233,7 @@ export function useProviders(): UseProvidersReturn {
       const client = getGatewayClient();
       const response = await client.createProvider({
         type: options.provider_type,
+        category: options.category,
         name: options.name,
         apiKey: options.api_key,
         baseUrl: options.base_url,
@@ -177,6 +242,8 @@ export function useProviders(): UseProvidersReturn {
         timeout: options.timeout,
         maxRetries: options.max_retries,
         headers: options.headers,
+        surfaces: options.surfaces,
+        supportsCustomModel: options.supports_custom_model,
         setAsDefault: options.set_as_default,
       });
       const provider = transformProviderResponse(response);
@@ -197,6 +264,7 @@ export function useProviders(): UseProvidersReturn {
       const client = getGatewayClient();
       const response = await client.updateProvider(id, {
         type: updates.provider_type,
+        category: updates.category,
         name: updates.name,
         apiKey: updates.api_key,
         baseUrl: updates.base_url,
@@ -205,6 +273,8 @@ export function useProviders(): UseProvidersReturn {
         timeout: updates.timeout,
         maxRetries: updates.max_retries,
         headers: updates.headers,
+        surfaces: updates.surfaces,
+        supportsCustomModel: updates.supports_custom_model,
       });
       const provider = transformProviderResponse(response);
       // Update local state

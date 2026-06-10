@@ -23,6 +23,7 @@ import {
   Sparkles,
   Globe,
   PenLine,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,8 @@ import { getModelIcon } from "@/lib/model-icons";
 import {
   useProviders,
   type ProviderType,
+  type ProviderCategory,
+  type ProviderSurface,
   type Provider,
   DEFAULT_BASE_URLS,
   PROVIDER_TYPE_LABELS,
@@ -64,6 +67,7 @@ import {
 import {
   useModels,
   type DiscoveredModel,
+  type ModelSurface,
 } from "@/hooks/use-models";
 import { getGatewayClient, type WorkspaceModel } from "@/lib/gateway";
 
@@ -78,12 +82,91 @@ const PROVIDER_TYPES: ProviderType[] = [
   "azure",
   "ollama",
   "openrouter",
+  "google",
+  "volcengine",
+  "grok",
+  "nanobanana",
+  "imagerouter",
+  "custom-image",
+  "fal",
+  "leonardo",
+  "minimax",
+  "elevenlabs",
+  "fishaudio",
+  "senseaudio",
+  "aihubmix",
+  "suno",
+  "udio",
   "custom",
 ];
+
+const MEDIA_SURFACES: ProviderSurface[] = [
+  "image",
+  "video",
+  "music",
+  "speech",
+  "sfx",
+];
+
+const SURFACE_LABELS: Record<ProviderSurface, string> = {
+  chat: "Chat",
+  image: "Image",
+  video: "Video",
+  music: "Music",
+  speech: "Voice",
+  sfx: "SFX",
+};
+
+function getDefaultCategory(type: ProviderType): ProviderCategory {
+  return [
+    "volcengine",
+    "grok",
+    "nanobanana",
+    "imagerouter",
+    "custom-image",
+    "fal",
+    "leonardo",
+    "minimax",
+    "elevenlabs",
+    "fishaudio",
+    "senseaudio",
+    "aihubmix",
+    "suno",
+    "udio",
+  ].includes(type)
+    ? "media"
+    : "llm";
+}
+
+function getDefaultSurfaces(type: ProviderType): ProviderSurface[] {
+  switch (type) {
+    case "nanobanana":
+    case "imagerouter":
+    case "custom-image":
+    case "leonardo":
+      return ["image"];
+    case "fal":
+    case "volcengine":
+    case "minimax":
+    case "aihubmix":
+      return ["image", "video"];
+    case "elevenlabs":
+    case "fishaudio":
+    case "senseaudio":
+      return ["speech", "sfx"];
+    case "suno":
+    case "udio":
+      return ["music"];
+    default:
+      return getDefaultCategory(type) === "media" ? ["image"] : ["chat"];
+  }
+}
 
 // Extended model type with source information
 interface ExtendedModel extends DiscoveredModel {
   source: "discovered" | "predefined" | "manual";
+  surface?: ModelSurface;
+  capabilities?: string[];
 }
 
 export function SettingsModelPage() {
@@ -100,13 +183,20 @@ export function SettingsModelPage() {
     disableProvider,
   } = useProviders();
 
+  const [selectedSurface, setSelectedSurface] = useState<ProviderSurface>("chat");
+
   const {
     error: modelsError,
+    defaultModelId,
+    setDefaultModel,
     discoverProviderModels,
     listProviderEnabledModels,
     enableModelForProvider,
     disableModelForProvider,
-  } = useModels();
+  } = useModels({
+    category: selectedSurface === "chat" ? "llm" : "media",
+    surface: selectedSurface as ModelSurface,
+  });
 
   // Selected provider
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
@@ -133,6 +223,8 @@ export function SettingsModelPage() {
   // Provider form states
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<ProviderType>("openai");
+  const [formCategory, setFormCategory] = useState<ProviderCategory>("llm");
+  const [formSurfaces, setFormSurfaces] = useState<ProviderSurface[]>(["chat"]);
   const [formApiKey, setFormApiKey] = useState("");
   const [formBaseUrl, setFormBaseUrl] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -172,6 +264,18 @@ export function SettingsModelPage() {
     }
   }, [providers, selectedProviderId]);
 
+  useEffect(() => {
+    if (!selectedProvider) return;
+    const surfaces: ProviderSurface[] = selectedProvider.surfaces.length > 0
+      ? selectedProvider.surfaces
+      : selectedProvider.category === "media"
+        ? ["image"]
+        : ["chat"];
+    if (!surfaces.includes(selectedSurface)) {
+      setSelectedSurface(surfaces[0]);
+    }
+  }, [selectedProvider, selectedSurface]);
+
   // Load models when provider changes
   const loadProviderModels = useCallback(async (providerId: string) => {
     setDiscoveringModels(true);
@@ -184,7 +288,28 @@ export function SettingsModelPage() {
         discoverProviderModels(providerId).catch(() => [] as DiscoveredModel[]),
         listProviderEnabledModels(providerId),
       ]);
-      setDiscoveredModels(discovered);
+      const provider = providers.find((p) => p.id === providerId);
+      const providerSurfaceSet = new Set(provider?.surfaces ?? []);
+      setDiscoveredModels(
+        provider && providerSurfaceSet.size > 0
+          ? discovered.filter((model) => {
+              const surface = model.id.toLowerCase();
+              if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) {
+                return true;
+              }
+              if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) {
+                return true;
+              }
+              if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) {
+                return true;
+              }
+              if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) {
+                return true;
+              }
+              return provider.category === "llm";
+            })
+          : discovered
+      );
       setEnabledModelIds(enabled);
 
       // Also load predefined models from Gateway for reference
@@ -192,12 +317,11 @@ export function SettingsModelPage() {
         const client = getGatewayClient();
         const response = await client.getModels({ includeProviderPredefined: true });
         // Filter predefined models by provider type if possible
-        const provider = providers.find((p) => p.id === providerId);
         if (provider) {
           const filtered = response.models.filter(
             (m) => m.provider_id.toLowerCase() === provider.provider_type.toLowerCase() ||
                    m.provider_name.toLowerCase().includes(provider.provider_type.toLowerCase())
-          );
+          ).filter((m) => !m.surface || provider.surfaces.includes(m.surface));
           setPredefinedModels(filtered);
         } else {
           setPredefinedModels(response.models);
@@ -241,6 +365,8 @@ export function SettingsModelPage() {
           max_output_tokens: undefined,
           owned_by: undefined,
           created: undefined,
+          surface: m.surface,
+          capabilities: m.capabilities,
           source: "predefined",
         });
       }
@@ -283,24 +409,35 @@ export function SettingsModelPage() {
 
   // Filtered models based on search
   const filteredModels = useMemo(() => {
-    if (!modelSearchQuery.trim()) return sortedModels;
+    const surfaceModels = sortedModels.filter(
+      (model) => !model.surface || model.surface === selectedSurface
+    );
+    if (!modelSearchQuery.trim()) return surfaceModels;
     const query = modelSearchQuery.toLowerCase();
-    return sortedModels.filter(
+    return surfaceModels.filter(
       (m) =>
         m.id.toLowerCase().includes(query) ||
         m.name.toLowerCase().includes(query) ||
         m.description?.toLowerCase().includes(query)
     );
-  }, [sortedModels, modelSearchQuery]);
+  }, [sortedModels, modelSearchQuery, selectedSurface]);
 
   // Model counts
   const enabledCount = enabledModelIds.length;
   const totalCount = allModels.length;
+  const providerSurfaces: ProviderSurface[] = selectedProvider?.surfaces.length
+    ? selectedProvider.surfaces
+    : selectedProvider?.category === "media"
+      ? MEDIA_SURFACES
+      : ["chat"];
+  const currentDefaultModelId = defaultModelId;
 
   // Open add provider dialog
   const openAddProviderDialog = () => {
     setFormName("");
     setFormType("openai");
+    setFormCategory("llm");
+    setFormSurfaces(["chat"]);
     setFormApiKey("");
     setFormBaseUrl(DEFAULT_BASE_URLS["openai"]);
     setShowApiKey(false);
@@ -311,9 +448,29 @@ export function SettingsModelPage() {
   // Handle provider type change
   const handleTypeChange = (type: ProviderType) => {
     setFormType(type);
+    const nextCategory = getDefaultCategory(type);
+    setFormCategory(nextCategory);
+    setFormSurfaces(getDefaultSurfaces(type));
     if (!editingProvider) {
       setFormBaseUrl(DEFAULT_BASE_URLS[type]);
     }
+  };
+
+  const handleCategoryChange = (category: ProviderCategory) => {
+    setFormCategory(category);
+    setFormSurfaces(category === "llm" ? ["chat"] : ["image"]);
+  };
+
+  const handleSurfaceToggle = (surface: ProviderSurface) => {
+    setFormSurfaces((prev) => {
+      if (surface === "chat") return ["chat"];
+      const withoutChat = prev.filter((item) => item !== "chat");
+      if (withoutChat.includes(surface)) {
+        const next = withoutChat.filter((item) => item !== surface);
+        return next.length > 0 ? next : [surface];
+      }
+      return [...withoutChat, surface];
+    });
   };
 
   // Handle provider form submit
@@ -326,15 +483,20 @@ export function SettingsModelPage() {
         await updateProvider(editingProvider, {
           name: formName.trim(),
           provider_type: formType,
+          category: formCategory,
           api_key: formApiKey || undefined,
           base_url: formBaseUrl || undefined,
+          surfaces: formSurfaces,
         });
       } else {
         const newProvider = await createProvider({
           name: formName.trim(),
           provider_type: formType,
+          category: formCategory,
           api_key: formApiKey || undefined,
           base_url: formBaseUrl || DEFAULT_BASE_URLS[formType],
+          surfaces: formSurfaces,
+          supports_custom_model: true,
           set_as_default: providers.length === 0,
         });
         setSelectedProviderId(newProvider.id);
@@ -400,12 +562,32 @@ export function SettingsModelPage() {
   const handleAddModelManually = async () => {
     if (!selectedProviderId || !newModelId.trim()) return;
     try {
+      if (selectedProvider) {
+        const client = getGatewayClient();
+        await client.createModel({
+          id: newModelId.trim(),
+          name: newModelId.trim(),
+          provider: selectedProvider.provider_type,
+          provider_id: selectedProvider.provider_type,
+          category: selectedProvider.category,
+          surface: selectedSurface as ModelSurface,
+        }).catch(() => undefined);
+      }
       await enableModelForProvider(selectedProviderId, newModelId.trim());
       setEnabledModelIds((prev) => [...prev, newModelId.trim()]);
       setNewModelId("");
       setShowAddModelDialog(false);
     } catch (err) {
       console.error("Failed to add model:", err);
+    }
+  };
+
+  const handleSetDefaultModel = async (modelId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await setDefaultModel(modelId, selectedSurface as ModelSurface);
+    } catch (err) {
+      console.error("Failed to set default model:", err);
     }
   };
 
@@ -549,6 +731,13 @@ export function SettingsModelPage() {
                     <span className="text-xs text-muted-foreground">
                       {PROVIDER_TYPE_LABELS[provider.provider_type]}
                     </span>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {provider.surfaces.map((surface) => (
+                        <Badge key={surface} variant="secondary" className="h-4 px-1 text-[10px]">
+                          {SURFACE_LABELS[surface]}
+                        </Badge>
+                      ))}
+                    </div>
                   </button>
                 ))
               )}
@@ -579,9 +768,14 @@ export function SettingsModelPage() {
               <div className="p-4 border-b flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold">{selectedProvider.name}</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {PROVIDER_TYPE_LABELS[selectedProvider.provider_type]}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {PROVIDER_TYPE_LABELS[selectedProvider.provider_type]}
+                    </span>
+                    <Badge variant="outline" className="h-5 px-1.5 text-xs">
+                      {selectedProvider.category === "media" ? "Media" : "LLM"}
+                    </Badge>
+                  </div>
                 </div>
                 <Switch
                   checked={selectedProvider.enabled}
@@ -633,6 +827,24 @@ export function SettingsModelPage() {
 
               {/* Models Section */}
               <div className="flex-1 flex flex-col min-h-0">
+                {providerSurfaces.length > 1 && (
+                  <div className="px-4 pt-4 flex flex-wrap gap-1">
+                    {providerSurfaces.map((surface) => (
+                      <Button
+                        key={surface}
+                        variant={selectedSurface === surface ? "secondary" : "ghost"}
+                        size="sm"
+                        className={cn(
+                          "h-7 px-2 text-xs",
+                          selectedSurface === surface && "border border-border"
+                        )}
+                        onClick={() => setSelectedSurface(surface)}
+                      >
+                        {SURFACE_LABELS[surface]}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div className="p-4 border-b flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h4 className="font-semibold text-sm">{t("settingsModel.models")}</h4>
@@ -763,6 +975,22 @@ export function SettingsModelPage() {
                                     {(model.context_window / 1000).toFixed(0)}K
                                   </Badge>
                                 )}
+                                {currentDefaultModelId === model.id ? (
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    <Star className="h-3 w-3 fill-current" />
+                                    {t("settingsModel.defaultModel")}
+                                  </Badge>
+                                ) : isEnabled ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => handleSetDefaultModel(model.id, e)}
+                                  >
+                                    <Star className="h-3.5 w-3.5 mr-1" />
+                                    {t("settingsModel.setDefault")}
+                                  </Button>
+                                ) : null}
                                 {isEnabled && (
                                   <Button
                                     variant="ghost"
@@ -851,6 +1079,43 @@ export function SettingsModelPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={formCategory === "llm" ? "secondary" : "outline"}
+                className="justify-start"
+                onClick={() => handleCategoryChange("llm")}
+              >
+                LLM
+              </Button>
+              <Button
+                type="button"
+                variant={formCategory === "media" ? "secondary" : "outline"}
+                className="justify-start"
+                onClick={() => handleCategoryChange("media")}
+              >
+                Media
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("settingsModel.providerSurfaces")}</Label>
+              <div className="flex flex-wrap gap-2">
+                {(formCategory === "llm" ? (["chat"] as ProviderSurface[]) : MEDIA_SURFACES).map((surface) => (
+                  <Button
+                    key={surface}
+                    type="button"
+                    variant={formSurfaces.includes(surface) ? "secondary" : "outline"}
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={() => handleSurfaceToggle(surface)}
+                  >
+                    {SURFACE_LABELS[surface]}
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {/* API Key */}

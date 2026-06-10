@@ -80,6 +80,7 @@ export interface WorkspaceModelsResponse {
   workspace_path: string;
   models: ModelResponse[];
   total: number;
+  default_model_id?: string | null;
 }
 
 // ============================================================================

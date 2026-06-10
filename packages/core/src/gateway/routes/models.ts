@@ -169,10 +169,16 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
   // ========================================================================
 
   // Get the default model
-  fastify.get("/api/models/default", async () => {
-    const defaultModel = await modelManager.getDefault();
+  fastify.get("/api/models/default", async (
+    request: FastifyRequest<{ Querystring: { surface?: ModelSurface } }>
+  ) => {
+    const { surface } = request.query;
+    const defaultModel = surface
+      ? await modelManager.getDefaultForSurface(surface)
+      : await modelManager.getDefault();
     return {
       default_model_id: defaultModel,
+      ...(surface ? { surface } : {}),
     };
   });
 

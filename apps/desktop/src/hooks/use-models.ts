@@ -22,6 +22,8 @@ import {
   type ModelUpdate,
   type DiscoveredModel,
   type ProviderType,
+  type ModelCategory,
+  type ModelSurface,
 } from "@/lib/gateway";
 
 // ============================================================================
@@ -35,6 +37,9 @@ export interface UseModelsOptions {
   includeGlobal?: boolean;
   /** Include predefined models for reference (default: false, used in Settings > Models) */
   includeProviderPredefined?: boolean;
+  providerId?: string;
+  category?: ModelCategory;
+  surface?: ModelSurface;
 }
 
 export interface UseModelsReturn {
@@ -70,7 +75,7 @@ export interface UseModelsReturn {
 
   // Default model management
   /** Set the default model */
-  setDefaultModel: (id: string) => Promise<void>;
+  setDefaultModel: (id: string, surface?: ModelSurface) => Promise<void>;
 
   // Enable/disable
   /** Enable a model */
@@ -91,6 +96,7 @@ export interface UseModelsReturn {
 
 // Re-export types for convenience
 export type { WorkspaceModel, ModelResponse, CreateModelOptions, ModelUpdate, DiscoveredModel, ProviderType };
+export type { ModelCategory, ModelSurface };
 
 // ============================================================================
 // Hook Implementation
@@ -109,6 +115,9 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
   const workspacePath = options?.workspacePath;
   const includeGlobal = options?.includeGlobal ?? true;
   const includeProviderPredefined = options?.includeProviderPredefined ?? false;
+  const providerId = options?.providerId;
+  const category = options?.category;
+  const surface = options?.surface;
 
   const [models, setModels] = useState<WorkspaceModel[]>([]);
   const [defaultModelId, setDefaultModelIdState] = useState<string | null>(null);
@@ -128,12 +137,15 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
           workspacePath: workspacePath || undefined,
           includeGlobal,
           includeProviderPredefined,
+          providerId,
+          category,
+          surface,
         }),
-        client.getDefaultModelId().catch(() => null),
+        client.getDefaultModelId(surface).catch(() => null),
       ]);
       setModels(modelsResponse.models);
       setTotal(modelsResponse.total);
-      setDefaultModelIdState(defaultId);
+      setDefaultModelIdState(modelsResponse.default_model_id ?? defaultId);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : i18n.t("errors.models.loadFailed");
@@ -142,7 +154,14 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
     } finally {
       setLoading(false);
     }
-  }, [workspacePath, includeGlobal, includeProviderPredefined]);
+  }, [
+    workspacePath,
+    includeGlobal,
+    includeProviderPredefined,
+    providerId,
+    category,
+    surface,
+  ]);
 
   // Load on mount and when options change
   useEffect(() => {
@@ -224,11 +243,11 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
 
   // Default model management
   const setDefaultModel = useCallback(
-    async (id: string): Promise<void> => {
+    async (id: string, defaultSurface?: ModelSurface): Promise<void> => {
       setError(null);
       try {
         const client = getGatewayClient();
-        await client.setDefaultModel(id);
+        await client.setDefaultModel(id, defaultSurface ?? surface);
         setDefaultModelIdState(id);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -236,7 +255,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
         throw new Error(message);
       }
     },
-    []
+    [surface]
   );
 
   // Enable/disable

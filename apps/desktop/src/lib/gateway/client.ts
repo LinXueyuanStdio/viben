@@ -344,6 +344,7 @@ import type {
   DefaultAgentResponse,
   PromoteTemplateRequest,
   ModelResponse,
+  ModelCategory,
   ModelSurface,
   CreateModelOptions,
   ModelUpdate,

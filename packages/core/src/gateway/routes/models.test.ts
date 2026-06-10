@@ -294,8 +294,8 @@ describe("Model Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.models).toHaveLength(3);
-      expect(body.total).toBe(3);
+      expect(body.models).toHaveLength(4);
+      expect(body.total).toBe(4);
       expect(body.default_model_id).toBe("claude-sonnet");
       // Verify snake_case transformation
       expect(body.models[0].id).toBe("claude-sonnet");
@@ -453,6 +453,21 @@ describe("Model Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.default_model_id).toBeNull();
+    });
+
+    it("should return the default model for a media surface", async () => {
+      vi.mocked(modelManager.getDefaultForSurface).mockResolvedValue("gpt-image-2");
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models/default?surface=image",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.default_model_id).toBe("gpt-image-2");
+      expect(body.surface).toBe("image");
+      expect(modelManager.getDefaultForSurface).toHaveBeenCalledWith("image");
     });
   });
 

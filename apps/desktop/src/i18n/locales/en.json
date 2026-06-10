@@ -1508,7 +1508,10 @@
     "addModelManually": "Add Model Manually",
     "sourceDiscovered": "Discovered from API",
     "sourcePredefined": "Predefined model",
-    "sourceManual": "Manually added"
+    "sourceManual": "Manually added",
+    "providerSurfaces": "Media capabilities",
+    "defaultModel": "Default",
+    "setDefault": "Set default"
   },
   "providers": {
     "title": "Data Sources",
