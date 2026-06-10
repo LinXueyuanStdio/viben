@@ -60,16 +60,37 @@ fi
 echo ""
 echo "🔄 Restarting Viben Desktop..."
 
-echo "  Killing processes on port 1549..."
-lsof -ti:1549 | xargs kill -9 2>/dev/null || true
+kill_with_info() {
+    local pattern="$1"
+    local description="$2"
+    local pids
+    pids=$(pgrep -f "$pattern" 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+        echo "  Killing $description:"
+        for pid in $pids; do
+            local cmdline
+            cmdline=$(ps -p "$pid" -o args= 2>/dev/null || echo "[unknown]")
+            echo "    PID $pid: $cmdline"
+            kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+}
 
-echo "  Killing viben-desktop Tauri binary..."
-pkill -9 -x "viben-desktop" 2>/dev/null || true
+echo "  Checking port 1549..."
+PORT_PIDS=$(lsof -ti:1549 2>/dev/null || true)
+if [ -n "$PORT_PIDS" ]; then
+    echo "  Killing processes on port 1549:"
+    for pid in $PORT_PIDS; do
+        cmdline=$(ps -p "$pid" -o args= 2>/dev/null || echo "[unknown]")
+        echo "    PID $pid: $cmdline"
+        kill -9 "$pid" 2>/dev/null || true
+    done
+fi
 
-echo "  Killing desktop-related Vite/Tauri processes..."
-pgrep -f "vite.*apps/desktop" | xargs kill -9 2>/dev/null || true
-pgrep -f "tauri dev.*desktop" | xargs kill -9 2>/dev/null || true
-pgrep -f "cargo-tauri.*viben-desktop" | xargs kill -9 2>/dev/null || true
+kill_with_info "^viben-desktop$" "viben-desktop Tauri binary"
+kill_with_info "vite.*apps/desktop" "Vite dev server (apps/desktop)"
+kill_with_info "tauri dev" "Tauri dev process"
+kill_with_info "cargo-tauri" "cargo-tauri process"
 
 sleep 1
 
