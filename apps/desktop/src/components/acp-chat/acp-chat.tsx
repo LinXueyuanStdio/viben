@@ -453,9 +453,12 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   const staticAssistantAvatar = useMemo(() => {
     if (pet) {
+      if (mode === "floating") {
+        return <PetSprite pet={pet} rowId="idle" size={56} />;
+      }
       return (
         <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
-          <PetSprite pet={pet} rowId="idle" size={mode === "floating" ? 56 : 36} />
+          <PetSprite pet={pet} rowId="idle" size={36} />
         </div>
       );
     }
@@ -468,9 +471,12 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   const dynamicAssistantAvatar = useMemo(() => {
     if (pet) {
+      if (mode === "floating") {
+        return <PetSprite pet={pet} rowId="waving" size={56} />;
+      }
       return (
         <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
-          <PetSprite pet={pet} rowId="waving" size={mode === "floating" ? 56 : 36} />
+          <PetSprite pet={pet} rowId="waving" size={36} />
         </div>
       );
     }
@@ -918,7 +924,23 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     />
   );
 
-  const headerContent = (
+  // Window mode header: prioritizes window controls, with draggable center area (left empty for space)
+  const windowModeHeader = (
+    <DraggableExpandedHeader
+      windowMode
+      leftContent={
+        <>
+          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectExecutor={setExecutorType} />
+        </>
+      }
+      centerContent={null}
+      rightContent={<ChatWindowControls />}
+    />
+  );
+
+  // Standard header for floating/expanded modes in main window
+  const standardHeader = (
     <DraggableExpandedHeader
       leftContent={
         <>
@@ -946,7 +968,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
               <MenuActionButton onClick={() => onModeChange("full")} icon={<Maximize2 size={14} />}>
                 Fullscreen mode
               </MenuActionButton>
-              <MenuActionButton onClick={openFloatingWindow} icon={<ExternalLink size={14} />}>
+              <MenuActionButton onClick={openChatWindow} icon={<ExternalLink size={14} />}>
                 Open in new window
               </MenuActionButton>
               <div className="my-1 border-t border-border" />
@@ -980,6 +1002,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       }
     />
   );
+
+  const headerContent = windowMode ? windowModeHeader : standardHeader;
 
   const fullscreenContent = (
     <ChatAppFullscreenPanel
