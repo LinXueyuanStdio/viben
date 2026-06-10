@@ -34,6 +34,7 @@ import {
   ChatInputBottomToolbar,
   ChatInputTopToolbar,
   CommandQueuePanel,
+  ContextApprovalButton,
   ExecApproval,
   ExpandedHeader,
   ExpandedHeaderModeControls,
@@ -44,6 +45,7 @@ import {
   TodoListPanel,
   TripleSelector,
 } from "@viben/chat";
+import type { ApprovalMode } from "@viben/chat";
 import type { SelectorOption, TripleSelectorValue } from "@viben/chat";
 import type { AgentMessage, Artifact, ChatAppMode, ChatInputProps, CommandQueueItem, ContextTokenBreakdown, ExecutorOption, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, LoadedSubagentDetails, MessageAttachment, ModelOption, PendingQuestion, QueuedInputRecallItem, SkillConfig, SlashCommand, SlashCommandSelection, SubagentOpenContext, TaskPlan, ToolConfig, BackgroundTaskItem, TasksSummary, BackgroundTasksSummary } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
@@ -1897,6 +1899,9 @@ function AcpChatSurface({
     onRecallSteerQueue(items, value);
   }, [onPromptChange, onRecallSteerQueue]);
 
+  // Approval mode state
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("rules");
+
   // TripleSelector options (Executor -> Provider -> Model)
   const executorSelectorOptions = useMemo<SelectorOption[]>(() =>
     BACKEND_OPTIONS.map((backend) => ({
@@ -2026,17 +2031,29 @@ function AcpChatSurface({
     />
   ), [backgroundTasksSummary, isStreaming, onPromptChange, prompt, renderBackgroundTasksPopup, renderTasksPopup, tasksSummary]);
 
-  // Bottom toolbar with triple selector
+  // Bottom toolbar left content with triple selector and context approval button
+  const bottomToolbarLeftContent = useMemo(() => (
+    <div className="flex items-center gap-2">
+      {tripleSelectorNode}
+      <ContextApprovalButton
+        breakdown={contextBreakdown}
+        approvalMode={approvalMode}
+        onApprovalModeChange={setApprovalMode}
+      />
+    </div>
+  ), [approvalMode, contextBreakdown, tripleSelectorNode]);
+
+  // Bottom toolbar with triple selector and context approval button
   const bottomToolbar = useMemo(() => (
     <ChatInputBottomToolbar
-      leftContent={tripleSelectorNode}
+      leftContent={bottomToolbarLeftContent}
       onSend={() => handleSend(prompt)}
       onCancel={onCancelTurn}
       isLoading={isStreaming}
       canSubmit={!(!connected || !sessionId) && prompt.trim().length > 0}
       allowSendWhileLoading
     />
-  ), [connected, handleSend, isStreaming, onCancelTurn, prompt, sessionId, tripleSelectorNode]);
+  ), [bottomToolbarLeftContent, connected, handleSend, isStreaming, onCancelTurn, prompt, sessionId]);
 
   const sharedInputProps = useMemo<Partial<ChatInputProps>>(() => ({
     value: prompt,

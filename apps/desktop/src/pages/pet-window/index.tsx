@@ -1,10 +1,23 @@
 // apps/desktop/src/pages/pet-window/index.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { getCurrentWindow, PhysicalPosition, availableMonitors } from "@tauri-apps/api/window";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import { PetSprite, type PetConfig, type PetInteraction } from "@viben/pet";
 import { fetchPetConfigFromGateway, loadPetConfig, type PetConfigResponse } from "@/lib/pet-loader";
 import { getGatewayClient } from "@/lib/gateway";
+
+async function openChatWindow() {
+  try {
+    const chatWindow = await WebviewWindow.getByLabel("chat-window");
+    if (chatWindow) {
+      await chatWindow.show();
+      await chatWindow.setFocus();
+    }
+  } catch (err) {
+    console.error("[PetWindow] Failed to open chat window:", err);
+  }
+}
 
 async function updatePetPosition(right: number, bottom: number): Promise<void> {
   try {
@@ -101,10 +114,16 @@ export default function PetWindowPage() {
     return () => { unlisten.then((fn) => fn()); };
   }, []);
 
+  const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const wasDraggedRef = useRef(false);
+
   // Handle window dragging via Tauri native drag
   const handleMouseDown = useCallback(async (e: React.MouseEvent) => {
     if (e.button !== 0) return;
 
+    // Record start position to detect if it was a click or drag
+    dragStartPosRef.current = { x: e.screenX, y: e.screenY };
+    wasDraggedRef.current = false;
     setIsDragging(true);
 
     const win = getCurrentWindow();
@@ -118,6 +137,16 @@ export default function PetWindowPage() {
     setIsDragging(false);
     setInteraction("idle");
     lastPosRef.current = null;
+  }, []);
+
+  // Handle click to open chat window (only if not dragged)
+  const handleClick = useCallback(() => {
+    // If dragged more than threshold, don't open chat
+    if (wasDraggedRef.current) {
+      wasDraggedRef.current = false;
+      return;
+    }
+    openChatWindow();
   }, []);
 
   // Detect drag direction from tauri://move events (stable subscription, no deps on state)
@@ -141,6 +170,9 @@ export default function PetWindowPage() {
         const absY = Math.abs(dy);
 
         if (absX >= DRAG_GESTURE_MIN_PX || absY >= DRAG_GESTURE_MIN_PX) {
+          // Mark as dragged so click handler knows not to open chat
+          wasDraggedRef.current = true;
+
           if (absX >= absY * DRAG_AXIS_BIAS) {
             const newInteraction = dx > 0 ? "drag-right" : "drag-left";
             console.log("[PetWindow] Setting interaction:", newInteraction);
@@ -215,11 +247,12 @@ export default function PetWindowPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        cursor: isDragging ? "grabbing" : "grab",
+        cursor: isDragging ? "grabbing" : "pointer",
       }}
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
     >
       <PetSprite pet={pet} rowId={getRowId()} size={PET_SIZE} />
     </div>

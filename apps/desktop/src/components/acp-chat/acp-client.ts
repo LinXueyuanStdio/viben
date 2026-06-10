@@ -288,9 +288,19 @@ export class AcpWebSocketClient {
 
   constructor(private callbacks: AcpClientCallbacks) {}
 
+  /**
+   * Update callbacks after construction.
+   * Used when reusing a singleton client across component remounts.
+   */
+  updateCallbacks(callbacks: AcpClientCallbacks): void {
+    this.callbacks = callbacks;
+  }
+
   get currentStatus(): ConnectionStatus {
     return this.status;
   }
+
+  private connectPromise: Promise<void> | null = null;
 
   async connect(url: string): Promise<void> {
     console.log("[ACP-Client] connect() called", { url, currentStatus: this.status, wsState: this.ws?.readyState });
@@ -298,6 +308,20 @@ export class AcpWebSocketClient {
       console.log("[ACP-Client] Already connected, skipping");
       return;
     }
+    // If already connecting, return the existing promise to avoid race conditions
+    if (this.connectPromise) {
+      console.log("[ACP-Client] Connection in progress, waiting for existing promise");
+      return this.connectPromise;
+    }
+    this.connectPromise = this._doConnect(url);
+    try {
+      await this.connectPromise;
+    } finally {
+      this.connectPromise = null;
+    }
+  }
+
+  private async _doConnect(url: string): Promise<void> {
     this.setStatus("connecting");
 
     await new Promise<void>((resolve, reject) => {

@@ -16,6 +16,7 @@ import type {
 } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useGatewayStatus } from "@/hooks/use-gateway-status";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
@@ -66,6 +67,7 @@ import {
   type SubagentSheetState,
   type UiSessionState,
 } from "./acp-chat-state";
+import { executeClientTool, isGuiExecuteTool } from "./client-tool-executor";
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
@@ -468,18 +470,30 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     [steerQueuesBySessionId]
   );
 
-  const executeClientTool = useCallback((_request: ClientToolExecutionRequest): CallToolResult => {
-    return {
-      content: [{ type: "text", text: "Desktop client tool execution not implemented." }],
-      isError: true,
-    };
-  }, []);
+  const handleExecuteClientTool = useCallback(
+    (request: ClientToolExecutionRequest): CallToolResult => {
+      // For GUI_execute tools, we need to execute async but return sync
+      // The actual execution happens in requestClientToolResult which is async
+      if (isGuiExecuteTool(request.toolName)) {
+        // Return a placeholder - actual execution is done async
+        return {
+          content: [{ type: "text", text: "Executing..." }],
+        };
+      }
+      return {
+        content: [{ type: "text", text: `Desktop client has no handler for tool: ${request.toolName}` }],
+        isError: true,
+      };
+    },
+    []
+  );
 
   const requestClientToolResult = useCallback(
-    (request: ClientToolExecutionRequest, draft: CallToolResult): Promise<CallToolResult> => {
+    async (request: ClientToolExecutionRequest, _draft: CallToolResult): Promise<CallToolResult> => {
       enqueueUiSteps(setSessionsById, request.sessionId, clientToolRequestedToUiSteps(request));
-      // For now, auto-approve client tool calls
-      return Promise.resolve(draft);
+      // Execute the client tool through the action system
+      const result = await executeClientTool(request);
+      return result;
     },
     []
   );
@@ -522,105 +536,94 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     });
   }, []);
 
-  const ensureClient = useCallback(() => {
-    if (!clientRef.current) {
-      if (globalClientRef) {
-        clientRef.current = globalClientRef;
-      } else {
-        clientRef.current = new AcpWebSocketClient({
-          onTraffic: () => {},
-          onSessionUpdate: appendSessionUpdate,
-          onClientToolCall: appendClientToolCall,
-          onPermissionRequest: appendPermissionRequest,
-          onElicitationRequest: appendElicitationRequest,
-          onSteerPromptConsumed: appendSteerPromptConsumed,
-          executeClientTool,
-          requestClientToolResult,
-          requestPermissionDecision,
-          requestElicitationResponse,
-          onStatus: setStatus,
-          onError: setError,
-        });
-        globalClientRef = clientRef.current;
-      }
-    }
-    return clientRef.current;
-  }, [
+  // Build callbacks object for client
+  const buildCallbacks = useCallback(() => ({
+    onTraffic: () => {},
+    onSessionUpdate: appendSessionUpdate,
+    onClientToolCall: appendClientToolCall,
+    onPermissionRequest: appendPermissionRequest,
+    onElicitationRequest: appendElicitationRequest,
+    onSteerPromptConsumed: appendSteerPromptConsumed,
+    executeClientTool: handleExecuteClientTool,
+    requestClientToolResult,
+    requestPermissionDecision,
+    requestElicitationResponse,
+    onStatus: setStatus,
+    onError: setError,
+  }), [
     appendClientToolCall,
     appendElicitationRequest,
     appendPermissionRequest,
     appendSessionUpdate,
     appendSteerPromptConsumed,
-    executeClientTool,
+    handleExecuteClientTool,
     requestClientToolResult,
     requestElicitationResponse,
     requestPermissionDecision,
   ]);
 
-  // Auto-connect and auto-create session on mount
-  useEffect(() => {
-    let mounted = true;
+  const ensureClient = useCallback(() => {
+    const callbacks = buildCallbacks();
+    if (!clientRef.current) {
+      if (globalClientRef) {
+        // Reuse existing client but update callbacks to use current closures
+        clientRef.current = globalClientRef;
+        clientRef.current.updateCallbacks(callbacks);
+      } else {
+        clientRef.current = new AcpWebSocketClient(callbacks);
+        globalClientRef = clientRef.current;
+      }
+    } else {
+      // Always update callbacks to ensure they use the latest closures
+      clientRef.current.updateCallbacks(callbacks);
+    }
+    return clientRef.current;
+  }, [buildCallbacks]);
 
-    const autoConnectAndCreateSession = async () => {
-      console.log("[ACP] Auto-connect starting...", { wsUrl, status });
+  // Use Gateway status to trigger auto-connect when Gateway is ready
+  const gatewayStatus = useGatewayStatus();
+  const hasAutoConnected = useRef(false);
+
+  // Auto-connect when Gateway is connected
+  useEffect(() => {
+    // Only auto-connect once, and only when Gateway is connected
+    if (hasAutoConnected.current || !gatewayStatus.isConnected) {
+      return;
+    }
+
+    let mounted = true;
+    hasAutoConnected.current = true;
+
+    const autoConnect = async () => {
+      console.log("[ACP] Auto-connect starting (Gateway connected)...", { wsUrl, status });
       try {
         console.log("[ACP] Ensuring client...");
         const client = ensureClient();
         console.log("[ACP] Client ensured, connecting to:", wsUrl);
         await client.connect(wsUrl);
         console.log("[ACP] WebSocket connected, initializing...");
-        if (!mounted) return;
-
-        const initialized = await client.initialize();
-        console.log("[ACP] Initialize result:", initialized);
-        setInitializeResult(initialized);
-
-        // Auto-create a session after successful connection
-        if (!mounted) return;
-        console.log("[ACP] Auto-creating session...");
-
-        // Build agent config inline since buildAgentConfig callback is defined later
-        const agentConfig: AgentConfigPayload = {
-          executor_type: executorType,
-          model: model.trim() || undefined,
-          permission_mode: "default",
-          mcp_servers: ["client_side"],
-        };
-
-        const session = await client.newSession({
-          cwd,
-          agent_config: agentConfig,
-        });
-        const id = readSessionId(session);
-        if (!id) throw new Error("session/new did not return sessionId");
-        if (!mounted) return;
-
-        const record = createUiSession(id, cwd, session);
-        setSessionsById((current) => ({ ...current, [id]: record }));
-        setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
-        setActiveSessionId(id);
-        enqueueUiSteps(setSessionsById, id, systemTextToUiSteps(`Session ready: ${id}`));
-        const commands = readSessionAvailableCommands(session);
-        if (commands) {
-          enqueueUiSteps(setSessionsById, id, slashCommandsToUiSteps(commands));
+        if (mounted) {
+          const initialized = await client.initialize();
+          console.log("[ACP] Initialize result:", initialized);
+          setInitializeResult(initialized);
         }
-        console.log("[ACP] Session created:", id);
       } catch (err) {
-        console.error("[ACP] Auto-connect/session error:", err);
+        console.error("[ACP] Auto-connect error:", err);
         if (mounted) {
           setError(err instanceof Error ? err.message : String(err));
         }
+        // Reset flag on error to allow retry
+        hasAutoConnected.current = false;
       }
     };
 
-    void autoConnectAndCreateSession();
+    void autoConnect();
 
     return () => {
       console.log("[ACP] Auto-connect effect cleanup");
       mounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [gatewayStatus.isConnected, ensureClient, wsUrl, status]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return {
@@ -708,10 +711,11 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   );
 
   const disconnect = useCallback(() => {
+    // disconnect() internally calls onStatus("closed") via the callback
     clientRef.current?.disconnect();
     clientRef.current = null;
     globalClientRef = null;
-    setStatus("closed");
+    // No need to call setStatus here - it's already called by client.disconnect()
   }, []);
 
   const sendPrompt = useCallback(

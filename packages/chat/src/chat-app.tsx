@@ -2,6 +2,7 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import {
+  GripVertical,
   Maximize2,
   Minimize2,
   MoreHorizontal,
@@ -122,6 +123,16 @@ export interface ChatAppProps {
   expandedMinHeight?: number;
   /** Maximum height for expanded mode (default: 900) */
   expandedMaxHeight?: number;
+  /** Enable resize handle for full mode (default: false) */
+  enableFullResize?: boolean;
+  /** Storage key for persisting full mode width */
+  fullSizeStorageKey?: string;
+  /** Default width for full mode (default: 420) */
+  fullDefaultWidth?: number;
+  /** Minimum width for full mode (default: 320) */
+  fullMinWidth?: number;
+  /** Maximum width for full mode (default: 800) */
+  fullMaxWidth?: number;
 }
 
 export interface ChatAppSubagentSheetState {
@@ -265,6 +276,11 @@ export function ChatApp({
   expandedMaxWidth = 800,
   expandedMinHeight = 400,
   expandedMaxHeight = 900,
+  enableFullResize = false,
+  fullSizeStorageKey = "viben_chat_full_width",
+  fullDefaultWidth = 420,
+  fullMinWidth = 320,
+  fullMaxWidth = 800,
 }: ChatAppProps) {
   const { t } = useTranslation();
   const [uncontrolledInput, setUncontrolledInput] = React.useState("");
@@ -276,8 +292,8 @@ export function ChatApp({
   const {
     width: expandedWidth,
     height: expandedHeight,
-    isResizing,
-    handleResizeStart,
+    isResizing: isExpandedResizing,
+    handleResizeStart: handleExpandedResizeStart,
   } = useResizablePanel({
     storageKey: expandedSizeStorageKey,
     defaultWidth: expandedDefaultWidth,
@@ -289,12 +305,36 @@ export function ChatApp({
     enabled: enableExpandedResize && mode === "expanded",
   });
 
-  // Wrapped resize handler for ResizeHandles component
-  const handleResizeStartWrapper = React.useCallback(
+  // Resizable panel for full mode (width only, right edge)
+  const {
+    width: fullWidth,
+    isResizing: isFullResizing,
+    handleResizeStart: handleFullResizeStart,
+  } = useResizablePanel({
+    storageKey: fullSizeStorageKey,
+    defaultWidth: fullDefaultWidth,
+    defaultHeight: 0, // Not used for full mode
+    minWidth: fullMinWidth,
+    maxWidth: fullMaxWidth,
+    minHeight: 0,
+    maxHeight: 0,
+    enabled: enableFullResize && mode === "full",
+  });
+
+  // Wrapped resize handler for ResizeHandles component (expanded mode)
+  const handleExpandedResizeStartWrapper = React.useCallback(
     (e: React.MouseEvent, direction: ResizeDirection) => {
-      handleResizeStart(e, direction);
+      handleExpandedResizeStart(e, direction);
     },
-    [handleResizeStart]
+    [handleExpandedResizeStart]
+  );
+
+  // Handler for full mode resize (right edge only)
+  const handleFullResizeMouseDown = React.useCallback(
+    (e: React.MouseEvent) => {
+      handleFullResizeStart(e, "e");
+    },
+    [handleFullResizeStart]
   );
 
   const content = inputValue ?? uncontrolledInput;
@@ -703,22 +743,59 @@ export function ChatApp({
   ) : null;
 
   if (mode === "full") {
+    const fullStyle: React.CSSProperties = enableFullResize
+      ? { borderRadius: OVERLAY_RADIUS.full, width: fullWidth }
+      : { borderRadius: OVERLAY_RADIUS.full };
+
     return (
       <motion.div
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
         data-transition-role="expand-to-full"
-        className={`overlay-shared-surface flex min-h-0 w-full flex-col overflow-hidden bg-background shadow-none ${
-          contained ? "absolute inset-y-0 right-0 z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full"
-        }`}
-        style={{ borderRadius: OVERLAY_RADIUS.full }}
+        className={cn(
+          "overlay-shared-surface relative flex min-h-0 flex-col bg-background shadow-none",
+          contained ? "z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full",
+          !enableFullResize && "w-full",
+          enableFullResize ? "overflow-visible" : "overflow-hidden"
+        )}
+        style={fullStyle}
         data-testid="full-overlay"
       >
         {expandedContent}
         {subagentSheetNode}
         {surfaceOverlay}
         {writingModeNode}
+        {/* Right edge resize handle - straddles the edge, extends outside container */}
+        {enableFullResize && (
+          <div
+            className={cn(
+              "group absolute -right-1.5 top-0 bottom-0 z-40 flex w-3 cursor-col-resize items-center justify-center",
+              isFullResizing && "bg-primary/20"
+            )}
+            onMouseDown={handleFullResizeMouseDown}
+            data-resize-handle="e"
+          >
+            {/* Hover/drag indicator line centered on edge */}
+            <div
+              className={cn(
+                "absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 transition-colors",
+                isFullResizing ? "bg-primary" : "bg-transparent group-hover:bg-border"
+              )}
+            />
+            {/* Grip handle */}
+            <div
+              className={cn(
+                "absolute flex h-8 w-4 items-center justify-center rounded-md transition-all",
+                isFullResizing
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
+              )}
+            >
+              <GripVertical className="h-4 w-4" />
+            </div>
+          </div>
+        )}
       </motion.div>
     );
   }
@@ -846,8 +923,8 @@ export function ChatApp({
       {/* Resize handles for expanded mode */}
       {enableExpandedResize && (
         <ResizeHandles
-          onResizeStart={handleResizeStartWrapper}
-          isResizing={isResizing}
+          onResizeStart={handleExpandedResizeStartWrapper}
+          isResizing={isExpandedResizing}
         />
       )}
     </motion.div>

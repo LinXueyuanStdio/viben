@@ -9,6 +9,9 @@
 export { AcpChat } from "./acp-chat";
 export type { AcpChatProps } from "./acp-chat";
 
+export { ChatWindowControls } from "./chat-window-controls";
+export { DraggableExpandedHeader } from "./draggable-expanded-header";
+
 export { useAcpSession } from "./use-acp-session";
 export type {
   UseAcpSessionOptions,

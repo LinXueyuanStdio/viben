@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
-import { DraggableChatWrapper } from "./draggable-chat-wrapper";
 import { GlobalTabBar } from "@/components/global-tab-bar";
 import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
@@ -53,14 +52,6 @@ export function AppLayout() {
   const isChatFull = chatMode === "full";
   const isChatFloating = chatMode === "floating" || chatMode === "compact" || chatMode === "expanded";
 
-  // Resizable chat panel
-  const { width: chatWidth, handleProps } = useResizablePanel({
-    minWidth: 320,
-    maxWidth: 800,
-    defaultWidth: 420,
-    direction: "right",
-  });
-
   return (
     <NavigationShellProvider>
       <div className="flex h-screen flex-col">
@@ -75,24 +66,13 @@ export function AppLayout() {
 
           {/* ChatApp in full mode: occupies independent column between sidebar and pages */}
           {isChatFull && (
-            <div
-              className="relative flex h-full shrink-0 flex-col bg-background"
-              style={{ width: chatWidth }}
-            >
-              <AcpChat
-                mode={chatMode}
-                onModeChange={setChatMode}
-                contained
-                className="h-full"
-              />
-              {/* Resize handle on right edge - hidden until hover */}
-              <div
-                className="group absolute -right-1 top-0 z-30 flex h-full w-2 cursor-col-resize items-center justify-center"
-                {...handleProps}
-              >
-                <div className="h-8 w-1 rounded-full bg-border opacity-0 transition-opacity group-hover:opacity-100 group-active:opacity-100 group-active:bg-primary" />
-              </div>
-            </div>
+            <AcpChat
+              mode={chatMode}
+              onModeChange={setChatMode}
+              contained
+              className="h-full shrink-0"
+              enableFullResize
+            />
           )}
 
           {/* Pages area */}
@@ -104,12 +84,10 @@ export function AppLayout() {
 
             {/* ChatApp in floating/compact/expanded mode: draggable and snaps to edges */}
             {isChatFloating && (
-              <DraggableChatWrapper enabled margin={20}>
-                <AcpChat
-                  mode={chatMode}
-                  onModeChange={setChatMode}
-                />
-              </DraggableChatWrapper>
+              <AcpChat
+                mode={chatMode}
+                onModeChange={setChatMode}
+              />
             )}
           </div>
         </div>
