@@ -815,8 +815,7 @@ export function ChatApp({
           transition={FLOAT_OVERLAY_TRANSITION}
           data-transition-role="float-fade"
           data-testid="floating-overlay-surface"
-          className="overlay-shared-surface overlay-breathing-surface relative flex size-20 items-center justify-center rounded-full border border-border bg-popover shadow-2xl transition-colors hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          style={{ borderRadius: OVERLAY_RADIUS.floating }}
+          className="overlay-shared-surface overlay-breathing-surface relative size-14 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <motion.div
             className="size-14"

@@ -56,6 +56,25 @@ function errorResult(text: string, meta?: Record<string, unknown>): CallToolResu
 }
 
 /**
+ * Convert ClientToolResult (from action-store) to CallToolResult (MCP format)
+ */
+function toCallToolResult(result: ClientToolResult): CallToolResult {
+  return {
+    content: result.content.map((item) => {
+      if (item.type === "text") {
+        return { type: "text" as const, text: item.text };
+      }
+      if (item.type === "image") {
+        return { type: "image" as const, data: item.data, mimeType: item.mimeType };
+      }
+      return item;
+    }),
+    isError: result.isError,
+    _meta: result.structuredContent,
+  };
+}
+
+/**
  * Execute a GUI action based on the request
  * Uses the action-store to resolve and execute registered actions
  */
@@ -104,7 +123,7 @@ export async function executeGuiAction(
 
   try {
     const result = await actionStore.execute(actionName, payload, ctx);
-    return result;
+    return toCallToolResult(result);
   } catch (err) {
     return errorResult(
       `Action ${actionName} failed: ${err instanceof Error ? err.message : String(err)}`,

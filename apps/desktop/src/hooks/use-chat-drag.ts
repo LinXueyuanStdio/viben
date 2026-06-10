@@ -143,9 +143,12 @@ export function useChatDrag({
     }
 
     const containerRect = container.getBoundingClientRect();
-    endDrag({ width: containerRect.width, height: containerRect.height });
+    endDrag(
+      { width: containerRect.width, height: containerRect.height },
+      elementSize
+    );
     setDragPosition(null);
-  }, [containerRef, endDrag, cancelDrag]);
+  }, [containerRef, endDrag, cancelDrag, elementSize]);
 
   /**
    * 鼠标按下事件

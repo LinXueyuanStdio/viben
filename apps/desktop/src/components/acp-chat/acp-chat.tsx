@@ -8,6 +8,7 @@
 // ReactNode is used in callback render prop types
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
 import {
   ChevronDown,
   EthernetPort,
@@ -66,7 +67,11 @@ import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useAcpSession } from "./use-acp-session";
 import { useAcpChatConfig } from "./use-acp-chat-config";
+import { useChatDrag } from "@/hooks/use-chat-drag";
+import { ChatDragProvider } from "@/contexts/chat-drag-context";
+import type { SnapPosition } from "@/stores/chat-position-store";
 import { DraggableExpandedHeader } from "./draggable-expanded-header";
+import { ChatWindowControls } from "./chat-window-controls";
 
 // Executor 后端选项
 const BACKEND_OPTIONS = [
@@ -79,6 +84,32 @@ const BACKEND_OPTIONS = [
 ];
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
+/** 浮动模式下的边距 */
+const FLOATING_MARGIN = 20;
+
+/** 吸附动画配置 */
+const SNAP_SPRING = {
+  type: "spring" as const,
+  stiffness: 400,
+  damping: 30,
+  mass: 1,
+};
+
+/** 根据吸附位置获取动画的初始/目标位置 */
+function getPositionConfig(position: SnapPosition, margin: number) {
+  switch (position) {
+    case "bottom-left":
+      return { bottom: margin, left: margin, top: "auto", right: "auto" };
+    case "bottom-right":
+      return { bottom: margin, right: margin, top: "auto", left: "auto" };
+    case "top-left":
+      return { top: margin, left: margin, bottom: "auto", right: "auto" };
+    case "top-right":
+      return { top: margin, right: margin, bottom: "auto", left: "auto" };
+    default:
+      return { bottom: margin, left: margin, top: "auto", right: "auto" };
+  }
+}
 
 export interface AcpChatProps {
   mode: ChatAppMode;
@@ -89,6 +120,22 @@ export interface AcpChatProps {
   wsUrl?: string;
   /** Default working directory */
   defaultCwd?: string;
+  /** When true, renders window controls in header (for standalone window mode) */
+  windowMode?: boolean;
+  /** Enable resize handle for full mode (default: false) */
+  enableFullResize?: boolean;
+}
+
+async function openChatWindow() {
+  try {
+    const chatWindow = await WebviewWindow.getByLabel("chat-window");
+    if (chatWindow) {
+      await chatWindow.show();
+      await chatWindow.setFocus();
+    }
+  } catch (err) {
+    console.error("[AcpChat] Failed to open chat window:", err);
+  }
 }
 
 interface MenuActionButtonProps {
@@ -242,10 +289,33 @@ function buildModelOptions(currentModel: string) {
   }));
 }
 
-export function AcpChat({ mode, onModeChange, contained = false, className, wsUrl, defaultCwd }: AcpChatProps) {
+export function AcpChat({ mode, onModeChange, contained = false, className, wsUrl, defaultCwd, enableFullResize = false, windowMode = false }: AcpChatProps) {
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Draggable chat support for floating modes
+  const isFloatingMode = mode === "floating" || mode === "compact" || mode === "expanded";
+  const {
+    position: snapPosition,
+    isDragging,
+    dragPosition,
+    dragHandlers,
+  } = useChatDrag({
+    containerRef,
+    margin: FLOATING_MARGIN,
+    elementSize: { width: 440, height: 560 },
+  });
+
+  // Context value for drag handlers (allows child components like DraggableExpandedHeader to use drag)
+  const dragContextValue = useMemo(
+    () => ({
+      dragHandlers: isFloatingMode ? dragHandlers : null,
+      isDragging,
+      enabled: isFloatingMode,
+    }),
+    [isFloatingMode, dragHandlers, isDragging]
+  );
   const acp = useAcpSession({
     wsUrl,
     defaultCwd,
@@ -400,7 +470,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     if (pet) {
       return (
         <div className="flex size-full items-center justify-center overflow-hidden rounded-full">
-          <PetSprite pet={pet} rowId="alert" size={mode === "floating" ? 56 : 36} />
+          <PetSprite pet={pet} rowId="waving" size={mode === "floating" ? 56 : 36} />
         </div>
       );
     }
@@ -949,117 +1019,111 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     />
   );
 
-  // Determine container styles based on mode
-  const isFloatingMode = mode === "floating" || mode === "compact" || mode === "expanded";
+  // Shared ChatApp props
+  const chatAppProps = {
+    mode,
+    title: activeTitle,
+    messages,
+    messageUpdates,
+    isStreaming: isAgentRunning,
+    streamingText,
+    pendingUserMessageCount: steerQueueItems.length,
+    dynamicAssistantAvatar,
+    staticAssistantAvatar,
+    artifacts,
+    compactSummaryContent: buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length),
+    headerContent,
+    inputProps: sharedInputProps,
+    bottomToolbarLeftContent,
+    statusContent,
+    fullscreenContent,
+    pendingPlan,
+    pendingApproval,
+    pendingQuestion,
+    onApprovePlan: handleApprovePlan,
+    onRejectPlan: handleRejectPlan,
+    onApprovalDecision: handleApprovalDecision,
+    onAnswerQuestions: handleQuestionAnswers,
+    subagentSheet: subagentSheet
+      ? {
+          open: true,
+          onClose: closeSubagentSheet,
+          title: subagentSheet.title,
+          subagentType: subagentSheet.subagentType,
+          messages: subagentSheet.messages,
+          liveMessages: liveSubagentMessages,
+          context: subagentSheet.context,
+        }
+      : undefined,
+    onExpandSubagent: handleExpandSubagent,
+    onModeChange,
+    onSend: handleSend,
+    onCancel: interrupt,
+    enableFullResize,
+  };
 
-  // For floating modes in contained context:
-  // ChatApp handles its own absolute positioning (bottom-6 left-6)
-  // No wrapper div needed - ChatApp renders directly as a positioned element
-  if (isFloatingMode && contained) {
+  // Calculate position style based on drag state
+  // 使用单一组件避免重新挂载，通过 style 切换位置
+  const floatingStyle = useMemo(() => {
+    if (isDragging && dragPosition) {
+      // 拖拽中：使用固定的 left/top 坐标
+      return {
+        position: "absolute" as const,
+        left: dragPosition.x,
+        top: dragPosition.y,
+        right: "auto",
+        bottom: "auto",
+      };
+    }
+    // 非拖拽：返回 undefined，让 animate 处理位置
+    return undefined;
+  }, [isDragging, dragPosition]);
+
+  // 吸附位置配置（仅在非拖拽时使用）
+  const positionConfig = getPositionConfig(snapPosition, FLOATING_MARGIN);
+
+
+  // For floating modes: render with draggable container and snap animation
+  if (isFloatingMode) {
     return (
-      <>
-        {displayError && (
-          <div className="absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
-            {displayError}
-          </div>
-        )}
-        <ChatApp
-          contained
-          mode={mode}
-          title={activeTitle}
-          messages={messages}
-          messageUpdates={messageUpdates}
-          isStreaming={isAgentRunning}
-          streamingText={streamingText}
-          pendingUserMessageCount={steerQueueItems.length}
-          dynamicAssistantAvatar={dynamicAssistantAvatar}
-          staticAssistantAvatar={staticAssistantAvatar}
-          artifacts={artifacts}
-          compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
-          headerContent={headerContent}
-          inputProps={sharedInputProps}
-          bottomToolbarLeftContent={bottomToolbarLeftContent}
-          statusContent={statusContent}
-          fullscreenContent={fullscreenContent}
-          pendingPlan={pendingPlan}
-          pendingApproval={pendingApproval}
-          pendingQuestion={pendingQuestion}
-          onApprovePlan={handleApprovePlan}
-          onRejectPlan={handleRejectPlan}
-          onApprovalDecision={handleApprovalDecision}
-          onAnswerQuestions={handleQuestionAnswers}
-          subagentSheet={
-            subagentSheet
-              ? {
-                  open: true,
-                  onClose: closeSubagentSheet,
-                  title: subagentSheet.title,
-                  subagentType: subagentSheet.subagentType,
-                  messages: subagentSheet.messages,
-                  liveMessages: liveSubagentMessages,
-                  context: subagentSheet.context,
-                }
-              : undefined
-          }
-          onExpandSubagent={handleExpandSubagent}
-          onModeChange={onModeChange}
-          onSend={handleSend}
-          onCancel={interrupt}
-        />
-      </>
+      <ChatDragProvider value={dragContextValue}>
+        <div
+          ref={containerRef}
+          className="absolute inset-0 pointer-events-none z-20"
+          data-testid="draggable-chat-container"
+        >
+          {displayError && (
+            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+              {displayError}
+            </div>
+          )}
+          <motion.div
+            className="pointer-events-auto"
+            style={floatingStyle ?? { position: "absolute" }}
+            animate={isDragging ? undefined : positionConfig}
+            transition={isDragging ? { duration: 0 } : SNAP_SPRING}
+            data-testid="draggable-chat"
+            data-dragging={isDragging}
+            data-position={snapPosition}
+          >
+            <ChatApp contained {...chatAppProps} />
+          </motion.div>
+        </div>
+      </ChatDragProvider>
     );
   }
 
+  // For full mode or non-contained: render without draggable wrapper
   return (
-    <div
-      className={cn(
-        "relative h-full min-h-[560px] overflow-hidden bg-background",
-        className
-      )}
-    >
-      <ChatApp
-        contained={contained}
-        mode={mode}
-        title={activeTitle}
-        messages={messages}
-        messageUpdates={messageUpdates}
-        isStreaming={isAgentRunning}
-        streamingText={streamingText}
-        pendingUserMessageCount={steerQueueItems.length}
-        dynamicAssistantAvatar={dynamicAssistantAvatar}
-        staticAssistantAvatar={staticAssistantAvatar}
-        artifacts={artifacts}
-        compactSummaryContent={buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length)}
-        headerContent={headerContent}
-        inputProps={sharedInputProps}
-        bottomToolbarLeftContent={bottomToolbarLeftContent}
-        statusContent={statusContent}
-        fullscreenContent={fullscreenContent}
-        pendingPlan={pendingPlan}
-        pendingApproval={pendingApproval}
-        pendingQuestion={pendingQuestion}
-        onApprovePlan={handleApprovePlan}
-        onRejectPlan={handleRejectPlan}
-        onApprovalDecision={handleApprovalDecision}
-        onAnswerQuestions={handleQuestionAnswers}
-        subagentSheet={
-          subagentSheet
-            ? {
-                open: true,
-                onClose: closeSubagentSheet,
-                title: subagentSheet.title,
-                subagentType: subagentSheet.subagentType,
-                messages: subagentSheet.messages,
-                liveMessages: liveSubagentMessages,
-                context: subagentSheet.context,
-              }
-            : undefined
-        }
-        onExpandSubagent={handleExpandSubagent}
-        onModeChange={onModeChange}
-        onSend={handleSend}
-        onCancel={interrupt}
-      />
-    </div>
+    <ChatDragProvider value={dragContextValue}>
+      <div
+        className={cn(
+          "relative h-full min-h-[560px] overflow-hidden bg-background",
+          className
+        )}
+      >
+        <ChatApp contained={contained} {...chatAppProps} />
+      </div>
+    </ChatDragProvider>
   );
 }

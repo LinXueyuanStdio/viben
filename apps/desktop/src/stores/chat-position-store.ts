@@ -32,7 +32,7 @@ interface ChatPositionState {
   /** 更新拖拽位置 */
   updateDrag: (offset: { x: number; y: number }) => void;
   /** 结束拖拽，计算最近的吸附位置 */
-  endDrag: (containerRect: { width: number; height: number }) => void;
+  endDrag: (containerRect: { width: number; height: number }, elementSize: { width: number; height: number }) => void;
   /** 取消拖拽 */
   cancelDrag: () => void;
 }
@@ -78,16 +78,20 @@ export const useChatPositionStore = create<ChatPositionState>()(
           dragOffset: offset,
         }),
 
-      endDrag: (containerRect) => {
+      endDrag: (containerRect, elementSize) => {
         const { dragOffset } = get();
         if (!dragOffset) {
           set({ isDragging: false, dragOffset: null });
           return;
         }
 
+        // 使用元素中心点坐标来计算吸附位置，而不是左上角
+        const centerX = dragOffset.x + elementSize.width / 2;
+        const centerY = dragOffset.y + elementSize.height / 2;
+
         const newPosition = calculateSnapPosition(
-          dragOffset.x,
-          dragOffset.y,
+          centerX,
+          centerY,
           containerRect.width,
           containerRect.height
         );
