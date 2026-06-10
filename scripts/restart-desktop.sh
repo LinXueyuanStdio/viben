@@ -63,13 +63,13 @@ echo "🔄 Restarting Viben Desktop..."
 echo "  Killing processes on port 1549..."
 lsof -ti:1549 | xargs kill -9 2>/dev/null || true
 
-echo "  Killing viben-desktop Tauri processes..."
-pkill -9 -f "viben-desktop" 2>/dev/null || true
+echo "  Killing viben-desktop Tauri binary..."
+pkill -9 -x "viben-desktop" 2>/dev/null || true
 
 echo "  Killing desktop-related Vite/Tauri processes..."
-pkill -9 -f "apps/desktop.*vite" 2>/dev/null || true
-pkill -9 -f "tauri.*apps/desktop" 2>/dev/null || true
-pkill -9 -f "cargo.*viben-desktop" 2>/dev/null || true
+pgrep -f "vite.*apps/desktop" | xargs kill -9 2>/dev/null || true
+pgrep -f "tauri dev.*desktop" | xargs kill -9 2>/dev/null || true
+pgrep -f "cargo-tauri.*viben-desktop" | xargs kill -9 2>/dev/null || true
 
 sleep 1
 
