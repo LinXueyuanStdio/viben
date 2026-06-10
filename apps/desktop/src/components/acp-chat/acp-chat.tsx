@@ -1193,10 +1193,11 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const positionConfig = getPositionConfig(snapPosition, FLOATING_MARGIN);
 
   // For standalone window mode: render full-screen, no floating wrapper
+  // 添加圆角以配合 decorations: false 的无边框窗口
   if (windowMode) {
     return (
       <ChatDragProvider value={dragContextValue}>
-        <div className={cn("flex h-full w-full flex-col overflow-hidden", className)}>
+        <div className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-background", className)}>
           {displayError && (
             <div className="absolute left-4 right-4 top-14 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
               {displayError}

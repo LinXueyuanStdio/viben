@@ -83,44 +83,45 @@ export function ChatWindowControls() {
   };
 
   // macOS style controls (traffic lights)
+  // 使用较大的尺寸 (size-4 = 16px) 以便于点击
   if (isMacOS) {
     return (
-      <div className="flex items-center gap-2 pr-2">
+      <div className="flex items-center gap-3 pl-1.5 pr-3">
         <button
           onClick={handleClose}
           className={cn(
-            "flex size-3 items-center justify-center rounded-full",
+            "group flex size-4 items-center justify-center rounded-full",
             "bg-[#ff5f57] hover:bg-[#ff5f57]/80",
             "transition-colors"
           )}
           aria-label="Close"
         >
-          <X className="size-2 text-[#4d0000] opacity-0 hover:opacity-100" />
+          <X className="size-2.5 text-[#4d0000] opacity-0 group-hover:opacity-100" />
         </button>
         <button
           onClick={handleMinimize}
           className={cn(
-            "flex size-3 items-center justify-center rounded-full",
+            "group flex size-4 items-center justify-center rounded-full",
             "bg-[#febc2e] hover:bg-[#febc2e]/80",
             "transition-colors"
           )}
           aria-label="Minimize"
         >
-          <Minus className="size-2 text-[#995700] opacity-0 hover:opacity-100" />
+          <Minus className="size-2.5 text-[#995700] opacity-0 group-hover:opacity-100" />
         </button>
         <button
           onClick={handleMaximize}
           className={cn(
-            "flex size-3 items-center justify-center rounded-full",
+            "group flex size-4 items-center justify-center rounded-full",
             "bg-[#28c840] hover:bg-[#28c840]/80",
             "transition-colors"
           )}
           aria-label={isMaximized ? "Restore" : "Maximize"}
         >
           {isMaximized ? (
-            <Copy className="size-2 text-[#006500] opacity-0 hover:opacity-100" />
+            <Copy className="size-2.5 text-[#006500] opacity-0 group-hover:opacity-100" />
           ) : (
-            <Square className="size-1.5 text-[#006500] opacity-0 hover:opacity-100" />
+            <Square className="size-2.5 text-[#006500] opacity-0 group-hover:opacity-100" />
           )}
         </button>
       </div>

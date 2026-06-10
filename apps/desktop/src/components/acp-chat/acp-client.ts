@@ -305,7 +305,9 @@ export class AcpWebSocketClient {
   async connect(url: string): Promise<void> {
     console.log("[ACP-Client] connect() called", { url, currentStatus: this.status, wsState: this.ws?.readyState });
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log("[ACP-Client] Already connected, skipping");
+      console.log("[ACP-Client] Already connected, syncing status to callbacks");
+      // Sync current status to new callbacks (e.g., when reusing singleton across webviews)
+      this.callbacks.onStatus(this.status);
       return;
     }
     // If already connecting, return the existing promise to avoid race conditions

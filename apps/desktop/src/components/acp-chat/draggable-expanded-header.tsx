@@ -52,10 +52,11 @@ export function DraggableExpandedHeader({
 
   // 窗口模式：使用 Tauri 窗口拖拽
   // 即使 centerContent 为 null，也需要保持可拖拽的空白区域
+  // 使用 self-stretch 确保拖拽区域填充父容器高度
   if (windowMode) {
     const windowDraggableCenterContent = (
       <div
-        className="flex min-w-0 flex-1 items-center cursor-move select-none h-full"
+        className="flex min-w-0 flex-1 items-center cursor-move select-none self-stretch"
         onMouseDown={handleWindowDrag}
         data-tauri-drag-region
       >
@@ -74,9 +75,10 @@ export function DraggableExpandedHeader({
 
   // 浮动模式：使用 ChatDragContext
   // 即使 centerContent 为 null，也需要保持可拖拽的空白区域
+  // 使用 self-stretch 确保拖拽区域填充父容器高度
   const draggableCenterContent = enabled && dragHandlers ? (
     <div
-      className="flex min-w-0 flex-1 items-center cursor-grab active:cursor-grabbing select-none h-full"
+      className="flex min-w-0 flex-1 items-center cursor-grab active:cursor-grabbing select-none self-stretch"
       {...dragHandlers}
       style={{ cursor: isDragging ? "grabbing" : "grab" }}
       data-drag-handle
@@ -84,7 +86,7 @@ export function DraggableExpandedHeader({
       {centerContent}
     </div>
   ) : (
-    <div className="flex min-w-0 flex-1 items-center h-full">
+    <div className="flex min-w-0 flex-1 items-center self-stretch">
       {centerContent}
     </div>
   );

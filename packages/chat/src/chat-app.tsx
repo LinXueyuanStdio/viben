@@ -1275,7 +1275,7 @@ export function ExpandedHeader({
   return (
     <header
       data-testid="expanded-header"
-      className="relative flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-card px-3"
+      className="relative flex h-12 shrink-0 items-stretch gap-1.5 border-b border-border bg-card px-3"
     >
       <div className="flex shrink-0 items-center gap-1.5" data-testid="expanded-header-left">
         {leftContent}

@@ -108,8 +108,8 @@ export class PageActionBridge {
     this.registerActions = options.registerActions;
     this.unregisterActions = options.unregisterActions;
     this.executeTimeoutMs = options.executeTimeoutMs ?? DEFAULT_EXECUTE_TIMEOUT_MS;
-    this.setTimeoutFn = options.setTimeoutFn ?? setTimeout;
-    this.clearTimeoutFn = options.clearTimeoutFn ?? clearTimeout;
+    this.setTimeoutFn = options.setTimeoutFn ?? window.setTimeout.bind(window);
+    this.clearTimeoutFn = options.clearTimeoutFn ?? window.clearTimeout.bind(window);
     this.iframeInstanceKey = encodePageActionSegment(this.iframeInstanceId).slice(0, 12);
     const addWindowMessageListener =
       options.addWindowMessageListener ??

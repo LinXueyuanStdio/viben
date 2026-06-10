@@ -1,10 +1,14 @@
 (function () {
   "use strict";
 
+  var win = window;
+  var setTimeoutFn = win.setTimeout.bind(win);
+  var clearTimeoutFn = win.clearTimeout.bind(win);
+
   var VP = { version: "1" };
   var listeners = [];
   var doc = document.documentElement;
-  var embedded = window.parent !== window;
+  var embedded = win.parent !== win;
   var initialized = false;
   var actionRegistry = {};
   var pendingApprovals = {};
@@ -53,7 +57,7 @@
     doc.classList.toggle("dark", theme === "dark");
     if (prev !== theme) {
       doc.classList.add("vp-transitioning");
-      setTimeout(function () {
+      setTimeoutFn(function () {
         doc.classList.remove("vp-transitioning");
       }, 300);
       listeners.forEach(function (fn) {
@@ -185,7 +189,7 @@
       var pending = pendingApprovals[requestId];
       if (pending.executeRequestId !== executeRequestId) return;
       delete pendingApprovals[requestId];
-      clearTimeout(pending.timer);
+      clearTimeoutFn(pending.timer);
       pending.reject(error);
     });
   }
@@ -197,7 +201,7 @@
 
     return new Promise(function (resolve, reject) {
       var requestId = createRequestId();
-      var timer = setTimeout(function () {
+      var timer = setTimeoutFn(function () {
         var pending = pendingApprovals[requestId];
         if (!pending) return;
         delete pendingApprovals[requestId];
@@ -225,7 +229,7 @@
     var requestId = data.request_id;
     if (!requestId || seenExecuteRequests[requestId]) return;
     seenExecuteRequests[requestId] = true;
-    setTimeout(function () {
+    setTimeoutFn(function () {
       delete seenExecuteRequests[requestId];
     }, 60000);
 
@@ -273,7 +277,7 @@
     var pending = pendingApprovals[data.request_id];
     if (!pending || pending.executeRequestId !== data.execute_request_id) return;
     delete pendingApprovals[data.request_id];
-    clearTimeout(pending.timer);
+    clearTimeoutFn(pending.timer);
     if (data.error) {
       pending.reject(new Error(data.error));
       return;
@@ -343,7 +347,7 @@
     ready: new Promise(function (resolve) {
       readyResolve = resolve;
       if (!embedded) {
-        setTimeout(function () {
+        setTimeoutFn(function () {
           if (readyResolve) {
             readyResolve(false);
             readyResolve = null;
