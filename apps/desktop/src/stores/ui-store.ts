@@ -13,10 +13,11 @@ interface UiState {
   closeCreateTaskDialog: () => void;
   setCreateTaskDialogOpen: (open: boolean) => void;
 
-  // Chat Popup (overlay version, triggered by button click or hover)
+  // AcpChat visibility (triggered by sidebar button or keyboard shortcut)
   isChatPopupOpen: boolean;
   openChatPopup: () => void;
   closeChatPopup: () => void;
+  toggleChatPopup: () => void;
 
   // Sidebar collapsed state
   sidebarCollapsed: boolean;
@@ -31,10 +32,11 @@ export const useUiStore = create<UiState>()((set) => ({
   closeCreateTaskDialog: () => set({ isCreateTaskDialogOpen: false }),
   setCreateTaskDialogOpen: (open) => set({ isCreateTaskDialogOpen: open }),
 
-  // Chat Popup (overlay version)
+  // AcpChat visibility
   isChatPopupOpen: false,
   openChatPopup: () => set({ isChatPopupOpen: true }),
   closeChatPopup: () => set({ isChatPopupOpen: false }),
+  toggleChatPopup: () => set((state) => ({ isChatPopupOpen: !state.isChatPopupOpen })),
 
   // Sidebar collapsed state (initialized from localStorage)
   sidebarCollapsed: localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true",

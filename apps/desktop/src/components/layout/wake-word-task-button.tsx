@@ -10,11 +10,10 @@ import {
 import { useVoiceStore } from "@/stores/voice-store";
 import { useWakeWord } from "@/hooks/use-wake-word";
 import { useTranslation } from "react-i18next";
-import { useChatModeStore } from "@/stores/chat-mode-store";
+import { useUiStore } from "@/stores/ui-store";
 
 interface WakeWordTaskButtonProps {
   collapsed: boolean;
-  onCreateTask?: () => void; // Optional: can be used for long press or context menu
   disabled: boolean;
 }
 
@@ -29,12 +28,16 @@ interface WakeWordTaskButtonProps {
  */
 export function WakeWordTaskButton({
   collapsed,
-  onCreateTask: _onCreateTask,
   disabled,
 }: WakeWordTaskButtonProps) {
   const { t } = useTranslation();
   const config = useVoiceStore((s) => s.config);
-  const toggleMode = useChatModeStore((s) => s.toggleMode);
+  const toggleChatPopup = useUiStore((s) => s.toggleChatPopup);
+
+  // Toggle chat popup visibility (controlled by isChatPopupOpen in ui-store)
+  const handleClick = useCallback(() => {
+    toggleChatPopup();
+  }, [toggleChatPopup]);
   const [error, setError] = useState<string | null>(null);
 
   const wakeWord = useWakeWord(
@@ -95,7 +98,7 @@ export function WakeWordTaskButton({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={toggleMode}
+                onClick={handleClick}
                 disabled={disabled}
                 className={cn(
                   "relative flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
@@ -130,7 +133,7 @@ export function WakeWordTaskButton({
     <div className="mt-4">
       <button
         type="button"
-        onClick={toggleMode}
+        onClick={handleClick}
         disabled={disabled}
         className={cn(
           "group relative w-full flex items-center justify-center gap-2 rounded-md border-2 px-3 py-2 text-sm font-medium",

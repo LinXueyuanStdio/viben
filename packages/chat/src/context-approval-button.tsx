@@ -27,6 +27,8 @@ export interface ContextApprovalButtonProps {
   renderPopup?: (props: ContextPopupRenderProps) => React.ReactNode;
   /** Called when hover state changes. Use this to render popup externally. */
   onHoverChange?: (isHovered: boolean) => void;
+  /** Called when button is clicked. Use this to toggle popup externally. */
+  onClick?: () => void;
   /** If true, popup is rendered externally and this component only manages hover state */
   externalPopup?: boolean;
 }
@@ -117,6 +119,7 @@ export function ContextApprovalButton({
   disabled,
   renderPopup,
   onHoverChange,
+  onClick,
   externalPopup,
 }: ContextApprovalButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -157,12 +160,16 @@ export function ContextApprovalButton({
   }, [onHoverChange]);
 
   const handleClick = useCallback(() => {
+    if (onClick) {
+      onClick();
+      return;
+    }
     setIsOpen((prev) => {
       const next = !prev;
       onHoverChange?.(next);
       return next;
     });
-  }, [onHoverChange]);
+  }, [onClick, onHoverChange]);
 
   const buttonContent = (
     <button

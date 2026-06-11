@@ -2033,64 +2033,75 @@ function AcpChatSurface({
     />
   ), [backgroundTasksSummary, isStreaming, onPromptChange, prompt, renderBackgroundTasksPopup, renderTasksPopup, tasksSummary]);
 
-  // Context approval popup hover state
-  const [isContextPopupHovered, setIsContextPopupHovered] = useState(false);
+  // Context approval popup state - supports both hover and click
+  const [isContextPopupOpen, setIsContextPopupOpen] = useState(false);
+  const [isContextPopupPinned, setIsContextPopupPinned] = useState(false);
   const contextPopupProps = useContextApprovalPopupProps(contextBreakdown, approvalMode, setApprovalMode);
-
-  // Context popup enter/leave handlers for the popup itself
   const contextPopupHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleContextPopupMouseEnter = useCallback(() => {
     if (contextPopupHoverTimeoutRef.current) {
       clearTimeout(contextPopupHoverTimeoutRef.current);
+      contextPopupHoverTimeoutRef.current = null;
     }
-    setIsContextPopupHovered(true);
-  }, []);
-  const handleContextPopupMouseLeave = useCallback(() => {
-    contextPopupHoverTimeoutRef.current = setTimeout(() => {
-      setIsContextPopupHovered(false);
-    }, 150);
+    setIsContextPopupOpen(true);
   }, []);
 
-  // Bottom toolbar left content with triple selector and context approval button
+  const handleContextPopupMouseLeave = useCallback(() => {
+    if (isContextPopupPinned) return;
+    contextPopupHoverTimeoutRef.current = setTimeout(() => {
+      setIsContextPopupOpen(false);
+    }, 150);
+  }, [isContextPopupPinned]);
+
+  const handleContextPopupClick = useCallback(() => {
+    if (isContextPopupPinned) {
+      setIsContextPopupPinned(false);
+      setIsContextPopupOpen(false);
+    } else {
+      setIsContextPopupPinned(true);
+      setIsContextPopupOpen(true);
+    }
+  }, [isContextPopupPinned]);
+
+  // Bottom toolbar left content with triple selector and context approval button wrapped in hover container
   const bottomToolbarLeftContent = useMemo(() => (
     <div className="flex items-center gap-2">
       {tripleSelectorNode}
-      <ContextApprovalButton
-        breakdown={contextBreakdown}
-        approvalMode={approvalMode}
-        onApprovalModeChange={setApprovalMode}
-        externalPopup
-        onHoverChange={setIsContextPopupHovered}
-      />
-    </div>
-  ), [approvalMode, contextBreakdown, tripleSelectorNode]);
-
-  // Bottom toolbar popup content
-  const bottomToolbarPopupContent = useMemo(() => {
-    if (!isContextPopupHovered) return null;
-    return (
+      {/* Wrapper for unified hover/click handling */}
       <div
-        className="absolute left-0 bottom-full z-50 mb-1 px-2"
+        className="relative"
         onMouseEnter={handleContextPopupMouseEnter}
         onMouseLeave={handleContextPopupMouseLeave}
       >
-        <ContextApprovalPopup {...contextPopupProps} />
+        {/* Popup positioned above, with padding to bridge gap */}
+        {isContextPopupOpen && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 pb-1">
+            <ContextApprovalPopup {...contextPopupProps} />
+          </div>
+        )}
+        <ContextApprovalButton
+          breakdown={contextBreakdown}
+          approvalMode={approvalMode}
+          onApprovalModeChange={setApprovalMode}
+          onClick={handleContextPopupClick}
+          externalPopup
+        />
       </div>
-    );
-  }, [contextPopupProps, handleContextPopupMouseEnter, handleContextPopupMouseLeave, isContextPopupHovered]);
+    </div>
+  ), [approvalMode, contextBreakdown, contextPopupProps, handleContextPopupClick, handleContextPopupMouseEnter, handleContextPopupMouseLeave, isContextPopupOpen, tripleSelectorNode]);
 
   // Bottom toolbar with triple selector and context approval button
   const bottomToolbar = useMemo(() => (
     <ChatInputBottomToolbar
       leftContent={bottomToolbarLeftContent}
-      popupContent={bottomToolbarPopupContent}
       onSend={() => handleSend(prompt)}
       onCancel={onCancelTurn}
       isLoading={isStreaming}
       canSubmit={!(!connected || !sessionId) && prompt.trim().length > 0}
       allowSendWhileLoading
     />
-  ), [bottomToolbarLeftContent, bottomToolbarPopupContent, connected, handleSend, isStreaming, onCancelTurn, prompt, sessionId]);
+  ), [bottomToolbarLeftContent, connected, handleSend, isStreaming, onCancelTurn, prompt, sessionId]);
 
   const sharedInputProps = useMemo<Partial<ChatInputProps>>(() => ({
     value: prompt,

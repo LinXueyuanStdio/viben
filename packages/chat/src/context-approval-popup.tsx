@@ -75,7 +75,7 @@ export function ContextApprovalPopup({
   const CurrentModeIcon = currentModeConfig.icon;
 
   return (
-    <div className={cn("w-[300px] rounded-lg border bg-popover p-3 shadow-lg", className)}>
+    <div className={cn("w-[300px] rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg", className)}>
       {/* Header - clickable to expand/collapse */}
       <button
         type="button"

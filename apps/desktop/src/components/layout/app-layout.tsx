@@ -19,6 +19,7 @@ import { TabRouterBridge } from "@/components/navigation/tab-router-bridge";
 import { installTabStoreStorageSync } from "@/stores/tab-store";
 import { AcpChat } from "@/components/acp-chat";
 import { useChatModeStore } from "@/stores/chat-mode-store";
+import { useUiStore } from "@/stores/ui-store";
 
 export function AppLayout() {
   useEffect(() => installTabStoreStorageSync(), []);
@@ -49,6 +50,7 @@ export function AppLayout() {
 
   // Chat mode state
   const { mode: chatMode, setMode: setChatMode } = useChatModeStore();
+  const { isChatPopupOpen } = useUiStore();
   const isChatFull = chatMode === "full";
   const isChatFloating = chatMode === "floating" || chatMode === "compact" || chatMode === "expanded";
 
@@ -65,7 +67,7 @@ export function AppLayout() {
           <Sidebar />
 
           {/* ChatApp in full mode: occupies independent column between sidebar and pages */}
-          {isChatFull && (
+          {isChatPopupOpen && isChatFull && (
             <AcpChat
               mode={chatMode}
               onModeChange={setChatMode}
@@ -82,8 +84,8 @@ export function AppLayout() {
               <Outlet />
             </main>
 
-            {/* ChatApp in floating/compact/expanded mode: draggable and snaps to edges */}
-            {isChatFloating && (
+            {/* ChatApp in floating/compact/expanded mode: controlled by isChatPopupOpen */}
+            {isChatFloating && isChatPopupOpen && (
               <AcpChat
                 mode={chatMode}
                 onModeChange={setChatMode}
