@@ -837,7 +837,7 @@ export function AgentDetailPage() {
             showRefresh={false}
             showRemove={false}
             centerContent={
-              <div className="flex h-9 items-center gap-1 rounded-lg bg-muted p-1">
+              <div className="flex h-10 items-center gap-1 rounded-lg bg-muted p-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("settings")}
@@ -924,7 +924,7 @@ export function AgentDetailPage() {
             }
           />
         ) : (
-          <div className="flex items-center gap-2 px-4 border-b h-14">
+          <div className="flex items-center gap-2 px-4 border-b h-10">
             <Button variant="ghost" size="icon" onClick={handleNavigateBack}>
               <ArrowLeft className="h-4 w-4" />
             </Button>

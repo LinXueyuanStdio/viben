@@ -350,12 +350,12 @@ export function Sidebar() {
   const ExpandedContent = (
     <>
       {/* Workspace Selector & Settings - Expanded */}
-      <div className="flex h-14 items-center border-b border-sidebar-border justify-between px-2">
+      <div className="flex h-10 items-center border-b border-sidebar-border justify-between px-2">
         <DropdownMenu onOpenChange={handleMenuOpenChange}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="h-9 flex-1 justify-between px-2 text-sidebar-foreground hover:bg-sidebar-accent mr-1"
+              className="h-8 flex-1 justify-between px-2 text-sidebar-foreground hover:bg-sidebar-accent mr-1"
             >
               <span className="flex items-center gap-2 truncate">
                 <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
@@ -543,7 +543,7 @@ export function Sidebar() {
   const CollapsedContent = (
     <>
       {/* Workspace icon - Collapsed */}
-      <div className="flex h-14 items-center border-b border-sidebar-border justify-center px-2">
+      <div className="flex h-8 items-center border-b border-sidebar-border justify-center px-2">
         <Tooltip>
           <TooltipTrigger asChild>
             <button

@@ -81,7 +81,7 @@ export function ScreenshotDropdown({
           type="button"
           disabled={isCapturing}
           className={cn(
-            "h-7 flex items-center gap-0.5 rounded-full px-1.5",
+            "h-8 flex items-center gap-0.5 rounded-full px-1.5",
             "hover:bg-muted/80 transition-colors",
             "text-muted-foreground hover:text-foreground",
             isCapturing && "opacity-50 cursor-not-allowed",
@@ -90,11 +90,11 @@ export function ScreenshotDropdown({
           title={t("chat.screenshot", "截图")}
         >
           {isCapturing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Camera className="h-3.5 w-3.5" />
+            <Camera className="h-4 w-4" />
           )}
-          <ChevronDown className="h-2.5 w-2.5" />
+          <ChevronDown className="h-3.5 w-3.5" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className={contentClassName}>

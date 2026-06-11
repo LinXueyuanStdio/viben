@@ -301,8 +301,8 @@ export function CommandDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Command className="h-5 w-5 text-emerald-600" />
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <Command className="h-6 w-6 text-emerald-600" />
             </div>
             <div>
               <h1 className="font-semibold font-mono">/{command.id}</h1>

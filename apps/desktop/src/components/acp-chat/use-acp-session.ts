@@ -1,6 +1,11 @@
 /**
  * Custom hook for managing ACP WebSocket connection and session state.
  * Provides a singleton ACP client connection and session management.
+ *
+ * Also integrates agent/provider/model selection with automatic constraint handling:
+ * - Agents are loaded from Gateway API (workspace + global)
+ * - Each agent has an executor_type that constrains available providers/models
+ * - Provider/model selections auto-correct when executor changes
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +15,7 @@ import type {
   CommandQueueItem,
   PendingQuestion,
   QueuedInputRecallItem,
+  SelectorOption,
   SlashCommand,
   SlashCommandSelection,
   TaskPlan,
@@ -17,6 +23,11 @@ import type {
 import type { PendingExecApproval } from "@viben/chat";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
+import { useAgents } from "@/hooks/use-workspace-resources";
+import { useModels } from "@/hooks/use-models";
+import { useProviders } from "@/hooks/use-providers";
+import type { AgentInfo } from "@/lib/gateway";
+import { filterModelsByExecutor, getAllowedProviders, type ProviderId } from "@/lib/executor-constraints";
 import {
   AcpWebSocketClient,
   type AcpSessionUpdate,
@@ -132,6 +143,30 @@ export interface UseAcpSessionReturn {
   model: string;
   cwd: string;
 
+  // Agent/Provider/Model selection (integrated from useAcpChatConfig)
+  /** All agents (workspace + global) */
+  agents: AgentInfo[];
+  /** Global agents */
+  globalAgents: AgentInfo[];
+  /** Workspace agents */
+  workspaceAgents: AgentInfo[];
+  /** Currently selected agent ID */
+  selectedAgentId: string | null;
+  /** Currently selected agent */
+  selectedAgent: AgentInfo | undefined;
+  /** Agent selector options (for TripleSelector) */
+  agentOptions: SelectorOption[];
+  /** Provider selector options (filtered by executor constraints) */
+  providerOptions: SelectorOption[];
+  /** Model selector options (filtered by executor and provider) */
+  modelOptions: SelectorOption[];
+  /** Currently selected provider ID */
+  selectedProviderId: string | null;
+  /** Config loading state */
+  configLoading: boolean;
+  /** Config error */
+  configError: string | null;
+
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -153,6 +188,10 @@ export interface UseAcpSessionReturn {
   setExecutorType: (type: string) => void;
   setModel: (model: string) => void;
   setCwd: (cwd: string) => void;
+  /** Set selected agent (also updates executorType) */
+  setSelectedAgentId: (id: string | null) => void;
+  /** Set selected provider */
+  setSelectedProviderId: (id: string | null) => void;
 
   // Subagent sheet
   subagentSheet: SubagentSheetState | null;
@@ -304,7 +343,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const activeWorkspace = getActiveWorkspace();
   // 优先使用 props 传入的 defaultCwd，其次使用活动 workspace 的路径
   const resolvedDefaultCwd = defaultCwd ?? activeWorkspace?.path ?? "";
+  const workspacePath = activeWorkspace?.path;
 
+  // ========== Session State ==========
   const [status, setStatus] = useState<ConnectionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -320,6 +361,175 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const [executorType, setExecutorType] = useState(defaultExecutorType);
   const [model, setModel] = useState(defaultModel);
   const [cwd, setCwd] = useState(resolvedDefaultCwd);
+
+  // ========== Agent/Provider/Model Config State ==========
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+
+  // Load agents, providers, models from Gateway API
+  const {
+    agents: allAgents,
+    loading: agentsLoading,
+    error: agentsError,
+  } = useAgents({
+    workspacePath: workspacePath || undefined,
+    includeGlobal: true,
+  });
+
+  const {
+    providers,
+    loading: providersLoading,
+    error: providersError,
+  } = useProviders();
+
+  const {
+    models: allModels,
+    loading: modelsLoading,
+    error: modelsError,
+  } = useModels();
+
+  // Track previous values for detecting changes
+  const prevExecutorTypeRef = useRef(executorType);
+  const prevProviderIdRef = useRef(selectedProviderId);
+
+  // Split agents into global vs workspace groups
+  const globalAgents = useMemo(
+    () => allAgents.filter((a) => a.source === "global"),
+    [allAgents]
+  );
+  const workspaceAgents = useMemo(
+    () => allAgents.filter((a) => a.source === "workspace"),
+    [allAgents]
+  );
+
+  // Get selected agent
+  const selectedAgent = useMemo(
+    () => allAgents.find((a) => a.id === selectedAgentId),
+    [allAgents, selectedAgentId]
+  );
+
+  // Agent selector options (grouped by source)
+  const agentOptions = useMemo<SelectorOption[]>(() => {
+    const options: SelectorOption[] = [];
+    // Add workspace agents first
+    workspaceAgents.forEach((agent) => {
+      options.push({
+        id: agent.id,
+        label: agent.name,
+        description: agent.executor_type,
+        badge: "workspace",
+      });
+    });
+    // Add global agents
+    globalAgents.forEach((agent) => {
+      options.push({
+        id: agent.id,
+        label: agent.name,
+        description: agent.executor_type,
+        badge: "global",
+      });
+    });
+    return options;
+  }, [workspaceAgents, globalAgents]);
+
+  // Get allowed providers based on executor type
+  const allowedProviderIds = useMemo(() => {
+    return getAllowedProviders(executorType);
+  }, [executorType]);
+
+  // Filter providers based on executor constraints
+  const filteredProviders = useMemo(() => {
+    const enabledProviders = providers.filter((p) => p.enabled);
+    if (!allowedProviderIds || allowedProviderIds.length === 0) {
+      return enabledProviders;
+    }
+    return enabledProviders.filter((p) =>
+      allowedProviderIds.includes(p.provider_type as ProviderId)
+    );
+  }, [providers, allowedProviderIds]);
+
+  // Provider selector options
+  const providerOptions = useMemo<SelectorOption[]>(() => {
+    return filteredProviders.map((p) => ({
+      id: p.id,
+      label: p.name,
+      description: p.provider_type,
+      badge: p.is_default ? "default" : undefined,
+    }));
+  }, [filteredProviders]);
+
+  // Filter models by executor type
+  const modelsFilteredByExecutor = useMemo(() => {
+    const availableModels = allModels.filter((m) => m.is_available);
+    return filterModelsByExecutor(availableModels, executorType);
+  }, [allModels, executorType]);
+
+  // Further filter models by selected provider
+  const filteredModels = useMemo(() => {
+    if (!selectedProviderId) {
+      return modelsFilteredByExecutor;
+    }
+    const selectedProvider = filteredProviders.find((p) => p.id === selectedProviderId);
+    if (!selectedProvider) {
+      return modelsFilteredByExecutor;
+    }
+    return modelsFilteredByExecutor.filter(
+      (m) => m.provider_id.toLowerCase() === selectedProvider.provider_type.toLowerCase()
+    );
+  }, [modelsFilteredByExecutor, selectedProviderId, filteredProviders]);
+
+  // Model selector options
+  const modelOptions = useMemo<SelectorOption[]>(() => {
+    return filteredModels.map((m) => ({
+      id: m.id,
+      label: m.name,
+      description: m.provider_id,
+      badge: m.is_default ? "default" : undefined,
+    }));
+  }, [filteredModels]);
+
+  // Auto-select first provider when executor changes
+  useEffect(() => {
+    if (prevExecutorTypeRef.current !== executorType) {
+      prevExecutorTypeRef.current = executorType;
+      const currentProviderValid = filteredProviders.some((p) => p.id === selectedProviderId);
+      if (!currentProviderValid && filteredProviders.length > 0) {
+        const defaultProvider = filteredProviders.find((p) => p.is_default);
+        const newProviderId = defaultProvider?.id ?? filteredProviders[0]?.id ?? null;
+        setSelectedProviderId(newProviderId);
+      }
+    }
+  }, [executorType, filteredProviders, selectedProviderId]);
+
+  // Auto-select first model when provider changes
+  useEffect(() => {
+    if (prevProviderIdRef.current !== selectedProviderId) {
+      prevProviderIdRef.current = selectedProviderId;
+      const currentModelValid = filteredModels.some((m) => m.id === model);
+      if (!currentModelValid && filteredModels.length > 0) {
+        const defaultModel = filteredModels.find((m) => m.is_default);
+        const newModelId = defaultModel?.id ?? filteredModels[0]?.id;
+        if (newModelId) {
+          setModel(newModelId);
+        }
+      }
+    }
+  }, [selectedProviderId, filteredModels, model]);
+
+  // Handle agent selection - also update executor type
+  const handleSetSelectedAgentId = useCallback((id: string | null) => {
+    setSelectedAgentId(id);
+    if (id) {
+      const agent = allAgents.find((a) => a.id === id);
+      if (agent?.executor_type) {
+        setExecutorType(agent.executor_type);
+      }
+    }
+  }, [allAgents]);
+
+  // Combined config loading state
+  const configLoading = agentsLoading || providersLoading || modelsLoading;
+  const configError = agentsError || providersError || modelsError || null;
 
   const clientRef = useRef<AcpWebSocketClient | null>(null);
 
@@ -1041,6 +1251,19 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     executorType,
     model,
     cwd,
+    // Agent/Provider/Model config
+    agents: allAgents,
+    globalAgents,
+    workspaceAgents,
+    selectedAgentId,
+    selectedAgent,
+    agentOptions,
+    providerOptions,
+    modelOptions,
+    selectedProviderId,
+    configLoading,
+    configError,
+    // Actions
     connect,
     disconnect,
     createSession,
@@ -1061,6 +1284,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     setExecutorType,
     setModel,
     setCwd,
+    setSelectedAgentId: handleSetSelectedAgentId,
+    setSelectedProviderId,
     subagentSheet,
     liveSubagentMessages,
     handleExpandSubagent,

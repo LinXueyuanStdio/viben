@@ -497,7 +497,7 @@ export function AgentDetailPanel({
               >
                 <div className="py-2">
                   <Select value={agent.model || ""} onValueChange={handleModelChange} disabled={!onUpdate}>
-                    <SelectTrigger className="w-full h-9">
+                    <SelectTrigger className="w-full h-8">
                       <SelectValue placeholder={t("settingsAgents.selectModel")}>
                         {agentModel ? (
                           <div className="flex items-center gap-2">

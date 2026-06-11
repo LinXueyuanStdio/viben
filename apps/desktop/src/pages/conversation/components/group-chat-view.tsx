@@ -433,7 +433,7 @@ export function GroupChatView({
       />
 
       {!headerless ? (
-        <div className="flex h-14 items-center justify-between border-b bg-background px-4">
+        <div className="flex h-10 items-center justify-between border-b bg-background px-4">
           <GroupChatHeaderCenter
             currentGroupChat={currentGroupChat}
             groupChatMembers={groupChatMembers}

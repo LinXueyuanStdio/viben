@@ -23,7 +23,7 @@
 import * as React from "react";
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Shield, Plus } from "lucide-react";
+import { Shield, Plus, GripHorizontal } from "lucide-react";
 import { cn, Button } from "@viben/ui";
 
 import { AttachmentPreview } from "./attachment-preview";
@@ -216,7 +216,7 @@ export function ChatInput({
     enabled: slashCommands.length > 0 && !!onSlashCommand,
   });
 
-  const { height: inputHeight, handleResizeStart } = useResizableHeight({
+  const { height: inputHeight, handleResizeStart, isResizing } = useResizableHeight({
     enabled: showResizeHandle,
     defaultHeight,
     minHeight,
@@ -625,7 +625,7 @@ export function ChatInput({
       <div
         ref={(containerRef as React.RefObject<HTMLDivElement>) ?? internalContainerRef}
         className={cn(
-          "w-full bg-background transition-[box-shadow,border-color] duration-150",
+          "relative w-full bg-background transition-[box-shadow,border-color] duration-150",
           isDragOver && "ring-2 ring-primary/40 ring-offset-2 ring-offset-background",
           className
         )}
@@ -635,12 +635,37 @@ export function ChatInput({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Resize handle */}
+        {/* Resize handle - drag to resize height */}
         {showResizeHandle && (
           <div
-            className="h-1 cursor-ns-resize hover:bg-primary/20 transition-colors"
+            className="absolute left-0 right-0 top-0 z-50 h-4 -translate-y-1/2 cursor-ns-resize group/handle"
             onMouseDown={handleResizeStart}
-          />
+            data-resize-handle="input-top"
+          >
+            {/* Visual indicator line - shows on hover/drag */}
+            <div
+              className={cn(
+                "absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 transition-all duration-150",
+                isResizing
+                  ? "bg-primary"
+                  : "bg-transparent group-hover/handle:bg-border"
+              )}
+            />
+
+            {/* Grip handle - appears on hover, centered horizontally */}
+            <div
+              className={cn(
+                "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+                "flex h-5 w-10 items-center justify-center rounded-md",
+                "transition-all duration-150",
+                isResizing
+                  ? "bg-primary text-primary-foreground opacity-100"
+                  : "bg-muted/90 border border-border text-muted-foreground opacity-0 group-hover/handle:opacity-100"
+              )}
+            >
+              <GripHorizontal className="h-4 w-4" />
+            </div>
+          </div>
         )}
 
         {/* Top Toolbar */}

@@ -133,7 +133,7 @@ export function LeftPanel({
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9"
+          className="h-8 w-8"
           onClick={() => onCollapse(false)}
           title={t("chat.showPanel", "Show Panel")}
         >
@@ -151,7 +151,7 @@ export function LeftPanel({
       <ResizeHandle side="left" onResize={onResize} />
 
       {/* Header with search and + button */}
-      <div className="px-3 py-2.5 border-b h-14 flex items-center">
+      <div className="px-3 py-2.5 border-b h-10 flex items-center">
         <div className="flex items-center gap-2 flex-1">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -159,12 +159,12 @@ export function LeftPanel({
               placeholder={t("executor.searchExecutors", "Search executors...")}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-9 h-9"
+              className="pl-9 h-8"
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
+              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
                 <Plus className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

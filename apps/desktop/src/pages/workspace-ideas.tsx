@@ -811,7 +811,7 @@ export function WorkspaceIdeasPage() {
           )}
         >
           {/* List Header - height matches tab bar */}
-          <div className="p-2 border-b flex items-center gap-2 h-14">
+          <div className="p-2 border-b flex items-center gap-2 h-10">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -956,7 +956,7 @@ export function WorkspaceIdeasPage() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Multi-Tab Bar - same height as left header */}
           {openTabs.length > 0 ? (
-            <div className="border-b bg-muted/20 h-14 flex items-center">
+            <div className="border-b bg-muted/20 h-10 flex items-center">
               {/* Show panel button when collapsed */}
               {isPanelCollapsed && (
                 <TooltipProvider>
@@ -1054,7 +1054,7 @@ export function WorkspaceIdeasPage() {
               </div>
             </div>
           ) : (
-            <div className="flex items-center border-b px-4 h-14">
+            <div className="flex items-center border-b px-4 h-10">
               {isPanelCollapsed && (
                 <TooltipProvider>
                   <Tooltip>

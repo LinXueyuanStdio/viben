@@ -272,7 +272,7 @@ export function DesktopBreadcrumbBar({
   return (
     <header
       className={cn(
-        "grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b bg-background px-4",
+        "grid h-10 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b bg-background px-4",
         className
       )}
     >

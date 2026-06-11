@@ -37,7 +37,7 @@ export function ChatInputBottomToolbar({
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30",
+        "h-10 flex items-center justify-between px-3 py-1 border-t border-border/30 bg-muted/30",
         className
       )}
     >

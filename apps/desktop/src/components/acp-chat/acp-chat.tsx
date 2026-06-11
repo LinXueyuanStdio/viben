@@ -29,6 +29,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { platform } from "@tauri-apps/plugin-os";
 import {
   buildBackgroundTasksFromMessages,
   buildTodoListItemsFromMessages,
@@ -67,22 +68,11 @@ import { useScreenshot } from "@/hooks/use-screenshot";
 import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useAcpSession } from "./use-acp-session";
-import { useAcpChatConfig } from "./use-acp-chat-config";
 import { useChatDrag } from "@/hooks/use-chat-drag";
 import { ChatDragProvider } from "@/contexts/chat-drag-context";
 import type { SnapPosition } from "@/stores/chat-position-store";
 import { DraggableExpandedHeader } from "./draggable-expanded-header";
 import { ChatWindowControls } from "./chat-window-controls";
-
-// Executor 后端选项
-const BACKEND_OPTIONS = [
-  { value: "CLAUDE_CODE", label: "Claude ACP" },
-  { value: "OPENCLAW", label: "OpenClaw ACP" },
-  { value: "OPENCODE", label: "OpenCode" },
-  { value: "CODEX", label: "Codex ACP" },
-  { value: "GEMINI", label: "Gemini" },
-  { value: "QWEN_CODE", label: "Qwen Code" },
-];
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 /** 浮动模式下的边距 */
@@ -205,10 +195,11 @@ function AcpHeaderSessionMenu({ title, sessions, onSelectSession }: AcpHeaderSes
 
 interface AcpHeaderNewSessionMenuProps {
   onCreateSession: () => void;
-  onSelectExecutor: (executorType: string) => void;
+  onSelectAgent: (agentId: string) => void;
+  agentOptions: SelectorOption[];
 }
 
-function AcpHeaderNewSessionMenu({ onCreateSession, onSelectExecutor }: AcpHeaderNewSessionMenuProps) {
+function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions }: AcpHeaderNewSessionMenuProps) {
   return (
     <div className="relative group flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-background">
       <button
@@ -231,19 +222,22 @@ function AcpHeaderNewSessionMenu({ onCreateSession, onSelectExecutor }: AcpHeade
         <MenuActionButton onClick={onCreateSession} icon={<FolderPlus size={14} />}>
           New session
         </MenuActionButton>
-        <div className="my-1 border-t border-border" />
-        {BACKEND_OPTIONS.map((backend) => (
-          <MenuActionButton key={backend.value} onClick={() => onSelectExecutor(backend.value)}>
-            {backend.label}
-          </MenuActionButton>
-        ))}
+        {agentOptions.length > 0 && (
+          <>
+            <div className="my-1 border-t border-border" />
+            {agentOptions.map((agent) => (
+              <MenuActionButton key={agent.id} onClick={() => onSelectAgent(agent.id)}>
+                {agent.label}
+                {agent.badge && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">{agent.badge}</span>
+                )}
+              </MenuActionButton>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
-}
-
-function shortId(id: string): string {
-  return id.length <= 8 ? id : id.slice(0, 8);
 }
 
 function truncateText(value: string, maxLength: number): string {
@@ -288,6 +282,19 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Platform detection for macOS traffic light spacing
+  const [isMacOS, setIsMacOS] = useState(false);
+  useEffect(() => {
+    if (!windowMode) return;
+    try {
+      const platformName = platform();
+      setIsMacOS(platformName === "macos");
+    } catch {
+      // Fallback: assume not macOS
+      setIsMacOS(false);
+    }
+  }, [windowMode]);
 
   // Full mode resize state (external handle, width only)
   const [fullWidth, setFullWidth] = useState(FULL_MODE_DEFAULT_WIDTH);
@@ -416,6 +423,15 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     isAgentRunning,
     executorType,
     model,
+    // Agent/Provider/Model config (from integrated useAcpChatConfig)
+    agentOptions,
+    providerOptions,
+    modelOptions,
+    selectedAgentId,
+    selectedProviderId,
+    configLoading,
+    configError,
+    // Actions
     connect,
     createSession,
     selectSession,
@@ -432,6 +448,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     recallSteerQueue,
     setExecutorType,
     setModel,
+    setSelectedAgentId,
+    setSelectedProviderId,
     subagentSheet,
     liveSubagentMessages,
     handleExpandSubagent,
@@ -451,23 +469,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   // Sandbox config from store
   const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
-
-  // Provider state (用于 provider/model 级联选择)
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
-
-  // 使用 ACP Chat 配置 hook，从 API 获取 provider/model 数据并处理约束
-  const {
-    providerOptions,
-    modelOptions: apiModelOptions,
-    isLoading: configLoading,
-    error: configError,
-  } = useAcpChatConfig({
-    executorType,
-    selectedProviderId,
-    selectedModelId: model,
-    onProviderChange: setSelectedProviderId,
-    onModelChange: setModel,
-  });
 
   // Combine session error with config error for display
   const displayError = error || configError;
@@ -610,24 +611,17 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   );
 
   // TripleSelector options
-  // 1. Executor 选项 (静态列表)
-  const executorSelectorOptions = useMemo<SelectorOption[]>(
-    () =>
-      BACKEND_OPTIONS.map((backend) => ({
-        id: backend.value,
-        label: backend.label,
-      })),
-    []
-  );
+  // 1. Agent 选项 (从 API 获取，包含工作空间和全局 agents)
+  // agentOptions 来自 useAcpSession hook
 
   // 2. Provider 选项 (从 API 获取，已根据 executor 约束过滤)
-  // providerOptions 来自 useAcpChatConfig hook
+  // providerOptions 来自 useAcpSession hook
 
   // 3. Model 选项 (从 API 获取，已根据 executor 和 provider 过滤)
   // 如果 API 没有返回数据，使用本地 fallback
   const modelSelectorOptions = useMemo<SelectorOption[]>(() => {
-    if (apiModelOptions.length > 0) {
-      return apiModelOptions;
+    if (modelOptions.length > 0) {
+      return modelOptions;
     }
     // Fallback: 使用静态模型列表
     const fallbackModels = buildModelOptions(model);
@@ -635,45 +629,49 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       id: m.id,
       label: m.name,
     }));
-  }, [apiModelOptions, model]);
+  }, [modelOptions, model]);
 
   // TripleSelector 当前值
   const tripleSelectorValue = useMemo<TripleSelectorValue>(
     () => ({
-      first: executorType,
+      first: selectedAgentId ?? executorType,
       second: selectedProviderId,
       third: model,
     }),
-    [executorType, selectedProviderId, model]
+    [selectedAgentId, executorType, selectedProviderId, model]
   );
 
   // TripleSelector 变更处理
   const handleTripleSelectorChange = useCallback(
     (value: TripleSelectorValue) => {
-      // 1. Executor 变更
-      if (value.first && value.first !== executorType) {
-        setExecutorType(value.first);
-        // Provider 和 Model 会在 useAcpChatConfig hook 中自动调整
+      // 1. Agent 变更 (also updates executorType via setSelectedAgentId)
+      if (value.first && value.first !== (selectedAgentId ?? executorType)) {
+        // Check if it's an agent ID or raw executor type
+        const isAgentId = agentOptions.some((a) => a.id === value.first);
+        if (isAgentId) {
+          setSelectedAgentId(value.first);
+        } else {
+          setExecutorType(value.first);
+        }
       }
       // 2. Provider 变更
       if (value.second !== selectedProviderId) {
         setSelectedProviderId(value.second);
-        // Model 会在 useAcpChatConfig hook 中自动调整
       }
       // 3. Model 变更
       if (value.third && value.third !== model) {
         setModel(value.third);
       }
     },
-    [executorType, selectedProviderId, model, setExecutorType, setModel]
+    [selectedAgentId, executorType, selectedProviderId, model, agentOptions, setSelectedAgentId, setExecutorType, setSelectedProviderId, setModel]
   );
 
   const tripleSelectorNode = (
     <TripleSelector
       compact
-      firstOptions={executorSelectorOptions}
-      firstLabel={t("chat.executor", "Executor")}
-      firstPlaceholder={t("chat.selectExecutor", "Select executor...")}
+      firstOptions={agentOptions}
+      firstLabel={t("chat.agent", "Agent")}
+      firstPlaceholder={t("chat.selectAgent", "Select agent...")}
       secondOptions={providerOptions}
       secondLabel={t("chat.provider", "Provider")}
       secondPlaceholder={t("chat.selectProvider", "Select provider...")}
@@ -804,12 +802,12 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           <button
             type="button"
             className={cn(
-              "h-7 w-7 flex items-center justify-center rounded-full",
+              "h-8 w-8 flex items-center justify-center rounded-full",
               "bg-muted/50 hover:bg-muted/80 transition-colors",
               "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Settings2 className="h-3.5 w-3.5" />
+            <Settings2 className="h-4 w-4" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-[240px] p-3 z-[10001]" side="top" align="center">
@@ -841,7 +839,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
                   worktree ? "text-blue-500" : "text-muted-foreground"
                 )}
               >
-                <FolderTree className="h-3.5 w-3.5" />
+                <FolderTree className="h-4 w-4" />
                 {t("chat.worktree")}
               </Label>
               <Switch
@@ -860,7 +858,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
                   backgroundTask ? "text-green-500" : "text-muted-foreground"
                 )}
               >
-                <ListTodo className="h-3.5 w-3.5" />
+                <ListTodo className="h-4 w-4" />
                 {t("chat.backgroundTask.title")}
               </Label>
               <Switch
@@ -890,7 +888,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           }
         }}
         className={cn(
-          "h-7 w-7 flex items-center justify-center rounded-full",
+          "h-8 w-8 flex items-center justify-center rounded-full",
           "transition-colors",
           voice.isListening
             ? "bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse"
@@ -907,11 +905,11 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         }
       >
         {voice.state === "connecting" ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : voice.isConnected ? (
-          <MicOff className="h-3.5 w-3.5" />
+          <MicOff className="h-4 w-4" />
         ) : (
-          <Mic className="h-3.5 w-3.5" />
+          <Mic className="h-4 w-4" />
         )}
       </button>
     ),
@@ -1008,19 +1006,36 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     />
   );
 
-  // Window mode header: prioritizes window controls, with draggable center area (left empty for space)
+  // Window mode header: platform-aware
+  // - macOS: uses native traffic lights via titleBarStyle: "Overlay", reserve left space
+  // - Windows/Linux: uses ChatWindowControls component on the right
   const windowModeHeader = (
     <DraggableExpandedHeader
       windowMode
       leftContent={
-        <ChatWindowControls />
+        isMacOS ? (
+          // macOS: 为原生红绿灯按钮预留空间 (约 70px)
+          <div className="w-[70px] shrink-0" />
+        ) : (
+          // Windows/Linux: 左侧放菜单
+          <>
+            <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
+            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+          </>
+        )
       }
       centerContent={null}
       rightContent={
-        <>
-          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectExecutor={setExecutorType} />
-          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
-        </>
+        isMacOS ? (
+          // macOS: 右侧放菜单
+          <>
+            <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
+            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+          </>
+        ) : (
+          // Windows/Linux: 右侧放窗口控件
+          <ChatWindowControls />
+        )
       }
     />
   );
@@ -1031,14 +1046,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       leftContent={
         <>
           <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
-          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectExecutor={setExecutorType} />
+          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
         </>
       }
-      centerContent={
-        <div className="min-w-0 flex-1 text-xs text-muted-foreground">
-          {sessionId ? `session ${shortId(sessionId)}` : connected ? "No active session" : "Disconnected"}
-        </div>
-      }
+      centerContent={null}
       rightContent={
         <ExpandedHeaderModeControls
           mode={mode}

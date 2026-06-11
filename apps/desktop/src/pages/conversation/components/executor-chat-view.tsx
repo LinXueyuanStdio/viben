@@ -81,11 +81,11 @@ export function ExecutorChatHeaderCenter({
     <div className="flex min-w-0 items-center gap-3">
       <button
         type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-400 shadow-sm transition-opacity hover:opacity-90"
+        className="relative flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-400 shadow-sm transition-opacity hover:opacity-90"
         title={t("executor.showDetails", "Show executor details")}
         onClick={onExecutorAvatarClick}
       >
-        <Terminal className="h-5 w-5 text-white" />
+        <Terminal className="h-6 w-6 text-white" />
       </button>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
@@ -120,9 +120,6 @@ export function ExecutorChatHeaderCenter({
             </span>
           )}
         </div>
-        <p className="truncate text-xs text-muted-foreground">
-          {selectedSidebarExecutor.name} - {selectedSidebarExecutor.icon_type || t("common.unknown", "Unknown")}
-        </p>
       </div>
     </div>
   );
@@ -183,7 +180,7 @@ export function ExecutorChatView({
   return (
     <>
       {!headerless ? (
-        <div className="flex h-14 items-center justify-between border-b bg-background px-4">
+        <div className="flex h-10 items-center justify-between border-b bg-background px-4">
           <ExecutorChatHeaderCenter
             selectedSidebarExecutor={selectedSidebarExecutor}
             executorSessionsForSelector={executorSessionsForSelector}

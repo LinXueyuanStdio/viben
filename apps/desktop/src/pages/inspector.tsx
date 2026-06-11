@@ -1003,7 +1003,7 @@ export function InspectorPage() {
             </Tabs>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4">
-              <Server className="h-12 w-12 text-muted-foreground/50" />
+              <Server className="h-10 w-10 text-muted-foreground/50" />
               <p className="text-lg text-muted-foreground">
                 {t("inspector.connectToStart")}
               </p>

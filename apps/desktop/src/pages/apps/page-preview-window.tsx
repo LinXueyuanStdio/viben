@@ -915,7 +915,7 @@ function ForwardToSessionDialog({
               />
             </div>
           </div>
-          <div className="flex h-11 items-center gap-3 border-b border-border px-3 text-sm">
+          <div className="flex h-10 items-center gap-3 border-b border-border px-3 text-sm">
             <span className="font-medium text-foreground">
               {t("pagePreview.recentChats", "Recent Chats")}
             </span>
@@ -979,13 +979,13 @@ function ForwardToSessionDialog({
           </ScrollArea>
         </div>
         <div className="flex min-w-0 flex-col bg-background">
-          <div className="flex h-14 items-center border-b border-border px-5">
+          <div className="flex h-12 items-center border-b border-border px-5">
             <DialogTitle className="text-base">
               {t("pagePreview.sendTo", "Send to")}
             </DialogTitle>
           </div>
           <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
-            <div className="flex h-10 items-center gap-2">
+            <div className="flex h-12 items-center gap-2">
               {selectedTarget ? (
                 <>
                   <IconDisplay icon={selectedTarget.icon} size="sm" />

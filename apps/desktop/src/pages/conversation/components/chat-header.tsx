@@ -158,11 +158,11 @@ export function ChatHeaderCenter({
     <div className="flex min-w-0 items-center gap-3">
       <button
         type="button"
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 shadow-sm transition-opacity hover:opacity-90"
+        className="relative flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-cyan-400 shadow-sm transition-opacity hover:opacity-90"
         title={t("agent.showDetails", "Show agent details")}
         onClick={onAgentAvatarClick}
       >
-        <Bot className="h-5 w-5 text-white" />
+        <Bot className="h-4 w-4 text-white" />
       </button>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
@@ -236,9 +236,6 @@ export function ChatHeaderCenter({
             </span>
           )}
         </div>
-        <p className="truncate text-xs text-muted-foreground">
-          {currentAgent?.name || t("chat.defaultAgent")}
-        </p>
       </div>
     </div>
   );
@@ -366,7 +363,7 @@ export function ChatHeader({
   onArchiveConversation,
 }: ChatHeaderProps) {
   return (
-    <div className="flex h-14 items-center justify-between border-b bg-background px-4">
+    <div className="flex h-10 items-center justify-between border-b bg-background px-4">
       <ChatHeaderCenter
         currentConversation={currentConversation}
         currentAgent={currentAgent}

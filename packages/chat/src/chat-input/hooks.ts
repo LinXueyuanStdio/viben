@@ -302,6 +302,7 @@ export interface UseResizableHeightOptions {
 
 export interface UseResizableHeightReturn {
   height: number;
+  isResizing: boolean;
   handleResizeStart: (e: React.MouseEvent) => void;
 }
 
@@ -320,9 +321,13 @@ export function useResizableHeight(
   } = options;
 
   const [height, setHeight] = useState(defaultHeight);
-  const isDraggingRef = useRef(false);
-  const startYRef = useRef(0);
-  const startHeightRef = useRef(0);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef({
+    isDragging: false,
+    startY: 0,
+    startHeight: defaultHeight,
+    latestHeight: defaultHeight,
+  });
 
   // Load saved height from localStorage
   useEffect(() => {
@@ -334,6 +339,7 @@ export function useResizableHeight(
         const parsedHeight = parseInt(savedHeight, 10);
         if (parsedHeight >= minHeight && parsedHeight <= maxHeight) {
           setHeight(parsedHeight);
+          resizeRef.current.latestHeight = parsedHeight;
         }
       }
     } catch {
@@ -341,45 +347,56 @@ export function useResizableHeight(
     }
   }, [enabled, storageKey, minHeight, maxHeight]);
 
-  // Save height to localStorage
-  const saveHeight = useCallback(
-    (newHeight: number) => {
-      try {
-        localStorage.setItem(storageKey, newHeight.toString());
-      } catch {
-        // Ignore localStorage errors
-      }
-    },
-    [storageKey]
-  );
-
   // Handle resize start
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
       if (!enabled) return;
 
       e.preventDefault();
-      isDraggingRef.current = true;
-      startYRef.current = e.clientY;
-      startHeightRef.current = height;
-      let latestHeight = height;
+      e.stopPropagation();
 
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!isDraggingRef.current) return;
-        const delta = startYRef.current - e.clientY;
+      resizeRef.current = {
+        isDragging: true,
+        startY: e.clientY,
+        startHeight: height,
+        latestHeight: height,
+      };
+      setIsResizing(true);
+
+      // Prevent text selection and set resize cursor during drag
+      document.body.style.cursor = "ns-resize";
+      document.body.style.userSelect = "none";
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!resizeRef.current.isDragging) return;
+
+        // Dragging up (negative deltaY) should increase height
+        const deltaY = resizeRef.current.startY - moveEvent.clientY;
         const newHeight = Math.min(
-          Math.max(startHeightRef.current + delta, minHeight),
+          Math.max(resizeRef.current.startHeight + deltaY, minHeight),
           maxHeight
         );
-        latestHeight = newHeight;
+        resizeRef.current.latestHeight = newHeight;
         setHeight(newHeight);
       };
 
       const handleMouseUp = () => {
-        if (isDraggingRef.current) {
-          isDraggingRef.current = false;
-          saveHeight(latestHeight);
+        if (resizeRef.current.isDragging) {
+          resizeRef.current.isDragging = false;
+          setIsResizing(false);
+
+          // Save to localStorage using the latest height from ref
+          try {
+            localStorage.setItem(storageKey, resizeRef.current.latestHeight.toString());
+          } catch {
+            // Ignore localStorage errors
+          }
         }
+
+        // Restore cursor and user-select
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
@@ -387,11 +404,12 @@ export function useResizableHeight(
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [enabled, height, minHeight, maxHeight, saveHeight]
+    [enabled, height, minHeight, maxHeight, storageKey]
   );
 
   return {
     height,
+    isResizing,
     handleResizeStart,
   };
 }

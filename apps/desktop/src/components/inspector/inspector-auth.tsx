@@ -607,7 +607,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
             <select
               value={newTokenType}
               onChange={(e) => setNewTokenType(e.target.value as "bearer" | "api_key")}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+              className="flex 8-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
             >
               <option value="bearer">{t("inspector.bearerTokenOption", "Bearer Token")}</option>
               <option value="api_key">{t("inspector.apiKeyOption", "API Key")}</option>

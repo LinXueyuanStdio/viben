@@ -299,8 +299,8 @@ export function PromptDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Quote className="h-5 w-5 text-amber-600" />
+            <div className="h-8 w-8 rounded-md bg-amber-500/10 flex items-center justify-center">
+              <Quote className="h-6 w-6 text-amber-600" />
             </div>
             <div>
               <h1 className="font-semibold">{prompt.name}</h1>

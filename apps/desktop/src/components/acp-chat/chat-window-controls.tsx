@@ -4,8 +4,8 @@
  * Chat Window Controls Component
  *
  * Window controls (minimize, maximize, close) for the standalone chat window.
- * Always renders regardless of platform (unlike the standard WindowControls
- * which hides on macOS where native controls are used).
+ * Only renders on Windows and Linux - macOS uses native traffic lights via
+ * titleBarStyle: "Overlay" in tauri.conf.json.
  */
 
 import { useState, useEffect } from "react";
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 export function ChatWindowControls() {
   const [isMaximized, setIsMaximized] = useState(false);
-  const [isMacOS, setIsMacOS] = useState(false);
+  const [currentPlatform, setCurrentPlatform] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -26,21 +26,24 @@ export function ChatWindowControls() {
       if (!mounted) return;
 
       const platformName = platform();
-      setIsMacOS(platformName === "macos");
+      setCurrentPlatform(platformName);
 
-      try {
-        const win = getCurrentWindow();
-        const maximized = await win.isMaximized();
-        if (mounted) setIsMaximized(maximized);
+      // Only initialize for Windows and Linux
+      if (platformName === "windows" || platformName === "linux") {
+        try {
+          const win = getCurrentWindow();
+          const maximized = await win.isMaximized();
+          if (mounted) setIsMaximized(maximized);
 
-        unlisten = await win.onResized(async () => {
-          if (mounted) {
-            const isMax = await win.isMaximized();
-            setIsMaximized(isMax);
-          }
-        });
-      } catch (error) {
-        console.debug("[ChatWindowControls] Tauri APIs not available:", error);
+          unlisten = await win.onResized(async () => {
+            if (mounted) {
+              const isMax = await win.isMaximized();
+              setIsMaximized(isMax);
+            }
+          });
+        } catch (error) {
+          console.debug("[ChatWindowControls] Tauri APIs not available:", error);
+        }
       }
     };
 
@@ -82,50 +85,10 @@ export function ChatWindowControls() {
     }
   };
 
-  // macOS style controls (traffic lights)
-  // 使用较大的尺寸 (size-4 = 16px) 以便于点击
-  if (isMacOS) {
-    return (
-      <div className="flex items-center gap-3 pl-1.5 pr-3">
-        <button
-          onClick={handleClose}
-          className={cn(
-            "group flex size-4 items-center justify-center rounded-full",
-            "bg-[#ff5f57] hover:bg-[#ff5f57]/80",
-            "transition-colors"
-          )}
-          aria-label="Close"
-        >
-          <X className="size-2.5 text-[#4d0000] opacity-0 group-hover:opacity-100" />
-        </button>
-        <button
-          onClick={handleMinimize}
-          className={cn(
-            "group flex size-4 items-center justify-center rounded-full",
-            "bg-[#febc2e] hover:bg-[#febc2e]/80",
-            "transition-colors"
-          )}
-          aria-label="Minimize"
-        >
-          <Minus className="size-2.5 text-[#995700] opacity-0 group-hover:opacity-100" />
-        </button>
-        <button
-          onClick={handleMaximize}
-          className={cn(
-            "group flex size-4 items-center justify-center rounded-full",
-            "bg-[#28c840] hover:bg-[#28c840]/80",
-            "transition-colors"
-          )}
-          aria-label={isMaximized ? "Restore" : "Maximize"}
-        >
-          {isMaximized ? (
-            <Copy className="size-2.5 text-[#006500] opacity-0 group-hover:opacity-100" />
-          ) : (
-            <Square className="size-2.5 text-[#006500] opacity-0 group-hover:opacity-100" />
-          )}
-        </button>
-      </div>
-    );
+  // Only render on Windows and Linux
+  // macOS uses native traffic lights via titleBarStyle: "Overlay"
+  if (currentPlatform !== "windows" && currentPlatform !== "linux") {
+    return null;
   }
 
   // Windows/Linux style controls

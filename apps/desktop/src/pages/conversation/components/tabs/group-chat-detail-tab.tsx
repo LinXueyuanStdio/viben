@@ -506,7 +506,7 @@ export function GroupChatTabContent({
         <div className="flex flex-col items-center text-center space-y-2">
           <div
             className={cn(
-              "w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-md",
+              "w-8 h-8 rounded-md flex items-center justify-center bg-gradient-to-br shadow-md",
               getGroupAvatarGradient()
             )}
           >

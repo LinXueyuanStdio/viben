@@ -155,7 +155,7 @@ export function ChatInputTopToolbar({
       ref={toolbarRef}
       data-testid="chat-input-toolbar"
       className={cn(
-        "relative flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/30",
+        "relative h-10 flex items-center justify-between px-3 py-1 border-b border-border/30 bg-muted/30",
         className
       )}
     >
