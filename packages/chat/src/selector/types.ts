@@ -34,6 +34,13 @@ export interface TripleSelectorValue {
   third: string | null;
 }
 
+/** displayLabel 格式化函数的参数 */
+export interface DisplayLabelFormatParams {
+  first: SelectorOption | undefined;
+  second: SelectorOption | undefined;
+  third: SelectorOption | undefined;
+}
+
 export interface TripleSelectorProps {
   /** 第一级选项 (如 Agent Type) */
   firstOptions: SelectorOption[];
@@ -74,6 +81,8 @@ export interface TripleSelectorProps {
   disabled?: boolean;
   /** 紧凑模式 - 单按钮展开弹窗 */
   compact?: boolean;
+  /** 自定义 displayLabel 格式化函数 (仅 compact 模式生效) */
+  formatDisplayLabel?: (params: DisplayLabelFormatParams) => string;
   /** 额外类名 */
   className?: string;
 }

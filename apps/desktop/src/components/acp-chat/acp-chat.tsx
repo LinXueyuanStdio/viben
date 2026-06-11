@@ -57,6 +57,7 @@ import type {
   SlashCommandSelection,
   TasksSummary,
   TripleSelectorValue,
+  DisplayLabelFormatParams,
 } from "@viben/chat";
 import { PetSprite } from "@viben/pet";
 import { cn, Popover, PopoverContent, PopoverTrigger, Switch, Label } from "@viben/ui";
@@ -666,6 +667,15 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     [selectedAgentId, executorType, selectedProviderId, model, agentOptions, setSelectedAgentId, setExecutorType, setSelectedProviderId, setModel]
   );
 
+  const formatDisplayLabel = useCallback(
+    ({ first, third }: DisplayLabelFormatParams) => {
+      if (!first) return third || "";
+      if (!third) return first;
+      return `${first} / ${third}`; // Display 'agent / model' together
+    },
+    []
+  );
+
   const tripleSelectorNode = (
     <TripleSelector
       compact
@@ -680,6 +690,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       thirdPlaceholder={t("chat.selectModel", "Select model...")}
       value={tripleSelectorValue}
       onChange={handleTripleSelectorChange}
+      formatDisplayLabel={formatDisplayLabel}
       isLoading={configLoading}
     />
   );

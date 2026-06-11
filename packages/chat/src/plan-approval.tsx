@@ -152,7 +152,7 @@ export function PlanApproval({
           {/* Goal */}
           <div className="px-4 py-3 border-b border-inherit bg-muted/30">
             <p className="text-xs text-muted-foreground mb-1">{t("chat.goal", "Goal")}</p>
-            <p className="text-sm text-foreground">{plan.goal}</p>
+            <p className="max-h-[calc(5*1.25rem)] overflow-y-auto text-sm leading-5 text-foreground">{plan.goal}</p>
           </div>
 
           {/* Progress bar (when executing) */}
@@ -182,7 +182,7 @@ export function PlanApproval({
             <p className="text-xs text-muted-foreground mb-2">
               {t("chat.stepsCount", { count: plan.steps.length, defaultValue: `${plan.steps.length} steps` })}
             </p>
-            <ul className="space-y-2">
+            <ul className="max-h-[calc(10*1.5rem)] space-y-2 overflow-y-auto">
               <AnimatePresence mode="popLayout">
                 {plan.steps.map((step, index) => (
                   <motion.li
@@ -315,9 +315,9 @@ export function PlanSummary({ plan, className }: PlanSummaryProps) {
             )}
           </div>
           <div className="space-y-3 px-4 py-3">
-            <p className="text-sm text-foreground">{plan.goal}</p>
+            <p className="max-h-[calc(3*1.25rem)] overflow-y-auto text-sm leading-5 text-foreground">{plan.goal}</p>
             {visibleSteps.length > 0 && (
-              <ol className="space-y-1.5 text-sm text-muted-foreground">
+              <ol className="max-h-[calc(5*1.5rem)] space-y-1.5 overflow-y-auto text-sm text-muted-foreground">
                 {visibleSteps.map((step, index) => (
                   <li key={step.id} className="flex gap-2">
                     <span className="w-5 shrink-0 text-right tabular-nums">

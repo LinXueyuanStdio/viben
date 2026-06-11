@@ -1187,10 +1187,12 @@ ${p.substring(0,15e3)} ... (截断)
                 return;
             }
 
+            // Register canvas actions with Socket.io-based API
+            // See: docs/superpowers/specs/2026-06-11-gateway-client-action-socketio-design.md
             window.VibenPage.actions.register("canvas", {
                 create_node: {
                     description: "Create a node on the canvas",
-                    input_schema: {
+                    inputSchema: {
                         type: "object",
                         properties: {
                             type: { type: "string", enum: allowedTypes },
@@ -1219,7 +1221,7 @@ ${p.substring(0,15e3)} ... (截断)
                         },
                         additionalProperties: false
                     },
-                    output_schema: {
+                    outputSchema: {
                         type: "object",
                         properties: {
                             ok: { type: "boolean" },
@@ -1228,7 +1230,8 @@ ${p.substring(0,15e3)} ... (截断)
                         },
                         required: ["ok"]
                     },
-                    execute: async function (payload) {
+                    execute: async function (payload, context) {
+                        // context: { sessionId, toolUseId, source, requireApproval, callerClientId }
                         try {
                             var actions = await waitForCanvasActions();
                             var node = actions.createNode(payload || {});

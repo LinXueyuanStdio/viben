@@ -209,11 +209,11 @@ export function ExecApproval({
 
       {/* Tool call info */}
       <div className="mb-3 rounded-md border border-border/50 bg-code-block p-3">
-        <div className="flex items-center gap-2">
-          <Icon className={cn("h-4 w-4 shrink-0", config.color)} />
-          <span className="min-w-0 break-words font-mono text-sm leading-5 text-foreground">
+        <div className="flex items-start gap-2">
+          <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", config.color)} />
+          <pre className="min-w-0 max-h-[calc(5*1.25rem)] overflow-y-auto whitespace-pre-wrap break-words font-mono text-sm leading-5 text-foreground">
             {command}
-          </span>
+          </pre>
         </div>
       </div>
 

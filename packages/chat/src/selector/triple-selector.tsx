@@ -39,13 +39,93 @@ function OptionItem({
         <span className="h-3 w-3 shrink-0" />
       )}
       <span className="flex-1 min-w-0 truncate text-left text-xs">{option.label}</span>
-      {option.badge && (
-        <Badge variant="secondary" className="h-3.5 px-1 text-[9px] shrink-0">
-          {option.badge}
-        </Badge>
-      )}
       {showArrow && <ChevronRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
     </Button>
+  );
+}
+
+/** 按 badge 分组选项，无 badge 的放在最前面 */
+function groupOptionsByBadge(options: SelectorOption[]): Map<string, SelectorOption[]> {
+  const groups = new Map<string, SelectorOption[]>();
+  const noBadgeKey = "";
+
+  for (const option of options) {
+    const key = option.badge || noBadgeKey;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(option);
+  }
+
+  // 确保无 badge 的组在最前面
+  const result = new Map<string, SelectorOption[]>();
+  if (groups.has(noBadgeKey)) {
+    result.set(noBadgeKey, groups.get(noBadgeKey)!);
+    groups.delete(noBadgeKey);
+  }
+  for (const [key, value] of groups) {
+    result.set(key, value);
+  }
+
+  return result;
+}
+
+function OptionList({
+  options,
+  selectedId,
+  onSelect,
+  showArrow,
+}: {
+  options: SelectorOption[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  showArrow?: boolean;
+}) {
+  const groups = groupOptionsByBadge(options);
+  const hasMultipleGroups = groups.size > 1 || (groups.size === 1 && !groups.has(""));
+
+  if (!hasMultipleGroups) {
+    // 没有分组或只有无 badge 的选项，直接渲染
+    return (
+      <>
+        {options.map((option) => (
+          <OptionItem
+            key={option.id}
+            option={option}
+            isSelected={option.id === selectedId}
+            onClick={() => onSelect(option.id)}
+            showArrow={showArrow}
+          />
+        ))}
+      </>
+    );
+  }
+
+  // 有分组，按 badge 分组渲染
+  return (
+    <>
+      {Array.from(groups.entries()).map(([badge, groupOptions], groupIndex) => (
+        <div key={badge || "__no_badge__"}>
+          {badge && (
+            <div className={cn(
+              "px-2 py-1 text-[9px] font-medium text-muted-foreground uppercase tracking-wide",
+              groupIndex > 0 && "mt-1 border-t border-border/50 pt-1.5"
+            )}>
+              {badge}
+            </div>
+          )}
+          {groupOptions.map((option) => (
+            <OptionItem
+              key={option.id}
+              option={option}
+              isSelected={option.id === selectedId}
+              onClick={() => onSelect(option.id)}
+              showArrow={showArrow}
+            />
+          ))}
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -67,6 +147,7 @@ export function TripleSelector({
   isLoading,
   disabled,
   compact,
+  formatDisplayLabel,
   className,
 }: TripleSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -92,13 +173,15 @@ export function TripleSelector({
 
   // 紧凑模式：单按钮展开三级面板
   if (compact) {
-    const displayLabel = [
-      !hideFirst && selectedFirst?.label,
-      !hideSecond && selectedSecond?.label,
-      !hideThird && selectedThird?.label,
-    ]
-      .filter(Boolean)
-      .join(" / ");
+    const displayLabel = formatDisplayLabel
+      ? formatDisplayLabel({ first: selectedFirst, second: selectedSecond, third: selectedThird })
+      : [
+          !hideFirst && selectedFirst?.label,
+          !hideSecond && selectedSecond?.label,
+          !hideThird && selectedThird?.label,
+        ]
+          .filter(Boolean)
+          .join(" / ");
 
     return (
       <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -129,15 +212,12 @@ export function TripleSelector({
                       No options
                     </div>
                   ) : (
-                    firstOptions.map((option) => (
-                      <OptionItem
-                        key={option.id}
-                        option={option}
-                        isSelected={option.id === value.first}
-                        onClick={() => handleFirstChange(option.id)}
-                        showArrow={!hideSecond}
-                      />
-                    ))
+                    <OptionList
+                      options={firstOptions}
+                      selectedId={value.first}
+                      onSelect={handleFirstChange}
+                      showArrow={!hideSecond}
+                    />
                   )}
                 </div>
               </div>
@@ -157,15 +237,12 @@ export function TripleSelector({
                       No options
                     </div>
                   ) : (
-                    secondOptions.map((option) => (
-                      <OptionItem
-                        key={option.id}
-                        option={option}
-                        isSelected={option.id === value.second}
-                        onClick={() => handleSecondChange(option.id)}
-                        showArrow={!hideThird}
-                      />
-                    ))
+                    <OptionList
+                      options={secondOptions}
+                      selectedId={value.second}
+                      onSelect={handleSecondChange}
+                      showArrow={!hideThird}
+                    />
                   )}
                 </div>
               </div>
@@ -185,14 +262,11 @@ export function TripleSelector({
                       No options
                     </div>
                   ) : (
-                    thirdOptions.map((option) => (
-                      <OptionItem
-                        key={option.id}
-                        option={option}
-                        isSelected={option.id === value.third}
-                        onClick={() => handleThirdChange(option.id)}
-                      />
-                    ))
+                    <OptionList
+                      options={thirdOptions}
+                      selectedId={value.third}
+                      onSelect={handleThirdChange}
+                    />
                   )}
                 </div>
               </div>
@@ -229,14 +303,11 @@ export function TripleSelector({
             {firstOptions.length === 0 ? (
               <div className="px-2 py-2 text-xs text-muted-foreground text-center">No options</div>
             ) : (
-              firstOptions.map((option) => (
-                <OptionItem
-                  key={option.id}
-                  option={option}
-                  isSelected={option.id === value.first}
-                  onClick={() => handleFirstChange(option.id)}
-                />
-              ))
+              <OptionList
+                options={firstOptions}
+                selectedId={value.first}
+                onSelect={handleFirstChange}
+              />
             )}
           </PopoverContent>
         </Popover>
@@ -265,14 +336,11 @@ export function TripleSelector({
             {secondOptions.length === 0 ? (
               <div className="px-2 py-2 text-xs text-muted-foreground text-center">No options</div>
             ) : (
-              secondOptions.map((option) => (
-                <OptionItem
-                  key={option.id}
-                  option={option}
-                  isSelected={option.id === value.second}
-                  onClick={() => handleSecondChange(option.id)}
-                />
-              ))
+              <OptionList
+                options={secondOptions}
+                selectedId={value.second}
+                onSelect={handleSecondChange}
+              />
             )}
           </PopoverContent>
         </Popover>
@@ -301,14 +369,11 @@ export function TripleSelector({
             {thirdOptions.length === 0 ? (
               <div className="px-2 py-2 text-xs text-muted-foreground text-center">No options</div>
             ) : (
-              thirdOptions.map((option) => (
-                <OptionItem
-                  key={option.id}
-                  option={option}
-                  isSelected={option.id === value.third}
-                  onClick={() => handleThirdChange(option.id)}
-                />
-              ))
+              <OptionList
+                options={thirdOptions}
+                selectedId={value.third}
+                onSelect={handleThirdChange}
+              />
             )}
           </PopoverContent>
         </Popover>

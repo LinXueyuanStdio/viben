@@ -15,6 +15,8 @@ import { cn, Button } from "@viben/ui";
 export interface ChatInputBottomToolbarProps {
   /** Left content slot for config controls */
   leftContent?: React.ReactNode;
+  /** Popup content rendered above the toolbar */
+  popupContent?: React.ReactNode;
   /** Submit control (send/stop buttons) */
   onSend: () => void;
   onCancel?: () => void;
@@ -27,6 +29,7 @@ export interface ChatInputBottomToolbarProps {
 
 export function ChatInputBottomToolbar({
   leftContent,
+  popupContent,
   onSend,
   onCancel,
   isLoading,
@@ -37,11 +40,14 @@ export function ChatInputBottomToolbar({
   return (
     <div
       className={cn(
-        "h-10 flex items-center justify-between px-3 py-1 border-t border-border/30 bg-muted/30",
+        "relative h-10 flex items-center justify-between px-3 py-1 border-t border-border/30 bg-muted/30",
         className
       )}
     >
-      <div data-testid="chat-input-config-controls" className="flex min-w-0 items-center gap-1 overflow-hidden">
+      {/* Popup content - positioned above toolbar */}
+      {popupContent}
+
+      <div data-testid="chat-input-config-controls" className="flex min-w-0 items-center gap-1">
         {leftContent}
       </div>
       <ChatInputSubmitControl

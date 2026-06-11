@@ -10,7 +10,7 @@
  * Uses useAcpSessionStore for global state that survives mode switches.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type {
   AgentMessage,
   Artifact,
@@ -24,7 +24,7 @@ import type {
 } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { useAcpSessionStore } from "@/stores/acp-session-store";
+import { useAcpSessionStore, type PermissionDialogState, type ElicitationDialogState, type ElicitationFormField } from "@/stores/acp-session-store";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
 import { useAgents } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
@@ -63,7 +63,6 @@ import {
   userPromptToMessages,
   userPromptToUiSteps,
   getElicitationFormFields,
-  type ElicitationFormField,
 } from "./acp-chat-adapter";
 import {
   appendUiMessagesImmediately,
@@ -90,21 +89,8 @@ export interface AcpSessionItem {
   subtitle?: string;
 }
 
-export interface PermissionDialogState {
-  id: string;
-  request: PermissionDecisionRequest;
-  selectedOptionId: string;
-  resolve: (result: PermissionDecisionResult) => void;
-}
-
-export interface ElicitationDialogState {
-  id: string;
-  request: ElicitationRequest;
-  pendingQuestion: PendingQuestion;
-  formFields: ElicitationFormField[];
-  answersText: string;
-  resolve: (result: ElicitationResponse) => void;
-}
+// Re-export types from store
+export type { PermissionDialogState, ElicitationDialogState, ElicitationFormField } from "@/stores/acp-session-store";
 
 export interface UseAcpSessionOptions {
   wsUrl?: string;
@@ -348,20 +334,52 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   // ========== Global State from Store (survives mode switches) ==========
   const {
+    // Connection state
     status,
     hasAutoConnected,
     initializeResult,
+    // Config selections
     selectedAgentId,
     selectedProviderId,
     executorType: storeExecutorType,
     model: storeModel,
+    // Session state (now global)
+    activeSessionId,
+    sessionsById,
+    sessionOrder,
+    steerQueuesBySessionId,
+    error,
+    cwd,
+    // Dialog state (now global)
+    permissionDialogs,
+    activePermissionDialogId,
+    elicitationDialogs,
+    activeElicitationDialogId,
+    // Subagent sheet
+    subagentSheet,
+    // Actions - Connection
     setStatus,
     setHasAutoConnected,
     setInitializeResult,
+    // Actions - Config
     setSelectedAgentId: setStoreSelectedAgentId,
     setSelectedProviderId: setStoreSelectedProviderId,
     setExecutorType: setStoreExecutorType,
     setModel: setStoreModel,
+    // Actions - Session
+    setActiveSessionId,
+    setSessionsById,
+    setSessionOrder,
+    setSteerQueuesBySessionId,
+    setError,
+    setCwd,
+    // Actions - Dialogs
+    setPermissionDialogs,
+    setActivePermissionDialogId,
+    setElicitationDialogs,
+    setActiveElicitationDialogId,
+    // Actions - Subagent sheet
+    setSubagentSheet,
   } = useAcpSessionStore();
 
   // Use defaults if store values are null
@@ -380,19 +398,6 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const setSelectedProviderId = useCallback((id: string | null) => {
     setStoreSelectedProviderId(id);
   }, [setStoreSelectedProviderId]);
-
-  // ========== Session State (per-instance, but could be globalized later) ==========
-  const [error, setError] = useState<string | null>(null);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
-  const [sessionOrder, setSessionOrder] = useState<string[]>([]);
-  const [steerQueuesBySessionId, setSteerQueuesBySessionId] = useState<Record<string, CommandQueueItem[]>>({});
-  const [permissionDialogs, setPermissionDialogs] = useState<Record<string, PermissionDialogState>>({});
-  const [activePermissionDialogId, setActivePermissionDialogId] = useState<string | null>(null);
-  const [elicitationDialogs, setElicitationDialogs] = useState<Record<string, ElicitationDialogState>>({});
-  const [activeElicitationDialogId, setActiveElicitationDialogId] = useState<string | null>(null);
-  const [subagentSheet, setSubagentSheet] = useState<SubagentSheetState | null>(null);
-  const [cwd, setCwd] = useState(resolvedDefaultCwd);
 
   // Load agents, providers, models from Gateway API
   const {
@@ -629,6 +634,14 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const liveSubagentMessages = resolveLiveSubagentMessages(sessionsById, subagentSheet);
 
+  // Initialize cwd from resolved default on first mount (when cwd is empty)
+  // This ensures cwd is set from workspace path when the store is first initialized
+  useEffect(() => {
+    if (!cwd && resolvedDefaultCwd) {
+      setCwd(resolvedDefaultCwd);
+    }
+  }, [cwd, resolvedDefaultCwd, setCwd]);
+
   // 当 workspace 切换时自动更新 cwd（仅在没有活动 session 时同步）
   useEffect(() => {
     // 只有在没有活动 session 时才自动同步 workspace 路径到 cwd
@@ -636,7 +649,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     if (!activeSessionId && resolvedDefaultCwd && resolvedDefaultCwd !== cwd) {
       setCwd(resolvedDefaultCwd);
     }
-  }, [activeSessionId, resolvedDefaultCwd, cwd]);
+  }, [activeSessionId, resolvedDefaultCwd, cwd, setCwd]);
 
   // Drain UI step queue effect
   useEffect(() => {
@@ -671,14 +684,14 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     }, 80);
 
     return () => window.clearTimeout(timer);
-  }, [sessionsById]);
+  }, [sessionsById, setSessionsById]);
 
   const appendSessionUpdate = useCallback((notification: AcpSessionUpdate) => {
     // All session updates go through the queue to preserve ordering.
     // Previously agent_message_chunk bypassed the queue via streamingText,
     // causing timing mismatches with thinking/tool_call events.
     enqueueUiSteps(setSessionsById, notification.sessionId, acpSessionUpdateToUiSteps(notification));
-  }, []);
+  }, [setSessionsById]);
 
   const appendClientToolCall = useCallback((call: ClientToolCall) => {
     updateSession(setSessionsById, call.sessionId, (session) => ({
@@ -687,7 +700,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       lastActiveAt: new Date().toISOString(),
     }));
     enqueueUiSteps(setSessionsById, call.sessionId, clientToolCallToUiSteps(call));
-  }, []);
+  }, [setSessionsById]);
 
   const appendPermissionRequest = useCallback((request: PermissionRequestLog) => {
     updateSession(setSessionsById, request.sessionId, (session) => ({
@@ -696,7 +709,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       lastActiveAt: new Date().toISOString(),
     }));
     enqueueUiSteps(setSessionsById, request.sessionId, permissionDecisionToUiSteps(request));
-  }, []);
+  }, [setSessionsById]);
 
   const appendElicitationRequest = useCallback((request: ElicitationRequestLog) => {
     updateSession(setSessionsById, request.sessionId, (session) => ({
@@ -705,7 +718,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       lastActiveAt: new Date().toISOString(),
     }));
     enqueueUiSteps(setSessionsById, request.sessionId, elicitationResultToUiSteps(request));
-  }, []);
+  }, [setSessionsById]);
 
   const appendSteerPromptConsumed = useCallback(
     (result: ConsumedSteerPromptResult & { sessionId: string }) => {
@@ -720,7 +733,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         appendUiMessagesImmediately(setSessionsById, result.sessionId, systemTextToMessages(`Steer prompt consumed: ${result.promptId}`));
       }
     },
-    [steerQueuesBySessionId]
+    [steerQueuesBySessionId, setSteerQueuesBySessionId, setSessionsById]
   );
 
   const handleExecuteClientTool = useCallback(
@@ -748,7 +761,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       const result = await executeClientTool(request);
       return result;
     },
-    []
+    [setSessionsById]
   );
 
   const requestPermissionDecision = useCallback((request: PermissionDecisionRequest): Promise<PermissionDecisionResult> => {
@@ -767,7 +780,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       setPermissionDialogs((current) => ({ ...current, [dialogId]: dialog }));
       setActivePermissionDialogId((current) => current ?? dialogId);
     });
-  }, []);
+  }, [setSessionsById, setPermissionDialogs, setActivePermissionDialogId]);
 
   const requestElicitationResponse = useCallback((request: ElicitationRequest): Promise<ElicitationResponse> => {
     const pendingQuestion = elicitationRequestToPendingQuestion(request);
@@ -787,7 +800,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       setElicitationDialogs((current) => ({ ...current, [dialogId]: dialog }));
       setActiveElicitationDialogId((current) => current ?? dialogId);
     });
-  }, []);
+  }, [setSessionsById, setElicitationDialogs, setActiveElicitationDialogId]);
 
   // Build callbacks object for client
   const buildCallbacks = useCallback(() => ({
@@ -813,6 +826,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     requestClientToolResult,
     requestElicitationResponse,
     requestPermissionDecision,
+    setStatus,
+    setError,
   ]);
 
   const ensureClient = useCallback(() => {
@@ -911,7 +926,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (connectError) {
       setError(connectError instanceof Error ? connectError.message : String(connectError));
     }
-  }, [ensureClient, wsUrl]);
+  }, [ensureClient, wsUrl, setError, setInitializeResult]);
 
   const createSession = useCallback(async () => {
     setError(null);
@@ -939,7 +954,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
-  }, [buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl]);
+  }, [buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]);
 
   const loadSession = useCallback(
     async (loadSessionId: string) => {
@@ -973,7 +988,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(loadError instanceof Error ? loadError.message : String(loadError));
       }
     },
-    [buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl]
+    [buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]
   );
 
   const disconnect = useCallback(() => {
@@ -1051,7 +1066,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(promptError instanceof Error ? promptError.message : String(promptError));
       }
     },
-    [buildAgentConfig, cwd, ensureClient, initializeResult, sessionId, status, wsUrl]
+    [buildAgentConfig, cwd, ensureClient, initializeResult, sessionId, status, wsUrl, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]
   );
 
   const sendSteerPrompt = useCallback(
@@ -1082,7 +1097,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       }
       return null;
     },
-    [executorType, sessionId]
+    [executorType, sessionId, setError, setSessionsById, setSteerQueuesBySessionId]
   );
 
   const interrupt = useCallback(async () => {
@@ -1116,7 +1131,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (interruptError) {
       setError(interruptError instanceof Error ? interruptError.message : String(interruptError));
     }
-  }, [elicitationDialog, permissionDialog, sessionId]);
+  }, [elicitationDialog, permissionDialog, sessionId, setError, setPermissionDialogs, setActivePermissionDialogId, setElicitationDialogs, setActiveElicitationDialogId, setSessionsById]);
 
   const closeActiveSession = useCallback(async () => {
     if (!sessionId) return;
@@ -1138,11 +1153,11 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (closeError) {
       setError(closeError instanceof Error ? closeError.message : String(closeError));
     }
-  }, [sessionId]);
+  }, [sessionId, setError, setSessionsById, setSteerQueuesBySessionId, setSessionOrder, setActiveSessionId]);
 
   const selectSession = useCallback((id: string) => {
     setActiveSessionId(id);
-  }, []);
+  }, [setActiveSessionId]);
 
   const handleSlashCommand = useCallback(
     (command: SlashCommand, selection: SlashCommandSelection) => {
@@ -1167,7 +1182,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       });
       setActivePermissionDialogId((current) => (current === dialog.id ? null : current));
     },
-    [pendingApproval, permissionDialogs]
+    [pendingApproval, permissionDialogs, setSessionsById, setPermissionDialogs, setActivePermissionDialogId]
   );
 
   const handleQuestionAnswers = useCallback(
@@ -1184,7 +1199,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       });
       setActiveElicitationDialogId((current) => (current === dialog.id ? null : current));
     },
-    [elicitationDialogs, pendingQuestion]
+    [elicitationDialogs, pendingQuestion, setSessionsById, setElicitationDialogs, setActiveElicitationDialogId]
   );
 
   const handleApprovePlan = useCallback(() => {
@@ -1208,7 +1223,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       ),
     }));
     if (!dialog) void sendSteerPrompt("Plan approved. Continue.");
-  }, [elicitationDialogs, pendingPlan, sendSteerPrompt, sessionId]);
+  }, [elicitationDialogs, pendingPlan, sendSteerPrompt, sessionId, setSessionsById, setElicitationDialogs, setActiveElicitationDialogId]);
 
   const handleRejectPlan = useCallback(() => {
     if (!sessionId) return;
@@ -1231,7 +1246,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       ),
     }));
     if (!dialog) void sendSteerPrompt("Plan rejected. Stop and ask for revised instructions.");
-  }, [elicitationDialogs, pendingPlan, sendSteerPrompt, sessionId]);
+  }, [elicitationDialogs, pendingPlan, sendSteerPrompt, sessionId, setSessionsById, setElicitationDialogs, setActiveElicitationDialogId]);
 
   const cancelSteerQueueItems = useCallback(
     async (items: QueuedInputRecallItem[], _reason: string) => {
@@ -1249,7 +1264,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         setError(cancelError instanceof Error ? cancelError.message : String(cancelError));
       }
     },
-    [sessionId]
+    [sessionId, setError, setSteerQueuesBySessionId]
   );
 
   const recallSteerQueue = useCallback(
@@ -1277,12 +1292,12 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     (title: string, subagentType: string | undefined, subagentMessages: AgentMessage[], context?: SubagentSheetState["context"]) => {
       setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
     },
-    []
+    [setSubagentSheet]
   );
 
   const closeSubagentSheet = useCallback(() => {
     setSubagentSheet(null);
-  }, []);
+  }, [setSubagentSheet]);
 
   return {
     status,

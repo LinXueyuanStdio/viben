@@ -25,6 +25,10 @@ export interface ContextApprovalButtonProps {
   disabled?: boolean;
   /** Render custom popup content. If provided, popup will show on hover/click */
   renderPopup?: (props: ContextPopupRenderProps) => React.ReactNode;
+  /** Called when hover state changes. Use this to render popup externally. */
+  onHoverChange?: (isHovered: boolean) => void;
+  /** If true, popup is rendered externally and this component only manages hover state */
+  externalPopup?: boolean;
 }
 
 export interface ContextPopupRenderProps {
@@ -112,6 +116,8 @@ export function ContextApprovalButton({
   className,
   disabled,
   renderPopup,
+  onHoverChange,
+  externalPopup,
 }: ContextApprovalButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,59 +139,76 @@ export function ContextApprovalButton({
   const config = APPROVAL_MODE_CONFIG[approvalMode];
   const ApprovalIcon = config.icon;
 
+  const hasPopup = renderPopup || externalPopup;
+
   const handleMouseEnter = useCallback(() => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
     setIsOpen(true);
-  }, []);
+    onHoverChange?.(true);
+  }, [onHoverChange]);
 
   const handleMouseLeave = useCallback(() => {
     hoverTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
+      onHoverChange?.(false);
     }, 150);
-  }, []);
+  }, [onHoverChange]);
 
   const handleClick = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
+    setIsOpen((prev) => {
+      const next = !prev;
+      onHoverChange?.(next);
+      return next;
+    });
+  }, [onHoverChange]);
+
+  const buttonContent = (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors",
+        "hover:bg-muted/50",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        disabled && "opacity-50 cursor-not-allowed"
+      )}
+      onClick={hasPopup ? handleClick : undefined}
+      disabled={disabled}
+      aria-label={`${config.label}, Context 使用率 ${usagePercentage.toFixed(0)}%`}
+    >
+      <ApprovalIcon className="h-3.5 w-3.5 text-muted-foreground" />
+      <MiniCircularProgress percentage={usagePercentage} size={20} strokeWidth={2} />
+    </button>
+  );
 
   return (
     <div
       ref={containerRef}
       className={cn("relative", className)}
-      onMouseEnter={renderPopup ? handleMouseEnter : undefined}
-      onMouseLeave={renderPopup ? handleMouseLeave : undefined}
+      onMouseEnter={hasPopup ? handleMouseEnter : undefined}
+      onMouseLeave={hasPopup ? handleMouseLeave : undefined}
     >
-      <TooltipProvider delayDuration={500}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors",
-                "hover:bg-muted/50",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                disabled && "opacity-50 cursor-not-allowed"
-              )}
-              onClick={renderPopup ? handleClick : undefined}
-              disabled={disabled}
-              aria-label={`${config.label}, Context 使用率 ${usagePercentage.toFixed(0)}%`}
-            >
-              <ApprovalIcon className="h-3.5 w-3.5 text-muted-foreground" />
-              <MiniCircularProgress percentage={usagePercentage} size={20} strokeWidth={2} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">
-            <div className="flex flex-col gap-0.5">
-              <span>{config.label}</span>
-              <span className="text-muted-foreground">Context: {usagePercentage.toFixed(0)}%</span>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {/* Only show tooltip when popup is closed */}
+      {isOpen ? (
+        buttonContent
+      ) : (
+        <TooltipProvider delayDuration={500}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {buttonContent}
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <div className="flex flex-col gap-0.5">
+                <span>{config.label}</span>
+                <span className="text-muted-foreground">Context: {usagePercentage.toFixed(0)}%</span>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
-      {isOpen && renderPopup && (
+      {isOpen && renderPopup && !externalPopup && (
         <div
           className="absolute bottom-full left-0 z-50 mb-2"
           onMouseEnter={handleMouseEnter}
@@ -203,6 +226,34 @@ export function ContextApprovalButton({
       )}
     </div>
   );
+}
+
+export function useContextApprovalPopupProps(
+  breakdown: ContextTokenBreakdown,
+  approvalMode: ApprovalMode,
+  onApprovalModeChange: (mode: ApprovalMode) => void
+): ContextPopupRenderProps {
+  const totalUsed =
+    breakdown.assistantProfile +
+    breakdown.skillSettings +
+    breakdown.historySummary +
+    breakdown.conversationMessages;
+
+  const usagePercentage =
+    breakdown.totalContext > 0
+      ? Math.min((totalUsed / breakdown.totalContext) * 100, 100)
+      : 0;
+
+  const remaining = Math.max(0, breakdown.totalContext - totalUsed);
+
+  return {
+    breakdown,
+    totalUsed,
+    usagePercentage,
+    remaining,
+    approvalMode,
+    onApprovalModeChange,
+  };
 }
 
 export { APPROVAL_MODE_CONFIG };

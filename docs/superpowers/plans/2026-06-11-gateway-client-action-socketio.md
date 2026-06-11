@@ -69,7 +69,143 @@ git commit -m "chore(core): add socket.io dependencies"
 
 ---
 
-## Task 2: 实现 ClientStore
+## Task 2: 实现 Crypto 工具模块
+
+**Files:**
+- Create: `packages/core/src/utils/crypto.ts`
+- Create: `packages/core/src/utils/crypto.test.ts`
+
+- [ ] **Step 1: 写测试 - Ed25519 签名验证**
+
+```typescript
+// packages/core/src/utils/crypto.test.ts
+import { describe, it, expect } from "vitest";
+import { generateKeyPair, sign, verify } from "./crypto";
+
+describe("crypto", () => {
+  describe("generateKeyPair", () => {
+    it("should generate valid Ed25519 key pair", () => {
+      const { publicKey, privateKey } = generateKeyPair();
+      
+      expect(publicKey).toBeDefined();
+      expect(privateKey).toBeDefined();
+      expect(publicKey).toHaveLength(64);  // hex encoded 32 bytes
+      expect(privateKey).toHaveLength(128); // hex encoded 64 bytes
+    });
+  });
+
+  describe("sign and verify", () => {
+    it("should sign and verify message", async () => {
+      const { publicKey, privateKey } = generateKeyPair();
+      const message = "test message";
+      
+      const signature = await sign(message, privateKey);
+      const valid = await verify(message, signature, publicKey);
+      
+      expect(valid).toBe(true);
+    });
+
+    it("should reject tampered message", async () => {
+      const { publicKey, privateKey } = generateKeyPair();
+      const message = "test message";
+      
+      const signature = await sign(message, privateKey);
+      const valid = await verify("tampered message", signature, publicKey);
+      
+      expect(valid).toBe(false);
+    });
+
+    it("should reject wrong public key", async () => {
+      const keyPair1 = generateKeyPair();
+      const keyPair2 = generateKeyPair();
+      const message = "test message";
+      
+      const signature = await sign(message, keyPair1.privateKey);
+      const valid = await verify(message, signature, keyPair2.publicKey);
+      
+      expect(valid).toBe(false);
+    });
+  });
+});
+```
+
+- [ ] **Step 2: 实现 crypto 模块**
+
+```typescript
+// packages/core/src/utils/crypto.ts
+import { createPublicKey, createPrivateKey, sign as cryptoSign, verify as cryptoVerify, generateKeyPairSync } from "node:crypto";
+
+export interface KeyPair {
+  publicKey: string;   // hex encoded
+  privateKey: string;  // hex encoded
+}
+
+/**
+ * 生成 Ed25519 密钥对
+ */
+export function generateKeyPair(): KeyPair {
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519", {
+    publicKeyEncoding: { type: "spki", format: "der" },
+    privateKeyEncoding: { type: "pkcs8", format: "der" },
+  });
+  
+  return {
+    publicKey: publicKey.toString("hex"),
+    privateKey: privateKey.toString("hex"),
+  };
+}
+
+/**
+ * 使用私钥签名消息
+ */
+export async function sign(message: string, privateKeyHex: string): Promise<string> {
+  const privateKeyDer = Buffer.from(privateKeyHex, "hex");
+  const privateKey = createPrivateKey({
+    key: privateKeyDer,
+    format: "der",
+    type: "pkcs8",
+  });
+  
+  const signature = cryptoSign(null, Buffer.from(message), privateKey);
+  return signature.toString("hex");
+}
+
+/**
+ * 使用公钥验证签名
+ */
+export async function verify(message: string, signatureHex: string, publicKeyHex: string): Promise<boolean> {
+  try {
+    const publicKeyDer = Buffer.from(publicKeyHex, "hex");
+    const publicKey = createPublicKey({
+      key: publicKeyDer,
+      format: "der",
+      type: "spki",
+    });
+    
+    const signature = Buffer.from(signatureHex, "hex");
+    return cryptoVerify(null, Buffer.from(message), publicKey, signature);
+  } catch {
+    return false;
+  }
+}
+```
+
+- [ ] **Step 3: 运行测试确认通过**
+
+```bash
+cd packages/core && pnpm test src/utils/crypto.test.ts
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add packages/core/src/utils/crypto.ts packages/core/src/utils/crypto.test.ts
+git commit -m "feat(core): add Ed25519 crypto utilities for client authentication"
+```
+
+---
+
+## Task 3: 实现 ClientStore
 
 **Files:**
 - Create: `packages/core/src/gateway/client-store.ts`
@@ -79,36 +215,69 @@ git commit -m "chore(core): add socket.io dependencies"
 
 ```typescript
 // packages/core/src/gateway/client-store.test.ts
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ClientStore } from "./client-store";
+
+// Mock crypto 模块
+vi.mock("../utils/crypto", () => ({
+  verify: vi.fn().mockResolvedValue(true),
+  sign: vi.fn().mockResolvedValue("mock_signature"),
+  generateKeyPair: vi.fn().mockReturnValue({
+    publicKey: "mock_public_key",
+    privateKey: "mock_private_key",
+  }),
+}));
+
+// 测试辅助函数
+function createMockRegisterOptions(socketId: string, source: "main_window" | "page_iframe" = "main_window") {
+  return {
+    source,
+    socketId,
+    publicKey: "mock_public_key",
+    signature: "mock_signature",
+    timestamp: Date.now(),
+  };
+}
 
 describe("ClientStore", () => {
   let store: ClientStore;
 
   beforeEach(() => {
-    store = new ClientStore();
+    vi.useFakeTimers();
+    store = new ClientStore({ gracePeriodMs: 1000 });  // 1秒 grace period 便于测试
+  });
+
+  afterEach(() => {
+    store.shutdown();
+    vi.useRealTimers();
   });
 
   describe("client management", () => {
-    it("should register a new client", () => {
-      store.registerClient("client_abc", {
-        source: "main_window",
-        socketId: "socket_1",
-      });
+    it("should register a new client with signature verification", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
       
       const client = store.getClient("client_abc");
       expect(client).toBeDefined();
       expect(client?.sockets.size).toBe(1);
+      expect(client?.publicKey).toBe("mock_public_key");
     });
 
-    it("should add socket to existing client", () => {
-      store.registerClient("client_abc", {
-        source: "main_window",
-        socketId: "socket_1",
-      });
-      store.registerClient("client_abc", {
+    it("should reject client with mismatched public key", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
+      
+      await expect(
+        store.registerClient("client_abc", {
+          ...createMockRegisterOptions("socket_2"),
+          publicKey: "different_key",
+        })
+      ).rejects.toThrow("Public key mismatch");
+    });
+
+    it("should add socket to existing client", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
+      await store.registerClient("client_abc", {
+        ...createMockRegisterOptions("socket_2"),
         source: "page_iframe",
-        socketId: "socket_2",
         pageSlug: "canvas",
       });
       
@@ -116,41 +285,94 @@ describe("ClientStore", () => {
       expect(client?.sockets.size).toBe(2);
     });
 
-    it("should remove socket and cleanup empty client", () => {
-      store.registerClient("client_abc", {
-        source: "main_window",
-        socketId: "socket_1",
-      });
+    it("should start grace period when all sockets disconnect", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
+      
       store.removeSocket("client_abc", "socket_1");
       
+      // Client 还在（grace period 内）
+      expect(store.getClient("client_abc")).toBeDefined();
+      
+      // 等待 grace period 结束
+      vi.advanceTimersByTime(1500);
+      
+      // Client 被清理
       expect(store.getClient("client_abc")).toBeUndefined();
+    });
+
+    it("should cancel grace period when new socket connects", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
+      store.removeSocket("client_abc", "socket_1");
+      
+      // Grace period 期间新 socket 连接
+      vi.advanceTimersByTime(500);
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_2"));
+      
+      // 等待原 grace period 时间
+      vi.advanceTimersByTime(1000);
+      
+      // Client 仍然存在
+      expect(store.getClient("client_abc")).toBeDefined();
     });
   });
 
   describe("action management", () => {
-    it("should register action for a socket", () => {
-      store.registerClient("client_abc", {
+    it("should register action for a socket", async () => {
+      await store.registerClient("client_abc", {
+        ...createMockRegisterOptions("socket_1"),
         source: "page_iframe",
-        socketId: "socket_1",
         pageSlug: "canvas",
       });
       
-      store.registerAction("client_abc", "socket_1", {
+      const result = store.registerAction("client_abc", "socket_1", {
         namespace: "canvas",
         name: "create_node",
         description: "Create a node",
       });
       
+      expect(result.updated).toBe(true);
       const action = store.findAction("client_abc", "canvas", "create_node");
       expect(action).toBeDefined();
       expect(action?.socketId).toBe("socket_1");
     });
 
-    it("should be idempotent - same content skips update", () => {
-      store.registerClient("client_abc", {
-        source: "page_iframe",
-        socketId: "socket_1",
+    it("should support custom timeout per action", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
+      
+      store.registerAction("client_abc", "socket_1", {
+        namespace: "canvas",
+        name: "slow_action",
+        description: "A slow action",
+        timeout: 60000,  // 60秒超时
       });
+      
+      const action = store.findAction("client_abc", "canvas", "slow_action");
+      expect(action?.timeout).toBe(60000);
+    });
+
+    it("should enforce max actions limit", async () => {
+      const limitedStore = new ClientStore({ maxActionsPerClient: 2 });
+      await limitedStore.registerClient("client_abc", createMockRegisterOptions("socket_1"));
+      
+      limitedStore.registerAction("client_abc", "socket_1", {
+        namespace: "ns", name: "a1", description: "Action 1",
+      });
+      limitedStore.registerAction("client_abc", "socket_1", {
+        namespace: "ns", name: "a2", description: "Action 2",
+      });
+      
+      const result = limitedStore.registerAction("client_abc", "socket_1", {
+        namespace: "ns", name: "a3", description: "Action 3",
+      });
+      
+      expect(result.error).toBe("Max actions limit reached");
+      expect(result.updated).toBe(false);
+      
+      limitedStore.shutdown();
+    });
+
+    it("should be idempotent - same content skips update", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
       
       const result1 = store.registerAction("client_abc", "socket_1", {
         namespace: "canvas",
@@ -168,11 +390,8 @@ describe("ClientStore", () => {
       expect(result2.updated).toBe(false);
     });
 
-    it("should cleanup actions when socket disconnects", () => {
-      store.registerClient("client_abc", {
-        source: "page_iframe",
-        socketId: "socket_1",
-      });
+    it("should preserve actions during grace period", async () => {
+      await store.registerClient("client_abc", createMockRegisterOptions("socket_1"));
       store.registerAction("client_abc", "socket_1", {
         namespace: "canvas",
         name: "create_node",
@@ -181,14 +400,22 @@ describe("ClientStore", () => {
       
       store.removeSocket("client_abc", "socket_1");
       
+      // Grace period 内 action 仍可查找
+      expect(store.findAction("client_abc", "canvas", "create_node")).toBeDefined();
+      
+      // Grace period 结束后
+      vi.advanceTimersByTime(1500);
       expect(store.findAction("client_abc", "canvas", "create_node")).toBeUndefined();
     });
   });
 
   describe("getAllActions", () => {
-    it("should return all actions across clients", () => {
-      store.registerClient("client_a", { source: "main_window", socketId: "s1" });
-      store.registerClient("client_b", { source: "main_window", socketId: "s2" });
+    it("should return all actions across clients", async () => {
+      await store.registerClient("client_a", createMockRegisterOptions("s1"));
+      await store.registerClient("client_b", {
+        ...createMockRegisterOptions("s2"),
+        publicKey: "mock_public_key_b",
+      });
       
       store.registerAction("client_a", "s1", {
         namespace: "canvas",
@@ -227,6 +454,11 @@ import { logger as globalLogger } from "../telemetry";
 
 const log = globalLogger.child({ module: "client-store" });
 
+// === 配置常量 ===
+const DEFAULT_GRACE_PERIOD_MS = 30000;  // socket 断开后保留 action 的时间
+const MAX_ACTIONS_PER_CLIENT = 1000;    // 每个 client 最大 action 数
+const MAX_PAYLOAD_SIZE = 1024 * 1024;   // 1MB payload 上限
+
 export type SocketSource = "main_window" | "page_iframe" | "chat_window" | "standalone";
 
 export interface SocketInfo {
@@ -245,16 +477,20 @@ export interface ActionEntry {
   socketId: string;
   registeredAt: number;
   hash: string;
+  timeout?: number;  // action 自定义超时时间（ms）
 }
 
 export interface ClientState {
   clientId: string;
+  publicKey: string;  // Ed25519 公钥，用于验证签名
   sockets: Map<string, SocketInfo>;
   actionStore: Map<string, ActionEntry>;
   metadata: {
     theme: "light" | "dark";
     workspacePath: string;
   };
+  // Grace period 支持
+  disconnectTimer?: NodeJS.Timeout;  // 所有 socket 断开后的清理计时器
 }
 
 export interface RegisterClientOptions {
@@ -263,6 +499,9 @@ export interface RegisterClientOptions {
   pageSlug?: string;
   theme?: "light" | "dark";
   workspacePath?: string;
+  publicKey: string;      // 必须提供公钥
+  signature: string;      // clientId 的签名，用于验证所有权
+  timestamp: number;      // 签名时间戳，防止重放
 }
 
 export interface RegisterActionOptions {
@@ -271,10 +510,17 @@ export interface RegisterActionOptions {
   description: string;
   inputSchema?: JSONSchema7;
   outputSchema?: JSONSchema7;
+  timeout?: number;  // 可选的自定义超时时间（ms），默认 30000
 }
 
 export interface ActionWithClient extends ActionEntry {
   clientId: string;
+}
+
+export interface ClientStoreConfig {
+  gracePeriodMs?: number;
+  maxActionsPerClient?: number;
+  maxPayloadSize?: number;
 }
 
 function fnv1aHash(str: string): string {
@@ -286,8 +532,12 @@ function fnv1aHash(str: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function computeActionHash(action: RegisterActionOptions): string {
-  const content = action.description +
+function computeActionHash(clientId: string, action: RegisterActionOptions): string {
+  // 包含 clientId 避免跨 client 碰撞
+  const content = clientId +
+    action.namespace +
+    action.name +
+    action.description +
     JSON.stringify(action.inputSchema ?? null) +
     JSON.stringify(action.outputSchema ?? null);
   return fnv1aHash(content);
@@ -295,17 +545,65 @@ function computeActionHash(action: RegisterActionOptions): string {
 
 export class ClientStore {
   private clients = new Map<string, ClientState>();
+  private readonly config: Required<ClientStoreConfig>;
+
+  constructor(config: ClientStoreConfig = {}) {
+    this.config = {
+      gracePeriodMs: config.gracePeriodMs ?? DEFAULT_GRACE_PERIOD_MS,
+      maxActionsPerClient: config.maxActionsPerClient ?? MAX_ACTIONS_PER_CLIENT,
+      maxPayloadSize: config.maxPayloadSize ?? MAX_PAYLOAD_SIZE,
+    };
+  }
 
   getClient(clientId: string): ClientState | undefined {
     return this.clients.get(clientId);
   }
 
-  registerClient(clientId: string, options: RegisterClientOptions): ClientState {
+  /**
+   * 验证 clientId 的签名
+   * 签名格式：sign(clientId + ":" + timestamp)
+   */
+  private async verifySignature(
+    clientId: string,
+    publicKey: string,
+    signature: string,
+    timestamp: number
+  ): Promise<boolean> {
+    // 检查时间戳是否在 5 分钟内（防止重放攻击）
+    const now = Date.now();
+    if (Math.abs(now - timestamp) > 5 * 60 * 1000) {
+      log.warn({ clientId, timestamp, now }, "Signature timestamp expired");
+      return false;
+    }
+
+    try {
+      const { verify } = await import("../utils/crypto");
+      const message = `${clientId}:${timestamp}`;
+      return await verify(message, signature, publicKey);
+    } catch (error) {
+      log.error({ clientId, error }, "Signature verification failed");
+      return false;
+    }
+  }
+
+  async registerClient(clientId: string, options: RegisterClientOptions): Promise<ClientState> {
     let client = this.clients.get(clientId);
     
     if (!client) {
+      // 新 client：验证签名
+      const valid = await this.verifySignature(
+        clientId,
+        options.publicKey,
+        options.signature,
+        options.timestamp
+      );
+      if (!valid) {
+        throw new Error("Invalid signature for clientId");
+      }
+
       client = {
         clientId,
+        publicKey: options.publicKey,
         sockets: new Map(),
         actionStore: new Map(),
         metadata: {
@@ -315,6 +613,28 @@ export class ClientStore {
       };
       this.clients.set(clientId, client);
       log.info({ clientId }, "Client registered");
+    } else {
+      // 已有 client：验证公钥匹配
+      if (client.publicKey !== options.publicKey) {
+        throw new Error("Public key mismatch for existing client");
+      }
+      // 验证签名
+      const valid = await this.verifySignature(
+        clientId,
+        options.publicKey,
+        options.signature,
+        options.timestamp
+      );
+      if (!valid) {
+        throw new Error("Invalid signature for clientId");
+      }
+
+      // 取消 grace period 计时器（有新连接进来）
+      if (client.disconnectTimer) {
+        clearTimeout(client.disconnectTimer);
+        client.disconnectTimer = undefined;
+        log.info({ clientId }, "Grace period cancelled (new socket connected)");
+      }
     }
 
     if (!client.sockets.has(options.socketId)) {
@@ -337,40 +657,64 @@ export class ClientStore {
     return client;
   }
 
-  removeSocket(clientId: string, socketId: string): void {
+  removeSocket(clientId: string, socketId: string): { actionsRemoved: string[]; clientRemoved: boolean } {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client) return { actionsRemoved: [], clientRemoved: false };
 
     client.sockets.delete(socketId);
     log.info({ clientId, socketId }, "Socket removed from client");
 
-    // Remove actions registered by this socket
+    // 标记该 socket 注册的 actions（但先不删除，等 grace period）
+    const actionsFromSocket: string[] = [];
     for (const [fullName, action] of client.actionStore) {
       if (action.socketId === socketId) {
-        client.actionStore.delete(fullName);
-        log.info({ clientId, action: fullName }, "Action removed (socket disconnected)");
+        actionsFromSocket.push(fullName);
       }
     }
 
-    // Cleanup empty client
-    if (client.sockets.size === 0) {
-      this.clients.delete(clientId);
-      log.info({ clientId }, "Client removed (no sockets)");
+    // 如果还有其他 socket，立即清理该 socket 的 actions
+    if (client.sockets.size > 0) {
+      for (const fullName of actionsFromSocket) {
+        client.actionStore.delete(fullName);
+        log.info({ clientId, action: fullName }, "Action removed (socket disconnected)");
+      }
+      return { actionsRemoved: actionsFromSocket, clientRemoved: false };
     }
+
+    // 所有 socket 都断开了，启动 grace period
+    log.info({ clientId, gracePeriodMs: this.config.gracePeriodMs }, "All sockets disconnected, starting grace period");
+    
+    client.disconnectTimer = setTimeout(() => {
+      // Grace period 结束，清理 client
+      const removedClient = this.clients.get(clientId);
+      if (removedClient && removedClient.sockets.size === 0) {
+        this.clients.delete(clientId);
+        log.info({ clientId, actionsRemoved: Array.from(removedClient.actionStore.keys()) }, 
+          "Client removed after grace period");
+      }
+    }, this.config.gracePeriodMs);
+
+    return { actionsRemoved: [], clientRemoved: false };
   }
 
   registerAction(
     clientId: string,
     socketId: string,
     action: RegisterActionOptions
-  ): { updated: boolean; fullName: string } {
+  ): { updated: boolean; fullName: string; error?: string } {
     const client = this.clients.get(clientId);
     if (!client) {
-      throw new Error(`Client not found: ${clientId}`);
+      return { updated: false, fullName: "", error: `Client not found: ${clientId}` };
+    }
+
+    // 检查 action 数量限制
+    if (client.actionStore.size >= this.config.maxActionsPerClient) {
+      log.warn({ clientId, count: client.actionStore.size }, "Max actions limit reached");
+      return { updated: false, fullName: "", error: "Max actions limit reached" };
     }
 
     const fullName = `${action.namespace}.${action.name}`;
-    const hash = computeActionHash(action);
+    const hash = computeActionHash(clientId, action);
     const existing = client.actionStore.get(fullName);
 
     if (existing && existing.hash === hash) {
@@ -386,10 +730,11 @@ export class ClientStore {
       socketId,
       registeredAt: Date.now(),
       hash,
+      timeout: action.timeout,
     };
 
     client.actionStore.set(fullName, entry);
-    log.info({ clientId, action: fullName, socketId }, "Action registered");
+    log.info({ clientId, action: fullName, socketId, timeout: action.timeout }, "Action registered");
 
     return { updated: true, fullName };
   }
@@ -446,6 +791,23 @@ export class ClientStore {
   getAllClients(): string[] {
     return Array.from(this.clients.keys());
   }
+
+  getConfig(): Required<ClientStoreConfig> {
+    return { ...this.config };
+  }
+
+  /**
+   * 清理所有 grace period 计时器（用于 shutdown）
+   */
+  shutdown(): void {
+    for (const client of this.clients.values()) {
+      if (client.disconnectTimer) {
+        clearTimeout(client.disconnectTimer);
+      }
+    }
+    this.clients.clear();
+    log.info("ClientStore shut down");
+  }
 }
 ```
 
@@ -466,7 +828,7 @@ git commit -m "feat(gateway): add ClientStore for action management"
 
 ---
 
-## Task 3: 实现 ClientSocketServer
+## Task 4: 实现 ClientSocketServer
 
 **Files:**
 - Create: `packages/core/src/gateway/client-socket-server.ts`
@@ -479,14 +841,18 @@ import type { Server as HttpServer } from "node:http";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { randomUUID } from "node:crypto";
 import type { JSONSchema7 } from "json-schema";
-import { ClientStore, type SocketSource } from "./client-store";
+import { jsonSchemaToZod } from "@viben/json-schema-to-zod";
+import { ClientStore, type SocketSource, type ClientStoreConfig } from "./client-store";
 import { logger as globalLogger } from "../telemetry";
 
 const log = globalLogger.child({ module: "client-socket-server" });
 
 const SOCKET_IO_PATH = "/socket.io/client";
-const EXECUTE_TIMEOUT_MS = 30000;
+const DEFAULT_EXECUTE_TIMEOUT_MS = 30000;
 const REQUEST_ID_TTL_MS = 60000;
+const MAX_PAYLOAD_SIZE = 1024 * 1024;  // 1MB
+const RATE_LIMIT_WINDOW_MS = 1000;     // 1秒窗口
+const RATE_LIMIT_MAX_EVENTS = 100;     // 每秒最多 100 个事件
 
 export type ExecuteSource = SocketSource | "mcp";
 
@@ -494,6 +860,15 @@ interface ClientConnectData {
   clientId: string;
   source: SocketSource;
   pageSlug?: string;
+  publicKey: string;
+  signature: string;
+  timestamp: number;
+}
+
+// 速率限制追踪
+interface RateLimitInfo {
+  count: number;
+  windowStart: number;
 }
 
 interface ActionRegisterData {
@@ -502,6 +877,7 @@ interface ActionRegisterData {
     description: string;
     inputSchema?: JSONSchema7;
     outputSchema?: JSONSchema7;
+    timeout?: number;  // 可选的自定义超时
   }>;
 }
 
@@ -539,13 +915,16 @@ export class ClientSocketServer {
   private clientStore: ClientStore;
   private pendingExecutes = new Map<string, PendingExecute>();
   private seenRequestIds = new Map<string, number>();
+  private rateLimits = new Map<string, RateLimitInfo>();  // socketId -> rate limit
   private cleanupTimer: NodeJS.Timeout | null = null;
+  private schemaCache = new Map<string, ReturnType<typeof jsonSchemaToZod>>();  // 缓存编译后的 schema
 
   constructor(httpServer: HttpServer, clientStore: ClientStore) {
     this.clientStore = clientStore;
     this.io = new SocketIOServer(httpServer, {
       path: SOCKET_IO_PATH,
       cors: { origin: "*" },
+      maxHttpBufferSize: MAX_PAYLOAD_SIZE,  // 限制 payload 大小
     });
 
     this.setupEventHandlers();
@@ -553,37 +932,101 @@ export class ClientSocketServer {
     log.info({ path: SOCKET_IO_PATH }, "ClientSocketServer initialized");
   }
 
+  /**
+   * 检查速率限制
+   */
+  private checkRateLimit(socketId: string): boolean {
+    const now = Date.now();
+    let info = this.rateLimits.get(socketId);
+    
+    if (!info || now - info.windowStart > RATE_LIMIT_WINDOW_MS) {
+      // 新窗口
+      info = { count: 1, windowStart: now };
+      this.rateLimits.set(socketId, info);
+      return true;
+    }
+    
+    if (info.count >= RATE_LIMIT_MAX_EVENTS) {
+      log.warn({ socketId, count: info.count }, "Rate limit exceeded");
+      return false;
+    }
+    
+    info.count++;
+    return true;
+  }
+
+  /**
+   * 使用 zod 校验 payload
+   */
+  private validatePayload(payload: unknown, schema: JSONSchema7 | undefined): { valid: boolean; error?: string } {
+    if (!schema) return { valid: true };
+    
+    // 检查 payload 大小
+    const payloadStr = JSON.stringify(payload);
+    if (payloadStr.length > MAX_PAYLOAD_SIZE) {
+      return { valid: false, error: `Payload too large: ${payloadStr.length} bytes (max: ${MAX_PAYLOAD_SIZE})` };
+    }
+    
+    try {
+      // 使用缓存的 schema
+      const cacheKey = JSON.stringify(schema);
+      let zodSchema = this.schemaCache.get(cacheKey);
+      if (!zodSchema) {
+        zodSchema = jsonSchemaToZod(schema);
+        this.schemaCache.set(cacheKey, zodSchema);
+      }
+      
+      const result = zodSchema.safeParse(payload);
+      if (!result.success) {
+        return { valid: false, error: result.error.message };
+      }
+      return { valid: true };
+    } catch (error) {
+      log.warn({ error }, "Schema validation error");
+      return { valid: false, error: "Schema validation failed" };
+    }
+  }
+
   private setupEventHandlers(): void {
     this.io.on("connection", (socket) => {
       log.debug({ socketId: socket.id }, "Socket connected");
 
-      socket.on("client:connect", (data: ClientConnectData, ack) => {
-        this.handleClientConnect(socket, data, ack);
+      socket.on("client:connect", async (data: ClientConnectData, ack) => {
+        if (!this.checkRateLimit(socket.id)) {
+          ack?.({ success: false, error: "Rate limit exceeded" });
+          return;
+        }
+        await this.handleClientConnect(socket, data, ack);
       });
 
       socket.on("action:register", (data: ActionRegisterData) => {
+        if (!this.checkRateLimit(socket.id)) return;
         this.handleActionRegister(socket, data);
       });
 
       socket.on("action:unregister", (data: ActionUnregisterData) => {
+        if (!this.checkRateLimit(socket.id)) return;
         this.handleActionUnregister(socket, data);
       });
 
       socket.on("action:result", (data: ActionResultData) => {
+        if (!this.checkRateLimit(socket.id)) return;
         this.handleActionResult(data);
       });
 
       socket.on("disconnect", () => {
         this.handleDisconnect(socket);
+        // 清理速率限制记录
+        this.rateLimits.delete(socket.id);
       });
     });
   }
 
-  private handleClientConnect(
+  private async handleClientConnect(
     socket: Socket,
     data: ClientConnectData,
     ack?: (response: { success: boolean; error?: string }) => void
-  ): void {
+  ): Promise<void> {
     if (!data.clientId || typeof data.clientId !== "string") {
       ack?.({ success: false, error: "clientId is required" });
       return;
@@ -594,32 +1037,55 @@ export class ClientSocketServer {
       return;
     }
 
-    // Store clientId on socket for later use
-    (socket as Socket & { clientId?: string }).clientId = data.clientId;
+    if (!data.publicKey || !data.signature || !data.timestamp) {
+      ack?.({ success: false, error: "publicKey, signature, and timestamp are required" });
+      return;
+    }
 
-    const client = this.clientStore.registerClient(data.clientId, {
-      source: data.source,
-      socketId: socket.id,
-      pageSlug: data.pageSlug,
-    });
+    try {
+      // 注册 client（内部会验证签名）
+      const client = await this.clientStore.registerClient(data.clientId, {
+        source: data.source,
+        socketId: socket.id,
+        pageSlug: data.pageSlug,
+        publicKey: data.publicKey,
+        signature: data.signature,
+        timestamp: data.timestamp,
+      });
 
-    // Join client room for broadcasting
-    socket.join(`client:${data.clientId}`);
+      // Store clientId on socket for later use
+      (socket as Socket & { clientId?: string }).clientId = data.clientId;
 
-    // Send init
-    socket.emit("client:init", {
-      theme: client.metadata.theme,
-      workspacePath: client.metadata.workspacePath,
-    });
+      // Join client room for broadcasting
+      socket.join(`client:${data.clientId}`);
 
-    ack?.({ success: true });
-    log.info({ clientId: data.clientId, socketId: socket.id, source: data.source }, "Client connected");
+      // Send init（只有 main_window 才发送 workspacePath）
+      const initData: { theme: string; workspacePath?: string } = {
+        theme: client.metadata.theme,
+      };
+      if (data.source === "main_window") {
+        initData.workspacePath = client.metadata.workspacePath;
+      }
+      socket.emit("client:init", initData);
+
+      ack?.({ success: true });
+      log.info({ clientId: data.clientId, socketId: socket.id, source: data.source }, "Client connected");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      log.warn({ clientId: data.clientId, error: message }, "Client connect failed");
+      ack?.({ success: false, error: message });
+    }
   }
 
   private handleActionRegister(socket: Socket, data: ActionRegisterData): void {
     const clientId = (socket as Socket & { clientId?: string }).clientId;
     if (!clientId) {
       log.warn({ socketId: socket.id }, "Action register without client connect");
+      socket.emit("action:register:result", {
+        namespace: data.namespace,
+        accepted: [],
+        rejected: [{ action: "*", reason: "Not connected as client" }],
+      });
       return;
     }
 
@@ -632,20 +1098,19 @@ export class ClientSocketServer {
     const rejected: Array<{ action: string; reason: string }> = [];
 
     for (const [name, actionDef] of Object.entries(data.actions || {})) {
-      try {
-        const result = this.clientStore.registerAction(clientId, socket.id, {
-          namespace: data.namespace,
-          name,
-          description: actionDef.description,
-          inputSchema: actionDef.inputSchema,
-          outputSchema: actionDef.outputSchema,
-        });
+      const result = this.clientStore.registerAction(clientId, socket.id, {
+        namespace: data.namespace,
+        name,
+        description: actionDef.description,
+        inputSchema: actionDef.inputSchema,
+        outputSchema: actionDef.outputSchema,
+        timeout: actionDef.timeout,
+      });
+      
+      if (result.error) {
+        rejected.push({ action: name, reason: result.error });
+      } else {
         accepted.push(name);
-      } catch (error) {
-        rejected.push({
-          action: name,
-          reason: error instanceof Error ? error.message : "Unknown error",
-        });
       }
     }
 
@@ -680,12 +1145,15 @@ export class ClientSocketServer {
     const clientId = (socket as Socket & { clientId?: string }).clientId;
     if (!clientId) return;
 
-    // Reject pending executes for this socket
+    // Reject pending executes for this socket（使用 resolve 返回错误而非 reject，保持一致性）
     for (const [requestId, pending] of this.pendingExecutes) {
       if (pending.socketId === socket.id) {
         clearTimeout(pending.timer);
         this.pendingExecutes.delete(requestId);
-        pending.reject(new Error("socket_disconnected"));
+        pending.resolve({
+          content: [{ type: "text", text: "Socket disconnected during execution" }],
+          isError: true,
+        });
       }
     }
 
@@ -704,6 +1172,15 @@ export class ClientSocketServer {
     if (!action) {
       return {
         content: [{ type: "text", text: `Action not found: ${namespace}.${actionName}` }],
+        isError: true,
+      };
+    }
+
+    // 校验 payload
+    const validation = this.validatePayload(payload, action.inputSchema);
+    if (!validation.valid) {
+      return {
+        content: [{ type: "text", text: `Invalid payload: ${validation.error}` }],
         isError: true,
       };
     }
@@ -743,21 +1220,24 @@ export class ClientSocketServer {
     }
     this.seenRequestIds.set(requestId, Date.now());
 
-    return new Promise((resolve, reject) => {
+    // 使用 action 自定义超时或默认超时
+    const timeoutMs = action.timeout ?? DEFAULT_EXECUTE_TIMEOUT_MS;
+
+    return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.pendingExecutes.delete(requestId);
         resolve({
-          content: [{ type: "text", text: "Execution timeout" }],
+          content: [{ type: "text", text: `Execution timeout after ${timeoutMs}ms` }],
           isError: true,
         });
-      }, EXECUTE_TIMEOUT_MS);
+      }, timeoutMs);
 
       this.pendingExecutes.set(requestId, {
         requestId,
         clientId: targetClientId,
         socketId: action.socketId,
         resolve,
-        reject,
+        reject: () => {},  // 不再使用 reject，统一用 resolve 返回错误
         timer,
       });
 
@@ -774,9 +1254,18 @@ export class ClientSocketServer {
   private startCleanup(): void {
     this.cleanupTimer = setInterval(() => {
       const now = Date.now();
+      
+      // 清理过期的 requestId
       for (const [requestId, timestamp] of this.seenRequestIds) {
         if (now - timestamp > REQUEST_ID_TTL_MS) {
           this.seenRequestIds.delete(requestId);
+        }
+      }
+      
+      // 清理过期的速率限制记录
+      for (const [socketId, info] of this.rateLimits) {
+        if (now - info.windowStart > RATE_LIMIT_WINDOW_MS * 10) {
+          this.rateLimits.delete(socketId);
         }
       }
     }, 60000);
@@ -788,11 +1277,17 @@ export class ClientSocketServer {
       this.cleanupTimer = null;
     }
 
+    // 清理所有 pending executes（使用 resolve 返回错误）
     for (const pending of this.pendingExecutes.values()) {
       clearTimeout(pending.timer);
-      pending.reject(new Error("Server shutdown"));
+      pending.resolve({
+        content: [{ type: "text", text: "Server shutdown" }],
+        isError: true,
+      });
     }
     this.pendingExecutes.clear();
+    this.rateLimits.clear();
+    this.schemaCache.clear();
 
     this.io.close();
     log.info("ClientSocketServer shut down");
@@ -809,7 +1304,7 @@ git commit -m "feat(gateway): add ClientSocketServer for Socket.io communication
 
 ---
 
-## Task 4: 集成到 Gateway
+## Task 5: 集成到 Gateway
 
 **Files:**
 - Modify: `packages/core/src/gateway/state.ts`
@@ -891,7 +1386,7 @@ git commit -m "feat(gateway): integrate ClientStore and Socket.io server"
 
 ---
 
-## Task 5: 修改 MCP Server 使用 ClientStore
+## Task 6: 修改 MCP Server 使用 ClientStore
 
 **Files:**
 - Modify: `packages/core/src/acp/ops/client-side-mcp-server.ts`
@@ -1034,7 +1529,7 @@ git commit -m "feat(mcp): integrate ClientStore for action routing"
 
 ---
 
-## Task 6: 实现 viben-page-sdk.ts
+## Task 7: 实现 viben-page-sdk.ts
 
 **Files:**
 - Create: `packages/core/src/assets/viben-page-sdk.ts`
@@ -1046,6 +1541,7 @@ git commit -m "feat(mcp): integrate ClientStore for action routing"
 ```typescript
 // packages/core/src/assets/viben-page-sdk.ts
 import { io, Socket } from "socket.io-client";
+import * as ed from "@noble/ed25519";
 
 type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
 type Theme = "light" | "dark";
@@ -1054,16 +1550,39 @@ type SocketSource = "main_window" | "page_iframe" | "chat_window" | "standalone"
 interface VibenConfig {
   gatewayUrl: string;
   clientId: string;
+  publicKey: string;    // Ed25519 公钥 (hex)
+  privateKey: string;   // Ed25519 私钥 (hex)
   theme?: Theme;
   workspacePath?: string;
   source?: SocketSource;
   pageSlug?: string;
 }
 
+// Ed25519 签名工具
+async function signMessage(message: string, privateKeyHex: string): Promise<string> {
+  const privateKey = hexToBytes(privateKeyHex);
+  const messageBytes = new TextEncoder().encode(message);
+  const signature = await ed.signAsync(messageBytes, privateKey);
+  return bytesToHex(signature);
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 interface ActionDef {
   description: string;
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
+  timeout?: number;  // 自定义超时时间（ms），默认 30000
   execute: (payload: unknown, context: ExecuteContext) => Promise<ActionResult>;
 }
 
@@ -1086,6 +1605,7 @@ interface RegisteredAction {
   description: string;
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
+  timeout?: number;
   execute: ActionDef["execute"];
 }
 
@@ -1139,21 +1659,33 @@ class VibenPageSDK {
       reconnectionDelayMax: 5000,
     });
 
-    this.socket.on("connect", () => {
-      this.socket!.emit("client:connect", {
-        clientId: this.config!.clientId,
-        source: this.config!.source ?? this.detectSource(),
-        pageSlug: this.config!.pageSlug,
-      }, (ack: { success: boolean; error?: string }) => {
-        if (ack.success) {
-          this._state = "connected";
-          this.notifyStateChange();
-          this.readyResolve?.(true);
-          this.reregisterActions();
-        } else {
-          this.readyReject?.(new Error(ack.error ?? "Connection failed"));
-        }
-      });
+    this.socket.on("connect", async () => {
+      try {
+        // 生成带时间戳的签名
+        const timestamp = Date.now();
+        const message = `${this.config!.clientId}:${timestamp}`;
+        const signature = await signMessage(message, this.config!.privateKey);
+        
+        this.socket!.emit("client:connect", {
+          clientId: this.config!.clientId,
+          source: this.config!.source ?? this.detectSource(),
+          pageSlug: this.config!.pageSlug,
+          publicKey: this.config!.publicKey,
+          signature,
+          timestamp,
+        }, (ack: { success: boolean; error?: string }) => {
+          if (ack.success) {
+            this._state = "connected";
+            this.notifyStateChange();
+            this.readyResolve?.(true);
+            this.reregisterActions();
+          } else {
+            this.readyReject?.(new Error(ack.error ?? "Connection failed"));
+          }
+        });
+      } catch (error) {
+        this.readyReject?.(error instanceof Error ? error : new Error("Signature failed"));
+      }
     });
 
     this.socket.on("disconnect", () => {
@@ -1238,6 +1770,7 @@ class VibenPageSDK {
         description: action.description,
         inputSchema: action.inputSchema,
         outputSchema: action.outputSchema,
+        timeout: action.timeout,
       };
     }
 
@@ -1365,12 +1898,14 @@ class VibenPageSDK {
           description: def.description,
           inputSchema: def.inputSchema,
           outputSchema: def.outputSchema,
+          timeout: def.timeout,
           execute: def.execute,
         });
         actionsToRegister[name] = {
           description: def.description,
           inputSchema: def.inputSchema,
           outputSchema: def.outputSchema,
+          timeout: def.timeout,
         };
       }
 
@@ -1482,51 +2017,78 @@ git commit -m "feat(sdk): rewrite viben-page-sdk in TypeScript with Socket.io"
 
 ---
 
-## Task 7: Desktop App 集成
+## Task 8: Desktop App 集成
 
 **Files:**
 - Create: `apps/desktop/src/stores/client-id-store.ts`
 - Modify: `apps/desktop/src/pages/apps/components/static-page-preview.tsx`
 - Delete: `apps/desktop/src/pages/apps/components/page-action-bridge.ts`
 
-- [ ] **Step 1: 创建 client-id-store**
+- [ ] **Step 1: 创建 client-id-store（带密钥对）**
 
 ```typescript
 // apps/desktop/src/stores/client-id-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import * as ed from "@noble/ed25519";
 
-interface ClientIdState {
+interface ClientIdentity {
   clientId: string;
-  getOrCreateClientId: () => string;
+  publicKey: string;   // hex
+  privateKey: string;  // hex
 }
 
-function generateClientId(): string {
-  return `client_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+interface ClientIdState {
+  identity: ClientIdentity | null;
+  getOrCreateIdentity: () => Promise<ClientIdentity>;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function generateIdentity(): Promise<ClientIdentity> {
+  // 生成 Ed25519 密钥对
+  const privateKey = ed.utils.randomPrivateKey();
+  const publicKey = await ed.getPublicKeyAsync(privateKey);
+  
+  // clientId 基于公钥的前 16 字节
+  const clientId = `client_${bytesToHex(publicKey).slice(0, 16)}`;
+  
+  return {
+    clientId,
+    publicKey: bytesToHex(publicKey),
+    privateKey: bytesToHex(privateKey),
+  };
 }
 
 export const useClientIdStore = create<ClientIdState>()(
   persist(
     (set, get) => ({
-      clientId: "",
-      getOrCreateClientId: () => {
-        let id = get().clientId;
-        if (!id) {
-          id = generateClientId();
-          set({ clientId: id });
+      identity: null,
+      getOrCreateIdentity: async () => {
+        let identity = get().identity;
+        if (!identity) {
+          identity = await generateIdentity();
+          set({ identity });
         }
-        return id;
+        return identity;
       },
     }),
     {
-      name: "viben-client-id",
+      name: "viben-client-identity",
     }
   )
 );
 
-// Helper to get client id synchronously (for injection)
-export function getClientId(): string {
-  return useClientIdStore.getState().getOrCreateClientId();
+// 同步获取（如果已初始化）
+export function getIdentitySync(): ClientIdentity | null {
+  return useClientIdStore.getState().identity;
+}
+
+// 异步获取或创建
+export async function getOrCreateIdentity(): Promise<ClientIdentity> {
+  return useClientIdStore.getState().getOrCreateIdentity();
 }
 ```
 
@@ -1539,10 +2101,9 @@ export function getClientId(): string {
 // import { createPageActionBridge, type PageActionBridge } from "./page-action-bridge";
 
 // 添加新的 import:
-import { getClientId } from "@/stores/client-id-store";
+import { getIdentitySync, getOrCreateIdentity, type ClientIdentity } from "@/stores/client-id-store";
 
 // 移除以下代码:
-// const iframeRef = useRef<HTMLIFrameElement>(null);
 // const bridgeRef = useRef<PageActionBridge | null>(null);
 // const currentBridgeKeyRef = useRef<string | null>(null);
 // const resolvedThemeRef = useRef(resolvedTheme);
@@ -1556,24 +2117,35 @@ import { getClientId } from "@/stores/client-id-store";
 
 // 替换为新的注入逻辑:
 const iframeRef = useRef<HTMLIFrameElement>(null);
+const [identity, setIdentity] = useState<ClientIdentity | null>(getIdentitySync);
+
+// 初始化时获取或创建 identity
+useEffect(() => {
+  if (!identity) {
+    getOrCreateIdentity().then(setIdentity);
+  }
+}, [identity]);
 
 const injectConfig = useCallback(() => {
   const iframe = iframeRef.current;
-  if (!iframe?.contentWindow) return;
+  if (!iframe?.contentWindow || !identity) return;
   
   try {
     (iframe.contentWindow as { __VIBEN_CONFIG__?: unknown }).__VIBEN_CONFIG__ = {
       gatewayUrl: getGatewayUrl(),
-      clientId: getClientId(),
+      clientId: identity.clientId,
+      publicKey: identity.publicKey,
+      privateKey: identity.privateKey,
       theme: resolvedTheme,
       workspacePath,
       source: "page_iframe",
       pageSlug: page.slug,
     };
   } catch {
-    // Cross-origin frame, config will be injected via URL params as fallback
+    // Cross-origin frame - 不支持，SDK 会报错
+    console.error("Cannot inject config into cross-origin iframe");
   }
-}, [resolvedTheme, workspacePath, page.slug]);
+}, [identity, resolvedTheme, workspacePath, page.slug]);
 
 // 在 iframe 渲染部分:
 // 替换 ref={bindIframe} 为 ref={iframeRef}
@@ -1603,7 +2175,7 @@ git commit -m "feat(desktop): integrate Socket.io SDK, remove PageActionBridge"
 
 ---
 
-## Task 8: 端到端测试
+## Task 9: 端到端测试
 
 **Files:** None (manual testing)
 

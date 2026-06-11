@@ -7,6 +7,7 @@
 export { SingleSelector } from "./single-selector";
 export { TripleSelector } from "./triple-selector";
 export type {
+  DisplayLabelFormatParams,
   SelectorOption,
   SingleSelectorProps,
   TripleSelectorProps,

@@ -104,8 +104,8 @@ export type { SkillsConfigPopoverProps } from "./skills-config-popover";
 export { ContextDetailsPopover } from "./context-details-popover";
 export type { ContextDetailsPopoverProps } from "./context-details-popover";
 
-export { ContextApprovalButton, APPROVAL_MODE_CONFIG } from "./context-approval-button";
-export type { ContextApprovalButtonProps, ApprovalMode } from "./context-approval-button";
+export { ContextApprovalButton, APPROVAL_MODE_CONFIG, useContextApprovalPopupProps } from "./context-approval-button";
+export type { ContextApprovalButtonProps, ContextPopupRenderProps, ApprovalMode } from "./context-approval-button";
 
 export { ContextApprovalPopup } from "./context-approval-popup";
 export type { ContextApprovalPopupProps } from "./context-approval-popup";
@@ -235,4 +235,5 @@ export type {
   SingleSelectorProps,
   TripleSelectorProps,
   TripleSelectorValue,
+  DisplayLabelFormatParams,
 } from "./selector";

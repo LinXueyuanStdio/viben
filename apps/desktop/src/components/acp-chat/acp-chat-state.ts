@@ -1,12 +1,17 @@
 import type { AgentMessage, Artifact, CommandQueueItem, PendingQuestion, SlashCommand, TaskPlan } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
-import type React from "react";
 import { applyAcpUiStep, type AcpUiStep } from "./acp-chat-adapter";
 import type {
   ClientToolCall,
   ElicitationRequestLog,
   PermissionRequestLog,
 } from "./acp-client";
+
+/**
+ * Type for session state setter that works with both React.Dispatch and Zustand store setters.
+ * Both use the same pattern: accepts a function that takes current state and returns new state.
+ */
+export type SessionsByIdSetter = (updater: (current: Record<string, UiSessionState>) => Record<string, UiSessionState>) => void;
 
 export interface UiSessionState {
   id: string;
@@ -77,7 +82,7 @@ export function createUiSession(
 }
 
 export function updateSession(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  setSessionsById: SessionsByIdSetter,
   sessionId: string,
   updater: (session: UiSessionState) => UiSessionState
 ): void {
@@ -91,7 +96,7 @@ export function updateSession(
 }
 
 export function enqueueUiSteps(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  setSessionsById: SessionsByIdSetter,
   sessionId: string,
   steps: AcpUiStep[]
 ): void {
@@ -109,7 +114,7 @@ export function enqueueUiSteps(
  * such as steer-related events (queued, consumed).
  */
 export function appendUiMessagesImmediately(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  setSessionsById: SessionsByIdSetter,
   sessionId: string,
   messages: AgentMessage[]
 ): void {
@@ -122,7 +127,7 @@ export function appendUiMessagesImmediately(
 }
 
 export function appendSessionStreamingText(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  setSessionsById: SessionsByIdSetter,
   sessionId: string,
   text: string
 ): void {
@@ -180,14 +185,14 @@ export function drainSessionUiStepQueue(session: UiSessionState): UiSessionState
 }
 
 export function resolveSessionApproval(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  setSessionsById: SessionsByIdSetter,
   sessionId: string
 ): void {
   updateSession(setSessionsById, sessionId, (session) => ({ ...session, pendingApproval: null }));
 }
 
 export function resolveSessionQuestion(
-  setSessionsById: React.Dispatch<React.SetStateAction<Record<string, UiSessionState>>>,
+  setSessionsById: SessionsByIdSetter,
   sessionId: string
 ): void {
   updateSession(setSessionsById, sessionId, (session) => ({ ...session, pendingQuestion: null }));
