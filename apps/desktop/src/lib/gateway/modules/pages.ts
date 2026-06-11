@@ -27,6 +27,7 @@ export type {
   PageConfig,
   PageType,
   PagePermission,
+  PageIndex,
   StaticPageConfig,
   MarkdownPageConfig,
   ServerPageConfig,
@@ -79,12 +80,12 @@ export async function listPages(
 }
 
 /**
- * View a specific page by slug
+ * View a specific page by uid
  */
 export async function viewPage(
   baseUrl: string,
   workspacePath: string,
-  slug: string
+  uid: string
 ): Promise<ViewPageResult> {
   const response = await fetch(`${baseUrl}/api/page/view`, {
     method: "POST",
@@ -92,7 +93,7 @@ export async function viewPage(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ workspace_path: workspacePath, slug }),
+    body: JSON.stringify({ workspace_path: workspacePath, uid }),
   });
 
   if (!response.ok) {
@@ -134,12 +135,12 @@ export async function createPage(
 }
 
 /**
- * Delete a page by slug
+ * Delete a page by uid
  */
 export async function deletePage(
   baseUrl: string,
   workspacePath: string,
-  slug: string
+  uid: string
 ): Promise<DeletePageResult> {
   const response = await fetch(`${baseUrl}/api/page/delete`, {
     method: "POST",
@@ -147,7 +148,7 @@ export async function deletePage(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ workspace_path: workspacePath, slug }),
+    body: JSON.stringify({ workspace_path: workspacePath, uid }),
   });
 
   if (!response.ok) {
@@ -167,7 +168,7 @@ export async function deletePage(
 
 export interface UpdatePageContentResult {
   success: boolean;
-  slug?: string;
+  uid?: string;
   error?: string;
 }
 
@@ -177,7 +178,7 @@ export interface UpdatePageContentResult {
 export async function updatePageContent(
   baseUrl: string,
   workspacePath: string,
-  slug: string,
+  uid: string,
   content: string
 ): Promise<UpdatePageContentResult> {
   const response = await fetch(`${baseUrl}/api/page/update-content`, {
@@ -186,7 +187,7 @@ export async function updatePageContent(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ workspace_path: workspacePath, slug, content }),
+    body: JSON.stringify({ workspace_path: workspacePath, uid, content }),
   });
 
   if (!response.ok) {
@@ -267,7 +268,7 @@ export async function reorderPages(
 // =============================================================================
 
 /**
- * Duplicate a page (copy all files with a new slug)
+ * Duplicate a page (copy all files with a new uid)
  */
 export async function duplicatePage(
   baseUrl: string,
@@ -303,13 +304,13 @@ export async function duplicatePage(
 export async function uploadPageAsset(
   baseUrl: string,
   workspacePath: string,
-  slug: string,
+  uid: string,
   file: File
 ): Promise<{ success: boolean; url?: string; filename?: string; error?: string }> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("workspace_path", workspacePath);
-  formData.append("slug", slug);
+  formData.append("uid", uid);
 
   const response = await fetch(`${baseUrl}/api/page/asset/upload`, {
     method: "POST",
@@ -338,12 +339,12 @@ export async function uploadPageAsset(
 export function getPageServeUrl(
   baseUrl: string,
   workspacePath: string,
-  slug: string,
+  uid: string,
   path?: string
 ): string {
   const params = new URLSearchParams({
     workspace_path: workspacePath,
-    slug,
+    uid,
   });
   if (path) {
     params.set("path", path);
@@ -358,7 +359,7 @@ export function getPageServeUrl(
 export function resolvePageServeUrl(
   baseUrl: string,
   workspacePath: string,
-  slug: string,
+  uid: string,
   input: string
 ): string {
   if (/^https?:\/\//i.test(input)) {
@@ -369,7 +370,7 @@ export function resolvePageServeUrl(
     return `${baseUrl}${input}`;
   }
 
-  return getPageServeUrl(baseUrl, workspacePath, slug, input);
+  return getPageServeUrl(baseUrl, workspacePath, uid, input);
 }
 
 // =============================================================================
