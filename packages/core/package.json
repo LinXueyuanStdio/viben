@@ -56,7 +56,8 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && pnpm build:page-sdk",
+    "build:page-sdk": "tsx scripts/build-page-sdk.ts",
     "build:sidecar": "tsx scripts/build-sidecar.ts",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",

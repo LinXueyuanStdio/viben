@@ -64,6 +64,8 @@ function readPageSdkAsset(filename: string): string {
     join(currentDir, "../assets", filename),
     join(currentDir, "../../assets", filename),
     join(currentDir, "../../../assets", filename),
+    join(process.cwd(), "dist/assets", filename),
+    join(process.cwd(), "packages/core/dist/assets", filename),
     join(process.cwd(), "assets", filename),
     join(process.cwd(), "packages/core/assets", filename),
   ];
