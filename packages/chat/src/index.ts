@@ -104,8 +104,11 @@ export type { SkillsConfigPopoverProps } from "./skills-config-popover";
 export { ContextDetailsPopover } from "./context-details-popover";
 export type { ContextDetailsPopoverProps } from "./context-details-popover";
 
-export { ContextApprovalButton } from "./context-approval-button";
+export { ContextApprovalButton, APPROVAL_MODE_CONFIG } from "./context-approval-button";
 export type { ContextApprovalButtonProps, ApprovalMode } from "./context-approval-button";
+
+export { ContextApprovalPopup } from "./context-approval-popup";
+export type { ContextApprovalPopupProps } from "./context-approval-popup";
 
 // Message components
 export { MessageList } from "./message-list";

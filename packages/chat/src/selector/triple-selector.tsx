@@ -6,7 +6,7 @@
  */
 
 import { useState } from "react";
-import { Check, ChevronDown, ChevronRight, Circle } from "lucide-react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { cn, Badge, Button, Popover, PopoverContent, PopoverTrigger } from "@viben/ui";
 import type { SelectorOption, TripleSelectorProps } from "./types";
 
@@ -26,7 +26,7 @@ function OptionItem({
       variant="ghost"
       size="sm"
       className={cn(
-        "w-full justify-start gap-2 h-9",
+        "w-full justify-start gap-1.5 h-7 px-2",
         option.disabled && "opacity-50",
         isSelected && "bg-primary/10"
       )}
@@ -34,25 +34,17 @@ function OptionItem({
       disabled={option.disabled}
     >
       {isSelected ? (
-        <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <Check className="h-3 w-3 shrink-0 text-primary" />
       ) : (
-        <span className="h-3.5 w-3.5 shrink-0" />
+        <span className="h-3 w-3 shrink-0" />
       )}
-      <span className="h-4 w-4 shrink-0 flex items-center justify-center">
-        {option.icon || <Circle className="h-3 w-3" />}
-      </span>
-      <div className="flex-1 min-w-0 text-left">
-        <div className="truncate text-sm">{option.label}</div>
-        {option.description && (
-          <div className="truncate text-[10px] text-muted-foreground">{option.description}</div>
-        )}
-      </div>
+      <span className="flex-1 min-w-0 truncate text-left text-xs">{option.label}</span>
       {option.badge && (
-        <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0">
+        <Badge variant="secondary" className="h-3.5 px-1 text-[9px] shrink-0">
           {option.badge}
         </Badge>
       )}
-      {showArrow && <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />}
+      {showArrow && <ChevronRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />}
     </Button>
   );
 }
@@ -114,31 +106,26 @@ export function TripleSelector({
           <Button
             variant="ghost"
             size="sm"
-            className={cn("h-8 max-w-[200px] shrink-0 px-2 gap-1.5 text-xs", className)}
+            className={cn("h-6 max-w-[180px] shrink-0 px-1.5 gap-1 text-[11px]", className)}
             disabled={isLoading || disabled}
           >
-            <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center">
-              {selectedThird?.icon || selectedSecond?.icon || selectedFirst?.icon || (
-                <Circle className="h-3 w-3" />
-              )}
-            </span>
             <span className="truncate">{displayLabel || "Select..."}</span>
-            <ChevronDown className="h-3 w-3 shrink-0" />
+            <ChevronDown className="h-2.5 w-2.5 shrink-0" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <div className="flex">
             {/* 第一级 */}
             {!hideFirst && (
-              <div className="w-48 border-r border-border/50">
+              <div className="w-36 border-r border-border/50">
                 {firstLabel && (
-                  <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/50">
+                  <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50">
                     {firstLabel}
                   </div>
                 )}
-                <div className="p-1 max-h-64 overflow-y-auto">
+                <div className="p-0.5 max-h-56 overflow-y-auto">
                   {firstOptions.length === 0 ? (
-                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    <div className="px-2 py-2 text-xs text-muted-foreground text-center">
                       No options
                     </div>
                   ) : (
@@ -158,15 +145,15 @@ export function TripleSelector({
 
             {/* 第二级 */}
             {!hideSecond && value.first && (
-              <div className="w-48 border-r border-border/50">
+              <div className="w-36 border-r border-border/50">
                 {secondLabel && (
-                  <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/50">
+                  <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50">
                     {secondLabel}
                   </div>
                 )}
-                <div className="p-1 max-h-64 overflow-y-auto">
+                <div className="p-0.5 max-h-56 overflow-y-auto">
                   {secondOptions.length === 0 ? (
-                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    <div className="px-2 py-2 text-xs text-muted-foreground text-center">
                       No options
                     </div>
                   ) : (
@@ -186,15 +173,15 @@ export function TripleSelector({
 
             {/* 第三级 */}
             {!hideThird && value.second && (
-              <div className="w-56">
+              <div className="w-44">
                 {thirdLabel && (
-                  <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/50">
+                  <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50">
                     {thirdLabel}
                   </div>
                 )}
-                <div className="p-1 max-h-64 overflow-y-auto">
+                <div className="p-0.5 max-h-56 overflow-y-auto">
                   {thirdOptions.length === 0 ? (
-                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    <div className="px-2 py-2 text-xs text-muted-foreground text-center">
                       No options
                     </div>
                   ) : (
@@ -218,7 +205,7 @@ export function TripleSelector({
 
   // 非紧凑模式：三个独立的选择器并排显示
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className={cn("flex items-center gap-0.5", className)}>
       {/* 第一级选择器 */}
       {!hideFirst && (
         <Popover>
@@ -226,24 +213,21 @@ export function TripleSelector({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 max-w-[120px] shrink-0 px-2 gap-1.5 text-xs"
+              className="h-6 max-w-[100px] shrink-0 px-1.5 gap-1 text-[11px]"
               disabled={isLoading || disabled}
             >
-              <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center">
-                {selectedFirst?.icon || <Circle className="h-3 w-3" />}
-              </span>
               <span className="truncate">{selectedFirst?.label || firstPlaceholder}</span>
-              <ChevronDown className="h-3 w-3 shrink-0" />
+              <ChevronDown className="h-2.5 w-2.5 shrink-0" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-1" align="start">
+          <PopoverContent className="w-44 p-0.5" align="start">
             {firstLabel && (
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 mb-1">
+              <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground border-b border-border/50 mb-0.5">
                 {firstLabel}
               </div>
             )}
             {firstOptions.length === 0 ? (
-              <div className="px-2 py-3 text-sm text-muted-foreground text-center">No options</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground text-center">No options</div>
             ) : (
               firstOptions.map((option) => (
                 <OptionItem
@@ -265,24 +249,21 @@ export function TripleSelector({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 max-w-[120px] shrink-0 px-2 gap-1.5 text-xs"
+              className="h-6 max-w-[100px] shrink-0 px-1.5 gap-1 text-[11px]"
               disabled={isLoading || disabled || !value.first}
             >
-              <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center">
-                {selectedSecond?.icon || <Circle className="h-3 w-3" />}
-              </span>
               <span className="truncate">{selectedSecond?.label || secondPlaceholder}</span>
-              <ChevronDown className="h-3 w-3 shrink-0" />
+              <ChevronDown className="h-2.5 w-2.5 shrink-0" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-1" align="start">
+          <PopoverContent className="w-44 p-0.5" align="start">
             {secondLabel && (
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 mb-1">
+              <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground border-b border-border/50 mb-0.5">
                 {secondLabel}
               </div>
             )}
             {secondOptions.length === 0 ? (
-              <div className="px-2 py-3 text-sm text-muted-foreground text-center">No options</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground text-center">No options</div>
             ) : (
               secondOptions.map((option) => (
                 <OptionItem
@@ -304,24 +285,21 @@ export function TripleSelector({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 max-w-[140px] shrink-0 px-2 gap-1.5 text-xs"
+              className="h-6 max-w-[120px] shrink-0 px-1.5 gap-1 text-[11px]"
               disabled={isLoading || disabled || !value.second}
             >
-              <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center">
-                {selectedThird?.icon || <Circle className="h-3 w-3" />}
-              </span>
               <span className="truncate">{selectedThird?.label || thirdPlaceholder}</span>
-              <ChevronDown className="h-3 w-3 shrink-0" />
+              <ChevronDown className="h-2.5 w-2.5 shrink-0" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-64 p-1" align="start">
+          <PopoverContent className="w-48 p-0.5" align="start">
             {thirdLabel && (
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground border-b border-border/50 mb-1">
+              <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground border-b border-border/50 mb-0.5">
                 {thirdLabel}
               </div>
             )}
             {thirdOptions.length === 0 ? (
-              <div className="px-2 py-3 text-sm text-muted-foreground text-center">No options</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground text-center">No options</div>
             ) : (
               thirdOptions.map((option) => (
                 <OptionItem

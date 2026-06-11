@@ -6,6 +6,8 @@
  * - Agents are loaded from Gateway API (workspace + global)
  * - Each agent has an executor_type that constrains available providers/models
  * - Provider/model selections auto-correct when executor changes
+ *
+ * Uses useAcpSessionStore for global state that survives mode switches.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,6 +24,7 @@ import type {
 } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useAcpSessionStore } from "@/stores/acp-session-store";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
 import { useAgents } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
@@ -45,7 +48,6 @@ import {
   type PermissionRequestLog,
 } from "./acp-client";
 import {
-  acpSessionUpdateToStreamingText,
   acpSessionUpdateToUiSteps,
   clientToolCallToUiSteps,
   clientToolRequestedToUiSteps,
@@ -64,7 +66,6 @@ import {
   type ElicitationFormField,
 } from "./acp-chat-adapter";
 import {
-  appendSessionStreamingText,
   appendUiMessagesImmediately,
   applyQueuedUiStep,
   createUiSession,
@@ -345,8 +346,42 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const resolvedDefaultCwd = defaultCwd ?? activeWorkspace?.path ?? "";
   const workspacePath = activeWorkspace?.path;
 
-  // ========== Session State ==========
-  const [status, setStatus] = useState<ConnectionStatus>("idle");
+  // ========== Global State from Store (survives mode switches) ==========
+  const {
+    status,
+    hasAutoConnected,
+    initializeResult,
+    selectedAgentId,
+    selectedProviderId,
+    executorType: storeExecutorType,
+    model: storeModel,
+    setStatus,
+    setHasAutoConnected,
+    setInitializeResult,
+    setSelectedAgentId: setStoreSelectedAgentId,
+    setSelectedProviderId: setStoreSelectedProviderId,
+    setExecutorType: setStoreExecutorType,
+    setModel: setStoreModel,
+  } = useAcpSessionStore();
+
+  // Use defaults if store values are null
+  const executorType = storeExecutorType ?? defaultExecutorType;
+  const model = storeModel ?? defaultModel;
+
+  // Wrapped setters that handle null-to-default conversion
+  const setExecutorType = useCallback((type: string) => {
+    setStoreExecutorType(type);
+  }, [setStoreExecutorType]);
+
+  const setModel = useCallback((m: string) => {
+    setStoreModel(m);
+  }, [setStoreModel]);
+
+  const setSelectedProviderId = useCallback((id: string | null) => {
+    setStoreSelectedProviderId(id);
+  }, [setStoreSelectedProviderId]);
+
+  // ========== Session State (per-instance, but could be globalized later) ==========
   const [error, setError] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [sessionsById, setSessionsById] = useState<Record<string, UiSessionState>>({});
@@ -357,14 +392,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   const [elicitationDialogs, setElicitationDialogs] = useState<Record<string, ElicitationDialogState>>({});
   const [activeElicitationDialogId, setActiveElicitationDialogId] = useState<string | null>(null);
   const [subagentSheet, setSubagentSheet] = useState<SubagentSheetState | null>(null);
-  const [initializeResult, setInitializeResult] = useState<unknown>(null);
-  const [executorType, setExecutorType] = useState(defaultExecutorType);
-  const [model, setModel] = useState(defaultModel);
   const [cwd, setCwd] = useState(resolvedDefaultCwd);
-
-  // ========== Agent/Provider/Model Config State ==========
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
   // Load agents, providers, models from Gateway API
   const {
@@ -488,44 +516,61 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     }));
   }, [filteredModels]);
 
-  // Auto-select first provider when executor changes
+  // Auto-select default agent on initial load
   useEffect(() => {
-    if (prevExecutorTypeRef.current !== executorType) {
-      prevExecutorTypeRef.current = executorType;
-      const currentProviderValid = filteredProviders.some((p) => p.id === selectedProviderId);
-      if (!currentProviderValid && filteredProviders.length > 0) {
-        const defaultProvider = filteredProviders.find((p) => p.is_default);
-        const newProviderId = defaultProvider?.id ?? filteredProviders[0]?.id ?? null;
-        setSelectedProviderId(newProviderId);
-      }
-    }
-  }, [executorType, filteredProviders, selectedProviderId]);
-
-  // Auto-select first model when provider changes
-  useEffect(() => {
-    if (prevProviderIdRef.current !== selectedProviderId) {
-      prevProviderIdRef.current = selectedProviderId;
-      const currentModelValid = filteredModels.some((m) => m.id === model);
-      if (!currentModelValid && filteredModels.length > 0) {
-        const defaultModel = filteredModels.find((m) => m.is_default);
-        const newModelId = defaultModel?.id ?? filteredModels[0]?.id;
-        if (newModelId) {
-          setModel(newModelId);
+    if (!agentsLoading && allAgents.length > 0 && !selectedAgentId) {
+      // Prefer workspace agent, then first global agent
+      const defaultAgent = workspaceAgents[0] ?? globalAgents[0];
+      if (defaultAgent) {
+        setStoreSelectedAgentId(defaultAgent.id);
+        // Also set executor type from agent
+        if (defaultAgent.executor_type) {
+          setExecutorType(defaultAgent.executor_type);
         }
       }
     }
-  }, [selectedProviderId, filteredModels, model]);
+  }, [agentsLoading, allAgents, selectedAgentId, workspaceAgents, globalAgents, setStoreSelectedAgentId, setExecutorType]);
+
+  // Auto-select default provider on initial load or when executor changes
+  useEffect(() => {
+    if (prevExecutorTypeRef.current !== executorType) {
+      prevExecutorTypeRef.current = executorType;
+    }
+    // Select default provider if none selected or current is invalid
+    const currentProviderValid = selectedProviderId && filteredProviders.some((p) => p.id === selectedProviderId);
+    if (!currentProviderValid && filteredProviders.length > 0) {
+      const defaultProvider = filteredProviders.find((p) => p.is_default);
+      const newProviderId = defaultProvider?.id ?? filteredProviders[0]?.id ?? null;
+      setSelectedProviderId(newProviderId);
+    }
+  }, [executorType, filteredProviders, selectedProviderId, setSelectedProviderId]);
+
+  // Auto-select default model on initial load or when provider changes
+  useEffect(() => {
+    if (prevProviderIdRef.current !== selectedProviderId) {
+      prevProviderIdRef.current = selectedProviderId;
+    }
+    // Select default model if none selected or current is invalid
+    const currentModelValid = model && filteredModels.some((m) => m.id === model);
+    if (!currentModelValid && filteredModels.length > 0) {
+      const defaultModel = filteredModels.find((m) => m.is_default);
+      const newModelId = defaultModel?.id ?? filteredModels[0]?.id;
+      if (newModelId) {
+        setModel(newModelId);
+      }
+    }
+  }, [selectedProviderId, filteredModels, model, setModel]);
 
   // Handle agent selection - also update executor type
   const handleSetSelectedAgentId = useCallback((id: string | null) => {
-    setSelectedAgentId(id);
+    setStoreSelectedAgentId(id);
     if (id) {
       const agent = allAgents.find((a) => a.id === id);
       if (agent?.executor_type) {
         setExecutorType(agent.executor_type);
       }
     }
-  }, [allAgents]);
+  }, [allAgents, setExecutorType, setStoreSelectedAgentId]);
 
   // Combined config loading state
   const configLoading = agentsLoading || providersLoading || modelsLoading;
@@ -629,11 +674,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   }, [sessionsById]);
 
   const appendSessionUpdate = useCallback((notification: AcpSessionUpdate) => {
-    const text = acpSessionUpdateToStreamingText(notification);
-    if (text !== null) {
-      appendSessionStreamingText(setSessionsById, notification.sessionId, text);
-      return;
-    }
+    // All session updates go through the queue to preserve ordering.
+    // Previously agent_message_chunk bypassed the queue via streamingText,
+    // causing timing mismatches with thinking/tool_call events.
     enqueueUiSteps(setSessionsById, notification.sessionId, acpSessionUpdateToUiSteps(notification));
   }, []);
 
@@ -790,19 +833,32 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     return clientRef.current;
   }, [buildCallbacks]);
 
+  // Always update callbacks when component mounts or buildCallbacks changes
+  // This is crucial for mode switches (expanded <-> full) to keep callbacks in sync
+  useEffect(() => {
+    if (globalClientRef) {
+      const callbacks = buildCallbacks();
+      globalClientRef.updateCallbacks(callbacks);
+      clientRef.current = globalClientRef;
+    }
+  }, [buildCallbacks]);
+
   // Use Gateway status to trigger auto-connect when Gateway is ready
   const gatewayStatus = useGatewayStatus();
-  const hasAutoConnected = useRef(false);
 
-  // Auto-connect when Gateway is connected
+  // Auto-connect when Gateway is connected (uses store flag to prevent duplicate connections)
   useEffect(() => {
-    // Only auto-connect once, and only when Gateway is connected
-    if (hasAutoConnected.current || !gatewayStatus.isConnected) {
+    // Skip if already auto-connected or Gateway not ready
+    if (hasAutoConnected || !gatewayStatus.isConnected) {
+      // If already connected, just sync the client reference
+      if (globalClientRef && !clientRef.current) {
+        clientRef.current = globalClientRef;
+      }
       return;
     }
 
     let mounted = true;
-    hasAutoConnected.current = true;
+    setHasAutoConnected(true);
 
     const autoConnect = async () => {
       console.log("[ACP] Auto-connect starting (Gateway connected)...", { wsUrl, status });
@@ -823,7 +879,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           setError(err instanceof Error ? err.message : String(err));
         }
         // Reset flag on error to allow retry
-        hasAutoConnected.current = false;
+        setHasAutoConnected(false);
       }
     };
 
@@ -833,7 +889,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       console.log("[ACP] Auto-connect effect cleanup");
       mounted = false;
     };
-  }, [gatewayStatus.isConnected, ensureClient, wsUrl, status]);
+  }, [gatewayStatus.isConnected, hasAutoConnected, ensureClient, wsUrl, status, setHasAutoConnected, setInitializeResult]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return {

@@ -35,6 +35,7 @@ import {
   ChatInputTopToolbar,
   CommandQueuePanel,
   ContextApprovalButton,
+  ContextApprovalPopup,
   ExecApproval,
   ExpandedHeader,
   ExpandedHeaderModeControls,
@@ -2039,6 +2040,7 @@ function AcpChatSurface({
         breakdown={contextBreakdown}
         approvalMode={approvalMode}
         onApprovalModeChange={setApprovalMode}
+        renderPopup={(props) => <ContextApprovalPopup {...props} />}
       />
     </div>
   ), [approvalMode, contextBreakdown, tripleSelectorNode]);
