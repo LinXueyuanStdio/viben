@@ -12,7 +12,7 @@ describe("GUI Action MCP Server Routes", () => {
 
   it("registers Streamable HTTP endpoints at /api/mcp-server/gui-action", async () => {
     const app = Fastify();
-    registerGuiActionMcpServerRoutes(app);
+    registerGuiActionMcpServerRoutes(app, undefined);
     await app.ready();
 
     const response = await app.inject({
@@ -39,7 +39,7 @@ describe("GUI Action MCP Server Routes", () => {
     const createServer = vi.fn(() => ({
       connect: vi.fn(async () => undefined),
     }));
-    registerGuiActionMcpServerRoutes(app, {
+    registerGuiActionMcpServerRoutes(app, undefined, {
       createTransport: () => ({
         sessionId: undefined,
         onclose: undefined,
@@ -63,7 +63,7 @@ describe("GUI Action MCP Server Routes", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(createServer).toHaveBeenCalledWith("acp-1");
+    expect(createServer).toHaveBeenCalledWith("acp-1", undefined);
 
     await app.close();
   });

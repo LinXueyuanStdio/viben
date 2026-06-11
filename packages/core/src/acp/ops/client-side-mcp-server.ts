@@ -20,9 +20,28 @@ export {
   GUI_EXECUTE_TOOL_NAME,
 };
 
+export interface ClientStoreExecutor {
+  executeAction: (
+    targetClientId: string,
+    namespace: string,
+    actionName: string,
+    payload: unknown,
+    context: { sessionId: string; toolUseId: string; callerClientId?: string; source: string }
+  ) => Promise<{ content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>; structuredContent?: Record<string, unknown>; isError?: boolean }>;
+  getAllActions: () => Array<{
+    clientId: string;
+    namespace: string;
+    name: string;
+    description: string;
+    inputSchema?: unknown;
+  }>;
+}
+
 export interface ClientSideMcpServerOptions {
   sessionId?: string;
   gatewayUrl?: string;
+  callerClientId?: string;
+  clientStoreExecutor?: ClientStoreExecutor;
   requestClientTool?: (request: ClientSideClientToolRequest) => Promise<CallToolResult>;
 }
 
@@ -54,13 +73,33 @@ export function createClientSideMcpServer(options: ClientSideMcpServerOptions = 
       payload: z.record(z.string(), z.unknown()).optional().describe("action 输入参数，具体结构由 get_action_detail 返回的 input_schema 定义"),
     },
     async (args): Promise<CallToolResult> => {
-      if (!sessionId) {
-        return errorResult("Error: VIBEN_ACP_SESSION_ID is required for GUI_execute.");
-      }
-
       const input = args as { action?: string; payload?: Record<string, unknown> };
       if (!input.action) {
         return errorResult("Error: action field is required.");
+      }
+
+      if (options.clientStoreExecutor) {
+        try {
+          const parsed = parseActionName(input.action, options.callerClientId);
+          return await options.clientStoreExecutor.executeAction(
+            parsed.targetClientId,
+            parsed.namespace,
+            parsed.name,
+            input.payload ?? {},
+            {
+              sessionId: sessionId ?? "",
+              toolUseId: `gui-${randomUUID()}`,
+              callerClientId: options.callerClientId,
+              source: "mcp",
+            }
+          );
+        } catch (error) {
+          return errorResult(error instanceof Error ? error.message : String(error));
+        }
+      }
+
+      if (!sessionId) {
+        return errorResult("Error: VIBEN_ACP_SESSION_ID is required for GUI_execute.");
       }
 
       return await requestClientSideTool({
@@ -149,6 +188,32 @@ async function requestClientSideTool(request: RequestClientSideToolOptions): Pro
     return errorResult(body?.error ?? `${request.errorLabel} request failed with HTTP ${response.status}.`);
   }
   return body.result ?? errorResult(`${request.errorLabel} request completed without a tool result.`);
+}
+
+function parseActionName(action: string, callerClientId?: string): {
+  targetClientId: string;
+  namespace: string;
+  name: string;
+} {
+  const parts = action.split(".");
+
+  if (parts.length === 2) {
+    if (!callerClientId) {
+      throw new Error("Action must include client prefix for external agents");
+    }
+    return {
+      targetClientId: callerClientId,
+      namespace: parts[0],
+      name: parts[1],
+    };
+  } else if (parts.length === 3) {
+    return {
+      targetClientId: parts[0],
+      namespace: parts[1],
+      name: parts[2],
+    };
+  }
+  throw new Error(`Invalid action format: ${action}. Expected namespace.name or clientId.namespace.name`);
 }
 
 function errorResult(text: string): CallToolResult {

@@ -22,6 +22,7 @@ import { MeshService } from "../mesh/mesh-service";
 import { PeerStore } from "../mesh/peer-store";
 import { DiscoveryService } from "../discovery/discovery-service";
 import { ClientStore } from "./client-store";
+import type { ClientSocketServer } from "./client-socket-server";
 
 /**
  * Application state for the gateway
@@ -63,6 +64,8 @@ export interface AppState {
   discovery: DiscoveryService;
   /** Client store for Socket.io connected clients and their actions */
   clientStore: ClientStore;
+  /** Client Socket.io server (set after onReady) */
+  clientSocketServer?: ClientSocketServer;
 }
 
 export interface AppStateConfig {

@@ -197,10 +197,9 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   registerRoutes(app, state);
 
   // Create client socket server (Socket.io) after ready when httpServer is available
-  let clientSocketServer: ClientSocketServer | null = null;
   app.addHook("onReady", async () => {
     const httpServer = app.server;
-    clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
+    state.clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
     log.info("Client Socket.io server started");
   });
 
@@ -329,7 +328,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   // Handle shutdown
   app.addHook("onClose", async () => {
     log.info("Shutting down gateway...");
-    clientSocketServer?.shutdown();
+    state.clientSocketServer?.shutdown();
     state.clientStore.shutdown();
     state.channelRouter.stop();
     await state.channelRuntime.stop();

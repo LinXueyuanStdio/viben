@@ -117,7 +117,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerDeviceRoutes(fastify, state);
   registerAccountsRoutes(fastify);
   registerPetRoutes(fastify);
-  registerGuiActionMcpServerRoutes(fastify);
+  registerGuiActionMcpServerRoutes(fastify, state);
 }
 
 // Re-export individual route registrations

@@ -7,6 +7,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createClientSideMcpServer } from "../../../acp/ops/client-side-mcp-server";
 import { acpSessionManager } from "../../../acp";
 import { logger as globalLogger } from "../../../telemetry";
+import type { AppState } from "../../state";
 
 const log = globalLogger.child({ module: "gui-action-mcp-server" });
 const GUI_ACTION_MCP_PATH = "/api/mcp-server/gui-action";
@@ -22,7 +23,7 @@ interface GuiActionMcpSession {
 }
 
 interface GuiActionMcpRoutesOptions {
-  createServer?: (sessionId: string) => Pick<McpServer, "connect">;
+  createServer?: (sessionId: string, callerClientId?: string) => Pick<McpServer, "connect">;
   createTransport?: (pendingSessionId: string) => GuiActionMcpTransport;
 }
 
@@ -67,11 +68,18 @@ export function getActiveGuiActionMcpServerSessionCount(): number {
 
 export function registerGuiActionMcpServerRoutes(
   fastify: FastifyInstance,
+  state?: AppState,
   options: GuiActionMcpRoutesOptions = {},
 ): void {
-  const createServer = options.createServer ?? ((sessionId: string) =>
+  const createServer = options.createServer ?? ((sessionId: string, callerClientId?: string) =>
     createClientSideMcpServer({
       sessionId,
+      callerClientId,
+      clientStoreExecutor: state?.clientSocketServer ? {
+        executeAction: (targetClientId, namespace, name, payload, context) =>
+          state.clientSocketServer!.executeAction(targetClientId, namespace, name, payload, context),
+        getAllActions: () => state.clientStore.getAllActions(),
+      } : undefined,
       requestClientTool: ({ sessionId: sid, toolName, input, toolCallId }) =>
         acpSessionManager.requestClientTool(sid, toolName, input, toolCallId),
     }));
@@ -139,9 +147,10 @@ export function registerGuiActionMcpServerRoutes(
       return { error: "session_id query parameter is required" };
     }
 
+    const callerClientId = request.headers["x-viben-client-id"] as string | undefined;
     const pendingMcpSessionId = `pending-${randomUUID()}`;
     const transport = createTransport(pendingMcpSessionId);
-    const server = createServer(acpSessionId);
+    const server = createServer(acpSessionId, callerClientId);
     const sessionId = transport.sessionId ?? pendingMcpSessionId;
     sessions.set(sessionId, { id: sessionId, server, transport });
 
