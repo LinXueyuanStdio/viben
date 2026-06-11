@@ -283,7 +283,7 @@ function AcpHeaderNewSessionMenu({
             <>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">
-                {t("chat.globalWorkspace", "Global")}
+                {t("chat.global", "Global")}
               </DropdownMenuLabel>
               {globalAgents.map((agent) => (
                 <DropdownMenuItem

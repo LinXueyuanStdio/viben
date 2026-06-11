@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executeClientTool, isGuiExecuteTool } from "./client-tool-executor";
+import { setApprovalHandler } from "@/lib/action-system/execution-context";
 import { useActionStore } from "@/stores/action-store";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -23,6 +24,7 @@ describe("ACP client tool executor", () => {
   beforeEach(() => {
     useActionStore.setState({ registry: new Map() });
     document.body.innerHTML = '<div id="root">Desktop</div>';
+    setApprovalHandler((pending) => pending.resolve(true));
   });
 
   it("executes builtin read_window instead of requiring an action-store registration", async () => {

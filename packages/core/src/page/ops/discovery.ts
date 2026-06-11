@@ -1,29 +1,52 @@
 // packages/core/src/page/ops/discovery.ts
 
 /**
- * Page discovery - scan pages/ directory and parse SKILL.md files
+ * Page discovery - scan pages/ directory and parse PAGE.md files
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import matter from "gray-matter";
-import type { PageConfig, StaticPageConfig, MarkdownPageConfig, ServerPageConfig, ProxyPageConfig } from "./types";
+import type {
+  PageConfig,
+  PageIndex,
+  StaticPageConfig,
+  MarkdownPageConfig,
+  ServerPageConfig,
+  ProxyPageConfig,
+} from "./types";
 
-const SKILL_FILE = "SKILL.md";
+const PAGE_FILE = "PAGE.md";
 const PAGES_DIR = "pages";
+const INDEX_FILE = "index.json";
 
 /**
- * Parse a SKILL.md file and extract page config
+ * Read index.json from workspace
  */
-export async function parseSkillMd(
-  skillPath: string,
-  workspacePath: string
+function readPageIndex(workspacePath: string): PageIndex {
+  const indexPath = join(workspacePath, PAGES_DIR, INDEX_FILE);
+  if (!existsSync(indexPath)) {
+    return { root: [] };
+  }
+  try {
+    return JSON.parse(readFileSync(indexPath, "utf-8"));
+  } catch {
+    return { root: [] };
+  }
+}
+
+/**
+ * Parse a PAGE.md file and extract page config
+ */
+export async function parsePageMd(
+  pageMdPath: string,
+  uid: string
 ): Promise<PageConfig | null> {
-  if (!existsSync(skillPath)) {
+  if (!existsSync(pageMdPath)) {
     return null;
   }
 
-  const content = readFileSync(skillPath, "utf-8");
+  const content = readFileSync(pageMdPath, "utf-8");
   const { data, content: markdownContent } = matter(content);
 
   // Validate required fields
@@ -31,18 +54,16 @@ export async function parseSkillMd(
     return null;
   }
 
-  const pageDir = join(skillPath, "..");
-  const relativePath = relative(join(workspacePath, PAGES_DIR), pageDir);
-  const slug = relativePath.replace(/\\/g, "/"); // Normalize for Windows
+  const pageDir = join(pageMdPath, "..");
 
-  // Process icon - read from top-level (icon is a top-level field, not inside page)
+  // Process icon - read from top-level
   const iconValue = data.icon;
 
   // Get file modification time
-  const updatedAt = statSync(skillPath).mtime.toISOString();
+  const updatedAt = statSync(pageMdPath).mtime.toISOString();
 
   const base = {
-    slug,
+    uid,
     name: data.name,
     description: data.description,
     icon: iconValue,
@@ -70,9 +91,8 @@ export async function parseSkillMd(
       } as MarkdownPageConfig;
 
     case "server":
-      // command 是必填字段
       if (!data.page.command) {
-        console.warn(`[parseSkillMd] server page "${slug}" missing required field: command`);
+        console.warn(`[parsePageMd] server page "${uid}" missing required field: command`);
         return null;
       }
       return {
@@ -85,9 +105,8 @@ export async function parseSkillMd(
       } as ServerPageConfig;
 
     case "proxy":
-      // url 是必填字段
       if (!data.page.url) {
-        console.warn(`[parseSkillMd] proxy page "${slug}" missing required field: url`);
+        console.warn(`[parsePageMd] proxy page "${uid}" missing required field: url`);
         return null;
       }
       return {
@@ -103,62 +122,49 @@ export async function parseSkillMd(
 }
 
 /**
- * Recursively discover all pages in a directory.
- * Returns empty array if directory doesn't exist (not an error).
+ * List all pages in a workspace
+ * Returns pages array and index structure
  */
-export async function discoverPages(
-  dir: string,
-  workspacePath: string
-): Promise<PageConfig[]> {
+export async function listPagesInWorkspace(workspacePath: string): Promise<{
+  pages: PageConfig[];
+  index: PageIndex;
+}> {
+  const pagesDir = join(workspacePath, PAGES_DIR);
+  const index = readPageIndex(workspacePath);
   const pages: PageConfig[] = [];
 
-  // Return empty array if pages directory doesn't exist - this is expected for new workspaces
-  if (!existsSync(dir)) {
-    return pages;
+  // Return empty if pages directory doesn't exist
+  if (!existsSync(pagesDir)) {
+    return { pages, index };
   }
 
-  const entries = readdirSync(dir, { withFileTypes: true });
+  // Scan all directories in pages/
+  const entries = readdirSync(pagesDir, { withFileTypes: true });
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
+    // Skip hidden directories and index.json
+    if (entry.name.startsWith(".")) continue;
 
-    const subDir = join(dir, entry.name);
-    const skillPath = join(subDir, SKILL_FILE);
+    const uid = entry.name;
+    const pageMdPath = join(pagesDir, uid, PAGE_FILE);
+    const page = await parsePageMd(pageMdPath, uid);
 
-    // Check if this directory has a SKILL.md
-    if (existsSync(skillPath)) {
-      const page = await parseSkillMd(skillPath, workspacePath);
-      if (page) {
-        pages.push(page);
-      }
+    if (page) {
+      pages.push(page);
     }
-
-    // Recursively scan subdirectories
-    const subPages = await discoverPages(subDir, workspacePath);
-    pages.push(...subPages);
   }
 
-  return pages;
+  return { pages, index };
 }
 
 /**
- * List all pages in a workspace
+ * Get a specific page by uid
  */
-export async function listPagesInWorkspace(workspacePath: string): Promise<PageConfig[]> {
-  const pagesDir = join(workspacePath, PAGES_DIR);
-  return await discoverPages(pagesDir, workspacePath);
-}
-
-/**
- * Get a specific page by slug
- */
-export async function getPageBySlug(
+export async function getPageByUid(
   workspacePath: string,
-  slug: string
+  uid: string
 ): Promise<PageConfig | null> {
-  const pagesDir = join(workspacePath, PAGES_DIR);
-  const pageDir = join(pagesDir, slug);
-  const skillPath = join(pageDir, SKILL_FILE);
-
-  return await parseSkillMd(skillPath, workspacePath);
+  const pageMdPath = join(workspacePath, PAGES_DIR, uid, PAGE_FILE);
+  return parsePageMd(pageMdPath, uid);
 }

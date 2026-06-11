@@ -43,16 +43,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Create a text result for CallToolResult
- */
-function textResult(text: string, meta?: Record<string, unknown>): CallToolResult {
-  return {
-    content: [{ type: "text", text }],
-    _meta: meta,
-  };
-}
-
-/**
  * Create an error result for CallToolResult
  */
 function errorResult(text: string, meta?: Record<string, unknown>): CallToolResult {

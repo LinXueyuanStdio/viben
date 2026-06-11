@@ -28,11 +28,20 @@ export interface IconData {
 export type PageWidth = "default" | "wide" | "full";
 
 // =============================================================================
+// Page Index (嵌套关系)
+// =============================================================================
+
+/** 页面索引结构，邻接表格式 */
+export interface PageIndex {
+  [parentKey: string]: string[];  // "root" | uid -> uid[]
+}
+
+// =============================================================================
 // Page Config Types (Union)
 // =============================================================================
 
 interface PageConfigBase {
-  slug: string;
+  uid: string;
   name: string;
   description?: string;
   icon?: IconData;
@@ -80,15 +89,10 @@ export interface PageResult {
   error?: string;
 }
 
-/** Page order data keyed by parent ("root" for top-level, or parent slug) */
-export interface PageOrderData {
-  [parentKey: string]: string[];
-}
-
 export interface ListPagesResult extends PageResult {
   pages: PageConfig[];
   count: number;
-  page_order?: PageOrderData;
+  index: PageIndex;
 }
 
 export interface ViewPageResult extends PageResult {
@@ -100,17 +104,17 @@ export interface CreatePageResult extends PageResult {
 }
 
 export interface DeletePageResult extends PageResult {
-  slug?: string;
+  uid?: string;
   deleted_path?: string;
 }
 
 export interface UpdatePageContentResult extends PageResult {
-  slug?: string;
+  uid?: string;
 }
 
 export interface UpdatePageConfigParams {
   workspace_path: string;
-  slug: string;
+  uid: string;
   name?: string;
   description?: string | null;
   icon?: IconData | null;
@@ -120,7 +124,7 @@ export interface UpdatePageConfigParams {
 }
 
 export interface UpdatePageConfigResult extends PageResult {
-  slug?: string;
+  uid?: string;
   page?: PageConfig;
 }
 
@@ -148,11 +152,12 @@ export interface ListTemplatesResult extends PageResult {
 
 export interface CreatePageParams {
   workspace_path: string;
-  slug: string;
+  slug?: string;
   name: string;
   description?: string;
   icon?: IconData;
   type: PageType;
+  parent_uid?: string;
   file?: string;
   command?: string;
   port?: number;
@@ -168,8 +173,8 @@ export interface CreatePageParams {
 
 export interface ReorderPagesParams {
   workspace_path: string;
-  parent_slug: string | null;
-  ordered_slugs: string[];
+  parent_uid: string | null;
+  ordered_uids: string[];
 }
 
 export interface ReorderPagesResult extends PageResult {
@@ -182,7 +187,7 @@ export interface ReorderPagesResult extends PageResult {
 
 export interface DuplicatePageParams {
   workspace_path: string;
-  slug: string;
+  uid: string;
 }
 
 export interface DuplicatePageResult extends PageResult {
