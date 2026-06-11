@@ -26,6 +26,9 @@ import {
   MoreHorizontal,
   Pencil,
   CopyPlus,
+  Code2,
+  GitCompare,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,6 +53,9 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { toast } from "@/hooks/use-toast";
 import { PagePreview, PageIconGrid } from "./components";
+import { PageCodePanel } from "./components/page-code-panel";
+import { PageDiffPanel } from "./components/page-diff-panel";
+import { PageSettingPanel } from "./components/page-setting-panel";
 import { EditPageDialog } from "./components/edit-page-dialog";
 import type { PageViewMode } from "./components/page-preview";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
@@ -63,6 +69,9 @@ import {
   type DesktopBreadcrumbSegment,
 } from "@/navigation/page-index";
 import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
+
+/** Workspace page tab for server/static pages */
+type WorkspacePageTab = "preview" | "code" | "diff" | "setting";
 
 /**
  * Extract slug from page path
@@ -285,6 +294,7 @@ export function WorkspacePage() {
   }, [viewParam]);
 
   const [viewMode, setViewMode] = useState<PageViewMode>(initialViewMode);
+  const [activeTab, setActiveTab] = useState<WorkspacePageTab>("preview");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -416,26 +426,40 @@ export function WorkspacePage() {
     openWorkspacePage(workspaceId, slug, { openMode: "new-tab" });
   }, [openWorkspacePage, workspaceId, slug]);
 
-  // Center content: status indicator + URL for server pages in page view
+  // Whether to show the tabbed interface (server and static pages)
+  const showTabs = page?.type === "server" || page?.type === "static";
+
+  // Center content: Tab list for server/static pages, or nothing for other types
   const centerContent = useMemo(() => {
-    if (viewMode !== "page" || page?.type !== "server") return undefined;
-    const statusColor =
-      previewStatus === "running" ? "bg-green-500" :
-      previewStatus === "starting" ? "animate-pulse bg-yellow-500" :
-      previewStatus === "error" ? "bg-red-500" : "bg-gray-400";
+    if (!showTabs) return undefined;
+
+    const tabs: { key: WorkspacePageTab; icon: typeof Eye; label: string }[] = [
+      { key: "preview", icon: Eye, label: t("page.tab.preview", "Preview") },
+      { key: "code", icon: Code2, label: t("page.tab.code", "Code") },
+      { key: "diff", icon: GitCompare, label: t("page.tab.diff", "Diff") },
+      { key: "setting", icon: Settings, label: t("page.tab.setting", "Setting") },
+    ];
+
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <div className={cn("h-2 w-2 rounded-full", statusColor)} />
-        <span className="font-medium">{t("preview.livePreview")}</span>
-        {previewUrl && (
-          <>
-            <span className="text-muted-foreground/50">|</span>
-            <span className="truncate max-w-[200px]">{previewUrl}</span>
-          </>
-        )}
+      <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
+        {tabs.map(({ key, icon: Icon, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+              activeTab === key
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
       </div>
     );
-  }, [viewMode, page?.type, previewStatus, previewUrl, t]);
+  }, [showTabs, activeTab, t]);
 
   // Loading state
   const isLoading = isLoadingWorkspaces || isLoadingPage;
@@ -563,7 +587,73 @@ export function WorkspacePage() {
     );
   }
 
-  // Render page preview — single-row header: [breadcrumb][ ][toggle][actions]
+  // Render the active tab content panel
+  const renderTabContent = () => {
+    if (!showTabs || activeTab === "preview") {
+      return (
+        <div className="flex-1 overflow-hidden">
+          <PagePreview
+            page={page}
+            workspacePath={workspace.path}
+            workspaceId={workspace.id}
+            viewMode={viewMode}
+            iframeKey={iframeKey}
+            livePreviewUrl={previewUrl}
+            livePreviewStatus={previewStatus}
+            livePreviewError={previewError}
+            onStartLivePreview={handleStartLivePreview}
+            onStopLivePreview={stopPreview}
+            onOpenPage={handleOpenPage}
+            onOpenWeb={handleOpenWeb}
+            headerPortal={editorHeaderEl}
+            className="h-full"
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "code") {
+      return (
+        <div className="flex-1 overflow-hidden">
+          <PageCodePanel
+            workspacePath={workspace.path}
+            pageSlug={page.slug}
+            className="h-full"
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "diff") {
+      return (
+        <div className="flex-1 overflow-hidden">
+          <PageDiffPanel
+            workspacePath={workspace.path}
+            pageSlug={page.slug}
+            className="h-full"
+          />
+        </div>
+      );
+    }
+
+    if (activeTab === "setting") {
+      return (
+        <div className="flex-1 overflow-hidden">
+          <PageSettingPanel
+            workspacePath={workspace.path}
+            pageSlug={page.slug}
+            pageName={page.name}
+            pageType={page.type}
+            className="h-full"
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // Render page — single-row header: [breadcrumb][ ][tabs/toggle][actions]
   const content = (
     <PageWrapper className="flex flex-col h-full">
       <WorkspaceHeader
@@ -575,42 +665,27 @@ export function WorkspacePage() {
         rightContent={
           <div className="flex items-center gap-2">
             <div ref={setEditorHeaderEl} />
-            <PageToolbar
-              page={page}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              livePreviewStatus={previewStatus}
-              livePreviewUrl={previewUrl}
-              gatewayServeUrl={gatewayServeUrl}
-              onStopLivePreview={stopPreview}
-              onRefresh={handleRefresh}
-              onDetach={handleDetach}
-              isFullscreen={isFullscreen}
-              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-              onEditConfig={() => setEditDialogOpen(true)}
-              onOpenInNewTab={handleOpenInNewTab}
-            />
+            {(!showTabs || activeTab === "preview") && (
+              <PageToolbar
+                page={page}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                livePreviewStatus={previewStatus}
+                livePreviewUrl={previewUrl}
+                gatewayServeUrl={gatewayServeUrl}
+                onStopLivePreview={stopPreview}
+                onRefresh={handleRefresh}
+                onDetach={handleDetach}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+                onEditConfig={() => setEditDialogOpen(true)}
+                onOpenInNewTab={handleOpenInNewTab}
+              />
+            )}
           </div>
         }
       />
-      <div className="flex-1 overflow-hidden">
-        <PagePreview
-          page={page}
-          workspacePath={workspace.path}
-          workspaceId={workspace.id}
-          viewMode={viewMode}
-          iframeKey={iframeKey}
-          livePreviewUrl={previewUrl}
-          livePreviewStatus={previewStatus}
-          livePreviewError={previewError}
-          onStartLivePreview={handleStartLivePreview}
-          onStopLivePreview={stopPreview}
-          onOpenPage={handleOpenPage}
-          onOpenWeb={handleOpenWeb}
-          headerPortal={editorHeaderEl}
-          className="h-full"
-        />
-      </div>
+      {renderTabContent()}
     </PageWrapper>
   );
 

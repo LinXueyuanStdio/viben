@@ -72,12 +72,21 @@ export const PAGE_WIDTHS = ["default", "wide", "full"] as const;
 export type PageWidth = (typeof PAGE_WIDTHS)[number];
 
 // =============================================================================
+// Page Index (嵌套关系)
+// =============================================================================
+
+/** 页面索引结构，邻接表格式 */
+export interface PageIndex {
+  [parentKey: string]: string[];  // "root" | uid -> uid[]
+}
+
+// =============================================================================
 // Page Config Types (Union)
 // =============================================================================
 
 // Note: PageConfigBase is internal, used only for type inheritance
 interface PageConfigBase {
-  slug: string;
+  uid: string;
   name: string;
   description?: string;
   icon?: IconData;
@@ -165,7 +174,7 @@ export interface PageResult {
 export interface ListPagesResult extends PageResult {
   pages: PageConfig[];
   count: number;
-  page_order?: PageOrderData;
+  index: PageIndex;
 }
 
 export interface ViewPageResult extends PageResult {
@@ -177,17 +186,17 @@ export interface CreatePageResult extends PageResult {
 }
 
 export interface DeletePageResult extends PageResult {
-  slug?: string;
-  deleted_path?: string;           // 被删除的完整路径
+  uid?: string;
+  deleted_path?: string;
 }
 
 export interface UpdatePageContentResult extends PageResult {
-  slug?: string;
+  uid?: string;
 }
 
 export interface UpdatePageConfigOptions {
   workspace_path: string;
-  slug: string;
+  uid: string;
   name?: string;
   description?: string | null;
   icon?: IconData | null;
@@ -197,7 +206,7 @@ export interface UpdatePageConfigOptions {
 }
 
 export interface UpdatePageConfigResult extends PageResult {
-  slug?: string;
+  uid?: string;
   page?: PageConfig;
 }
 
@@ -248,15 +257,10 @@ export interface ListTemplatesResult extends PageResult {
 // Reorder Types
 // =============================================================================
 
-/** Page order data stored in .page-order.json */
-export interface PageOrderData {
-  [parentKey: string]: string[];
-}
-
 export interface ReorderPagesOptions {
   workspace_path: string;
-  parent_slug: string | null;
-  ordered_slugs: string[];
+  parent_uid: string | null;
+  ordered_uids: string[];
 }
 
 export interface ReorderPagesResult extends PageResult {
@@ -269,7 +273,7 @@ export interface ReorderPagesResult extends PageResult {
 
 export interface DuplicatePageOptions {
   workspace_path: string;
-  slug: string;
+  uid: string;
 }
 
 export interface DuplicatePageResult extends PageResult {

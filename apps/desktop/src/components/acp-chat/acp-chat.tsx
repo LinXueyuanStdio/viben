@@ -41,15 +41,22 @@ import {
   ChatAppFullscreenPanel,
   ChatInputBottomToolbar,
   ChatInputTopToolbar,
+  ContextApprovalButton,
+  ContextApprovalPopup,
   ExpandedHeaderModeControls,
   TodoListPanel,
   TripleSelector,
+  useContextApprovalPopupProps,
 } from "@viben/chat";
 import type {
+  AgentMessage,
+  ApprovalMode,
+  Artifact,
   BackgroundTaskItem,
   BackgroundTasksSummary,
   ChatAppMode,
   ChatInputProps,
+  ContextTokenBreakdown,
   MessageAttachment,
   QueuedInputRecallItem,
   SelectorOption,
@@ -62,9 +69,15 @@ import type {
 import { PetSprite } from "@viben/pet";
 import {
   cn,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Popover,
@@ -80,6 +93,7 @@ import { ScreenshotDropdown } from "@/components/chat/screenshot-dropdown";
 import { useScreenshot } from "@/hooks/use-screenshot";
 import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAcpSession } from "./use-acp-session";
 import { useChatDrag } from "@/hooks/use-chat-drag";
 import { ChatDragProvider } from "@/contexts/chat-drag-context";
@@ -195,18 +209,31 @@ function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSessi
 
 interface AcpHeaderNewSessionMenuProps {
   onCreateSession: () => void;
+  onOpenInNewWindow: () => void;
   onSelectAgent: (agentId: string) => void;
   agentOptions: SelectorOption[];
+  workspaceName?: string;
 }
 
-function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions }: AcpHeaderNewSessionMenuProps) {
+function AcpHeaderNewSessionMenu({
+  onCreateSession,
+  onOpenInNewWindow,
+  onSelectAgent,
+  agentOptions,
+  workspaceName,
+}: AcpHeaderNewSessionMenuProps) {
+  const { t } = useTranslation();
+
+  const workspaceAgents = agentOptions.filter((a) => a.badge === "workspace");
+  const globalAgents = agentOptions.filter((a) => a.badge === "global");
+
   return (
     <div className="flex h-7 shrink-0 items-center rounded-md border border-border bg-background">
       <button
         type="button"
         className="flex h-full w-7 items-center justify-center rounded-l-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
         onClick={onCreateSession}
-        aria-label="Create session"
+        aria-label={t("chat.newSession", "New session")}
         data-no-drag
       >
         <Plus className="size-3.5" />
@@ -217,7 +244,7 @@ function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions 
           <button
             type="button"
             className="flex h-full w-6 items-center justify-center rounded-r-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
-            aria-label="Open session menu"
+            aria-label={t("chat.openSessionMenu", "Open session menu")}
             data-no-drag
           >
             <ChevronDown className="size-3" />
@@ -226,21 +253,46 @@ function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions 
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuItem onClick={onCreateSession} className="gap-2">
             <FolderPlus className="size-4" />
-            New session
+            {t("chat.newSession", "New session")}
           </DropdownMenuItem>
-          {agentOptions.length > 0 && (
+          <DropdownMenuItem onClick={onOpenInNewWindow} className="gap-2">
+            <ExternalLink className="size-4" />
+            {t("chat.newSessionInWindow", "New session in window")}
+          </DropdownMenuItem>
+
+          {workspaceAgents.length > 0 && (
             <>
               <DropdownMenuSeparator />
-              {agentOptions.map((agent) => (
+              <DropdownMenuLabel className="truncate text-xs text-muted-foreground">
+                {workspaceName || t("chat.workspace", "Workspace")}
+              </DropdownMenuLabel>
+              {workspaceAgents.map((agent) => (
                 <DropdownMenuItem
                   key={agent.id}
                   onClick={() => onSelectAgent(agent.id)}
-                  className="justify-between"
+                  className="gap-2 pl-4"
                 >
-                  <span>{agent.label}</span>
-                  {agent.badge && (
-                    <span className="text-[10px] text-muted-foreground">{agent.badge}</span>
-                  )}
+                  <MessageSquare className="size-3.5 shrink-0" />
+                  <span className="truncate">{t("chat.newSessionWith", "New session: {{name}}", { name: agent.label })}</span>
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+
+          {globalAgents.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                {t("chat.globalWorkspace", "Global")}
+              </DropdownMenuLabel>
+              {globalAgents.map((agent) => (
+                <DropdownMenuItem
+                  key={agent.id}
+                  onClick={() => onSelectAgent(agent.id)}
+                  className="gap-2 pl-4"
+                >
+                  <MessageSquare className="size-3.5 shrink-0" />
+                  <span className="truncate">{t("chat.newSessionWith", "New session: {{name}}", { name: agent.label })}</span>
                 </DropdownMenuItem>
               ))}
             </>
@@ -293,6 +345,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Get active workspace name
+  const activeWorkspace = useWorkspaceStore((state) => state.getActiveWorkspace());
+  const workspaceName = activeWorkspace?.name;
 
   // Platform detection for macOS traffic light spacing
   const [isMacOS, setIsMacOS] = useState(false);
@@ -465,6 +521,13 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     liveSubagentMessages,
     handleExpandSubagent,
     closeSubagentSheet,
+    toolInspectState,
+    handleInspectTool,
+    closeToolInspect,
+    artifactDialogState,
+    handleArtifactClick,
+    closeArtifactDialog,
+    handleLoadSubagentDetails,
   } = acp;
 
   const sessionId = activeSessionId;
@@ -477,6 +540,12 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   const [worktree, setWorktree] = useState(false);
   const [backgroundTask, setBackgroundTask] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Context Approval state
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>("rules");
+  const [isContextPopupOpen, setIsContextPopupOpen] = useState(false);
+  const [isContextPopupPinned, setIsContextPopupPinned] = useState(false);
+  const contextPopupHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sandbox config from store
   const { sandboxConfig, setSandboxEnabled } = useChatConfigStore();
@@ -938,17 +1007,112 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     [t, voice]
   );
 
+  // Context token breakdown for approval button
+  const contextBreakdown = useMemo<ContextTokenBreakdown>(() => {
+    const conversationTokens = Math.max(0, Math.ceil(JSON.stringify(messages).length / 4));
+    const streamingTokens = streamingText ? Math.ceil(streamingText.length / 4) : 0;
+    const skillTokens = Math.max(0, Math.ceil(JSON.stringify(slashCommands).length / 4));
+    const historyTokens = Math.max(0, Math.ceil(JSON.stringify(steerQueueItems).length / 4));
+    const assistantProfile = 2000;
+    const total = assistantProfile + skillTokens + historyTokens + conversationTokens + streamingTokens + 4000;
+    return {
+      assistantProfile,
+      skillSettings: skillTokens,
+      historySummary: historyTokens,
+      conversationMessages: conversationTokens + streamingTokens,
+      totalContext: Math.max(8000, total),
+    };
+  }, [messages, streamingText, slashCommands, steerQueueItems]);
+
+  const contextPopupProps = useContextApprovalPopupProps(contextBreakdown, approvalMode, setApprovalMode);
+
+  const handleContextPopupMouseEnter = useCallback(() => {
+    if (contextPopupHoverTimeoutRef.current) {
+      clearTimeout(contextPopupHoverTimeoutRef.current);
+      contextPopupHoverTimeoutRef.current = null;
+    }
+    setIsContextPopupOpen(true);
+  }, []);
+
+  const handleContextPopupMouseLeave = useCallback(() => {
+    if (isContextPopupPinned) return;
+    contextPopupHoverTimeoutRef.current = setTimeout(() => {
+      setIsContextPopupOpen(false);
+    }, 150);
+  }, [isContextPopupPinned]);
+
+  const handleContextPopupClick = useCallback(() => {
+    if (isContextPopupPinned) {
+      setIsContextPopupPinned(false);
+      setIsContextPopupOpen(false);
+    } else {
+      setIsContextPopupPinned(true);
+      setIsContextPopupOpen(true);
+    }
+  }, [isContextPopupPinned]);
+
+  // Escape key shortcut to interrupt active turn
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !sessionId || !isTurnActive) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest('[role="dialog"]')) return;
+      event.preventDefault();
+      void interrupt();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [interrupt, isTurnActive, sessionId]);
+
   // Combined bottom toolbar left content
   const bottomToolbarLeftContent = useMemo(
     () => (
       <div className="flex items-center gap-1.5">
         {tripleSelectorNode}
+        <div
+          className="relative"
+          onMouseEnter={handleContextPopupMouseEnter}
+          onMouseLeave={handleContextPopupMouseLeave}
+        >
+          {isContextPopupOpen && (
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 pb-1">
+              <ContextApprovalPopup
+                breakdown={contextBreakdown}
+                totalUsed={contextPopupProps.totalUsed}
+                usagePercentage={contextPopupProps.usagePercentage}
+                remaining={contextPopupProps.remaining}
+                approvalMode={approvalMode}
+                onApprovalModeChange={setApprovalMode}
+              />
+            </div>
+          )}
+          <ContextApprovalButton
+            breakdown={contextBreakdown}
+            approvalMode={approvalMode}
+            onApprovalModeChange={setApprovalMode}
+            onClick={handleContextPopupClick}
+            externalPopup
+          />
+        </div>
         {settingsPopoverNode}
         <div className="flex-1" />
         {voiceInputNode}
       </div>
     ),
-    [settingsPopoverNode, tripleSelectorNode, voiceInputNode]
+    [
+      approvalMode,
+      contextBreakdown,
+      contextPopupProps.remaining,
+      contextPopupProps.totalUsed,
+      contextPopupProps.usagePercentage,
+      handleContextPopupClick,
+      handleContextPopupMouseEnter,
+      handleContextPopupMouseLeave,
+      isContextPopupOpen,
+      settingsPopoverNode,
+      tripleSelectorNode,
+      voiceInputNode,
+    ]
   );
 
   const bottomToolbar = useMemo(
@@ -1038,7 +1202,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         ) : (
           // Windows/Linux: 左侧放菜单
           <>
-            <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
+            <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} workspaceName={workspaceName} />
             <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           </>
         )
@@ -1048,7 +1212,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         isMacOS ? (
           // macOS: 右侧放菜单
           <>
-            <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
+            <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} workspaceName={workspaceName} />
             <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           </>
         ) : (
@@ -1065,7 +1229,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       leftContent={
         <>
           <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
-          <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
+          <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} workspaceName={workspaceName} />
         </>
       }
       centerContent={null}
@@ -1138,6 +1302,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           pendingApproval={pendingApproval}
           pendingQuestion={pendingQuestion}
           onExpandSubagent={handleExpandSubagent}
+          onInspectTool={handleInspectTool}
+          onArtifactClick={handleArtifactClick}
           onApprovePlan={handleApprovePlan}
           onRejectPlan={handleRejectPlan}
           onApprovalDecision={handleApprovalDecision}
@@ -1187,6 +1353,9 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     onRejectPlan: handleRejectPlan,
     onApprovalDecision: handleApprovalDecision,
     onAnswerQuestions: handleQuestionAnswers,
+    onInspectTool: handleInspectTool,
+    onArtifactClick: handleArtifactClick,
+    loadSubagentDetails: handleLoadSubagentDetails,
     subagentSheet: subagentSheet
       ? {
           open: true,
@@ -1196,6 +1365,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           messages: subagentSheet.messages,
           liveMessages: liveSubagentMessages,
           context: subagentSheet.context,
+          loadSubagentDetails: handleLoadSubagentDetails,
         }
       : undefined,
     onExpandSubagent: handleExpandSubagent,
@@ -1225,10 +1395,11 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // 吸附位置配置（仅在非拖拽时使用）
   const positionConfig = getPositionConfig(snapPosition, FLOATING_MARGIN);
 
-  // For standalone window mode: render full-screen, no floating wrapper
-  // 添加圆角以配合 decorations: false 的无边框窗口
+  // Determine mode-specific content
+  let modeContent: React.ReactNode;
+
   if (windowMode) {
-    return (
+    modeContent = (
       <ChatDragProvider value={dragContextValue}>
         <div className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-background", className)}>
           {displayError && (
@@ -1240,11 +1411,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         </div>
       </ChatDragProvider>
     );
-  }
-
-  // For floating modes: render with draggable container and snap animation
-  if (isFloatingMode) {
-    return (
+  } else if (isFloatingMode) {
+    modeContent = (
       <ChatDragProvider value={dragContextValue}>
         <div
           ref={containerRef}
@@ -1270,74 +1438,196 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         </div>
       </ChatDragProvider>
     );
+  } else {
+    const fullModeStyle: React.CSSProperties = enableFullResize
+      ? { width: fullWidth, flexShrink: 0 }
+      : {};
+    const fullModeProps = { ...chatAppProps, enableFullResize: false };
+
+    modeContent = (
+      <ChatDragProvider value={dragContextValue}>
+        <div
+          className={cn(
+            "group/resize relative h-full min-h-[560px] bg-background",
+            enableFullResize ? "flex-shrink-0" : "overflow-hidden",
+            className
+          )}
+          style={fullModeStyle}
+        >
+          <ChatApp contained={contained} {...fullModeProps} />
+          {enableFullResize && (
+            <div
+              className={cn(
+                "absolute right-0 top-0 bottom-0 z-50 translate-x-1/2",
+                "w-3 cursor-ew-resize",
+                "group/handle"
+              )}
+              onMouseDown={handleFullResizeStart}
+              data-resize-handle="full-right"
+            >
+              <div
+                className={cn(
+                  "absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 transition-all duration-150",
+                  isFullResizing
+                    ? "bg-primary"
+                    : "bg-transparent group-hover/handle:bg-border"
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2",
+                  "flex h-8 w-4 items-center justify-center rounded-md",
+                  "transition-all duration-150",
+                  isFullResizing
+                    ? "bg-primary text-primary-foreground opacity-100"
+                    : "bg-muted/90 border border-border text-muted-foreground opacity-0 group-hover/handle:opacity-100"
+                )}
+              >
+                <GripVertical className="h-4 w-4" />
+              </div>
+            </div>
+          )}
+        </div>
+      </ChatDragProvider>
+    );
   }
 
-  // For full mode or non-contained: render with external resize handle
-  // We use our own resize handle instead of ChatApp's internal one
-  const fullModeStyle: React.CSSProperties = enableFullResize
-    ? { width: fullWidth, flexShrink: 0 }
-    : {};
+  return (
+    <>
+      {modeContent}
+      <ToolInspectDialog state={toolInspectState} onClose={closeToolInspect} />
+      <ArtifactDialog state={artifactDialogState} onClose={closeArtifactDialog} />
+    </>
+  );
+}
 
-  // Don't pass enableFullResize to ChatApp - we handle it externally
-  const fullModeProps = { ...chatAppProps, enableFullResize: false };
+function toolOutputToDisplayValue(output: AgentMessage["output"]): string {
+  if (output == null) return "No output";
+  if (typeof output === "string") {
+    const trimmed = output.trim();
+    if (!trimmed) return "";
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      try {
+        return JSON.stringify(JSON.parse(trimmed), null, 2);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+  return JSON.stringify(output, null, 2);
+}
+
+function ToolInspectDialog({
+  state,
+  onClose,
+}: {
+  state: { message: AgentMessage; result?: AgentMessage } | null;
+  onClose: () => void;
+}) {
+  if (!state) return null;
+  const { message, result } = state;
+  const output = result?.output ?? message.output;
+  const isError = Boolean(result?.isError ?? message.isError);
 
   return (
-    <ChatDragProvider value={dragContextValue}>
-      <div
-        className={cn(
-          "group/resize relative h-full min-h-[560px] bg-background",
-          enableFullResize ? "flex-shrink-0" : "overflow-hidden",
-          className
-        )}
-        style={fullModeStyle}
-      >
-        <ChatApp contained={contained} {...fullModeProps} />
-
-        {/*
-          External resize handle:
-          - Positioned at right edge, extends 2px into adjacent element for easier targeting
-          - Zero visual width when not hovered (doesn't push content)
-          - Shows line + grip on hover
-        */}
-        {enableFullResize && (
-          <div
-            className={cn(
-              // Position: right-0 places left edge at container's right edge
-              // Then we use translate to center the handle across the boundary
-              "absolute right-0 top-0 bottom-0 z-50 translate-x-1/2",
-              // Width for hover detection area
-              "w-3 cursor-ew-resize",
-              "group/handle"
+    <Dialog open onOpenChange={(open: boolean) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle>{message.name ?? "Tool Call"}</DialogTitle>
+          <DialogDescription className="font-mono text-xs break-all">
+            {message.toolUseId ?? message.id}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+              {result ? "completed" : "pending"}
+            </span>
+            {isError && (
+              <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                error
+              </span>
             )}
-            onMouseDown={handleFullResizeStart}
-            data-resize-handle="full-right"
-          >
-            {/* Visual indicator line - shows on hover/drag */}
-            <div
-              className={cn(
-                "absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 transition-all duration-150",
-                isFullResizing
-                  ? "bg-primary"
-                  : "bg-transparent group-hover/handle:bg-border"
-              )}
-            />
-
-            {/* Grip handle - appears on hover, centered vertically */}
-            <div
-              className={cn(
-                "absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2",
-                "flex h-8 w-4 items-center justify-center rounded-md",
-                "transition-all duration-150",
-                isFullResizing
-                  ? "bg-primary text-primary-foreground opacity-100"
-                  : "bg-muted/90 border border-border text-muted-foreground opacity-0 group-hover/handle:opacity-100"
-              )}
-            >
-              <GripVertical className="h-4 w-4" />
-            </div>
           </div>
-        )}
-      </div>
-    </ChatDragProvider>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <dt className="text-muted-foreground">Tool</dt>
+            <dd className="font-mono">{message.name ?? "unknown"}</dd>
+            <dt className="text-muted-foreground">Call ID</dt>
+            <dd className="font-mono break-all">{message.toolUseId ?? "none"}</dd>
+            {message.subagentId && (
+              <>
+                <dt className="text-muted-foreground">Subagent</dt>
+                <dd className="font-mono break-all">{message.subagentId}</dd>
+              </>
+            )}
+          </dl>
+          <div>
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</div>
+            <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
+              {typeof message.input === "string"
+                ? message.input
+                : JSON.stringify(message.input, null, 2) ?? "null"}
+            </pre>
+          </div>
+          <div>
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Output</div>
+            <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
+              {toolOutputToDisplayValue(output)}
+            </pre>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ArtifactDialog({
+  state,
+  onClose,
+}: {
+  state: { artifact: Artifact; message?: AgentMessage } | null;
+  onClose: () => void;
+}) {
+  if (!state) return null;
+  const { artifact, message } = state;
+
+  return (
+    <Dialog open onOpenChange={(open: boolean) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle>Artifact</DialogTitle>
+          <DialogDescription>{artifact.name}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
+            <dt className="text-muted-foreground">ID</dt>
+            <dd className="break-all font-mono">{artifact.id}</dd>
+            <dt className="text-muted-foreground">Type</dt>
+            <dd>{artifact.type}</dd>
+            {artifact.toolName && (
+              <>
+                <dt className="text-muted-foreground">Tool</dt>
+                <dd>{artifact.toolName}</dd>
+              </>
+            )}
+            {artifact.sourceMessageId && (
+              <>
+                <dt className="text-muted-foreground">Source</dt>
+                <dd className="break-all font-mono">{artifact.sourceMessageId}</dd>
+              </>
+            )}
+          </dl>
+          <div>
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {message ? "Source Message" : "Artifact Data"}
+            </div>
+            <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
+              {JSON.stringify(message ?? artifact, null, 2)}
+            </pre>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

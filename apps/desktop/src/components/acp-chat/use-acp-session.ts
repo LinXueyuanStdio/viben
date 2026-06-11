@@ -10,16 +10,18 @@
  * Uses useAcpSessionStore for global state that survives mode switches.
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentMessage,
   Artifact,
   CommandQueueItem,
+  LoadedSubagentDetails,
   PendingQuestion,
   QueuedInputRecallItem,
   SelectorOption,
   SlashCommand,
   SlashCommandSelection,
+  SubagentOpenContext,
   TaskPlan,
 } from "@viben/chat";
 import type { PendingExecApproval } from "@viben/chat";
@@ -185,6 +187,19 @@ export interface UseAcpSessionReturn {
   liveSubagentMessages: AgentMessage[] | undefined;
   handleExpandSubagent: (title: string, subagentType: string | undefined, messages: AgentMessage[], context?: SubagentSheetState["context"]) => void;
   closeSubagentSheet: () => void;
+
+  // Tool inspect dialog
+  toolInspectState: { message: AgentMessage; result?: AgentMessage } | null;
+  handleInspectTool: (message: AgentMessage) => void;
+  closeToolInspect: () => void;
+
+  // Artifact dialog
+  artifactDialogState: { artifact: Artifact; message?: AgentMessage } | null;
+  handleArtifactClick: (artifactId: string) => void;
+  closeArtifactDialog: () => void;
+
+  // Subagent details loader
+  handleLoadSubagentDetails: (context: SubagentOpenContext) => Promise<LoadedSubagentDetails>;
 }
 
 // Singleton client reference for the entire desktop app
@@ -633,6 +648,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   );
 
   const liveSubagentMessages = resolveLiveSubagentMessages(sessionsById, subagentSheet);
+
+  const [toolInspectState, setToolInspectState] = useState<{ message: AgentMessage; result?: AgentMessage } | null>(null);
+  const [artifactDialogState, setArtifactDialogState] = useState<{ artifact: Artifact; message?: AgentMessage } | null>(null);
 
   // Initialize cwd from resolved default on first mount (when cwd is empty)
   // This ensures cwd is set from workspace path when the store is first initialized
@@ -1366,6 +1384,69 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     setSubagentSheet(null);
   }, [setSubagentSheet]);
 
+  const handleInspectTool = useCallback(
+    (message: AgentMessage) => {
+      const result = message.toolUseId
+        ? messages.find((m) => m.type === "tool_result" && m.toolUseId === message.toolUseId)
+        : undefined;
+      setToolInspectState({ message, result });
+    },
+    [messages]
+  );
+
+  const closeToolInspect = useCallback(() => {
+    setToolInspectState(null);
+  }, []);
+
+  const handleArtifactClick = useCallback(
+    (artifactId: string) => {
+      const artifact = artifacts.find((a) => a.id === artifactId);
+      if (!artifact) return;
+      const message = messages.find((m) => m.id === artifact.sourceMessageId);
+      setArtifactDialogState({ artifact, message });
+    },
+    [artifacts, messages]
+  );
+
+  const closeArtifactDialog = useCallback(() => {
+    setArtifactDialogState(null);
+  }, []);
+
+  const handleLoadSubagentDetails = useCallback(
+    async (context: SubagentOpenContext): Promise<LoadedSubagentDetails> => {
+      const liveMessages = resolveLiveSubagentMessages(sessionsById, {
+        title: "",
+        messages: [],
+        context,
+      });
+      if (liveMessages && liveMessages.length > 0) {
+        const toolUseId = context.toolUseId;
+        const subagentId = context.subagentId;
+        let title: string | undefined;
+        let subagentType: string | undefined;
+        for (const session of Object.values(sessionsById)) {
+          const parent = session.uiMessages.find((m) =>
+            m.type === "tool_use" &&
+            (m.name === "Task" || m.name === "Agent") &&
+            (
+              (toolUseId && m.toolUseId === toolUseId) ||
+              (subagentId && (m.subagentId === subagentId || m.toolUseId === subagentId))
+            )
+          );
+          if (parent) {
+            const input = parent.input as { description?: string; subagent_type?: string } | undefined;
+            title = input?.description ?? parent.name;
+            subagentType = input?.subagent_type;
+            break;
+          }
+        }
+        return { title, subagentType, messages: liveMessages };
+      }
+      return { messages: [] };
+    },
+    [sessionsById]
+  );
+
   return {
     status,
     connected,
@@ -1428,5 +1509,13 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     liveSubagentMessages,
     handleExpandSubagent,
     closeSubagentSheet,
+    // Tool inspect & artifact dialogs
+    toolInspectState,
+    handleInspectTool,
+    closeToolInspect,
+    artifactDialogState,
+    handleArtifactClick,
+    closeArtifactDialog,
+    handleLoadSubagentDetails,
   };
 }

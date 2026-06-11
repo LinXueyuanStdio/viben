@@ -87,22 +87,10 @@ async function discoverOpenAI(
 /**
  * Discover models from Anthropic API
  *
- * If a custom base_url is provided (not official Anthropic), try OpenAI-compatible
- * discovery first. Falls back to known Anthropic models.
+ * Note: Anthropic doesn't have a models list endpoint. This is a placeholder that returns an empty list.
  */
 async function discoverAnthropic(apiKey: string, baseUrl?: string): Promise<DiscoveredModel[]> {
-  if (baseUrl && !baseUrl.includes("anthropic.com")) {
-    try {
-      return await discoverOpenAI(apiKey, baseUrl);
-    } catch {
-      // Fall through to known models
-    }
-  }
-  return KNOWN_MODELS.filter((m) => m.provider === "anthropic").map((m) => ({
-    id: m.id,
-    name: m.name,
-    capabilities: ["chat", "vision"],
-  }));
+  return [];
 }
 
 /**

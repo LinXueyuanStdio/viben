@@ -386,9 +386,10 @@ export class ModelManager {
   }
 
   /**
-   * Enable a model (built-in or custom)
+   * Enable a model (built-in, custom, or discovered)
+   * @param providerType - Required when the model is not yet registered (discovered models)
    */
-  async enableModel(id: string): Promise<void> {
+  async enableModel(id: string, providerType: string): Promise<void> {
     const config = await this.loadConfig();
 
     const customEntry = config.custom_models[id];
@@ -396,19 +397,25 @@ export class ModelManager {
       customEntry.enabled = true;
       customEntry.updated_at = new Date().toISOString();
     } else if (getKnownModel(id)) {
-      // Remove from disabled list
       config.disabled_models = config.disabled_models.filter((m) => m !== id);
     } else {
-      throw new Error(`Model not found: ${id}`);
+      config.custom_models[id] = {
+        name: id,
+        provider: providerType,
+        enabled: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     }
 
     await this.saveConfig(config);
   }
 
   /**
-   * Disable a model (built-in or custom)
+   * Disable a model (built-in, custom, or discovered)
+   * @param providerType - Required when the model is not yet registered (discovered models)
    */
-  async disableModel(id: string): Promise<void> {
+  async disableModel(id: string, providerType: string): Promise<void> {
     const config = await this.loadConfig();
 
     const customEntry = config.custom_models[id];
@@ -416,12 +423,17 @@ export class ModelManager {
       customEntry.enabled = false;
       customEntry.updated_at = new Date().toISOString();
     } else if (getKnownModel(id)) {
-      // Add to disabled list if not already there
       if (!config.disabled_models.includes(id)) {
         config.disabled_models.push(id);
       }
     } else {
-      throw new Error(`Model not found: ${id}`);
+      config.custom_models[id] = {
+        name: id,
+        provider: providerType,
+        enabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     }
 
     await this.saveConfig(config);

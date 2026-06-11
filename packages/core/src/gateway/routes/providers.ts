@@ -737,7 +737,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
 
       try {
         // Enable the model via modelManager (persists to config)
-        await modelManager.enableModel(model_id);
+        await modelManager.enableModel(model_id, provider.type);
 
         return {
           success: true,
@@ -785,7 +785,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
 
       try {
         // Disable the model via modelManager (persists to config)
-        await modelManager.disableModel(model_id);
+        await modelManager.disableModel(model_id, provider.type);
 
         return {
           success: true,

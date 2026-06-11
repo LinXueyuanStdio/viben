@@ -7,6 +7,12 @@
 
 import { useActionStore } from "@/stores/action-store";
 import { createExecutionContext } from "@/lib/action-system/execution-context";
+import { executeBuiltin } from "@/lib/action-system/builtins";
+import {
+  createClientSideBash,
+  isClientSideBashTool,
+  type GUIExecuteInput,
+} from "@/lib/action-system/client-side-bash";
 import type { ClientToolResult } from "@/lib/client-side-tool/types";
 import type { CallToolResult } from "./acp-client";
 
@@ -24,7 +30,9 @@ export interface ClientToolExecutionRequest {
  * Check if a tool name is a GUI_execute tool
  */
 export function isGuiExecuteTool(toolName: string): boolean {
-  return toolName === "GUI_execute" || toolName === "mcp__client_side__GUI_execute";
+  return toolName === "GUI_execute"
+    || toolName === "mcp__client_side__GUI_execute"
+    || isClientSideBashTool(toolName);
 }
 
 /**
@@ -74,55 +82,48 @@ function toCallToolResult(result: ClientToolResult): CallToolResult {
   };
 }
 
+async function executeGUIAction(input: GUIExecuteInput, ctx: ReturnType<typeof createExecutionContext>): Promise<ClientToolResult> {
+  const actionStore = useActionStore.getState();
+  const actionName = typeof input.action === "string" ? input.action : "";
+  const payload = normalizeBuiltinPayload(actionName, input.payload);
+
+  if (!actionName) {
+    return {
+      content: [{ type: "text", text: "GUI_execute error: input.action is required." }],
+      isError: true,
+    };
+  }
+
+  const builtinResult = await executeBuiltin(actionName, payload, ctx);
+  if (builtinResult !== null) {
+    return builtinResult;
+  }
+
+  return await actionStore.execute(actionName, payload, ctx);
+}
+
+function normalizeBuiltinPayload(actionName: string, payload: unknown): unknown {
+  if (actionName !== "get_action_detail" || !isRecord(payload) || typeof payload.action === "string") {
+    return isRecord(payload) ? payload : {};
+  }
+
+  return typeof payload.name === "string" ? { ...payload, action: payload.name } : payload;
+}
+
 /**
- * Execute a GUI action based on the request
- * Uses the action-store to resolve and execute registered actions
+ * Execute a GUI action based on the request.
+ * Builtin actions are resolved before provider actions.
  */
 export async function executeGuiAction(
   request: ClientToolExecutionRequest
 ): Promise<CallToolResult> {
-  const actionStore = useActionStore.getState();
   const input = isRecord(request.input) ? request.input : {};
   const actionName = typeof input.action === "string" ? input.action : "";
   const payload = isRecord(input.payload) ? input.payload : {};
-
-  if (!actionName) {
-    return errorResult("GUI_execute error: input.action is required.");
-  }
-
-  // Handle list_actions meta-action
-  if (actionName === "list_actions") {
-    const actions = actionStore.listActions();
-    return textResult(JSON.stringify(actions, null, 2), { actions });
-  }
-
-  // Handle get_action_detail meta-action
-  if (actionName === "get_action_detail") {
-    const requestedAction =
-      typeof payload.action === "string"
-        ? payload.action
-        : typeof payload.name === "string"
-          ? payload.name
-          : "";
-    if (!requestedAction) {
-      return errorResult("get_action_detail error: payload.action is required.");
-    }
-    const detail = actionStore.getActionDetail(requestedAction);
-    if (!detail) {
-      const available = actionStore.listActions().map((a) => a.name);
-      return errorResult(`Action not found: ${requestedAction}`, {
-        availableActions: available,
-      });
-    }
-    return textResult(JSON.stringify(detail, null, 2), { action: detail });
-  }
-
-  // Execute the action through action-store
-  // Use createExecutionContext to get proper requireApproval integration with the approval dialog
   const ctx = createExecutionContext(request.sessionId, request.toolCallId);
 
   try {
-    const result = await actionStore.execute(actionName, payload, ctx);
+    const result = await executeGUIAction({ action: actionName, payload }, ctx);
     return toCallToolResult(result);
   } catch (err) {
     return errorResult(
@@ -132,6 +133,15 @@ export async function executeGuiAction(
   }
 }
 
+async function executeClientSideBash(request: ClientToolExecutionRequest): Promise<CallToolResult> {
+  const input = isRecord(request.input) ? request.input : {};
+  const script = typeof input.script === "string" ? input.script : "";
+  const ctx = createExecutionContext(request.sessionId, request.toolCallId);
+  const runtime = createClientSideBash({ executeGUIAction });
+  const result = await runtime.execute({ script }, ctx);
+  return toCallToolResult(result);
+}
+
 /**
  * Main entry point for executing client tools
  * Returns a Promise for async execution (action handlers may be async)
@@ -139,10 +149,14 @@ export async function executeGuiAction(
 export async function executeClientTool(
   request: ClientToolExecutionRequest
 ): Promise<CallToolResult> {
+  if (isClientSideBashTool(request.toolName)) {
+    return executeClientSideBash(request);
+  }
+
   if (!isGuiExecuteTool(request.toolName)) {
     return errorResult(`Desktop client has no handler for tool: ${request.toolName}`, {
       toolName: request.toolName,
-      supportedTools: ["GUI_execute", "mcp__client_side__GUI_execute"],
+      supportedTools: ["GUI_execute", "mcp__client_side__GUI_execute", "ClientSideBash", "mcp__client_side__ClientSideBash"],
     });
   }
 

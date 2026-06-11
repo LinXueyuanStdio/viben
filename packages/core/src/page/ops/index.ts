@@ -23,6 +23,7 @@ export type {
   IconType,
   IconData,
   PageWidth,
+  PageIndex,
   StaticPageConfig,
   MarkdownPageConfig,
   ServerPageConfig,
@@ -44,7 +45,6 @@ export type {
   TemplateFile,
   TemplateVars,
   ListTemplatesResult,
-  PageOrderData,
   ReorderPagesOptions,
   ReorderPagesResult,
   DuplicatePageOptions,
@@ -64,10 +64,9 @@ export { isStaticPage, isMarkdownPage, isServerPage, isProxyPage } from "./types
 
 // Discovery
 export {
-  parseSkillMd,
-  discoverPages,
+  parsePageMd,
   listPagesInWorkspace,
-  getPageBySlug,
+  getPageByUid,
 } from "./discovery";
 
 // CRUD operations
@@ -90,7 +89,6 @@ export {
   updatePageConfig,
   uploadPageAsset,
   reorderPages,
-  getPageOrder,
 } from "./crud";
 
 // Serve

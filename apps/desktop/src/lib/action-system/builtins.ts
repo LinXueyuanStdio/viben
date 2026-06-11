@@ -1,9 +1,19 @@
 import { toPng } from "html-to-image";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { ClientToolResult } from "../client-side-tool/types";
 import type { ActionDetail, ExecutionContext } from "./types";
 import { useActionStore } from "@/stores/action-store";
 import { navigateToPath } from "./navigation-handler";
 import { ROUTE_ENTRIES, registry } from "@/navigation/route-registry";
+
+const READ_WINDOW_CAPTURE_TIMEOUT_MS = 10_000;
+
+interface ScreenshotResult {
+  data: string;
+  width: number;
+  height: number;
+}
 
 /**
  * Execute a built-in action. Returns null if the action name is not a built-in.
@@ -73,21 +83,8 @@ async function handleReadWindow(ctx: ExecutionContext): Promise<ClientToolResult
       confirmLabel: "Allow",
     });
 
-    const appRoot = document.getElementById("root");
-    if (!appRoot) {
-      return {
-        content: [{ type: "text", text: "read_window failed: no root element found" }],
-        isError: true,
-      };
-    }
-
-    const dataUrl = await toPng(appRoot, {
-      quality: 0.8,
-      pixelRatio: 1,
-    });
-
-    // Strip the data:image/png;base64, prefix
-    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+    const dataUrl = await captureCurrentWindowDataUrl();
+    const base64 = stripDataUrlPrefix(dataUrl);
 
     return {
       content: [{ type: "image", data: base64, mimeType: "image/png" }],
@@ -98,6 +95,68 @@ async function handleReadWindow(ctx: ExecutionContext): Promise<ClientToolResult
       isError: true,
     };
   }
+}
+
+async function captureCurrentWindowDataUrl(): Promise<string> {
+  try {
+    return await withTimeout(captureCurrentTauriWindowDataUrl(), READ_WINDOW_CAPTURE_TIMEOUT_MS, "native window capture");
+  } catch (err) {
+    console.warn("[read_window] Native window capture failed, falling back to DOM capture:", err);
+  }
+
+  const appRoot = document.getElementById("root");
+  if (!appRoot) {
+    throw new Error("no root element found");
+  }
+
+  return await withTimeout(
+    toPng(appRoot, {
+      quality: 0.8,
+      pixelRatio: 1,
+      cacheBust: true,
+      skipFonts: true,
+    }),
+    READ_WINDOW_CAPTURE_TIMEOUT_MS,
+    "DOM PNG capture"
+  );
+}
+
+async function captureCurrentTauriWindowDataUrl(): Promise<string> {
+  const currentWindow = getCurrentWindow();
+  const [position, size] = await Promise.all([
+    currentWindow.outerPosition(),
+    currentWindow.outerSize(),
+  ]);
+  const result = await invoke<ScreenshotResult>("take_screenshot_region", {
+    x: Math.max(0, Math.round(position.x)),
+    y: Math.max(0, Math.round(position.y)),
+    width: Math.max(1, Math.round(size.width)),
+    height: Math.max(1, Math.round(size.height)),
+  });
+  return result.data;
+}
+
+function stripDataUrlPrefix(dataUrl: string): string {
+  return dataUrl.replace(/^data:image\/\w+;base64,/, "");
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        window.clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
 }
 
 function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, unknown>) | null {

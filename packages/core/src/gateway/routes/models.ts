@@ -557,7 +557,12 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      await modelManager.enableModel(resolvedId);
+      const model = await modelManager.getModel(resolvedId);
+      if (!model) {
+        reply.code(404);
+        return { error: `Model not found: ${id}` };
+      }
+      await modelManager.enableModel(resolvedId, model.provider);
 
       return {
         success: true,
@@ -583,7 +588,12 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      await modelManager.disableModel(resolvedId);
+      const model = await modelManager.getModel(resolvedId);
+      if (!model) {
+        reply.code(404);
+        return { error: `Model not found: ${id}` };
+      }
+      await modelManager.disableModel(resolvedId, model.provider);
 
       return {
         success: true,
