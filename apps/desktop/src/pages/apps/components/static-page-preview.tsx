@@ -28,11 +28,7 @@ import {
   type FilePreviewType,
 } from "../utils/file-type-detector";
 import { useTheme } from "@/hooks/use-theme";
-import { useActionStore } from "@/stores/action-store";
-import {
-  createPageActionBridge,
-  type PageActionBridge,
-} from "./page-action-bridge";
+import { getIdentitySync, getOrCreateIdentity, type ClientIdentity } from "@/stores/client-id-store";
 
 interface StaticPagePreviewProps {
   page: StaticPageConfig;
@@ -74,7 +70,7 @@ function toArtifactType(previewType: FilePreviewType): ArtifactType {
 export function StaticPagePreview({
   page,
   workspacePath,
-  workspaceId,
+  workspaceId: _workspaceId,
   iframeKey = 0,
   className,
 }: StaticPagePreviewProps) {
@@ -113,70 +109,33 @@ export function StaticPagePreview({
   );
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const bridgeRef = useRef<PageActionBridge | null>(null);
-  const currentBridgeKeyRef = useRef<string | null>(null);
-  const resolvedThemeRef = useRef(resolvedTheme);
-  const registerActions = useActionStore((s) => s.register);
-  const unregisterActions = useActionStore((s) => s.unregister);
-  const gatewayOrigin = useMemo(() => {
-    try {
-      return new URL(getGatewayUrl()).origin;
-    } catch {
-      return "";
+  const [identity, setIdentity] = useState<ClientIdentity | null>(getIdentitySync);
+
+  useEffect(() => {
+    if (!identity) {
+      getOrCreateIdentity().then(setIdentity);
     }
-  }, []);
+  }, [identity]);
 
-  const disposeBridge = useCallback((reason: string) => {
-    bridgeRef.current?.dispose(reason);
-    bridgeRef.current = null;
-    currentBridgeKeyRef.current = null;
-  }, []);
+  const injectConfig = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow || !identity) return;
 
-  useEffect(() => {
-    return () => disposeBridge("page_action_unavailable");
-  }, [disposeBridge]);
-
-  // Send theme updates when resolvedTheme changes
-  useEffect(() => {
-    resolvedThemeRef.current = resolvedTheme;
-    bridgeRef.current?.updateTheme(resolvedTheme);
-  }, [resolvedTheme]);
-
-  const bindIframe = useCallback(
-    (iframe: HTMLIFrameElement | null) => {
-      if (!iframe) {
-        disposeBridge("page_action_cancelled");
-        iframeRef.current = null;
-        return;
-      }
-      iframeRef.current = iframe;
-      const bridgeKey = `${iframeKey}:${gatewayServeUrl}`;
-      if (currentBridgeKeyRef.current === bridgeKey && bridgeRef.current) return;
-      bridgeRef.current?.dispose("page_action_cancelled");
-      bridgeRef.current = createPageActionBridge({
-        iframe,
-        gatewayOrigin,
+    try {
+      (iframe.contentWindow as unknown as { __VIBEN_CONFIG__?: unknown }).__VIBEN_CONFIG__ = {
+        gatewayUrl: getGatewayUrl(),
+        clientId: identity.clientId,
+        publicKey: identity.publicKey,
+        privateKey: identity.privateKey,
+        theme: resolvedTheme,
         workspacePath,
-        workspaceId,
+        source: "page_iframe" as const,
         pageUid: page.uid,
-        theme: resolvedThemeRef.current,
-        registerActions,
-        unregisterActions,
-      });
-      currentBridgeKeyRef.current = bridgeKey;
-    },
-    [
-      iframeKey,
-      gatewayServeUrl,
-      gatewayOrigin,
-      workspacePath,
-      workspaceId,
-      page.uid,
-      registerActions,
-      unregisterActions,
-      disposeBridge,
-    ]
-  );
+      };
+    } catch {
+      console.error("Cannot inject config into cross-origin iframe");
+    }
+  }, [identity, resolvedTheme, workspacePath, page.uid]);
 
   // For HTML and fallback: use iframe with gateway serve
   if (filePreviewType === "html" || filePreviewType === "iframe-fallback") {
@@ -184,13 +143,11 @@ export function StaticPagePreview({
       <div className={cn("h-full w-full bg-white", className)}>
         <iframe
           key={iframeKey}
-          ref={bindIframe}
+          ref={iframeRef}
           src={gatewayServeUrl}
           className="h-full w-full border-0"
           title={page.name}
-          onLoad={() => {
-            bridgeRef.current?.sendInit();
-          }}
+          onLoad={() => injectConfig()}
         />
       </div>
     );
