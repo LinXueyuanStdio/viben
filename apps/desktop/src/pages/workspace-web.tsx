@@ -47,7 +47,7 @@ export function WorkspaceWebPage() {
     const webMeta = {
       workspaceId,
       webId: searchParams.get("web_id") ?? undefined,
-      pageSlug: sourcePageSlug,
+      pageUid: sourcePageSlug,
       url: url || undefined,
     };
     const webUrl = registry.build("/workspace/:workspaceId/web", { workspaceId: workspaceId ?? "global" }) +

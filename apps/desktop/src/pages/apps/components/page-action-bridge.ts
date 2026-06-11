@@ -67,7 +67,7 @@ export interface PageActionBridgeOptions {
   gatewayOrigin: string;
   workspacePath: string;
   workspaceId?: string | null;
-  pageSlug: string;
+  pageUid: string;
   theme: "light" | "dark";
   registerActions: (providerId: string, namespace: string, actions: ActionDef[]) => void;
   unregisterActions: (providerId: string) => void;
@@ -82,7 +82,7 @@ export class PageActionBridge {
   private readonly gatewayOrigin: string;
   private readonly workspacePath: string;
   private readonly workspaceKey: string;
-  private readonly pageSlug: string;
+  private readonly pageUid: string;
   private readonly pageKey: string;
   private readonly registerActions: (providerId: string, namespace: string, actions: ActionDef[]) => void;
   private readonly unregisterActions: (providerId: string) => void;
@@ -102,8 +102,8 @@ export class PageActionBridge {
     this.gatewayOrigin = options.gatewayOrigin;
     this.workspacePath = options.workspacePath;
     this.workspaceKey = makeWorkspaceKey(options.workspaceId, options.workspacePath);
-    this.pageSlug = options.pageSlug;
-    this.pageKey = encodePageActionSegment(options.pageSlug);
+    this.pageUid = options.pageUid;
+    this.pageKey = encodePageActionSegment(options.pageUid);
     this.theme = options.theme;
     this.registerActions = options.registerActions;
     this.unregisterActions = options.unregisterActions;
@@ -274,7 +274,7 @@ export class PageActionBridge {
         session_id: context.sessionId,
         tool_use_id: context.toolUseId,
         full_action: fullAction,
-        page_slug: this.pageSlug,
+        page_uid: this.pageUid,
         workspace_path: this.workspacePath,
       },
     });

@@ -29,7 +29,7 @@ export interface DesktopBreadcrumbSegment {
     workspaceId?: string;
     section?: WorkspaceSection;
     routePath?: string;
-    pageSlug?: string;
+    pageUid?: string;
     agentId?: string;
     executorType?: string;
     webId?: string;
@@ -66,7 +66,7 @@ export interface ResolvePageIndexBranchInput {
   activeWorkspaceId?: string;
   currentSection?: WorkspaceSection;
   currentArea?: "home" | "pages" | "section";
-  currentPageSlug?: string;
+  currentPageUid?: string;
   currentSettingsSection?: string;
   allowGithub?: boolean;
   buildLabel?: (titleKey: string, fallbackLabel: string) => string;
@@ -475,10 +475,10 @@ export function buildWorkspacePagesDropdownItems({
   onSelectSection,
   allowGithub = true,
   pages = [],
-  currentPageSlug,
+  currentPageUid,
 }: WorkspaceSectionDropdownInput & {
   pages?: PageConfig[];
-  currentPageSlug?: string;
+  currentPageUid?: string;
 }): BreadcrumbDropdownItem[] {
   const sectionItems = buildWorkspaceSectionMenuDropdownItems({
     workspaceId,
@@ -488,23 +488,23 @@ export function buildWorkspacePagesDropdownItems({
     allowGithub,
   });
   const pageItems = buildDropdownItems(
-    pages.filter((page) => !page.slug.includes("/")),
+    pages.filter((page) => !page.uid.includes("/")),
     (page) => ({
-      id: `workspace:${workspaceId}:page:${page.slug}`,
+      id: `workspace:${workspaceId}:page:${page.uid}`,
       label: page.name,
-      href: `/workspace/${encodeURIComponent(workspaceId)}/page/${page.slug
+      href: `/workspace/${encodeURIComponent(workspaceId)}/page/${page.uid
         .split("/")
         .filter(Boolean)
         .map((segment) => encodeURIComponent(segment))
         .join("/")}`,
       icon: page.icon,
       isActive:
-        currentPageSlug === page.slug ||
-        Boolean(currentPageSlug?.startsWith(`${page.slug}/`)),
+        currentPageUid === page.uid ||
+        Boolean(currentPageUid?.startsWith(`${page.uid}/`)),
       descriptorId: "workspace-page",
       meta: {
         workspaceId,
-        pageSlug: page.slug,
+        pageUid: page.uid,
       },
     })
   );
@@ -607,7 +607,7 @@ export function resolvePageIndexBranch({
   activeWorkspaceId,
   currentSection,
   currentArea,
-  currentPageSlug,
+  currentPageUid,
   currentSettingsSection,
   allowGithub,
   buildLabel,
@@ -633,7 +633,7 @@ export function resolvePageIndexBranch({
     activeWorkspaceId,
     currentSection,
     currentArea,
-    currentPageSlug,
+    currentPageUid,
     currentSettingsSection,
     allowGithub,
     buildLabel,
@@ -704,7 +704,7 @@ export function resolvePageIndexBranch({
           onSelectSection: input.onSelectSection,
           allowGithub: input.allowGithub,
           pages: input.pages,
-          currentPageSlug: input.currentPageSlug,
+          currentPageUid: input.currentPageUid,
         }),
     },
     {
@@ -741,7 +741,7 @@ export function resolvePageIndexBranch({
             onSelectSection: input.onSelectSection,
             allowGithub: input.allowGithub,
             pages: input.pages,
-            currentPageSlug: input.currentPageSlug,
+            currentPageUid: input.currentPageUid,
           });
         }
 
@@ -760,39 +760,39 @@ export function resolvePageIndexBranch({
         Boolean(input.pages?.length),
       build: (input) => {
         const wId = input.workspaceId ?? input.segment.meta?.workspaceId ?? "";
-        // Derive slug from meta or href
-        const currentSlug = input.segment.meta?.pageSlug ??
+        // Derive uid from meta or href
+        const currentUid = input.segment.meta?.pageUid ??
           input.segment.href.match(/^\/workspace\/[^/]+\/pages\/(.+)$/)?.[1] ?? "";
         // Find parent prefix to get siblings
-        const parentPrefix = currentSlug.includes("/")
-          ? currentSlug.slice(0, currentSlug.lastIndexOf("/") + 1)
+        const parentPrefix = currentUid.includes("/")
+          ? currentUid.slice(0, currentUid.lastIndexOf("/") + 1)
           : "";
         const depth = parentPrefix ? parentPrefix.split("/").filter(Boolean).length + 1 : 1;
 
         const siblings = (input.pages ?? []).filter((page) => {
           // Same depth and same parent prefix
-          const pageDepth = page.slug.split("/").filter(Boolean).length;
+          const pageDepth = page.uid.split("/").filter(Boolean).length;
           if (pageDepth !== depth) return false;
           if (parentPrefix) {
-            return page.slug.startsWith(parentPrefix);
+            return page.uid.startsWith(parentPrefix);
           }
-          return !page.slug.includes("/");
+          return !page.uid.includes("/");
         });
 
         return buildDropdownItems(siblings, (page) => ({
-          id: `workspace:${wId}:page:${page.slug}`,
+          id: `workspace:${wId}:page:${page.uid}`,
           label: page.name,
-          href: `/workspace/${encodeURIComponent(wId)}/pages/${page.slug
+          href: `/workspace/${encodeURIComponent(wId)}/pages/${page.uid
             .split("/")
             .filter(Boolean)
             .map((s) => encodeURIComponent(s))
             .join("/")}`,
           icon: page.icon,
-          isActive: page.slug === currentSlug,
+          isActive: page.uid === currentUid,
           descriptorId: "workspace-page",
           meta: {
             workspaceId: wId,
-            pageSlug: page.slug,
+            pageUid: page.uid,
           },
         }));
       },

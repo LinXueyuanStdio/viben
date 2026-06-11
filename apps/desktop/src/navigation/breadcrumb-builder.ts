@@ -19,7 +19,7 @@ export interface BreadcrumbMeta {
   workspaceId?: string;
   section?: WorkspaceSection;
   routePath?: string;
-  pageSlug?: string;
+  pageUid?: string;
   agentId?: string;
   executorType?: string;
   webId?: string;

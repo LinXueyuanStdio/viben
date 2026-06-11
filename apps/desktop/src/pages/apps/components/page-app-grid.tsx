@@ -49,7 +49,9 @@ export interface PageIconGridProps {
 export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) {
   const { t } = useTranslation();
   const { openWorkspacePage } = useDesktopRouting();
-  const { data: pages, isLoading, error } = usePages(workspacePath);
+  const { data, isLoading, error } = usePages(workspacePath);
+  const pages = data?.pages ?? [];
+  const index = data?.index ?? { root: [] };
   const deletePageMutation = useDeletePage();
 
   // Dialog states (extracted hook)
@@ -57,7 +59,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     pageToDelete,
     setPageToDelete,
     createDialogOpen,
-    createParentSlug,
+    createParentUid,
     openCreateDialog,
     closeCreateDialog,
     permissionsPage,
@@ -72,14 +74,14 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
 
   // Build tree
   const pageTree = useMemo(() => {
-    if (!pages || pages.length === 0) return [];
-    return buildPageTree(pages);
-  }, [pages]);
+    if (pages.length === 0) return [];
+    return buildPageTree(pages, index);
+  }, [pages, index]);
 
   // Stable handlers
   const handlePageClick = useCallback(
     (page: PageConfig) => {
-      openWorkspacePage(workspaceId, page.slug, {
+      openWorkspacePage(workspaceId, page.uid, {
         title: page.name,
         icon: page.icon,
       });
@@ -89,7 +91,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
 
   const handleOpenInNewTab = useCallback(
     (page: PageConfig) => {
-      openWorkspacePage(workspaceId, page.slug, {
+      openWorkspacePage(workspaceId, page.uid, {
         openMode: "new-tab",
         title: page.name,
         icon: page.icon,
@@ -103,7 +105,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
     try {
       await deletePageMutation.mutateAsync({
         workspacePath,
-        slug: pageToDelete.slug,
+        uid: pageToDelete.uid,
       });
       toast.success(t("page.deleteSuccess"));
     } catch (err) {
@@ -115,8 +117,8 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
   };
 
   const handleCreateSubpage = useCallback(
-    (parentSlug: string) => {
-      openCreateDialog(parentSlug);
+    (parentUid: string) => {
+      openCreateDialog(parentUid);
     },
     [openCreateDialog]
   );
@@ -126,10 +128,10 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
   }, [openCreateDialog]);
 
   const handleCreateSuccess = useCallback(
-    (slug: string) => {
-      const page = pages?.find((item) => item.slug === slug);
-      openWorkspacePage(workspaceId, slug, {
-        title: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+    (uid: string) => {
+      const page = pages?.find((item) => item.uid === uid);
+      openWorkspacePage(workspaceId, uid, {
+        title: page?.name ?? uid,
         icon: page?.icon,
       });
     },
@@ -149,7 +151,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
         }
         setOpenFolder(node);
       } else {
-        openWorkspacePage(workspaceId, node.page.slug, {
+        openWorkspacePage(workspaceId, node.page.uid, {
           title: node.page.name,
           icon: node.page.icon,
         });
@@ -223,7 +225,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
           <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-y-5 gap-x-2 justify-items-center">
             {pageTree.map((node) => (
               <div
-                key={node.page.slug}
+                key={node.page.uid}
                 onClick={(e) => handleNodeClick(node, e)}
               >
                 <PageIcon
@@ -324,7 +326,7 @@ export function PageIconGrid({ workspaceId, workspacePath }: PageIconGridProps) 
         open={createDialogOpen}
         onOpenChange={(open) => !open && closeCreateDialog()}
         workspacePath={workspacePath}
-        parentSlug={createParentSlug}
+        parentUid={createParentUid}
         onSuccess={handleCreateSuccess}
       />
 

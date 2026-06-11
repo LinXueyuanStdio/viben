@@ -33,47 +33,40 @@ function createWorkspaceRootDescriptor(
 
 function resolveWorkspacePage(
   pages: PageConfig[] | undefined,
-  pageOrSlug: PageConfig | string
+  pageOrUid: PageConfig | string
 ): PageConfig {
-  if (typeof pageOrSlug !== "string") {
-    return pageOrSlug;
+  if (typeof pageOrUid !== "string") {
+    return pageOrUid;
   }
 
-  return pages?.find((item) => item.slug === pageOrSlug) ?? {
-    slug: pageOrSlug,
-    name: pageOrSlug.split("/").filter(Boolean).pop() ?? pageOrSlug,
+  return pages?.find((item) => item.uid === pageOrUid) ?? {
+    uid: pageOrUid,
+    name: pageOrUid,
     permission: ["read"],
-    path: pageOrSlug,
+    path: pageOrUid,
     type: "markdown",
   };
 }
 
-function buildWorkspacePagePathDescriptors(
+/**
+ * Build a single breadcrumb descriptor for a page.
+ * With flat uids, we no longer have nested paths - just "Root > Page"
+ */
+function buildWorkspacePageDescriptor(
   workspaceId: string,
-  pages: PageConfig[] | undefined,
   page: PageConfig
-): BreadcrumbNodeDescriptor[] {
-  const segments = page.slug.split("/").filter(Boolean);
-
-  return segments.map((segment, index) => {
-    const slugAtDepth = segments.slice(0, index + 1).join("/");
-    const isLeaf = index === segments.length - 1;
-    const matchedPage = isLeaf
-      ? page
-      : pages?.find((item) => item.slug === slugAtDepth);
-
-    return {
-      id: `${workspaceId}:page:${slugAtDepth}`,
-      descriptorId: "workspace-page",
-      label: matchedPage?.name ?? segment,
-      href: `/workspace/${encodeURIComponent(workspaceId)}/pages/${slugAtDepth}`,
-      icon: matchedPage?.icon,
-      meta: {
-        workspaceId,
-        pageSlug: slugAtDepth,
-      },
-    };
-  });
+): BreadcrumbNodeDescriptor {
+  return {
+    id: `${workspaceId}:page:${page.uid}`,
+    descriptorId: "workspace-page",
+    label: page.name,
+    href: `/workspace/${encodeURIComponent(workspaceId)}/page/${page.uid}`,
+    icon: page.icon,
+    meta: {
+      workspaceId,
+      pageUid: page.uid,
+    },
+  };
 }
 
 function buildWorkspacePageTreeDescriptors(
@@ -81,14 +74,14 @@ function buildWorkspacePageTreeDescriptors(
   path: PageTreeNode[]
 ): BreadcrumbNodeDescriptor[] {
   return path.map((item) => ({
-    id: `${workspaceId}:page:${item.page.slug}`,
+    id: `${workspaceId}:page:${item.page.uid}`,
     descriptorId: "workspace-page",
     label: item.page.name,
-    href: `/workspace/${encodeURIComponent(workspaceId)}/pages/${item.page.slug}`,
+    href: `/workspace/${encodeURIComponent(workspaceId)}/page/${item.page.uid}`,
     icon: item.page.icon,
     meta: {
       workspaceId,
-      pageSlug: item.page.slug,
+      pageUid: item.page.uid,
     },
   }));
 }
@@ -96,14 +89,14 @@ function buildWorkspacePageTreeDescriptors(
 export function resolveWorkspacePageNavigationState(
   workspaceId: string,
   pages: PageConfig[] | undefined,
-  pageOrSlug: PageConfig | string
+  pageOrUid: PageConfig | string
 ){
-  const page = resolveWorkspacePage(pages, pageOrSlug);
+  const page = resolveWorkspacePage(pages, pageOrUid);
 
   return resolveNavigationState(page, [
     createWorkspaceRootDescriptor(workspaceId),
     createWorkspacePagesIndexDescriptor(workspaceId),
-    ...buildWorkspacePagePathDescriptors(workspaceId, pages, page),
+    buildWorkspacePageDescriptor(workspaceId, page),
   ]);
 }
 

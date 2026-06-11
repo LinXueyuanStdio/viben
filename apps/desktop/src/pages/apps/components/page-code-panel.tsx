@@ -35,7 +35,7 @@ import type { SaveStatus } from "@/hooks";
 
 interface PageCodePanelProps {
   workspacePath: string;
-  pageSlug: string;
+  pageUid: string;
   className?: string;
 }
 
@@ -184,14 +184,14 @@ function FileTreeNode({
 
 export function PageCodePanel({
   workspacePath,
-  pageSlug,
+  pageUid,
   className,
 }: PageCodePanelProps) {
   const { t } = useTranslation();
   const baseUrl = getGatewayUrl();
   const pageDirPath = useMemo(
-    () => `${workspacePath}/pages/${pageSlug}`,
-    [workspacePath, pageSlug]
+    () => `${workspacePath}/pages/${pageUid}`,
+    [workspacePath, pageUid]
   );
 
   // File tree state

@@ -90,13 +90,13 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
   }
 
   if (sectionOrKind === "page") {
-    const pageSlug = pathnameParts.slice(2).join("/");
-    if (!pageSlug) {
+    const pageUid = pathnameParts.slice(2).join("/");
+    if (!pageUid) {
       return null;
     }
 
     return {
-      url: registry.build("/workspace/:workspaceId/pages/:pageSlug+", { workspaceId, pageSlug }),
+      url: registry.build("/workspace/:workspaceId/page/:uid", { workspaceId, uid: pageUid }),
       openMode,
     };
   }

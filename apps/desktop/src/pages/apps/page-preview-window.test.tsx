@@ -18,7 +18,7 @@ import type { Root } from "react-dom/client";
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
 const mockPage: PageConfig = {
-  slug: "demo",
+  uid: "demo",
   name: "Demo",
   type: "static",
   icon: { type: "lucide", value: "file-text" },
@@ -163,7 +163,7 @@ describe("PagePreviewWindow", () => {
     window.history.replaceState(
       null,
       "",
-      "/page-preview-window.html?workspace_id=global&workspace_path=/tmp/workspace&slug=demo",
+      "/page-preview-window.html?workspace_id=global&workspace_path=/tmp/workspace&uid=demo",
     );
     mockAssign.mockClear();
     mockClose.mockClear();
@@ -519,7 +519,7 @@ describe("PagePreviewWindow", () => {
     );
     expect(mockAppendSessionMessage.mock.calls[0][2].content).toContain("Demo");
     expect(mockAppendSessionMessage.mock.calls[0][2].content).toContain(
-      "http://127.0.0.1:18790/api/page/serve?workspace_path=%2Ftmp%2Fworkspace&slug=demo&theme=light",
+      "http://127.0.0.1:18790/api/page/serve?workspace_path=%2Ftmp%2Fworkspace&uid=demo&theme=light",
     );
   });
 

@@ -3,7 +3,7 @@
  *
  * Endpoints used:
  * - POST /api/page/list      - List pages in workspace
- * - POST /api/page/view      - Get page by slug
+ * - POST /api/page/view      - Get page by uid
  * - POST /api/page/create    - Create a new page
  * - POST /api/page/delete    - Delete a page
  * - POST /api/page/templates - List available page templates
@@ -28,6 +28,7 @@ export type {
   PageConfig,
   PageType,
   PagePermission,
+  PageIndex,
   StaticPageConfig,
   MarkdownPageConfig,
   ServerPageConfig,
@@ -44,8 +45,8 @@ export type {
 export const pageKeys = {
   all: ["pages"] as const,
   list: (workspacePath: string) => [...pageKeys.all, "list", workspacePath] as const,
-  detail: (workspacePath: string, slug: string) =>
-    [...pageKeys.all, "detail", workspacePath, slug] as const,
+  detail: (workspacePath: string, uid: string) =>
+    [...pageKeys.all, "detail", workspacePath, uid] as const,
 };
 
 export const templateKeys = {
@@ -59,47 +60,31 @@ export const templateKeys = {
 
 /**
  * Hook for fetching pages in a workspace
+ * Returns full result with pages and index
  *
  * @param workspacePath - The workspace path
- * @returns Query result with pages array
+ * @returns Query result with { pages, index, count }
  */
 export function usePages(workspacePath: string | undefined) {
   return useQuery({
     queryKey: pageKeys.list(workspacePath ?? ""),
     queryFn: () => listPagesApi(getGatewayUrl(), workspacePath!),
     enabled: !!workspacePath,
-    select: (data) => data.pages,
   });
 }
 
 /**
- * Hook for fetching page order in a workspace.
- * Shares the same query cache as usePages.
+ * Hook for fetching a single page by uid
  *
  * @param workspacePath - The workspace path
- * @returns Query result with page order map
- */
-export function usePageOrder(workspacePath: string | undefined) {
-  return useQuery({
-    queryKey: pageKeys.list(workspacePath ?? ""),
-    queryFn: () => listPagesApi(getGatewayUrl(), workspacePath!),
-    enabled: !!workspacePath,
-    select: (data) => data.page_order,
-  });
-}
-
-/**
- * Hook for fetching a single page by slug
- *
- * @param workspacePath - The workspace path
- * @param slug - The page slug
+ * @param uid - The page uid
  * @returns Query result with page config
  */
-export function usePage(workspacePath: string | undefined, slug: string | undefined) {
+export function usePage(workspacePath: string | undefined, uid: string | undefined) {
   return useQuery({
-    queryKey: pageKeys.detail(workspacePath ?? "", slug ?? ""),
-    queryFn: () => viewPageApi(getGatewayUrl(), workspacePath!, slug!),
-    enabled: !!workspacePath && !!slug,
+    queryKey: pageKeys.detail(workspacePath ?? "", uid ?? ""),
+    queryFn: () => viewPageApi(getGatewayUrl(), workspacePath!, uid!),
+    enabled: !!workspacePath && !!uid,
     select: (data) => data.page,
   });
 }
@@ -131,8 +116,8 @@ export function useDeletePage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ workspacePath, slug }: { workspacePath: string; slug: string }) =>
-      deletePageApi(getGatewayUrl(), workspacePath, slug),
+    mutationFn: ({ workspacePath, uid }: { workspacePath: string; uid: string }) =>
+      deletePageApi(getGatewayUrl(), workspacePath, uid),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: pageKeys.list(variables.workspacePath),
@@ -176,7 +161,7 @@ export function useUpdatePageConfig() {
         queryKey: pageKeys.list(variables.workspace_path),
       });
       queryClient.invalidateQueries({
-        queryKey: pageKeys.detail(variables.workspace_path, variables.slug),
+        queryKey: pageKeys.detail(variables.workspace_path, variables.uid),
       });
     },
   });

@@ -86,9 +86,9 @@ export function DesktopBreadcrumbBar({
     return "home";
   }, [currentSection, segments, workspace?.id]);
 
-  const currentPageSlug = useMemo(() => {
-    const pageSegments = segments.filter((segment) => segment.meta?.pageSlug);
-    return pageSegments[pageSegments.length - 1]?.meta?.pageSlug;
+  const currentPageUid = useMemo(() => {
+    const pageSegments = segments.filter((segment) => segment.meta?.pageUid);
+    return pageSegments[pageSegments.length - 1]?.meta?.pageUid;
   }, [segments]);
 
   const currentSettingsSection = useMemo(() => {
@@ -107,7 +107,7 @@ export function DesktopBreadcrumbBar({
         icon: segment.icon,
         slug:
           segment.meta?.section ??
-          segment.meta?.pageSlug ??
+          segment.meta?.pageUid ??
           segment.meta?.agentId ??
           segment.meta?.executorType,
         workspaceId: segment.meta?.workspaceId ?? workspace?.id,
@@ -233,7 +233,7 @@ export function DesktopBreadcrumbBar({
       activeWorkspaceId: workspace?.id,
       currentSection,
       currentArea,
-      currentPageSlug,
+      currentPageUid,
       currentSettingsSection,
       buildLabel: (key, fallback) => t(key, fallback),
       onSelectWorkspace: handleWorkspaceSelect,

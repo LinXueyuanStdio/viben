@@ -87,29 +87,29 @@ export function StaticPagePreview({
 
   // Construct absolute file path for artifact-based viewers
   const filePath = useMemo(() => {
-    return `${workspacePath}/pages/${page.slug}/${page.file}`;
-  }, [workspacePath, page.slug, page.file]);
+    return `${workspacePath}/pages/${page.uid}/${page.file}`;
+  }, [workspacePath, page.uid, page.file]);
 
   // Construct gateway serve URL for iframe-based preview (with theme)
   const gatewayServeUrl = useMemo(() => {
     const baseUrl = getGatewayUrl();
     const params = new URLSearchParams({
       workspace_path: workspacePath,
-      slug: page.slug,
+      uid: page.uid,
       theme: resolvedTheme,
     });
     return `${baseUrl}/api/page/serve?${params.toString()}`;
-  }, [workspacePath, page.slug, resolvedTheme]);
+  }, [workspacePath, page.uid, resolvedTheme]);
 
   // Create an Artifact object from the page config
   const artifact = useMemo<Artifact>(
     () => ({
-      id: `page-${page.slug}`,
+      id: `page-${page.uid}`,
       name: page.name || page.file,
       type: toArtifactType(filePreviewType),
       path: filePath,
     }),
-    [page.slug, page.name, page.file, filePreviewType, filePath]
+    [page.uid, page.name, page.file, filePreviewType, filePath]
   );
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -158,7 +158,7 @@ export function StaticPagePreview({
         gatewayOrigin,
         workspacePath,
         workspaceId,
-        pageSlug: page.slug,
+        pageUid: page.uid,
         theme: resolvedThemeRef.current,
         registerActions,
         unregisterActions,
@@ -171,7 +171,7 @@ export function StaticPagePreview({
       gatewayOrigin,
       workspacePath,
       workspaceId,
-      page.slug,
+      page.uid,
       registerActions,
       unregisterActions,
       disposeBridge,

@@ -280,12 +280,12 @@ function findInPreview(
 
 function getStaticPageServeUrl(
   workspacePath: string,
-  slug: string,
+  uid: string,
   theme: string,
 ): string {
   const params = new URLSearchParams({
     workspace_path: workspacePath,
-    slug,
+    uid,
     theme,
   });
   return `${getGatewayUrl()}/api/page/serve?${params.toString()}`;
@@ -329,7 +329,7 @@ function getPreviewExternalUrl({
     return normalizeHttpUrl(livePreviewUrl ?? undefined);
   }
 
-  return getStaticPageServeUrl(workspacePath, page.slug, resolvedTheme);
+  return getStaticPageServeUrl(workspacePath, page.uid, resolvedTheme);
 }
 
 export interface PagePreviewWindowProps {
@@ -344,7 +344,7 @@ export function PagePreviewWindow({
   const previewSurfaceRef = useRef<HTMLDivElement>(null);
   const workspaceId = getSearchParam("workspace_id");
   const workspacePath = getSearchParam("workspace_path");
-  const slug = getSearchParam("slug");
+  const uid = getSearchParam("uid");
   const initialViewMode = useMemo(
     () => normalizeViewMode(getSearchParam("view")),
     [],
@@ -384,12 +384,12 @@ export function PagePreviewWindow({
     isLoading,
     error,
     refetch,
-  } = usePage(workspacePath, slug);
+  } = usePage(workspacePath, uid);
 
   const pageId = useMemo(() => {
-    if (!page?.slug) return null;
-    return `page-${page.slug}`;
-  }, [page?.slug]);
+    if (!page?.uid) return null;
+    return `page-${page.uid}`;
+  }, [page?.uid]);
 
   const {
     previewUrl,
@@ -446,7 +446,7 @@ export function PagePreviewWindow({
 
   const handleStartLivePreview = useCallback(() => {
     if (!workspacePath || !page) return;
-    const pageDir = `${workspacePath}/pages/${page.slug}`;
+    const pageDir = `${workspacePath}/pages/${page.uid}`;
     const options =
       page.type === "server"
         ? {
@@ -502,7 +502,7 @@ export function PagePreviewWindow({
         ? [
             {
               historyIndex: 0,
-              label: page?.name || page?.slug || externalUrl,
+              label: page?.name || page?.uid || externalUrl,
               url: externalUrl,
               active: true,
             },
@@ -520,7 +520,7 @@ export function PagePreviewWindow({
         };
       },
     );
-  }, [activeTab, externalUrl, page?.name, page?.slug]);
+  }, [activeTab, externalUrl, page?.name, page?.uid]);
 
   const handleRefresh = useCallback(() => {
     setIframeKey((key) => key + 1);
@@ -607,7 +607,7 @@ export function PagePreviewWindow({
     }
 
     setIsForwarding(true);
-    const title = page.name || page.slug || externalUrl;
+    const title = page.name || page.uid || externalUrl;
     const content = buildForwardContent({
       title,
       url: externalUrl,
@@ -739,7 +739,7 @@ export function PagePreviewWindow({
     [activeTabId, jumpToHistoryInStore, navigateToStoreTab],
   );
 
-  if (!workspaceId || !workspacePath || !slug) {
+  if (!workspaceId || !workspacePath || !uid) {
     return (
       <WindowState
         title={t("page.invalidPath", "Invalid Page Path")}
@@ -834,7 +834,7 @@ export function PagePreviewWindow({
         />
         <ForwardToSessionDialog
           open={forwardDialogOpen}
-          title={page.name || page.slug}
+          title={page.name || page.uid}
           url={externalUrl}
           targets={forwardTargets}
           selectedTargetId={selectedForwardTarget?.id ?? null}
@@ -1252,7 +1252,7 @@ function PagePreviewWindowTabBar({
             tabs={
               <>
                 <BrowserTabFrameTab
-                  label={page.name || page.slug}
+                  label={page.name || page.uid}
                   icon={tabIcon}
                   active
                   closable

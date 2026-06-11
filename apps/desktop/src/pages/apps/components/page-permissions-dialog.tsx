@@ -33,7 +33,7 @@ export interface PagePermissionsDialogProps {
   page: PageConfig | null;
   workspacePath: string;
   /** Callback to save permissions */
-  onSave?: (slug: string, permissions: PagePermission[]) => Promise<void>;
+  onSave?: (uid: string, permissions: PagePermission[]) => Promise<void>;
 }
 
 // =============================================================================
@@ -72,7 +72,7 @@ export function PagePermissionsDialog({
 
     setIsSaving(true);
     try {
-      await onSave(page.slug, permissions);
+      await onSave(page.uid, permissions);
       toast.success(t("page.permissionsSaved", "Permissions saved"));
       onOpenChange(false);
     } catch (err) {

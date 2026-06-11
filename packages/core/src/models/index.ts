@@ -395,6 +395,7 @@ export class ModelManager {
     const customEntry = config.custom_models[id];
     if (customEntry) {
       customEntry.enabled = true;
+      customEntry.provider = providerType;
       customEntry.updated_at = new Date().toISOString();
     } else if (getKnownModel(id)) {
       config.disabled_models = config.disabled_models.filter((m) => m !== id);
@@ -421,6 +422,7 @@ export class ModelManager {
     const customEntry = config.custom_models[id];
     if (customEntry) {
       customEntry.enabled = false;
+      customEntry.provider = providerType;
       customEntry.updated_at = new Date().toISOString();
     } else if (getKnownModel(id)) {
       if (!config.disabled_models.includes(id)) {

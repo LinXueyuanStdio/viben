@@ -74,7 +74,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { usePages, usePageOrder, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
+import { usePages, useDeletePage, useDuplicatePage, useReorderPages } from "@/hooks/use-pages";
+import type { PageIndex } from "@/lib/gateway/types/page";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { CreatePageDialog } from "@/pages/apps/components/create-page-dialog";
 import { EditPageDialog } from "@/pages/apps/components/edit-page-dialog";
@@ -85,7 +86,7 @@ import {
   buildPageTree,
   getPageHref,
 } from "@/pages/apps/utils";
-import type { PageTreeNode, PageOrderMap } from "@/pages/apps/utils";
+import type { PageTreeNode } from "@/pages/apps/utils";
 import { registry } from "@/navigation/route-registry";
 
 // =============================================================================
@@ -111,7 +112,7 @@ interface PageTreeItemProps {
   onPageClick: (page: PageConfig) => void;
   onOpenInNewTab: (page: PageConfig) => void;
   onDeleteClick: (page: PageConfig) => void;
-  onCreateSubpage: (parentSlug: string) => void;
+  onCreateSubpage: (parentUid: string) => void;
   onEditClick: (page: PageConfig) => void;
   onPermissionsClick: (page: PageConfig) => void;
   onCopyLink: (page: PageConfig) => void;
@@ -162,9 +163,9 @@ function PageTreeItemContent({
     [location.hash, location.pathname, location.search]
   );
   const isActive =
-    currentMatch?.pattern === "/workspace/:workspaceId/pages/:pageSlug+" &&
+    currentMatch?.pattern === "/workspace/:workspaceId/page/:uid" &&
     currentMatch.params.workspaceId === workspaceId &&
-    currentMatch.params.pageSlug === node.page.slug;
+    currentMatch.params.uid === node.page.uid;
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((e: React.MouseEvent) => {
@@ -318,7 +319,7 @@ function PageTreeItemContent({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      onCreateSubpage(node.page.slug);
+                      onCreateSubpage(node.page.uid);
                     }}
                     className={cn(
                       "flex h-5 w-5 items-center justify-center rounded",
@@ -376,7 +377,7 @@ function PageTreeItemContent({
                     {t("page.duplicate")}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => onCreateSubpage(node.page.slug)}
+                    onClick={() => onCreateSubpage(node.page.uid)}
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {t("page.createSubpage")}
@@ -420,7 +421,7 @@ function PageTreeItemContent({
             <Copy className="mr-2 h-4 w-4" />
             {t("page.duplicate")}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => onCreateSubpage(node.page.slug)}>
+          <ContextMenuItem onClick={() => onCreateSubpage(node.page.uid)}>
             <Plus className="mr-2 h-4 w-4" />
             {t("page.createSubpage")}
           </ContextMenuItem>
@@ -449,7 +450,7 @@ function PageTreeItemContent({
         <div>
           {node.children.map((child) => (
             <PageTreeItem
-              key={child.page.slug}
+              key={child.page.uid}
               node={child}
               workspaceId={workspaceId}
               workspacePath={workspacePath}
@@ -483,7 +484,7 @@ function PageTreeItem(props: PageTreeItemProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: props.node.page.slug });
+  } = useSortable({ id: props.node.page.uid });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -544,10 +545,11 @@ export function PageSection({
 }: PageSectionProps) {
   const { t } = useTranslation();
   const { openWorkspacePage } = useDesktopRouting();
-  const { data: pages, isLoading, error } = usePages(workspacePath);
+  const { data: pagesData, isLoading, error } = usePages(workspacePath);
+  const pages = pagesData?.pages;
+  const serverIndex = pagesData?.index;
   // Only show loading spinner on initial load, not on refetch or when we have cached data
   const showLoading = isLoading && !pages;
-  const { data: serverPageOrder } = usePageOrder(workspacePath);
   const deletePageMutation = useDeletePage();
   const duplicatePageMutation = useDuplicatePage();
   const reorderPagesMutation = useReorderPages();
@@ -557,7 +559,7 @@ export function PageSection({
 
   // Create page dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createParentSlug, setCreateParentSlug] = useState<string | undefined>(undefined);
+  const [createParentUid, setCreateParentUid] = useState<string | undefined>(undefined);
 
   // Edit page dialog state
   const [editPage, setEditPage] = useState<PageConfig | null>(null);
@@ -566,33 +568,33 @@ export function PageSection({
   const [permissionsPage, setPermissionsPage] = useState<PageConfig | null>(null);
 
   // DnD state
-  const [activeSlug, setActiveSlug] = useState<string | null>(null);
+  const [activeUid, setActiveUid] = useState<string | null>(null);
 
-  // Custom page order (optimistic local state overrides server order during drag)
-  const [localOrder, setLocalOrder] = useState<PageOrderMap | undefined>(undefined);
+  // Custom page index (optimistic local state overrides server index during drag)
+  const [localIndex, setLocalIndex] = useState<PageIndex | undefined>(undefined);
 
-  // The effective order: local optimistic override if set, otherwise server order
-  const effectiveOrder = localOrder ?? serverPageOrder;
+  // The effective index: local optimistic override if set, otherwise server index
+  const effectiveIndex = localIndex ?? serverIndex ?? { root: [] };
 
-  // When server order updates (after refetch), clear the local optimistic override
+  // When server index updates (after refetch), clear the local optimistic override
   useEffect(() => {
-    if (serverPageOrder) {
-      setLocalOrder(undefined);
+    if (serverIndex) {
+      setLocalIndex(undefined);
     }
-  }, [serverPageOrder]);
+  }, [serverIndex]);
 
   // Build tree structure from pages
   const pageTree = useMemo(() => {
     if (!pages || pages.length === 0) return [];
-    return buildPageTree(pages, effectiveOrder);
-  }, [pages, effectiveOrder]);
+    return buildPageTree(pages, effectiveIndex);
+  }, [pages, effectiveIndex]);
 
-  // Build a flat map of slug -> node for drag overlay
+  // Build a flat map of uid -> node for drag overlay
   const nodeMap = useMemo(() => {
     const map = new Map<string, PageTreeNode>();
     function walk(nodes: PageTreeNode[]) {
       for (const n of nodes) {
-        map.set(n.page.slug, n);
+        map.set(n.page.uid, n);
         walk(n.children);
       }
     }
@@ -601,7 +603,7 @@ export function PageSection({
   }, [pageTree]);
 
   // The node currently being dragged
-  const activeNode = activeSlug ? nodeMap.get(activeSlug) : undefined;
+  const activeNode = activeUid ? nodeMap.get(activeUid) : undefined;
 
   // DnD sensors - PointerSensor with 5px activation distance
   const sensors = useSensors(
@@ -612,37 +614,37 @@ export function PageSection({
     })
   );
 
-  // Root-level slug IDs for SortableContext
-  const rootSlugs = useMemo(() => pageTree.map((n) => n.page.slug), [pageTree]);
+  // Root-level uid IDs for SortableContext
+  const rootUids = useMemo(() => pageTree.map((n) => n.page.uid), [pageTree]);
 
   // Handle drag start
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveSlug(event.active.id as string);
+    setActiveUid(event.active.id as string);
   }, []);
 
   // Handle drag end
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      setActiveSlug(null);
+      setActiveUid(null);
 
       if (!over || active.id === over.id) return;
 
       const activeId = active.id as string;
       const overId = over.id as string;
 
-      // Find which level these items are on
-      // Both must be at the same level for reordering
-      const activeSlugParts = activeId.split("/");
-      const overSlugParts = overId.split("/");
+      // Find which parent these items belong to using the index
+      let activeParent: string | null = null;
+      let overParent: string | null = null;
 
-      // Determine parent: for root items it's null, for nested items it's the parent slug
-      const activeParent = activeSlugParts.length > 1
-        ? activeSlugParts.slice(0, -1).join("/")
-        : null;
-      const overParent = overSlugParts.length > 1
-        ? overSlugParts.slice(0, -1).join("/")
-        : null;
+      for (const [key, children] of Object.entries(effectiveIndex)) {
+        if (children.includes(activeId)) {
+          activeParent = key === "root" ? null : key;
+        }
+        if (children.includes(overId)) {
+          overParent = key === "root" ? null : key;
+        }
+      }
 
       // Only allow reordering within the same level
       if (activeParent !== overParent) return;
@@ -659,27 +661,27 @@ export function PageSection({
       }
 
       // Find indices
-      const oldIndex = siblings.findIndex((n) => n.page.slug === activeId);
-      const newIndex = siblings.findIndex((n) => n.page.slug === overId);
+      const oldIndex = siblings.findIndex((n) => n.page.uid === activeId);
+      const newIndex = siblings.findIndex((n) => n.page.uid === overId);
       if (oldIndex === -1 || newIndex === -1) return;
 
       // Compute new order
-      const newSlugs = siblings.map((n) => n.page.slug);
-      const [moved] = newSlugs.splice(oldIndex, 1);
-      newSlugs.splice(newIndex, 0, moved);
+      const newUids = siblings.map((n) => n.page.uid);
+      const [moved] = newUids.splice(oldIndex, 1);
+      newUids.splice(newIndex, 0, moved);
 
       // Optimistic update
-      const newOrder: PageOrderMap = { ...effectiveOrder, [parentKey]: newSlugs };
-      setLocalOrder(newOrder);
+      const newIndex_: PageIndex = { ...effectiveIndex, [parentKey]: newUids };
+      setLocalIndex(newIndex_);
 
       // Persist to backend
       reorderPagesMutation.mutate({
         workspace_path: workspacePath,
-        parent_slug: activeParent,
-        ordered_slugs: newSlugs,
+        parent_uid: activeParent,
+        ordered_uids: newUids,
       });
     },
-    [pageTree, nodeMap, effectiveOrder, reorderPagesMutation, workspacePath]
+    [pageTree, nodeMap, effectiveIndex, reorderPagesMutation, workspacePath]
   );
 
   // Handle delete page
@@ -689,7 +691,7 @@ export function PageSection({
     try {
       await deletePageMutation.mutateAsync({
         workspacePath,
-        slug: pageToDelete.slug,
+        uid: pageToDelete.uid,
       });
       toast.success(t("page.deleteSuccess"));
     } catch (err) {
@@ -701,20 +703,20 @@ export function PageSection({
   };
 
   // Handle create subpage
-  const handleCreateSubpage = useCallback((parentSlug: string) => {
-    setCreateParentSlug(parentSlug);
+  const handleCreateSubpage = useCallback((parentUid: string) => {
+    setCreateParentUid(parentUid);
     setCreateDialogOpen(true);
   }, []);
 
   // Handle create new page
   const handleCreatePage = useCallback(() => {
-    setCreateParentSlug(undefined);
+    setCreateParentUid(undefined);
     setCreateDialogOpen(true);
   }, []);
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((page: PageConfig) => {
-    openWorkspacePage(workspaceId, page.slug, {
+    openWorkspacePage(workspaceId, page.uid, {
       title: page.name,
       icon: page.icon,
     });
@@ -722,7 +724,7 @@ export function PageSection({
 
   // Handle open in new tab
   const handleOpenInNewTab = useCallback((page: PageConfig) => {
-    openWorkspacePage(workspaceId, page.slug, {
+    openWorkspacePage(workspaceId, page.uid, {
       openMode: "new-tab",
       title: page.name,
       icon: page.icon,
@@ -731,7 +733,7 @@ export function PageSection({
 
   // Handle copy link
   const handleCopyLink = useCallback((page: PageConfig) => {
-    const href = getPageHref(workspaceId, page.slug);
+    const href = getPageHref(workspaceId, page.uid);
     const fullUrl = `${window.location.origin}${href}`;
     navigator.clipboard.writeText(fullUrl).then(() => {
       toast.success(t("page.linkCopied"));
@@ -750,7 +752,7 @@ export function PageSection({
   const handleDuplicate = useCallback((page: PageConfig) => {
     if (!workspacePath) return;
     duplicatePageMutation.mutate(
-      { workspace_path: workspacePath, slug: page.slug },
+      { workspace_path: workspacePath, uid: page.uid },
       {
         onSuccess: (result) => {
           if (result.success && result.page) {
@@ -765,10 +767,10 @@ export function PageSection({
   }, [workspacePath, duplicatePageMutation, t]);
 
   // Handle page creation success - open new page in tab
-  const handleCreateSuccess = useCallback((slug: string) => {
-    const page = pages?.find((item) => item.slug === slug);
-    openWorkspacePage(workspaceId, slug, {
-      title: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+  const handleCreateSuccess = useCallback((uid: string) => {
+    const page = pages?.find((item) => item.uid === uid);
+    openWorkspacePage(workspaceId, uid, {
+      title: page?.name ?? uid,
       icon: page?.icon,
     });
   }, [openWorkspacePage, pages, workspaceId]);
@@ -832,7 +834,7 @@ export function PageSection({
             open={createDialogOpen}
             onOpenChange={setCreateDialogOpen}
             workspacePath={workspacePath}
-            parentSlug={createParentSlug}
+            parentUid={createParentUid}
             onSuccess={handleCreateSuccess}
           />
         </>
@@ -852,7 +854,7 @@ export function PageSection({
         </div>
         {/* First-level page icons - use page's custom icon */}
         {pageTree.map((node) => (
-          <div key={node.page.slug} className="grid place-items-center w-full">
+          <div key={node.page.uid} className="grid place-items-center w-full">
             <SidebarIconButton
               icon={<IconDisplay icon={node.page.icon} size="md" workspacePath={workspacePath} />}
               tooltip={node.page.name}
@@ -867,7 +869,7 @@ export function PageSection({
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
           workspacePath={workspacePath}
-          parentSlug={createParentSlug}
+          parentUid={createParentUid}
           onSuccess={handleCreateSuccess}
         />
       </>
@@ -936,11 +938,11 @@ export function PageSection({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={rootSlugs} strategy={verticalListSortingStrategy}>
+            <SortableContext items={rootUids} strategy={verticalListSortingStrategy}>
               <nav className="flex flex-col gap-0.5">
                 {pageTree.map((node) => (
                   <PageTreeItem
-                    key={node.page.slug}
+                    key={node.page.uid}
                     node={node}
                     workspaceId={workspaceId}
                     workspacePath={workspacePath}
@@ -1008,7 +1010,7 @@ export function PageSection({
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         workspacePath={workspacePath}
-        parentSlug={createParentSlug}
+        parentUid={createParentUid}
         onSuccess={handleCreateSuccess}
       />
 

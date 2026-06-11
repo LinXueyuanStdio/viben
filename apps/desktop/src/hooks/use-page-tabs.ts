@@ -341,9 +341,9 @@ export function useTabActions(): TabActions {
       workspaceId: string,
       breadcrumbStack?: BreadcrumbStackItem[],
     ) => {
-      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+      const url = registry.build("/workspace/:workspaceId/page/:uid", {
         workspaceId,
-        pageSlug: page.slug,
+        uid: page.uid,
       });
       return openUrl(url, { breadcrumbStack });
     },
@@ -356,9 +356,9 @@ export function useTabActions(): TabActions {
       workspaceId: string,
       breadcrumbStack?: BreadcrumbStackItem[],
     ) => {
-      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+      const url = registry.build("/workspace/:workspaceId/page/:uid", {
         workspaceId,
-        pageSlug: page.slug,
+        uid: page.uid,
       });
       return openUrl(url, { openInNewTab: true, breadcrumbStack });
     },
@@ -458,11 +458,11 @@ export function useTabActions(): TabActions {
         return false;
       }
 
-      const pageSlug = match?.params.pageSlug;
+      const pageUid = match?.params.uid;
       const isPageRoute =
-        match?.pattern === "/workspace/:workspaceId/page/:pageSlug+";
+        match?.pattern === "/workspace/:workspaceId/page/:uid";
 
-      if (isPageRoute && pageSlug) {
+      if (isPageRoute && pageUid) {
         const workspace = getWorkspace(workspaceId);
         if (!workspace?.path) {
           return false;
@@ -471,8 +471,8 @@ export function useTabActions(): TabActions {
         await invoke("open_workspace_page_preview_window", {
           workspaceId,
           workspacePath: workspace.path,
-          slug: pageSlug,
-          title: tabView?.label ?? pageSlug,
+          uid: pageUid,
+          title: tabView?.label ?? pageUid,
           view: tab.viewMode ?? "page",
         });
         closeTabStore(tabId);

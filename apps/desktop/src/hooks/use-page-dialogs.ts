@@ -8,8 +8,8 @@ export interface PageDialogsState {
 
   // Create dialog
   createDialogOpen: boolean;
-  createParentSlug: string | undefined;
-  openCreateDialog: (parentSlug?: string) => void;
+  createParentUid: string | undefined;
+  openCreateDialog: (parentUid?: string) => void;
   closeCreateDialog: () => void;
 
   // Permissions dialog
@@ -24,7 +24,7 @@ export interface PageDialogsState {
 export function usePageDialogs(): PageDialogsState {
   const [pageToDelete, setPageToDelete] = useState<PageConfig | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [createParentSlug, setCreateParentSlug] = useState<string | undefined>(
+  const [createParentUid, setCreateParentSlug] = useState<string | undefined>(
     undefined,
   );
   const [permissionsPage, setPermissionsPage] = useState<PageConfig | null>(
@@ -32,8 +32,8 @@ export function usePageDialogs(): PageDialogsState {
   );
   const [editPage, setEditPage] = useState<PageConfig | null>(null);
 
-  const openCreateDialog = useCallback((parentSlug?: string) => {
-    setCreateParentSlug(parentSlug);
+  const openCreateDialog = useCallback((parentUid?: string) => {
+    setCreateParentSlug(parentUid);
     setCreateDialogOpen(true);
   }, []);
 
@@ -45,7 +45,7 @@ export function usePageDialogs(): PageDialogsState {
     pageToDelete,
     setPageToDelete,
     createDialogOpen,
-    createParentSlug,
+    createParentUid,
     openCreateDialog,
     closeCreateDialog,
     permissionsPage,

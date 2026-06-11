@@ -108,7 +108,7 @@ export function registerPageCommand(program: Command): void {
               }
               console.log();
               console.log("Create a page with:");
-              console.log(chalk.cyan("  viben page create <slug> --name \"Page Name\""));
+              console.log(chalk.cyan("  viben page create --name \"Page Name\""));
               return;
             }
 
@@ -116,9 +116,9 @@ export function registerPageCommand(program: Command): void {
             console.log();
             outputTable(
               ctx,
-              ["Slug", "Name", "Type", "Permission"],
+              ["UID", "Name", "Type", "Permission"],
               pages.map((p) => [
-                p.slug,
+                p.uid,
                 p.name,
                 formatPageType(p),
                 p.permission.join(", "),
@@ -131,22 +131,22 @@ export function registerPageCommand(program: Command): void {
       }
     });
 
-  // viben page view <slug>
+  // viben page view <uid>
   pageCmd
-    .command("view <slug>")
+    .command("view <uid>")
     .description("View page details")
-    .action(async (slug: string) => {
+    .action(async (uid: string) => {
       const ctx = getOutputContext(program);
       try {
         const workspacePath = ensureWorkspaceRoot(process.cwd());
 
         const result = await viewPage({
           workspace_path: workspacePath,
-          slug,
+          uid,
         });
 
         if (!result.success || !result.page) {
-          throw new Error(result.error || `Page not found: ${slug}`);
+          throw new Error(result.error || `Page not found: ${uid}`);
         }
 
         const page = result.page;
@@ -156,7 +156,7 @@ export function registerPageCommand(program: Command): void {
           console.log();
 
           const details: Record<string, string | undefined> = {
-            Slug: page.slug,
+            UID: page.uid,
             Name: page.name,
             Type: page.type,
             Description: page.description,
@@ -226,7 +226,7 @@ export function registerPageCommand(program: Command): void {
               }
               console.log();
               console.log("Create a page with:");
-              console.log(chalk.cyan("  viben page create <slug> --name \"Page Name\" --type <type>"));
+              console.log(chalk.cyan("  viben page create --name \"Page Name\" --type <type>"));
               return;
             }
 
@@ -255,7 +255,7 @@ export function registerPageCommand(program: Command): void {
             }
 
             console.log("Use a template with:");
-            console.log(chalk.cyan("  viben page create <slug> --name \"Page Name\" --template <template-id>"));
+            console.log(chalk.cyan("  viben page create --name \"Page Name\" --template <template-id>"));
           }
         );
       } catch (error) {
@@ -263,10 +263,10 @@ export function registerPageCommand(program: Command): void {
       }
     });
 
-  // viben page create <slug>
+  // viben page create [slug]
   pageCmd
-    .command("create <slug>")
-    .description("Create a new page")
+    .command("create [slug]")
+    .description("Create a new page (slug is optional, generates uid as mmdd-slug or mmdd-<random>)")
     .requiredOption("-n, --name <name>", "Page name (required)")
     .option("-d, --description <desc>", "Page description")
     .option("-t, --type <type>", "Page type (static, markdown, server, proxy)", "static")
@@ -275,9 +275,10 @@ export function registerPageCommand(program: Command): void {
     .option("--command <cmd>", "Command for server pages")
     .option("--port <port>", "Port for server pages")
     .option("--url <url>", "URL for proxy pages")
+    .option("--parent <uid>", "Parent page uid for creating subpages")
     .action(
       async (
-        slug: string,
+        slug: string | undefined,
         options: {
           name: string;
           description?: string;
@@ -287,6 +288,7 @@ export function registerPageCommand(program: Command): void {
           command?: string;
           port?: string;
           url?: string;
+          parent?: string;
         }
       ) => {
         const ctx = getOutputContext(program);
@@ -317,7 +319,7 @@ export function registerPageCommand(program: Command): void {
 
           const result = await createPage({
             workspace_path: workspacePath,
-            slug,
+            slug: slug || undefined,
             name: options.name,
             description: options.description,
             type: pageType,
@@ -325,6 +327,7 @@ export function registerPageCommand(program: Command): void {
             command: options.command,
             port: options.port ? parseInt(options.port, 10) : undefined,
             url: options.url,
+            parent_uid: options.parent,
           });
 
           if (!result.success) {
@@ -332,11 +335,11 @@ export function registerPageCommand(program: Command): void {
           }
 
           output(ctx, successResponse({ page: result.page }), () => {
-            outputSuccess(ctx, `Page "${slug}" created successfully.`);
+            outputSuccess(ctx, `Page created successfully.`);
             console.log();
             if (result.page) {
               outputKeyValue(ctx, {
-                Slug: result.page.slug,
+                UID: result.page.uid,
                 Name: result.page.name,
                 Type: result.page.type,
                 Path: result.page.path,
@@ -349,12 +352,12 @@ export function registerPageCommand(program: Command): void {
       }
     );
 
-  // viben page delete <slug>
+  // viben page delete <uid>
   pageCmd
-    .command("delete <slug>")
+    .command("delete <uid>")
     .description("Delete a page")
     .option("-f, --force", "Skip confirmation")
-    .action(async (slug: string, options: { force?: boolean }) => {
+    .action(async (uid: string, options: { force?: boolean }) => {
       const ctx = getOutputContext(program);
       try {
         const workspacePath = ensureWorkspaceRoot(process.cwd());
@@ -362,16 +365,16 @@ export function registerPageCommand(program: Command): void {
         // Check if page exists first
         const viewResult = await viewPage({
           workspace_path: workspacePath,
-          slug,
+          uid,
         });
 
         if (!viewResult.success || !viewResult.page) {
-          throw new Error(`Page not found: ${slug}`);
+          throw new Error(`Page not found: ${uid}`);
         }
 
         // Confirm deletion if not forced
         if (!options.force && !ctx.json) {
-          console.log(chalk.yellow(`About to delete page "${slug}" (${viewResult.page.name})`));
+          console.log(chalk.yellow(`About to delete page "${uid}" (${viewResult.page.name})`));
           console.log(chalk.yellow(`Path: ${viewResult.page.path}`));
           console.log();
           console.log(chalk.red("This action cannot be undone."));
@@ -382,15 +385,15 @@ export function registerPageCommand(program: Command): void {
 
         const result = await deletePage({
           workspace_path: workspacePath,
-          slug,
+          uid,
         });
 
         if (!result.success) {
           throw new Error(result.error);
         }
 
-        output(ctx, successResponse({ slug: result.slug }), () => {
-          outputSuccess(ctx, `Page "${slug}" deleted successfully.`);
+        output(ctx, successResponse({ uid: result.uid }), () => {
+          outputSuccess(ctx, `Page "${uid}" deleted successfully.`);
         });
       } catch (error) {
         handleCommandError(ctx, error);

@@ -14,9 +14,7 @@ import {
   EthernetPort,
   ExternalLink,
   FolderPlus,
-  FolderTree,
   GripVertical,
-  ListTodo,
   Loader2,
   Maximize2,
   MessageSquare,
@@ -42,7 +40,6 @@ import {
   ChatInputBottomToolbar,
   ChatInputTopToolbar,
   ContextApprovalButton,
-  ContextApprovalPopup,
   ExpandedHeaderModeControls,
   TodoListPanel,
   TripleSelector,
@@ -80,11 +77,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  Switch,
-  Label,
 } from "@viben/ui";
 import { usePet } from "@/hooks";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
@@ -95,6 +87,7 @@ import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useAcpSession } from "./use-acp-session";
+import { ContextSettingsPopup } from "./context-settings-popup";
 import { useChatDrag } from "@/hooks/use-chat-drag";
 import { ChatDragProvider } from "@/contexts/chat-drag-context";
 import type { SnapPosition } from "@/stores/chat-position-store";
@@ -539,7 +532,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // Settings state
   const [worktree, setWorktree] = useState(false);
   const [backgroundTask, setBackgroundTask] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Context Approval state
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>("rules");
@@ -885,87 +877,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     ]
   );
 
-  // Settings popover node
-  const settingsPopoverNode = useMemo(
-    () => (
-      <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "h-8 w-8 flex items-center justify-center rounded-full",
-              "bg-muted/50 hover:bg-muted/80 transition-colors",
-              "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Settings2 className="h-4 w-4" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[240px] p-3 z-[10001]" side="top" align="center">
-          <div className="space-y-3">
-            {/* Sandbox toggle */}
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="acp-sandbox"
-                className={cn(
-                  "text-xs font-medium cursor-pointer transition-colors",
-                  sandboxConfig.enabled ? "text-amber-500" : "text-muted-foreground"
-                )}
-              >
-                {t("chat.sandbox")}
-              </Label>
-              <Switch
-                id="acp-sandbox"
-                checked={sandboxConfig.enabled}
-                onCheckedChange={setSandboxEnabled}
-                className="data-[state=checked]:bg-amber-500"
-              />
-            </div>
-            {/* Worktree toggle */}
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="acp-worktree"
-                className={cn(
-                  "text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-colors",
-                  worktree ? "text-blue-500" : "text-muted-foreground"
-                )}
-              >
-                <FolderTree className="h-4 w-4" />
-                {t("chat.worktree")}
-              </Label>
-              <Switch
-                id="acp-worktree"
-                checked={worktree}
-                onCheckedChange={setWorktree}
-                className="data-[state=checked]:bg-blue-500"
-              />
-            </div>
-            {/* Background task toggle */}
-            <div className="flex items-center justify-between">
-              <Label
-                htmlFor="acp-background-task"
-                className={cn(
-                  "text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-colors",
-                  backgroundTask ? "text-green-500" : "text-muted-foreground"
-                )}
-              >
-                <ListTodo className="h-4 w-4" />
-                {t("chat.backgroundTask.title")}
-              </Label>
-              <Switch
-                id="acp-background-task"
-                checked={backgroundTask}
-                onCheckedChange={setBackgroundTask}
-                className="data-[state=checked]:bg-green-500"
-              />
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    ),
-    [backgroundTask, sandboxConfig.enabled, setSandboxEnabled, settingsOpen, t, worktree]
-  );
-
   // Voice input button node
   const voiceInputNode = useMemo(
     () => (
@@ -1064,6 +975,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [interrupt, isTurnActive, sessionId]);
 
+  const handleCompactContext = useCallback(() => {
+    handleSend("/compact");
+  }, [handleSend]);
+
   // Combined bottom toolbar left content
   const bottomToolbarLeftContent = useMemo(
     () => (
@@ -1076,42 +991,68 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         >
           {isContextPopupOpen && (
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 pb-1">
-              <ContextApprovalPopup
+              <ContextSettingsPopup
+                hasSession={!!sessionId}
                 breakdown={contextBreakdown}
                 totalUsed={contextPopupProps.totalUsed}
                 usagePercentage={contextPopupProps.usagePercentage}
                 remaining={contextPopupProps.remaining}
                 approvalMode={approvalMode}
                 onApprovalModeChange={setApprovalMode}
+                sandbox={sandboxConfig.enabled}
+                onSandboxChange={setSandboxEnabled}
+                worktree={worktree}
+                onWorktreeChange={setWorktree}
+                backgroundTask={backgroundTask}
+                onBackgroundTaskChange={setBackgroundTask}
+                onCompact={handleCompactContext}
               />
             </div>
           )}
-          <ContextApprovalButton
-            breakdown={contextBreakdown}
-            approvalMode={approvalMode}
-            onApprovalModeChange={setApprovalMode}
-            onClick={handleContextPopupClick}
-            externalPopup
-          />
+          {sessionId ? (
+            <ContextApprovalButton
+              breakdown={contextBreakdown}
+              approvalMode={approvalMode}
+              onApprovalModeChange={setApprovalMode}
+              onClick={handleContextPopupClick}
+              externalPopup
+            />
+          ) : (
+            <button
+              type="button"
+              className={cn(
+                "inline-flex items-center justify-center h-8 w-8 rounded-md text-xs transition-colors",
+                "hover:bg-muted/50",
+                "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={handleContextPopupClick}
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        {settingsPopoverNode}
         <div className="flex-1" />
         {voiceInputNode}
       </div>
     ),
     [
       approvalMode,
+      backgroundTask,
       contextBreakdown,
       contextPopupProps.remaining,
       contextPopupProps.totalUsed,
       contextPopupProps.usagePercentage,
+      handleCompactContext,
       handleContextPopupClick,
       handleContextPopupMouseEnter,
       handleContextPopupMouseLeave,
       isContextPopupOpen,
-      settingsPopoverNode,
+      sandboxConfig.enabled,
+      sessionId,
+      setSandboxEnabled,
       tripleSelectorNode,
       voiceInputNode,
+      worktree,
     ]
   );
 

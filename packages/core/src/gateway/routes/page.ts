@@ -6,7 +6,7 @@
  *
  * Endpoints:
  * - POST /api/page/list      - List pages in workspace
- * - POST /api/page/view      - Get page by slug
+ * - POST /api/page/view      - Get page by uid
  * - POST /api/page/create    - Create a new page
  * - POST /api/page/delete    - Delete a page
  * - POST /api/page/serve     - Serve page content (POST for body params)
@@ -104,7 +104,7 @@ const iconDataSchema = {
 const pageConfigSchema = {
   type: "object",
   properties: {
-    slug: { type: "string" },
+    uid: { type: "string" },
     name: { type: "string" },
     description: { type: "string", nullable: true },
     icon: iconDataSchema,
@@ -129,13 +129,19 @@ const pageConfigSchema = {
   },
 } as const;
 
+const pageIndexSchema = {
+  type: "object",
+  additionalProperties: { type: "array", items: { type: "string" } },
+  description: "Page index mapping parent keys to child uids",
+} as const;
+
 const listPagesResponseSchema = {
   type: "object",
   properties: {
     success: { type: "boolean" },
     pages: { type: "array", items: pageConfigSchema },
+    index: pageIndexSchema,
     count: { type: "number" },
-    page_order: { type: "object", nullable: true, additionalProperties: { type: "array", items: { type: "string" } } },
     error: { type: "string", nullable: true },
   },
 } as const;
@@ -162,7 +168,7 @@ const deletePageResponseSchema = {
   type: "object",
   properties: {
     success: { type: "boolean" },
-    slug: { type: "string", nullable: true },
+    uid: { type: "string", nullable: true },
     deleted_path: { type: "string", nullable: true },
     error: { type: "string", nullable: true },
   },
@@ -233,7 +239,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
 
     if (!workspace_path) {
       reply.code(400);
-      return { success: false, error: "workspace_path is required", pages: [], count: 0 };
+      return { success: false, error: "workspace_path is required", pages: [], index: { root: [] }, count: 0 };
     }
 
     const result = await listPages({ workspace_path });
@@ -247,22 +253,22 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   });
 
   // ============================================================================
-  // POST /api/page/view - Get page by slug
+  // POST /api/page/view - Get page by uid
   // ============================================================================
   fastify.post<{
-    Body: { workspace_path: string; slug: string };
+    Body: { workspace_path: string; uid: string };
     Reply: ViewPageResult;
   }>("/api/page/view", {
     schema: {
-      description: "Get page by slug",
+      description: "Get page by uid",
       tags: ["page"],
       body: {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
         },
-        required: ["workspace_path", "slug"],
+        required: ["workspace_path", "uid"],
       },
       response: {
         200: viewPageResponseSchema,
@@ -271,19 +277,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug } = request.body;
+    const { workspace_path, uid } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
-    const result = await viewPage({ workspace_path, slug });
+    const result = await viewPage({ workspace_path, uid });
 
     if (!result.success) {
       reply.code(404);
@@ -299,11 +305,12 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   fastify.post<{
     Body: {
       workspace_path: string;
-      slug: string;
+      slug?: string;
       name: string;
       description?: string;
       icon?: IconData;
       type: PageType;
+      parent_uid?: string;
       // Static-specific
       file?: string;
       // Server-specific
@@ -324,11 +331,12 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          slug: { type: "string", description: "Page slug (optional, used to generate uid)" },
           name: { type: "string", description: "Page name (required)" },
           description: { type: "string", description: "Page description" },
           icon: { ...iconDataSchema, description: "Page icon data" },
           type: { ...pageTypeSchema, description: "Page type (required)" },
+          parent_uid: { type: "string", description: "Parent page uid for creating subpages" },
           // Static-specific
           file: { type: "string", description: "Entry file for static pages" },
           // Server-specific
@@ -340,7 +348,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
           url: { type: "string", description: "URL for proxy pages" },
           headers: { type: "object", additionalProperties: { type: "string" }, description: "Headers for proxy pages" },
         },
-        required: ["workspace_path", "slug", "name", "type"],
+        required: ["workspace_path", "name", "type"],
       },
       response: {
         201: createPageResponseSchema,
@@ -355,6 +363,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       description,
       icon,
       type,
+      parent_uid,
       file,
       command,
       port,
@@ -367,11 +376,6 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
-    }
-
-    if (!slug) {
-      reply.code(400);
-      return { success: false, error: "slug is required" };
     }
 
     if (!name) {
@@ -391,6 +395,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       description,
       icon,
       type,
+      parent_uid,
       file,
       command,
       port,
@@ -413,7 +418,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   // POST /api/page/delete - Delete a page
   // ============================================================================
   fastify.post<{
-    Body: { workspace_path: string; slug: string };
+    Body: { workspace_path: string; uid: string };
     Reply: DeletePageResult;
   }>("/api/page/delete", {
     schema: {
@@ -423,9 +428,9 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
         },
-        required: ["workspace_path", "slug"],
+        required: ["workspace_path", "uid"],
       },
       response: {
         200: deletePageResponseSchema,
@@ -434,19 +439,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug } = request.body;
+    const { workspace_path, uid } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
-    const result = await deletePage({ workspace_path, slug });
+    const result = await deletePage({ workspace_path, uid });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);
@@ -460,7 +465,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   // POST /api/page/update-content - Update page markdown content
   // ============================================================================
   fastify.post<{
-    Body: { workspace_path: string; slug: string; content: string };
+    Body: { workspace_path: string; uid: string; content: string };
     Reply: UpdatePageContentResult;
   }>("/api/page/update-content", {
     schema: {
@@ -470,17 +475,17 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
           content: { type: "string", description: "New markdown content (required)" },
         },
-        required: ["workspace_path", "slug", "content"],
+        required: ["workspace_path", "uid", "content"],
       },
       response: {
         200: {
           type: "object",
           properties: {
             success: { type: "boolean" },
-            slug: { type: "string", nullable: true },
+            uid: { type: "string", nullable: true },
             error: { type: "string", nullable: true },
           },
         },
@@ -489,16 +494,16 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug, content } = request.body;
+    const { workspace_path, uid, content } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
     if (content === undefined || content === null) {
@@ -506,7 +511,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       return { success: false, error: "content is required" };
     }
 
-    const result = await updatePageContent({ workspace_path, slug, content });
+    const result = await updatePageContent({ workspace_path, uid, content });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);
@@ -520,7 +525,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   // POST /api/page/serve - Serve page content (POST for body params)
   // ============================================================================
   fastify.post<{
-    Body: { workspace_path: string; slug: string; path?: string };
+    Body: { workspace_path: string; uid: string; path?: string };
   }>("/api/page/serve", {
     schema: {
       description: "Serve page content",
@@ -529,10 +534,10 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
           path: { type: "string", description: "File path within the page (optional)" },
         },
-        required: ["workspace_path", "slug"],
+        required: ["workspace_path", "uid"],
       },
       response: {
         200: {
@@ -548,19 +553,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug, path } = request.body;
+    const { workspace_path, uid, path } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
-    const result = await servePage({ workspace_path, slug, path });
+    const result = await servePage({ workspace_path, uid, path });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);
@@ -580,7 +585,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   // GET /api/page/serve - Serve page content (GET for query params)
   // ============================================================================
   fastify.get<{
-    Querystring: { workspace_path: string; slug: string; path?: string };
+    Querystring: { workspace_path: string; uid: string; path?: string };
   }>("/api/page/serve", {
     schema: {
       description: "Serve page content",
@@ -589,10 +594,10 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
           path: { type: "string", description: "File path within the page (optional)" },
         },
-        required: ["workspace_path", "slug"],
+        required: ["workspace_path", "uid"],
       },
       response: {
         200: {
@@ -608,19 +613,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug, path } = request.query;
+    const { workspace_path, uid, path } = request.query;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
-    const result = await servePage({ workspace_path, slug, path });
+    const result = await servePage({ workspace_path, uid, path });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);
@@ -642,7 +647,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   fastify.post<{
     Body: {
       workspace_path: string;
-      slug: string;
+      uid: string;
       name?: string;
       description?: string | null;
       icon?: IconData | null;
@@ -659,7 +664,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Page slug (required)" },
+          uid: { type: "string", description: "Page uid (required)" },
           name: { type: "string", description: "New page name" },
           description: { type: "string", nullable: true, description: "New page description (null to remove)" },
           icon: { ...iconDataSchema, description: "New page icon (null to remove)" },
@@ -667,7 +672,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
           page_width: { type: "string", nullable: true, enum: ["default", "wide", "full"], description: "Page width (null to reset)" },
           show_toc: { type: "boolean", nullable: true, description: "Show table of contents sidebar (null to reset)" },
         },
-        required: ["workspace_path", "slug"],
+        required: ["workspace_path", "uid"],
       },
       response: {
         200: viewPageResponseSchema,
@@ -676,19 +681,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug, name, description, icon, cover, page_width, show_toc } = request.body;
+    const { workspace_path, uid, name, description, icon, cover, page_width, show_toc } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
-    const result = await updatePageConfig({ workspace_path, slug, name, description, icon, cover, page_width, show_toc });
+    const result = await updatePageConfig({ workspace_path, uid, name, description, icon, cover, page_width, show_toc });
 
     if (!result.success) {
       reply.code(result.error?.includes("not found") ? 404 : 400);
@@ -702,7 +707,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   // POST /api/page/reorder - Reorder pages within a parent level
   // ============================================================================
   fastify.post<{
-    Body: { workspace_path: string; parent_slug: string | null; ordered_slugs: string[] };
+    Body: { workspace_path: string; parent_uid: string | null; ordered_uids: string[] };
     Reply: ReorderPagesResult;
   }>("/api/page/reorder", {
     schema: {
@@ -712,14 +717,14 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          parent_slug: { type: "string", nullable: true, description: "Parent page slug (null for root level)" },
-          ordered_slugs: {
+          parent_uid: { type: "string", nullable: true, description: "Parent page uid (null for root level)" },
+          ordered_uids: {
             type: "array",
             items: { type: "string" },
-            description: "Ordered list of page slugs",
+            description: "Ordered list of page uids",
           },
         },
-        required: ["workspace_path", "ordered_slugs"],
+        required: ["workspace_path", "ordered_uids"],
       },
       response: {
         200: {
@@ -733,22 +738,22 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, parent_slug, ordered_slugs } = request.body;
+    const { workspace_path, parent_uid, ordered_uids } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!ordered_slugs || !Array.isArray(ordered_slugs)) {
+    if (!ordered_uids || !Array.isArray(ordered_uids)) {
       reply.code(400);
-      return { success: false, error: "ordered_slugs is required and must be an array" };
+      return { success: false, error: "ordered_uids is required and must be an array" };
     }
 
     const result = await reorderPages({
       workspace_path,
-      parent_slug: parent_slug ?? null,
-      ordered_slugs,
+      parent_uid: parent_uid ?? null,
+      ordered_uids,
     });
 
     if (!result.success) {
@@ -763,19 +768,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
   // POST /api/page/duplicate - Duplicate a page
   // ============================================================================
   fastify.post<{
-    Body: { workspace_path: string; slug: string };
+    Body: { workspace_path: string; uid: string };
     Reply: DuplicatePageResult;
   }>("/api/page/duplicate", {
     schema: {
-      description: "Duplicate a page (copy all files with a new slug)",
+      description: "Duplicate a page (copy all files with a new uid)",
       tags: ["page"],
       body: {
         type: "object",
         properties: {
           workspace_path: { type: "string", description: "Workspace path (required)" },
-          slug: { type: "string", description: "Source page slug to duplicate" },
+          uid: { type: "string", description: "Source page uid to duplicate" },
         },
-        required: ["workspace_path", "slug"],
+        required: ["workspace_path", "uid"],
       },
       response: {
         200: {
@@ -790,19 +795,19 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       },
     },
   }, async (request, reply) => {
-    const { workspace_path, slug } = request.body;
+    const { workspace_path, uid } = request.body;
 
     if (!workspace_path) {
       reply.code(400);
       return { success: false, error: "workspace_path is required" };
     }
 
-    if (!slug) {
+    if (!uid) {
       reply.code(400);
-      return { success: false, error: "slug is required" };
+      return { success: false, error: "uid is required" };
     }
 
-    const result = await duplicatePage({ workspace_path, slug });
+    const result = await duplicatePage({ workspace_path, uid });
 
     if (!result.success) {
       reply.code(400);
@@ -872,7 +877,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     let fileData: Buffer | null = null;
     let filename = "unnamed";
     let wsPath = "";
-    let slugStr = "";
+    let uidStr = "";
 
     for await (const part of parts) {
       if (part.type === "file" && part.fieldname === "file") {
@@ -884,8 +889,8 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
         fileData = Buffer.concat(chunks);
       } else if (part.type === "field" && part.fieldname === "workspace_path") {
         wsPath = part.value as string;
-      } else if (part.type === "field" && part.fieldname === "slug") {
-        slugStr = part.value as string;
+      } else if (part.type === "field" && part.fieldname === "uid") {
+        uidStr = part.value as string;
       }
     }
 
@@ -894,14 +899,14 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
       return { success: false, error: "No file uploaded" };
     }
 
-    if (!wsPath || !slugStr) {
+    if (!wsPath || !uidStr) {
       reply.code(400);
-      return { success: false, error: "workspace_path and slug are required" };
+      return { success: false, error: "workspace_path and uid are required" };
     }
 
     const result = await uploadPageAsset({
       workspace_path: wsPath,
-      slug: slugStr,
+      uid: uidStr,
       filename,
       data: fileData,
     });
@@ -912,7 +917,7 @@ export function registerPageRoutes(fastify: FastifyInstance): void {
     }
 
     // Construct the serve URL
-    const serveUrl = `/api/page/serve?workspace_path=${encodeURIComponent(wsPath)}&slug=${encodeURIComponent(slugStr)}&path=_assets/${encodeURIComponent(result.filename!)}`;
+    const serveUrl = `/api/page/serve?workspace_path=${encodeURIComponent(wsPath)}&uid=${encodeURIComponent(uidStr)}&path=_assets/${encodeURIComponent(result.filename!)}`;
 
     return {
       success: true,

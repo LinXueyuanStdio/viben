@@ -1,18 +1,12 @@
-export function getPageHref(workspaceId: string, pageSlug: string): string {
-  const normalizedSlug = pageSlug
-    .split("/")
-    .filter(Boolean)
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-
-  return `/workspace/${encodeURIComponent(workspaceId)}/page/${normalizedSlug}`;
+export function getPageHref(workspaceId: string, uid: string): string {
+  return `/workspace/${encodeURIComponent(workspaceId)}/page/${encodeURIComponent(uid)}`;
 }
 
 export function getWorkspaceWebHref(params: {
   workspaceId: string;
   url: string;
   title?: string;
-  sourcePageSlug?: string;
+  sourcePageUid?: string;
   webId?: string;
 }): string {
   const search = new URLSearchParams({
@@ -20,8 +14,8 @@ export function getWorkspaceWebHref(params: {
     title: params.title ?? "",
   });
 
-  if (params.sourcePageSlug) {
-    search.set("source_page", params.sourcePageSlug);
+  if (params.sourcePageUid) {
+    search.set("source_page", params.sourcePageUid);
   }
 
   if (params.webId) {
@@ -29,9 +23,4 @@ export function getWorkspaceWebHref(params: {
   }
 
   return `/workspace/${encodeURIComponent(params.workspaceId)}/web?${search.toString()}`;
-}
-
-export function getLegacyPageHref(workspaceId: string, pageSlug: string): string {
-  const pagePath = `pages/${pageSlug}/SKILL.md`;
-  return `/workspace/page?workspace_id=${encodeURIComponent(workspaceId)}&page_path=${encodeURIComponent(pagePath)}`;
 }

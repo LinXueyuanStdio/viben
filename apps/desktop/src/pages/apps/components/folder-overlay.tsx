@@ -13,7 +13,7 @@ export interface FolderOverlayProps {
   workspacePath: string;
   onPageClick: (page: PageConfig) => void;
   onOpenInNewTab: (page: PageConfig) => void;
-  onCreateSubpage: (parentSlug: string) => void;
+  onCreateSubpage: (parentUid: string) => void;
   onDeleteClick: (page: PageConfig) => void;
   onPermissionsClick: (page: PageConfig) => void;
   onEditClick?: (page: PageConfig) => void;
@@ -121,7 +121,7 @@ export function FolderOverlay({
         <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-y-5 gap-x-2 justify-items-center">
           {folder.children.map((child) => (
             <PageIcon
-              key={child.page.slug}
+              key={child.page.uid}
               node={child}
               workspacePath={workspacePath}
               onClick={() => handleChildClick(child)}
@@ -136,7 +136,7 @@ export function FolderOverlay({
           <button
             type="button"
             onClick={() => {
-              onCreateSubpage(folder.page.slug);
+              onCreateSubpage(folder.page.uid);
               onClose();
             }}
             className={cn(

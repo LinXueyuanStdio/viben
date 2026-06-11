@@ -37,7 +37,7 @@ export interface PageIconProps {
   workspacePath: string;
   onClick: () => void;
   onOpenInNewTab: (page: PageConfig) => void;
-  onCreateSubpage: (parentSlug: string) => void;
+  onCreateSubpage: (parentUid: string) => void;
   onDeleteClick: (page: PageConfig) => void;
   onPermissionsClick: (page: PageConfig) => void;
   onEditClick?: (page: PageConfig) => void;
@@ -107,7 +107,7 @@ export const PageIcon = memo(function PageIcon({
           <ExternalLink className="mr-2 h-4 w-4" />
           {t("page.openInNewTab")}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => onCreateSubpage(page.slug)}>
+        <ContextMenuItem onClick={() => onCreateSubpage(page.uid)}>
           <Plus className="mr-2 h-4 w-4" />
           {t("page.createSubpage")}
         </ContextMenuItem>
@@ -136,7 +136,7 @@ export const PageIcon = memo(function PageIcon({
 }, (prev, next) => {
   // Compare identity and display-relevant props only; skip callback functions
   return (
-    prev.node.page.slug === next.node.page.slug &&
+    prev.node.page.uid === next.node.page.uid &&
     prev.node.page.name === next.node.page.name &&
     prev.node.page.icon === next.node.page.icon &&
     prev.node.children.length === next.node.children.length &&
@@ -217,7 +217,7 @@ function FolderIcon({
         const childGradient = getPageGradientColors(child.page.name);
         return (
           <div
-            key={child.page.slug}
+            key={child.page.uid}
             className="rounded-[4px] flex items-center justify-center"
             style={{
               background: `linear-gradient(to bottom right, ${childGradient.from}, ${childGradient.to})`,

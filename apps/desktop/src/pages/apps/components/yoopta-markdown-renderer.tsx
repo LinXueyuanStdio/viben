@@ -78,7 +78,7 @@ export interface YooptaMarkdownRendererProps {
   className?: string;
   workspaceId?: string;
   workspacePath?: string;
-  slug?: string;
+  uid?: string;
   editable?: boolean;
   title?: string;
   icon?: IconData | null;
@@ -89,7 +89,7 @@ export interface YooptaMarkdownRendererProps {
   updatedAt?: string;
   onTitleChange?: (newTitle: string) => void;
   onNavigationExtract?: (extract: PageNavigationExtract) => void;
-  onOpenPage?: (pageSlug: string) => void;
+  onOpenPage?: (pageUid: string) => void;
   onOpenWeb?: (url: string, title?: string) => void;
   /** Portal target for editor header buttons. If provided, header renders into this DOM element instead of inside the editor. */
   headerPortal?: HTMLElement | null;
@@ -100,7 +100,7 @@ export function YooptaMarkdownRenderer({
   className,
   workspaceId,
   workspacePath,
-  slug,
+  uid,
   editable,
   title,
   icon,
@@ -115,7 +115,7 @@ export function YooptaMarkdownRenderer({
   headerPortal,
 }: YooptaMarkdownRendererProps) {
   const { t } = useTranslation();
-  const canSave = !!(workspacePath && slug);
+  const canSave = !!(workspacePath && uid);
   const isEditable = editable ?? canSave;
   const queryClient = useQueryClient();
 
@@ -167,7 +167,7 @@ export function YooptaMarkdownRenderer({
           const baseUrl = getGatewayUrl();
           await updatePageConfig(baseUrl, {
             workspace_path: workspacePath!,
-            slug: slug!,
+            uid: uid!,
             icon: iconData,
           });
           // Invalidate page list cache so sidebar tree updates
@@ -179,7 +179,7 @@ export function YooptaMarkdownRenderer({
         }
       }, 500);
     },
-    [canSave, workspacePath, slug, queryClient]
+    [canSave, workspacePath, uid, queryClient]
   );
 
   const persistLayoutConfig = useCallback(
@@ -191,7 +191,7 @@ export function YooptaMarkdownRenderer({
           const baseUrl = getGatewayUrl();
           await updatePageConfig(baseUrl, {
             workspace_path: workspacePath!,
-            slug: slug!,
+            uid: uid!,
             ...updates,
           });
         } catch (err) {
@@ -199,7 +199,7 @@ export function YooptaMarkdownRenderer({
         }
       }, 300);
     },
-    [canSave, workspacePath, slug]
+    [canSave, workspacePath, uid]
   );
 
   const handlePageWidthChange = useCallback(
@@ -235,7 +235,7 @@ export function YooptaMarkdownRenderer({
           const baseUrl = getGatewayUrl();
           await updatePageConfig(baseUrl, {
             workspace_path: workspacePath!,
-            slug: slug!,
+            uid: uid!,
             cover: url,
           });
           // Invalidate page cache so other views reflect the cover change
@@ -247,7 +247,7 @@ export function YooptaMarkdownRenderer({
         }
       }, 500);
     },
-    [canSave, workspacePath, slug, queryClient]
+    [canSave, workspacePath, uid, queryClient]
   );
 
   const handleCoverChange = useCallback(
@@ -279,10 +279,10 @@ export function YooptaMarkdownRenderer({
   const openIconPicker = useCallback(() => setShowIconPicker(true), []);
 
   const plugins = useMemo(() => {
-    if (!workspacePath || !slug) return createYooptaPlugins();
+    if (!workspacePath || !uid) return createYooptaPlugins();
     const baseUrl = getGatewayUrl();
     const uploadFn = async (file: File) => {
-      const result = await uploadPageAsset(baseUrl, workspacePath, slug, file);
+      const result = await uploadPageAsset(baseUrl, workspacePath, uid, file);
       if (!result.success || !result.url) {
         throw new Error(result.error || "Upload failed");
       }
@@ -292,8 +292,8 @@ export function YooptaMarkdownRenderer({
       const result = await listPages(baseUrl, workspacePath);
       const q = query.toLowerCase();
       return result.pages
-        .filter((p) => p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q))
-        .map((p) => ({ id: p.slug, name: p.name, avatar: '' }));
+        .filter((p) => p.name.toLowerCase().includes(q) || p.uid.toLowerCase().includes(q))
+        .map((p) => ({ id: p.uid, name: p.name, avatar: '' }));
     };
     return createYooptaPlugins({
       uploadAsset: uploadFn,
@@ -301,7 +301,7 @@ export function YooptaMarkdownRenderer({
       buildPageHref: workspaceId ? (pageSlug) => getPageHref(workspaceId, pageSlug) : undefined,
       buildPageMeta: () => ({ includeInPageIndex: true }),
     });
-  }, [workspaceId, workspacePath, slug]);
+  }, [workspaceId, workspacePath, uid]);
 
   const editor = useMemo(() => {
     return withEmoji(
@@ -357,9 +357,9 @@ export function YooptaMarkdownRenderer({
   }, [editor, content]);
 
   useEffect(() => {
-    if (!slug || !onNavigationExtract) return;
-    onNavigationExtract(extractPageNavigation(slug, content));
-  }, [content, onNavigationExtract, slug]);
+    if (!uid || !onNavigationExtract) return;
+    onNavigationExtract(extractPageNavigation(uid, content));
+  }, [content, onNavigationExtract, uid]);
 
   // Auto-focus the editor on mount (Notion behavior)
   useEffect(() => {
@@ -394,7 +394,7 @@ export function YooptaMarkdownRenderer({
       setSaveStatus('saving');
       try {
         const baseUrl = getGatewayUrl();
-        await updatePageContent(baseUrl, workspacePath!, slug!, md);
+        await updatePageContent(baseUrl, workspacePath!, uid!, md);
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus((s) => s === 'saved' ? 'idle' : s), 2000);
       } catch (err) {
@@ -410,7 +410,7 @@ export function YooptaMarkdownRenderer({
         }
       }
     },
-    [canSave, workspacePath, slug]
+    [canSave, workspacePath, uid]
   );
 
   // Debounced save: serialization happens here (once per debounce window) instead of on every keystroke.
@@ -813,9 +813,9 @@ export function YooptaMarkdownRenderer({
   }, [isEditable, editor]);
 
   useEffect(() => {
-    if (!slug || !onNavigationExtract || !containerBoxRef.current) return;
-    onNavigationExtract(collectPageNavigationFromDom(containerBoxRef.current, slug));
-  }, [editor.children, onNavigationExtract, slug]);
+    if (!uid || !onNavigationExtract || !containerBoxRef.current) return;
+    onNavigationExtract(collectPageNavigationFromDom(containerBoxRef.current, uid));
+  }, [editor.children, onNavigationExtract, uid]);
 
   const handleContentClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -931,7 +931,7 @@ export function YooptaMarkdownRenderer({
             value={coverUrl}
             onChange={handleCoverChange}
             workspacePath={workspacePath}
-            slug={slug}
+            uid={uid}
             align={coverPickerAlign}
           />
         )}

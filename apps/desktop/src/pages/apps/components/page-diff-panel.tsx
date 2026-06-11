@@ -44,7 +44,7 @@ import type { GitFileChange } from "@/hooks/use-page-git-status";
 
 export interface PageDiffPanelProps {
   workspacePath: string;
-  pageSlug: string;
+  pageUid: string;
   className?: string;
 }
 
@@ -222,7 +222,7 @@ function NoDiffSelected() {
 
 export function PageDiffPanel({
   workspacePath,
-  pageSlug,
+  pageUid,
   className,
 }: PageDiffPanelProps) {
   const { t } = useTranslation();
@@ -230,7 +230,7 @@ export function PageDiffPanel({
 
   const { changes, loading, error, refresh, fetchDiff } = usePageGitStatus(
     workspacePath,
-    pageSlug
+    pageUid
   );
 
   const [selectedFile, setSelectedFile] = useState<string | null>(null);

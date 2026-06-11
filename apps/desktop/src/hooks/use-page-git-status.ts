@@ -47,14 +47,14 @@ interface UsePageGitStatusReturn {
 
 export function usePageGitStatus(
   workspacePath: string,
-  pageSlug: string
+  pageUid: string
 ): UsePageGitStatusReturn {
   const [changes, setChanges] = useState<GitFileChange[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
-    if (!workspacePath || !pageSlug) {
+    if (!workspacePath || !pageUid) {
       setChanges([]);
       return;
     }
@@ -66,7 +66,7 @@ export function usePageGitStatus(
       const baseUrl = getGatewayUrl();
       const params = new URLSearchParams({
         workspace_path: workspacePath,
-        dir_path: `pages/${pageSlug}`,
+        dir_path: `pages/${pageUid}`,
       });
 
       const response = await fetch(
@@ -87,7 +87,7 @@ export function usePageGitStatus(
     } finally {
       setLoading(false);
     }
-  }, [workspacePath, pageSlug]);
+  }, [workspacePath, pageUid]);
 
   const fetchDiff = useCallback(
     async (filePath: string): Promise<GitDiffResult | null> => {

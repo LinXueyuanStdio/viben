@@ -48,7 +48,7 @@ export interface PagePreviewProps {
   /** Callback to stop live preview */
   onStopLivePreview?: () => void;
   /** Navigate to another workspace page in the current tab */
-  onOpenPage?: (pageSlug: string) => void;
+  onOpenPage?: (pageUid: string) => void;
   /** Navigate to a workspace web wrapper in the current tab */
   onOpenWeb?: (url: string, title?: string) => void;
   /** Additional class names */
@@ -83,14 +83,14 @@ export function PagePreview({
   const titleSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleTitleChange = useCallback(
     (newTitle: string) => {
-      if (!workspacePath || !page.slug) return;
+      if (!workspacePath || !page.uid) return;
       if (titleSaveTimerRef.current) clearTimeout(titleSaveTimerRef.current);
       titleSaveTimerRef.current = setTimeout(async () => {
         try {
           const baseUrl = getGatewayUrl();
           await updatePageConfig(baseUrl, {
             workspace_path: workspacePath,
-            slug: page.slug,
+            uid: page.uid,
             name: newTitle || t("page.untitled", "Untitled"),
           });
         } catch (err) {
@@ -98,7 +98,7 @@ export function PagePreview({
         }
       }, 800);
     },
-    [workspacePath, page.slug]
+    [workspacePath, page.uid]
   );
 
   useEffect(() => {
@@ -123,7 +123,7 @@ export function PagePreview({
             content={page.skill_content || ""}
             workspacePath={workspacePath}
             workspaceId={workspaceId}
-            slug={page.slug}
+            uid={page.uid}
             title={page.name}
             icon={page.icon}
             cover={page.cover}
@@ -147,7 +147,7 @@ export function PagePreview({
                 content={page.skill_content || ""}
                 workspacePath={workspacePath}
                 workspaceId={workspaceId}
-                slug={page.slug}
+                uid={page.uid}
                 title={page.name}
                 icon={page.icon}
                 cover={page.cover}

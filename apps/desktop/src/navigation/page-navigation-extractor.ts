@@ -8,13 +8,13 @@ export interface ExtractedNavigationItem {
   label?: string;
   blockId?: string;
   order: number;
-  pageSlug?: string;
+  pageUid?: string;
   url?: string;
   nav?: YooptaNavigationMeta;
 }
 
 export interface PageNavigationExtract {
-  pageSlug: string;
+  pageUid: string;
   items: ExtractedNavigationItem[];
 }
 
@@ -63,7 +63,7 @@ function parseMeta(raw: string | undefined): YooptaNavigationMeta | undefined {
   }
 }
 
-function decodePageSlug(raw: string): string {
+function decodePageUid(raw: string): string {
   return raw
     .replace(/^pages\//, "")
     .replace(/\/SKILL\.md$/i, "")
@@ -84,7 +84,7 @@ function getExternalLabel(label: string | undefined, url: string): string {
 function pushUnique(items: ExtractedNavigationItem[], item: ExtractedNavigationItem) {
   const exists = items.some((candidate) => {
     if (candidate.kind !== item.kind) return false;
-    if (candidate.pageSlug && item.pageSlug) return candidate.pageSlug === item.pageSlug;
+    if (candidate.pageUid && item.pageUid) return candidate.pageUid === item.pageUid;
     if (candidate.url && item.url) return candidate.url === item.url;
     return candidate.id === item.id;
   });
@@ -92,19 +92,19 @@ function pushUnique(items: ExtractedNavigationItem[], item: ExtractedNavigationI
 }
 
 function buildMentionItem(
-  pageSlug: string,
+  pageUid: string,
   order: number,
   label?: string,
   nav?: YooptaNavigationMeta,
 ): ExtractedNavigationItem | null {
-  const normalized = decodePageSlug(pageSlug);
+  const normalized = decodePageUid(pageUid);
   if (!normalized) return null;
   return {
     id: `page:${normalized}:${order}`,
     kind: "page-mention",
     label: label?.trim() || normalized.split("/").filter(Boolean).slice(-1)[0] || normalized,
     order,
-    pageSlug: normalized,
+    pageUid: normalized,
     nav,
   };
 }
@@ -130,7 +130,7 @@ function buildExternalItem(
 }
 
 export function extractPageNavigation(
-  pageSlug: string,
+  pageUid: string,
   content: string,
 ): PageNavigationExtract {
   const items: ExtractedNavigationItem[] = [];
@@ -167,12 +167,12 @@ export function extractPageNavigation(
   }
 
   return {
-    pageSlug,
+    pageUid,
     items: items.sort((left, right) => left.order - right.order),
   };
 }
 
-export function collectPageNavigationFromDom(root: ParentNode, pageSlug: string): PageNavigationExtract {
+export function collectPageNavigationFromDom(root: ParentNode, pageUid: string): PageNavigationExtract {
   const items: ExtractedNavigationItem[] = [];
   let order = 0;
 
@@ -202,7 +202,7 @@ export function collectPageNavigationFromDom(root: ParentNode, pageSlug: string)
   }
 
   return {
-    pageSlug,
+    pageUid,
     items: items.sort((left, right) => left.order - right.order),
   };
 }

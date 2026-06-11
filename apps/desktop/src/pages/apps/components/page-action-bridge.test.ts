@@ -31,7 +31,7 @@ function createHarness() {
     gatewayOrigin: "http://127.0.0.1:18790",
     workspacePath: "/workspace/main",
     workspaceId: "main",
-    pageSlug: "reports/daily",
+    pageUid: "reports/daily",
     theme: "dark",
     registerActions: (providerId, namespace, actions) => {
       providers.set(providerId, { providerId, namespace, actions });
@@ -160,7 +160,7 @@ describe("page-action-bridge", () => {
           session_id: "session-1",
           tool_use_id: "tool-1",
           full_action: expect.stringMatching(/^page\.main\.reports_2Fdaily\.[a-zA-Z0-9_-]+\.todo\.add_item$/),
-          page_slug: "reports/daily",
+          page_uid: "reports/daily",
           workspace_path: "/workspace/main",
         },
       },

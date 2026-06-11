@@ -43,10 +43,10 @@ export interface CreatePageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspacePath: string;
-  /** Parent slug for creating subpages */
-  parentSlug?: string;
-  /** Callback on successful creation */
-  onSuccess?: (slug: string) => void;
+  /** Parent uid for creating subpages */
+  parentUid?: string;
+  /** Callback on successful creation (returns the new page's uid) */
+  onSuccess?: (uid: string) => void;
 }
 
 interface PageTypeOption {
@@ -109,7 +109,7 @@ export function CreatePageDialog({
   open,
   onOpenChange,
   workspacePath,
-  parentSlug,
+  parentUid,
   onSuccess,
 }: CreatePageDialogProps) {
   const { t } = useTranslation();
@@ -133,16 +133,15 @@ export function CreatePageDialog({
   // Auto-generate slug from name
   useEffect(() => {
     if (!slugManuallyEdited && name) {
-      const baseSlug = generateSlug(name);
-      setSlug(parentSlug ? `${parentSlug}/${baseSlug}` : baseSlug);
+      setSlug(generateSlug(name));
     }
-  }, [name, parentSlug, slugManuallyEdited]);
+  }, [name, slugManuallyEdited]);
 
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setName("");
-      setSlug(parentSlug ? `${parentSlug}/` : "");
+      setSlug("");
       setSlugManuallyEdited(false);
       setDescription("");
       setIcon({ type: "lucide", value: "file-text" });
@@ -152,7 +151,7 @@ export function CreatePageDialog({
       setPort("5173");
       setUrl("");
     }
-  }, [open, parentSlug]);
+  }, [open]);
 
   // Load template defaults when type changes
   useEffect(() => {
@@ -165,13 +164,8 @@ export function CreatePageDialog({
     }
   }, [pageType, templates]);
 
-  // Build full slug with parent
-  const fullSlug = useMemo(() => {
-    if (parentSlug && !slug.startsWith(parentSlug)) {
-      return `${parentSlug}/${slug}`;
-    }
-    return slug;
-  }, [parentSlug, slug]);
+  // Slug is used to generate uid (mmdd-slug)
+  const effectiveSlug = slug.trim();
 
   // Validate form
   const isValid = useMemo(() => {
@@ -194,11 +188,12 @@ export function CreatePageDialog({
 
     const params: CreatePageParams = {
       workspace_path: workspacePath,
-      slug: fullSlug,
+      slug: effectiveSlug || undefined,  // optional, used to generate uid
       name: name.trim(),
       description: description.trim() || undefined,
       icon: icon ? { type: icon.type, value: icon.value } as GatewayIconData : undefined,
       type: pageType,
+      parent_uid: parentUid,
     };
 
     // Add type-specific fields
@@ -214,10 +209,12 @@ export function CreatePageDialog({
     }
 
     try {
-      await createPageMutation.mutateAsync(params);
+      const result = await createPageMutation.mutateAsync(params);
       toast.success(t("page.createSuccess", "Page created successfully"));
       onOpenChange(false);
-      onSuccess?.(fullSlug);
+      if (result.page?.uid) {
+        onSuccess?.(result.page.uid);
+      }
     } catch (err) {
       console.error("Failed to create page:", err);
       toast.error(t("page.createFailed", "Failed to create page"));
@@ -225,7 +222,7 @@ export function CreatePageDialog({
   }, [
     isValid,
     workspacePath,
-    fullSlug,
+    effectiveSlug,
     name,
     description,
     icon,
@@ -260,13 +257,13 @@ export function CreatePageDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FolderPlus className="h-5 w-5" />
-            {parentSlug
+            {parentUid
               ? t("page.createSubpage", "Create Subpage")
               : t("page.createPage", "Create Page")}
           </DialogTitle>
           <DialogDescription>
-            {parentSlug
-              ? t("page.createSubpageDescription", "Create a new subpage under {{parent}}", { parent: parentSlug })
+            {parentUid
+              ? t("page.createSubpageDescription", "Create a new subpage under {{parent}}", { parent: parentUid })
               : t("page.createPageDescription", "Create a new page in the workspace")}
           </DialogDescription>
         </DialogHeader>
@@ -356,7 +353,7 @@ export function CreatePageDialog({
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              {t("page.slugHint", "URL path: /pages/{{slug}}/", { slug: fullSlug || "..." })}
+              {t("page.slugHint", "Used to generate uid: mmdd-{{slug}}", { slug: effectiveSlug || "..." })}
             </p>
           </div>
 

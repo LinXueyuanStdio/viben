@@ -2,7 +2,7 @@
  * Workspace Page Detail Route
  *
  * Route component for viewing a specific page within a workspace.
- * URL format: /workspace/page?workspace_id=<id>&page_path=pages/<slug>/SKILL.md
+ * URL format: /workspace/:workspaceId/page/:uid
  */
 
 import { useMemo, useState, useCallback } from "react";
@@ -74,25 +74,24 @@ import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 type WorkspacePageTab = "preview" | "code" | "diff" | "setting";
 
 /**
- * Extract slug from page path
- * Format: pages/<slug>/SKILL.md -> <slug>
- * Slug can be nested: pages/parent/child/SKILL.md -> parent/child
+ * Extract uid from legacy page path
+ * Format: pages/<uid>/SKILL.md -> <uid>
  */
-function extractSlugFromPath(pagePath: string | null): string | null {
+function extractUidFromPath(pagePath: string | null): string | null {
   if (!pagePath) return null;
 
-  // Match pattern: pages/<slug>/SKILL.md (slug can contain slashes for nested pages)
+  // Match pattern: pages/<uid>/SKILL.md
   const match = pagePath.match(/^pages\/(.+)\/SKILL\.md$/);
   if (match) {
     return match[1];
   }
 
   // Fallback: try to extract from other patterns
-  // pages/<slug> -> <slug>
+  // pages/<uid> -> <uid>
   if (pagePath.startsWith("pages/")) {
-    const slug = pagePath.slice(6); // Remove "pages/" prefix
+    const uid = pagePath.slice(6); // Remove "pages/" prefix
     // Remove trailing /SKILL.md if present
-    return slug.replace(/\/SKILL\.md$/, "");
+    return uid.replace(/\/SKILL\.md$/, "");
   }
 
   return null;
@@ -101,11 +100,11 @@ function extractSlugFromPath(pagePath: string | null): string | null {
 /**
  * Get the gateway URL for serving a page
  */
-function getPageServeUrl(workspacePath: string, slug: string): string {
+function getPageServeUrl(workspacePath: string, uid: string): string {
   const baseUrl = getGatewayUrl();
   const params = new URLSearchParams({
     workspace_path: workspacePath,
-    slug: slug,
+    uid: uid,
   });
   return `${baseUrl}/api/page/serve?${params.toString()}`;
 }
@@ -275,14 +274,14 @@ export function WorkspacePage() {
   } = useDesktopRouting();
 
   const routeWorkspaceId = params.workspaceId;
-  const routeSlug = params["*"]?.trim() || null;
+  const routeUid = params["*"]?.trim() || null;
   const legacyWorkspaceId = searchParams.get("workspace_id");
   const pagePath = searchParams.get("page_path");
   const viewParam = searchParams.get("view") as PageViewMode | null;
   const workspaceId = routeWorkspaceId ?? legacyWorkspaceId;
-  const slug = useMemo(
-    () => routeSlug ?? extractSlugFromPath(pagePath),
-    [pagePath, routeSlug]
+  const uid = useMemo(
+    () => routeUid ?? extractUidFromPath(pagePath),
+    [pagePath, routeUid]
   );
 
   // View mode state — default to "page" (preview), URL param can override
@@ -307,13 +306,13 @@ export function WorkspacePage() {
     data: page,
     isLoading: isLoadingPage,
     error: pageError,
-  } = usePage(workspace?.path, slug ?? undefined);
+  } = usePage(workspace?.path, uid ?? undefined);
 
   // Generate page ID for preview
   const pageId = useMemo(() => {
-    if (!page?.slug) return null;
-    return `page-${page.slug}`;
-  }, [page?.slug]);
+    if (!page?.uid) return null;
+    return `page-${page.uid}`;
+  }, [page?.uid]);
 
   // Setup Vite preview for server-type pages
   const {
@@ -330,14 +329,14 @@ export function WorkspacePage() {
 
   // Gateway serve URL
   const gatewayServeUrl = useMemo(() => {
-    if (!workspace?.path || !page?.slug) return null;
-    return getPageServeUrl(workspace.path, page.slug);
-  }, [workspace?.path, page?.slug]);
+    if (!workspace?.path || !page?.uid) return null;
+    return getPageServeUrl(workspace.path, page.uid);
+  }, [workspace?.path, page?.uid]);
 
   // Handler to start live preview
   const handleStartLivePreview = () => {
     if (!workspace?.path || !page) return;
-    const pageDir = `${workspace.path}/pages/${page.slug}`;
+    const pageDir = `${workspace.path}/pages/${page.uid}`;
     const options = page.type === "server"
       ? {
           command: (page as ServerPageConfig).command,
@@ -354,16 +353,16 @@ export function WorkspacePage() {
   const [editorHeaderEl, setEditorHeaderEl] = useState<HTMLDivElement | null>(null);
 
   const pageHeaderSegments = useMemo<DesktopBreadcrumbSegment[]>(() => {
-    if (!workspaceId || !slug) {
+    if (!workspaceId || !uid) {
       return [];
     }
 
-    const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+    const url = registry.build("/workspace/:workspaceId/page/:uid", {
       workspaceId,
-      pageSlug: slug,
+      uid,
     });
     const stack = buildColdStartBreadcrumb(url, {
-      label: page?.name ?? slug.split("/").filter(Boolean).pop() ?? slug,
+      label: page?.name ?? uid,
       icon: page?.icon,
     });
 
@@ -377,7 +376,7 @@ export function WorkspacePage() {
         meta: item.meta,
       })),
     });
-  }, [currentStack, page, slug, workspaceId]);
+  }, [currentStack, page, uid, workspaceId]);
 
   const handleRefresh = useCallback(() => {
     setIframeKey((k) => k + 1);
@@ -385,7 +384,7 @@ export function WorkspacePage() {
 
   const handleDetach = useCallback(async () => {
     const workspacePath = workspace?.path;
-    if (!workspaceId || !workspacePath || !page?.slug) {
+    if (!workspaceId || !workspacePath || !page?.uid) {
       toast.error(t("tabBar.detachUnavailable", "This tab cannot be detached"));
       return;
     }
@@ -394,7 +393,7 @@ export function WorkspacePage() {
       await invoke("open_workspace_page_preview_window", {
         workspaceId,
         workspacePath,
-        slug: page.slug,
+        uid: page.uid,
         title: page.name,
         view: viewMode,
       });
@@ -422,9 +421,9 @@ export function WorkspacePage() {
   );
 
   const handleOpenInNewTab = useCallback(() => {
-    if (!workspaceId || !slug) return;
-    openWorkspacePage(workspaceId, slug, { openMode: "new-tab" });
-  }, [openWorkspacePage, workspaceId, slug]);
+    if (!workspaceId || !uid) return;
+    openWorkspacePage(workspaceId, uid, { openMode: "new-tab" });
+  }, [openWorkspacePage, workspaceId, uid]);
 
   // Whether to show the tabbed interface (server and static pages)
   const showTabs = page?.type === "server" || page?.type === "static";
@@ -511,8 +510,8 @@ export function WorkspacePage() {
     );
   }
 
-  // No slug — show pages listing
-  if (!slug) {
+  // No uid — show pages listing
+  if (!uid) {
     return (
       <PageWrapper className="flex flex-col h-full">
         <WorkspaceHeader
@@ -617,7 +616,7 @@ export function WorkspacePage() {
         <div className="flex-1 overflow-hidden">
           <PageCodePanel
             workspacePath={workspace.path}
-            pageSlug={page.slug}
+            pageUid={page.uid}
             className="h-full"
           />
         </div>
@@ -629,7 +628,7 @@ export function WorkspacePage() {
         <div className="flex-1 overflow-hidden">
           <PageDiffPanel
             workspacePath={workspace.path}
-            pageSlug={page.slug}
+            pageUid={page.uid}
             className="h-full"
           />
         </div>
@@ -641,7 +640,7 @@ export function WorkspacePage() {
         <div className="flex-1 overflow-hidden">
           <PageSettingPanel
             workspacePath={workspace.path}
-            pageSlug={page.slug}
+            pageUid={page.uid}
             pageName={page.name}
             pageType={page.type}
             className="h-full"

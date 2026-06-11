@@ -10,7 +10,7 @@
 
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, resolve, sep } from "node:path";
-import { getPageBySlug } from "./discovery";
+import { getPageByUid } from "./discovery";
 import { isStaticPage, isMarkdownPage } from "./types";
 import type { ServePageResult, PageConfig } from "./types";
 
@@ -39,19 +39,19 @@ const MIME_TYPES: Record<string, string> = {
 
 export interface ServeOptions {
   workspace_path: string;
-  slug: string;
+  uid: string;
   path?: string;
 }
 
 export async function servePage(options: ServeOptions): Promise<ServePageResult> {
-  const { workspace_path, slug } = options;
+  const { workspace_path, uid } = options;
 
-  const page = await getPageBySlug(workspace_path, slug);
+  const page = await getPageByUid(workspace_path, uid);
 
   if (!page) {
     return {
       success: false,
-      error: `Page not found: ${slug}`,
+      error: `Page not found: ${uid}`,
     };
   }
 

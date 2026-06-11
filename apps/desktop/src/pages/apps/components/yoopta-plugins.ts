@@ -26,8 +26,8 @@ import 'katex/dist/katex.min.css';
 export interface YooptaPluginOptions {
   uploadAsset?: (file: File) => Promise<string>;
   searchPages?: (query: string) => Promise<{ id: string; name: string; avatar: string }[]>;
-  buildPageHref?: (pageSlug: string) => string;
-  buildPageMeta?: (pageSlug: string) => YooptaNavigationMeta | undefined;
+  buildPageHref?: (pageUid: string) => string;
+  buildPageMeta?: (pageUid: string) => YooptaNavigationMeta | undefined;
 }
 
 /**

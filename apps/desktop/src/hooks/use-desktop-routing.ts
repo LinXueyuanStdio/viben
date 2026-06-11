@@ -98,7 +98,7 @@ export interface DesktopRoutingApi {
   ) => void;
   openWorkspacePage: (
     workspaceId: string,
-    pageSlug: string,
+    uid: string,
     options?: DesktopNavigationOptions,
   ) => void;
   openWorkspaceWeb: (
@@ -159,7 +159,7 @@ export interface DesktopRoutingApi {
     },
   ) => void;
   pushCurrentPageChild: (
-    pageSlug: string,
+    uid: string,
     options?: { title?: string; icon?: IconData; mode?: "push" | "replace" },
   ) => void;
   openCurrentPageWeb: (
@@ -570,12 +570,12 @@ export function useDesktopRouting(): DesktopRoutingApi {
   const openWorkspacePage = useCallback(
     (
       workspaceId: string,
-      pageSlug: string,
+      uid: string,
       options?: DesktopNavigationOptions,
     ) => {
-      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+      const url = registry.build("/workspace/:workspaceId/page/:uid", {
         workspaceId,
-        pageSlug,
+        uid,
       });
 
       const headers: NavigateHeaders | undefined =
@@ -1164,22 +1164,19 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
   const pushCurrentPageChild = useCallback(
     (
-      pageSlug: string,
+      uid: string,
       options?: { title?: string; icon?: IconData; mode?: "push" | "replace" },
     ) => {
       if (!currentWorkspaceId) return;
 
-      const url = registry.build("/workspace/:workspaceId/pages/:pageSlug+", {
+      const url = registry.build("/workspace/:workspaceId/page/:uid", {
         workspaceId: currentWorkspaceId,
-        pageSlug,
+        uid,
       });
       const leaf = buildNavigateLeaf(url, {
-        label:
-          options?.title ??
-          pageSlug.split("/").filter(Boolean).pop() ??
-          pageSlug,
+        label: options?.title ?? uid,
         icon: options?.icon,
-        meta: { workspaceId: currentWorkspaceId, pageSlug },
+        meta: { workspaceId: currentWorkspaceId, uid },
       });
 
       pushChildPage(leaf, url, { mode: options?.mode });
@@ -1201,21 +1198,21 @@ export function useDesktopRouting(): DesktopRoutingApi {
         currentWorkspaceId ?? tabState.activeTab?.meta?.workspaceId ?? "global";
       const title = input?.title ?? safeHostname(webUrl);
 
-      // Determine source page slug from current URL
-      let sourcePageSlug: string | undefined;
+      // Determine source page uid from current URL
+      let sourcePageUid: string | undefined;
       if (currentUrl) {
         const match = registry.match(currentUrl);
-        if (match?.pattern === "/workspace/:workspaceId/pages/:pageSlug+") {
-          sourcePageSlug = match.params.pageSlug;
+        if (match?.pattern === "/workspace/:workspaceId/page/:uid") {
+          sourcePageUid = match.params.uid;
         } else if (match?.pattern === "/workspace/:workspaceId/web") {
           // Propagate source_page from current web view
           const parsed = new URL(currentUrl, "http://localhost");
-          sourcePageSlug = parsed.searchParams.get("source_page") ?? undefined;
+          sourcePageUid = parsed.searchParams.get("source_page") ?? undefined;
         }
       }
 
       const queryParams = new URLSearchParams({ url: webUrl, title });
-      if (sourcePageSlug) queryParams.set("source_page", sourcePageSlug);
+      if (sourcePageUid) queryParams.set("source_page", sourcePageUid);
       if (input?.webId) queryParams.set("web_id", input.webId);
       const url = `/workspace/${encodeURIComponent(workspaceId)}/web?${queryParams.toString()}`;
 

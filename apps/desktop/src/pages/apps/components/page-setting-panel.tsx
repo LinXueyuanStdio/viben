@@ -21,7 +21,7 @@ export interface PageSettingPanelProps {
   /** Workspace path */
   workspacePath: string;
   /** Page slug identifier */
-  pageSlug: string;
+  pageUid: string;
   /** Display name of the page */
   pageName: string;
   /** Page type (e.g., "static", "server", "markdown", "proxy") */
@@ -36,7 +36,7 @@ export interface PageSettingPanelProps {
 
 export function PageSettingPanel({
   workspacePath,
-  pageSlug,
+  pageUid,
   pageName,
   pageType,
   className,
@@ -44,13 +44,13 @@ export function PageSettingPanel({
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const directoryPath = `pages/${pageSlug}`;
+  const directoryPath = `pages/${pageUid}`;
 
   const handleDownloadZip = async () => {
     const baseUrl = getGatewayUrl();
     const params = new URLSearchParams({
       workspace_path: workspacePath,
-      dir_path: `pages/${pageSlug}`,
+      dir_path: `pages/${pageUid}`,
     });
 
     setIsDownloading(true);
@@ -63,7 +63,7 @@ export function PageSettingPanel({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${pageSlug}.zip`;
+      a.download = `${pageUid}.zip`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(t("page.downloadSuccess", "Download started"));
@@ -116,7 +116,7 @@ export function PageSettingPanel({
               <dt className="text-muted-foreground">
                 {t("page.settings.slug", "Slug")}
               </dt>
-              <dd className="font-mono text-xs text-foreground">{pageSlug}</dd>
+              <dd className="font-mono text-xs text-foreground">{pageUid}</dd>
             </div>
 
             <div className="flex items-center justify-between">

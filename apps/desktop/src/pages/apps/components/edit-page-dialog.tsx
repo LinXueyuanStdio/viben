@@ -86,7 +86,7 @@ export function EditPageDialog({
     try {
       await updatePageConfigMutation.mutateAsync({
         workspace_path: workspacePath,
-        slug: page.slug,
+        uid: page.uid,
         name: name.trim(),
         description: description.trim() || null,
         icon: icon ? { type: icon.type, value: icon.value } : null,
@@ -174,11 +174,11 @@ export function EditPageDialog({
             </div>
           </div>
 
-          {/* Slug (read-only) */}
+          {/* UID (read-only) */}
           <div className="space-y-2">
-            <Label>{t("page.slug", "Slug")}</Label>
+            <Label>{t("page.uid", "UID")}</Label>
             <Input
-              value={page.slug}
+              value={page.uid}
               disabled
               className="font-mono text-sm opacity-60"
             />
