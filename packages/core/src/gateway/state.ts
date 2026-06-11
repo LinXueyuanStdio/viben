@@ -21,6 +21,7 @@ import { DeviceRegistryService } from "../devices/device-registry";
 import { MeshService } from "../mesh/mesh-service";
 import { PeerStore } from "../mesh/peer-store";
 import { DiscoveryService } from "../discovery/discovery-service";
+import { ClientStore } from "./client-store";
 
 /**
  * Application state for the gateway
@@ -60,6 +61,8 @@ export interface AppState {
   mesh: MeshService;
   /** Discovery service for mDNS and QR code */
   discovery: DiscoveryService;
+  /** Client store for Socket.io connected clients and their actions */
+  clientStore: ClientStore;
 }
 
 export interface AppStateConfig {
@@ -152,6 +155,9 @@ export function createAppState(config: AppStateConfig = {}): AppState {
   };
   const mesh = new MeshService(events, deviceRegistry, peerStore, localInfo);
 
+  // Create client store for Socket.io clients
+  const clientStore = new ClientStore();
+
   // Create discovery service
   const discovery = new DiscoveryService(events, {
     gateway_id: gatewayId,
@@ -183,5 +189,6 @@ export function createAppState(config: AppStateConfig = {}): AppState {
     deviceRegistry,
     mesh,
     discovery,
+    clientStore,
   };
 }

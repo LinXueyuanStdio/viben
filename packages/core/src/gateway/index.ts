@@ -25,10 +25,13 @@ import {
 import { agentService } from "../services/agent";
 import { getActiveWsConnectionCount } from "./routes/ws";
 import { workspaceManager } from "../workspace";
+import { ClientSocketServer } from "./client-socket-server";
 
 export { AppState, createAppState } from "./state";
 export { registerRoutes } from "./routes";
 export { setGatewayStartupConfig } from "./routes/health";
+export { ClientStore } from "./client-store";
+export { ClientSocketServer } from "./client-socket-server";
 
 // Global telemetry instance
 let telemetry: TelemetryInstance | null = null;
@@ -193,6 +196,14 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   // Register routes
   registerRoutes(app, state);
 
+  // Create client socket server (Socket.io) after ready when httpServer is available
+  let clientSocketServer: ClientSocketServer | null = null;
+  app.addHook("onReady", async () => {
+    const httpServer = app.server;
+    clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
+    log.info("Client Socket.io server started");
+  });
+
   // Set startup configuration for health endpoint
   setGatewayStartupConfig({ host, port, cors });
 
@@ -318,6 +329,8 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   // Handle shutdown
   app.addHook("onClose", async () => {
     log.info("Shutting down gateway...");
+    clientSocketServer?.shutdown();
+    state.clientStore.shutdown();
     state.channelRouter.stop();
     await state.channelRuntime.stop();
     await state.cron.shutdown();
