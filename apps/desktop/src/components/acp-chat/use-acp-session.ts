@@ -875,6 +875,13 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     let mounted = true;
     setHasAutoConnected(true);
 
+    const agentConfig: AgentConfigPayload = {
+      executor_type: executorType,
+      model: model.trim() || undefined,
+      permission_mode: "default",
+      mcp_servers: ["client_side"],
+    };
+
     const autoConnect = async () => {
       console.log("[ACP] Auto-connect starting (Gateway connected)...", { wsUrl, status });
       try {
@@ -883,10 +890,69 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         console.log("[ACP] Client ensured, connecting to:", wsUrl);
         await client.connect(wsUrl);
         console.log("[ACP] WebSocket connected, initializing...");
-        if (mounted) {
-          const initialized = await client.initialize();
-          console.log("[ACP] Initialize result:", initialized);
-          setInitializeResult(initialized);
+        if (!mounted) return;
+        const initialized = await client.initialize();
+        console.log("[ACP] Initialize result:", initialized);
+        setInitializeResult(initialized);
+
+        // After successful connection, fetch existing sessions and auto-create one
+        if (!mounted) return;
+        try {
+          const listResult = await client.listSessions() as { sessions?: Array<{ sessionId: string; cwd?: string; title?: string; updatedAt?: string }> } | null;
+          if (!mounted) return;
+          const existingSessions = listResult?.sessions ?? [];
+          if (existingSessions.length > 0) {
+            // Load the most recent session
+            const mostRecent = existingSessions[0];
+            const id = mostRecent.sessionId;
+            // Register existing sessions in the UI
+            for (const s of existingSessions) {
+              const sid = s.sessionId;
+              setSessionsById((current) => {
+                if (current[sid]) return current;
+                return { ...current, [sid]: createUiSession(sid, s.cwd ?? cwd, null) };
+              });
+              setSessionOrder((current) => current.includes(sid) ? current : [...current, sid]);
+            }
+            // Load the most recent session as active
+            const session = await client.loadSession({
+              session_id: id,
+              cwd: cwd || mostRecent.cwd,
+              agent_config: agentConfig,
+            });
+            if (!mounted) return;
+            const loadedId = readSessionId(session) ?? id;
+            setSessionsById((current) => ({
+              ...current,
+              [loadedId]: createUiSession(loadedId, cwd, session, current[loadedId]),
+            }));
+            setSessionOrder((current) => [loadedId, ...current.filter((item) => item !== loadedId)]);
+            setActiveSessionId(loadedId);
+            const commands = readSessionAvailableCommands(session);
+            if (commands) {
+              enqueueUiSteps(setSessionsById, loadedId, slashCommandsToUiSteps(commands));
+            }
+          } else {
+            // No existing sessions — auto-create a new one
+            const session = await client.newSession({
+              cwd,
+              agent_config: agentConfig,
+            });
+            if (!mounted) return;
+            const id = readSessionId(session);
+            if (id) {
+              const record = createUiSession(id, cwd, session);
+              setSessionsById((current) => ({ ...current, [id]: record }));
+              setSessionOrder((current) => [id, ...current.filter((item) => item !== id)]);
+              setActiveSessionId(id);
+              const commands = readSessionAvailableCommands(session);
+              if (commands) {
+                enqueueUiSteps(setSessionsById, id, slashCommandsToUiSteps(commands));
+              }
+            }
+          }
+        } catch (sessionErr) {
+          console.warn("[ACP] Failed to auto-load/create session after connect:", sessionErr);
         }
       } catch (err) {
         console.error("[ACP] Auto-connect error:", err);
@@ -904,7 +970,8 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       console.log("[ACP] Auto-connect effect cleanup");
       mounted = false;
     };
-  }, [gatewayStatus.isConnected, hasAutoConnected, ensureClient, wsUrl, status, setHasAutoConnected, setInitializeResult]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gatewayStatus.isConnected, hasAutoConnected, ensureClient, wsUrl, status, setHasAutoConnected, setInitializeResult, setError, executorType, model, cwd, setSessionsById, setSessionOrder, setActiveSessionId]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return {

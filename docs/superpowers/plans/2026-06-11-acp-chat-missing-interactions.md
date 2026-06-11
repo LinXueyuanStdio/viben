@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Supplement the desktop ACP Chat with 4 missing UI interactions: Tool Inspect dialog, Artifact dialog, SubagentSheet loadSubagentDetails, and Context Approval button+popup.
+**Goal:** Supplement the desktop ACP Chat with 4 missing UI interactions: Tool Inspect dialog, Artifact dialog, SubagentSheet loadSubagentDetails, and Context Approval button+popup. Also add Escape key shortcut to interrupt.
 
-**Architecture:** Add state and handlers to `use-acp-session.ts`, pass them through `acp-chat.tsx` into existing `ChatApp` props. Render overlay components (Dialog for inspect/artifact) directly in `acp-chat.tsx`. Context Approval adds to the existing `bottomToolbarLeftContent`.
+**Architecture:** Add state and handlers to `use-acp-session.ts`, pass them through `acp-chat.tsx` into existing `ChatApp` props. Render Dialog overlays **outside** mode-specific render paths (to avoid `position: fixed` breakage from floating mode's `transform` parent). Context Approval adds to the existing `bottomToolbarLeftContent`.
 
 **Tech Stack:** React, @viben/chat (ContextApprovalButton, ContextApprovalPopup, useContextApprovalPopupProps), @viben/ui (Dialog components), TypeScript
 
@@ -15,7 +15,7 @@
 | File | Responsibility |
 |------|----------------|
 | `apps/desktop/src/components/acp-chat/use-acp-session.ts` | State + handlers: toolInspect, artifactDialog, loadSubagentDetails |
-| `apps/desktop/src/components/acp-chat/acp-chat.tsx` | Wire handlers to ChatApp, render Dialog overlays, add ContextApproval |
+| `apps/desktop/src/components/acp-chat/acp-chat.tsx` | Wire handlers to ChatApp, render Dialog overlays, add ContextApproval, Escape shortcut |
 
 No new files needed. All logic stays in existing files.
 
@@ -26,9 +26,40 @@ No new files needed. All logic stays in existing files.
 **Files:**
 - Modify: `apps/desktop/src/components/acp-chat/use-acp-session.ts`
 
-- [ ] **Step 1: Add types and state to the interface**
+- [ ] **Step 1: Add `useState` to React import**
 
-Add to the `UseAcpSessionReturn` interface (after the subagent sheet section at line ~187):
+Change line 13 from:
+```typescript
+import { useCallback, useEffect, useMemo, useRef } from "react";
+```
+To:
+```typescript
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+```
+
+- [ ] **Step 2: Add new types to `@viben/chat` import**
+
+Change the type import (line ~14) to include `LoadedSubagentDetails` and `SubagentOpenContext`:
+
+```typescript
+import type {
+  AgentMessage,
+  Artifact,
+  CommandQueueItem,
+  LoadedSubagentDetails,
+  PendingQuestion,
+  QueuedInputRecallItem,
+  SelectorOption,
+  SlashCommand,
+  SlashCommandSelection,
+  SubagentOpenContext,
+  TaskPlan,
+} from "@viben/chat";
+```
+
+- [ ] **Step 3: Add new fields to `UseAcpSessionReturn` interface**
+
+Add after the subagent sheet section (line ~187, before the closing `}`):
 
 ```typescript
   // Tool inspect dialog
@@ -45,47 +76,18 @@ Add to the `UseAcpSessionReturn` interface (after the subagent sheet section at 
   handleLoadSubagentDetails: (context: SubagentOpenContext) => Promise<LoadedSubagentDetails>;
 ```
 
-- [ ] **Step 2: Add import for new types**
+- [ ] **Step 4: Add state variables in the hook body**
 
-Add to the `@viben/chat` type import at the top (line ~14):
-
-```typescript
-import type {
-  AgentMessage,
-  Artifact,
-  CommandQueueItem,
-  LoadedSubagentDetails,    // NEW
-  PendingQuestion,
-  QueuedInputRecallItem,
-  SelectorOption,
-  SlashCommand,
-  SlashCommandSelection,
-  SubagentOpenContext,       // NEW
-  TaskPlan,
-} from "@viben/chat";
-```
-
-- [ ] **Step 3: Add state variables in the hook body**
-
-Add state refs using `useAcpSessionStore` or local `useRef`/`useState`. Since this hook uses a Zustand store (`useAcpSessionStore`), and these are transient UI state (not needed across mode switches), use local refs in the hook. However since `use-acp-session.ts` doesn't use `useState` directly (it uses Zustand store), we'll add these to the store.
-
-Actually looking at the code, the hook uses `useAcpSessionStore` for persistence. For transient dialog state, add local state via a returned object pattern. Looking more carefully, the hook already returns computed values from the store — so we should add these state fields to the store.
-
-Check: the store is at `@/stores/acp-session-store`. But for simplicity and since tool inspect / artifact are truly ephemeral (reset on mode switch is fine), add them as `useRef` values with force-update trigger:
+Add after the `subagentSheet` related variables (around line ~382):
 
 ```typescript
-// Inside useAcpSession(), after the subagentSheet variables (around line 382):
 const [toolInspectState, setToolInspectState] = useState<{ message: AgentMessage; result?: AgentMessage } | null>(null);
 const [artifactDialogState, setArtifactDialogState] = useState<{ artifact: Artifact; message?: AgentMessage } | null>(null);
 ```
 
-Add `useState` to the React import (line 13):
+These are ephemeral UI state — losing them on mode switch is acceptable.
 
-```typescript
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-```
-
-- [ ] **Step 4: Implement handleInspectTool callback**
+- [ ] **Step 5: Implement handleInspectTool callback**
 
 Add after `handleExpandSubagent` (around line ~1296):
 
@@ -105,7 +107,7 @@ const closeToolInspect = useCallback(() => {
 }, []);
 ```
 
-- [ ] **Step 5: Implement handleArtifactClick callback**
+- [ ] **Step 6: Implement handleArtifactClick callback**
 
 ```typescript
 const handleArtifactClick = useCallback(
@@ -123,7 +125,7 @@ const closeArtifactDialog = useCallback(() => {
 }, []);
 ```
 
-- [ ] **Step 6: Implement handleLoadSubagentDetails callback**
+- [ ] **Step 7: Implement handleLoadSubagentDetails callback**
 
 ```typescript
 const handleLoadSubagentDetails = useCallback(
@@ -162,7 +164,7 @@ const handleLoadSubagentDetails = useCallback(
 );
 ```
 
-- [ ] **Step 7: Add to return object**
+- [ ] **Step 8: Add to return object**
 
 Add to the return statement (around line ~1360):
 
@@ -177,12 +179,12 @@ Add to the return statement (around line ~1360):
     handleLoadSubagentDetails,
 ```
 
-- [ ] **Step 8: Verify typecheck**
+- [ ] **Step 9: Verify typecheck**
 
 Run: `cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben && pnpm typecheck --filter=viben-desktop`
 Expected: PASS (or only pre-existing errors)
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add apps/desktop/src/components/acp-chat/use-acp-session.ts
@@ -191,26 +193,14 @@ git commit -m "feat(acp-chat): add toolInspect, artifactDialog, loadSubagentDeta
 
 ---
 
-### Task 2: Wire Handlers into acp-chat.tsx and Render Dialogs
+### Task 2: Wire Handlers and Render Dialogs in acp-chat.tsx
 
 **Files:**
 - Modify: `apps/desktop/src/components/acp-chat/acp-chat.tsx`
 
-- [ ] **Step 1: Add new imports from @viben/chat**
-
-Add to the `@viben/chat` import block (line ~37):
-
-```typescript
-import type {
-  // ... existing types ...
-  InspectToolHandler,
-  LoadSubagentDetails,
-  SubagentOpenContext,
-} from "@viben/chat";
-```
+- [ ] **Step 1: Add new imports**
 
 Add to the `@viben/ui` import (line ~63):
-
 ```typescript
 import {
   cn,
@@ -232,12 +222,21 @@ import {
 } from "@viben/ui";
 ```
 
+Add to the `@viben/chat` type import block:
+```typescript
+import type {
+  // ... existing types ...
+  Artifact,
+} from "@viben/chat";
+```
+
+(Note: `AgentMessage` is already imported via the existing type import.)
+
 - [ ] **Step 2: Destructure new values from useAcpSession**
 
-In the component body where `acp` is destructured (around line ~454):
+Add to the destructuring of `acp` (around line ~454, after `closeSubagentSheet`):
 
 ```typescript
-    // Add after closeSubagentSheet:
     toolInspectState,
     handleInspectTool,
     closeToolInspect,
@@ -247,7 +246,7 @@ In the component body where `acp` is destructured (around line ~454):
     handleLoadSubagentDetails,
 ```
 
-- [ ] **Step 3: Add onInspectTool and onArtifactClick to chatAppProps**
+- [ ] **Step 3: Add onInspectTool, onArtifactClick, loadSubagentDetails to chatAppProps**
 
 In the `chatAppProps` object (around line ~1155), add:
 
@@ -271,27 +270,159 @@ In the subagentSheet conditional (around line ~1180):
           messages: subagentSheet.messages,
           liveMessages: liveSubagentMessages,
           context: subagentSheet.context,
-          loadSubagentDetails: handleLoadSubagentDetails,  // NEW
+          loadSubagentDetails: handleLoadSubagentDetails,
         }
       : undefined,
 ```
 
 - [ ] **Step 5: Add onInspectTool and onArtifactClick to ChatAppFullscreenMessagePanel**
 
-In the fullscreenContent JSX (around line ~1120):
+In the fullscreenContent JSX (around line ~1120), add these props:
 
 ```typescript
           onInspectTool={handleInspectTool}
           onArtifactClick={handleArtifactClick}
 ```
 
-- [ ] **Step 6: Render ToolInspectDialog**
+- [ ] **Step 6: Refactor render paths to extract a shared dialogs fragment**
 
-Add before the closing `</ChatDragProvider>` in the windowMode render (around line ~1231) and also in the non-floating render paths. Best approach: add a shared fragment at the end of the component, before the final return statements. Actually, since there are 3 render paths (windowMode, floatingMode, fullMode), the simplest is to render the dialogs outside the mode-specific wrappers.
+**CRITICAL**: The `@viben/ui` Dialog uses `position: fixed` without a React Portal. In floating mode, the `<motion.div>` applies CSS `transform`, which breaks `fixed` positioning (children become relative to the transformed ancestor, not the viewport).
 
-Add a helper component at the bottom of the file (before the existing helper functions):
+**Solution**: Refactor the 3 early-return render paths into a single return with a variable for the mode-specific content. Render dialogs **outside** the mode wrappers.
+
+Replace the render section (starting around line ~1218) with this pattern:
 
 ```typescript
+  // Determine mode-specific content
+  let modeContent: React.ReactNode;
+
+  if (windowMode) {
+    modeContent = (
+      <ChatDragProvider value={dragContextValue}>
+        <div className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-background", className)}>
+          {displayError && (
+            <div className="absolute left-4 right-4 top-14 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+              {displayError}
+            </div>
+          )}
+          <ChatApp contained {...chatAppProps} />
+        </div>
+      </ChatDragProvider>
+    );
+  } else if (isFloatingMode) {
+    modeContent = (
+      <ChatDragProvider value={dragContextValue}>
+        <div
+          ref={containerRef}
+          className={cn("absolute inset-0 pointer-events-none z-20", className)}
+          data-testid="draggable-chat-container"
+        >
+          {displayError && (
+            <div className="pointer-events-auto absolute left-4 right-4 top-4 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
+              {displayError}
+            </div>
+          )}
+          <motion.div
+            className="pointer-events-auto"
+            style={floatingStyle ?? { position: "absolute" }}
+            animate={isDragging ? undefined : positionConfig}
+            transition={isDragging ? { duration: 0 } : SNAP_SPRING}
+            data-testid="draggable-chat"
+            data-dragging={isDragging}
+            data-position={snapPosition}
+          >
+            <ChatApp contained {...chatAppProps} />
+          </motion.div>
+        </div>
+      </ChatDragProvider>
+    );
+  } else {
+    // Full mode with external resize handle
+    const fullModeStyle: React.CSSProperties = enableFullResize
+      ? { width: fullWidth, flexShrink: 0 }
+      : {};
+    const fullModeProps = { ...chatAppProps, enableFullResize: false };
+
+    modeContent = (
+      <ChatDragProvider value={dragContextValue}>
+        <div
+          className={cn(
+            "group/resize relative h-full min-h-[560px] bg-background",
+            enableFullResize ? "flex-shrink-0" : "overflow-hidden",
+            className
+          )}
+          style={fullModeStyle}
+        >
+          <ChatApp contained={contained} {...fullModeProps} />
+          {enableFullResize && (
+            <div
+              className={cn(
+                "absolute right-0 top-0 bottom-0 z-50 translate-x-1/2",
+                "w-3 cursor-ew-resize",
+                "group/handle"
+              )}
+              onMouseDown={handleFullResizeStart}
+              data-resize-handle="full-right"
+            >
+              <div
+                className={cn(
+                  "absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 transition-all duration-150",
+                  isFullResizing
+                    ? "bg-primary"
+                    : "bg-transparent group-hover/handle:bg-border"
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2",
+                  "flex h-8 w-4 items-center justify-center rounded-md",
+                  "transition-all duration-150",
+                  isFullResizing
+                    ? "bg-primary text-primary-foreground opacity-100"
+                    : "bg-muted/90 border border-border text-muted-foreground opacity-0 group-hover/handle:opacity-100"
+                )}
+              >
+                <GripVertical className="h-4 w-4" />
+              </div>
+            </div>
+          )}
+        </div>
+      </ChatDragProvider>
+    );
+  }
+
+  return (
+    <>
+      {modeContent}
+      <ToolInspectDialog state={toolInspectState} onClose={closeToolInspect} />
+      <ArtifactDialog state={artifactDialogState} onClose={closeArtifactDialog} />
+    </>
+  );
+```
+
+- [ ] **Step 7: Add ToolInspectDialog helper component**
+
+Add at the bottom of the file (before existing helper functions like `buildAcpCompactSummary`):
+
+```typescript
+function toolOutputToDisplayValue(output: AgentMessage["output"]): string {
+  if (output == null) return "No output";
+  if (typeof output === "string") {
+    const trimmed = output.trim();
+    if (!trimmed) return "";
+    // Try to parse JSON strings for pretty display
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      try {
+        return JSON.stringify(JSON.parse(trimmed), null, 2);
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+  return JSON.stringify(output, null, 2);
+}
+
 function ToolInspectDialog({
   state,
   onClose,
@@ -323,12 +454,19 @@ function ToolInspectDialog({
                 error
               </span>
             )}
-            {message.subagentId && (
-              <span className="rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-                subagent: {message.subagentId}
-              </span>
-            )}
           </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+            <dt className="text-muted-foreground">Tool</dt>
+            <dd className="font-mono">{message.name ?? "unknown"}</dd>
+            <dt className="text-muted-foreground">Call ID</dt>
+            <dd className="font-mono break-all">{message.toolUseId ?? "none"}</dd>
+            {message.subagentId && (
+              <>
+                <dt className="text-muted-foreground">Subagent</dt>
+                <dd className="font-mono break-all">{message.subagentId}</dd>
+              </>
+            )}
+          </dl>
           <div>
             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</div>
             <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
@@ -340,11 +478,7 @@ function ToolInspectDialog({
           <div>
             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Output</div>
             <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
-              {output == null
-                ? "No output"
-                : typeof output === "string"
-                  ? output
-                  : JSON.stringify(output, null, 2)}
+              {toolOutputToDisplayValue(output)}
             </pre>
           </div>
         </div>
@@ -354,9 +488,7 @@ function ToolInspectDialog({
 }
 ```
 
-- [ ] **Step 7: Render ArtifactDialog**
-
-Add another helper component:
+- [ ] **Step 8: Add ArtifactDialog helper component**
 
 ```typescript
 function ArtifactDialog({
@@ -395,14 +527,14 @@ function ArtifactDialog({
               </>
             )}
           </dl>
-          {message && (
-            <div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Source Message</div>
-              <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
-                {JSON.stringify(message, null, 2)}
-              </pre>
+          <div>
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {message ? "Source Message" : "Artifact Data"}
             </div>
-          )}
+            <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
+              {JSON.stringify(message ?? artifact, null, 2)}
+            </pre>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -410,30 +542,7 @@ function ArtifactDialog({
 }
 ```
 
-- [ ] **Step 8: Mount dialogs in all render paths**
-
-The cleanest approach: render dialogs inside `<ChatDragProvider>` but outside `<ChatApp>`, since Dialog uses portals. Add right before `</ChatDragProvider>` in all 3 render paths (windowMode, floating, full):
-
-For **windowMode** (line ~1220):
-```tsx
-      <ToolInspectDialog state={toolInspectState} onClose={closeToolInspect} />
-      <ArtifactDialog state={artifactDialogState} onClose={closeArtifactDialog} />
-    </ChatDragProvider>
-```
-
-For **floating mode** (line ~1261):
-```tsx
-      <ToolInspectDialog state={toolInspectState} onClose={closeToolInspect} />
-      <ArtifactDialog state={artifactDialogState} onClose={closeArtifactDialog} />
-    </ChatDragProvider>
-```
-
-For **full mode** (line ~1331):
-```tsx
-      <ToolInspectDialog state={toolInspectState} onClose={closeToolInspect} />
-      <ArtifactDialog state={artifactDialogState} onClose={closeArtifactDialog} />
-    </ChatDragProvider>
-```
+Note: When `message` is null, falls back to displaying the `artifact` object itself (matches App.tsx behavior).
 
 - [ ] **Step 9: Verify typecheck**
 
@@ -444,7 +553,7 @@ Expected: PASS
 
 ```bash
 git add apps/desktop/src/components/acp-chat/acp-chat.tsx
-git commit -m "feat(acp-chat): wire onInspectTool, onArtifactClick, loadSubagentDetails and render dialogs"
+git commit -m "feat(acp-chat): wire onInspectTool, onArtifactClick, loadSubagentDetails with Dialog overlays"
 ```
 
 ---
@@ -456,7 +565,7 @@ git commit -m "feat(acp-chat): wire onInspectTool, onArtifactClick, loadSubagent
 
 - [ ] **Step 1: Add imports for Context Approval components**
 
-Add to the `@viben/chat` import block (existing component imports around line ~37):
+Add to the `@viben/chat` component import block:
 
 ```typescript
 import {
@@ -465,6 +574,11 @@ import {
   ContextApprovalPopup,
   useContextApprovalPopupProps,
 } from "@viben/chat";
+```
+
+Add to the `@viben/chat` type import block:
+
+```typescript
 import type {
   // ... existing types ...
   ApprovalMode,
@@ -472,12 +586,11 @@ import type {
 } from "@viben/chat";
 ```
 
-- [ ] **Step 2: Add state and computed values for Context Approval**
+- [ ] **Step 2: Add state for Context Approval**
 
 Add inside the `AcpChat` component body, after the existing settings state (around line ~470):
 
 ```typescript
-// Context approval state
 const [approvalMode, setApprovalMode] = useState<ApprovalMode>("rules");
 const [isContextPopupOpen, setIsContextPopupOpen] = useState(false);
 const [isContextPopupPinned, setIsContextPopupPinned] = useState(false);
@@ -486,25 +599,27 @@ const contextPopupHoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>
 
 - [ ] **Step 3: Add contextBreakdown computation**
 
-Add a memoized value (after the state declarations):
+Use already-destructured variables (not `acp.slashCommands`):
 
 ```typescript
 const contextBreakdown = useMemo<ContextTokenBreakdown>(() => {
-  const conversationMessages = Math.max(0, Math.ceil(JSON.stringify(messages).length / 4));
+  const conversationTokens = Math.max(0, Math.ceil(JSON.stringify(messages).length / 4));
   const streamingTokens = streamingText ? Math.ceil(streamingText.length / 4) : 0;
-  const skillSettings = Math.max(0, Math.ceil(JSON.stringify(acp.slashCommands).length / 4));
-  const historySummary = Math.max(0, Math.ceil(JSON.stringify(acp.steerQueueItems).length / 4));
-  const assistantProfile = 2000; // base estimate for assistant system prompt
-  const total = assistantProfile + skillSettings + historySummary + conversationMessages + streamingTokens + 4000;
+  const skillTokens = Math.max(0, Math.ceil(JSON.stringify(slashCommands).length / 4));
+  const historyTokens = Math.max(0, Math.ceil(JSON.stringify(steerQueueItems).length / 4));
+  const assistantProfile = 2000;
+  const total = assistantProfile + skillTokens + historyTokens + conversationTokens + streamingTokens + 4000;
   return {
     assistantProfile,
-    skillSettings,
-    historySummary,
-    conversationMessages: conversationMessages + streamingTokens,
+    skillSettings: skillTokens,
+    historySummary: historyTokens,
+    conversationMessages: conversationTokens + streamingTokens,
     totalContext: Math.max(8000, total),
   };
-}, [messages, streamingText, acp.slashCommands, acp.steerQueueItems]);
+}, [messages, streamingText, slashCommands, steerQueueItems]);
 ```
+
+Note: `slashCommands` and `steerQueueItems` are already destructured from `acp` earlier in the component. Use the local variable names directly.
 
 - [ ] **Step 4: Add popup props and hover handlers**
 
@@ -537,16 +652,17 @@ const handleContextPopupClick = useCallback(() => {
 }, [isContextPopupPinned]);
 ```
 
-- [ ] **Step 5: Update bottomToolbarLeftContent to include ContextApprovalButton**
+- [ ] **Step 5: Update bottomToolbarLeftContent**
 
-Replace the existing `bottomToolbarLeftContent` useMemo (around line ~932):
+Replace the existing `bottomToolbarLeftContent` useMemo (around line ~932).
+
+**IMPORTANT**: Do NOT include `contextPopupProps` in the dependency array — `useContextApprovalPopupProps` returns a new object every render, which would defeat memoization. Instead, since `contextPopupProps` is derived purely from `contextBreakdown` and `approvalMode` (both already in deps), the popup content will be correct whenever the memo recalculates.
 
 ```typescript
 const bottomToolbarLeftContent = useMemo(
   () => (
     <div className="flex items-center gap-1.5">
       {tripleSelectorNode}
-      {/* Context Approval with hover/click popup */}
       <div
         className="relative"
         onMouseEnter={handleContextPopupMouseEnter}
@@ -554,7 +670,33 @@ const bottomToolbarLeftContent = useMemo(
       >
         {isContextPopupOpen && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 pb-1">
-            <ContextApprovalPopup {...contextPopupProps} />
+            <ContextApprovalPopup
+              breakdown={contextBreakdown}
+              totalUsed={
+                contextBreakdown.assistantProfile +
+                contextBreakdown.skillSettings +
+                contextBreakdown.historySummary +
+                contextBreakdown.conversationMessages
+              }
+              usagePercentage={Math.min(
+                ((contextBreakdown.assistantProfile +
+                  contextBreakdown.skillSettings +
+                  contextBreakdown.historySummary +
+                  contextBreakdown.conversationMessages) /
+                  contextBreakdown.totalContext) * 100,
+                100
+              )}
+              remaining={Math.max(
+                0,
+                contextBreakdown.totalContext -
+                  contextBreakdown.assistantProfile -
+                  contextBreakdown.skillSettings -
+                  contextBreakdown.historySummary -
+                  contextBreakdown.conversationMessages
+              )}
+              approvalMode={approvalMode}
+              onApprovalModeChange={setApprovalMode}
+            />
           </div>
         )}
         <ContextApprovalButton
@@ -573,7 +715,6 @@ const bottomToolbarLeftContent = useMemo(
   [
     approvalMode,
     contextBreakdown,
-    contextPopupProps,
     handleContextPopupClick,
     handleContextPopupMouseEnter,
     handleContextPopupMouseLeave,
@@ -584,6 +725,8 @@ const bottomToolbarLeftContent = useMemo(
   ]
 );
 ```
+
+Note: Inline the popup props computation rather than referencing the unstable `contextPopupProps` object. The `setApprovalMode` function from `useState` is guaranteed stable and doesn't need to be in deps.
 
 - [ ] **Step 6: Verify typecheck**
 
@@ -599,7 +742,52 @@ git commit -m "feat(acp-chat): add ContextApprovalButton with hover/click popup 
 
 ---
 
-### Task 4: Integration Verification
+### Task 4: Add Escape Key Shortcut to Interrupt
+
+**Files:**
+- Modify: `apps/desktop/src/components/acp-chat/acp-chat.tsx`
+
+- [ ] **Step 1: Add useEffect for Escape key handler**
+
+Add after the existing `useEffect` hooks in the component body:
+
+```typescript
+useEffect(() => {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !sessionId || !isTurnActive) return;
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest('[role="dialog"]')) return;
+    event.preventDefault();
+    void interrupt();
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
+}, [interrupt, isTurnActive, sessionId]);
+```
+
+This registers a global Escape key listener that:
+- Only fires when there's an active session and a turn in progress
+- Skips if the user is inside a dialog (e.g., ToolInspect or Artifact dialog)
+- Calls `interrupt()` to cancel the current turn
+
+Note: `sessionId` is derived from `activeSessionId` (already declared). `isTurnActive` and `interrupt` come from the destructured `acp` return.
+
+- [ ] **Step 2: Verify typecheck**
+
+Run: `cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben && pnpm typecheck --filter=viben-desktop`
+Expected: PASS
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/desktop/src/components/acp-chat/acp-chat.tsx
+git commit -m "feat(acp-chat): add Escape key shortcut to interrupt active turn"
+```
+
+---
+
+### Task 5: Integration Verification
 
 - [ ] **Step 1: Full typecheck**
 
@@ -615,9 +803,13 @@ Expected: Build succeeds
 
 1. Start desktop app: `pnpm desktop:restart`
 2. Connect ACP session, send a tool-triggering prompt
-3. Click a tool call item in message list → ToolInspectDialog opens with input/output
-4. Close dialog → state resets
-5. Check bottom toolbar → ContextApprovalButton visible with ring progress
-6. Hover ContextApprovalButton → popup appears with token breakdown
-7. Click to pin → popup stays; click again → closes
-8. Open SubagentSheet → loadSubagentDetails loads messages lazily
+3. Click a tool call item in message list → ToolInspectDialog opens with input/output, shows status badges, metadata rows
+4. Verify JSON output is pretty-printed (JSON strings are parsed and formatted)
+5. Close dialog → state resets
+6. If artifact exists, click it → ArtifactDialog shows metadata + source message (or artifact fallback)
+7. Check bottom toolbar → ContextApprovalButton visible with ring progress
+8. Hover ContextApprovalButton → popup appears with token breakdown
+9. Click to pin → popup stays; click again → closes
+10. Open SubagentSheet → loadSubagentDetails loads messages lazily
+11. While agent is running, press Escape → turn is interrupted
+12. While inside ToolInspect dialog, press Escape → dialog closes (not interrupt)

@@ -20,7 +20,6 @@ import {
   Cpu,
   Search,
   X,
-  Sparkles,
   Globe,
   PenLine,
   Star,
@@ -69,7 +68,7 @@ import {
   type DiscoveredModel,
   type ModelSurface,
 } from "@/hooks/use-models";
-import { getGatewayClient, type WorkspaceModel } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 
 
 // Easing curves
@@ -164,7 +163,7 @@ function getDefaultSurfaces(type: ProviderType): ProviderSurface[] {
 
 // Extended model type with source information
 interface ExtendedModel extends DiscoveredModel {
-  source: "discovered" | "predefined" | "manual";
+  source: "discovered" | "manual";
   surface?: ModelSurface;
   capabilities?: string[];
 }
@@ -207,7 +206,6 @@ export function SettingsModelPage() {
 
   // Model discovery state
   const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
-  const [predefinedModels, setPredefinedModels] = useState<WorkspaceModel[]>([]);
   const [enabledModelIds, setEnabledModelIds] = useState<string[]>([]);
   const [discoveringModels, setDiscoveringModels] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
@@ -285,7 +283,6 @@ export function SettingsModelPage() {
 
     setDiscoveringModels(true);
     setDiscoveredModels([]);
-    setPredefinedModels([]);
     setEnabledModelIds([]);
 
     (async () => {
@@ -300,43 +297,18 @@ export function SettingsModelPage() {
         const filteredDiscovered = provider && providerSurfaceSet.size > 0
           ? discovered.filter((model) => {
               const surface = model.id.toLowerCase();
-              if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) {
-                return true;
-              }
-              if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) {
-                return true;
-              }
-              if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) {
-                return true;
-              }
-              if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) {
-                return true;
-              }
+              if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) return true;
+              if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) return true;
+              if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) return true;
+              if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) return true;
               return provider.category === "llm";
             })
           : discovered;
 
         setDiscoveredModels(filteredDiscovered);
-        setEnabledModelIds(enabled);
-
-        // Also load predefined models from Gateway for reference
-        try {
-          const client = getGatewayClient();
-          const response = await client.getModels({ includeProviderPredefined: true });
-          if (stale) return;
-
-          if (provider) {
-            const filtered = response.models.filter(
-              (m) => m.provider_id.toLowerCase() === provider.provider_type.toLowerCase() ||
-                     m.provider_name.toLowerCase().includes(provider.provider_type.toLowerCase())
-            ).filter((m) => !m.surface || provider.surfaces.includes(m.surface));
-            setPredefinedModels(filtered);
-          } else {
-            setPredefinedModels(response.models);
-          }
-        } catch (gatewayErr) {
-          console.warn("Failed to load predefined models from Gateway:", gatewayErr);
-        }
+        // Only keep enabled IDs that exist in discovered models
+        const discoveredIds = new Set(filteredDiscovered.map((m) => m.id));
+        setEnabledModelIds(enabled.filter((id) => discoveredIds.has(id)));
       } catch (err) {
         if (!stale) {
           console.error("Failed to load provider models:", err);
@@ -357,7 +329,6 @@ export function SettingsModelPage() {
 
     setDiscoveringModels(true);
     setDiscoveredModels([]);
-    setPredefinedModels([]);
     setEnabledModelIds([]);
 
     try {
@@ -370,41 +341,17 @@ export function SettingsModelPage() {
       const filteredDiscovered = provider && providerSurfaceSet.size > 0
         ? discovered.filter((model) => {
             const surface = model.id.toLowerCase();
-            if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) {
-              return true;
-            }
-            if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) {
-              return true;
-            }
-            if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) {
-              return true;
-            }
-            if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) {
-              return true;
-            }
+            if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) return true;
+            if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) return true;
+            if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) return true;
+            if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) return true;
             return provider.category === "llm";
           })
         : discovered;
 
       setDiscoveredModels(filteredDiscovered);
-      setEnabledModelIds(enabled);
-
-      // Also load predefined models from Gateway for reference
-      try {
-        const client = getGatewayClient();
-        const response = await client.getModels({ includeProviderPredefined: true });
-        if (provider) {
-          const filtered = response.models.filter(
-            (m) => m.provider_id.toLowerCase() === provider.provider_type.toLowerCase() ||
-                   m.provider_name.toLowerCase().includes(provider.provider_type.toLowerCase())
-          ).filter((m) => !m.surface || provider.surfaces.includes(m.surface));
-          setPredefinedModels(filtered);
-        } else {
-          setPredefinedModels(response.models);
-        }
-      } catch (gatewayErr) {
-        console.warn("Failed to load predefined models from Gateway:", gatewayErr);
-      }
+      const discoveredIds = new Set(filteredDiscovered.map((m) => m.id));
+      setEnabledModelIds(enabled.filter((id) => discoveredIds.has(id)));
     } catch (err) {
       console.error("Failed to load provider models:", err);
     } finally {
@@ -412,67 +359,17 @@ export function SettingsModelPage() {
     }
   }, [discoverProviderModels, listProviderEnabledModels, providers]);
 
-  // Combine discovered models, predefined models, and manually added models with source info
+  // Combine discovered models with source info
   const allModels = useMemo((): ExtendedModel[] => {
-    const existingIds = new Set<string>();
-    const result: ExtendedModel[] = [];
+    return discoveredModels.map((m) => ({ ...m, source: "discovered" as const }));
+  }, [discoveredModels]);
 
-    // First add discovered models
-    for (const m of discoveredModels) {
-      existingIds.add(m.id);
-      result.push({ ...m, source: "discovered" });
-    }
-
-    // Then add predefined models (if not already discovered)
-    for (const m of predefinedModels) {
-      if (!existingIds.has(m.id)) {
-        existingIds.add(m.id);
-        result.push({
-          id: m.id,
-          name: m.name,
-          description: undefined,
-          context_window: m.context_window ?? undefined,
-          max_output_tokens: undefined,
-          owned_by: undefined,
-          created: undefined,
-          surface: m.surface,
-          capabilities: m.capabilities,
-          source: "predefined",
-        });
-      }
-    }
-
-    // Finally add manually enabled models (not in discovered or predefined)
-    for (const id of enabledModelIds) {
-      if (!existingIds.has(id)) {
-        existingIds.add(id);
-        result.push({
-          id,
-          name: id,
-          description: undefined,
-          context_window: undefined,
-          max_output_tokens: undefined,
-          owned_by: undefined,
-          created: undefined,
-          source: "manual",
-        });
-      }
-    }
-
-    return result;
-  }, [discoveredModels, predefinedModels, enabledModelIds]);
-
-  // Sort models: enabled first, then by source (discovered > predefined > manual), then by name
+  // Sort models: enabled first, then by name
   const sortedModels = useMemo(() => {
-    const sourceOrder = { discovered: 0, predefined: 1, manual: 2 };
     return [...allModels].sort((a, b) => {
       const aEnabled = enabledModelIds.includes(a.id);
       const bEnabled = enabledModelIds.includes(b.id);
-      // Enabled models first
       if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
-      // Then by source
-      if (a.source !== b.source) return sourceOrder[a.source] - sourceOrder[b.source];
-      // Then by name
       return a.name.localeCompare(b.name);
     });
   }, [allModels, enabledModelIds]);
@@ -631,20 +528,25 @@ export function SettingsModelPage() {
   // Handle add model manually
   const handleAddModelManually = async () => {
     if (!selectedProviderId || !newModelId.trim()) return;
+    const modelId = newModelId.trim();
     try {
       if (selectedProvider) {
         const client = getGatewayClient();
         await client.createModel({
-          id: newModelId.trim(),
-          name: newModelId.trim(),
+          id: modelId,
+          name: modelId,
           provider: selectedProvider.provider_type,
           provider_id: selectedProvider.provider_type,
           category: selectedProvider.category,
           surface: selectedSurface as ModelSurface,
         }).catch(() => undefined);
       }
-      await enableModelForProvider(selectedProviderId, newModelId.trim());
-      setEnabledModelIds((prev) => [...prev, newModelId.trim()]);
+      await enableModelForProvider(selectedProviderId, modelId);
+      setDiscoveredModels((prev) => {
+        if (prev.some((m) => m.id === modelId)) return prev;
+        return [...prev, { id: modelId, name: modelId, description: undefined, context_window: undefined, max_output_tokens: undefined, owned_by: undefined, created: undefined }];
+      });
+      setEnabledModelIds((prev) => [...prev, modelId]);
       setNewModelId("");
       setShowAddModelDialog(false);
     } catch (err) {
@@ -681,12 +583,6 @@ export function SettingsModelPage() {
           icon: Globe,
           tooltip: t("settingsModel.sourceDiscovered"),
           className: "text-blue-500",
-        };
-      case "predefined":
-        return {
-          icon: Sparkles,
-          tooltip: t("settingsModel.sourcePredefined"),
-          className: "text-amber-500",
         };
       case "manual":
         return {

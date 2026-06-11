@@ -170,7 +170,7 @@ function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSessi
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="z-[10001] w-72 max-h-80 overflow-y-auto">
+      <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
         {sessions.length === 0 ? (
           <div className="px-2 py-4 text-center text-xs text-muted-foreground">No sessions</div>
         ) : (
@@ -201,10 +201,10 @@ interface AcpHeaderNewSessionMenuProps {
 
 function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions }: AcpHeaderNewSessionMenuProps) {
   return (
-    <div className="flex h-7 shrink-0 items-center overflow-hidden rounded-md border border-border bg-background">
+    <div className="flex h-7 shrink-0 items-center rounded-md border border-border bg-background">
       <button
         type="button"
-        className="flex h-full w-7 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        className="flex h-full w-7 items-center justify-center rounded-l-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
         onClick={onCreateSession}
         aria-label="Create session"
         data-no-drag
@@ -216,14 +216,14 @@ function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions 
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex h-full w-6 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="flex h-full w-6 items-center justify-center rounded-r-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Open session menu"
             data-no-drag
           >
             <ChevronDown className="size-3" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="z-[10001] w-56">
+        <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuItem onClick={onCreateSession} className="gap-2">
             <FolderPlus className="size-4" />
             New session
@@ -958,7 +958,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         onSend={() => handleSend(inputValue)}
         onCancel={interrupt}
         isLoading={isTurnActive}
-        canSubmit={connected && !!sessionId && inputValue.trim().length > 0}
+        canSubmit={connected && inputValue.trim().length > 0}
         allowSendWhileLoading
       />
     ),
@@ -973,12 +973,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       onQueuedInputRecall: handleRecallQueue,
       isLoading: isTurnActive,
       allowSendWhileLoading: true,
-      sendDisabled: !connected || !sessionId,
+      sendDisabled: !connected,
       sendBlockedReason: !connected
         ? "Connect first to send prompts."
-        : !sessionId
-          ? "Create or load a session before sending."
-          : undefined,
+        : undefined,
       placeholder: isTurnActive ? "Type steering while the agent is running..." : "Type a message...",
       slashCommands,
       onSlashCommand: handleSlashCommandSelect,
@@ -1008,7 +1006,6 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       handleSlashCommandSelect,
       interrupt,
       isTurnActive,
-      sessionId,
       slashCommands,
       steerQueueItems,
       topToolbar,

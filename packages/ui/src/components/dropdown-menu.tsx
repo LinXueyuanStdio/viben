@@ -1,11 +1,13 @@
 import * as React from "react";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils";
 import { Check } from "lucide-react";
 
 interface DropdownMenuContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
+  triggerRef: React.RefObject<HTMLElement>;
 }
 
 const DropdownMenuContext = React.createContext<DropdownMenuContextValue | null>(null);
@@ -26,6 +28,7 @@ interface DropdownMenuProps {
 
 function DropdownMenu({ children, open: controlledOpen, onOpenChange }: DropdownMenuProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const triggerRef = useRef<HTMLElement>(null);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -38,8 +41,8 @@ function DropdownMenu({ children, open: controlledOpen, onOpenChange }: Dropdown
   }, [isControlled, onOpenChange]);
 
   return (
-    <DropdownMenuContext.Provider value={{ open, setOpen }}>
-      <div className="relative inline-block">{children}</div>
+    <DropdownMenuContext.Provider value={{ open, setOpen, triggerRef }}>
+      {children}
     </DropdownMenuContext.Provider>
   );
 }
@@ -50,7 +53,7 @@ interface DropdownMenuTriggerProps extends React.ButtonHTMLAttributes<HTMLButton
 
 const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTriggerProps>(
   ({ className, children, asChild, onClick, ...props }, ref) => {
-    const { open, setOpen } = useDropdownMenuContext();
+    const { open, setOpen, triggerRef } = useDropdownMenuContext();
 
     const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
@@ -58,9 +61,15 @@ const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTrig
       onClick?.(e);
     };
 
+    const combinedRef = useCallback((node: HTMLButtonElement | null) => {
+      (triggerRef as React.MutableRefObject<HTMLElement | null>).current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    }, [ref, triggerRef]);
+
     if (asChild && React.isValidElement(children)) {
       return React.cloneElement(children as React.ReactElement<any>, {
-        ref,
+        ref: combinedRef,
         onClick: handleClick,
         "aria-expanded": open,
         "aria-haspopup": "menu",
@@ -70,7 +79,7 @@ const DropdownMenuTrigger = React.forwardRef<HTMLButtonElement, DropdownMenuTrig
 
     return (
       <button
-        ref={ref}
+        ref={combinedRef}
         type="button"
         className={className}
         onClick={handleClick}
@@ -91,19 +100,57 @@ interface DropdownMenuContentProps extends React.HTMLAttributes<HTMLDivElement> 
 }
 
 const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContentProps>(
-  ({ className, align = "start", children, ...props }, ref) => {
-    const { open, setOpen } = useDropdownMenuContext();
+  ({ className, align = "start", sideOffset = 4, children, ...props }, ref) => {
+    const { open, setOpen, triggerRef } = useDropdownMenuContext();
     const contentRef = useRef<HTMLDivElement>(null);
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+
+    useLayoutEffect(() => {
+      if (!open || !triggerRef.current) return;
+
+      const updatePosition = () => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+
+        const rect = trigger.getBoundingClientRect();
+        const contentWidth = contentRef.current?.offsetWidth ?? 200;
+
+        let left: number;
+        if (align === "start") {
+          left = rect.left;
+        } else if (align === "end") {
+          left = rect.right - contentWidth;
+        } else {
+          left = rect.left + rect.width / 2 - contentWidth / 2;
+        }
+
+        left = Math.max(8, Math.min(left, window.innerWidth - contentWidth - 8));
+
+        setPosition({
+          top: rect.bottom + sideOffset,
+          left,
+        });
+      };
+
+      updatePosition();
+
+      window.addEventListener("resize", updatePosition);
+      window.addEventListener("scroll", updatePosition, true);
+
+      return () => {
+        window.removeEventListener("resize", updatePosition);
+        window.removeEventListener("scroll", updatePosition, true);
+      };
+    }, [open, align, sideOffset, triggerRef]);
 
     useEffect(() => {
       if (!open) return;
 
       const handleClickOutside = (e: MouseEvent) => {
-        if (contentRef.current && !contentRef.current.contains(e.target as Node)) {
-          const trigger = contentRef.current.parentElement?.querySelector('[aria-haspopup="menu"]');
-          if (trigger && trigger.contains(e.target as Node)) return;
-          setOpen(false);
-        }
+        const target = e.target as Node;
+        if (contentRef.current?.contains(target)) return;
+        if (triggerRef.current?.contains(target)) return;
+        setOpen(false);
       };
 
       const handleEscape = (e: KeyboardEvent) => {
@@ -117,11 +164,11 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
         document.removeEventListener("mousedown", handleClickOutside);
         document.removeEventListener("keydown", handleEscape);
       };
-    }, [open, setOpen]);
+    }, [open, setOpen, triggerRef]);
 
     if (!open) return null;
 
-    return (
+    return createPortal(
       <div
         ref={(node) => {
           (contentRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
@@ -129,19 +176,17 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
           else if (ref) ref.current = node;
         }}
         className={cn(
-          "absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
-          "animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2",
-          align === "start" && "left-0",
-          align === "center" && "left-1/2 -translate-x-1/2",
-          align === "end" && "right-0",
-          "top-full mt-1",
+          "fixed z-[9999] min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+          "animate-in fade-in-0 zoom-in-95",
           className
         )}
+        style={{ top: position.top, left: position.left }}
         role="menu"
         {...props}
       >
         {children}
-      </div>
+      </div>,
+      document.body
     );
   }
 );

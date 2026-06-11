@@ -1337,7 +1337,7 @@ export function ExpandedHeaderModeControls({
             <MoreHorizontal className="size-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="z-[10001] w-56 p-1.5">
+        <DropdownMenuContent align="end" className="w-56 p-1.5">
           {moreMenuContent}
         </DropdownMenuContent>
       </DropdownMenu>
