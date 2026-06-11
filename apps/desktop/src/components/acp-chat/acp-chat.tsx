@@ -170,7 +170,7 @@ function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSessi
           <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
+      <DropdownMenuContent align="start" className="z-[10001] w-72 max-h-80 overflow-y-auto">
         {sessions.length === 0 ? (
           <div className="px-2 py-4 text-center text-xs text-muted-foreground">No sessions</div>
         ) : (
@@ -201,42 +201,53 @@ interface AcpHeaderNewSessionMenuProps {
 
 function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions }: AcpHeaderNewSessionMenuProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex h-7 items-center gap-0.5 rounded-md px-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="New session"
-          data-no-drag
-        >
-          <Plus className="size-4" />
-          <ChevronDown className="size-3" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem onClick={onCreateSession} className="gap-2">
-          <FolderPlus className="size-4" />
-          New session
-        </DropdownMenuItem>
-        {agentOptions.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            {agentOptions.map((agent) => (
-              <DropdownMenuItem
-                key={agent.id}
-                onClick={() => onSelectAgent(agent.id)}
-                className="justify-between"
-              >
-                <span>{agent.label}</span>
-                {agent.badge && (
-                  <span className="text-[10px] text-muted-foreground">{agent.badge}</span>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex h-7 shrink-0 items-center overflow-hidden rounded-md border border-border bg-background">
+      <button
+        type="button"
+        className="flex h-full w-7 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+        onClick={onCreateSession}
+        aria-label="Create session"
+        data-no-drag
+      >
+        <Plus className="size-3.5" />
+      </button>
+      <div className="h-full w-px bg-border" />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="flex h-full w-6 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Open session menu"
+            data-no-drag
+          >
+            <ChevronDown className="size-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="z-[10001] w-56">
+          <DropdownMenuItem onClick={onCreateSession} className="gap-2">
+            <FolderPlus className="size-4" />
+            New session
+          </DropdownMenuItem>
+          {agentOptions.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              {agentOptions.map((agent) => (
+                <DropdownMenuItem
+                  key={agent.id}
+                  onClick={() => onSelectAgent(agent.id)}
+                  className="justify-between"
+                >
+                  <span>{agent.label}</span>
+                  {agent.badge && (
+                    <span className="text-[10px] text-muted-foreground">{agent.badge}</span>
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
