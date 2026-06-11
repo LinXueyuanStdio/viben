@@ -16,11 +16,12 @@
 
 | 文件 | 职责 |
 |------|------|
-| `packages/core/src/gateway/client-store.ts` | ClientState 数据结构、action CRUD、查找逻辑 |
-| `packages/core/src/gateway/client-socket-server.ts` | Socket.io Server 初始化、事件处理 |
-| `packages/core/src/assets/viben-page-sdk.ts` | SDK TypeScript 源码 |
+| `packages/core/src/utils/crypto.ts` | Ed25519 签名/验证工具 |
+| `packages/core/src/gateway/client-store.ts` | ClientState 数据结构、action CRUD、查找逻辑、签名验证 |
+| `packages/core/src/gateway/client-socket-server.ts` | Socket.io Server 初始化、事件处理、速率限制、payload校验 |
+| `packages/core/src/assets/viben-page-sdk.ts` | SDK TypeScript 源码（含 Ed25519 签名） |
 | `packages/core/scripts/build-page-sdk.ts` | esbuild 打包脚本 |
-| `apps/desktop/src/stores/client-id-store.ts` | Zustand store，持久化 client id |
+| `apps/desktop/src/stores/client-id-store.ts` | Zustand store，持久化 client identity（含密钥对） |
 
 ### 修改文件
 
@@ -45,26 +46,34 @@
 
 **Files:**
 - Modify: `packages/core/package.json`
+- Modify: `apps/desktop/package.json`
 
-- [ ] **Step 1: 添加 socket.io 依赖**
+- [ ] **Step 1: 添加 packages/core 依赖**
 
 ```bash
-cd packages/core && pnpm add socket.io socket.io-client
+cd packages/core && pnpm add socket.io socket.io-client @noble/ed25519
 ```
 
-- [ ] **Step 2: 验证依赖安装**
+- [ ] **Step 2: 添加 apps/desktop 依赖**
 
 ```bash
-cd packages/core && pnpm list socket.io socket.io-client
+cd apps/desktop && pnpm add @noble/ed25519
 ```
 
-Expected: 显示 socket.io 和 socket.io-client 版本
-
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: 验证依赖安装**
 
 ```bash
-git add packages/core/package.json pnpm-lock.yaml
-git commit -m "chore(core): add socket.io dependencies"
+cd packages/core && pnpm list socket.io socket.io-client @noble/ed25519
+cd apps/desktop && pnpm list @noble/ed25519
+```
+
+Expected: 显示所有依赖版本
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add packages/core/package.json apps/desktop/package.json pnpm-lock.yaml
+git commit -m "chore: add socket.io and ed25519 dependencies"
 ```
 
 ---
@@ -2153,10 +2162,12 @@ const injectConfig = useCallback(() => {
 onLoad={() => injectConfig()}
 ```
 
-- [ ] **Step 3: 删除 page-action-bridge.ts**
+- [ ] **Step 3: 删除 page-action-bridge 相关文件**
 
 ```bash
 git rm apps/desktop/src/pages/apps/components/page-action-bridge.ts
+# 如果存在测试文件也一并删除
+git rm -f apps/desktop/src/pages/apps/components/page-action-bridge.test.ts 2>/dev/null || true
 ```
 
 - [ ] **Step 4: 运行类型检查**
@@ -2231,11 +2242,28 @@ git commit -m "test: verify Socket.io integration working"
 
 ## 总结
 
-完成以上 8 个 Task 后，将实现：
+完成以上 9 个 Task 后，将实现：
 
-1. ✅ Gateway 端 ClientStore 管理 client 和 action
-2. ✅ Socket.io Server 处理连接和事件
-3. ✅ MCP Server 通过 ClientStore 路由 action 调用
-4. ✅ viben-page-sdk.ts 使用 Socket.io 连接
-5. ✅ Desktop app 注入配置，移除 PageActionBridge
-6. ✅ 端到端验证通过
+1. ✅ **安全认证**：Ed25519 签名验证 clientId 所有权（防冒充）
+2. ✅ **Grace Period**：socket 断开后保留 30 秒，避免短暂断线丢失 action
+3. ✅ **速率限制**：每 socket 100 req/s，防 DoS
+4. ✅ **Payload 校验**：Gateway 层用 zod 校验 inputSchema，限制 1MB
+5. ✅ **可配置超时**：action 注册时可指定自定义 timeout
+6. ✅ **Action 数量限制**：每 client 最多 1000 个 action
+7. ✅ Gateway 端 ClientStore 管理 client 和 action
+8. ✅ Socket.io Server 处理连接和事件
+9. ✅ MCP Server 通过 ClientStore 路由 action 调用
+10. ✅ viben-page-sdk.ts 使用 Socket.io 连接（含签名）
+11. ✅ Desktop app 注入配置（含密钥对），移除 PageActionBridge
+12. ✅ 端到端验证通过
+
+### 安全特性
+
+| 特性 | 实现方式 |
+|------|----------|
+| 认证 | Ed25519 签名验证 clientId 所有权 |
+| 防重放 | 签名包含时间戳，5 分钟有效期 |
+| 速率限制 | 每 socket 100 req/s |
+| Payload 校验 | zod 校验 + 1MB 大小限制 |
+| DoS 防护 | action 数量限制 (1000/client) |
+| 敏感数据保护 | workspacePath 仅发给 main_window |

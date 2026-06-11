@@ -669,9 +669,10 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   const formatDisplayLabel = useCallback(
     ({ first, third }: DisplayLabelFormatParams) => {
-      if (!first) return third || "";
-      if (!third) return first;
-      return `${first} / ${third}`; // Display 'agent / model' together
+      if (!first && !third) return "";
+      if (!first) return third?.label || "";
+      if (!third) return first?.label || "";
+      return `${first.label} / ${third.label}`; // Display 'agent / model' together
     },
     []
   );

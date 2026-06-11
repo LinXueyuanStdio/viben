@@ -6,11 +6,10 @@
  */
 
 import { create } from "zustand";
-import type { ConnectionStatus } from "@/components/acp-chat/acp-client";
+import type { ConnectionStatus, PermissionDecisionRequest, PermissionDecisionResult, ElicitationRequest, ElicitationResponse } from "@/components/acp-chat/acp-client";
 import type { UiSessionState, SubagentSheetState } from "@/components/acp-chat/acp-chat-state";
-import type { CommandQueueItem } from "@viben/chat";
-import type { PermissionDecisionRequest, PermissionDecisionResult, ElicitationRequest, ElicitationResponse } from "@/components/acp-chat/acp-client";
-import type { PendingQuestion } from "@viben/chat";
+import type { ElicitationFormField } from "@/components/acp-chat/acp-chat-adapter";
+import type { CommandQueueItem, PendingQuestion } from "@viben/chat";
 
 export interface PermissionDialogState {
   id: string;
@@ -19,16 +18,8 @@ export interface PermissionDialogState {
   resolve: (result: PermissionDecisionResult) => void;
 }
 
-export interface ElicitationFormField {
-  key: string;
-  schema: {
-    type?: string;
-    default?: unknown;
-    description?: string | null;
-    enum?: unknown[];
-    items?: { type?: string; enum?: unknown[] };
-  };
-}
+// Re-export ElicitationFormField from adapter for convenience
+export type { ElicitationFormField } from "@/components/acp-chat/acp-chat-adapter";
 
 export interface ElicitationDialogState {
   id: string;
