@@ -26,8 +26,8 @@ export interface ClientStoreExecutor {
     namespace: string,
     actionName: string,
     payload: unknown,
-    context: { sessionId: string; toolUseId: string; callerClientId?: string; source: string }
-  ) => Promise<{ content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>; structuredContent?: Record<string, unknown>; isError?: boolean }>;
+    context: { sessionId: string; toolUseId: string; callerClientId?: string; source: "main_window" | "page_iframe" | "chat_window" | "standalone" | "mcp" }
+  ) => Promise<CallToolResult>;
   getAllActions: () => Array<{
     clientId: string;
     namespace: string;

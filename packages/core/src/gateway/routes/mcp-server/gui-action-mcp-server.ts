@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { createClientSideMcpServer } from "../../../acp/ops/client-side-mcp-server";
 import { acpSessionManager } from "../../../acp";
 import { logger as globalLogger } from "../../../telemetry";
@@ -77,7 +78,7 @@ export function registerGuiActionMcpServerRoutes(
       callerClientId,
       clientStoreExecutor: state?.clientSocketServer ? {
         executeAction: (targetClientId, namespace, name, payload, context) =>
-          state.clientSocketServer!.executeAction(targetClientId, namespace, name, payload, context),
+          state.clientSocketServer!.executeAction(targetClientId, namespace, name, payload, context) as Promise<CallToolResult>,
         getAllActions: () => state.clientStore.getAllActions(),
       } : undefined,
       requestClientTool: ({ sessionId: sid, toolName, input, toolCallId }) =>
