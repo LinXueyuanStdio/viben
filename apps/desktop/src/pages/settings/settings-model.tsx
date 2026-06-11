@@ -277,21 +277,27 @@ export function SettingsModelPage() {
   }, [selectedProvider, selectedSurface]);
 
   // Load models when provider changes
-  const loadProviderModels = useCallback(async (providerId: string) => {
+  useEffect(() => {
+    if (!selectedProviderId) return;
+
+    let stale = false;
+    const provider = providers.find((p) => p.id === selectedProviderId);
+
     setDiscoveringModels(true);
     setDiscoveredModels([]);
     setPredefinedModels([]);
     setEnabledModelIds([]);
-    try {
-      // Load enabled models and try to discover from provider API
-      const [discovered, enabled] = await Promise.all([
-        discoverProviderModels(providerId).catch(() => [] as DiscoveredModel[]),
-        listProviderEnabledModels(providerId),
-      ]);
-      const provider = providers.find((p) => p.id === providerId);
-      const providerSurfaceSet = new Set(provider?.surfaces ?? []);
-      setDiscoveredModels(
-        provider && providerSurfaceSet.size > 0
+
+    (async () => {
+      try {
+        const [discovered, enabled] = await Promise.all([
+          discoverProviderModels(selectedProviderId).catch(() => [] as DiscoveredModel[]),
+          listProviderEnabledModels(selectedProviderId),
+        ]);
+        if (stale) return;
+
+        const providerSurfaceSet = new Set(provider?.surfaces ?? []);
+        const filteredDiscovered = provider && providerSurfaceSet.size > 0
           ? discovered.filter((model) => {
               const surface = model.id.toLowerCase();
               if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) {
@@ -308,15 +314,85 @@ export function SettingsModelPage() {
               }
               return provider.category === "llm";
             })
-          : discovered
-      );
+          : discovered;
+
+        setDiscoveredModels(filteredDiscovered);
+        setEnabledModelIds(enabled);
+
+        // Also load predefined models from Gateway for reference
+        try {
+          const client = getGatewayClient();
+          const response = await client.getModels({ includeProviderPredefined: true });
+          if (stale) return;
+
+          if (provider) {
+            const filtered = response.models.filter(
+              (m) => m.provider_id.toLowerCase() === provider.provider_type.toLowerCase() ||
+                     m.provider_name.toLowerCase().includes(provider.provider_type.toLowerCase())
+            ).filter((m) => !m.surface || provider.surfaces.includes(m.surface));
+            setPredefinedModels(filtered);
+          } else {
+            setPredefinedModels(response.models);
+          }
+        } catch (gatewayErr) {
+          console.warn("Failed to load predefined models from Gateway:", gatewayErr);
+        }
+      } catch (err) {
+        if (!stale) {
+          console.error("Failed to load provider models:", err);
+        }
+      } finally {
+        if (!stale) {
+          setDiscoveringModels(false);
+        }
+      }
+    })();
+
+    return () => { stale = true; };
+  }, [selectedProviderId, providers, discoverProviderModels, listProviderEnabledModels]);
+
+  // Manual refresh handler
+  const loadProviderModels = useCallback(async (providerId: string) => {
+    const provider = providers.find((p) => p.id === providerId);
+
+    setDiscoveringModels(true);
+    setDiscoveredModels([]);
+    setPredefinedModels([]);
+    setEnabledModelIds([]);
+
+    try {
+      const [discovered, enabled] = await Promise.all([
+        discoverProviderModels(providerId).catch(() => [] as DiscoveredModel[]),
+        listProviderEnabledModels(providerId),
+      ]);
+
+      const providerSurfaceSet = new Set(provider?.surfaces ?? []);
+      const filteredDiscovered = provider && providerSurfaceSet.size > 0
+        ? discovered.filter((model) => {
+            const surface = model.id.toLowerCase();
+            if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) {
+              return true;
+            }
+            if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) {
+              return true;
+            }
+            if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) {
+              return true;
+            }
+            if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) {
+              return true;
+            }
+            return provider.category === "llm";
+          })
+        : discovered;
+
+      setDiscoveredModels(filteredDiscovered);
       setEnabledModelIds(enabled);
 
       // Also load predefined models from Gateway for reference
       try {
         const client = getGatewayClient();
         const response = await client.getModels({ includeProviderPredefined: true });
-        // Filter predefined models by provider type if possible
         if (provider) {
           const filtered = response.models.filter(
             (m) => m.provider_id.toLowerCase() === provider.provider_type.toLowerCase() ||
@@ -335,12 +411,6 @@ export function SettingsModelPage() {
       setDiscoveringModels(false);
     }
   }, [discoverProviderModels, listProviderEnabledModels, providers]);
-
-  useEffect(() => {
-    if (selectedProviderId) {
-      loadProviderModels(selectedProviderId);
-    }
-  }, [selectedProviderId, loadProviderModels]);
 
   // Combine discovered models, predefined models, and manually added models with source info
   const allModels = useMemo((): ExtendedModel[] => {

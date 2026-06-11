@@ -60,7 +60,19 @@ import type {
   DisplayLabelFormatParams,
 } from "@viben/chat";
 import { PetSprite } from "@viben/pet";
-import { cn, Popover, PopoverContent, PopoverTrigger, Switch, Label } from "@viben/ui";
+import {
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Switch,
+  Label,
+} from "@viben/ui";
 import { usePet } from "@/hooks";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { EmojiTab } from "@/components/ui/icon-picker/tabs/emoji-tab";
@@ -136,61 +148,48 @@ async function openChatWindow() {
   }
 }
 
-interface MenuActionButtonProps {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  icon?: React.ReactNode;
-}
-
-function MenuActionButton({ children, onClick, disabled, icon }: MenuActionButtonProps) {
-  return (
-    <button
-      type="button"
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {icon}
-      <span className="min-w-0 truncate">{children}</span>
-    </button>
-  );
-}
 
 interface AcpHeaderSessionMenuProps {
   title: string;
   sessions: Array<{ id: string; title: string; subtitle?: string }>;
+  currentSessionId?: string;
   onSelectSession: (id: string) => void;
 }
 
-function AcpHeaderSessionMenu({ title, sessions, onSelectSession }: AcpHeaderSessionMenuProps) {
+function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSession }: AcpHeaderSessionMenuProps) {
   return (
-    <div className="relative group">
-      <button
-        type="button"
-        className="flex h-8 max-w-44 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
-      >
-        <span className="truncate">{title}</span>
-        <ChevronDown className="size-3.5 shrink-0" />
-      </button>
-      <div className="absolute left-0 top-10 z-30 hidden w-72 rounded-lg border border-border bg-popover p-1.5 shadow-xl group-focus-within:block group-hover:block">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex h-8 max-w-44 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-foreground hover:bg-accent"
+          data-no-drag
+        >
+          <MessageSquare className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{title}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
         {sessions.length === 0 ? (
-          <div className="px-2 py-2 text-xs text-muted-foreground">No sessions</div>
+          <div className="px-2 py-4 text-center text-xs text-muted-foreground">No sessions</div>
         ) : (
           sessions.map((session) => (
-            <button
+            <DropdownMenuItem
               key={session.id}
-              type="button"
-              className="flex w-full min-w-0 flex-col rounded-md px-2 py-2 text-left hover:bg-accent"
+              className={cn(
+                "flex flex-col items-start gap-0.5 py-2 cursor-pointer",
+                currentSessionId === session.id && "bg-accent"
+              )}
               onClick={() => onSelectSession(session.id)}
             >
-              <span className="truncate text-sm font-medium text-foreground">{session.title}</span>
+              <span className="truncate text-sm font-medium">{session.title}</span>
               <span className="truncate text-[11px] text-muted-foreground">{session.subtitle ?? session.id}</span>
-            </button>
+            </DropdownMenuItem>
           ))
         )}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -202,42 +201,42 @@ interface AcpHeaderNewSessionMenuProps {
 
 function AcpHeaderNewSessionMenu({ onCreateSession, onSelectAgent, agentOptions }: AcpHeaderNewSessionMenuProps) {
   return (
-    <div className="relative group flex h-8 shrink-0 overflow-hidden rounded-md border border-border bg-background">
-      <button
-        type="button"
-        className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
-        onClick={onCreateSession}
-        aria-label="Create session"
-      >
-        <Plus className="size-4" />
-      </button>
-      <div className="h-full border-l border-border" />
-      <button
-        type="button"
-        className="flex w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
-        aria-label="Open session menu"
-      >
-        <ChevronDown className="size-4" />
-      </button>
-      <div className="absolute left-0 top-10 z-30 hidden w-64 rounded-lg border border-border bg-popover p-1.5 shadow-xl group-focus-within:block group-hover:block">
-        <MenuActionButton onClick={onCreateSession} icon={<FolderPlus size={14} />}>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex h-7 items-center gap-0.5 rounded-md px-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          aria-label="New session"
+          data-no-drag
+        >
+          <Plus className="size-4" />
+          <ChevronDown className="size-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuItem onClick={onCreateSession} className="gap-2">
+          <FolderPlus className="size-4" />
           New session
-        </MenuActionButton>
+        </DropdownMenuItem>
         {agentOptions.length > 0 && (
           <>
-            <div className="my-1 border-t border-border" />
+            <DropdownMenuSeparator />
             {agentOptions.map((agent) => (
-              <MenuActionButton key={agent.id} onClick={() => onSelectAgent(agent.id)}>
-                {agent.label}
+              <DropdownMenuItem
+                key={agent.id}
+                onClick={() => onSelectAgent(agent.id)}
+                className="justify-between"
+              >
+                <span>{agent.label}</span>
                 {agent.badge && (
-                  <span className="ml-auto text-[10px] text-muted-foreground">{agent.badge}</span>
+                  <span className="text-[10px] text-muted-foreground">{agent.badge}</span>
                 )}
-              </MenuActionButton>
+              </DropdownMenuItem>
             ))}
           </>
         )}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -1032,7 +1031,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           // Windows/Linux: 左侧放菜单
           <>
             <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
-            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           </>
         )
       }
@@ -1042,7 +1041,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           // macOS: 右侧放菜单
           <>
             <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
-            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+            <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           </>
         ) : (
           // Windows/Linux: 右侧放窗口控件
@@ -1057,7 +1056,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     <DraggableExpandedHeader
       leftContent={
         <>
-          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} onSelectSession={selectSession} />
+          <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           <AcpHeaderNewSessionMenu onCreateSession={createSession} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} />
         </>
       }
@@ -1068,43 +1067,46 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           onModeChange={onModeChange}
           moreMenuContent={
             <>
-              <MenuActionButton onClick={() => onModeChange("compact")} icon={<Minimize2 size={14} />}>
+              <DropdownMenuItem onClick={() => onModeChange("compact")} className="gap-2">
+                <Minimize2 className="size-4" />
                 Compact mode
-              </MenuActionButton>
-              <MenuActionButton onClick={() => onModeChange("expanded")} icon={<MessageSquare size={14} />}>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onModeChange("expanded")} className="gap-2">
+                <MessageSquare className="size-4" />
                 Expanded mode
-              </MenuActionButton>
-              <MenuActionButton onClick={() => onModeChange("full")} icon={<Maximize2 size={14} />}>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onModeChange("full")} className="gap-2">
+                <Maximize2 className="size-4" />
                 Fullscreen mode
-              </MenuActionButton>
-              <MenuActionButton onClick={openChatWindow} icon={<ExternalLink size={14} />}>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={openChatWindow} className="gap-2">
+                <ExternalLink className="size-4" />
                 Open in new window
-              </MenuActionButton>
-              <div className="my-1 border-t border-border" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               {!connected ? (
-                <MenuActionButton
-                  onClick={connect}
-                  disabled={busy}
-                  icon={busy ? <Loader2 className="animate-spin" size={14} /> : <Plug size={14} />}
-                >
+                <DropdownMenuItem onClick={connect} disabled={busy} className="gap-2">
+                  {busy ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
                   Connect
-                </MenuActionButton>
+                </DropdownMenuItem>
               ) : null}
               {connected && !sessionId ? (
-                <MenuActionButton onClick={createSession} icon={<FolderPlus size={14} />}>
+                <DropdownMenuItem onClick={createSession} className="gap-2">
+                  <FolderPlus className="size-4" />
                   New session
-                </MenuActionButton>
+                </DropdownMenuItem>
               ) : null}
-              <MenuActionButton
+              <DropdownMenuItem
                 onClick={() => {
                   const value = steerQueueItems.map((item) => item.content.trim()).filter(Boolean).join("\n\n");
                   handleRecallQueue(steerQueueItems, value);
                 }}
                 disabled={steerQueueItems.length === 0 || !sessionId}
-                icon={<RotateCcw size={14} />}
+                className="gap-2"
               >
+                <RotateCcw className="size-4" />
                 Recall queue
-              </MenuActionButton>
+              </DropdownMenuItem>
             </>
           }
         />

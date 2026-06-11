@@ -7,7 +7,12 @@ import {
   Minimize2,
   MoreHorizontal,
 } from "lucide-react";
-import { cn } from "@viben/ui";
+import {
+  cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@viben/ui";
 import { BackgroundTaskList, buildBackgroundTasksFromMessages } from "./background-task-list";
 import {
   ChatInput,
@@ -1296,7 +1301,6 @@ export function ExpandedHeaderModeControls({
   moreMenuContent,
 }: ExpandedHeaderModeControlsProps) {
   const { t } = useTranslation();
-  const [moreOpen, setMoreOpen] = React.useState(false);
 
   return (
     <>
@@ -1322,21 +1326,21 @@ export function ExpandedHeaderModeControls({
         </button>
       )}
 
-      <div className="relative" data-testid="more-actions-menu">
-        <button
-          type="button"
-          aria-label={t("chat_app.header.more_actions", "More actions")}
-          onClick={() => setMoreOpen((open) => !open)}
-          className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <MoreHorizontal className="size-4" />
-        </button>
-        {moreOpen && (
-          <div className="absolute right-0 top-10 z-20 w-56 rounded-lg border border-border bg-popover p-1.5 shadow-xl">
-            {moreMenuContent}
-          </div>
-        )}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={t("chat_app.header.more_actions", "More actions")}
+            data-testid="more-actions-menu"
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <MoreHorizontal className="size-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 p-1.5">
+          {moreMenuContent}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }
