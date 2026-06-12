@@ -30,7 +30,7 @@ import { listPagesInWorkspace, getPageByUid } from "./discovery";
 import { loadTemplateFiles, getTemplate } from "./templates";
 
 const PAGES_DIR = "pages";
-const PAGE_FILE = "PAGE.md";
+const SKILL_FILE = "SKILL.md";
 const INDEX_FILE = "index.json";
 
 // =============================================================================
@@ -172,7 +172,7 @@ export async function createPage(
   const uid = generatePageUid(slug);
   const pagesDir = join(workspace_path, PAGES_DIR);
   const pageDir = join(pagesDir, uid);
-  const pageMdPath = join(pageDir, PAGE_FILE);
+  const pageMdPath = join(pageDir, SKILL_FILE);
 
   // Check if page already exists
   if (existsSync(pageMdPath)) {
@@ -206,46 +206,52 @@ export async function createPage(
         mkdirSync(parentDir, { recursive: true });
       }
       // Rename SKILL.md to PAGE.md if template uses old name
-      const finalPath = filePath === "SKILL.md" ? join(pageDir, PAGE_FILE) : fullPath;
+      const finalPath = filePath === "SKILL.md" ? join(pageDir, SKILL_FILE) : fullPath;
       writeFileSync(finalPath, content, "utf-8");
     }
   } else {
-    // Build PAGE.md content (default behavior without template)
-    let pageContent = "---\n";
-    pageContent += "page:\n";
-    pageContent += `  type: ${type}\n`;
+    // Build SKILL.md content with new frontmatter structure
+    // New structure: name, description at top level; icon, cover, page under metadata
+    let skillContent = "---\n";
+    skillContent += `name: "${name}"\n`;
+    if (description) {
+      skillContent += `description: "${description}"\n`;
+    }
+    skillContent += "metadata:\n";
+
+    // Icon under metadata
+    if (icon) {
+      skillContent += "  icon:\n";
+      skillContent += `    type: ${icon.type}\n`;
+      skillContent += `    value: "${icon.value}"\n`;
+    }
+
+    // Page config under metadata
+    skillContent += "  page:\n";
+    skillContent += `    type: ${type}\n`;
 
     if (type === "static") {
       const file = options.file ?? "index.html";
-      pageContent += `  file: ${file}\n`;
-      pageContent += "  permission: [read, write]\n";
+      skillContent += `    file: ${file}\n`;
+      skillContent += "    permission: [read, write]\n";
     } else if (type === "markdown") {
-      pageContent += "  permission: [read, write]\n";
+      skillContent += "    permission: [read, write]\n";
     } else if (type === "server") {
-      pageContent += `  command: "${options.command ?? "pnpm dev"}"\n`;
+      skillContent += `    command: "${options.command ?? "pnpm dev"}"\n`;
       if (options.port) {
-        pageContent += `  port: ${options.port}\n`;
+        skillContent += `    port: ${options.port}\n`;
       }
-      pageContent += "  permission: [read, write]\n";
+      skillContent += "    permission: [read, write]\n";
     } else if (type === "proxy") {
-      pageContent += `  url: "${options.url ?? "https://example.com"}"\n`;
-      pageContent += "  permission: [read]\n";
+      skillContent += `    url: "${options.url ?? "https://example.com"}"\n`;
+      skillContent += "    permission: [read]\n";
     }
 
-    pageContent += `name: "${name}"\n`;
-    if (description) {
-      pageContent += `description: "${description}"\n`;
-    }
-    if (icon) {
-      pageContent += `icon:\n`;
-      pageContent += `  type: ${icon.type}\n`;
-      pageContent += `  value: "${icon.value}"\n`;
-    }
-    pageContent += "---\n\n";
-    pageContent += `# ${name}\n\n`;
-    pageContent += description || "Page description here.";
+    skillContent += "---\n\n";
+    skillContent += `# ${name}\n\n`;
+    skillContent += description || "Page description here.";
 
-    writeFileSync(pageMdPath, pageContent, "utf-8");
+    writeFileSync(pageMdPath, skillContent, "utf-8");
 
     // For static type, create default index.html
     if (type === "static") {
@@ -340,7 +346,7 @@ export async function updatePageContent(
 
   const pagesDir = join(workspace_path, PAGES_DIR);
   const pageDir = join(pagesDir, uid);
-  const pageMdPath = join(pageDir, PAGE_FILE);
+  const pageMdPath = join(pageDir, SKILL_FILE);
 
   if (!existsSync(pageMdPath)) {
     return {
@@ -374,7 +380,7 @@ export async function updatePageConfig(
 
   const pagesDir = join(workspace_path, PAGES_DIR);
   const pageDir = join(pagesDir, uid);
-  const pageMdPath = join(pageDir, PAGE_FILE);
+  const pageMdPath = join(pageDir, SKILL_FILE);
 
   if (!existsSync(pageMdPath)) {
     return {
@@ -387,7 +393,11 @@ export async function updatePageConfig(
   const existing = readFileSync(pageMdPath, "utf-8");
   const { data, content } = matter(existing);
 
+  // Ensure metadata object exists
+  data.metadata = data.metadata ?? {};
+
   // Merge only provided fields into frontmatter
+  // name and description are at top level
   if (name !== undefined) {
     data.name = name;
   }
@@ -398,36 +408,38 @@ export async function updatePageConfig(
       data.description = description;
     }
   }
+
+  // icon, cover, page_width, show_toc are under metadata
   if (icon !== undefined) {
     if (icon === null) {
-      delete data.icon;
+      delete data.metadata.icon;
     } else {
-      data.icon = icon;
+      data.metadata.icon = icon;
     }
   }
   if (cover !== undefined) {
     if (cover === null) {
-      delete data.cover;
+      delete data.metadata.cover;
     } else {
-      data.cover = cover;
+      data.metadata.cover = cover;
     }
   }
   if (page_width !== undefined) {
     if (page_width === null) {
-      delete data.page_width;
+      delete data.metadata.page_width;
     } else {
-      data.page_width = page_width;
+      data.metadata.page_width = page_width;
     }
   }
   if (show_toc !== undefined) {
     if (show_toc === null) {
-      delete data.show_toc;
+      delete data.metadata.show_toc;
     } else {
-      data.show_toc = show_toc;
+      data.metadata.show_toc = show_toc;
     }
   }
 
-  // Rebuild PAGE.md with updated frontmatter + original content
+  // Rebuild SKILL.md with updated frontmatter + original content
   const updated = matter.stringify(content, data);
   writeFileSync(pageMdPath, updated, "utf-8");
 
@@ -475,7 +487,7 @@ export async function duplicatePage(
   cpSync(sourceDir, targetDir, { recursive: true });
 
   // Update the name in the COPY's PAGE.md
-  const pageMdPath = join(targetDir, PAGE_FILE);
+  const pageMdPath = join(targetDir, SKILL_FILE);
   if (existsSync(pageMdPath)) {
     const raw = readFileSync(pageMdPath, "utf-8");
     const newName = `${originalName} (Copy)`;

@@ -1,7 +1,7 @@
 // packages/core/src/page/ops/discovery.ts
 
 /**
- * Page discovery - scan pages/ directory and parse PAGE.md files
+ * Page discovery - scan pages/ directory and parse SKILL.md files
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -16,7 +16,7 @@ import type {
   ProxyPageConfig,
 } from "./types";
 
-const PAGE_FILE = "PAGE.md";
+const SKILL_FILE = "SKILL.md";
 const PAGES_DIR = "pages";
 const INDEX_FILE = "index.json";
 
@@ -36,52 +36,73 @@ function readPageIndex(workspacePath: string): PageIndex {
 }
 
 /**
- * Parse a PAGE.md file and extract page config
+ * Parse a SKILL.md file and extract page config
+ *
+ * New frontmatter structure:
+ * ```yaml
+ * name: finance
+ * description: 金融 demo
+ * metadata:
+ *   icon:
+ *     type: emoji
+ *     value: "\U0001F44D\U0001F3FC"
+ *   cover: 'gradient:sky'
+ *   page:
+ *     type: static
+ *     file: index.html
+ *     permission:
+ *       - read
+ *       - write
+ * ```
  */
-export async function parsePageMd(
-  pageMdPath: string,
+export async function parseSkillMd(
+  skillMdPath: string,
   uid: string
 ): Promise<PageConfig | null> {
-  if (!existsSync(pageMdPath)) {
+  if (!existsSync(skillMdPath)) {
     return null;
   }
 
-  const content = readFileSync(pageMdPath, "utf-8");
+  const content = readFileSync(skillMdPath, "utf-8");
   const { data, content: markdownContent } = matter(content);
 
-  // Validate required fields
-  if (!data.page?.type || !data.name) {
+  // Validate required fields - page config is now under metadata.page
+  const pageData = data.metadata?.page;
+  if (!pageData?.type || !data.name) {
     return null;
   }
 
-  const pageDir = join(pageMdPath, "..");
+  const pageDir = join(skillMdPath, "..");
 
-  // Process icon - read from top-level
-  const iconValue = data.icon;
+  // Process icon and cover - now under metadata
+  const iconValue = data.metadata?.icon;
+  const coverValue = data.metadata?.cover;
+  const pageWidth = data.metadata?.page_width;
+  const showToc = data.metadata?.show_toc;
 
   // Get file modification time
-  const updatedAt = statSync(pageMdPath).mtime.toISOString();
+  const updatedAt = statSync(skillMdPath).mtime.toISOString();
 
   const base = {
     uid,
     name: data.name,
     description: data.description,
     icon: iconValue,
-    cover: data.cover,
-    page_width: data.page_width,
-    show_toc: data.show_toc,
-    permission: data.page.permission ?? ["read", "write"],
+    cover: coverValue,
+    page_width: pageWidth,
+    show_toc: showToc,
+    permission: pageData.permission ?? ["read", "write"],
     path: pageDir,
     skill_content: markdownContent.trim() || undefined,
     updated_at: updatedAt,
   };
 
-  switch (data.page.type) {
+  switch (pageData.type) {
     case "static":
       return {
         ...base,
         type: "static",
-        file: data.page.file ?? "index.html",
+        file: pageData.file ?? "index.html",
       } as StaticPageConfig;
 
     case "markdown":
@@ -91,29 +112,29 @@ export async function parsePageMd(
       } as MarkdownPageConfig;
 
     case "server":
-      if (!data.page.command) {
-        console.warn(`[parsePageMd] server page "${uid}" missing required field: command`);
+      if (!pageData.command) {
+        console.warn(`[parseSkillMd] server page "${uid}" missing required field: command`);
         return null;
       }
       return {
         ...base,
         type: "server",
-        command: data.page.command,
-        port: data.page.port,
-        ready_pattern: data.page.ready_pattern,
-        timeout: data.page.timeout ?? 300,
+        command: pageData.command,
+        port: pageData.port,
+        ready_pattern: pageData.ready_pattern,
+        timeout: pageData.timeout ?? 300,
       } as ServerPageConfig;
 
     case "proxy":
-      if (!data.page.url) {
-        console.warn(`[parsePageMd] proxy page "${uid}" missing required field: url`);
+      if (!pageData.url) {
+        console.warn(`[parseSkillMd] proxy page "${uid}" missing required field: url`);
         return null;
       }
       return {
         ...base,
         type: "proxy",
-        url: data.page.url,
-        headers: data.page.headers,
+        url: pageData.url,
+        headers: pageData.headers,
       } as ProxyPageConfig;
 
     default:
@@ -147,8 +168,8 @@ export async function listPagesInWorkspace(workspacePath: string): Promise<{
     if (entry.name.startsWith(".")) continue;
 
     const uid = entry.name;
-    const pageMdPath = join(pagesDir, uid, PAGE_FILE);
-    const page = await parsePageMd(pageMdPath, uid);
+    const skillMdPath = join(pagesDir, uid, SKILL_FILE);
+    const page = await parseSkillMd(skillMdPath, uid);
 
     if (page) {
       pages.push(page);
@@ -165,6 +186,6 @@ export async function getPageByUid(
   workspacePath: string,
   uid: string
 ): Promise<PageConfig | null> {
-  const pageMdPath = join(workspacePath, PAGES_DIR, uid, PAGE_FILE);
-  return parsePageMd(pageMdPath, uid);
+  const skillMdPath = join(workspacePath, PAGES_DIR, uid, SKILL_FILE);
+  return parseSkillMd(skillMdPath, uid);
 }

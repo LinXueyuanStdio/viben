@@ -45,18 +45,37 @@ export function HomeRedirect() {
   const activeTab = useTabStore(selectActiveTab);
   const hasHydrated = useHasHydrated();
 
+  // Log every render with key state
+  const activeUrl = activeTab ? getTabUrl(activeTab) : null;
+  console.warn("[HomeRedirect] render", {
+    hasHydrated,
+    activeTabId: activeTab?.id ?? null,
+    activeUrl,
+  });
+
   if (!onboardingCompleted) {
+    console.warn("[HomeRedirect] redirecting to /onboarding (onboarding not completed)");
     return <Navigate to="/onboarding" replace />;
   }
 
   // Wait for tab store to finish hydrating from localStorage
   // Without this check, activeTab is null during initial render
   if (!hasHydrated) {
+    console.warn("[HomeRedirect] waiting for hydration, rendering null");
     return null;
   }
 
-  // Restore the active tab's current URL if available
-  const activeUrl = activeTab ? getTabUrl(activeTab) : null;
+  // Log detailed info when falling back to /workspace
+  if (!activeUrl) {
+    const { tabs, activeTabId } = useTabStore.getState();
+    console.warn("[HomeRedirect] activeUrl is null, falling back to /workspace", {
+      activeTab,
+      tabsLength: tabs.length,
+      activeTabId,
+    });
+  }
 
-  return <Navigate to={activeUrl || "/workspace"} replace />;
+  const target = activeUrl || "/workspace";
+  console.warn("[HomeRedirect] navigating to:", target);
+  return <Navigate to={target} replace />;
 }

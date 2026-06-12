@@ -107,6 +107,7 @@ const MAX_NAVIGATION_HISTORY = 50;
 export const TAB_STORE_STORAGE_KEY = "viben-tab-store-v2";
 export const MAIN_WINDOW_TAB_STORE_SCOPE = "main";
 const TAB_STORE_VERSION = 2;
+const TAB_NORMALIZATION_FALLBACK_URL = "/workspace";
 let tabStoreStorageSyncUnsubscribe: (() => void) | null = null;
 const scopedTabStores = new Map<string, TabStore>();
 
@@ -160,10 +161,18 @@ function isPersistedSnapshot(value: unknown): value is ClosedTabSnapshot {
 
 function normalizeTab(tab: PageTab): PageTab {
   const navigationHistory = tab.navigationHistory.filter(isNavigationState);
-  const safeHistory =
-    navigationHistory.length > 0
-      ? navigationHistory
-      : [buildStateFromUrl("/workspace")];
+  let safeHistory = navigationHistory;
+  if (safeHistory.length === 0) {
+    console.warn(
+      "[tab-store] Falling back to /workspace while normalizing tab",
+      {
+        tabId: tab.id,
+        reason: "navigation_history_empty_or_invalid",
+        fallbackUrl: TAB_NORMALIZATION_FALLBACK_URL,
+      },
+    );
+    safeHistory = [buildStateFromUrl(TAB_NORMALIZATION_FALLBACK_URL)];
+  }
   const historyIndex = Math.min(
     Math.max(tab.historyIndex ?? safeHistory.length - 1, 0),
     safeHistory.length - 1,

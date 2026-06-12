@@ -7,11 +7,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Group,
-  Panel,
-  Separator,
-} from "react-resizable-panels";
-import {
   ChevronDown,
   ChevronRight,
   File,
@@ -24,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CodeEditor } from "@/components/skill-files/code-editor";
+import { ResizeHandle } from "@/pages/conversation/components/resize-handle";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { readDirectory, readFileContent, writeFile } from "@/lib/gateway/modules/files";
 import type { FileEntry } from "@/lib/gateway/types/file";
@@ -207,13 +203,14 @@ export function PageCodePanel({
   const saveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // ============================================================================
-  // File tree loading
+  // File tree loading — prefetch first N levels in parallel
   // ============================================================================
+
+  const PREFETCH_DEPTH = 3;
 
   const loadDirectory = useCallback(
     async (dirPath: string): Promise<TreeNode[]> => {
       const entries = await readDirectory(baseUrl, workspacePath, dirPath);
-      // Sort: directories first, then files, alphabetical
       const sorted = [...entries].sort((a, b) => {
         if (a.is_directory && !b.is_directory) return -1;
         if (!a.is_directory && b.is_directory) return 1;
@@ -230,11 +227,42 @@ export function PageCodePanel({
     [baseUrl, workspacePath]
   );
 
+  const loadTreeRecursive = useCallback(
+    async (dirPath: string, depth: number): Promise<TreeNode[]> => {
+      const nodes = await loadDirectory(dirPath);
+      if (depth >= PREFETCH_DEPTH) return nodes;
+
+      const dirNodes = nodes.filter((n) => n.entry.is_directory);
+      if (dirNodes.length === 0) return nodes;
+
+      const childResults = await Promise.allSettled(
+        dirNodes.map((n) => loadTreeRecursive(n.entry.path, depth + 1))
+      );
+
+      const childMap = new Map<string, TreeNode[]>();
+      dirNodes.forEach((n, i) => {
+        const result = childResults[i];
+        if (result.status === "fulfilled") {
+          childMap.set(n.entry.path, result.value);
+        }
+      });
+
+      return nodes.map((n) => {
+        const children = childMap.get(n.entry.path);
+        if (children) {
+          return { ...n, children, isLoaded: true, isExpanded: true };
+        }
+        return n;
+      });
+    },
+    [loadDirectory]
+  );
+
   const loadTree = useCallback(async () => {
     setIsLoadingTree(true);
     setTreeError(null);
     try {
-      const nodes = await loadDirectory(pageDirPath);
+      const nodes = await loadTreeRecursive(pageDirPath, 0);
       setTreeNodes(nodes);
     } catch (err) {
       setTreeError(
@@ -243,7 +271,7 @@ export function PageCodePanel({
     } finally {
       setIsLoadingTree(false);
     }
-  }, [loadDirectory, pageDirPath, t]);
+  }, [loadTreeRecursive, pageDirPath, t]);
 
   useEffect(() => {
     loadTree();
@@ -255,13 +283,21 @@ export function PageCodePanel({
 
   const toggleDir = useCallback(
     async (path: string) => {
-      setTreeNodes((prev) => updateNodesToggle(prev, path));
+      // Use functional updater to read current state and determine if we need to load
+      let needsLoad = false;
+      setTreeNodes((prev) => {
+        const node = findNode(prev, path);
+        if (node && !node.isLoaded && !node.isLoading) {
+          needsLoad = true;
+          // Toggle expansion AND mark as loading in one state update
+          const toggled = updateNodesToggle(prev, path);
+          return updateNodeProp(toggled, path, { isLoading: true });
+        }
+        // Just toggle expansion
+        return updateNodesToggle(prev, path);
+      });
 
-      // If not loaded yet, load children
-      const node = findNode(treeNodes, path);
-      if (node && !node.isLoaded && !node.isLoading) {
-        // Mark as loading
-        setTreeNodes((prev) => updateNodeProp(prev, path, { isLoading: true }));
+      if (needsLoad) {
         try {
           const children = await loadDirectory(path);
           setTreeNodes((prev) =>
@@ -279,7 +315,7 @@ export function PageCodePanel({
         }
       }
     },
-    [treeNodes, loadDirectory]
+    [loadDirectory]
   );
 
   // ============================================================================
@@ -290,9 +326,17 @@ export function PageCodePanel({
     async (entry: FileEntry) => {
       if (entry.is_directory) return;
 
-      // Check if already open
-      const existing = openTabs.find((tab) => tab.path === entry.path);
-      if (existing) {
+      // Use functional updater to check if already open without stale closure
+      let alreadyOpen = false;
+      setOpenTabs((prev) => {
+        const existing = prev.find((tab) => tab.path === entry.path);
+        if (existing) {
+          alreadyOpen = true;
+        }
+        return prev;
+      });
+
+      if (alreadyOpen) {
         setActiveTabPath(entry.path);
         return;
       }
@@ -307,13 +351,19 @@ export function PageCodePanel({
           isDirty: false,
           saveStatus: "idle",
         };
-        setOpenTabs((prev) => [...prev, newTab]);
+        setOpenTabs((prev) => {
+          // Double-check it wasn't opened in the meantime (e.g. rapid double-click)
+          if (prev.some((tab) => tab.path === entry.path)) {
+            return prev;
+          }
+          return [...prev, newTab];
+        });
         setActiveTabPath(entry.path);
       } catch (err) {
         console.error("Failed to open file:", err);
       }
     },
-    [baseUrl, workspacePath, openTabs]
+    [baseUrl, workspacePath]
   );
 
   // ============================================================================
@@ -322,31 +372,36 @@ export function PageCodePanel({
 
   const closeTab = useCallback(
     (path: string) => {
-      const tab = openTabs.find((t) => t.path === path);
-      if (tab?.isDirty) {
-        // Simple confirmation for unsaved changes
-        const confirmed = window.confirm(
-          t("codePanel.unsavedChangesWarning", {
-            defaultValue: "This file has unsaved changes. Close anyway?",
-          })
-        );
-        if (!confirmed) return;
-      }
+      setOpenTabs((prev) => {
+        const tab = prev.find((t) => t.path === path);
+        if (tab?.isDirty) {
+          const confirmed = window.confirm(
+            t("codePanel.unsavedChangesWarning", {
+              defaultValue: "This file has unsaved changes. Close anyway?",
+            })
+          );
+          if (!confirmed) return prev;
+        }
 
-      // Clear any pending save timer
-      const timer = saveTimersRef.current.get(path);
-      if (timer) {
-        clearTimeout(timer);
-        saveTimersRef.current.delete(path);
-      }
+        // Clear any pending save timer
+        const timer = saveTimersRef.current.get(path);
+        if (timer) {
+          clearTimeout(timer);
+          saveTimersRef.current.delete(path);
+        }
 
-      setOpenTabs((prev) => prev.filter((tab) => tab.path !== path));
-      if (activeTabPath === path) {
-        const remaining = openTabs.filter((tab) => tab.path !== path);
-        setActiveTabPath(remaining.length > 0 ? remaining[remaining.length - 1].path : null);
-      }
+        const remaining = prev.filter((t) => t.path !== path);
+
+        // Update active tab if the closed tab was active
+        setActiveTabPath((prevActive) => {
+          if (prevActive !== path) return prevActive;
+          return remaining.length > 0 ? remaining[remaining.length - 1].path : null;
+        });
+
+        return remaining;
+      });
     },
-    [openTabs, activeTabPath, t]
+    [t]
   );
 
   // ============================================================================
@@ -394,7 +449,7 @@ export function PageCodePanel({
         );
       }
     },
-    [baseUrl, workspacePath]
+    [baseUrl]
   );
 
   const handleEditorChange = useCallback(
@@ -419,23 +474,19 @@ export function PageCodePanel({
 
       const timer = setTimeout(() => {
         saveTimersRef.current.delete(path);
-        // Only save if content is actually different from original
-        const tab = openTabs.find((t) => t.path === path);
-        if (tab) {
-          // We need to use the latest content, so we read from the state at save time
-          setOpenTabs((prev) => {
-            const currentTab = prev.find((t) => t.path === path);
-            if (currentTab && currentTab.content !== currentTab.originalContent) {
-              saveFile(path, currentTab.content);
-            }
-            return prev;
-          });
-        }
+        // Use functional updater to read latest state without stale closure
+        setOpenTabs((prev) => {
+          const currentTab = prev.find((t) => t.path === path);
+          if (currentTab && currentTab.content !== currentTab.originalContent) {
+            saveFile(path, currentTab.content);
+          }
+          return prev;
+        });
       }, 1500);
 
       saveTimersRef.current.set(path, timer);
     },
-    [openTabs, saveFile]
+    [saveFile]
   );
 
   // Cleanup timers on unmount

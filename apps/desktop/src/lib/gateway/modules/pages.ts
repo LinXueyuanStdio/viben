@@ -15,6 +15,7 @@ import type {
   CreatePageParams,
   UpdatePageConfigParams,
   UpdatePageConfigResult,
+  UpdatePageContentResult,
   ReorderPagesParams,
   ReorderPagesResult,
   DuplicatePageParams,
@@ -40,6 +41,7 @@ export type {
   CreatePageParams,
   UpdatePageConfigParams,
   UpdatePageConfigResult,
+  UpdatePageContentResult,
   ReorderPagesParams,
   ReorderPagesResult,
   DuplicatePageParams,
@@ -165,12 +167,6 @@ export async function deletePage(
 // =============================================================================
 // Update Page Content
 // =============================================================================
-
-export interface UpdatePageContentResult {
-  success: boolean;
-  uid?: string;
-  error?: string;
-}
 
 /**
  * Update page markdown content (preserves YAML frontmatter)

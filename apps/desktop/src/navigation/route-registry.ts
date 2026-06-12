@@ -34,7 +34,7 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
   { pattern: "/workspace/:workspaceId", icon: { type: "lucide", value: "home" }, title: (p) => p.workspaceId, dropdownCategory: "workspace" },
 
   // ─── Workspace Sections ───
-  { pattern: "/workspace/:workspaceId/pages", icon: { type: "lucide", value: "layout-grid" }, title: "Pages", titleKey: "workspace.sections.pages", dropdownCategory: "workspace-section" },
+  { pattern: "/workspace/:workspaceId/page", icon: { type: "lucide", value: "layout-grid" }, title: "Pages", titleKey: "workspace.sections.pages", dropdownCategory: "workspace-section" },
   { pattern: "/workspace/:workspaceId/chat", icon: { type: "lucide", value: "message-square" }, title: "Chat", titleKey: "workspace.chat", dropdownCategory: "workspace-section" },
   { pattern: "/workspace/:workspaceId/kanban", icon: { type: "lucide", value: "layout-dashboard" }, title: "Kanban", titleKey: "workspace.kanban", dropdownCategory: "workspace-section" },
   { pattern: "/workspace/:workspaceId/cron", icon: { type: "lucide", value: "clock" }, title: "Scheduled Tasks", titleKey: "workspace.scheduledTasks", dropdownCategory: "workspace-section" },

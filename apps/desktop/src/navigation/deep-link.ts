@@ -62,7 +62,7 @@ export function parseVibenDeepLink(rawUrl: string): DesktopDeepLinkIntent | null
 
   if (sectionOrKind === "apps" || sectionOrKind === "pages") {
     return {
-      url: registry.build("/workspace/:workspaceId/pages", { workspaceId }),
+      url: registry.build("/workspace/:workspaceId/page", { workspaceId }),
       openMode,
     };
   }

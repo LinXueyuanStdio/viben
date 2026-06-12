@@ -72,10 +72,10 @@ export interface VirtualPageIndexNode {
       | "workspace-executors"
       | "page-navigation";
     workspaceId?: string;
-    pageSlug?: string;
+    pageUid?: string;
   };
   contentRef?: {
-    pageSlug: string;
+    pageUid: string;
     blockId?: string;
   };
 }

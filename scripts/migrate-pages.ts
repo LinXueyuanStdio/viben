@@ -3,14 +3,39 @@
  * 迁移脚本：将旧的嵌套 pages 结构迁移到新的扁平结构
  *
  * 旧结构:
- *   pages/parent/SKILL.md
+ *   pages/parent/SKILL.md (旧 frontmatter 格式)
  *   pages/parent/child/SKILL.md
  *   pages/.page-order.json
  *
  * 新结构:
- *   pages/0612-parent/PAGE.md
- *   pages/0612-child/PAGE.md
+ *   pages/0612-parent/SKILL.md (新 frontmatter 格式)
+ *   pages/0612-child/SKILL.md
  *   pages/index.json
+ *
+ * 旧 frontmatter:
+ *   page:
+ *     type: static
+ *     file: index.html
+ *     permission: [read, write]
+ *   name: finance
+ *   description: 金融 demo
+ *   icon:
+ *     type: emoji
+ *     value: "\U0001F44D\U0001F3FC"
+ *   cover: 'gradient:sky'
+ *
+ * 新 frontmatter:
+ *   name: finance
+ *   description: 金融 demo
+ *   metadata:
+ *     icon:
+ *       type: emoji
+ *       value: "\U0001F44D\U0001F3FC"
+ *     cover: 'gradient:sky'
+ *     page:
+ *       type: static
+ *       file: index.html
+ *       permission: [read, write]
  *
  * 用法: pnpm tsx scripts/migrate-pages.ts /path/to/workspace
  */
@@ -29,8 +54,7 @@ import { join, relative } from "node:path";
 import matter from "gray-matter";
 
 const PAGES_DIR = "pages";
-const OLD_SKILL_FILE = "SKILL.md";
-const NEW_PAGE_FILE = "PAGE.md";
+const SKILL_FILE = "SKILL.md";
 const INDEX_FILE = "index.json";
 const OLD_ORDER_FILE = ".page-order.json";
 
@@ -56,7 +80,7 @@ function discoverOldPages(dir: string, basePath: string): OldPage[] {
     if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
 
     const subDir = join(dir, entry.name);
-    const skillPath = join(subDir, OLD_SKILL_FILE);
+    const skillPath = join(subDir, SKILL_FILE);
 
     if (existsSync(skillPath)) {
       const content = readFileSync(skillPath, "utf-8");
@@ -79,6 +103,57 @@ function generateUid(slug: string): string {
   const mmdd = new Date().toISOString().slice(5, 10).replace("-", "");
   const lastSegment = slug.split("/").pop()!;
   return `${mmdd}-${lastSegment}`;
+}
+
+// =============================================================================
+// Frontmatter 转换
+// =============================================================================
+
+function convertFrontmatter(oldData: Record<string, unknown>): Record<string, unknown> {
+  const newData: Record<string, unknown> = {};
+
+  // name 和 description 保持在顶层
+  if (oldData.name) {
+    newData.name = oldData.name;
+  }
+  if (oldData.description) {
+    newData.description = oldData.description;
+  }
+
+  // 创建 metadata 对象
+  const metadata: Record<string, unknown> = {};
+
+  // icon 移到 metadata 下
+  if (oldData.icon) {
+    metadata.icon = oldData.icon;
+  }
+
+  // cover 移到 metadata 下
+  if (oldData.cover) {
+    metadata.cover = oldData.cover;
+  }
+
+  // page_width 移到 metadata 下
+  if (oldData.page_width) {
+    metadata.page_width = oldData.page_width;
+  }
+
+  // show_toc 移到 metadata 下
+  if (oldData.show_toc !== undefined) {
+    metadata.show_toc = oldData.show_toc;
+  }
+
+  // page 配置移到 metadata 下
+  if (oldData.page) {
+    metadata.page = oldData.page;
+  }
+
+  // 只有 metadata 有内容时才添加
+  if (Object.keys(metadata).length > 0) {
+    newData.metadata = metadata;
+  }
+
+  return newData;
 }
 
 // =============================================================================
@@ -199,20 +274,23 @@ function migrateWorkspace(workspacePath: string): void {
     // 复制整个目录
     cpSync(page.path, newDir, { recursive: true });
 
-    // 重命名 SKILL.md -> PAGE.md
-    const oldSkillPath = join(newDir, OLD_SKILL_FILE);
-    const newPagePath = join(newDir, NEW_PAGE_FILE);
-    if (existsSync(oldSkillPath)) {
-      renameSync(oldSkillPath, newPagePath);
+    // 转换 SKILL.md 的 frontmatter
+    const skillPath = join(newDir, SKILL_FILE);
+    if (existsSync(skillPath)) {
+      const content = readFileSync(skillPath, "utf-8");
+      const { data: oldData, content: markdownContent } = matter(content);
+
+      // 转换 frontmatter 格式
+      const newData = convertFrontmatter(oldData);
+
+      // 写回转换后的内容
+      const newContent = matter.stringify(markdownContent, newData);
+      writeFileSync(skillPath, newContent, "utf-8");
     }
 
     // 删除子目录中的嵌套页面（它们会被单独迁移）
     for (const child of readdirSync(newDir, { withFileTypes: true })) {
-      if (child.isDirectory() && existsSync(join(newDir, child.name, OLD_SKILL_FILE))) {
-        rmSync(join(newDir, child.name), { recursive: true, force: true });
-      }
-      // 也删除已迁移的 PAGE.md 子目录
-      if (child.isDirectory() && existsSync(join(newDir, child.name, NEW_PAGE_FILE))) {
+      if (child.isDirectory() && existsSync(join(newDir, child.name, SKILL_FILE))) {
         rmSync(join(newDir, child.name), { recursive: true, force: true });
       }
     }

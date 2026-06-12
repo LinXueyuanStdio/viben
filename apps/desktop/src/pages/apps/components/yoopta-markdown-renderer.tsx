@@ -298,7 +298,7 @@ export function YooptaMarkdownRenderer({
     return createYooptaPlugins({
       uploadAsset: uploadFn,
       searchPages: searchPagesFn,
-      buildPageHref: workspaceId ? (pageSlug) => getPageHref(workspaceId, pageSlug) : undefined,
+      buildPageHref: workspaceId ? (pageUid) => getPageHref(workspaceId, pageUid) : undefined,
       buildPageMeta: () => ({ includeInPageIndex: true }),
     });
   }, [workspaceId, workspacePath, uid]);

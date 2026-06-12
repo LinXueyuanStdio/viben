@@ -32,7 +32,7 @@ export interface CoverPickerProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   workspacePath?: string;
-  slug?: string;
+  uid?: string;
   disabled?: boolean;
   /** When provided, the popover positions relative to this element instead of using trigger. */
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -47,7 +47,7 @@ export function CoverPicker({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   workspacePath,
-  slug,
+  uid,
   disabled = false,
   anchorRef,
   trigger,
@@ -179,7 +179,7 @@ export function CoverPicker({
           <TabsContent value="upload" className="mt-0">
             <UploadTab
               workspacePath={workspacePath}
-              slug={slug}
+              uid={uid}
               onSelect={handleUploadSelect}
             />
           </TabsContent>

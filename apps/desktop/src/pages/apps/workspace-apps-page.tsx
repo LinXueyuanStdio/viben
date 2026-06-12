@@ -23,7 +23,7 @@ export function WorkspacePage() {
       return [];
     }
 
-    const url = registry.build("/workspace/:workspaceId/pages", { workspaceId });
+    const url = registry.build("/workspace/:workspaceId/page", { workspaceId });
     const stack = buildColdStartBreadcrumb(url);
 
     return resolveHeaderSegments({

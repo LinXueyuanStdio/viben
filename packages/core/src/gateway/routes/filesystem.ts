@@ -301,4 +301,118 @@ export function registerFilesystemRoutes(fastify: FastifyInstance): void {
   fastify.get("/api/files/config-dir", async () => {
     return { path: getConfigDir() };
   });
+
+  /**
+   * Get git status for a directory
+   * GET /api/files/git-status?workspace_path=...&dir_path=...
+   * Returns list of changed files relative to the directory
+   */
+  fastify.get<{
+    Querystring: { workspace_path: string; dir_path?: string };
+  }>("/api/files/git-status", async (request, reply) => {
+    const { workspace_path, dir_path } = request.query;
+
+    if (!workspace_path) {
+      reply.code(400);
+      return { error: "workspace_path is required" };
+    }
+
+    const targetDir = dir_path
+      ? (dir_path.startsWith(workspace_path) ? dir_path : join(workspace_path, dir_path))
+      : workspace_path;
+
+    try {
+      // Run git status in the workspace root
+      const { stdout } = await execAsync(
+        `git -C "${workspace_path}" status --porcelain --no-renames "${targetDir}"`,
+      );
+
+      if (!stdout.trim()) {
+        return [];
+      }
+
+      const changes = stdout.trim().split("\n").map((line) => {
+        const statusCode = line.substring(0, 2).trim();
+        const filePath = line.substring(3);
+
+        let status: "modified" | "added" | "deleted" | "renamed";
+        switch (statusCode) {
+          case "M":
+          case "MM":
+          case "AM":
+            status = "modified";
+            break;
+          case "A":
+          case "??":
+            status = "added";
+            break;
+          case "D":
+            status = "deleted";
+            break;
+          case "R":
+            status = "renamed";
+            break;
+          default:
+            status = "modified";
+        }
+
+        return { path: filePath, status };
+      });
+
+      return changes;
+    } catch (err) {
+      // Not a git repo or git not available
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("not a git repository") || message.includes("command not found")) {
+        return [];
+      }
+      reply.code(500);
+      return { error: message };
+    }
+  });
+
+  /**
+   * Get git diff for a specific file
+   * GET /api/files/git-diff?workspace_path=...&file_path=...
+   * Returns old and new content for diff viewing
+   */
+  fastify.get<{
+    Querystring: { workspace_path: string; file_path: string };
+  }>("/api/files/git-diff", async (request, reply) => {
+    const { workspace_path, file_path } = request.query;
+
+    if (!workspace_path || !file_path) {
+      reply.code(400);
+      return { error: "workspace_path and file_path are required" };
+    }
+
+    try {
+      // Get the original (HEAD) version
+      let oldContent = "";
+      try {
+        const { stdout } = await execAsync(
+          `git -C "${workspace_path}" show HEAD:"${file_path}"`,
+        );
+        oldContent = stdout;
+      } catch {
+        // File is new (untracked), no HEAD version
+        oldContent = "";
+      }
+
+      // Get the current working version
+      const fullPath = file_path.startsWith("/") ? file_path : join(workspace_path, file_path);
+      let newContent = "";
+      try {
+        newContent = await readFile(fullPath, "utf-8");
+      } catch {
+        // File was deleted
+        newContent = "";
+      }
+
+      return { oldContent, newContent };
+    } catch (err) {
+      reply.code(500);
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 }

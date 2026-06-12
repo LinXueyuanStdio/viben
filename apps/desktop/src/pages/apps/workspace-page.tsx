@@ -127,6 +127,8 @@ function PageToolbar({
   onToggleFullscreen,
   onEditConfig,
   onOpenInNewTab,
+  hideViewToggle = false,
+  hidePreviewActions = false,
 }: {
   page: { type: string; name: string };
   viewMode: PageViewMode;
@@ -141,10 +143,12 @@ function PageToolbar({
   onToggleFullscreen: () => void;
   onEditConfig: () => void;
   onOpenInNewTab: () => void;
+  hideViewToggle?: boolean;
+  hidePreviewActions?: boolean;
 }) {
   const { t } = useTranslation();
   const isServerType = page.type === "server";
-  const showViewToggle = page.type !== "markdown";
+  const showViewToggle = !hideViewToggle && page.type !== "markdown";
 
   const handleOpenExternal = useCallback(async () => {
     const url = viewMode === "page" && page.type === "server" ? livePreviewUrl : gatewayServeUrl;
@@ -190,7 +194,7 @@ function PageToolbar({
       )}
 
       {/* Refresh button (standalone - most common action) */}
-      {viewMode === "page" && (
+      {viewMode === "page" && !hidePreviewActions && (
         <button
           onClick={onRefresh}
           className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -201,7 +205,7 @@ function PageToolbar({
       )}
 
       {/* Fullscreen button */}
-      {viewMode === "page" && (
+      {viewMode === "page" && !hidePreviewActions && (
         <button
           onClick={onToggleFullscreen}
           className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -212,7 +216,7 @@ function PageToolbar({
       )}
 
       {/* Stop server button (server type when running) */}
-      {viewMode === "page" && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
+      {viewMode === "page" && !hidePreviewActions && isServerType && livePreviewStatus === "running" && onStopLivePreview && (
         <button
           onClick={onStopLivePreview}
           className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950"
@@ -260,7 +264,7 @@ function PageToolbar({
 
 export function WorkspacePage() {
   const { t } = useTranslation();
-  const params = useParams<{ workspaceId?: string; "*": string | undefined }>();
+  const params = useParams<{ workspaceId?: string; "*"?: string }>();
   const [searchParams] = useSearchParams();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
   const {
@@ -425,23 +429,29 @@ export function WorkspacePage() {
     openWorkspacePage(workspaceId, uid, { openMode: "new-tab" });
   }, [openWorkspacePage, workspaceId, uid]);
 
-  // Whether to show the tabbed interface (server and static pages)
-  const showTabs = page?.type === "server" || page?.type === "static";
+  // Whether to show the tabbed interface (server, static, proxy pages)
+  const showTabs = page?.type === "server" || page?.type === "static" || page?.type === "proxy";
 
-  // Center content: Tab list for server/static pages, or nothing for other types
+  // Build tab list based on page type: proxy has no code/diff
+  const tabList = useMemo(() => {
+    const tabs: { key: WorkspacePageTab; icon: typeof Eye; label: string }[] = [
+      { key: "preview", icon: Eye, label: t("page.tab.preview", "Preview") },
+    ];
+    if (page?.type !== "proxy") {
+      tabs.push({ key: "code", icon: Code2, label: t("page.tab.code", "Code") });
+      tabs.push({ key: "diff", icon: GitCompare, label: t("page.tab.diff", "Diff") });
+    }
+    tabs.push({ key: "setting", icon: Settings, label: t("page.tab.setting", "Setting") });
+    return tabs;
+  }, [page?.type, t]);
+
+  // Center content: Tab list for tabbed pages, or nothing for other types (e.g. markdown)
   const centerContent = useMemo(() => {
     if (!showTabs) return undefined;
 
-    const tabs: { key: WorkspacePageTab; icon: typeof Eye; label: string }[] = [
-      { key: "preview", icon: Eye, label: t("page.tab.preview", "Preview") },
-      { key: "code", icon: Code2, label: t("page.tab.code", "Code") },
-      { key: "diff", icon: GitCompare, label: t("page.tab.diff", "Diff") },
-      { key: "setting", icon: Settings, label: t("page.tab.setting", "Setting") },
-    ];
-
     return (
       <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
-        {tabs.map(({ key, icon: Icon, label }) => (
+        {tabList.map(({ key, icon: Icon, label }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
@@ -458,7 +468,7 @@ export function WorkspacePage() {
         ))}
       </div>
     );
-  }, [showTabs, activeTab, t]);
+  }, [showTabs, tabList, activeTab]);
 
   // Loading state
   const isLoading = isLoadingWorkspaces || isLoadingPage;
@@ -595,7 +605,7 @@ export function WorkspacePage() {
             page={page}
             workspacePath={workspace.path}
             workspaceId={workspace.id}
-            viewMode={viewMode}
+            viewMode={showTabs ? "page" : viewMode}
             iframeKey={iframeKey}
             livePreviewUrl={previewUrl}
             livePreviewStatus={previewStatus}
@@ -664,23 +674,23 @@ export function WorkspacePage() {
         rightContent={
           <div className="flex items-center gap-2">
             <div ref={setEditorHeaderEl} />
-            {(!showTabs || activeTab === "preview") && (
-              <PageToolbar
-                page={page}
-                viewMode={viewMode}
-                onViewModeChange={setViewMode}
-                livePreviewStatus={previewStatus}
-                livePreviewUrl={previewUrl}
-                gatewayServeUrl={gatewayServeUrl}
-                onStopLivePreview={stopPreview}
-                onRefresh={handleRefresh}
-                onDetach={handleDetach}
-                isFullscreen={isFullscreen}
-                onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-                onEditConfig={() => setEditDialogOpen(true)}
-                onOpenInNewTab={handleOpenInNewTab}
-              />
-            )}
+            <PageToolbar
+              page={page}
+              viewMode={showTabs ? "page" : viewMode}
+              onViewModeChange={setViewMode}
+              livePreviewStatus={previewStatus}
+              livePreviewUrl={previewUrl}
+              gatewayServeUrl={gatewayServeUrl}
+              onStopLivePreview={stopPreview}
+              onRefresh={handleRefresh}
+              onDetach={handleDetach}
+              isFullscreen={isFullscreen}
+              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+              onEditConfig={() => setEditDialogOpen(true)}
+              onOpenInNewTab={handleOpenInNewTab}
+              hideViewToggle={showTabs}
+              hidePreviewActions={showTabs && activeTab !== "preview"}
+            />
           </div>
         }
       />

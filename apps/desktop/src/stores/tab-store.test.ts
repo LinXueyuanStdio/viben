@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BreadcrumbStackItem } from "@/navigation/breadcrumb-builder";
 import {
   TAB_STORE_STORAGE_KEY,
@@ -142,12 +142,21 @@ function mergePersisted(input: {
 }
 
 describe("tab-store URL-based navigation state", () => {
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn> | null = null;
+
   beforeEach(() => {
+    consoleWarnSpy?.mockRestore();
+    consoleWarnSpy = null;
     useTabStore.setState({
       tabs: [],
       activeTabId: null,
       recentlyClosedTabs: [],
     });
+  });
+
+  afterEach(() => {
+    consoleWarnSpy?.mockRestore();
+    consoleWarnSpy = null;
   });
 
   it("uses a new persisted storage key and ignores the old tab store key", () => {
@@ -242,6 +251,32 @@ describe("tab-store URL-based navigation state", () => {
     expect(result.recentlyClosedTabs[0].tab.id).toBe("tab-closed");
     expect(result.recentlyClosedTabs[0].originIndex).toBe(4);
     expectNoRemovedPageTabFields(result.recentlyClosedTabs[0].tab);
+  });
+
+  it("logs when persisted tab normalization falls back to /workspace", () => {
+    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const result = mergePersisted({
+      tabs: [
+        {
+          id: "tab-empty-history",
+          pinned: false,
+          historyIndex: 0,
+          navigationHistory: [],
+        },
+      ],
+      activeTabId: "tab-empty-history",
+    });
+
+    expect(result.tabs[0].navigationHistory[0].url).toBe("/workspace");
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "[tab-store] Falling back to /workspace while normalizing tab",
+      {
+        tabId: "tab-empty-history",
+        reason: "navigation_history_empty_or_invalid",
+        fallbackUrl: "/workspace",
+      },
+    );
   });
 
   it("partializes only the new PageTab shape", () => {

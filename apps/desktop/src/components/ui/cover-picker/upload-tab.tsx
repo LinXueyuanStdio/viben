@@ -8,18 +8,18 @@ import { uploadPageAsset } from "@/lib/gateway/modules/pages";
 
 export interface UploadTabProps {
   workspacePath?: string;
-  slug?: string;
+  uid?: string;
   onSelect: (url: string) => void;
 }
 
-export function UploadTab({ workspacePath, slug, onSelect }: UploadTabProps) {
+export function UploadTab({ workspacePath, uid, onSelect }: UploadTabProps) {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const canUpload = !!(workspacePath && slug);
+  const canUpload = !!(workspacePath && uid);
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +38,7 @@ export function UploadTab({ workspacePath, slug, onSelect }: UploadTabProps) {
       setUploading(true);
       try {
         const baseUrl = getGatewayUrl();
-        const result = await uploadPageAsset(baseUrl, workspacePath!, slug!, file);
+        const result = await uploadPageAsset(baseUrl, workspacePath!, uid!, file);
         if (result.success && result.url) {
           const fullUrl = `${baseUrl}${result.url}`;
           setPreview(fullUrl);
@@ -52,7 +52,7 @@ export function UploadTab({ workspacePath, slug, onSelect }: UploadTabProps) {
         setUploading(false);
       }
     },
-    [canUpload, workspacePath, slug, onSelect]
+    [canUpload, workspacePath, uid, onSelect]
   );
 
   return (

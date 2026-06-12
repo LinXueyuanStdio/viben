@@ -13,7 +13,7 @@ function createWorkspacePagesIndexDescriptor(
     id: `${workspaceId}:pages`,
     descriptorId: "virtual-folder",
     label: i18n.t("page.pages", "Pages"),
-    href: `/workspace/${encodeURIComponent(workspaceId)}/pages`,
+    href: `/workspace/${encodeURIComponent(workspaceId)}/page`,
     icon: { type: "lucide", value: "layout-grid" },
     meta: { workspaceId },
   };

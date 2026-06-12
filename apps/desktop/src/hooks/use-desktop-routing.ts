@@ -372,7 +372,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
 
   const openWorkspacePages = useCallback(
     (workspaceId: string, options?: DesktopNavigationOptions) => {
-      const url = registry.build("/workspace/:workspaceId/pages", {
+      const url = registry.build("/workspace/:workspaceId/page", {
         workspaceId,
       });
       if (options?.openMode === "new-tab") {
@@ -1176,7 +1176,7 @@ export function useDesktopRouting(): DesktopRoutingApi {
       const leaf = buildNavigateLeaf(url, {
         label: options?.title ?? uid,
         icon: options?.icon,
-        meta: { workspaceId: currentWorkspaceId, uid },
+        meta: { workspaceId: currentWorkspaceId, pageUid: uid },
       });
 
       pushChildPage(leaf, url, { mode: options?.mode });

@@ -94,7 +94,11 @@ export function TabRouterBridge() {
 
   // Store -> Router: when store URL changes, update React Router
   useEffect(() => {
-    if (!storeUrl) return;
+    console.warn("[TabRouterBridge] Store→Router effect", { storeUrl, currentRouterPath: location.pathname + location.search + location.hash });
+    if (!storeUrl) {
+      console.warn("[TabRouterBridge] Store→Router: storeUrl is null, skipping");
+      return;
+    }
     if (hasNewTabRequest(location.search)) return;
 
     const currentRouterPath =
@@ -120,6 +124,7 @@ export function TabRouterBridge() {
     }
 
     lastPushedToRouterRef.current = normalizedStoreUrl;
+    console.warn("[TabRouterBridge] Store→Router: navigating", { from: currentRouterPath, to: normalizedStoreUrl });
     routerNavigate(normalizedStoreUrl, { replace: true });
   }, [
     storeUrl,
@@ -140,7 +145,10 @@ export function TabRouterBridge() {
     if (hasNewTabRequest(location.search)) return;
 
     const { activeTabId: currentTabId } = tabStore.getState();
-    if (!currentTabId) return;
+    if (!currentTabId) {
+      console.warn("[TabRouterBridge] Router→Store: no activeTabId, skipping");
+      return;
+    }
 
     const currentRouterUrl =
       location.pathname + location.search + location.hash;
@@ -168,6 +176,7 @@ export function TabRouterBridge() {
     const match = registry.match(normalizedUrl);
     if (!match) {
       // Unknown URL — don't update tab store, let React Router handle it
+      console.warn("[TabRouterBridge] Router→Store: no registry match for URL, skipping", { normalizedUrl });
       return;
     }
 

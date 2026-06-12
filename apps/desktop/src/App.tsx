@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppLayout, McpServicesLayout } from "@/components/layout";
 import { OverlayRoot } from "@/components/overlay";
@@ -113,6 +113,24 @@ class AppErrorBoundary extends Component<
   }
 }
 
+function CatchAllRedirect() {
+  const location = useLocation();
+  console.warn("[App] Catch-all redirect triggered", {
+    from: location.pathname + location.search + location.hash,
+    to: "/workspace",
+  });
+  return <Navigate to="/workspace" replace />;
+}
+
+function WorkspaceRedirect() {
+  const location = useLocation();
+  console.warn("[App] /workspace redirect triggered", {
+    from: location.pathname + location.search + location.hash,
+    to: "/workspace/global",
+  });
+  return <Navigate to="/workspace/global" replace />;
+}
+
 function App() {
   return (
     <AppErrorBoundary>
@@ -212,7 +230,7 @@ function App() {
             <Route path="analytics" element={<AnalyticsPage />} />
 
             {/* Workspace routes */}
-            <Route path="workspace" element={<Navigate to="/workspace/global" replace />} />
+            <Route path="workspace" element={<WorkspaceRedirect />} />
             <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
             <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
             <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
@@ -221,14 +239,14 @@ function App() {
             <Route path="workspace/:workspaceId/ideas" element={<WorkspaceIdeasPage />} />
             <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
             <Route path="workspace/:workspaceId/executor/:executorType" element={<ExecutorDetailPage />} />
-            <Route path="workspace/:workspaceId/pages/*" element={<WorkspacePage />} />
+            <Route path="workspace/:workspaceId/page/*" element={<WorkspacePage />} />
             <Route path="workspace/:workspaceId/web" element={<WorkspaceWebPage />} />
             <Route path="workspace/:workspaceId/agent" element={<WorkspaceAgentsPage />} />
             <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
             <Route path="workspace/:workspaceId/chat-monitor" element={<ChatMonitorPage />} />
 
             {/* Catch-all redirect to workspace */}
-            <Route path="*" element={<Navigate to="/workspace" replace />} />
+            <Route path="*" element={<CatchAllRedirect />} />
           </Route>
 
           {/* Onboarding - separate full-screen wizard without layout */}

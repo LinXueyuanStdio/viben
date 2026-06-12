@@ -271,7 +271,7 @@ export function resolveSegmentDescriptorId(
     return "workspace-executor";
   }
 
-  const pageMatch = segment.href.match(/^\/workspace\/[^/]+\/pages\/(.+)$/);
+  const pageMatch = segment.href.match(/^\/workspace\/[^/]+\/page\/(.+)$/);
   if (pageMatch) {
     return "workspace-page";
   }
@@ -319,7 +319,7 @@ export function buildRootDropdownItems({
       : workspace.name;
     const href =
       currentArea === "pages"
-        ? `/workspace/${encodeURIComponent(workspace.id)}/pages`
+        ? `/workspace/${encodeURIComponent(workspace.id)}/page`
         : sectionRoutePath
           ? `/workspace/${encodeURIComponent(workspace.id)}/${sectionRoutePath}`
           : `/workspace/${encodeURIComponent(workspace.id)}`;
@@ -695,7 +695,7 @@ export function resolvePageIndexBranch({
         (descriptorId === "virtual-folder" || descriptorId === "workspace-section:pages") &&
         Boolean(input.segment.meta?.workspaceId) &&
         input.segment.href ===
-          `/workspace/${encodeURIComponent(input.segment.meta?.workspaceId ?? "")}/pages`,
+          `/workspace/${encodeURIComponent(input.segment.meta?.workspaceId ?? "")}/page`,
       build: (input) =>
         buildWorkspacePagesDropdownItems({
           workspaceId: input.segment.meta?.workspaceId ?? "",
@@ -762,7 +762,7 @@ export function resolvePageIndexBranch({
         const wId = input.workspaceId ?? input.segment.meta?.workspaceId ?? "";
         // Derive uid from meta or href
         const currentUid = input.segment.meta?.pageUid ??
-          input.segment.href.match(/^\/workspace\/[^/]+\/pages\/(.+)$/)?.[1] ?? "";
+          input.segment.href.match(/^\/workspace\/[^/]+\/page\/(.+)$/)?.[1] ?? "";
         // Find parent prefix to get siblings
         const parentPrefix = currentUid.includes("/")
           ? currentUid.slice(0, currentUid.lastIndexOf("/") + 1)
@@ -782,11 +782,7 @@ export function resolvePageIndexBranch({
         return buildDropdownItems(siblings, (page) => ({
           id: `workspace:${wId}:page:${page.uid}`,
           label: page.name,
-          href: `/workspace/${encodeURIComponent(wId)}/pages/${page.uid
-            .split("/")
-            .filter(Boolean)
-            .map((s) => encodeURIComponent(s))
-            .join("/")}`,
+          href: `/workspace/${encodeURIComponent(wId)}/page/${encodeURIComponent(page.uid)}`,
           icon: page.icon,
           isActive: page.uid === currentUid,
           descriptorId: "workspace-page",

@@ -75,7 +75,7 @@ export function DesktopBreadcrumbBar({
 
   const currentArea = useMemo<"home" | "pages" | "section">(() => {
     const pagesHref = workspace?.id
-      ? `/workspace/${encodeURIComponent(workspace.id)}/pages`
+      ? `/workspace/${encodeURIComponent(workspace.id)}/page`
       : null;
     if (pagesHref && segments.some((segment) => segment.href === pagesHref)) {
       return "pages";
@@ -246,7 +246,7 @@ export function DesktopBreadcrumbBar({
         return;
       }
       if (item.href) {
-        if (item.meta?.workspaceId && item.href === `/workspace/${encodeURIComponent(item.meta.workspaceId)}/pages`) {
+        if (item.meta?.workspaceId && item.href === `/workspace/${encodeURIComponent(item.meta.workspaceId)}/page`) {
           openWorkspacePages(item.meta.workspaceId);
           return;
         }

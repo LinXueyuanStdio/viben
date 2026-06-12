@@ -6,7 +6,7 @@
  *
  * Pattern syntax:
  *   /workspace/:workspaceId        — named param (matches one segment)
- *   /workspace/:workspaceId/pages/:pageSlug+  — rest param (matches 1+ segments)
+ *   /workspace/:workspaceId/page/:uid  — page route (matches single uid segment)
  */
 
 import type { IconData } from "@/components/ui/icon-picker";

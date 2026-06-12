@@ -64,7 +64,7 @@ export { isStaticPage, isMarkdownPage, isServerPage, isProxyPage } from "./types
 
 // Discovery
 export {
-  parsePageMd,
+  parseSkillMd,
   listPagesInWorkspace,
   getPageByUid,
 } from "./discovery";
