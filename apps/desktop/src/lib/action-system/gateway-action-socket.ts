@@ -82,7 +82,7 @@ class GatewayActionSocket {
 
     this.socket.on("connect", () => this.handleConnect());
     this.socket.on("disconnect", () => this.handleDisconnect());
-    this.socket.on("reconnecting", () => {
+    this.socket.io.on("reconnect_attempt", () => {
       this._state = "reconnecting";
     });
     this.socket.on(
