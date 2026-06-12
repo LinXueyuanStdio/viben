@@ -11,7 +11,7 @@ import {
   type GUIExecuteInput,
 } from "./client-side-bash";
 
-async function executeGUIAction(
+export async function executeGUIAction(
   input: GUIExecuteInput,
   ctx: ReturnType<typeof createExecutionContext>
 ): Promise<ClientToolResult> {

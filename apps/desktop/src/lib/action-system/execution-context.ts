@@ -47,3 +47,19 @@ export function createExecutionContext(sessionId: string, toolUseId: string): Ex
     },
   };
 }
+
+/**
+ * Create an ExecutionContext for socket.io-dispatched action execution.
+ * Uses a callback for approval that goes through the socket.io protocol.
+ */
+export function createSocketExecutionContext(
+  sessionId: string,
+  toolUseId: string,
+  emitApprovalRequest: (message: string, options?: ApprovalOptions) => Promise<boolean>
+): ExecutionContext {
+  return {
+    sessionId,
+    toolUseId,
+    requireApproval: emitApprovalRequest,
+  };
+}
