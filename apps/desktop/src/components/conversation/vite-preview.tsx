@@ -152,19 +152,45 @@ export function VitePreview({
           />
         )}
         <div className="flex flex-1 flex-col bg-muted/20 p-4">
-          <div className="mb-4 flex items-center justify-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <div className="text-center">
-              <h3 className="text-sm font-medium text-foreground">
-                {t("preview.startingServer")}
-              </h3>
-              {retryAttempt && maxRetryAttempts && (
-                <p className="text-xs text-muted-foreground">
-                  {t("preview.retryAttempt", "Attempt {{attempt}} of {{max}}", {
-                    attempt: retryAttempt,
-                    max: maxRetryAttempts,
-                  })}
-                </p>
+          <div className="mb-4 flex flex-col items-center justify-center gap-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <div className="text-center">
+                <h3 className="text-sm font-medium text-foreground">
+                  {t("preview.startingServer")}
+                </h3>
+                {retryAttempt && maxRetryAttempts && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("preview.retryAttempt", "Attempt {{attempt}} of {{max}}", {
+                      attempt: retryAttempt,
+                      max: maxRetryAttempts,
+                    })}
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Stop/Restart buttons for when server startup is stuck */}
+            <div className="flex items-center gap-2">
+              {onStop && (
+                <button
+                  onClick={onStop}
+                  className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  {t("preview.stopServer", "Stop")}
+                </button>
+              )}
+              {onStart && (
+                <button
+                  onClick={() => {
+                    onStop?.();
+                    setTimeout(() => onStart(), 500);
+                  }}
+                  className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  {t("preview.restart", "Restart")}
+                </button>
               )}
             </div>
           </div>

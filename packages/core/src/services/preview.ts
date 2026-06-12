@@ -9,6 +9,7 @@
 import { execSync, spawn, type ChildProcess } from "child_process";
 import * as fsSync from "fs";
 import * as fs from "fs/promises";
+import * as net from "net";
 import * as path from "path";
 import { logger as globalLogger } from "../telemetry";
 
@@ -964,21 +965,34 @@ export class PreviewManager {
   }
 
   /**
-   * Check if a port is already in use
+   * Check if a port is already in use using TCP connection test
+   * This is more reliable than HTTP fetch as it detects any TCP listener
    */
   private async isPortInUse(port: number): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      const response = await fetch(`http://localhost:${port}`, {
-        method: "HEAD",
-        signal: controller.signal,
+    return new Promise((resolve) => {
+      const socket = net.createConnection({ port, host: "127.0.0.1" });
+
+      socket.setTimeout(1000);
+
+      socket.on("connect", () => {
+        socket.destroy();
+        resolve(true); // Port is in use - something is listening
       });
-      clearTimeout(timeoutId);
-      return response.ok || response.status === 404;
-    } catch {
-      return false;
-    }
+
+      socket.on("timeout", () => {
+        socket.destroy();
+        resolve(false); // Timeout - port is likely free
+      });
+
+      socket.on("error", (err: NodeJS.ErrnoException) => {
+        socket.destroy();
+        if (err.code === "ECONNREFUSED") {
+          resolve(false); // Connection refused - port is free
+        } else {
+          resolve(false); // Other error - assume free
+        }
+      });
+    });
   }
 
   /**
