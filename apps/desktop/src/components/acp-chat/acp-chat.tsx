@@ -43,7 +43,6 @@ import {
   ExpandedHeaderModeControls,
   TodoListPanel,
   TripleSelector,
-  useContextApprovalPopupProps,
 } from "@viben/chat";
 import type {
   AgentMessage,
@@ -78,7 +77,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@viben/ui";
-import { usePet, useModels } from "@/hooks";
+import { usePet } from "@/hooks";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { EmojiTab } from "@/components/ui/icon-picker/tabs/emoji-tab";
 import { ScreenshotDropdown } from "@/components/chat/screenshot-dropdown";
@@ -918,31 +917,32 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     [t, voice]
   );
 
-  // Get model context window from gateway model metadata
-  const { models: vibenModels } = useModels();
-  const modelContextWindow = useMemo(() => {
-    if (!model) return 128000;
-    const found = vibenModels.find((m) => m.id === model);
-    return found?.context_window ?? 128000;
-  }, [model, vibenModels]);
+  // Extract latest usage_update from ACP message stream
+  const latestUsage = useMemo(() => {
+    let used = 0;
+    let size = 128000;
+    let cost: { amount: number; currency: string } | null = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i] as { type?: string; summary?: Record<string, unknown> };
+      if (msg.type === "summary" && msg.summary?.sessionUpdate === "usage_update") {
+        used = (msg.summary.used as number) ?? 0;
+        size = (msg.summary.size as number) ?? 128000;
+        const rawCost = msg.summary.cost as { amount: number; currency: string } | undefined;
+        cost = rawCost ?? null;
+        break;
+      }
+    }
+    return { used, size, cost };
+  }, [messages]);
 
-  // Context token breakdown for approval button
-  const contextBreakdown = useMemo<ContextTokenBreakdown>(() => {
-    const conversationTokens = Math.max(0, Math.ceil(JSON.stringify(messages).length / 4));
-    const streamingTokens = streamingText ? Math.ceil(streamingText.length / 4) : 0;
-    const skillTokens = Math.max(0, Math.ceil(JSON.stringify(slashCommands).length / 4));
-    const historyTokens = Math.max(0, Math.ceil(JSON.stringify(steerQueueItems).length / 4));
-    const assistantProfile = 2000;
-    return {
-      assistantProfile,
-      skillSettings: skillTokens,
-      historySummary: historyTokens,
-      conversationMessages: conversationTokens + streamingTokens,
-      totalContext: modelContextWindow,
-    };
-  }, [messages, streamingText, slashCommands, steerQueueItems, modelContextWindow]);
+  // Context breakdown from ACP usage_update
+  const contextBreakdown = useMemo<ContextTokenBreakdown>(() => ({
+    used: latestUsage.used,
+    size: latestUsage.size,
+    cost: latestUsage.cost,
+  }), [latestUsage.used, latestUsage.size, latestUsage.cost]);
 
-  const contextPopupProps = useContextApprovalPopupProps(contextBreakdown, approvalMode, setApprovalMode);
+
 
   const handleContextPopupMouseEnter = useCallback(() => {
     if (contextPopupHoverTimeoutRef.current) {
@@ -1000,10 +1000,9 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 z-50 pb-1">
               <ContextSettingsPopup
                 hasSession={!!sessionId}
-                breakdown={contextBreakdown}
-                totalUsed={contextPopupProps.totalUsed}
-                usagePercentage={contextPopupProps.usagePercentage}
-                remaining={contextPopupProps.remaining}
+                used={latestUsage.used}
+                size={latestUsage.size}
+                cost={latestUsage.cost}
                 approvalMode={approvalMode}
                 onApprovalModeChange={setApprovalMode}
                 sandbox={sandboxConfig.enabled}
@@ -1046,14 +1045,12 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       approvalMode,
       backgroundTask,
       contextBreakdown,
-      contextPopupProps.remaining,
-      contextPopupProps.totalUsed,
-      contextPopupProps.usagePercentage,
       handleCompactContext,
       handleContextPopupClick,
       handleContextPopupMouseEnter,
       handleContextPopupMouseLeave,
       isContextPopupOpen,
+      latestUsage,
       sandboxConfig.enabled,
       sessionId,
       setSandboxEnabled,

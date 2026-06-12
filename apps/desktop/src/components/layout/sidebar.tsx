@@ -542,14 +542,14 @@ export function Sidebar() {
   const CollapsedContent = (
     <>
       {/* Workspace icon - Collapsed */}
-      <div className="flex h-8 items-center border-b border-sidebar-border justify-center px-2">
+      <div className="flex h-10 items-center border-b border-sidebar-border justify-center px-2">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               className="transition-transform duration-200 hover:scale-105 p-2"
             >
-              <FolderOpen className="h-5 w-5 text-primary" />
+              <FolderOpen className="h-6 w-6 text-primary" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">

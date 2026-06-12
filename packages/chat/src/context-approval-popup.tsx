@@ -1,8 +1,7 @@
 /**
  * Context Approval Popup Component
  *
- * A collapsible card showing context token usage breakdown and approval mode selector.
- * Designed to match BackgroundTaskList and TodoListPanel style.
+ * A collapsible card showing context token usage and approval mode selector.
  */
 
 import * as React from "react";
@@ -34,35 +33,9 @@ function getUsageBarColor(percentage: number): string {
   return "bg-primary";
 }
 
-interface TokenBreakdownItemProps {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-}
-
-function TokenBreakdownItem({ label, value, total, color }: TokenBreakdownItemProps) {
-  const percentage = total > 0 ? Math.min((value / total) * 100, 100) : 0;
-
-  return (
-    <div className="flex min-w-0 items-center gap-2 py-0.5 text-xs">
-      <div className={cn("size-2 shrink-0 rounded-full", color)} />
-      <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
-      <span className="shrink-0 tabular-nums text-foreground">
-        {formatTokens(value)}
-      </span>
-      <span className="shrink-0 w-12 text-right tabular-nums text-muted-foreground">
-        {percentage.toFixed(1)}%
-      </span>
-    </div>
-  );
-}
-
 export function ContextApprovalPopup({
   breakdown,
-  totalUsed,
   usagePercentage,
-  remaining,
   approvalMode,
   onApprovalModeChange,
   className,
@@ -71,11 +44,12 @@ export function ContextApprovalPopup({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(defaultExpanded);
 
+  const remaining = Math.max(0, breakdown.size - breakdown.used);
   const currentModeConfig = APPROVAL_MODE_CONFIG[approvalMode];
   const CurrentModeIcon = currentModeConfig.icon;
 
   return (
-    <div className={cn("w-[300px] rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg", className)}>
+    <div className={cn("w-[280px] rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg", className)}>
       {/* Header - clickable to expand/collapse */}
       <button
         type="button"
@@ -100,10 +74,10 @@ export function ContextApprovalPopup({
 
       {expanded && (
         <div className="mt-3 space-y-3">
-          {/* Overall usage bar */}
+          {/* Usage bar */}
           <div>
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span>{formatTokens(totalUsed)} / {formatTokens(breakdown.totalContext)}</span>
+              <span>{formatTokens(breakdown.used)} / {formatTokens(breakdown.size)}</span>
               <span>{t("chat.agentInput.tokenUsage.remaining", "剩余")} {formatTokens(remaining)}</span>
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -114,33 +88,15 @@ export function ContextApprovalPopup({
             </div>
           </div>
 
-          {/* Token breakdown list */}
-          <div className="space-y-1">
-            <TokenBreakdownItem
-              label={t("chat.agentInput.tokenUsage.assistantProfile", "助手配置")}
-              value={breakdown.assistantProfile}
-              total={breakdown.totalContext}
-              color="bg-blue-500"
-            />
-            <TokenBreakdownItem
-              label={t("chat.agentInput.tokenUsage.skillSettings", "技能设置")}
-              value={breakdown.skillSettings}
-              total={breakdown.totalContext}
-              color="bg-purple-500"
-            />
-            <TokenBreakdownItem
-              label={t("chat.agentInput.tokenUsage.historySummary", "历史摘要")}
-              value={breakdown.historySummary}
-              total={breakdown.totalContext}
-              color="bg-amber-500"
-            />
-            <TokenBreakdownItem
-              label={t("chat.agentInput.tokenUsage.conversationMessages", "对话消息")}
-              value={breakdown.conversationMessages}
-              total={breakdown.totalContext}
-              color="bg-green-500"
-            />
-          </div>
+          {/* Cost */}
+          {breakdown.cost && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">{t("chat.agentInput.tokenUsage.cost", "费用")}</span>
+              <span className="tabular-nums text-foreground">
+                ${breakdown.cost.amount.toFixed(4)} {breakdown.cost.currency}
+              </span>
+            </div>
+          )}
 
           {/* Approval Mode Selector */}
           <div className="pt-2 border-t border-border">

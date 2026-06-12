@@ -408,13 +408,22 @@ export class ModelManager {
       customEntry.provider = providerType;
       if (providerId) customEntry.provider_id = providerId;
       customEntry.updated_at = new Date().toISOString();
+    } else if (providerId) {
+      // Provider-instance-specific: always create custom_models entry (even for known models)
+      config.custom_models[id] = {
+        name: getKnownModel(id)?.name || id,
+        provider: providerType,
+        provider_id: providerId,
+        enabled: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     } else if (getKnownModel(id)) {
       config.disabled_models = config.disabled_models.filter((m) => m !== id);
     } else {
       config.custom_models[id] = {
         name: id,
         provider: providerType,
-        provider_id: providerId,
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -438,6 +447,16 @@ export class ModelManager {
       customEntry.provider = providerType;
       if (providerId) customEntry.provider_id = providerId;
       customEntry.updated_at = new Date().toISOString();
+    } else if (providerId) {
+      // Provider-instance-specific: always create custom_models entry (even for known models)
+      config.custom_models[id] = {
+        name: getKnownModel(id)?.name || id,
+        provider: providerType,
+        provider_id: providerId,
+        enabled: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
     } else if (getKnownModel(id)) {
       if (!config.disabled_models.includes(id)) {
         config.disabled_models.push(id);

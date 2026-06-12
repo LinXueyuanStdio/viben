@@ -188,18 +188,14 @@ export interface SkillConfig {
   enabled: boolean;
 }
 
-/** Context token breakdown for details popover */
+/** Context usage from ACP usage_update event */
 export interface ContextTokenBreakdown {
-  /** Tokens used by assistant profile/persona */
-  assistantProfile: number;
-  /** Tokens used by skill settings */
-  skillSettings: number;
-  /** Tokens used by history summary */
-  historySummary: number;
-  /** Tokens used by conversation messages */
-  conversationMessages: number;
+  /** Tokens used so far */
+  used: number;
   /** Total context window size */
-  totalContext: number;
+  size: number;
+  /** Cumulative cost (optional, from usage_update) */
+  cost?: { amount: number; currency: string } | null;
 }
 
 // ============================================================================

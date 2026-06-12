@@ -5,7 +5,7 @@
 
 import { GatewayError } from "../error";
 import { parseErrorMessage } from "./core";
-import type { ServiceApiKey } from "../types";
+import type { ServiceApiKey, ServiceApiKeyUpdate } from "../types";
 
 // ============================================================================
 // Service API Keys
@@ -39,7 +39,8 @@ export async function getServiceKeys(
  */
 export async function createServiceKey(
   baseUrl: string,
-  name: string
+  name: string,
+  enabledSources?: string[]
 ): Promise<ServiceApiKey> {
   const response = await fetch(`${baseUrl}/api/service-keys`, {
     method: "POST",
@@ -47,13 +48,44 @@ export async function createServiceKey(
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, enabled_sources: enabledSources }),
   });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
       `Failed to create service key: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Update a service API key
+ */
+export async function updateServiceKey(
+  baseUrl: string,
+  keyId: string,
+  updates: ServiceApiKeyUpdate
+): Promise<ServiceApiKey> {
+  const response = await fetch(
+    `${baseUrl}/api/service-keys/${encodeURIComponent(keyId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(updates),
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to update service key: ${errorMessage}`,
       response.status
     );
   }

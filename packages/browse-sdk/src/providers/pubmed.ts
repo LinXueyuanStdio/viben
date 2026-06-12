@@ -103,9 +103,22 @@ export class PubMedSearcher extends BasePaperSource {
 }
 
 function extractDoi(value: PubmedELocationId): string {
-  if (typeof value === "string") {
-    return value;
+  if (value === undefined || value === null) {
+    return "";
   }
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  // Single object with EIdType (not wrapped in array)
+  if (!Array.isArray(value) && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if (obj.EIdType === "doi") {
+      return textOf(obj.text ?? obj);
+    }
+    // If it's a text node without EIdType, just extract text
+    return textOf(value);
+  }
+  // Array of ELocationID elements
   const match = toArray(value).find((item) => typeof item === "object" && item.EIdType === "doi");
-  return typeof match === "object" ? match.text ?? "" : "";
+  return typeof match === "object" ? String(match.text ?? "") : "";
 }

@@ -20,6 +20,7 @@ interface ServiceApiKey {
   name: string;
   key: string;
   key_prefix: string;
+  enabled_sources: string[];
   created_at: string;
   last_used: string | null;
 }
@@ -56,7 +57,10 @@ async function loadKeys(): Promise<ServiceApiKey[]> {
     }
     const content = await readFile(path, "utf-8");
     const store: ServiceKeysStore = JSON.parse(content);
-    return store.keys;
+    return store.keys.map((k) => ({
+      ...k,
+      enabled_sources: k.enabled_sources ?? [],
+    }));
   } catch {
     return [];
   }
@@ -125,9 +129,9 @@ export function registerServiceKeysRoutes(fastify: FastifyInstance): void {
    * POST /api/service-keys
    */
   fastify.post<{
-    Body: { name: string };
+    Body: { name: string; enabled_sources?: string[] };
   }>("/api/service-keys", async (request, reply) => {
-    const { name } = request.body;
+    const { name, enabled_sources } = request.body;
 
     if (!name) {
       reply.code(400);
@@ -142,6 +146,7 @@ export function registerServiceKeysRoutes(fastify: FastifyInstance): void {
       name,
       key,
       key_prefix: createKeyPrefix(key),
+      enabled_sources: enabled_sources ?? [],
       created_at: getCurrentTimestamp(),
       last_used: null,
     };
@@ -190,6 +195,36 @@ export function registerServiceKeysRoutes(fastify: FastifyInstance): void {
 
     await saveKeys(filtered);
     return { deleted: keyId };
+  });
+
+  /**
+   * Update a service API key
+   * PATCH /api/service-keys/:keyId
+   */
+  fastify.patch<{
+    Params: { keyId: string };
+    Body: { name?: string; enabled_sources?: string[] };
+  }>("/api/service-keys/:keyId", async (request, reply) => {
+    const { keyId } = request.params;
+    const { name, enabled_sources } = request.body;
+
+    const keys = await loadKeys();
+    const keyIndex = keys.findIndex((k) => k.id === keyId);
+
+    if (keyIndex === -1) {
+      reply.code(404);
+      return { error: "Key not found" };
+    }
+
+    if (name !== undefined) {
+      keys[keyIndex].name = name;
+    }
+    if (enabled_sources !== undefined) {
+      keys[keyIndex].enabled_sources = enabled_sources;
+    }
+
+    await saveKeys(keys);
+    return keys[keyIndex];
   });
 
   /**

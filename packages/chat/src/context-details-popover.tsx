@@ -1,8 +1,7 @@
 /**
  * Context Details Popover
  *
- * Shows token usage breakdown with progress bars.
- * Categories: Assistant Profile, Skill Settings, History Summary, Conversation Messages
+ * Shows context token usage with a progress bar.
  */
 
 import { useTranslation } from "react-i18next";
@@ -15,43 +14,11 @@ export interface ContextDetailsPopoverProps {
   className?: string;
 }
 
-// Format token count for display
 const formatTokens = (tokens: number): string => {
-  if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(1)}k`;
-  }
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}m`;
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;
   return tokens.toString();
 };
-
-// Progress bar component
-function TokenProgressBar({
-  label,
-  value,
-  total,
-  color,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-}) {
-  const percentage = total > 0 ? Math.min((value / total) * 100, 100) : 0;
-
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">{formatTokens(value)}</span>
-      </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all", color)}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    </div>
-  );
-}
 
 export function ContextDetailsPopover({
   breakdown,
@@ -59,20 +26,14 @@ export function ContextDetailsPopover({
 }: ContextDetailsPopoverProps) {
   const { t } = useTranslation();
 
-  const totalUsed =
-    breakdown.assistantProfile +
-    breakdown.skillSettings +
-    breakdown.historySummary +
-    breakdown.conversationMessages;
-
-  const remaining = Math.max(0, breakdown.totalContext - totalUsed);
+  const remaining = Math.max(0, breakdown.size - breakdown.used);
   const usagePercentage =
-    breakdown.totalContext > 0
-      ? Math.min((totalUsed / breakdown.totalContext) * 100, 100)
+    breakdown.size > 0
+      ? Math.min((breakdown.used / breakdown.size) * 100, 100)
       : 0;
 
   return (
-    <div className={cn("w-[320px]", className)}>
+    <div className={cn("w-[280px]", className)}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border">
         <FileText className="h-4 w-4 text-muted-foreground" />
@@ -81,14 +42,14 @@ export function ContextDetailsPopover({
         </span>
       </div>
 
-      {/* Overall usage bar */}
-      <div className="mb-4">
+      {/* Usage bar */}
+      <div>
         <div className="flex items-center justify-between text-xs mb-1.5">
           <span className="text-muted-foreground">
             {t("chat.agentInput.tokenUsage.used", "Used")}
           </span>
           <span className="font-medium">
-            {formatTokens(totalUsed)} / {formatTokens(breakdown.totalContext)}
+            {formatTokens(breakdown.used)} / {formatTokens(breakdown.size)}
           </span>
         </div>
         <div className="h-3 bg-muted rounded-full overflow-hidden">
@@ -113,52 +74,19 @@ export function ContextDetailsPopover({
         </div>
       </div>
 
-      {/* Breakdown by category */}
-      <div className="space-y-3">
-        <TokenProgressBar
-          label={t(
-            "chat.agentInput.tokenUsage.assistantProfile",
-            "Assistant Profile"
-          )}
-          value={breakdown.assistantProfile}
-          total={breakdown.totalContext}
-          color="bg-blue-500"
-        />
-        <TokenProgressBar
-          label={t("chat.agentInput.tokenUsage.skillSettings", "Skill Settings")}
-          value={breakdown.skillSettings}
-          total={breakdown.totalContext}
-          color="bg-purple-500"
-        />
-        <TokenProgressBar
-          label={t(
-            "chat.agentInput.tokenUsage.historySummary",
-            "History Summary"
-          )}
-          value={breakdown.historySummary}
-          total={breakdown.totalContext}
-          color="bg-amber-500"
-        />
-        <TokenProgressBar
-          label={t(
-            "chat.agentInput.tokenUsage.conversationMessages",
-            "Conversation Messages"
-          )}
-          value={breakdown.conversationMessages}
-          total={breakdown.totalContext}
-          color="bg-green-500"
-        />
-      </div>
-
-      {/* Total summary */}
-      <div className="mt-4 pt-3 border-t border-border">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            {t("chat.agentInput.tokenUsage.total", "Total")}
-          </span>
-          <span className="font-medium">{formatTokens(breakdown.totalContext)}</span>
+      {/* Cost */}
+      {breakdown.cost && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              {t("chat.agentInput.tokenUsage.cost", "费用")}
+            </span>
+            <span className="font-medium tabular-nums">
+              ${breakdown.cost.amount.toFixed(4)} {breakdown.cost.currency}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

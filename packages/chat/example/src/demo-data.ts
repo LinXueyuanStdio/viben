@@ -949,11 +949,9 @@ export const demoSlashCommands: SlashCommand[] = [
 ]
 
 export const demoContextBreakdown: ContextTokenBreakdown = {
-  assistantProfile: 1200,
-  skillSettings: 800,
-  historySummary: 2400,
-  conversationMessages: 15600,
-  totalContext: 200000,
+  used: 20000,
+  size: 200000,
+  cost: { amount: 0.0342, currency: "USD" },
 }
 
 // ============================================================================

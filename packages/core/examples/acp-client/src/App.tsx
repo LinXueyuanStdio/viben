@@ -299,8 +299,8 @@ export function App() {
   const chatTools = useMemo(() => buildChatToolConfigs(actions), [actions]);
   const chatSkills = useMemo(() => buildChatSkillConfigs(slashCommands), [slashCommands]);
   const chatContextBreakdown = useMemo(
-    () => buildChatContextBreakdown(messages, streamingText, slashCommands, actionSummaries, steerQueueItems),
-    [actionSummaries, messages, slashCommands, steerQueueItems, streamingText]
+    () => buildChatContextBreakdown(messages),
+    [messages]
   );
   const chatAppSessions = useMemo<AcpChatSessionItem[]>(
     () => sessionOrder.flatMap((id) => {
@@ -3219,22 +3219,21 @@ function isUserBlockingUiStep(step: AcpUiStep): boolean {
 
 function buildChatContextBreakdown(
   messages: AgentMessage[],
-  streamingText: string | null,
-  commands: SlashCommand[],
-  actions: Array<Record<string, unknown>>,
-  steerQueue: CommandQueueItem[]
 ): ContextTokenBreakdown {
-  const conversationMessages = estimateJsonTokens(messages) + estimateTextTokens(streamingText ?? "");
-  const skillSettings = estimateJsonTokens(commands);
-  const assistantProfile = estimateJsonTokens(actions);
-  const historySummary = estimateJsonTokens(steerQueue);
-  return {
-    assistantProfile,
-    skillSettings,
-    historySummary,
-    conversationMessages,
-    totalContext: Math.max(8_000, assistantProfile + skillSettings + historySummary + conversationMessages + 4_000),
-  };
+  let used = 0;
+  let size = 128000;
+  let cost: { amount: number; currency: string } | null = null;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i] as { type?: string; summary?: Record<string, unknown> };
+    if (msg.type === "summary" && msg.summary?.sessionUpdate === "usage_update") {
+      used = (msg.summary.used as number) ?? 0;
+      size = (msg.summary.size as number) ?? 128000;
+      const rawCost = msg.summary.cost as { amount: number; currency: string } | undefined;
+      cost = rawCost ?? null;
+      break;
+    }
+  }
+  return { used, size, cost };
 }
 
 function buildAcpCompactSummary(
@@ -3269,20 +3268,7 @@ function truncateText(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, Math.max(0, maxLength - 3))}...` : value;
 }
 
-function estimateContextTokens(breakdown: ContextTokenBreakdown): number {
-  return breakdown.assistantProfile +
-    breakdown.skillSettings +
-    breakdown.historySummary +
-    breakdown.conversationMessages;
-}
 
-function estimateJsonTokens(value: unknown): number {
-  return estimateTextTokens(prettyJson(value));
-}
-
-function estimateTextTokens(value: string): number {
-  return Math.max(0, Math.ceil(value.length / 4));
-}
 
 function buildModelOptions(currentModel: string): ModelOption[] {
   const models = [

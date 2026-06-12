@@ -1,15 +1,14 @@
 import { useTranslation } from "react-i18next";
 import { FolderTree, ListTodo, Shrink } from "lucide-react";
 import { cn, Switch, Label } from "@viben/ui";
-import type { ContextTokenBreakdown, ApprovalMode } from "@viben/chat";
+import type { ApprovalMode } from "@viben/chat";
 import { APPROVAL_MODE_CONFIG } from "@viben/chat";
 
 export interface ContextSettingsPopupProps {
   hasSession: boolean;
-  breakdown: ContextTokenBreakdown;
-  totalUsed: number;
-  usagePercentage: number;
-  remaining: number;
+  used: number;
+  size: number;
+  cost: { amount: number; currency: string } | null;
   approvalMode: ApprovalMode;
   onApprovalModeChange: (mode: ApprovalMode) => void;
   sandbox: boolean;
@@ -34,38 +33,13 @@ function getUsageBarColor(percentage: number): string {
   return "bg-primary";
 }
 
-function TokenBreakdownItem({
-  label,
-  value,
-  total,
-  color,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  color: string;
-}) {
-  const percentage = total > 0 ? Math.min((value / total) * 100, 100) : 0;
-  return (
-    <div className="flex min-w-0 items-center gap-2 py-0.5 text-xs">
-      <div className={cn("size-2 shrink-0 rounded-full", color)} />
-      <span className="min-w-0 flex-1 truncate text-muted-foreground">{label}</span>
-      <span className="shrink-0 tabular-nums text-foreground">{formatTokens(value)}</span>
-      <span className="shrink-0 w-12 text-right tabular-nums text-muted-foreground">
-        {percentage.toFixed(1)}%
-      </span>
-    </div>
-  );
-}
-
 const MODES: ApprovalMode[] = ["bypass", "rules", "ai"];
 
 export function ContextSettingsPopup({
   hasSession,
-  breakdown,
-  totalUsed,
-  usagePercentage,
-  remaining,
+  used,
+  size,
+  cost,
   approvalMode,
   onApprovalModeChange,
   sandbox,
@@ -141,12 +115,15 @@ export function ContextSettingsPopup({
     );
   }
 
+  const usagePercentage = size > 0 ? Math.min((used / size) * 100, 100) : 0;
+  const remaining = Math.max(0, size - used);
+
   return (
-    <div className={cn("w-[300px] rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg", className)}>
-      {/* Overall usage bar */}
+    <div className={cn("w-[280px] rounded-lg border border-border bg-card text-card-foreground p-3 shadow-lg", className)}>
+      {/* Usage progress bar */}
       <div>
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-          <span>{formatTokens(totalUsed)} / {formatTokens(breakdown.totalContext)}</span>
+          <span>{formatTokens(used)} / {formatTokens(size)}</span>
           <span>{t("chat.agentInput.tokenUsage.remaining", "剩余")} {formatTokens(remaining)}</span>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -157,33 +134,15 @@ export function ContextSettingsPopup({
         </div>
       </div>
 
-      {/* Token breakdown */}
-      <div className="mt-3 space-y-1">
-        <TokenBreakdownItem
-          label={t("chat.agentInput.tokenUsage.assistantProfile", "助手配置")}
-          value={breakdown.assistantProfile}
-          total={breakdown.totalContext}
-          color="bg-blue-500"
-        />
-        <TokenBreakdownItem
-          label={t("chat.agentInput.tokenUsage.skillSettings", "技能设置")}
-          value={breakdown.skillSettings}
-          total={breakdown.totalContext}
-          color="bg-purple-500"
-        />
-        <TokenBreakdownItem
-          label={t("chat.agentInput.tokenUsage.historySummary", "历史摘要")}
-          value={breakdown.historySummary}
-          total={breakdown.totalContext}
-          color="bg-amber-500"
-        />
-        <TokenBreakdownItem
-          label={t("chat.agentInput.tokenUsage.conversationMessages", "对话消息")}
-          value={breakdown.conversationMessages}
-          total={breakdown.totalContext}
-          color="bg-green-500"
-        />
-      </div>
+      {/* Cost display */}
+      {cost && (
+        <div className="mt-2 flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">{t("chat.agentInput.tokenUsage.cost", "费用")}</span>
+          <span className="tabular-nums text-foreground">
+            ${cost.amount.toFixed(4)} {cost.currency}
+          </span>
+        </div>
+      )}
 
       {/* Approval mode segmented control */}
       <div className="mt-3 pt-3 border-t border-border">

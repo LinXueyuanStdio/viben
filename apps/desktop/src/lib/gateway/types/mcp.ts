@@ -155,8 +155,15 @@ export interface ServiceApiKey {
   name: string;
   key: string;
   key_prefix: string;
+  enabled_sources: string[];
   created_at: string;
   last_used: string | null;
+}
+
+/** Updates for a service API key */
+export interface ServiceApiKeyUpdate {
+  name?: string;
+  enabled_sources?: string[];
 }
 
 // ============================================================================

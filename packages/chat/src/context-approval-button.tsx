@@ -35,9 +35,7 @@ export interface ContextApprovalButtonProps {
 
 export interface ContextPopupRenderProps {
   breakdown: ContextTokenBreakdown;
-  totalUsed: number;
   usagePercentage: number;
-  remaining: number;
   approvalMode: ApprovalMode;
   onApprovalModeChange: (mode: ApprovalMode) => void;
 }
@@ -126,18 +124,10 @@ export function ContextApprovalButton({
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const totalUsed =
-    breakdown.assistantProfile +
-    breakdown.skillSettings +
-    breakdown.historySummary +
-    breakdown.conversationMessages;
-
   const usagePercentage =
-    breakdown.totalContext > 0
-      ? Math.min((totalUsed / breakdown.totalContext) * 100, 100)
+    breakdown.size > 0
+      ? Math.min((breakdown.used / breakdown.size) * 100, 100)
       : 0;
-
-  const remaining = Math.max(0, breakdown.totalContext - totalUsed);
 
   const config = APPROVAL_MODE_CONFIG[approvalMode];
   const ApprovalIcon = config.icon;
@@ -223,9 +213,7 @@ export function ContextApprovalButton({
         >
           {renderPopup({
             breakdown,
-            totalUsed,
             usagePercentage,
-            remaining,
             approvalMode,
             onApprovalModeChange,
           })}
@@ -240,24 +228,14 @@ export function useContextApprovalPopupProps(
   approvalMode: ApprovalMode,
   onApprovalModeChange: (mode: ApprovalMode) => void
 ): ContextPopupRenderProps {
-  const totalUsed =
-    breakdown.assistantProfile +
-    breakdown.skillSettings +
-    breakdown.historySummary +
-    breakdown.conversationMessages;
-
   const usagePercentage =
-    breakdown.totalContext > 0
-      ? Math.min((totalUsed / breakdown.totalContext) * 100, 100)
+    breakdown.size > 0
+      ? Math.min((breakdown.used / breakdown.size) * 100, 100)
       : 0;
-
-  const remaining = Math.max(0, breakdown.totalContext - totalUsed);
 
   return {
     breakdown,
-    totalUsed,
     usagePercentage,
-    remaining,
     approvalMode,
     onApprovalModeChange,
   };

@@ -175,6 +175,7 @@ import {
   // Service Keys module
   getServiceKeys,
   createServiceKey,
+  updateServiceKey,
   getServiceKeyById,
   deleteServiceKey,
   validateServiceKey,
@@ -2004,8 +2005,15 @@ export class GatewayClient {
   /**
    * Create a new service API key
    */
-  async createServiceKey(name: string): Promise<ServiceApiKey> {
-    return createServiceKey(this.baseUrl, name);
+  async createServiceKey(name: string, enabledSources?: string[]): Promise<ServiceApiKey> {
+    return createServiceKey(this.baseUrl, name, enabledSources);
+  }
+
+  /**
+   * Update a service API key
+   */
+  async updateServiceKey(keyId: string, updates: { name?: string; enabled_sources?: string[] }): Promise<ServiceApiKey> {
+    return updateServiceKey(this.baseUrl, keyId, updates);
   }
 
   /**

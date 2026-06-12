@@ -181,25 +181,39 @@ export class PreviewManager {
     }
 
     // Allocate port
-    const port = this.allocatePort(preferredPort);
+    let port: number | null = null;
+    if (preferredPort) {
+      port = this.allocatePort(preferredPort);
+      if (port) {
+        const portBusy = await this.isPortInUse(port);
+        if (portBusy) {
+          this.releasePort(port);
+          return {
+            id: `preview-${taskId}`,
+            task_id: taskId,
+            status: "error",
+            error: `PORT_IN_USE:${port}`,
+          };
+        }
+      }
+    } else {
+      // Auto-assign: try ports in range until finding a free one
+      for (let candidate = PORT_RANGE_START; candidate <= PORT_RANGE_END; candidate++) {
+        if (this.usedPorts.has(candidate)) continue;
+        const busy = await this.isPortInUse(candidate);
+        if (!busy) {
+          this.usedPorts.add(candidate);
+          port = candidate;
+          break;
+        }
+      }
+    }
     if (!port) {
       return {
         id: `preview-${taskId}`,
         task_id: taskId,
         status: "error",
         error: "No available ports in range 5173-5273",
-      };
-    }
-
-    // Check if port is already in use before starting
-    const portBusy = await this.isPortInUse(port);
-    if (portBusy) {
-      this.releasePort(port);
-      return {
-        id: `preview-${taskId}`,
-        task_id: taskId,
-        status: "error",
-        error: `PORT_IN_USE:${port}`,
       };
     }
 
@@ -827,10 +841,8 @@ export class PreviewManager {
    */
   private allocatePort(preferred?: number): number | null {
     if (preferred && !this.usedPorts.has(preferred)) {
-      if (preferred >= PORT_RANGE_START && preferred <= PORT_RANGE_END) {
-        this.usedPorts.add(preferred);
-        return preferred;
-      }
+      this.usedPorts.add(preferred);
+      return preferred;
     }
 
     for (let port = PORT_RANGE_START; port <= PORT_RANGE_END; port++) {

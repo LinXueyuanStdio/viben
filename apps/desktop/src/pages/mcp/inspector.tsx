@@ -24,19 +24,9 @@ import {
   WrapText,
   AlignJustify,
   AppWindow,
-  Sun,
-  Moon,
-  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Inspector, HistoryAndNotifications, ConfigManager, LoggingLevelControl, type InspectorConfig } from "@/components/inspector";
 import {
   useMcpConnection,
@@ -53,7 +43,6 @@ import {
 } from "@/hooks/use-gateway-inspector";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/hooks/use-theme";
 import type { InspectorConnectionStatus } from "@/types";
 
 // Default MCP server config example - now with proxy support
@@ -64,7 +53,6 @@ const DEFAULT_CONFIG: McpServerConfig = {
 
 export function InspectorPage() {
   const { t } = useTranslation();
-  const { theme, setTheme } = useTheme();
   const {
     inspectorNotifications,
     addInspectorNotification,
@@ -807,42 +795,6 @@ export function InspectorPage() {
               connectionStatus={connectionStatus}
               makeRequest={makeRequest}
             />
-          </div>
-        </div>
-
-        {/* Sidebar Footer - Theme Switcher */}
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center justify-between">
-            <Select
-              value={theme}
-              onValueChange={(value: string) =>
-                setTheme(value as "system" | "light" | "dark")
-              }
-            >
-              <SelectTrigger className="w-[120px]" id="theme-select">
-                <SelectValue placeholder={t("settings.theme")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="system">
-                  <span className="flex items-center gap-2">
-                    <Monitor className="h-4 w-4" />
-                    {t("settings.system")}
-                  </span>
-                </SelectItem>
-                <SelectItem value="light">
-                  <span className="flex items-center gap-2">
-                    <Sun className="h-4 w-4" />
-                    {t("settings.light")}
-                  </span>
-                </SelectItem>
-                <SelectItem value="dark">
-                  <span className="flex items-center gap-2">
-                    <Moon className="h-4 w-4" />
-                    {t("settings.dark")}
-                  </span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
