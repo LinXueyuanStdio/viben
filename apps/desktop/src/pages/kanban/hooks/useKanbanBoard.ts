@@ -36,10 +36,9 @@ import {
 import { type LifecycleAction } from "@/hooks/use-kanban";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import i18n from "@/i18n";
-import { COLUMN_COLORS, validatePriority } from "../constants";
+import { COLUMN_COLORS } from "../constants";
 import type { EnhancedTask, ColumnId } from "../types";
-import { getLifecycleActionForStatusChange } from "../utils";
+import { getLifecycleActionForStatusChange, validatePriority } from "../utils";
 import { useColumnStatuses } from "./useColumnStatuses";
 import { useKanbanData } from "./useKanbanData";
 import { useKanbanCommands } from "./useKanbanCommands";

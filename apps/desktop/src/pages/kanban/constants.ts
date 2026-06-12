@@ -13,7 +13,7 @@ import {
   COLUMN_COLORS as VIBE_COLUMN_COLORS,
   COLUMN_COLOR_VARS as VIBE_COLUMN_COLOR_VARS,
 } from "@/lib/kanban";
-import type { TaskCategory, IssuePriority } from "@viben/kanban";
+import type { TaskCategory } from "@viben/kanban";
 import type { ColumnId } from "./types";
 
 // Column colors mapping (full CSS value for List View)
@@ -35,11 +35,3 @@ export const CategoryIcons: Record<TaskCategory, React.ElementType> = {
   testing: TestTube,
 };
 
-// Validate priority string is a valid IssuePriority
-export const validatePriority = (priority?: string): IssuePriority | undefined => {
-  if (!priority) return undefined;
-  const validPriorities: IssuePriority[] = ["urgent", "high", "medium", "low", "none"];
-  return validPriorities.includes(priority as IssuePriority)
-    ? (priority as IssuePriority)
-    : undefined;
-};

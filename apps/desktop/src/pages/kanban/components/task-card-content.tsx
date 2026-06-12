@@ -37,7 +37,8 @@ import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-prog
 import { useTranslation } from "react-i18next";
 import type { Subtask } from "@/lib/kanban";
 import type { TaskCardContentProps } from "../types";
-import { CategoryIcons, validatePriority } from "../constants";
+import { CategoryIcons } from "../constants";
+import { validatePriority } from "../utils";
 
 // Task Card Content Component - displays vibe-kanban task with enhanced fields (Auto-Claude style)
 export const TaskCardContent = memo(function TaskCardContent({

@@ -36,6 +36,8 @@ export function useKanbanData(workspace: { path: string } | undefined) {
   } = useTasks(workspace?.path);
 
   // Mutations
+  // Note: Queue auto-promotion is now handled by Gateway's CommandQueue (Promoter)
+  // The backend automatically promotes tasks from "queue" -> "in_progress" when capacity is available
   const taskLifecycle = useTaskLifecycle();
   const updateTask = _useUpdateTask();
   const createTask = _useCreateTask();

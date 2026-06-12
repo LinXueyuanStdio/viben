@@ -397,6 +397,10 @@ export function PagePreviewWindow({
     error: previewError,
     startPreview,
     stopPreview,
+    portConflict,
+    killPortAndRetry,
+    retryWithNewPort,
+    dismissPortConflict,
   } = useVitePreview(pageId);
 
   useEffect(() => {

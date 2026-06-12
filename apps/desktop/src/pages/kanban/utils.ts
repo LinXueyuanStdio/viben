@@ -1,5 +1,6 @@
 import type { TaskStatus as VibeTaskStatus } from "@/lib/kanban";
 import type { LifecycleAction } from "@/hooks/use-kanban";
+import type { IssuePriority } from "@viben/kanban";
 
 /**
  * Maps a status transition to the appropriate lifecycle action
@@ -37,3 +38,12 @@ export function getLifecycleActionForStatusChange(
 
   return statusToAction[toStatus] ?? null;
 }
+
+/** Validate priority string is a valid IssuePriority */
+export const validatePriority = (priority?: string): IssuePriority | undefined => {
+  if (!priority) return undefined;
+  const validPriorities: IssuePriority[] = ["urgent", "high", "medium", "low", "none"];
+  return validPriorities.includes(priority as IssuePriority)
+    ? (priority as IssuePriority)
+    : undefined;
+};

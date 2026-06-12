@@ -12,7 +12,8 @@ import {
 } from "@/lib/kanban";
 import type { UseKanbanBoardReturn } from "../hooks/useKanbanBoard";
 import type { EnhancedTask, ColumnId } from "../types";
-import { COLUMN_COLOR_VARS, validatePriority } from "../constants";
+import { COLUMN_COLOR_VARS } from "../constants";
+import { validatePriority } from "../utils";
 
 interface KanbanTableViewProps {
   board: UseKanbanBoardReturn;
