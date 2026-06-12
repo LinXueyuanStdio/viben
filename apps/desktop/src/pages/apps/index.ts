@@ -1,6 +1,6 @@
 // Route pages
 export { WorkspacePage } from "./workspace-page";
-export { PageDebugPage } from "./page-debug";
+export { PageDebugPage } from "../mcp/page-debug";
 
 // Components
 export { PagePreview, type PagePreviewProps, type PageViewMode } from "./components";

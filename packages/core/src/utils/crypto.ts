@@ -29,9 +29,22 @@ export async function sign(message: string, privateKeyHex: string): Promise<stri
   return signature.toString("hex");
 }
 
+// SPKI header for Ed25519: OID 1.3.101.112
+const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
+
 export async function verify(message: string, signatureHex: string, publicKeyHex: string): Promise<boolean> {
   try {
-    const publicKeyDer = Buffer.from(publicKeyHex, "hex");
+    const publicKeyBytes = Buffer.from(publicKeyHex, "hex");
+    let publicKeyDer: Buffer;
+
+    if (publicKeyBytes.length === 32) {
+      // Raw 32-byte Ed25519 public key (from @noble/ed25519) — wrap in SPKI
+      publicKeyDer = Buffer.concat([ED25519_SPKI_PREFIX, publicKeyBytes]);
+    } else {
+      // Already SPKI DER encoded
+      publicKeyDer = publicKeyBytes;
+    }
+
     const publicKey = createPublicKey({
       key: publicKeyDer,
       format: "der",

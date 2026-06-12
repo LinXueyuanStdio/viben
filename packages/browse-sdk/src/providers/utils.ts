@@ -86,6 +86,32 @@ export function toArray<T>(value: T | T[] | undefined | null): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+/**
+ * Extract text content from an XML-parsed node.
+ * When `fast-xml-parser` encounters an element with attributes (e.g. `<PMID Version="1">123</PMID>`),
+ * it returns `{ Version: "1", text: "123" }` instead of the plain string `"123"`.
+ * This helper normalizes both forms to a string.
+ */
+export function textOf(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    if ("text" in obj && (typeof obj.text === "string" || typeof obj.text === "number")) {
+      return String(obj.text);
+    }
+    // Handle case where #text is used (some parser configs)
+    if ("#text" in obj && (typeof obj["#text"] === "string" || typeof obj["#text"] === "number")) {
+      return String(obj["#text"]);
+    }
+  }
+  return "";
+}
+
 export function parseDate(value: unknown, fallback = new Date()): Date {
   if (typeof value !== "string" || !value.trim()) {
     return fallback;

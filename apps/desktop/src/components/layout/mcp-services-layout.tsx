@@ -34,7 +34,7 @@ const NAV_SECTIONS: NavSection[] = [
     titleKey: "nav.dedicatedSearchServices",
     items: [
       { titleKey: "nav.dataSources", href: "/mcp-services/data-sources", icon: Database },
-      { titleKey: "nav.searchService", href: "/mcp-services/search-service", icon: Search },
+      { titleKey: "nav.browseMcp", href: "/mcp-services/browse-mcp", icon: Search },
     ],
   },
   {

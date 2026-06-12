@@ -223,10 +223,10 @@ export function AgentMcpDialog({
     onOpenChange(false);
   };
 
-  const handleGoToSearchService = () => {
+  const handleGoToBrowseMcp = () => {
     onOpenChange(false);
-    openPath("/mcp-services/search-service", {
-      title: t("nav.searchService", "Search Service"),
+    openPath("/mcp-services/browse-mcp", {
+      title: t("nav.browseMcp", "Browse MCP"),
       icon: { type: "lucide", value: "search" },
     });
   };
@@ -531,7 +531,7 @@ export function AgentMcpDialog({
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={handleGoToSearchService}
+                        onClick={handleGoToBrowseMcp}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         {t("settingsAgents.createNewServer")}
@@ -628,7 +628,7 @@ export function AgentMcpDialog({
                       variant="link"
                       size="sm"
                       className="h-auto p-0 text-xs text-muted-foreground"
-                      onClick={handleGoToSearchService}
+                      onClick={handleGoToBrowseMcp}
                     >
                       <ExternalLink className="h-3 w-3 mr-1" />
                       {t("settingsAgents.goToMcpServices", { defaultValue: "Go to MCP services" })}

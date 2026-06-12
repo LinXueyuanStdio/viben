@@ -177,7 +177,7 @@ export function DashboardPage() {
         </motion.div>
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" className="h-full">
-            <Link to="/mcp-services/search-service" className="block h-full -m-6 rounded-lg p-6 transition-colors duration-200 hover:bg-muted/50">
+            <Link to="/mcp-services/browse-mcp" className="block h-full -m-6 rounded-lg p-6 transition-colors duration-200 hover:bg-muted/50">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
@@ -220,7 +220,7 @@ export function DashboardPage() {
             <QuickActionCard
               title={t("dashboard.mcpServers")}
               description={t("searchService.subtitle")}
-              linkTo="/mcp-services/search-service"
+              linkTo="/mcp-services/browse-mcp"
               count={t("dashboard.serverCount", { running: runningServers, total: mcpServers.length })}
             />
           </BentoCard>

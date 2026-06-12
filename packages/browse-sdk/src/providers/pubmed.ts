@@ -1,10 +1,13 @@
 import { BasePaperSource, Paper, type ReadOptions, type SearchOptions } from "../types";
-import { buildUrl, parseDate, parseXml, toArray } from "./utils";
+import { buildUrl, parseDate, parseXml, textOf, toArray } from "./utils";
+
+/** A node that may be a plain string or an object with a `text` property (when XML attributes exist). */
+type XmlTextNode = string | number | { text?: string | number; [attr: string]: unknown };
 
 interface PubMedSearchXml {
   eSearchResult?: {
     IdList?: {
-      Id?: string | string[];
+      Id?: XmlTextNode | XmlTextNode[];
     };
   };
 }
@@ -17,11 +20,11 @@ interface PubMedFetchXml {
 
 interface PubmedArticle {
   MedlineCitation?: {
-    PMID?: string;
+    PMID?: XmlTextNode;
     Article?: {
-      ArticleTitle?: string;
+      ArticleTitle?: XmlTextNode;
       Abstract?: {
-        AbstractText?: string | string[];
+        AbstractText?: XmlTextNode | XmlTextNode[];
       };
       AuthorList?: {
         Author?: PubmedAuthor | PubmedAuthor[];
@@ -43,7 +46,7 @@ interface PubmedAuthor {
   Initials?: string;
 }
 
-type PubmedELocationId = string | Array<{ text?: string; EIdType?: string }> | undefined;
+type PubmedELocationId = XmlTextNode | Array<{ text?: string; EIdType?: string }> | undefined;
 
 export class PubMedSearcher extends BasePaperSource {
   static readonly SEARCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi";
@@ -56,7 +59,7 @@ export class PubMedSearcher extends BasePaperSource {
       retmax: options.max_results ?? 10,
       retmode: "xml",
     })).then((response) => response.text());
-    const ids = toArray(parseXml<PubMedSearchXml>(searchXml).eSearchResult?.IdList?.Id);
+    const ids = toArray(parseXml<PubMedSearchXml>(searchXml).eSearchResult?.IdList?.Id).map(textOf).filter(Boolean);
     if (ids.length === 0) {
       return [];
     }
@@ -79,15 +82,15 @@ export class PubMedSearcher extends BasePaperSource {
   private parseArticle(article: PubmedArticle): Paper {
     const medline = article.MedlineCitation;
     const data = medline?.Article;
-    const pmid = medline?.PMID ?? "";
+    const pmid = textOf(medline?.PMID);
     const doi = extractDoi(data?.ELocationID);
     return new Paper({
       paper_id: pmid,
-      title: data?.ArticleTitle ?? "",
+      title: textOf(data?.ArticleTitle),
       authors: toArray(data?.AuthorList?.Author)
         .map((author) => `${author.LastName ?? ""} ${author.Initials ?? ""}`.trim())
         .filter(Boolean),
-      abstract: toArray(data?.Abstract?.AbstractText).join(" "),
+      abstract: toArray(data?.Abstract?.AbstractText).map(textOf).filter(Boolean).join(" "),
       doi,
       published_date: parseDate(data?.Journal?.JournalIssue?.PubDate?.Year),
       pdf_url: "",

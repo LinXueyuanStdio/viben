@@ -22,7 +22,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { InspectorPage } from "@/pages/inspector";
+import { InspectorPage } from "@/pages/mcp/inspector";
 
 // Lazy load marketplace page
 const MarketplacePage = lazy(() =>
@@ -31,19 +31,19 @@ const MarketplacePage = lazy(() =>
 
 // Lazy load MCP service pages
 const DashboardPage = lazy(() =>
-  import("@/pages/dashboard").then((m) => ({ default: m.DashboardPage }))
+  import("@/pages/mcp/dashboard").then((m) => ({ default: m.DashboardPage }))
 );
 
 const ProvidersPage = lazy(() =>
   import("@/pages/providers").then((m) => ({ default: m.ProvidersPage }))
 );
 
-const SearchServicePage = lazy(() =>
-  import("@/pages/search-service").then((m) => ({ default: m.SearchServicePage }))
+const BrowseMcpPage = lazy(() =>
+  import("@/pages/mcp/browse-mcp").then((m) => ({ default: m.BrowseMcpPage }))
 );
 
 const PageDebugPage = lazy(() =>
-  import("@/pages/apps/page-debug").then((m) => ({ default: m.PageDebugPage }))
+  import("@/pages/mcp/page-debug").then((m) => ({ default: m.PageDebugPage }))
 );
 
 const LogsPage = lazy(() =>
@@ -75,7 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: "dashboard", titleKey: "nav.dashboard", icon: LayoutDashboard },
       { id: "data-sources", titleKey: "nav.dataSources", icon: Database },
-      { id: "search-service", titleKey: "nav.searchService", icon: Search },
+      { id: "browse-mcp", titleKey: "nav.browseMcp", icon: Search },
       { id: "page-debug", titleKey: "nav.pageDebug", icon: Bug },
       { id: "logs", titleKey: "nav.logs", icon: FileText },
     ],
@@ -98,7 +98,7 @@ function PageLoadingFallback() {
 }
 
 // Valid tab IDs
-const VALID_TABS = ["marketplace", "inspector", "dashboard", "data-sources", "search-service", "page-debug", "logs"];
+const VALID_TABS = ["marketplace", "inspector", "dashboard", "data-sources", "browse-mcp", "page-debug", "logs"];
 
 export function SettingsMcpPage() {
   const { t } = useTranslation();
@@ -171,10 +171,10 @@ export function SettingsMcpPage() {
             <ProvidersPage />
           </Suspense>
         );
-      case "search-service":
+      case "browse-mcp":
         return (
           <Suspense fallback={<PageLoadingFallback />}>
-            <SearchServicePage />
+            <BrowseMcpPage />
           </Suspense>
         );
       case "page-debug":
