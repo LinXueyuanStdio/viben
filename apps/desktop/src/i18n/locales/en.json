@@ -151,7 +151,11 @@
     "weeksAgo": "Weeks Ago",
     "failed": "Failed",
     "dismiss": "Dismiss",
-    "newTab": "New Tab"
+    "newTab": "New Tab",
+    "added": "Added",
+    "free": "Free",
+    "noCategories": "No categories available",
+    "retryStep": "Retry {{step}}"
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -179,7 +183,8 @@
     "documents": "Documents",
     "settings": "Settings",
     "about": "About",
-    "github": "GitHub"
+    "github": "GitHub",
+    "browseMcp": "Browse MCP"
   },
   "devices": {
     "pairTitle": "Device Pairing",
@@ -422,7 +427,8 @@
       },
       "whatsapp": {
         "bridgeConnectionFailed": "Cannot connect to WhatsApp Bridge. Is the bridge server running?"
-      }
+      },
+      "chatIdRequired": "Chat ID is required"
     },
     "configureWebhook": "Configure Webhook",
     "webhook": {
@@ -1042,7 +1048,10 @@
     },
     "off": "Sandbox",
     "sandboxMode": "Sandbox Mode",
-    "selectProvider": "Select Provider"
+    "selectProvider": "Select Provider",
+    "exitCode": "Exit code: {{code}}",
+    "infoText": "Commands will be executed in an isolated environment for security.",
+    "noProvidersWarning": "No sandbox providers available. Check gateway connection."
   },
   "steering": {
     "label": "Steering",
@@ -1321,7 +1330,8 @@
       "headers": "Headers",
       "addEnv": "Add Variable",
       "addHeader": "Add Header",
-      "addServer": "Add Server"
+      "addServer": "Add Server",
+      "addEntry": "Add Server"
     },
     "mcpBuiltinDesc": {
       "presentation": "Presentation mode tools for overlay drawing, spotlight, callout, and walkthrough annotations"
@@ -1445,7 +1455,8 @@
     "slashCommand": "Slash Command",
     "namespace": "Namespace",
     "commandContent": "Command Content",
-    "commandDesc": "Slash commands are shortcuts that expand into predefined prompts or actions. They help automate common tasks and ensure consistent interactions with AI agents."
+    "commandDesc": "Slash commands are shortcuts that expand into predefined prompts or actions. They help automate common tasks and ensure consistent interactions with AI agents.",
+    "goToMcpServices": "Go to MCP services"
   },
   "settingsModels": {
     "title": "AI Models",
@@ -2091,7 +2102,7 @@
     "aboutMetadata": "About Metadata",
     "aboutMetadataDesc": "Metadata provides information about the MCP server including its name, version, capabilities, and protocol support.",
     "rawMetadata": "Raw Metadata",
-    "viewSchema": "View Schema",
+    "viewSchema": "Input Schema",
     "formInput": "Form",
     "jsonInput": "JSON",
     "jsonArguments": "JSON Arguments",
@@ -2226,24 +2237,24 @@
       "url": "URL",
       "command": "Command",
       "args": "Arguments",
-      "argPlaceholder": "Enter argument...",
+      "argPlaceholder": "Add argument...",
       "envVars": "Environment Variables",
       "connect": "Connect",
       "disconnect": "Disconnect",
       "connected": "Connected",
       "connecting": "Connecting...",
       "disconnected": "Disconnected",
-      "error": "Connection Error",
-      "copyConfig": "Copy Configuration",
+      "error": "Error",
+      "copyConfig": "Copy configuration",
       "stdio": "STDIO",
       "sse": "SSE",
       "http": "HTTP",
-      "stdioTitle": "Standard I/O",
-      "stdioDesc": "Connect via standard input/output streams",
-      "sseTitle": "Server-Sent Events",
-      "sseDesc": "Connect via SSE for real-time streaming",
-      "httpTitle": "HTTP",
-      "httpDesc": "Connect via HTTP requests",
+      "stdioTitle": "STDIO Transport",
+      "stdioDesc": "(Command line)",
+      "sseTitle": "SSE Transport",
+      "sseDesc": "(Server-Sent Events)",
+      "httpTitle": "Streamable HTTP Transport",
+      "httpDesc": "(Streamable HTTP)",
       "keyPlaceholder": "Key",
       "valuePlaceholder": "Value",
       "envKeyPlaceholder": "VAR_NAME",
@@ -2256,36 +2267,36 @@
     "addPair": "Add",
     "checking": "Checking...",
     "collapseAll": "Collapse All",
-    "copyInput": "Copy Input",
+    "copyInput": "Copy",
     "debugLogs": "Debug Logs",
     "debugMode": "Debug Mode",
     "errorMessage": "Error Message",
     "exchangeCode": "Exchange Code",
-    "exchangingCode": "Exchanging code...",
+    "exchangingCode": "Exchanging code for token...",
     "expandAll": "Expand All",
-    "fixMetadataErrors": "Fix metadata errors before proceeding",
+    "fixMetadataErrors": "Fix metadata key errors before running the tool.",
     "generatingPKCE": "Generating PKCE parameters...",
     "historyTruncated": "History truncated to {{count}} items",
     "noHistory": "No history",
-    "noMetadata": "No metadata available",
+    "noMetadata": "No metadata",
     "outputSchema": "Output Schema",
-    "pollingTask": "Polling task...",
-    "recommended": "Recommended",
+    "pollingTask": "Polling Task...",
+    "recommended": "recommended",
     "render": "Render",
     "request": "Request",
     "requestHistory": "Request History",
-    "runAsTask": "Run as Task",
+    "runAsTask": "Run as task",
     "showJson": "Show JSON",
     "showRendered": "Show Rendered",
     "spaceSepatated": "Space separated",
     "task": "Task",
     "toolMeta": "Tool Meta",
     "toolMetadata": "Tool Metadata",
-    "toolReturnedError": "Tool returned an error",
+    "toolReturnedError": "Tool returned error",
     "warning": "Warning",
-    "oauthConfig": "OAuth Configuration",
-    "oauthError": "OAuth Error",
-    "oauthSuccess": "OAuth authentication successful",
+    "oauthConfig": "OAuth 2.0 Configuration",
+    "oauthError": "OAuth flow failed",
+    "oauthSuccess": "Token obtained successfully!",
     "authorizationUrl": "Authorization URL",
     "tokenUrl": "Token URL",
     "clientId": "Client ID",
@@ -2295,8 +2306,8 @@
     "usePKCE": "Use PKCE",
     "pkceParams": "PKCE Parameters",
     "startOAuthFlow": "Start OAuth Flow",
-    "awaitingAuth": "Awaiting authorization...",
-    "authCodePlaceholder": "Enter authorization code...",
+    "awaitingAuth": "Waiting for authorization...",
+    "authCodePlaceholder": "Paste authorization code...",
     "taskPollingTimedOut": "Task polling timed out",
     "toolResultAlt": "Tool result",
     "resourceAlt": "Resource",
@@ -2341,8 +2352,8 @@
       "destructive": "Destructive",
       "destructiveDesc": "Tool may perform destructive updates",
       "idempotent": "Idempotent",
-      "idempotentDesc": "Repeated calls will not produce additional effects",
-      "openWorld": "Open World",
+      "idempotentDesc": "Calling repeatedly has no additional effect",
+      "openWorld": "Open-world",
       "openWorldDesc": "Tool may interact with external entities",
       "readOnly": "Read-only",
       "readOnlyDesc": "Tool does not modify its environment",
@@ -2371,7 +2382,8 @@
     "httpConnectionNote": "For Streamable HTTP connections, add this URL directly in your MCP Client",
     "nullable": "(nullable)",
     "resource": "Resource",
-    "sampleMessage": "Hello! Can you help me?"
+    "sampleMessage": "Hello! Can you help me?",
+    "spaceSeparated": "space-separated"
   },
   "updates": {
     "title": "Package Updates",
@@ -3453,7 +3465,9 @@
       "queue": "Queue",
       "archive": "Archive",
       "taskLabel": "Task:",
-      "descriptionLabel": "Description:"
+      "descriptionLabel": "Description:",
+      "taskStartedDesc": "Task is running in the background",
+      "enqueueWarningDesc": "Task state updated but background execution may have failed"
     },
     "taskEvents": {
       "title": "Events",
@@ -3585,7 +3599,9 @@
     "stepConfigure": {
       "defaultDeveloperName": "developer"
     },
-    "default": "Default"
+    "default": "Default",
+    "comments": "Comments",
+    "selectWorkspace": "Select Workspace"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -4740,7 +4756,8 @@
         "conversationMessages": "Conversation Messages",
         "used": "Used",
         "remaining": "Remaining",
-        "total": "Total"
+        "total": "Total",
+        "cost": "Cost"
       },
       "params": {
         "frequencyPenalty": "Vocabulary Richness",
@@ -4767,7 +4784,21 @@
     "planRejectedMessage": "Plan rejected. How would you like me to proceed?",
     "defaultAgentName": "Agent",
     "sandbox": "Sandbox",
-    "worktree": "Worktree"
+    "worktree": "Worktree",
+    "compactContext": "Compact Context",
+    "contextApproval": {
+      "approvalMode": "Approval Mode"
+    },
+    "newSessionInWindow": "New session in window",
+    "newSessionWith": "New session: {{name}}",
+    "openSessionMenu": "Open session menu",
+    "primary": "Primary",
+    "provider": "Provider",
+    "screenshotRegion": "Region screenshot",
+    "screenshotWindow": "Window screenshot",
+    "selectProvider": "Select provider...",
+    "steer": "Steer",
+    "steeringQueued": "{{count}} queued"
   },
   "creator": {
     "title": "Creator",
@@ -4817,7 +4848,8 @@
       "openrouter": "OpenRouter",
       "custom": "Custom"
     },
-    "onlyModelsSupported": "Only {{names}} models are supported"
+    "onlyModelsSupported": "Only {{names}} models are supported",
+    "noExecutorsHint": "Executors will appear when detected in your workspace"
   },
   "cron": {
     "title": "Scheduled Tasks",
@@ -5064,7 +5096,11 @@
     "noContent": "No content",
     "noInput": "No input",
     "noOutput": "No output",
-    "mcp": "MCP"
+    "mcp": "MCP",
+    "restart": "Restart",
+    "retryAttempt": "Attempt {{attempt}} of {{max}}",
+    "serverLogs": "Server Logs",
+    "waitingForLogs": "Waiting for server output..."
   },
   "groupChat": {
     "createTitle": "Create Group Chat",
@@ -5927,7 +5963,9 @@
     "inputPlaceholder": "Type a message...",
     "debugSession": "Debug Session",
     "providerLabel": "Provider: {{provider}}",
-    "sessionFallbackName": "Session {{id}}"
+    "sessionFallbackName": "Session {{id}}",
+    "refreshTrace": "Refresh trace data",
+    "loadingTrace": "Loading trace data..."
   },
   "agentVariables": {
     "sectionTitle": "Variables",
@@ -6057,7 +6095,33 @@
     "openExternalDefault": "Open with Default Browser",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit Fullscreen",
-    "stopServer": "Stop Server"
+    "stopServer": "Stop Server",
+    "downloadFailed": "Download failed",
+    "downloadSuccess": "Download started",
+    "portConflict": {
+      "title": "Port {{port}} is in use",
+      "description": "Another process is already using port {{port}}. How would you like to proceed?",
+      "killAndRetry": "Kill process & retry",
+      "useNewPort": "Use another port"
+    },
+    "settings": {
+      "pageInfo": "Page Info",
+      "name": "Name",
+      "type": "Type",
+      "slug": "Slug",
+      "directory": "Directory",
+      "export": "Export",
+      "exportDescription": "Download the entire page directory as a ZIP archive.",
+      "downloadZip": "Download as ZIP",
+      "downloading": "Downloading..."
+    },
+    "tab": {
+      "preview": "Preview",
+      "code": "Code",
+      "diff": "Diff",
+      "setting": "Setting"
+    },
+    "uid": "UID"
   },
   "pagePreview": {
     "textSize": "Adjust Text Size",
@@ -6157,7 +6221,8 @@
     "noBackHistory": "No back history",
     "noForwardHistory": "No forward history",
     "moveToStart": "Move to Start",
-    "moveToEnd": "Move to End"
+    "moveToEnd": "Move to End",
+    "closeTab": "Close Tab"
   },
   "mobile": {
     "status": {
@@ -6174,7 +6239,9 @@
       "invalidQrCode": "Invalid QR code. Please scan a Viben desktop QR code.",
       "cameraFailed": "Camera access failed",
       "scanning": "Scanning...",
-      "scanQrCode": "Scan QR Code"
+      "scanQrCode": "Scan QR Code",
+      "cameraPermissionDenied": "Camera permission is required. Please enable it in Settings.",
+      "openSettings": "Open Settings"
     },
     "connect": {
       "title": "Connect to Desktop",
@@ -6738,5 +6805,69 @@
     "allow": "Allow",
     "always": "Always",
     "reject": "Reject"
+  },
+  "browseMcp": {
+    "accessibleSources": "Accessible Sources",
+    "active": "Running",
+    "allSources": "All Sources",
+    "allSourcesAccess": "Access to all sources",
+    "allSourcesHint": "Empty list = access to all data sources",
+    "builtIn": "Built into Gateway, automatically available when Gateway starts",
+    "builtin": "Built-in",
+    "configureSources": "Configure source permissions",
+    "createApiKey": "Create API Key",
+    "createApiKeyDesc": "Create an API key for external agents and configure accessible data sources.",
+    "createKeyFailed": "Failed to create, please try again",
+    "dataSourcesInfo": "The following data sources are available in Browse MCP. Free sources are enabled by default, sources requiring API keys can be enabled after configuring keys on the data sources page.",
+    "deselectAll": "Deselect All",
+    "externalConfig": "External Access MCP Config",
+    "externalConfigHint": "For remote coding agents, replace <your-host> with your actual IP or domain.",
+    "inspectorHint": "Connect to this MCP server in Inspector to interactively browse all available tools and resources.",
+    "inspectorTitle": "View Tool List",
+    "keyName": "Name",
+    "keyNamePlaceholder": "e.g., Claude Code, Cursor",
+    "localConfig": "Local MCP Config",
+    "openInspector": "Open Inspector",
+    "openMarketplace": "Open Source Store",
+    "selectAll": "Select All",
+    "selectedSourcesCount": "{{count}} sources selected",
+    "serverStatus": "Server Status",
+    "sourceCount": "{{count}} sources",
+    "sourcePermissions": "Source Permissions",
+    "subtitle": "Search and browse service tailored for Agents, supporting multiple data sources with customizable search providers.",
+    "title": "Browse MCP"
+  },
+  "browseSourceStore": {
+    "description": "Discover and install third-party search source plugins to extend Browse MCP's data capabilities",
+    "empty": "No plugins available",
+    "install": "Install",
+    "installed": "Installed",
+    "localOnly": "Local",
+    "requiresEnv": "Requires env vars",
+    "searchPlaceholder": "Search plugin name, description or data source...",
+    "title": "Source Store"
+  },
+  "pages": {
+    "diff": {
+      "changes": "Changes",
+      "loading": "Loading changes...",
+      "error": "Unable to load changes",
+      "noChanges": "No changes detected",
+      "noChangesDesc": "All files are up to date with the repository",
+      "selectFile": "Select a file to view changes",
+      "refresh": "Refresh",
+      "unified": "Unified view",
+      "split": "Split view"
+    }
+  },
+  "codePanel": {
+    "files": "Files",
+    "noFiles": "No files found",
+    "refresh": "Refresh",
+    "selectFile": "Select a file from the tree to start editing",
+    "unsavedChangesWarning": "This file has unsaved changes. Close anyway?"
+  },
+  "pageSection": {
+    "linkCopied": "Link copied to clipboard"
   }
 }

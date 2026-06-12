@@ -100,6 +100,8 @@ interface PreviewInstance {
   process?: ChildProcess;
   /** SSE emitter for startup events */
   sseEmitter?: (event: PreviewSSEEvent) => void;
+  /** Whether this instance is connected to an external process (not managed by us) */
+  isExternalProcess?: boolean;
 }
 
 /**
@@ -298,6 +300,7 @@ export class PreviewManager {
           started_at: new Date(),
           last_accessed_at: new Date(),
           sseEmitter: onEvent,
+          isExternalProcess: true, // Mark as external - we didn't spawn this process
         };
 
         this.instances.set(taskId, instance);
@@ -1295,6 +1298,14 @@ export class PreviewManager {
         log.error({ err: error }, "Error killing process");
       }
       instance.process = undefined;
+    } else if (instance.isExternalProcess) {
+      // For external processes (port reuse), we need to kill the process by port
+      log.info({ port: instance.port }, "Killing external process on port");
+      try {
+        await this.killPort(instance.port);
+      } catch (error) {
+        log.error({ err: error, port: instance.port }, "Error killing external process on port");
+      }
     }
 
     // Clear SSE emitter reference to prevent memory leak

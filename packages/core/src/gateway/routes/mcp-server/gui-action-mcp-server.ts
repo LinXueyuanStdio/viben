@@ -80,6 +80,8 @@ export function registerGuiActionMcpServerRoutes(
         executeAction: (targetClientId, namespace, name, payload, context) =>
           state.clientSocketServer!.executeAction(targetClientId, namespace, name, payload, context) as Promise<CallToolResult>,
         getAllActions: () => state.clientStore.getAllActions(),
+        findActionByName: (name) => state.clientStore.findActionByName(name),
+        findActionByFullName: (fullName) => state.clientStore.findActionByFullName(fullName),
       } : undefined,
       requestClientTool: ({ sessionId: sid, toolName, input, toolCallId }) =>
         acpSessionManager.requestClientTool(sid, toolName, input, toolCallId),

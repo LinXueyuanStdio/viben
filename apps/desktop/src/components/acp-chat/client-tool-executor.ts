@@ -2,7 +2,7 @@
  * Client Tool Executor for ACP Desktop Client
  *
  * Handles execution of client-side tools called by the ACP backend.
- * GUI_execute is now handled via socket.io (GatewayActionSocket).
+ * GUI_execute is handled server-side by the gateway (via socket.io dispatch).
  * This module only handles ClientSideBash.
  */
 

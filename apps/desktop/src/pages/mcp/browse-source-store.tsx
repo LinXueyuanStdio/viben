@@ -1,11 +1,23 @@
 import { useState, useMemo } from "react";
 import { Search, Download, Trash2, Loader2, RefreshCw, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { useBrowsePlugins } from "@/hooks/use-browse-plugins";
 import type { BrowsePluginRegistryEntry } from "@/lib/gateway";
 
-export function BrowseSourceStorePage() {
+interface BrowseSourceStoreDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function BrowseSourceStoreDialog({ open, onOpenChange }: BrowseSourceStoreDialogProps) {
   const { t } = useTranslation();
   const { registry, installed, loading, installing, error, refresh, install, uninstall, isInstalled } = useBrowsePlugins();
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,23 +39,22 @@ export function BrowseSourceStorePage() {
   }, [registry, installed]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="flex-none px-6 pt-6 pb-4 border-b">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-semibold">
-              {t("browseSourceStore.title", "搜索源商店")}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t("browseSourceStore.description", "发现和安装第三方搜索源插件，扩展 Browse MCP 的数据能力")}
-            </p>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>{t("browseSourceStore.title", "搜索源商店")}</DialogTitle>
+              <DialogDescription>
+                {t("browseSourceStore.description", "发现和安装第三方搜索源插件，扩展 Browse MCP 的数据能力")}
+              </DialogDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+              {t("common.refresh", "刷新")}
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-            {t("common.refresh", "刷新")}
-          </Button>
-        </div>
+        </DialogHeader>
 
         {/* Search */}
         <div className="relative">
@@ -56,51 +67,51 @@ export function BrowseSourceStorePage() {
             className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm"
           />
         </div>
-      </div>
 
-      {/* Error banner */}
-      {error && (
-        <div className="flex-none mx-6 mt-4 px-3 py-2 rounded-md bg-destructive/10 text-destructive text-sm flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {loading && registry.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : filteredPlugins.length === 0 && installedNotInRegistry.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground text-sm">
-            {searchQuery
-              ? t("common.noResults", "无结果")
-              : t("browseSourceStore.empty", "暂无可用插件")}
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPlugins.map((plugin) => (
-              <PluginCard
-                key={plugin.id}
-                plugin={plugin}
-                installed={isInstalled(plugin.id)}
-                installing={installing.has(plugin.id)}
-                onInstall={() => install(plugin.id, plugin.download_url)}
-                onUninstall={() => uninstall(plugin.id)}
-              />
-            ))}
-            {installedNotInRegistry.map((plugin) => (
-              <InstalledOnlyCard
-                key={plugin.id}
-                plugin={plugin}
-                onUninstall={() => uninstall(plugin.id)}
-              />
-            ))}
+        {/* Error banner */}
+        {error && (
+          <div className="px-3 py-2 rounded-md bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+            {error}
           </div>
         )}
-      </div>
-    </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {loading && registry.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredPlugins.length === 0 && installedNotInRegistry.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground text-sm">
+              {searchQuery
+                ? t("common.noResults", "无结果")
+                : t("browseSourceStore.empty", "暂无可用插件")}
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {filteredPlugins.map((plugin) => (
+                <PluginCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  installed={isInstalled(plugin.id)}
+                  installing={installing.has(plugin.id)}
+                  onInstall={() => install(plugin.id, plugin.download_url)}
+                  onUninstall={() => uninstall(plugin.id)}
+                />
+              ))}
+              {installedNotInRegistry.map((plugin) => (
+                <InstalledOnlyCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  onUninstall={() => uninstall(plugin.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

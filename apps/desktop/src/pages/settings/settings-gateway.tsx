@@ -114,7 +114,7 @@ export function SettingsGatewayPage() {
               : null,
             `${t("gateway.address", "Address")}: ${result.url}`,
             `${t("gateway.availableEndpoints", "Available endpoints")}: ${availableEndpoints}/${totalEndpoints}`,
-            `WebSocket: ${availableWs}/${totalWs}`,
+            `${t("gateway.websocket", "WebSocket")}: ${availableWs}/${totalWs}`,
           ]
             .filter(Boolean)
             .join("\n"),
@@ -288,7 +288,7 @@ export function SettingsGatewayPage() {
                     </span>
                     {status.pid && (
                       <span className="text-xs text-muted-foreground">
-                        (PID: {status.pid})
+                        ({t("common.pid", "PID")}: {status.pid})
                       </span>
                     )}
                   </>

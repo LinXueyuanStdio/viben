@@ -111,8 +111,8 @@ function KeyValueEditor({
   disabled = false,
 }: KeyValueEditorProps) {
   const { t } = useTranslation();
-  const effectiveKeyPlaceholder = keyPlaceholder ?? t("inspector.transport.keyPlaceholder", "Key");
-  const effectiveValuePlaceholder = valuePlaceholder ?? t("inspector.transport.valuePlaceholder", "Value");
+  const effectiveKeyPlaceholder = keyPlaceholder ?? t("inspector.transport.keyPlaceholder");
+  const effectiveValuePlaceholder = valuePlaceholder ?? t("inspector.transport.valuePlaceholder");
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
 
@@ -252,7 +252,7 @@ function ArgsEditor({ args, onChange, disabled = false }: ArgsEditorProps) {
   return (
     <div className="space-y-2">
       <Label className="text-xs font-medium">
-        {t("inspector.transport.args", "Arguments")}
+        {t("inspector.transport.args")}
       </Label>
 
       {/* Existing args */}
@@ -284,7 +284,7 @@ function ArgsEditor({ args, onChange, disabled = false }: ArgsEditorProps) {
           value={newArg}
           onChange={(e) => setNewArg(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={t("inspector.transport.argPlaceholder", "Add argument...")}
+          placeholder={t("inspector.transport.argPlaceholder")}
           className="flex-1 h-8 text-xs font-mono"
           disabled={disabled}
         />
@@ -335,14 +335,14 @@ function SseHttpConfigForm({
 
   const placeholder =
     config.type === "sse"
-      ? t("placeholders.sseUrl", "http://localhost:3000/sse")
-      : t("placeholders.httpUrl", "http://localhost:3000/mcp");
+      ? t("placeholders.sseUrl")
+      : t("placeholders.httpUrl");
 
   return (
     <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
       <div className="space-y-2">
         <Label className="text-xs font-medium">
-          {t("inspector.transport.url", "URL")}
+          {t("inspector.transport.url")}
         </Label>
         <Input
           value={config.url}
@@ -462,25 +462,25 @@ export function TransportSelector({
     switch (connectionStatus) {
       case "connected":
         return {
-          text: t("inspector.transport.connected", "Connected"),
+          text: t("inspector.transport.connected"),
           color: "bg-green-500",
           textColor: "text-green-600",
         };
       case "connecting":
         return {
-          text: t("inspector.transport.connecting", "Connecting..."),
+          text: t("inspector.transport.connecting"),
           color: "bg-yellow-500",
           textColor: "text-yellow-600",
         };
       case "error":
         return {
-          text: t("inspector.transport.error", "Error"),
+          text: t("inspector.transport.error"),
           color: "bg-red-500",
           textColor: "text-red-600",
         };
       default:
         return {
-          text: t("inspector.transport.disconnected", "Disconnected"),
+          text: t("inspector.transport.disconnected"),
           color: "bg-gray-400",
           textColor: "text-gray-500",
         };
@@ -508,7 +508,7 @@ export function TransportSelector({
         <div className="flex items-center gap-2">
           {getTransportIcon(config.type)}
           <span className="text-sm font-medium">
-            {t("inspector.transport.title", "Transport Configuration")}
+            {t("inspector.transport.title")}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -522,7 +522,7 @@ export function TransportSelector({
       {/* Transport Type Selector */}
       <div className="space-y-2">
         <Label className="text-xs font-medium">
-          {t("inspector.transport.type", "Transport Type")}
+          {t("inspector.transport.type")}
         </Label>
         <Select
           value={config.type}
@@ -536,27 +536,27 @@ export function TransportSelector({
             <SelectItem value="stdio">
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4" />
-                <span>{t("inspector.transport.stdio", "STDIO")}</span>
+                <span>{t("inspector.transport.stdio")}</span>
                 <span className="text-xs text-muted-foreground">
-                  {t("inspector.transport.stdioDesc", "(Command line)")}
+                  {t("inspector.transport.stdioDesc")}
                 </span>
               </div>
             </SelectItem>
             <SelectItem value="sse">
               <div className="flex items-center gap-2">
                 <Radio className="h-4 w-4" />
-                <span>{t("inspector.transport.sse", "SSE")}</span>
+                <span>{t("inspector.transport.sse")}</span>
                 <span className="text-xs text-muted-foreground">
-                  {t("inspector.transport.sseDesc", "(Server-Sent Events)")}
+                  {t("inspector.transport.sseDesc")}
                 </span>
               </div>
             </SelectItem>
             <SelectItem value="streamable-http">
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4" />
-                <span>{t("inspector.transport.http", "HTTP")}</span>
+                <span>{t("inspector.transport.http")}</span>
                 <span className="text-xs text-muted-foreground">
-                  {t("inspector.transport.httpDesc", "(Streamable HTTP)")}
+                  {t("inspector.transport.httpDesc")}
                 </span>
               </div>
             </SelectItem>
@@ -569,17 +569,14 @@ export function TransportSelector({
         <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
           <div className="space-y-2">
             <Label className="text-xs font-medium">
-              {t("inspector.transport.command", "Command")}
+              {t("inspector.transport.command")}
             </Label>
             <Input
               value={config.command}
               onChange={(e) =>
                 onConfigChange({ ...config, command: e.target.value })
               }
-              placeholder={t(
-                "inspector.transport.commandPlaceholder",
-                "/path/to/executable"
-              )}
+              placeholder={t("inspector.transport.commandPlaceholder")}
               className="font-mono text-sm"
               disabled={isConnected || isDisabled}
             />
@@ -592,11 +589,11 @@ export function TransportSelector({
           />
 
           <KeyValueEditor
-            label={t("inspector.transport.envVars", "Environment Variables")}
+            label={t("inspector.transport.envVars")}
             entries={config.env}
             onChange={(env) => onConfigChange({ ...config, env })}
-            keyPlaceholder={t("inspector.transport.envKeyPlaceholder", "VAR_NAME")}
-            valuePlaceholder={t("inspector.transport.envValuePlaceholder", "value")}
+            keyPlaceholder={t("inspector.transport.envKeyPlaceholder")}
+            valuePlaceholder={t("inspector.transport.envValuePlaceholder")}
             disabled={isConnected || isDisabled}
           />
         </div>
@@ -640,7 +637,7 @@ export function TransportSelector({
               className="flex-1"
             >
               <Square className="h-4 w-4 mr-2" />
-              {t("inspector.transport.disconnect", "Disconnect")}
+              {t("inspector.transport.disconnect")}
             </Button>
           </>
         ) : (
@@ -656,8 +653,8 @@ export function TransportSelector({
               <Play className="h-4 w-4 mr-2" />
             )}
             {isConnecting
-              ? t("inspector.transport.connecting", "Connecting...")
-              : t("inspector.transport.connect", "Connect")}
+              ? t("inspector.transport.connecting")
+              : t("inspector.transport.connect")}
           </Button>
         )}
 
@@ -666,7 +663,7 @@ export function TransportSelector({
           size="sm"
           onClick={handleCopy}
           className="w-9 p-0"
-          title={t("inspector.transport.copyConfig", "Copy configuration")}
+          title={t("inspector.transport.copyConfig")}
         >
           {copied ? (
             <Check className="h-4 w-4 text-green-500" />
@@ -798,37 +795,28 @@ export function fromMcpServerConfig(mcpConfig: Record<string, unknown>): Transpo
 // Helper functions for i18n
 function getTransportTitle(
   type: TransportType,
-  t: (key: string, defaultValue: string) => string
+  t: (key: string) => string
 ): string {
   switch (type) {
     case "stdio":
-      return t("inspector.transport.stdioTitle", "STDIO Transport");
+      return t("inspector.transport.stdioTitle");
     case "sse":
-      return t("inspector.transport.sseTitle", "SSE Transport");
+      return t("inspector.transport.sseTitle");
     case "streamable-http":
-      return t("inspector.transport.httpTitle", "Streamable HTTP Transport");
+      return t("inspector.transport.httpTitle");
   }
 }
 
 function getTransportDescription(
   type: TransportType,
-  t: (key: string, defaultValue: string) => string
+  t: (key: string) => string
 ): string {
   switch (type) {
     case "stdio":
-      return t(
-        "inspector.transport.stdioDescription",
-        "Connects to an MCP server via standard input/output streams. Requires a local executable."
-      );
+      return t("inspector.transport.stdioDescription");
     case "sse":
-      return t(
-        "inspector.transport.sseDescription",
-        "Connects to an MCP server using Server-Sent Events. Suitable for real-time streaming responses."
-      );
+      return t("inspector.transport.sseDescription");
     case "streamable-http":
-      return t(
-        "inspector.transport.httpDescription",
-        "Connects to an MCP server using HTTP with streaming support. The recommended transport for most use cases."
-      );
+      return t("inspector.transport.httpDescription");
   }
 }

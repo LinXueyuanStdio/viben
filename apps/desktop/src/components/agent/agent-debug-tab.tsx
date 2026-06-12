@@ -199,7 +199,7 @@ export function AgentDebugTab({
                     sessionId
                       ? sessions.find((s) => s.id === sessionId) || {
                           id: sessionId,
-                          name: t("agentDetail.debugSession", "Debug Session"),
+                          name: t("agentDetail.debugSession"),
                           createdAt: new Date().toISOString(),
                           updatedAt: new Date().toISOString(),
                           agentName: agentName,
@@ -215,7 +215,7 @@ export function AgentDebugTab({
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                {agentName || t("chat.defaultAgent", "Default Agent")}
+                {agentName || t("chat.defaultAgent")}
               </p>
             </div>
           </div>
@@ -227,7 +227,7 @@ export function AgentDebugTab({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title={t("chat.refreshSessions", "Refresh sessions")}
+              title={t("chat.refreshSessions")}
               onClick={() => onRefreshSessions?.()}
               disabled={isLoadingSessions}
             >
@@ -239,7 +239,7 @@ export function AgentDebugTab({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title={t("chat.searchInConversation", "Search in conversation")}
+              title={t("chat.searchInConversation")}
             >
               <Search className="h-4 w-4" />
             </Button>
@@ -259,7 +259,7 @@ export function AgentDebugTab({
                 {/* Search - disabled for now */}
                 <DropdownMenuItem disabled>
                   <Search className="h-4 w-4 mr-3" />
-                  {t("chat.searchInConversation", "Search in conversation")}
+                  {t("chat.searchInConversation")}
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
@@ -267,7 +267,7 @@ export function AgentDebugTab({
                 {/* Open session folder */}
                 <DropdownMenuItem onSelect={() => onOpenSessionFolder?.()}>
                   <FolderOpen className="h-4 w-4 mr-3" />
-                  {t("chat.openSessionFolder", "Open Session Folder")}
+                  {t("chat.openSessionFolder")}
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
@@ -278,7 +278,7 @@ export function AgentDebugTab({
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-3" />
-                  {t("chat.clearMessages", "Clear messages")}
+                  {t("chat.clearMessages")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -293,10 +293,10 @@ export function AgentDebugTab({
                 <Bot className="h-8 w-8 text-primary" />
               </div>
               <h3 className="font-serif text-lg font-semibold text-foreground mb-2">
-                {t("noTraceYet", "Send a message to see the call trace")}
+                {t("agentDetail.noTraceYet")}
               </h3>
               <p className="text-muted-foreground text-sm max-w-xs">
-                {t("debugDescription", "Messages and tool calls will appear here")}
+                {t("agentDetail.debugDescription")}
               </p>
             </div>
           ) : (
@@ -319,7 +319,7 @@ export function AgentDebugTab({
             onSend={handleSendMessage}
             onCancel={onCancel}
             isLoading={isStreaming}
-            placeholder={t("inputPlaceholder", "Type a message...")}
+            placeholder={t("chat.inputPlaceholder")}
             className="rounded-none border-0"
             autoFocus
             showResizeHandle
@@ -340,7 +340,7 @@ export function AgentDebugTab({
           {/* Trace ID */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground w-20 shrink-0">
-              {t("traceId", "Trace ID")}:
+              {t("agentDetail.traceId")}:
             </span>
             <code className="text-xs font-mono truncate flex-1">
               {traceId || "-"}
@@ -363,7 +363,7 @@ export function AgentDebugTab({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {t("copyTraceId", "Copy Trace ID")}
+                    {t("agentDetail.copyTraceId")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -373,7 +373,7 @@ export function AgentDebugTab({
           {/* Session ID */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground w-20 shrink-0">
-              {t("sessionId", "Session ID")}:
+              {t("agentDetail.sessionId")}:
             </span>
             <code className="text-xs font-mono truncate flex-1">
               {sessionId || "-"}
@@ -396,7 +396,7 @@ export function AgentDebugTab({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {t("copySessionId", "Copy Session ID")}
+                    {t("agentDetail.copySessionId")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -416,11 +416,11 @@ export function AgentDebugTab({
               <TabsList>
                 <TabsTrigger value="tree" className="gap-1.5">
                   <TreeDeciduous className="h-4 w-4" />
-                  {t("callTree", "Call Tree")}
+                  {t("agentDetail.callTree")}
                 </TabsTrigger>
                 <TabsTrigger value="timeline" className="gap-1.5">
                   <Activity className="h-4 w-4" />
-                  {t("timeline", "Timeline")}
+                  {t("agentDetail.timeline")}
                 </TabsTrigger>
               </TabsList>
               {/* Refresh Button */}
@@ -439,7 +439,7 @@ export function AgentDebugTab({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {t("refreshTrace", "Refresh trace data")}
+                      {t("agentDetail.refreshTrace")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -454,14 +454,14 @@ export function AgentDebugTab({
                   <div className="flex flex-col items-center justify-center h-full text-center">
                     <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mb-4" />
                     <p className="text-muted-foreground">
-                      {t("loadingTrace", "Loading trace data...")}
+                      {t("agentDetail.loadingTrace")}
                     </p>
                   </div>
                 ) : !traceTree ? (
                   <div className="flex flex-col items-center justify-center h-full text-center">
                     <TreeDeciduous className="h-12 w-12 text-muted-foreground/50 mb-4" />
                     <p className="text-muted-foreground">
-                      {t("noTraceYet", "Send a message to see the call trace")}
+                      {t("agentDetail.noTraceYet")}
                     </p>
                   </div>
                 ) : (

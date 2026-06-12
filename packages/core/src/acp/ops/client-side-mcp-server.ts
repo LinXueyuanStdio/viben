@@ -35,6 +35,8 @@ export interface ClientStoreExecutor {
     description: string;
     inputSchema?: unknown;
   }>;
+  findActionByName: (name: string) => { clientId: string; namespace: string; name: string; description: string; inputSchema?: unknown } | undefined;
+  findActionByFullName: (fullName: string) => { clientId: string; namespace: string; name: string; description: string; inputSchema?: unknown } | undefined;
 }
 
 export interface ClientSideMcpServerOptions {
@@ -79,8 +81,40 @@ export function createClientSideMcpServer(options: ClientSideMcpServerOptions = 
       }
 
       if (options.clientStoreExecutor) {
+        // Handle meta-operations server-side (no desktop dispatch needed)
+        if (input.action === "list_actions") {
+          const allActions = options.clientStoreExecutor.getAllActions();
+          const actionInfos = allActions.map(a => ({
+            name: `${a.namespace}.${a.name}`,
+            description: a.description,
+          }));
+          return { content: [{ type: "text", text: JSON.stringify(actionInfos, null, 2) }] };
+        }
+        if (input.action === "get_action_detail") {
+          const targetAction = input.payload?.action as string | undefined;
+          if (!targetAction) {
+            return errorResult('Error: payload.action is required for get_action_detail');
+          }
+          const found = targetAction.includes(".")
+            ? options.clientStoreExecutor.findActionByFullName(targetAction)
+            : options.clientStoreExecutor.findActionByName(targetAction);
+          if (!found) {
+            return errorResult(`Action not found: ${targetAction}`);
+          }
+          return { content: [{ type: "text", text: JSON.stringify(found, null, 2) }] };
+        }
+
+        // Fallback: single-part name without namespace → look up in action store by name
+        let resolvedAction = input.action;
+        if (!resolvedAction.includes(".")) {
+          const match = options.clientStoreExecutor.findActionByName(resolvedAction);
+          if (match) {
+            resolvedAction = `${match.namespace}.${match.name}`;
+          }
+        }
+
         try {
-          const parsed = parseActionName(input.action, options.callerClientId);
+          const parsed = parseActionName(resolvedAction, options.callerClientId);
           return await options.clientStoreExecutor.executeAction(
             parsed.targetClientId,
             parsed.namespace,

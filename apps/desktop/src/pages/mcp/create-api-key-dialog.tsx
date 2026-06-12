@@ -12,7 +12,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/stores";
 import { useInstalledSources } from "@/hooks/use-installed-sources";
-import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { BrowseSourceStoreDialog } from "./browse-source-store";
 
 interface SourceItem {
   id: string;
@@ -30,8 +30,8 @@ interface CreateApiKeyDialogProps {
 
 export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }: CreateApiKeyDialogProps) {
   const { t } = useTranslation();
-  const { openPath } = useDesktopRouting();
   const providers = useAppStore((s) => s.providers);
+  const [storeOpen, setStoreOpen] = useState(false);
   const builtinProviders = useMemo(
     () => providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
     [providers]
@@ -119,8 +119,8 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
     setCreating(false);
   };
 
-  const handleOpenMarketplace = () => {
-    openPath("/browse-source-store");
+  const handleOpenStore = () => {
+    setStoreOpen(true);
   };
 
   const effectiveCount = selectAll ? allSources.length : selectedSources.size;
@@ -162,7 +162,7 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
                 variant="ghost"
                 size="sm"
                 className="h-7 px-2 gap-1"
-                onClick={handleOpenMarketplace}
+                onClick={handleOpenStore}
                 title={t("browseMcp.openMarketplace", "打开搜索源商店")}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -257,6 +257,8 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <BrowseSourceStoreDialog open={storeOpen} onOpenChange={setStoreOpen} />
     </Dialog>
   );
 }

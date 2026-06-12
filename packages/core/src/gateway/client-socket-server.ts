@@ -53,6 +53,24 @@ interface ActionResultData {
   };
 }
 
+interface ApprovalRequestData {
+  requestId: string;
+  executeRequestId: string;
+  message: string;
+  options?: { timeout?: number };
+}
+
+interface ApprovalResponseData {
+  requestId: string;
+  approved: boolean;
+}
+
+interface PendingApproval {
+  requestId: string;
+  originSocketId: string;
+  timer: NodeJS.Timeout;
+}
+
 export interface ExecuteContext {
   sessionId: string;
   toolUseId: string;
@@ -73,6 +91,7 @@ export class ClientSocketServer {
   private io: SocketIOServer;
   private clientStore: ClientStore;
   private pendingExecutes = new Map<string, PendingExecute>();
+  private pendingApprovals = new Map<string, PendingApproval>();
   private seenRequestIds = new Map<string, number>();
   private rateLimits = new Map<string, RateLimitInfo>();
   private cleanupTimer: NodeJS.Timeout | null = null;
@@ -146,6 +165,41 @@ export class ClientSocketServer {
       socket.on("action:result", (data: ActionResultData) => {
         if (!this.checkRateLimit(socket.id)) return;
         this.handleActionResult(data);
+      });
+
+      socket.on("action:approval:request", (data: ApprovalRequestData) => {
+        if (!this.checkRateLimit(socket.id)) return;
+        this.handleApprovalRequest(socket, data);
+      });
+
+      socket.on("action:approval:response", (data: ApprovalResponseData) => {
+        if (!this.checkRateLimit(socket.id)) return;
+        this.handleApprovalResponse(data);
+      });
+
+      socket.on("action:list", (_data: unknown, ack?: (response: { actions: Array<{ namespace: string; name: string; description: string }> }) => void) => {
+        if (!this.checkRateLimit(socket.id)) return;
+        const clientId = (socket as Socket & { clientId?: string }).clientId;
+        if (!clientId || !ack) return;
+
+        const client = this.clientStore.getClient(clientId);
+        if (!client) {
+          ack({ actions: [] });
+          return;
+        }
+
+        const actions: Array<{ namespace: string; name: string; description: string }> = [];
+        for (const entry of client.actionStore.values()) {
+          // Only include actions NOT from this socket (the desktop already has its own)
+          if (entry.socketId !== socket.id) {
+            actions.push({
+              namespace: entry.namespace,
+              name: entry.name,
+              description: entry.description,
+            });
+          }
+        }
+        ack({ actions });
       });
 
       socket.on("disconnect", () => {
@@ -223,6 +277,14 @@ export class ClientSocketServer {
       return;
     }
 
+    // Remove actions for this namespace+socket that are not in the new payload.
+    // This makes action:register a full reconciliation for the given namespace.
+    const incomingNames = new Set(Object.keys(data.actions || {}));
+    const staleRemoved = this.clientStore.removeStaleActions(clientId, data.namespace, socket.id, incomingNames);
+    if (staleRemoved.length > 0) {
+      log.info({ clientId, removed: staleRemoved }, "Stale actions removed during reconciliation");
+    }
+
     const accepted: string[] = [];
     const rejected: Array<{ action: string; reason: string }> = [];
 
@@ -269,6 +331,99 @@ export class ClientSocketServer {
     pending.resolve(data.result);
   }
 
+  private handleApprovalRequest(socket: Socket, data: ApprovalRequestData): void {
+    const clientId = (socket as Socket & { clientId?: string }).clientId;
+    if (!clientId) {
+      log.warn({ socketId: socket.id }, "Approval request without client connect");
+      return;
+    }
+
+    if (!data.requestId || !data.executeRequestId || !data.message) {
+      log.warn({ clientId, socketId: socket.id }, "Invalid approval request data");
+      return;
+    }
+
+    const client = this.clientStore.getClient(clientId);
+    if (!client) {
+      log.warn({ clientId }, "Client not found for approval request");
+      return;
+    }
+
+    // Find a UI-capable socket (main_window) for this client
+    let uiSocket: Socket | undefined;
+    for (const [socketId, socketInfo] of client.sockets) {
+      if (socketInfo.source === "main_window") {
+        const candidate = this.io.sockets.sockets.get(socketId);
+        if (candidate) {
+          uiSocket = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!uiSocket) {
+      log.warn({ clientId }, "No UI-capable socket found for approval request");
+      socket.emit("action:approval:result", {
+        requestId: data.requestId,
+        approved: false,
+        error: "No UI socket available",
+      });
+      return;
+    }
+
+    const timeoutMs = data.options?.timeout ?? DEFAULT_EXECUTE_TIMEOUT_MS;
+
+    const timer = setTimeout(() => {
+      this.pendingApprovals.delete(data.requestId);
+      const originSocket = this.io.sockets.sockets.get(socket.id);
+      if (originSocket) {
+        originSocket.emit("action:approval:result", {
+          requestId: data.requestId,
+          approved: false,
+          error: "Approval timeout",
+        });
+      }
+      log.debug({ requestId: data.requestId, clientId }, "Approval request timed out");
+    }, timeoutMs);
+
+    this.pendingApprovals.set(data.requestId, {
+      requestId: data.requestId,
+      originSocketId: socket.id,
+      timer,
+    });
+
+    uiSocket.emit("action:approval:request", {
+      requestId: data.requestId,
+      executeRequestId: data.executeRequestId,
+      message: data.message,
+      options: data.options,
+    });
+
+    log.debug({ requestId: data.requestId, clientId, uiSocketId: uiSocket.id }, "Approval request forwarded to UI");
+  }
+
+  private handleApprovalResponse(data: ApprovalResponseData): void {
+    const pending = this.pendingApprovals.get(data.requestId);
+    if (!pending) {
+      log.debug({ requestId: data.requestId }, "Approval response for unknown request (possibly timed out)");
+      return;
+    }
+
+    clearTimeout(pending.timer);
+    this.pendingApprovals.delete(data.requestId);
+
+    const originSocket = this.io.sockets.sockets.get(pending.originSocketId);
+    if (originSocket) {
+      originSocket.emit("action:approval:result", {
+        requestId: data.requestId,
+        approved: data.approved,
+      });
+      log.debug({ requestId: data.requestId, originSocketId: pending.originSocketId, approved: data.approved }, "Approval result sent to originator");
+    } else {
+      log.debug({ requestId: data.requestId, originSocketId: pending.originSocketId }, "Origin socket disconnected, approval result dropped");
+    }
+  }
+
   private handleDisconnect(socket: Socket): void {
     const clientId = (socket as Socket & { clientId?: string }).clientId;
     if (!clientId) return;
@@ -281,6 +436,39 @@ export class ClientSocketServer {
           content: [{ type: "text", text: "Socket disconnected during execution" }],
           isError: true,
         });
+      }
+    }
+
+    // Clean up pending approvals related to this socket
+    for (const [requestId, pending] of this.pendingApprovals) {
+      if (pending.originSocketId === socket.id) {
+        // Originator disconnected - clean up, no one to notify
+        clearTimeout(pending.timer);
+        this.pendingApprovals.delete(requestId);
+        log.debug({ requestId, socketId: socket.id }, "Pending approval cleaned up (originator disconnected)");
+      } else {
+        // Check if this was the UI socket (approver) for any pending approval
+        // If so, reject the approval back to the originator
+        const client = this.clientStore.getClient(clientId);
+        if (client) {
+          const socketInfo = client.sockets.get(socket.id);
+          if (socketInfo && socketInfo.source === "main_window") {
+            const originSocket = this.io.sockets.sockets.get(pending.originSocketId);
+            if (originSocket) {
+              const originClientId = (originSocket as Socket & { clientId?: string }).clientId;
+              if (originClientId === clientId) {
+                clearTimeout(pending.timer);
+                this.pendingApprovals.delete(requestId);
+                originSocket.emit("action:approval:result", {
+                  requestId,
+                  approved: false,
+                  error: "Approver disconnected",
+                });
+                log.debug({ requestId, socketId: socket.id }, "Approval rejected (UI socket disconnected)");
+              }
+            }
+          }
+        }
       }
     }
 
@@ -407,6 +595,20 @@ export class ClientSocketServer {
       });
     }
     this.pendingExecutes.clear();
+
+    for (const pending of this.pendingApprovals.values()) {
+      clearTimeout(pending.timer);
+      const originSocket = this.io.sockets.sockets.get(pending.originSocketId);
+      if (originSocket) {
+        originSocket.emit("action:approval:result", {
+          requestId: pending.requestId,
+          approved: false,
+          error: "Server shutdown",
+        });
+      }
+    }
+    this.pendingApprovals.clear();
+
     this.rateLimits.clear();
 
     this.io.close();

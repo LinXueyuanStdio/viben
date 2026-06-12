@@ -126,28 +126,28 @@ function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
 
   const badges = [
     {
-      label: t("inspector.annotations.readOnly", "Read-only"),
+      label: t("inspector.annotations.readOnly"),
       value: readOnly.value,
       implied: readOnly.implied,
-      description: t("inspector.annotations.readOnlyDesc", "Tool does not modify its environment"),
+      description: t("inspector.annotations.readOnlyDesc"),
     },
     {
-      label: t("inspector.annotations.destructive", "Destructive"),
+      label: t("inspector.annotations.destructive"),
       value: destructive.value,
       implied: destructive.implied,
-      description: t("inspector.annotations.destructiveDesc", "Tool may perform destructive updates"),
+      description: t("inspector.annotations.destructiveDesc"),
     },
     {
-      label: t("inspector.annotations.idempotent", "Idempotent"),
+      label: t("inspector.annotations.idempotent"),
       value: idempotent.value,
       implied: idempotent.implied,
-      description: t("inspector.annotations.idempotentDesc", "Calling repeatedly has no additional effect"),
+      description: t("inspector.annotations.idempotentDesc"),
     },
     {
-      label: t("inspector.annotations.openWorld", "Open-world"),
+      label: t("inspector.annotations.openWorld"),
       value: openWorld.value,
       implied: openWorld.implied,
-      description: t("inspector.annotations.openWorldDesc", "Tool may interact with external entities"),
+      description: t("inspector.annotations.openWorldDesc"),
     },
   ];
 
@@ -156,7 +156,7 @@ function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
       {badges.map(({ label, value, implied, description }) => (
         <span
           key={label}
-          title={`${description}\n\n${t("inspector.annotations.value", "Value")}: ${value ? t("common.yes") : t("common.no")} (${implied ? t("inspector.annotations.impliedDefault", "implied default") : t("inspector.annotations.explicitlySet", "explicitly set")})`}
+          title={`${description}\n\n${t("inspector.annotations.value")}: ${value ? t("common.yes") : t("common.no")} (${implied ? t("inspector.annotations.impliedDefault") : t("inspector.annotations.explicitlySet")})`}
           className={cn(
             "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border",
             value
@@ -345,7 +345,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
       try {
         const parsed = JSON.parse(value);
         if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          return { valid: false, error: t("inspector.jsonMustBeObject", "JSON must be an object") };
+          return { valid: false, error: t("inspector.jsonMustBeObject") };
         }
         return { valid: true, parsed };
       } catch (e) {
@@ -389,7 +389,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
     if (inputMode === "json") {
       const validation = validateJsonInput(jsonInput);
       if (!validation.valid) {
-        setJsonError(validation.error || t("inspector.jsonParseError", "Invalid JSON"));
+        setJsonError(validation.error || t("inspector.jsonParseError"));
         return;
       }
       argumentsObj = validation.parsed || {};
@@ -580,7 +580,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
       setExecutions((prev) =>
         prev.map((exec) =>
           exec.id === executionId
-            ? { ...exec, status: "error", error: t("inspector.taskPollingTimedOut", "Task polling timed out"), duration }
+            ? { ...exec, status: "error", error: t("inspector.taskPollingTimedOut"), duration }
             : exec
         )
       );
@@ -661,7 +661,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
             <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <img
               src={`data:${mimeType};base64,${data}`}
-              alt={t("inspector.toolResultAlt", "Tool result")}
+              alt={t("inspector.toolResultAlt")}
               className="max-w-full max-h-48 rounded border border-border"
             />
           </div>
@@ -681,7 +681,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
           <div key={idx} className="border border-border rounded p-2 space-y-1">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <FileJson className="h-3 w-3" />
-              <span className="font-mono truncate">{uri || t("inspector.resource", "Resource")}</span>
+              <span className="font-mono truncate">{uri || t("inspector.resource")}</span>
             </div>
             {text && (
               <pre className="text-xs whitespace-pre-wrap break-words bg-muted/50 p-2 rounded max-h-32 overflow-auto">
@@ -691,7 +691,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
             {blob && mimeType.startsWith("image/") && (
               <img
                 src={`data:${mimeType};base64,${blob}`}
-                alt={t("inspector.resourceAlt", "Resource")}
+                alt={t("inspector.resourceAlt")}
                 className="max-w-full max-h-48 rounded"
               />
             )}
@@ -734,7 +734,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
         {Boolean(r.isError) && (
           <div className="flex items-center gap-1.5 text-xs text-red-500">
             <AlertCircle className="h-3.5 w-3.5" />
-            <span>{t("inspector.toolReturnedError", "Tool returned error")}</span>
+            <span>{t("inspector.toolReturnedError")}</span>
           </div>
         )}
       </div>
@@ -853,13 +853,13 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                       {/* Compact annotation indicators */}
                       <div className="flex items-center gap-0.5 shrink-0">
                         {hasReadOnly && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" title={t("inspector.annotations.readOnly", "Read-only")} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" title={t("inspector.annotations.readOnly")} />
                         )}
                         {hasDestructive && !hasReadOnly && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" title={t("inspector.annotations.destructive", "Destructive")} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" title={t("inspector.annotations.destructive")} />
                         )}
                         {hasIdempotent && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title={t("inspector.annotations.idempotent", "Idempotent")} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title={t("inspector.annotations.idempotent")} />
                         )}
                       </div>
                     </div>
@@ -882,7 +882,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                     {loadingMore ? (
                       <Loader2 className="h-3 w-3 animate-spin mr-1" />
                     ) : null}
-                    {t("inspector.loadMore", "Load More")}
+                    {t("inspector.loadMore")}
                   </Button>
                 </div>
               )}
@@ -918,7 +918,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
               >
                 {showSchema ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 <FileJson className="h-3.5 w-3.5" />
-                {t("inspector.viewSchema", "Input Schema")}
+                {t("inspector.viewSchema")}
               </button>
               {showSchema && selectedTool.inputSchema && (
                 <pre className="p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-48">
@@ -940,7 +940,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                       <ChevronRight className="h-3.5 w-3.5" />
                     )}
                     <FileJson className="h-3.5 w-3.5" />
-                    {t("inspector.outputSchema", "Output Schema")}
+                    {t("inspector.outputSchema")}
                   </button>
                   {showOutputSchema && (
                     <pre className="p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-48">
@@ -960,7 +960,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                   >
                     {showMeta ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                     <FileJson className="h-3.5 w-3.5" />
-                    {t("inspector.toolMeta", "Tool Meta")}
+                    {t("inspector.toolMeta")}
                   </button>
                   {showMeta && (
                     <pre className="p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-48">
@@ -976,11 +976,11 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
               <TabsList className="mb-3 h-8">
                 <TabsTrigger value="form" className="text-xs h-7 px-3">
                   <Wrench className="h-3 w-3 mr-1.5" />
-                  {t("inspector.formInput", "Form")}
+                  {t("inspector.formInput")}
                 </TabsTrigger>
                 <TabsTrigger value="json" className="text-xs h-7 px-3">
                   <Code2 className="h-3 w-3 mr-1.5" />
-                  {t("inspector.jsonInput", "JSON")}
+                  {t("inspector.jsonInput")}
                 </TabsTrigger>
               </TabsList>
 
@@ -1022,14 +1022,14 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                   {/* Metadata section */}
                   <div className="border-t border-border pt-4">
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm font-medium">{t("inspector.toolMetadata", "Tool Metadata")}</Label>
+                      <Label className="text-sm font-medium">{t("inspector.toolMetadata")}</Label>
                       <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addMetadataEntry}>
                         <Plus className="h-3 w-3 mr-1" />
-                        {t("inspector.addPair", "Add")}
+                        {t("inspector.addPair")}
                       </Button>
                     </div>
                     {metadataEntries.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">{t("inspector.noMetadata", "No metadata")}</p>
+                      <p className="text-xs text-muted-foreground">{t("inspector.noMetadata")}</p>
                     ) : (
                       <div className="space-y-2">
                         {metadataEntries.map((entry) => {
@@ -1075,7 +1075,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                     )}
                     {hasAnyMetadataError && (
                       <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                        {t("inspector.fixMetadataErrors", "Fix metadata key errors before running the tool.")}
+                        {t("inspector.fixMetadataErrors")}
                       </p>
                     )}
                   </div>
@@ -1093,9 +1093,9 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                         htmlFor="run-as-task-form"
                         className="text-sm font-medium text-muted-foreground cursor-pointer"
                       >
-                        {t("inspector.runAsTask", "Run as task")}
+                        {t("inspector.runAsTask")}
                         {toolTaskSupport === "required" && (
-                          <span className="text-xs ml-1">({t("inspector.required", "required")})</span>
+                          <span className="text-xs ml-1">({t("common.required")})</span>
                         )}
                       </Label>
                     </div>
@@ -1114,14 +1114,14 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                         <Play className="h-4 w-4 mr-2" />
                       )}
                       {isPollingTask
-                        ? t("inspector.pollingTask", "Polling Task...")
+                        ? t("inspector.pollingTask")
                         : executing
                           ? t("inspector.calling")
                           : t("inspector.callTool")}
                     </Button>
                     <Button variant="outline" onClick={copyInput}>
                       <Copy className="h-4 w-4 mr-2" />
-                      {t("inspector.copyInput", "Copy")}
+                      {t("inspector.copyInput")}
                     </Button>
                   </div>
                 </div>
@@ -1131,10 +1131,10 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">
-                      {t("inspector.jsonArguments", "JSON Arguments")}
+                      {t("inspector.jsonArguments")}
                     </span>
                     <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={formatJsonInput}>
-                      {t("inspector.format", "Format")}
+                      {t("inspector.format")}
                     </Button>
                   </div>
 
@@ -1161,14 +1161,14 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                   {/* Metadata section */}
                   <div className="border-t border-border pt-4">
                     <div className="flex items-center justify-between mb-2">
-                      <Label className="text-sm font-medium">{t("inspector.toolMetadata", "Tool Metadata")}</Label>
+                      <Label className="text-sm font-medium">{t("inspector.toolMetadata")}</Label>
                       <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addMetadataEntry}>
                         <Plus className="h-3 w-3 mr-1" />
-                        {t("inspector.addPair", "Add")}
+                        {t("inspector.addPair")}
                       </Button>
                     </div>
                     {metadataEntries.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">{t("inspector.noMetadata", "No metadata")}</p>
+                      <p className="text-xs text-muted-foreground">{t("inspector.noMetadata")}</p>
                     ) : (
                       <div className="space-y-2">
                         {metadataEntries.map((entry) => {
@@ -1214,7 +1214,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                     )}
                     {hasAnyMetadataError && (
                       <p className="text-xs text-red-600 dark:text-red-400 mt-2">
-                        {t("inspector.fixMetadataErrors", "Fix metadata key errors before running the tool.")}
+                        {t("inspector.fixMetadataErrors")}
                       </p>
                     )}
                   </div>
@@ -1232,9 +1232,9 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                         htmlFor="run-as-task-json"
                         className="text-sm font-medium text-muted-foreground cursor-pointer"
                       >
-                        {t("inspector.runAsTask", "Run as task")}
+                        {t("inspector.runAsTask")}
                         {toolTaskSupport === "required" && (
-                          <span className="text-xs ml-1">({t("inspector.required", "required")})</span>
+                          <span className="text-xs ml-1">({t("common.required")})</span>
                         )}
                       </Label>
                     </div>
@@ -1253,14 +1253,14 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                         <Play className="h-4 w-4 mr-2" />
                       )}
                       {isPollingTask
-                        ? t("inspector.pollingTask", "Polling Task...")
+                        ? t("inspector.pollingTask")
                         : executing
                           ? t("inspector.calling")
                           : t("inspector.callTool")}
                     </Button>
                     <Button variant="outline" onClick={copyInput}>
                       <Copy className="h-4 w-4 mr-2" />
-                      {t("inspector.copyInput", "Copy")}
+                      {t("inspector.copyInput")}
                     </Button>
                   </div>
                 </div>
@@ -1323,7 +1323,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                     <span className="font-mono text-xs flex-1 truncate">{execution.toolName}</span>
                     {execution.isTask && (
                       <Badge variant="outline" className="h-4 px-1 text-[10px] border-purple-500/30 text-purple-600 dark:text-purple-400">
-                        {t("inspector.task", "Task")}
+                        {t("inspector.task")}
                       </Badge>
                     )}
                     <span className="text-xs text-muted-foreground">
@@ -1371,8 +1371,8 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                   }}
                                   title={
                                     renderedResults.has(execution.id)
-                                      ? t("inspector.showJson", "Show JSON")
-                                      : t("inspector.showRendered", "Show Rendered")
+                                      ? t("inspector.showJson")
+                                      : t("inspector.showRendered")
                                   }
                                 >
                                   {renderedResults.has(execution.id) ? (
@@ -1383,7 +1383,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                   ) : (
                                     <>
                                       <Eye className="h-3 w-3" />
-                                      <span>{t("inspector.render", "Render")}</span>
+                                      <span>{t("inspector.render")}</span>
                                     </>
                                   )}
                                 </Button>

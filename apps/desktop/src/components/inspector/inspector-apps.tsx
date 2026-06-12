@@ -384,9 +384,9 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center">
         <AlertTriangle className="h-10 w-10 text-muted-foreground mb-3" />
-        <h4 className="text-sm font-medium">{t("inspector.appsNotSupported", "Apps Not Supported")}</h4>
+        <h4 className="text-sm font-medium">{t("inspector.appsNotSupported")}</h4>
         <p className="text-xs text-muted-foreground mt-1">
-          {t("inspector.appsNotSupportedDesc", "The connected server does not support tools with UI.")}
+          {t("inspector.appsNotSupportedDesc")}
         </p>
       </div>
     );
@@ -408,7 +408,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <AppWindow className="h-4 w-4 text-purple-500" />
-              <span className="text-sm font-medium">{t("inspector.mcpApps", "MCP Apps")}</span>
+              <span className="text-sm font-medium">{t("inspector.mcpApps")}</span>
               <Badge variant="secondary" className="h-5 px-1.5 text-xs">
                 {appTools.length}
               </Badge>
@@ -428,7 +428,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
           <div className="relative mb-3">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder={t("inspector.searchApps", "Search apps...")}
+              placeholder={t("inspector.searchApps")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-8 pl-8 text-xs"
@@ -441,19 +441,19 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
               <div className="flex flex-col items-center justify-center h-full text-center p-4">
                 <AppWindow className="h-8 w-8 text-muted-foreground/50 mb-2" />
                 <p className="text-xs text-muted-foreground">
-                  {t("inspector.noAppsFound", "No MCP Apps available")}
+                  {t("inspector.noAppsFound")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {t("inspector.appsHint", "Apps are tools with _meta.ui.resourceUri")}
+                  {t("inspector.appsHint")}
                 </p>
                 <Button size="sm" className="mt-3" onClick={fetchTools} disabled={loading}>
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                  {t("inspector.refreshApps", "Refresh Apps")}
+                  {t("inspector.refreshApps")}
                 </Button>
               </div>
             ) : filteredAppTools.length === 0 ? (
               <div className="text-center p-4 text-xs text-muted-foreground">
-                {t("inspector.noAppsMatching", 'No apps found matching "{{query}}"').replace("{{query}}", searchQuery)}
+                {t("inspector.noAppsMatching", { query: searchQuery })}
               </div>
             ) : (
               filteredAppTools.map((tool) => (
@@ -495,7 +495,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
               <AppWindow className="h-4 w-4 text-purple-500" />
             )}
             <h3 className="font-semibold text-sm">
-              {selectedTool ? selectedTool.name : t("inspector.selectApp", "Select an app")}
+              {selectedTool ? selectedTool.name : t("inspector.selectApp")}
             </h3>
           </div>
           <div className="flex items-center gap-1">
@@ -505,7 +505,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0"
-                title={isMaximized ? t("inspector.minimize", "Minimize") : t("inspector.maximize", "Maximize")}
+                title={isMaximized ? t("inspector.minimize") : t("inspector.maximize")}
               >
                 {isMaximized ? (
                   <Minimize2 className="w-4 h-4" />
@@ -520,7 +520,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0"
-                title={t("inspector.closeApp", "Close app")}
+                title={t("inspector.closeApp")}
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -550,7 +550,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                   )}
 
                   <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
-                    <h4 className="font-medium text-sm">{t("inspector.appInput", "App Input")}</h4>
+                    <h4 className="font-medium text-sm">{t("inspector.appInput")}</h4>
 
                     {hasFields ? (
                       Object.entries(
@@ -582,7 +582,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                       })
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        {t("inspector.noInputRequired", "No input required")}
+                        {t("inspector.noInputRequired")}
                       </p>
                     )}
 
@@ -597,8 +597,8 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                         <Play className="w-4 h-4 mr-2" />
                       )}
                       {isOpeningApp
-                        ? t("inspector.openingApp", "Opening App...")
-                        : t("inspector.openApp", "Open App")}
+                        ? t("inspector.openingApp")
+                        : t("inspector.openApp")}
                     </Button>
                   </div>
                 </div>
@@ -609,7 +609,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                     <div className="flex justify-end">
                       <Button onClick={handleCloseApp} variant="outline" size="sm">
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        {t("inspector.backToInput", "Back to Input")}
+                        {t("inspector.backToInput")}
                       </Button>
                     </div>
                   )}
@@ -629,7 +629,7 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
                     ) : (
                       // Show raw result
                       <div className="p-4 h-full overflow-auto">
-                        <h4 className="font-medium text-sm mb-2">{t("inspector.toolResult", "Tool Result")}</h4>
+                        <h4 className="font-medium text-sm mb-2">{t("inspector.toolResult")}</h4>
                         <pre className="text-xs bg-muted/50 p-3 rounded overflow-x-auto">
                           {JSON.stringify(submittedToolResult, null, 2)}
                         </pre>
@@ -644,14 +644,11 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
             <div className="flex flex-col items-center justify-center h-full text-center py-12">
               <AppWindow className="w-12 h-12 opacity-20 mb-4" />
               <p className="text-muted-foreground">
-                {t("inspector.selectAppToStart", "Select an app from the list to get started")}
+                {t("inspector.selectAppToStart")}
               </p>
               {appTools.length === 0 && (
                 <p className="text-xs text-muted-foreground mt-2 max-w-[200px]">
-                  {t(
-                    "inspector.noAppsAvailable",
-                    "No MCP Apps available. Apps are tools that include a _meta.ui.resourceUri"
-                  )}
+                  {t("inspector.noAppsAvailable")}
                 </p>
               )}
             </div>
@@ -813,11 +810,11 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-muted">
               <Shield className="h-3 w-3 text-muted-foreground" />
-              <span className="text-muted-foreground">{t("inspector.checking", "Checking...")}</span>
+              <span className="text-muted-foreground">{t("inspector.checking")}</span>
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            {t("inspector.securityCheckPending", "Running security checks...")}
+            {t("inspector.securityCheckPending")}
           </TooltipContent>
         </Tooltip>
       );
@@ -829,11 +826,11 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/10">
               <ShieldCheck className="h-3 w-3 text-green-600 dark:text-green-400" />
-              <span className="text-green-600 dark:text-green-400">{t("inspector.secure", "Secure")}</span>
+              <span className="text-green-600 dark:text-green-400">{t("inspector.secure")}</span>
             </div>
           </TooltipTrigger>
           <TooltipContent>
-            {t("inspector.securityPassed", "App is running in isolated sandbox")}
+            {t("inspector.securityPassed")}
           </TooltipContent>
         </Tooltip>
       );
@@ -844,11 +841,11 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-amber-500/10">
             <ShieldAlert className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-            <span className="text-amber-600 dark:text-amber-400">{t("inspector.warning", "Warning")}</span>
+            <span className="text-amber-600 dark:text-amber-400">{t("inspector.warning")}</span>
           </div>
         </TooltipTrigger>
         <TooltipContent>
-          {t("inspector.securityWarning", "Some security checks did not pass. Use caution.")}
+          {t("inspector.securityWarning")}
         </TooltipContent>
       </Tooltip>
     );
@@ -871,7 +868,7 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
           size="sm"
           className="h-6 px-2"
           onClick={handleOpenExternal}
-          title={t("inspector.openInNewTab", "Open in new tab")}
+          title={t("inspector.openInNewTab")}
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
@@ -886,8 +883,8 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <span className="text-xs text-muted-foreground">
                 {!sandboxReady
-                  ? t("inspector.initializingSandbox", "Initializing sandbox...")
-                  : t("inspector.loadingApp", "Loading app...")}
+                  ? t("inspector.initializingSandbox")
+                  : t("inspector.loadingApp")}
               </span>
             </div>
           </div>
@@ -905,7 +902,7 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
               onClick={handleOpenExternal}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
-              {t("inspector.openInNewTab", "Open in new tab")}
+              {t("inspector.openInNewTab")}
             </Button>
           </div>
         )}
@@ -916,7 +913,7 @@ function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: App
           src={sandboxProxyUrl}
           className="w-full h-full border-0"
           sandbox="allow-scripts allow-forms allow-popups allow-modals"
-          title={t("inspector.mcpAppSandbox", "MCP App Sandbox")}
+          title={t("inspector.mcpAppSandbox")}
         />
       </div>
     </div>

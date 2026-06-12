@@ -49,6 +49,21 @@ export function createExecutionContext(sessionId: string, toolUseId: string): Ex
 }
 
 /**
+ * Request local approval using the module-level approvalHandler.
+ * This is used when the gateway forwards an approval request to this client
+ * and we need to show the local approval dialog.
+ */
+export function requestLocalApproval(message: string, options?: ApprovalOptions): Promise<boolean> {
+  const handler = approvalHandler;
+  if (!handler) {
+    return Promise.reject(new UserCancelledException("No approval dialog available"));
+  }
+  return new Promise<boolean>((resolve, reject) => {
+    handler({ message, options, resolve, reject });
+  });
+}
+
+/**
  * Create an ExecutionContext for socket.io-dispatched action execution.
  * Uses a callback for approval that goes through the socket.io protocol.
  */

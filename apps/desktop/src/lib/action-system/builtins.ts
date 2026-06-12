@@ -6,6 +6,7 @@ import type { ActionDetail, ExecutionContext } from "./types";
 import { useActionStore } from "@/stores/action-store";
 import { navigateToPath } from "./navigation-handler";
 import { ROUTE_ENTRIES, registry } from "@/navigation/route-registry";
+import { queryRemoteActions } from "./gateway-action-socket";
 
 const READ_WINDOW_CAPTURE_TIMEOUT_MS = 10_000;
 
@@ -37,11 +38,24 @@ export async function executeBuiltin(
   }
 }
 
-function handleListActions(): ClientToolResult {
+async function handleListActions(): Promise<ClientToolResult> {
   const store = useActionStore.getState();
-  const actions = [...getBuiltinActionInfos(), ...store.listActions()];
+  const localActions = [...getBuiltinActionInfos(), ...store.listActions()];
+
+  // Also include actions from other sources (pages) registered on the gateway
+  const remoteActions = await queryRemoteActions();
+  const remoteActionInfos = remoteActions.map((a) => ({
+    name: `${a.namespace}.${a.name}`,
+    description: a.description,
+  }));
+
+  // Deduplicate: local actions take priority
+  const localNames = new Set(localActions.map((a) => a.name));
+  const uniqueRemote = remoteActionInfos.filter((a) => !localNames.has(a.name));
+
+  const allActions = [...localActions, ...uniqueRemote];
   return {
-    content: [{ type: "text", text: JSON.stringify(actions, null, 2) }],
+    content: [{ type: "text", text: JSON.stringify(allActions, null, 2) }],
   };
 }
 

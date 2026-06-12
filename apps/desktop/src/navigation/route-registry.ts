@@ -64,7 +64,6 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
   { pattern: "/os", icon: { type: "lucide", value: "monitor" }, title: "OS", dropdownCategory: "root" },
   { pattern: "/inspector", icon: { type: "lucide", value: "search" }, title: "Inspector", titleKey: "nav.inspector", dropdownCategory: "root" },
   { pattern: "/mcp-marketplace", icon: { type: "lucide", value: "store" }, title: "MCP Marketplace", titleKey: "nav.mcpMarketplace", dropdownCategory: "root" },
-  { pattern: "/browse-source-store", icon: { type: "lucide", value: "search" }, title: "Browse Source Store", titleKey: "nav.browseSourceStore", dropdownCategory: "root" },
   { pattern: "/skills-market", icon: { type: "lucide", value: "sparkles" }, title: "Skills Market", titleKey: "nav.skillsMarket", dropdownCategory: "root" },
   { pattern: "/chat-monitor", icon: { type: "lucide", value: "activity" }, title: "Chat Monitor", titleKey: "workspace.chatMonitor", dropdownCategory: "root" },
   { pattern: "/about", icon: { type: "lucide", value: "info" }, title: "About", titleKey: "nav.about", dropdownCategory: "root" },

@@ -256,7 +256,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
       window.open(authUrl, "_blank", "width=600,height=700");
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : t("inspector.unknownErrorOccurred", "Unknown error occurred");
+        error instanceof Error ? error.message : t("inspector.unknownErrorOccurred");
       setFlowError(errorMessage);
       setFlowStatus("error");
       addDebugLog("Error", "error", { message: errorMessage });
@@ -353,7 +353,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
       });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : t("inspector.unknownErrorOccurred", "Unknown error occurred");
+        error instanceof Error ? error.message : t("inspector.unknownErrorOccurred");
       setFlowError(errorMessage);
       setFlowStatus("error");
       addDebugLog("Error", "error", { message: errorMessage });
@@ -445,35 +445,35 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
       case "generating_pkce":
         return {
           icon: Loader2,
-          text: t("inspector.generatingPKCE", "Generating PKCE parameters..."),
+          text: t("inspector.generatingPKCE"),
           color: "text-blue-500",
           animate: true,
         };
       case "awaiting_authorization":
         return {
           icon: ExternalLink,
-          text: t("inspector.awaitingAuth", "Waiting for authorization..."),
+          text: t("inspector.awaitingAuth"),
           color: "text-yellow-500",
           animate: false,
         };
       case "exchanging_code":
         return {
           icon: Loader2,
-          text: t("inspector.exchangingCode", "Exchanging code for token..."),
+          text: t("inspector.exchangingCode"),
           color: "text-blue-500",
           animate: true,
         };
       case "success":
         return {
           icon: Check,
-          text: t("inspector.oauthSuccess", "Token obtained successfully!"),
+          text: t("inspector.oauthSuccess"),
           color: "text-green-500",
           animate: false,
         };
       case "error":
         return {
           icon: AlertTriangle,
-          text: flowError || t("inspector.oauthError", "OAuth flow failed"),
+          text: flowError || t("inspector.oauthError"),
           color: "text-red-500",
           animate: false,
         };
@@ -563,8 +563,8 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                 </div>
 
                 <div className="text-[10px] text-muted-foreground">
-                  {t("inspector.created", "Created:")} {token.createdAt.toLocaleDateString()}
-                  {token.expiresAt && ` | ${t("inspector.expires", "Expires:")} ${token.expiresAt.toLocaleDateString()}`}
+                  {t("inspector.created")} {token.createdAt.toLocaleDateString()}
+                  {token.expiresAt && ` | ${t("inspector.expires")} ${token.expiresAt.toLocaleDateString()}`}
                 </div>
 
                 {token.scopes && token.scopes.length > 0 && (
@@ -595,7 +595,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
             <Input
               value={newTokenName}
               onChange={(e) => setNewTokenName(e.target.value)}
-              placeholder={t("inspector.myApiKeyPlaceholder", "My API Key")}
+              placeholder={t("inspector.myApiKeyPlaceholder")}
               className="text-sm"
             />
           </div>
@@ -609,8 +609,8 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               onChange={(e) => setNewTokenType(e.target.value as "bearer" | "api_key")}
               className="flex 8-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
             >
-              <option value="bearer">{t("inspector.bearerTokenOption", "Bearer Token")}</option>
-              <option value="api_key">{t("inspector.apiKeyOption", "API Key")}</option>
+              <option value="bearer">{t("inspector.bearerTokenOption")}</option>
+              <option value="api_key">{t("inspector.apiKeyOption")}</option>
             </select>
           </div>
 
@@ -622,7 +622,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               type="password"
               value={newTokenValue}
               onChange={(e) => setNewTokenValue(e.target.value)}
-              placeholder={t("inspector.tokenPlaceholder", "sk-...")}
+              placeholder={t("inspector.tokenPlaceholder")}
               className="font-mono text-sm"
             />
           </div>
@@ -648,7 +648,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               )}
               <Lock className="h-4 w-4 text-purple-500" />
               <span className="text-sm font-medium">
-                {t("inspector.oauthConfig", "OAuth 2.0 Configuration")}
+                {t("inspector.oauthConfig")}
               </span>
               <Badge variant="outline" className="text-[10px] ml-auto">
                 {usePKCE ? t("inspector.authModes.pkce") : t("inspector.authModes.standard")}
@@ -659,7 +659,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {/* Authorization URL */}
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {t("inspector.authorizationUrl", "Authorization URL")}
+                  {t("inspector.authorizationUrl")}
                   <span className="text-red-500 ml-0.5">*</span>
                 </Label>
                 <Input
@@ -678,7 +678,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {/* Token URL */}
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {t("inspector.tokenUrl", "Token URL")}
+                  {t("inspector.tokenUrl")}
                   <span className="text-red-500 ml-0.5">*</span>
                 </Label>
                 <Input
@@ -697,7 +697,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {/* Client ID */}
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {t("inspector.clientId", "Client ID")}
+                  {t("inspector.clientId")}
                   <span className="text-red-500 ml-0.5">*</span>
                 </Label>
                 <Input
@@ -716,9 +716,9 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {/* Client Secret (optional) */}
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {t("inspector.clientSecret", "Client Secret")}
+                  {t("inspector.clientSecret")}
                   <span className="text-muted-foreground/50 ml-1 text-[10px]">
-                    ({t("common.optional", "optional")})
+                    ({t("common.optional")})
                   </span>
                 </Label>
                 <Input
@@ -738,7 +738,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {/* Redirect URI */}
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {t("inspector.redirectUri", "Redirect URI")}
+                  {t("inspector.redirectUri")}
                   <span className="text-red-500 ml-0.5">*</span>
                 </Label>
                 <Input
@@ -757,9 +757,9 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {/* Scopes */}
               <div>
                 <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-                  {t("inspector.scopes", "Scopes")}
+                  {t("inspector.scopes")}
                   <span className="text-muted-foreground/50 ml-1 text-[10px]">
-                    ({t("inspector.spaceSepatated", "space-separated")})
+                    ({t("inspector.spaceSeparated")})
                   </span>
                 </Label>
                 <Input
@@ -786,9 +786,9 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                   htmlFor="use-pkce"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  {t("inspector.usePKCE", "Use PKCE")}
+                  {t("inspector.usePKCE")}
                   <span className="text-xs text-muted-foreground ml-1">
-                    ({t("inspector.recommended", "recommended")})
+                    ({t("inspector.recommended")})
                   </span>
                 </Label>
               </div>
@@ -805,7 +805,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                   className="text-sm font-medium cursor-pointer flex items-center gap-1.5"
                 >
                   <Bug className="h-3.5 w-3.5" />
-                  {t("inspector.debugMode", "Debug Mode")}
+                  {t("inspector.debugMode")}
                 </Label>
               </div>
 
@@ -847,15 +847,12 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               {flowStatus === "awaiting_authorization" && (
                 <div className="space-y-3 p-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5">
                   <p className="text-xs text-muted-foreground">
-                    {t(
-                      "inspector.enterAuthCode",
-                      "After authorizing in the browser, paste the authorization code here:"
-                    )}
+                    {t("inspector.enterAuthCode")}
                   </p>
                   <Input
                     value={authorizationCode}
                     onChange={(e) => setAuthorizationCode(e.target.value)}
-                    placeholder={t("inspector.authCodePlaceholder", "Paste authorization code...")}
+                    placeholder={t("inspector.authCodePlaceholder")}
                     className="text-sm font-mono"
                   />
                   <div className="flex gap-2">
@@ -865,10 +862,10 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       className="flex-1"
                     >
                       <Play className="h-4 w-4 mr-2" />
-                      {t("inspector.exchangeCode", "Exchange Code")}
+                      {t("inspector.exchangeCode")}
                     </Button>
                     <Button variant="outline" onClick={resetOAuthFlow}>
-                      {t("common.cancel", "Cancel")}
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </div>
@@ -885,11 +882,11 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                     className="flex-1"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
-                    {t("inspector.startOAuthFlow", "Start OAuth Flow")}
+                    {t("inspector.startOAuthFlow")}
                   </Button>
                   {flowStatus !== "idle" && (
                     <Button variant="outline" onClick={resetOAuthFlow}>
-                      {t("common.reset", "Reset")}
+                      {t("common.reset")}
                     </Button>
                   )}
                 </div>
@@ -905,7 +902,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       <ChevronRight className="h-3.5 w-3.5" />
                     )}
                     <span className="text-xs font-medium text-muted-foreground">
-                      {t("inspector.pkceParams", "PKCE Parameters")}
+                      {t("inspector.pkceParams")}
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-2">
@@ -932,7 +929,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">
-                      {t("inspector.debugLogs", "Debug Logs")}
+                      {t("inspector.debugLogs")}
                     </span>
                     <Button
                       variant="ghost"

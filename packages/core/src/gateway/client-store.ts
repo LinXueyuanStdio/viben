@@ -92,6 +92,7 @@ function computeActionHash(clientId: string, action: RegisterActionOptions): str
 export class ClientStore {
   private clients = new Map<string, ClientState>();
   private readonly config: Required<ClientStoreConfig>;
+  private nameIndex = new Map<string, ActionWithClient[]>();
 
   constructor(config: ClientStoreConfig = {}) {
     this.config = {
@@ -210,6 +211,10 @@ export class ClientStore {
 
     if (client.sockets.size > 0) {
       for (const fullName of actionsFromSocket) {
+        const action = client.actionStore.get(fullName);
+        if (action) {
+          this.removeFromNameIndex(clientId, action);
+        }
         client.actionStore.delete(fullName);
         log.info({ clientId, action: fullName }, "Action removed (socket disconnected)");
       }
@@ -221,6 +226,9 @@ export class ClientStore {
     client.disconnectTimer = setTimeout(() => {
       const removedClient = this.clients.get(clientId);
       if (removedClient && removedClient.sockets.size === 0) {
+        for (const action of removedClient.actionStore.values()) {
+          this.removeFromNameIndex(clientId, action);
+        }
         this.clients.delete(clientId);
         log.info({ clientId, actionsRemoved: Array.from(removedClient.actionStore.keys()) },
           "Client removed after grace period");
@@ -265,7 +273,13 @@ export class ClientStore {
       timeout: action.timeout,
     };
 
+    const oldEntry = client.actionStore.get(fullName);
+    if (oldEntry) {
+      this.removeFromNameIndex(clientId, oldEntry);
+    }
+
     client.actionStore.set(fullName, entry);
+    this.addToNameIndex(clientId, entry);
     log.info({ clientId, action: fullName, socketId, timeout: action.timeout }, "Action registered");
 
     return { updated: true, fullName };
@@ -283,6 +297,7 @@ export class ClientStore {
 
       if (matchNamespace && matchSocket) {
         client.actionStore.delete(fullName);
+        this.removeFromNameIndex(clientId, action);
         removed.push(fullName);
       }
     }
@@ -316,6 +331,56 @@ export class ClientStore {
     return result;
   }
 
+  removeStaleActions(clientId: string, namespace: string, socketId: string, keepNames: Set<string>): string[] {
+    const client = this.clients.get(clientId);
+    if (!client) return [];
+
+    const removed: string[] = [];
+    for (const [fullName, entry] of client.actionStore) {
+      if (entry.namespace === namespace && entry.socketId === socketId && !keepNames.has(entry.name)) {
+        this.removeFromNameIndex(clientId, entry);
+        client.actionStore.delete(fullName);
+        removed.push(fullName);
+      }
+    }
+    return removed;
+  }
+
+  findActionByName(name: string): ActionWithClient | undefined {
+    const entries = this.nameIndex.get(name);
+    return entries?.[0];
+  }
+
+  findActionByFullName(fullName: string): ActionWithClient | undefined {
+    for (const [clientId, client] of this.clients) {
+      const entry = client.actionStore.get(fullName);
+      if (entry) return { ...entry, clientId };
+    }
+    return undefined;
+  }
+
+  private addToNameIndex(clientId: string, entry: ActionEntry): void {
+    const list = this.nameIndex.get(entry.name);
+    const item: ActionWithClient = { ...entry, clientId };
+    if (list) {
+      list.push(item);
+    } else {
+      this.nameIndex.set(entry.name, [item]);
+    }
+  }
+
+  private removeFromNameIndex(clientId: string, entry: ActionEntry): void {
+    const list = this.nameIndex.get(entry.name);
+    if (!list) return;
+    const idx = list.findIndex(a => a.clientId === clientId && a.namespace === entry.namespace);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      if (list.length === 0) {
+        this.nameIndex.delete(entry.name);
+      }
+    }
+  }
+
   getSocketInfo(clientId: string, socketId: string): SocketInfo | undefined {
     return this.clients.get(clientId)?.sockets.get(socketId);
   }
@@ -335,6 +400,7 @@ export class ClientStore {
       }
     }
     this.clients.clear();
+    this.nameIndex.clear();
     log.info("ClientStore shut down");
   }
 }

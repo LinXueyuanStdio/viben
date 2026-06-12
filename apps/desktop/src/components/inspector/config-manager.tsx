@@ -397,7 +397,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            {t("inspector.exportConfig", "Export Configuration")}
+            {t("inspector.exportConfig")}
           </DialogTitle>
           <DialogDescription>
             {t(
@@ -414,7 +414,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
               <Shield className="h-5 w-5 text-amber-500 mt-0.5" />
               <div>
                 <h4 className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  {t("inspector.sensitiveDataWarning", "Sensitive Data Detected")}
+                  {t("inspector.sensitiveDataWarning")}
                 </h4>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
                   {t(
@@ -429,7 +429,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
           {/* Export options */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">
-              {t("inspector.exportOptions", "Export Options")}
+              {t("inspector.exportOptions")}
             </Label>
 
             <div className="space-y-2">
@@ -443,7 +443,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
                     }
                   />
                   <Label htmlFor="includeAuth" className="text-sm font-normal cursor-pointer">
-                    {t("inspector.includeAuthToken", "Include authentication token")}
+                    {t("inspector.includeAuthToken")}
                   </Label>
                 </div>
               )}
@@ -458,7 +458,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
                     }
                   />
                   <Label htmlFor="includeHeaders" className="text-sm font-normal cursor-pointer">
-                    {t("inspector.includeHeaders", "Include all HTTP headers")}
+                    {t("inspector.includeHeaders")}
                   </Label>
                 </div>
               )}
@@ -473,7 +473,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
                     }
                   />
                   <Label htmlFor="includeEnv" className="text-sm font-normal cursor-pointer">
-                    {t("inspector.includeEnvVars", "Include environment variables")}
+                    {t("inspector.includeEnvVars")}
                   </Label>
                 </div>
               )}
@@ -483,7 +483,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
           {/* Preview toggle */}
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">
-              {t("inspector.configPreview", "Configuration Preview")}
+              {t("inspector.configPreview")}
             </Label>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={handleCopy} className="h-7">
@@ -505,7 +505,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
                 ) : (
                   <Eye className="h-3.5 w-3.5 mr-1" />
                 )}
-                {showPreview ? t("common.hide", "Hide") : t("common.view")}
+                {showPreview ? t("common.hide") : t("common.view")}
               </Button>
             </div>
           </div>
@@ -524,7 +524,7 @@ function ExportDialog({ open, onOpenChange, config }: ExportDialogProps) {
           </Button>
           <Button onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
-            {t("inspector.downloadConfig", "Download Config")}
+            {t("inspector.downloadConfig")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -567,14 +567,14 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
             ? (validation.errorParam
                 ? `${t(validation.errorKey)}: ${validation.errorParam}`
                 : t(validation.errorKey))
-            : t("inspector.invalidConfig", "Invalid configuration file");
+            : t("inspector.invalidConfig");
           setValidationError(errorMessage);
         }
       } catch (err) {
         setImportedConfig(null);
         setValidationError(
           err instanceof SyntaxError
-            ? t("inspector.jsonParseError", "Invalid JSON format")
+            ? t("inspector.jsonParseError")
             : String(err)
         );
       }
@@ -636,7 +636,7 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            {t("inspector.importConfig", "Import Configuration")}
+            {t("inspector.importConfig")}
           </DialogTitle>
           <DialogDescription>
             {t(
@@ -669,10 +669,10 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
             />
             <FileJson className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
             <p className="text-sm text-muted-foreground">
-              {t("inspector.dropConfigHere", "Drop your config file here or click to browse")}
+              {t("inspector.dropConfigHere")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {t("inspector.acceptsJson", "Accepts .json files")}
+              {t("inspector.acceptsJson")}
             </p>
           </div>
 
@@ -691,7 +691,7 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
                 <div className="flex items-center gap-2">
                   <Check className="h-4 w-4 text-green-500" />
                   <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                    {t("inspector.validConfig", "Valid configuration")}
+                    {t("inspector.validConfig")}
                   </span>
                 </div>
                 <Button
@@ -705,7 +705,7 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
                   ) : (
                     <Eye className="h-3.5 w-3.5 mr-1" />
                   )}
-                  {showPreview ? t("common.hide", "Hide") : t("common.view")}
+                  {showPreview ? t("common.hide") : t("common.view")}
                 </Button>
               </div>
 
@@ -767,7 +767,7 @@ function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
           </Button>
           <Button onClick={handleImport} disabled={!importedConfig}>
             <Upload className="h-4 w-4 mr-2" />
-            {t("inspector.applyConfig", "Apply Configuration")}
+            {t("inspector.applyConfig")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -854,11 +854,11 @@ export function ConfigManager({
             ) : (
               <Copy className="h-3.5 w-3.5 mr-1" />
             )}
-            {t("inspector.serverEntry", "Server Entry")}
+            {t("inspector.serverEntry")}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {t("inspector.copyServerEntryTooltip", "Copy single server config for mcp.json")}
+          {t("inspector.copyServerEntryTooltip")}
         </TooltipContent>
       </Tooltip>
 
@@ -876,11 +876,11 @@ export function ConfigManager({
             ) : (
               <Server className="h-3.5 w-3.5 mr-1" />
             )}
-            {t("inspector.serversFile", "Servers File")}
+            {t("inspector.serversFile")}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          {t("inspector.copyServersFileTooltip", "Copy complete mcp.json file")}
+          {t("inspector.copyServersFileTooltip")}
         </TooltipContent>
       </Tooltip>
 
@@ -903,7 +903,7 @@ export function ConfigManager({
         className="h-7"
       >
         <Upload className="h-3.5 w-3.5 mr-1" />
-        {t("inspector.import", "Import")}
+        {t("inspector.import")}
       </Button>
 
       <ExportDialog

@@ -232,7 +232,7 @@ export function SettingsSandboxPage() {
             });
           } else {
             toast.error(t("sandbox.testFailed", "Sandbox test failed"), {
-              description: result.stderr || `Exit code: ${result.exitCode}`,
+              description: result.stderr || t("sandbox.exitCode", { code: result.exitCode }),
               duration: 5000,
             });
           }

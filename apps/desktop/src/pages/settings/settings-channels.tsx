@@ -169,84 +169,86 @@ function formatGatewayStatusError(error: unknown): string | null {
 }
 
 /**
- * Format error message for display
+ * Get translation key for error message
+ * Returns a translation key that can be passed to t()
  */
-function formatChannelError(
+function getErrorTranslationKey(
   error: string | undefined,
   channelType: ChannelType,
-): string {
-  if (!error) return "Unknown error";
+): string | null {
+  if (!error) return "channels.errors.unknown";
 
   // Common error patterns with user-friendly messages
   const errorLower = error.toLowerCase();
 
   // Network errors
   if (errorLower.includes("fetch") || errorLower.includes("network") || errorLower.includes("econnrefused")) {
-    return "Network error: Unable to connect. Please check your internet connection.";
+    return "channels.errors.networkError";
   }
 
   // Gateway not running
   if (errorLower.includes("failed to fetch") || errorLower.includes("connection refused")) {
-    return "Gateway not running. Please start the gateway service first.";
+    return "channels.errors.gatewayNotRunning";
   }
 
   // Timeout
   if (errorLower.includes("timeout")) {
-    return "Request timed out. The service may be slow or unreachable.";
+    return "channels.errors.requestTimeout";
   }
 
   // Channel-specific error formatting
   switch (channelType) {
     case "telegram":
       if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
-        return "Invalid Bot Token. Please check your token from @BotFather.";
+        return "channels.errors.telegram.invalidToken";
       }
       if (errorLower.includes("chat not found") || errorLower.includes("400")) {
-        return "Chat not found. Make sure you've sent /start to the bot first.";
+        return "channels.errors.telegram.chatNotFound";
       }
       if (errorLower.includes("bot was blocked")) {
-        return "Bot was blocked by the user. Please unblock the bot in Telegram.";
+        return "channels.errors.telegram.botBlocked";
       }
       break;
     case "discord":
       if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
-        return "Invalid Bot Token. Please check your token from Discord Developer Portal.";
+        return "channels.errors.discord.invalidToken";
       }
       if (errorLower.includes("unknown channel") || errorLower.includes("404")) {
-        return "Channel not found. Please verify the Channel ID.";
+        return "channels.errors.discord.channelNotFound";
       }
       if (errorLower.includes("missing access") || errorLower.includes("403")) {
-        return "Bot lacks permission. Invite the bot to the channel first.";
+        return "channels.errors.discord.missingAccess";
       }
       break;
     case "feishu":
       if (errorLower.includes("invalid app_id") || errorLower.includes("10003")) {
-        return "Invalid App ID. Please check your credentials from Feishu Open Platform.";
+        return "channels.errors.feishu.invalidAppId";
       }
       if (errorLower.includes("app_secret") || errorLower.includes("10014")) {
-        return "Invalid App Secret. Please verify your credentials.";
+        return "channels.errors.feishu.invalidAppSecret";
       }
       if (errorLower.includes("user_not_found") || errorLower.includes("230001")) {
-        return "User not found. Please check the Open ID or Chat ID.";
+        return "channels.errors.feishu.userNotFound";
       }
       break;
     case "whatsapp":
       if (errorLower.includes("websocket") || errorLower.includes("ws://")) {
-        return "Cannot connect to WhatsApp Bridge. Is the bridge server running?";
+        return "channels.errors.whatsapp.bridgeConnectionFailed";
       }
       break;
   }
 
-  // Return original error if no specific formatting
-  return error;
+  // Return null if no specific translation key found (caller should use original error)
+  return null;
 }
 
 /**
  * Test channel connection via gateway API (no Chat ID required)
+ * Returns errorKey for translation or rawError for fallback display
  */
 async function testChannelConnection(
   channel: GatewayChannel,
-): Promise<{ success: boolean; details?: string; error?: string }> {
+): Promise<{ success: boolean; details?: string; errorKey?: string; rawError?: string }> {
   try {
     const data = await getGatewayClient().post<{
       success: boolean;
@@ -260,37 +262,49 @@ async function testChannelConnection(
       }
     );
 
+    if (data.error) {
+      const errorKey = getErrorTranslationKey(data.error, channel.channel_type);
+      return {
+        success: data.success,
+        details: data.details,
+        errorKey: errorKey || undefined,
+        rawError: errorKey ? undefined : data.error,
+      };
+    }
+
     return {
       success: data.success,
       details: data.details,
-      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
     const gatewayError = formatGatewayStatusError(error);
     if (gatewayError) {
       return {
         success: false,
-        error: gatewayError,
+        rawError: gatewayError,
       };
     }
 
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorKey = getErrorTranslationKey(errorMsg, channel.channel_type);
     return {
       success: false,
-      error: formatChannelError(errorMsg, channel.channel_type),
+      errorKey: errorKey || undefined,
+      rawError: errorKey ? undefined : errorMsg,
     };
   }
 }
 
 /**
  * Send a test message via gateway API (requires Chat ID)
+ * Returns errorKey for translation or rawError for fallback display
  */
 async function sendTestMessage(
   channel: GatewayChannel,
   chatId: string | undefined,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; errorKey?: string; rawError?: string }> {
   if (!chatId && channel.channel_type !== "whatsapp") {
-    return { success: false, error: "Chat ID is required" };
+    return { success: false, errorKey: "channels.errors.chatIdRequired" };
   }
 
   try {
@@ -306,23 +320,33 @@ async function sendTestMessage(
       }
     );
 
+    if (data.error) {
+      const errorKey = getErrorTranslationKey(data.error, channel.channel_type);
+      return {
+        success: data.success,
+        errorKey: errorKey || undefined,
+        rawError: errorKey ? undefined : data.error,
+      };
+    }
+
     return {
       success: data.success,
-      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
     const gatewayError = formatGatewayStatusError(error);
     if (gatewayError) {
       return {
         success: false,
-        error: gatewayError,
+        rawError: gatewayError,
       };
     }
 
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorKey = getErrorTranslationKey(errorMsg, channel.channel_type);
     return {
       success: false,
-      error: formatChannelError(errorMsg, channel.channel_type),
+      errorKey: errorKey || undefined,
+      rawError: errorKey ? undefined : errorMsg,
     };
   }
 }
@@ -1107,10 +1131,11 @@ export function SettingsChannelsPage() {
         description: result.details,
       });
     } else {
+      const errorMessage = result.errorKey ? t(result.errorKey) : result.rawError;
       toast.error(
         `${t("channels.connectionFailed", "Connection failed")} - ${channel.name}`,
         {
-          description: result.error,
+          description: errorMessage,
           duration: 8000, // Show longer for errors
         }
       );
@@ -1140,10 +1165,11 @@ export function SettingsChannelsPage() {
       toast.success(t("channels.testSuccess", "Test message sent successfully!"));
       setTestDialogOpen(false);
     } else {
+      const errorMessage = result.errorKey ? t(result.errorKey) : result.rawError;
       toast.error(
         `${t("channels.testFailed", "Failed to send test message")} - ${testingChannel.name}`,
         {
-          description: result.error,
+          description: errorMessage,
           duration: 8000, // Show longer for errors
         }
       );

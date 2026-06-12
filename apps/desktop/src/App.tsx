@@ -52,10 +52,6 @@ const MarketplacePage = lazy(() =>
 const SkillsMarketPage = lazy(() =>
   import("@/pages/skills-market").then((m) => ({ default: m.SkillsMarketPage }))
 );
-const BrowseSourceStorePage = lazy(() =>
-  import("@/pages/mcp/browse-source-store").then((m) => ({ default: m.BrowseSourceStorePage }))
-);
-
 import { useTranslation } from "react-i18next";
 import { Component, type ReactNode } from "react";
 
@@ -183,16 +179,6 @@ function App() {
               element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <SkillsMarketPage />
-                </Suspense>
-              }
-            />
-
-            {/* Browse source store */}
-            <Route
-              path="browse-source-store"
-              element={
-                <Suspense fallback={<PageLoadingFallback />}>
-                  <BrowseSourceStorePage />
                 </Suspense>
               }
             />

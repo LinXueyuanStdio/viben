@@ -2270,6 +2270,9 @@ importers:
       react-dom:
         specifier: 19.2.7
         version: 19.2.7(react@19.2.7)
+      ws:
+        specifier: ^8.20.1
+        version: 8.20.1
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4.1.0
@@ -2286,6 +2289,9 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.0
         version: 19.2.3(@types/react@19.2.15)
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       postcss:
         specifier: ^8.5.0
         version: 8.5.15

@@ -4,7 +4,7 @@ import { useActionStore } from "@/stores/action-store";
 import { executeGUIAction } from "./action-executor";
 import { executeBuiltin } from "./builtins";
 import { getRegistrableBuiltins } from "./builtins";
-import { createSocketExecutionContext } from "./execution-context";
+import { createSocketExecutionContext, requestLocalApproval } from "./execution-context";
 import { UserCancelledException } from "./errors";
 import type { ClientIdentity } from "@/stores/client-id-store";
 import type { ClientToolResult } from "../client-side-tool/types";
@@ -32,6 +32,7 @@ interface ActionMeta {
 }
 
 const DESKTOP_MAIN_NAMESPACE = "desktop_main";
+const APPROVAL_TIMEOUT_MS = 30000;
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
@@ -93,6 +94,17 @@ class GatewayActionSocket {
       "action:approval:result",
       (data: { requestId: string; approved: boolean; error?: string }) => {
         this.handleApprovalResult(data);
+      }
+    );
+    this.socket.on(
+      "action:approval:request",
+      (data: {
+        requestId: string;
+        executeRequestId: string;
+        message: string;
+        options?: { timeout?: number; title?: string; description?: string; confirmLabel?: string; cancelLabel?: string };
+      }) => {
+        void this.handleIncomingApprovalRequest(data);
       }
     );
 
@@ -200,13 +212,31 @@ class GatewayActionSocket {
       }
 
       const requestId = crypto.randomUUID();
-      this.pendingApprovals.set(requestId, { resolve, reject });
+
+      const timer = setTimeout(() => {
+        const pending = this.pendingApprovals.get(requestId);
+        if (pending) {
+          this.pendingApprovals.delete(requestId);
+          pending.reject(new UserCancelledException("Approval timeout"));
+        }
+      }, APPROVAL_TIMEOUT_MS);
+
+      this.pendingApprovals.set(requestId, {
+        resolve: (v) => {
+          clearTimeout(timer);
+          resolve(v);
+        },
+        reject: (e) => {
+          clearTimeout(timer);
+          reject(e);
+        },
+      });
 
       this.socket.emit("action:approval:request", {
         requestId,
         executeRequestId,
         message,
-        options: options ? { timeout: 30000, ...options } : { timeout: 30000 },
+        options: options ? { timeout: APPROVAL_TIMEOUT_MS, ...options } : { timeout: APPROVAL_TIMEOUT_MS },
       });
     });
   }
@@ -224,6 +254,35 @@ class GatewayActionSocket {
       pending.reject(new UserCancelledException(data.error));
     } else {
       pending.resolve(data.approved);
+    }
+  }
+
+  private async handleIncomingApprovalRequest(data: {
+    requestId: string;
+    executeRequestId: string;
+    message: string;
+    options?: { timeout?: number; title?: string; description?: string; confirmLabel?: string; cancelLabel?: string };
+  }): Promise<void> {
+    try {
+      const approvalOptions: ApprovalOptions | undefined = data.options
+        ? {
+            title: data.options.title,
+            description: data.options.description,
+            confirmLabel: data.options.confirmLabel,
+            cancelLabel: data.options.cancelLabel,
+          }
+        : undefined;
+      const approved = await requestLocalApproval(data.message, approvalOptions);
+      this.socket?.emit("action:approval:response", {
+        requestId: data.requestId,
+        approved,
+      });
+    } catch (err) {
+      this.socket?.emit("action:approval:response", {
+        requestId: data.requestId,
+        approved: false,
+        error: err instanceof UserCancelledException ? err.message : String(err),
+      });
     }
   }
 
@@ -353,6 +412,20 @@ class GatewayActionSocket {
     return true;
   }
 
+  async queryRemoteActions(): Promise<Array<{ namespace: string; name: string; description: string }>> {
+    if (!this.socket || this._state !== "connected") {
+      return [];
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve([]), 5000);
+      this.socket!.emit("action:list", {}, (response: { actions: Array<{ namespace: string; name: string; description: string }> }) => {
+        clearTimeout(timeout);
+        resolve(response.actions ?? []);
+      });
+    });
+  }
+
   private emitRegister(namespace: string, actions: Map<string, ActionMeta>): void {
     if (!this.socket || actions.size === 0) return;
 
@@ -373,3 +446,7 @@ class GatewayActionSocket {
 }
 
 export const gatewayActionSocket = new GatewayActionSocket();
+
+export function queryRemoteActions(): Promise<Array<{ namespace: string; name: string; description: string }>> {
+  return gatewayActionSocket.queryRemoteActions();
+}

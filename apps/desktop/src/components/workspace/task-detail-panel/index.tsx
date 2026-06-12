@@ -624,7 +624,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-1.5">
             <MessageSquare className="h-4 w-4" />
-            {t("chat.artifacts.title", "Comments")}
+            {t("workspace.comments", "Comments")}
             {comments.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                 {comments.length}
