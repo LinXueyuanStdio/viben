@@ -186,7 +186,8 @@
     "settings": "设置",
     "about": "关于",
     "github": "GitHub",
-    "browseMcp": "浏览 MCP"
+    "browseMcp": "浏览 MCP",
+    "clientMcp": "端侧 MCP"
   },
   "devices": {
     "pairTitle": "设备配对",

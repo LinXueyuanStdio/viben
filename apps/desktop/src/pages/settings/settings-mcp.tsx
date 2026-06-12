@@ -17,6 +17,7 @@ import {
   Bug,
   Loader2,
   Server,
+  Monitor,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
@@ -39,6 +40,10 @@ const BrowseMcpPage = lazy(() =>
 
 const PageDebugPage = lazy(() =>
   import("@/pages/mcp/page-debug").then((m) => ({ default: m.PageDebugPage }))
+);
+
+const ClientMcpPage = lazy(() =>
+  import("@/pages/mcp/client-mcp").then((m) => ({ default: m.ClientMcpPage }))
 );
 
 const LogsPage = lazy(() =>
@@ -70,6 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: "dashboard", titleKey: "nav.dashboard", icon: LayoutDashboard },
       { id: "browse-mcp", titleKey: "nav.browseMcp", icon: Search },
+      { id: "client-mcp", titleKey: "nav.clientMcp", icon: Monitor },
       { id: "page-debug", titleKey: "nav.pageDebug", icon: Bug },
       { id: "logs", titleKey: "nav.logs", icon: FileText },
     ],
@@ -92,7 +98,7 @@ function PageLoadingFallback() {
 }
 
 // Valid tab IDs
-const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "page-debug", "logs"];
+const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "client-mcp", "page-debug", "logs"];
 
 export function SettingsMcpPage() {
   const { t } = useTranslation();
@@ -163,6 +169,12 @@ export function SettingsMcpPage() {
         return (
           <Suspense fallback={<PageLoadingFallback />}>
             <BrowseMcpPage />
+          </Suspense>
+        );
+      case "client-mcp":
+        return (
+          <Suspense fallback={<PageLoadingFallback />}>
+            <ClientMcpPage />
           </Suspense>
         );
       case "page-debug":

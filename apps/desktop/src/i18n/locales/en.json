@@ -186,7 +186,8 @@
     "settings": "Settings",
     "about": "About",
     "github": "GitHub",
-    "browseMcp": "Browse MCP"
+    "browseMcp": "Browse MCP",
+    "clientMcp": "Client MCP"
   },
   "devices": {
     "pairTitle": "Device Pairing",

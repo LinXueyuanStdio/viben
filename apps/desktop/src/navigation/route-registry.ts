@@ -19,6 +19,7 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
   { pattern: "/mcp-services", icon: { type: "lucide", value: "server" }, title: "MCP Services", titleKey: "nav.mcpServices", dropdownCategory: "root" },
   { pattern: "/mcp-services/dashboard", icon: { type: "lucide", value: "layout-dashboard" }, title: "Dashboard", titleKey: "nav.dashboard", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/browse-mcp", icon: { type: "lucide", value: "search" }, title: "Browse MCP", titleKey: "nav.browseMcp", dropdownCategory: "mcp-section" },
+  { pattern: "/mcp-services/client-mcp", icon: { type: "lucide", value: "monitor" }, title: "Client MCP", titleKey: "nav.clientMcp", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/page-debug", icon: { type: "lucide", value: "bug" }, title: "Page Debug", titleKey: "nav.pageDebug", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/inspector", icon: { type: "lucide", value: "telescope" }, title: "Inspector", titleKey: "nav.inspector", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/logs", icon: { type: "lucide", value: "scroll-text" }, title: "Logs", titleKey: "nav.logs", dropdownCategory: "mcp-section" },

@@ -10,6 +10,7 @@ import { useGatewayActionSocket } from "@/hooks/use-gateway-action-socket";
 import {
   DashboardPage,
   BrowseMcpPage,
+  ClientMcpPage,
   InspectorPage,
   LogsPage,
   SettingsPage,
@@ -146,6 +147,7 @@ function App() {
             <Route path="mcp-services" element={<McpServicesLayout />}>
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="browse-mcp" element={<BrowseMcpPage />} />
+              <Route path="client-mcp" element={<ClientMcpPage />} />
               <Route path="page-debug" element={<PageDebugPage />} />
               <Route path="inspector" element={<InspectorPage />} />
               <Route path="logs" element={<LogsPage />} />

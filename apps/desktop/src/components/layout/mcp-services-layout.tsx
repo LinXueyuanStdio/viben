@@ -5,6 +5,7 @@ import {
   FileText,
   Server,
   Bug,
+  Monitor,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
@@ -33,6 +34,7 @@ const NAV_SECTIONS: NavSection[] = [
     titleKey: "nav.dedicatedSearchServices",
     items: [
       { titleKey: "nav.browseMcp", href: "/mcp-services/browse-mcp", icon: Search },
+      { titleKey: "nav.clientMcp", href: "/mcp-services/client-mcp", icon: Monitor },
     ],
   },
   {

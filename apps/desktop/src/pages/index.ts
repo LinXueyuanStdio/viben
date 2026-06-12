@@ -1,4 +1,4 @@
-export { DashboardPage, BrowseMcpPage, InspectorPage, PageDebugPage } from "./mcp";
+export { DashboardPage, BrowseMcpPage, ClientMcpPage, InspectorPage, PageDebugPage } from "./mcp";
 export { LogsPage } from "./logs";
 export { SettingsPage } from "./settings";
 export { SettingsMcpPage } from "./settings/settings-mcp";
