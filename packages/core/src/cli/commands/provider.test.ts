@@ -74,17 +74,24 @@ import { providerManager } from "../../providers";
  * Helper to create a mock provider with proper typing
  */
 function createMockProvider(overrides: Partial<Provider> = {}): Provider {
-  return {
+  const provider = {
     id: "test-provider",
     type: "openai" as ProviderType,
+    category: "llm" as const,
     name: "Test Provider",
     apiKey: "sk-test-key",
     base_url: "https://api.openai.com/v1",
+    surfaces: ["chat" as const],
     isDefault: false,
     enabled: true,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
+  };
+  return {
+    ...provider,
+    category: provider.category ?? "llm",
+    surfaces: provider.surfaces ?? ["chat"],
   };
 }
 

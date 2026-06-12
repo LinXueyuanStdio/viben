@@ -12,7 +12,7 @@ import {
 } from "./discovery";
 import { providerManager } from "../providers";
 import { KNOWN_MODELS, getKnownModel } from "./known-models";
-import type { Provider } from "../types";
+import type { Provider, ProviderType } from "../types";
 
 // Mock the providerManager module
 vi.mock("../providers", () => ({
@@ -30,15 +30,22 @@ global.fetch = mockFetch;
  * Helper to create a mock provider with required fields
  */
 function createMockProvider(overrides: Partial<Provider>): Provider {
-  return {
+  const provider = {
     id: "test-provider",
-    type: "custom",
+    type: "custom" as ProviderType,
+    category: "llm" as const,
     name: "Test Provider",
+    surfaces: ["chat" as const],
     isDefault: false,
     enabled: true,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
+  };
+  return {
+    ...provider,
+    category: provider.category ?? "llm",
+    surfaces: provider.surfaces ?? ["chat"],
   };
 }
 
