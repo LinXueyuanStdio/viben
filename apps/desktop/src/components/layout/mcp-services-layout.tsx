@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  Database,
   Search,
   FileText,
   Server,
@@ -33,7 +32,6 @@ const NAV_SECTIONS: NavSection[] = [
   {
     titleKey: "nav.dedicatedSearchServices",
     items: [
-      { titleKey: "nav.dataSources", href: "/mcp-services/data-sources", icon: Database },
       { titleKey: "nav.browseMcp", href: "/mcp-services/browse-mcp", icon: Search },
     ],
   },

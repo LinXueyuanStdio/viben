@@ -91,7 +91,7 @@ export function CommandDetails({
             <button
               onClick={() => handleCopy(item.value, index)}
               className="shrink-0 p-1 rounded hover:bg-muted-foreground/10 transition-colors"
-              title={`Copy ${item.label.toLowerCase()}`}
+              title={t("common.copyItem", { item: item.label.toLowerCase() })}
             >
               {copiedIndex === index ? (
                 <CheckCheck className="h-3.5 w-3.5 text-green-500" />

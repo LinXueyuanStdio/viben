@@ -164,6 +164,7 @@ interface AcpHeaderSessionMenuProps {
 }
 
 function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSession }: AcpHeaderSessionMenuProps) {
+  const { t } = useTranslation();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -179,7 +180,7 @@ function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSessi
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-72 max-h-80 overflow-y-auto">
         {sessions.length === 0 ? (
-          <div className="px-2 py-4 text-center text-xs text-muted-foreground">No sessions</div>
+          <div className="px-2 py-4 text-center text-xs text-muted-foreground">{t("chat.noSessionsInPanel")}</div>
         ) : (
           sessions.map((session) => (
             <DropdownMenuItem
@@ -304,10 +305,11 @@ function buildAcpCompactSummary(
   messages: Array<{ type?: string; content?: string; message?: string; name?: string }>,
   streamingText: string | null | undefined,
   isAgentRunning: boolean,
-  queuedCount: number
+  queuedCount: number,
+  t: (key: string, options?: Record<string, unknown>) => string
 ): React.ReactNode {
   if (queuedCount > 0) {
-    return `${queuedCount} queued prompt${queuedCount === 1 ? "" : "s"}`;
+    return t("chat.acp.queuedPrompts", { count: queuedCount });
   }
   if (streamingText?.trim()) {
     return truncateText(streamingText.trim(), 120);
@@ -315,12 +317,14 @@ function buildAcpCompactSummary(
   const latest = [...messages]
     .reverse()
     .find((message) => message.type === "text" || message.type === "thinking" || message.type === "tool_use" || message.type === "error");
-  if (!latest) return "Ready when you are.";
+  if (!latest) return t("chat.acp.readyWhenYouAre");
   if (latest.type === "tool_use") {
-    return isAgentRunning ? `Running ${latest.name ?? "tool"}...` : `Tool ${latest.name ?? "call"}`;
+    return isAgentRunning
+      ? t("chat.acp.runningTool", { name: latest.name ?? t("chat.acp.tool") })
+      : t("chat.acp.toolCall", { name: latest.name ?? t("chat.acp.call") });
   }
-  if (latest.type === "error") return truncateText(latest.message ?? latest.content ?? "Something needs attention.", 120);
-  return truncateText(latest.content ?? latest.message ?? "Working...", 120);
+  if (latest.type === "error") return truncateText(latest.message ?? latest.content ?? t("chat.acp.needsAttention"), 120);
+  return truncateText(latest.content ?? latest.message ?? t("chat.acp.working"), 120);
 }
 
 function buildModelOptions(currentModel: string) {
@@ -1085,9 +1089,11 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       allowSendWhileLoading: true,
       sendDisabled: !connected,
       sendBlockedReason: !connected
-        ? "Connect first to send prompts."
+        ? t("chat.acp.connectFirst")
         : undefined,
-      placeholder: isTurnActive ? "Type steering while the agent is running..." : "Type a message...",
+      placeholder: isTurnActive
+        ? t("chat.acp.steeringPlaceholder")
+        : t("chat.inputPlaceholder"),
       slashCommands,
       onSlashCommand: handleSlashCommandSelect,
       showTopToolbar: true,
@@ -1187,31 +1193,31 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
             <>
               <DropdownMenuItem onClick={() => onModeChange("compact")} className="gap-2">
                 <Minimize2 className="size-4" />
-                Compact mode
+                {t("chat.acp.compactMode")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onModeChange("expanded")} className="gap-2">
                 <MessageSquare className="size-4" />
-                Expanded mode
+                {t("chat.acp.expandedMode")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onModeChange("full")} className="gap-2">
                 <Maximize2 className="size-4" />
-                Fullscreen mode
+                {t("chat.acp.fullscreenMode")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={openChatWindow} className="gap-2">
                 <ExternalLink className="size-4" />
-                Open in new window
+                {t("chat.acp.openInNewWindow")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {!connected ? (
                 <DropdownMenuItem onClick={connect} disabled={busy} className="gap-2">
                   {busy ? <Loader2 className="size-4 animate-spin" /> : <Plug className="size-4" />}
-                  Connect
+                  {t("chat.acp.connect")}
                 </DropdownMenuItem>
               ) : null}
               {connected && !sessionId ? (
                 <DropdownMenuItem onClick={createSession} className="gap-2">
                   <FolderPlus className="size-4" />
-                  New session
+                  {t("chat.newSession")}
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem
@@ -1223,7 +1229,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
                 className="gap-2"
               >
                 <RotateCcw className="size-4" />
-                Recall queue
+                {t("chat.acp.recallQueue")}
               </DropdownMenuItem>
             </>
           }
@@ -1254,8 +1260,8 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           onRejectPlan={handleRejectPlan}
           onApprovalDecision={handleApprovalDecision}
           onAnswerQuestions={handleQuestionAnswers}
-          welcomeTitle="ACP Chat"
-          welcomeDescription="Connect, create or resume a session, then talk to an ACP backend."
+          welcomeTitle={t("chat.acp.welcomeTitle")}
+          welcomeDescription={t("chat.acp.welcomeDescription")}
         />
       }
       statusContent={statusContent}
@@ -1286,7 +1292,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     dynamicAssistantAvatar,
     staticAssistantAvatar,
     artifacts,
-    compactSummaryContent: buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length),
+    compactSummaryContent: buildAcpCompactSummary(messages, streamingText, isAgentRunning, steerQueueItems.length, t),
     headerContent,
     inputProps: sharedInputProps,
     bottomToolbarLeftContent,
@@ -1520,6 +1526,7 @@ function ToolInspectDialog({
   state: { message: AgentMessage; result?: AgentMessage } | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [outputView, setOutputView] = useState<"rich" | "json">("rich");
   if (!state) return null;
   const { message, result } = state;
@@ -1549,19 +1556,19 @@ function ToolInspectDialog({
             )}
           </div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-            <dt className="text-muted-foreground">Tool</dt>
+            <dt className="text-muted-foreground">{t("chat.acpDetail.tool")}</dt>
             <dd className="font-mono">{message.name ?? "unknown"}</dd>
-            <dt className="text-muted-foreground">Call ID</dt>
+            <dt className="text-muted-foreground">{t("chat.acpDetail.callId")}</dt>
             <dd className="font-mono break-all">{message.toolUseId ?? "none"}</dd>
             {message.subagentId && (
               <>
-                <dt className="text-muted-foreground">Subagent</dt>
+                <dt className="text-muted-foreground">{t("chat.acpDetail.subagent")}</dt>
                 <dd className="font-mono break-all">{message.subagentId}</dd>
               </>
             )}
           </dl>
           <div>
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Input</div>
+            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("chat.acpDetail.input")}</div>
             <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
               {typeof message.input === "string"
                 ? message.input
@@ -1570,7 +1577,7 @@ function ToolInspectDialog({
           </div>
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Output</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("chat.acpDetail.output")}</span>
               {hasRichContent && (
                 <div className="flex h-6 rounded-md border border-border overflow-hidden text-[10px]">
                   <button
@@ -1581,7 +1588,7 @@ function ToolInspectDialog({
                     )}
                     onClick={() => setOutputView("rich")}
                   >
-                    Rich
+                    {t("chat.acpDetail.richView")}
                   </button>
                   <button
                     type="button"
@@ -1591,7 +1598,7 @@ function ToolInspectDialog({
                     )}
                     onClick={() => setOutputView("json")}
                   >
-                    JSON
+                    {t("chat.acpDetail.jsonView")}
                   </button>
                 </div>
               )}
@@ -1619,6 +1626,7 @@ function ArtifactDialog({
   state: { artifact: Artifact; message?: AgentMessage } | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   if (!state) return null;
   const { artifact, message } = state;
 
@@ -1626,31 +1634,31 @@ function ArtifactDialog({
     <Dialog open onOpenChange={(open: boolean) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Artifact</DialogTitle>
+          <DialogTitle>{t("chat.acpDetail.artifact")}</DialogTitle>
           <DialogDescription>{artifact.name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs">
-            <dt className="text-muted-foreground">ID</dt>
+            <dt className="text-muted-foreground">{t("chat.acpDetail.id")}</dt>
             <dd className="break-all font-mono">{artifact.id}</dd>
-            <dt className="text-muted-foreground">Type</dt>
+            <dt className="text-muted-foreground">{t("chat.acpDetail.type")}</dt>
             <dd>{artifact.type}</dd>
             {artifact.toolName && (
               <>
-                <dt className="text-muted-foreground">Tool</dt>
+                <dt className="text-muted-foreground">{t("chat.acpDetail.tool")}</dt>
                 <dd>{artifact.toolName}</dd>
               </>
             )}
             {artifact.sourceMessageId && (
               <>
-                <dt className="text-muted-foreground">Source</dt>
+                <dt className="text-muted-foreground">{t("chat.acpDetail.source")}</dt>
                 <dd className="break-all font-mono">{artifact.sourceMessageId}</dd>
               </>
             )}
           </dl>
           <div>
             <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {message ? "Source Message" : "Artifact Data"}
+              {message ? t("chat.acpDetail.sourceMessage") : t("chat.acpDetail.artifactData")}
             </div>
             <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
               {JSON.stringify(message ?? artifact, null, 2)}

@@ -1,5 +1,6 @@
 // apps/desktop/src/pages/settings/pet-section/import-dialog.tsx
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Upload, X, Loader2 } from "lucide-react";
 import { importPetZip } from "./api";
 
@@ -10,6 +11,7 @@ interface ImportDialogProps {
 }
 
 export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
+  const { t } = useTranslation();
   const [path, setPath] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
       onClose();
       setPath("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Import failed");
+      setError(e instanceof Error ? e.message : t("settings.pet.importFailed"));
     } finally {
       setLoading(false);
     }
@@ -36,7 +38,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-background p-4 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium">导入 Pet</h3>
+          <h3 className="text-lg font-medium">{t("settings.pet.importPet", "Import Pet")}</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
@@ -44,7 +46,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Zip 文件路径</label>
+            <label className="text-sm font-medium">{t("settings.pet.zipFilePath")}</label>
             <input
               type="text"
               placeholder="/path/to/pet.zip"
@@ -61,7 +63,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
               className="rounded-md border px-4 py-2 text-sm"
               onClick={onClose}
             >
-              取消
+              {t("common.cancel", "Cancel")}
             </button>
             <button
               className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
@@ -69,7 +71,7 @@ export function ImportDialog({ open, onClose, onImported }: ImportDialogProps) {
               onClick={handleImport}
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              导入
+              {t("settings.pet.import", "Import")}
             </button>
           </div>
         </div>

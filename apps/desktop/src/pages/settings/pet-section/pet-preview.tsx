@@ -1,4 +1,5 @@
 // apps/desktop/src/pages/settings/pet-section/pet-preview.tsx
+import { useTranslation } from "react-i18next";
 import { PetSprite, STANDARD_ANIMATIONS } from "@viben/pet";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import type { PetResponse } from "./api";
@@ -26,13 +27,15 @@ function resolveSpritesheet(pet: PetResponse): string {
 }
 
 export function PetPreview({ pet, size = 96 }: PetPreviewProps) {
+  const { t } = useTranslation();
+
   if (!pet) {
     return (
       <div
         className="flex items-center justify-center rounded-lg bg-muted"
         style={{ width: size, height: size }}
       >
-        <span className="text-muted-foreground text-sm">No Pet</span>
+        <span className="text-muted-foreground text-sm">{t("settings.pet.noPet")}</span>
       </div>
     );
   }

@@ -278,49 +278,60 @@ export class PreviewManager {
       data: { status: "starting", message: "Initializing preview server..." },
     });
 
-    // If preferred port is specified and already has a running service, reuse it
+    // If preferred port is specified and already has a running service, try to reuse it
     if (preferredPort) {
       const portBusy = await this.isPortInUse(preferredPort);
       if (portBusy) {
-        log.info({ port: preferredPort }, "Preferred port already has a running service, reusing it");
-        onEvent({
-          type: "log",
-          data: {
-            message: `Port ${preferredPort} already has a running service, connecting to existing server...`,
+        log.info({ port: preferredPort }, "Preferred port has a running service, verifying it responds...");
+
+        // Verify the service is actually responsive before attaching
+        const isResponsive = await this.verifyServiceResponds(preferredPort);
+
+        if (isResponsive) {
+          log.info({ port: preferredPort }, "Service is responsive, attaching to existing server");
+
+          // Create instance for the existing server
+          const instance: PreviewInstance = {
+            id: `preview-${taskId}`,
+            task_id: taskId,
             port: preferredPort,
-          },
-        });
-
-        // Create instance for the existing server
-        const instance: PreviewInstance = {
-          id: `preview-${taskId}`,
-          task_id: taskId,
-          port: preferredPort,
-          status: "running",
-          started_at: new Date(),
-          last_accessed_at: new Date(),
-          sseEmitter: onEvent,
-          isExternalProcess: true, // Mark as external - we didn't spawn this process
-        };
-
-        this.instances.set(taskId, instance);
-        this.usedPorts.add(preferredPort);
-        this.startHealthCheck(instance);
-        this.resetIdleTimeout(instance);
-
-        onEvent({
-          type: "status",
-          data: {
             status: "running",
-            message: "Connected to existing server",
-            url: `http://localhost:${preferredPort}`,
-            port: preferredPort,
-          },
-        });
+            started_at: new Date(),
+            last_accessed_at: new Date(),
+            sseEmitter: onEvent,
+            isExternalProcess: true, // Mark as external - we didn't spawn this process
+          };
 
-        const finalStatus = this.getStatusForInstance(instance);
-        onEvent({ type: "complete", data: { result: finalStatus } });
-        return;
+          this.instances.set(taskId, instance);
+          this.usedPorts.add(preferredPort);
+          this.startHealthCheck(instance);
+          this.resetIdleTimeout(instance);
+
+          // Directly send running status (no "starting" status for port reuse)
+          onEvent({
+            type: "status",
+            data: {
+              status: "running",
+              message: "Attached to existing server",
+              url: `http://localhost:${preferredPort}`,
+              port: preferredPort,
+            },
+          });
+
+          const finalStatus = this.getStatusForInstance(instance);
+          onEvent({ type: "complete", data: { result: finalStatus } });
+          return;
+        } else {
+          // Service is not responding - need to start fresh
+          log.warn({ port: preferredPort }, "Port is occupied but service is not responding, will start new server");
+          onEvent({
+            type: "log",
+            data: {
+              message: `Port ${preferredPort} is occupied but not responding. Starting new server on a different port...`,
+            },
+          });
+          // Fall through to start new server (don't use preferred port)
+        }
       }
     }
 
@@ -996,6 +1007,29 @@ export class PreviewManager {
         }
       });
     });
+  }
+
+  /**
+   * Verify that a service on a port actually responds to HTTP requests
+   * Used to check if an existing server is healthy before attaching
+   */
+  private async verifyServiceResponds(port: number): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(`http://localhost:${port}`, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // 200, 404, or any response means server is working
+      return response.ok || response.status === 404 || response.status < 500;
+    } catch {
+      return false;
+    }
   }
 
   /**

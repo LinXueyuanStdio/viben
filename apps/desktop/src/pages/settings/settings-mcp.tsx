@@ -12,7 +12,6 @@ import {
   Store,
   SearchCode,
   LayoutDashboard,
-  Database,
   Search,
   FileText,
   Bug,
@@ -32,10 +31,6 @@ const MarketplacePage = lazy(() =>
 // Lazy load MCP service pages
 const DashboardPage = lazy(() =>
   import("@/pages/mcp/dashboard").then((m) => ({ default: m.DashboardPage }))
-);
-
-const ProvidersPage = lazy(() =>
-  import("@/pages/providers").then((m) => ({ default: m.ProvidersPage }))
 );
 
 const BrowseMcpPage = lazy(() =>
@@ -74,7 +69,6 @@ const NAV_SECTIONS: NavSection[] = [
     titleKey: "nav.mcpServices",
     items: [
       { id: "dashboard", titleKey: "nav.dashboard", icon: LayoutDashboard },
-      { id: "data-sources", titleKey: "nav.dataSources", icon: Database },
       { id: "browse-mcp", titleKey: "nav.browseMcp", icon: Search },
       { id: "page-debug", titleKey: "nav.pageDebug", icon: Bug },
       { id: "logs", titleKey: "nav.logs", icon: FileText },
@@ -98,7 +92,7 @@ function PageLoadingFallback() {
 }
 
 // Valid tab IDs
-const VALID_TABS = ["marketplace", "inspector", "dashboard", "data-sources", "browse-mcp", "page-debug", "logs"];
+const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "page-debug", "logs"];
 
 export function SettingsMcpPage() {
   const { t } = useTranslation();
@@ -163,12 +157,6 @@ export function SettingsMcpPage() {
         return (
           <Suspense fallback={<PageLoadingFallback />}>
             <DashboardPage />
-          </Suspense>
-        );
-      case "data-sources":
-        return (
-          <Suspense fallback={<PageLoadingFallback />}>
-            <ProvidersPage />
           </Suspense>
         );
       case "browse-mcp":

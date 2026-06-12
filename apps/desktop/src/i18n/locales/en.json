@@ -14,6 +14,7 @@
     "remove": "Remove",
     "copy": "Copy",
     "copied": "Copied!",
+    "copyItem": "Copy {{item}}",
     "refresh": "Refresh",
     "start": "Start",
     "stop": "Stop",
@@ -155,7 +156,8 @@
     "added": "Added",
     "free": "Free",
     "noCategories": "No categories available",
-    "retryStep": "Retry {{step}}"
+    "retryStep": "Retry {{step}}",
+    "install": "Install"
   },
   "elapsedTime": {
     "justNow": "just now",
@@ -767,7 +769,16 @@
       "networkError": "Network error",
       "allSuccess": "All {{count}} accounts connected successfully",
       "someFailed": "{{failed}} accounts failed, {{success}} connected",
-      "singleTest": "Test connection"
+      "singleTest": "Test connection",
+      "loadFailed": "Failed to load exchange data",
+      "addSuccess": "Account added successfully",
+      "saveFailed": "Save failed",
+      "connectSuccess": "Connection successful ({{latency}}ms)",
+      "connectFailed": "Connection failed: {{error}}",
+      "connectNetworkError": "Connection failed: network error",
+      "deleteSuccess": "Account deleted",
+      "deleteFailed": "Delete failed",
+      "ipCopied": "IP copied"
     },
     "notifications": {
       "description": "Configure how and when you receive notifications",
@@ -1014,6 +1025,32 @@
     },
     "mcp": {
       "title": "MCP"
+    },
+    "pet": {
+      "noPet": "No Pet",
+      "title": "Pet Settings",
+      "zipFilePath": "Zip file path",
+      "importFailed": "Import failed",
+      "petDataIncomplete": "Pet data is incomplete",
+      "installFailed": "Install failed",
+      "loadSourcesFailed": "Failed to load sources",
+      "addSourceFailed": "Failed to add source",
+      "removeSourceFailed": "Failed to remove source",
+      "removeFailed": "Failed to remove pet",
+      "enablePet": "Enable Pet",
+      "notSelected": "Not selected",
+      "pleaseSelectPet": "Please select a pet",
+      "installed": "Installed",
+      "import": "Import",
+      "communityPets": "Community Pets",
+      "deleteConfirm": "Are you sure you want to delete pet \"{{id}}\"? This action cannot be undone.",
+      "allSources": "All Sources",
+      "sourceManagement": "Source Management",
+      "addSource": "Add Source",
+      "deleteSourceConfirm": "Are you sure you want to delete source \"{{name}}\"?",
+      "sourceUrlPlaceholder": "URL (https://...)",
+      "importPet": "Import Pet",
+      "size": "Size"
     }
   },
   "sandbox": {
@@ -1522,7 +1559,11 @@
     "sourceManual": "Manually added",
     "providerSurfaces": "Media capabilities",
     "defaultModel": "Default",
-    "setDefault": "Set default"
+    "setDefault": "Set default",
+    "category": "Category",
+    "categoryMedia": "Media",
+    "categoryLLM": "LLM",
+    "surfacesCount": "{{count}} surfaces"
   },
   "providers": {
     "title": "Data Sources",
@@ -4329,7 +4370,8 @@
         "saveAndContinue": "Save & Continue",
         "alreadyConfigured": "Provider already configured",
         "useExisting": "Use existing {{provider}} configuration",
-        "addNew": "Add New"
+        "addNew": "Add New",
+        "typeLabel": "Provider"
       },
       "model": {
         "title": "Select a Model",
@@ -4798,7 +4840,43 @@
     "screenshotWindow": "Window screenshot",
     "selectProvider": "Select provider...",
     "steer": "Steer",
-    "steeringQueued": "{{count}} queued"
+    "steeringQueued": "{{count}} queued",
+    "noSessionsInPanel": "No sessions",
+    "acpDetail": {
+      "tool": "Tool",
+      "callId": "Call ID",
+      "subagent": "Subagent",
+      "input": "Input",
+      "output": "Output",
+      "artifact": "Artifact",
+      "id": "ID",
+      "type": "Type",
+      "source": "Source",
+      "sourceMessage": "Source Message",
+      "artifactData": "Artifact Data",
+      "richView": "Rich",
+      "jsonView": "JSON"
+    },
+    "acp": {
+      "queuedPrompts": "{{count}} queued prompt(s)",
+      "readyWhenYouAre": "Ready when you are.",
+      "runningTool": "Running {{name}}...",
+      "tool": "tool",
+      "toolCall": "Tool {{name}}",
+      "call": "call",
+      "needsAttention": "Something needs attention.",
+      "working": "Working...",
+      "connectFirst": "Connect first to send prompts.",
+      "steeringPlaceholder": "Type steering while the agent is running...",
+      "compactMode": "Compact mode",
+      "expandedMode": "Expanded mode",
+      "fullscreenMode": "Fullscreen mode",
+      "openInNewWindow": "Open in new window",
+      "connect": "Connect",
+      "recallQueue": "Recall queue",
+      "welcomeTitle": "ACP Chat",
+      "welcomeDescription": "Connect, create or resume a session, then talk to an ACP backend."
+    }
   },
   "creator": {
     "title": "Creator",
@@ -6305,7 +6383,8 @@
         "closed": "Closed"
       },
       "viewOnGitHub": "View on GitHub"
-    }
+    },
+    "dockLabel": "Dock"
   },
   "noTraceYet": "Send a message to see the call trace",
   "debugDescription": "Messages and tool calls will appear here",

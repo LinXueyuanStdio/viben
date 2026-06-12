@@ -359,6 +359,37 @@ export class ClientStore {
     return undefined;
   }
 
+  /**
+   * Resolve an action string to its owning client + metadata.
+   * Tries strategies in priority order without assuming dot-segment count:
+   * 1. Exact match as fullName (namespace.name) across all clients
+   * 2. Exact match as bare action name via nameIndex
+   * 3. Prefix is a known clientId → remainder is a fullName under that client
+   */
+  resolveAction(action: string): ActionWithClient | undefined {
+    // Strategy 1: try as fullName (e.g. "presentation.slide_next")
+    const byFullName = this.findActionByFullName(action);
+    if (byFullName) return byFullName;
+
+    // Strategy 2: try as bare name (e.g. "read_window")
+    const byName = this.findActionByName(action);
+    if (byName) return byName;
+
+    // Strategy 3: first dot-segment might be a clientId prefix
+    const dotIndex = action.indexOf(".");
+    if (dotIndex > 0) {
+      const maybeClientId = action.slice(0, dotIndex);
+      const remainder = action.slice(dotIndex + 1);
+      const client = this.clients.get(maybeClientId);
+      if (client) {
+        const entry = client.actionStore.get(remainder);
+        if (entry) return { ...entry, clientId: maybeClientId };
+      }
+    }
+
+    return undefined;
+  }
+
   private addToNameIndex(clientId: string, entry: ActionEntry): void {
     const list = this.nameIndex.get(entry.name);
     const item: ActionWithClient = { ...entry, clientId };

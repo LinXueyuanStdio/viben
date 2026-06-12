@@ -380,7 +380,7 @@ export function AgentDetailPanel({
               {onNavigateToChat && (
                 <Button variant="outline" onClick={onNavigateToChat} size={compact ? "sm" : "default"}>
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  {t("agentDetail.chat", "Chat")}
+                  {t("agentDetail.chat")}
                 </Button>
               )}
               {showConfigButton && onNavigateToEdit && (

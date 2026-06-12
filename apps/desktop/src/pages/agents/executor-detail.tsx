@@ -259,7 +259,7 @@ export function ExecutorDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
         <AlertCircle className="h-12 w-12 mb-3 opacity-50" />
-        <p>{t("settingsExecutors.notFound", "Executor not found")}</p>
+        <p>{t("settingsExecutors.notFound")}</p>
         <Button variant="outline" className="mt-4" onClick={handleNavigateBack}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           {t("common.back")}

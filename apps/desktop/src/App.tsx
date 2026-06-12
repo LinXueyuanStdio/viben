@@ -9,7 +9,6 @@ import { PetWindowManager } from "@/components/pet-window-manager";
 import { useGatewayActionSocket } from "@/hooks/use-gateway-action-socket";
 import {
   DashboardPage,
-  ProvidersPage,
   BrowseMcpPage,
   InspectorPage,
   LogsPage,
@@ -146,7 +145,6 @@ function App() {
             {/* MCP Services routes - with secondary navigation layout */}
             <Route path="mcp-services" element={<McpServicesLayout />}>
               <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="data-sources" element={<ProvidersPage />} />
               <Route path="browse-mcp" element={<BrowseMcpPage />} />
               <Route path="page-debug" element={<PageDebugPage />} />
               <Route path="inspector" element={<InspectorPage />} />
@@ -154,13 +152,6 @@ function App() {
               {/* Default redirect for /mcp-services */}
               <Route index element={<Navigate to="dashboard" replace />} />
             </Route>
-
-            {/* Legacy route redirects for backward compatibility */}
-            <Route path="providers" element={<Navigate to="/mcp-services/data-sources" replace />} />
-            <Route path="search-service" element={<Navigate to="/mcp-services/browse-mcp" replace />} />
-            <Route path="logs" element={<Navigate to="/mcp-services/logs" replace />} />
-            <Route path="agents" element={<Navigate to="/mcp-services/dashboard" replace />} />
-            <Route path="inspector" element={<Navigate to="/mcp-services/inspector" replace />} />
 
             {/* OS - iPad-style GPU-rendered OS */}
             <Route path="os" element={<OsPage />} />

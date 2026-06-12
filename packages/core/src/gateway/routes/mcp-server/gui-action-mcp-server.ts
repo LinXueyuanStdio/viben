@@ -49,9 +49,15 @@ function getSessionIdFromHeader(request: FastifyRequest): string | undefined {
 
 function getAcpSessionId(request: FastifyRequest): string | undefined {
   const query = request.query as { session_id?: unknown };
-  return typeof query.session_id === "string" && query.session_id.length > 0
-    ? query.session_id
-    : undefined;
+  if (typeof query.session_id === "string" && query.session_id.length > 0) {
+    return query.session_id;
+  }
+  const header = request.headers["x-viben-session-id"];
+  const headerValue = Array.isArray(header) ? header[0] : header;
+  if (typeof headerValue === "string" && headerValue.length > 0) {
+    return headerValue;
+  }
+  return undefined;
 }
 
 export function closeAllGuiActionMcpServerSessions(): void {
@@ -82,6 +88,7 @@ export function registerGuiActionMcpServerRoutes(
         getAllActions: () => state.clientStore.getAllActions(),
         findActionByName: (name) => state.clientStore.findActionByName(name),
         findActionByFullName: (fullName) => state.clientStore.findActionByFullName(fullName),
+        resolveAction: (action) => state.clientStore.resolveAction(action),
       } : undefined,
       requestClientTool: ({ sessionId: sid, toolName, input, toolCallId }) =>
         acpSessionManager.requestClientTool(sid, toolName, input, toolCallId),
@@ -147,7 +154,7 @@ export function registerGuiActionMcpServerRoutes(
     const acpSessionId = getAcpSessionId(request);
     if (!acpSessionId) {
       reply.code(400);
-      return { error: "session_id query parameter is required" };
+      return { error: "session_id is required (query parameter or X-Viben-Session-Id header)" };
     }
 
     const callerClientId = request.headers["x-viben-client-id"] as string | undefined;

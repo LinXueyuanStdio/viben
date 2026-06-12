@@ -86,7 +86,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerAgentRunRoutes(fastify);
   registerAgentWsRoutes(fastify);
   registerAgentAcpRoutes(fastify);
-  registerClientToolRoutes(fastify);
+  registerClientToolRoutes(fastify, state);
   registerFileRoutes(fastify);
   registerTelemetryRoutes(fastify);
   registerSandboxRoutes(fastify);

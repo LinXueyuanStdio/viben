@@ -1,5 +1,6 @@
 // apps/desktop/src/pages/settings/pet-section/index.tsx
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { RefreshCw, Upload } from "lucide-react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { PetPreview } from "./pet-preview";
@@ -33,6 +34,7 @@ async function notifyPetWindow() {
 }
 
 export function PetSection() {
+  const { t } = useTranslation();
   const [pets, setPets] = useState<PetResponse[]>([]);
   const [config, setConfig] = useState<PetConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,12 +93,12 @@ export function PetSection() {
   };
 
   const handleRemovePet = async (id: string) => {
-    if (!confirm(`确定要删除 Pet "${id}" 吗？此操作不可撤销。`)) return;
+    if (!confirm(t("settings.pet.deleteConfirm", "Are you sure you want to delete pet \"{{id}}\"? This action cannot be undone.", { id }))) return;
     try {
       await removePet(id);
       loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to remove pet");
+      alert(e instanceof Error ? e.message : t("settings.pet.removeFailed"));
     }
   };
 
@@ -116,14 +118,14 @@ export function PetSection() {
   const currentPet = pets.find((p) => p.id === config?.current) ?? null;
 
   if (loading || !config) {
-    return <div className="p-4 text-center text-muted-foreground">加载中...</div>;
+    return <div className="p-4 text-center text-muted-foreground">{t("common.loading", "Loading...")}</div>;
   }
 
   return (
     <div className="space-y-6 p-4">
       {/* 头部 */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Pet 设置</h2>
+        <h2 className="text-xl font-semibold">{t("settings.pet.title")}</h2>
         <div className="flex items-center gap-2">
           <Switch
             id="pet-enabled"
@@ -131,7 +133,7 @@ export function PetSection() {
             onCheckedChange={(checked) => handleConfigChange({ enabled: checked })}
           />
           <Label htmlFor="pet-enabled" className="text-sm cursor-pointer">
-            启用 Pet
+            {t("settings.pet.enablePet", "Enable Pet")}
           </Label>
         </div>
       </div>
@@ -141,33 +143,33 @@ export function PetSection() {
         <PetPreview pet={currentPet} size={config.preferences.size} />
         <div className="flex-1">
           <div className="text-lg font-medium">
-            {currentPet?.metadata.display_name ?? "未选择"}
+            {currentPet?.metadata.display_name ?? t("settings.pet.notSelected", "Not selected")}
           </div>
           <div className="text-sm text-muted-foreground">
-            {currentPet?.metadata.description ?? "请选择一个 Pet"}
+            {currentPet?.metadata.description ?? t("settings.pet.pleaseSelectPet", "Please select a pet")}
           </div>
           {config && <PreferencesForm config={config} onChange={handleConfigChange} />}
         </div>
       </div>
 
-      {/* 已安装 */}
+      {/* Installed */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium">已安装</h3>
+          <h3 className="text-lg font-medium">{t("settings.pet.installed", "Installed")}</h3>
           <div className="flex gap-2">
             <button
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
               onClick={() => setShowImport(true)}
             >
               <Upload className="h-4 w-4" />
-              导入
+              {t("settings.pet.import", "Import")}
             </button>
             <button
               className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
               onClick={loadData}
             >
               <RefreshCw className="h-4 w-4" />
-              刷新
+              {t("common.refresh", "Refresh")}
             </button>
           </div>
         </div>
@@ -179,9 +181,9 @@ export function PetSection() {
         />
       </div>
 
-      {/* 社区 Pet */}
+      {/* Community Pets */}
       <div>
-        <h3 className="text-lg font-medium mb-2">社区 Pet</h3>
+        <h3 className="text-lg font-medium mb-2">{t("settings.pet.communityPets", "Community Pets")}</h3>
         <CommunityBrowser onInstalled={loadData} />
       </div>
 

@@ -98,7 +98,7 @@ const BlockOptionsContent = forwardRef<HTMLDivElement, BlockOptionsContentProps>
 
     const { getFloatingProps } = useInteractions([dismiss]);
 
-    const contentRef = useMergeRefs([refs.setFloating, forwardedRef]);
+    const contentRef = useMergeRefs([refs.setFloating, forwardedRef]) as React.Ref<HTMLDivElement>;
 
     if (!isMounted) return null;
 

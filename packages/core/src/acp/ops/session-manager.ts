@@ -694,13 +694,20 @@ export class AcpSessionManager {
     }
   }
 
+  consumePendingBridgeToolCall(sessionId: string, toolName: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    const index = session.pending_client_side_bridge_tool_calls.findIndex((p) => p.toolName === toolName);
+    if (index >= 0) {
+      session.pending_client_side_bridge_tool_calls.splice(index, 1);
+    }
+  }
+
   private resolveClientToolCallId(session: AcpSession, toolName: string, fallbackToolCallId: string): string {
     if (!isAcpClientSideBridgeTool(toolName)) return fallbackToolCallId;
     const index = session.pending_client_side_bridge_tool_calls.findIndex((pending) => pending.toolName === toolName);
-    const pending = index >= 0
-      ? session.pending_client_side_bridge_tool_calls.splice(index, 1)[0]
-      : session.pending_client_side_bridge_tool_calls.shift();
-    if (!pending) return fallbackToolCallId;
+    if (index < 0) return fallbackToolCallId;
+    const pending = session.pending_client_side_bridge_tool_calls.splice(index, 1)[0];
     if (pending.toolCallId !== fallbackToolCallId) {
       log.debug({
         sessionId: session.id,

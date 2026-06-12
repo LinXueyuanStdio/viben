@@ -23,6 +23,7 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import {
   ChatInput,
@@ -168,6 +169,8 @@ export function DesktopChatInput({
   showBottomToolbar = true,
   ...props
 }: DesktopChatInputProps) {
+  const { t } = useTranslation();
+
   // Screenshot capturing state
   const [isScreenshotCapturing, setIsScreenshotCapturing] = useState(false);
 
@@ -313,7 +316,7 @@ export function DesktopChatInput({
             options={agentSelectorOptions}
             value={selectedAgentId}
             onChange={onAgentChange}
-            placeholder="Agent"
+            placeholder={t("chat.selectAgent")}
             disabled={isLoading || disabled}
           />
         )}
@@ -324,7 +327,7 @@ export function DesktopChatInput({
             options={modelSelectorOptions}
             value={selectedModelId}
             onChange={onModelChange}
-            placeholder="Model"
+            placeholder={t("chat.selectModel")}
             disabled={isLoading || disabled}
           />
         )}
@@ -335,7 +338,7 @@ export function DesktopChatInput({
             options={executorSelectorOptions}
             value={selectedExecutor ?? null}
             onChange={onExecutorChange}
-            placeholder="Executor"
+            placeholder={t("chat.selectExecutor")}
             disabled={isLoading || disabled}
           />
         )}

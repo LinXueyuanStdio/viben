@@ -163,7 +163,7 @@ class GatewayActionSocket {
   }
 
   private async handleExecute(data: ActionExecuteEvent): Promise<void> {
-    const { requestId, namespace, action, payload, context } = data;
+    const { requestId, action, payload, context } = data;
     let result: ClientToolResult;
 
     try {
@@ -173,18 +173,23 @@ class GatewayActionSocket {
         (message, options) => this.emitApprovalRequest(requestId, message, options)
       );
 
-      if (
-        namespace === DESKTOP_MAIN_NAMESPACE &&
-        (action === "read_window" || action === "navigate_to")
-      ) {
+      if (action === "read_window" || action === "navigate_to") {
         const builtinResult = await executeBuiltin(action, payload ?? {}, ctx);
         result = builtinResult ?? {
           content: [{ type: "text", text: `Builtin "${action}" returned null` }],
           isError: true,
         };
       } else {
-        const fullName = `${namespace}.${action}`;
-        result = await executeGUIAction({ action: fullName, payload }, ctx);
+        // Find the action in local store by name (across all providers)
+        const localAction = this.findLocalAction(action);
+        if (localAction) {
+          result = await executeGUIAction({ action: localAction, payload }, ctx);
+        } else {
+          result = {
+            content: [{ type: "text", text: `Action not found locally: ${action}` }],
+            isError: true,
+          };
+        }
       }
     } catch (err) {
       if (err instanceof UserCancelledException) {
@@ -198,6 +203,29 @@ class GatewayActionSocket {
     }
 
     this.socket?.emit("action:result", { requestId, result });
+  }
+
+  private findLocalAction(actionName: string): string | undefined {
+    const state = useActionStore.getState();
+    // actionName might be "presentation.spotlight" (sub-namespace.name) or "read_window" (flat builtin)
+    // Try exact match as provider_namespace.action_name first
+    const dotIdx = actionName.indexOf(".");
+    if (dotIdx > 0) {
+      const subNs = actionName.slice(0, dotIdx);
+      const name = actionName.slice(dotIdx + 1);
+      for (const provider of state.registry.values()) {
+        if (provider.namespace === subNs) {
+          const found = provider.actions.find(a => a.name === name);
+          if (found) return `${provider.namespace}.${found.name}`;
+        }
+      }
+    }
+    // Fallback: search by bare name across all providers
+    for (const provider of state.registry.values()) {
+      const found = provider.actions.find(a => a.name === actionName);
+      if (found) return `${provider.namespace}.${found.name}`;
+    }
+    return undefined;
   }
 
   private emitApprovalRequest(
@@ -369,7 +397,10 @@ class GatewayActionSocket {
       { namespace: string; actions: { name: string; description: string; input_schema?: JSONSchema7; output_schema?: JSONSchema7 }[]; registeredAt?: number }
     >
   ): Map<string, Map<string, ActionMeta>> {
-    const grouped = new Map<string, Map<string, ActionMeta>>();
+    // Flatten all actions under desktop_main namespace.
+    // Non-builtin providers prefix their original namespace into the action name:
+    //   presentation.spotlight, test.hello (while builtins stay flat: read_window)
+    const flat = new Map<string, ActionMeta>();
 
     // Sort providers by registration time (most recent first for priority)
     const providers = [...registry.values()].sort((a, b) => {
@@ -379,13 +410,11 @@ class GatewayActionSocket {
     });
 
     for (const provider of providers) {
-      if (!grouped.has(provider.namespace)) {
-        grouped.set(provider.namespace, new Map());
-      }
-      const nsMap = grouped.get(provider.namespace)!;
+      const isBuiltin = provider.namespace === DESKTOP_MAIN_NAMESPACE;
       for (const action of provider.actions) {
-        if (!nsMap.has(action.name)) {
-          nsMap.set(action.name, {
+        const name = isBuiltin ? action.name : `${provider.namespace}.${action.name}`;
+        if (!flat.has(name)) {
+          flat.set(name, {
             description: action.description,
             inputSchema: action.input_schema,
             outputSchema: action.output_schema,
@@ -394,6 +423,8 @@ class GatewayActionSocket {
       }
     }
 
+    const grouped = new Map<string, Map<string, ActionMeta>>();
+    grouped.set(DESKTOP_MAIN_NAMESPACE, flat);
     return grouped;
   }
 

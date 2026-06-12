@@ -740,7 +740,7 @@ export function SettingsModelPage() {
                         </span>
                         {provider.surfaces.length > 1 && (
                           <span className="text-[10px] text-muted-foreground/60">
-                            · {provider.surfaces.length} surfaces
+                            · {t("settingsModel.surfacesCount", "{{count}} surfaces", { count: provider.surfaces.length })}
                           </span>
                         )}
                       </div>
@@ -766,7 +766,7 @@ export function SettingsModelPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-base truncate">{selectedProvider.name}</h3>
                       <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium flex-shrink-0">
-                        {selectedProvider.category === "media" ? "Media" : "LLM"}
+                        {selectedProvider.category === "media" ? t("settingsModel.categoryMedia", "Media") : t("settingsModel.categoryLLM", "LLM")}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -1127,7 +1127,7 @@ export function SettingsModelPage() {
 
             {/* Category */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Category</Label>
+              <Label className="text-xs font-medium">{t("settingsModel.category")}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"

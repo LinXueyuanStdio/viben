@@ -168,11 +168,11 @@ export function ProvidersPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="builtin">
             <Database className="h-4 w-4 mr-2" />
-            {t("providers.builtinSources", { defaultValue: "Built-in Sources" })}
+            {t("providers.builtinSources")}
           </TabsTrigger>
           <TabsTrigger value="marketplace">
             <Package className="h-4 w-4 mr-2" />
-            {t("providers.marketplace", { defaultValue: "Marketplace" })}
+            {t("providers.marketplace")}
           </TabsTrigger>
         </TabsList>
 
@@ -695,7 +695,7 @@ function MarketplaceTab({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("providers.searchPlugins", { defaultValue: "Search plugins..." })}
+            placeholder={t("providers.searchPlugins")}
             className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -707,28 +707,19 @@ function MarketplaceTab({
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-muted-foreground" />
             <span>
-              {t("providers.pluginsAvailable", {
-                defaultValue: "{{count}} plugins available",
-                count: plugins.length,
-              })}
+              {t("providers.pluginsAvailable", { count: plugins.length })}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4 text-muted-foreground" />
             <span>
-              {t("providers.totalSourcesAvailable", {
-                defaultValue: "{{count}} sources available",
-                count: totalSources,
-              })}
+              {t("providers.totalSourcesAvailable", { count: totalSources })}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-muted-foreground" />
             <span>
-              {t("providers.categoriesAvailable", {
-                defaultValue: "{{count}} categories",
-                count: categories.length,
-              })}
+              {t("providers.categoriesAvailable", { count: categories.length })}
             </span>
           </div>
         </div>
@@ -768,17 +759,11 @@ function MarketplaceTab({
             <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">
               {searchQuery
-                ? t("providers.noPluginsMatch", {
-                    defaultValue: "No plugins match your search",
-                  })
-                : t("providers.noPluginsAvailable", {
-                    defaultValue: "No plugins available",
-                  })}
+                ? t("providers.noPluginsMatch")
+                : t("providers.noPluginsAvailable")}
             </p>
             <p className="text-sm mt-1">
-              {t("providers.checkBackLater", {
-                defaultValue: "Check back later for new plugins",
-              })}
+              {t("providers.checkBackLater")}
             </p>
           </div>
         ) : (
@@ -858,7 +843,7 @@ function PluginCard({
               <h3 className="font-semibold">{plugin.name}</h3>
               {plugin.builtin && (
                 <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                  {t("providers.builtin", { defaultValue: "Built-in" })}
+                  {t("providers.builtin")}
                 </span>
               )}
               {plugin.version && (
@@ -936,7 +921,7 @@ function PluginCard({
                     className="h-7 text-xs"
                   >
                     <Globe className="h-3 w-3 mr-1" />
-                    {t("providers.homepage", { defaultValue: "Homepage" })}
+                    {t("providers.homepage")}
                   </Button>
                 )}
                 {plugin.repository && (
@@ -947,16 +932,14 @@ function PluginCard({
                     className="h-7 text-xs"
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />
-                    {t("providers.repository", { defaultValue: "Repository" })}
+                    {t("providers.repository")}
                   </Button>
                 )}
               </div>
 
               {/* Sources List */}
               <h4 className="text-sm font-medium mb-3">
-                {t("providers.includedSources", {
-                  defaultValue: "Included Sources",
-                })}
+                {t("providers.includedSources")}
               </h4>
               <div className="space-y-2">
                 {plugin.sources.length > 0 ? (
@@ -971,9 +954,7 @@ function PluginCard({
                   ))
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {t("providers.noSourcesInPlugin", {
-                      defaultValue: "No sources in this plugin",
-                    })}
+                    {t("providers.noSourcesInPlugin")}
                   </p>
                 )}
               </div>
@@ -982,7 +963,7 @@ function PluginCard({
               {!plugin.builtin && plugin.package && (
                 <div className="mt-4 pt-3 border-t">
                   <p className="text-xs text-muted-foreground">
-                    {t("providers.installWith", { defaultValue: "Install with:" })}
+                    {t("providers.installWith")}
                   </p>
                   <code className="block mt-1 text-xs bg-muted p-2 rounded font-mono">
                     pip install {plugin.package}

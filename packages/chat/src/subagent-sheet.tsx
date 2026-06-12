@@ -213,10 +213,10 @@ export function SubagentSheet({
           {/* Panel */}
           <motion.div
             key="panel"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+            initial={{ x: "50%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "50%", opacity: 0 }}
+            transition={{ type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             data-testid="subagent-sheet-panel"
             className={cn(
               contained

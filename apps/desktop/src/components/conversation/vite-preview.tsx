@@ -6,13 +6,15 @@
  * Shows real-time logs and retry status during server startup.
  */
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  Copy,
+  Check,
   ExternalLink,
   Loader2,
   Maximize2,
@@ -21,10 +23,382 @@ import {
   RefreshCw,
   Square,
   Terminal,
+  Trash2,
   X,
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { PreviewStatus } from "@/hooks/use-vite-preview";
+
+// ============================================================================
+// Log Entry Types and Parsing
+// ============================================================================
+
+type LogLevel = "info" | "warn" | "error" | "debug" | "retry";
+
+interface ParsedLog {
+  index: number;
+  level: LogLevel;
+  message: string;
+}
+
+const LOG_LEVEL_COLORS: Record<LogLevel, string> = {
+  info: "text-slate-300",
+  warn: "text-yellow-400",
+  error: "text-red-400",
+  debug: "text-slate-500",
+  retry: "text-blue-400",
+};
+
+const LOG_LEVEL_BADGES: Record<LogLevel, { bg: string; text: string }> = {
+  info: { bg: "bg-slate-700", text: "text-slate-300" },
+  warn: { bg: "bg-yellow-900/50", text: "text-yellow-400" },
+  error: { bg: "bg-red-900/50", text: "text-red-400" },
+  debug: { bg: "bg-slate-800", text: "text-slate-500" },
+  retry: { bg: "bg-blue-900/50", text: "text-blue-400" },
+};
+
+function parseLogEntry(log: string, index: number): ParsedLog {
+  let level: LogLevel = "info";
+  let message = log;
+
+  if (log.startsWith("[Error]") || log.toLowerCase().includes("error")) {
+    level = "error";
+    message = log.replace(/^\[Error\]\s*/, "");
+  } else if (log.startsWith("[stderr]")) {
+    level = "warn";
+    message = log.replace(/^\[stderr\]\s*/, "");
+  } else if (log.startsWith("[Retry")) {
+    level = "retry";
+  } else if (log.toLowerCase().includes("debug")) {
+    level = "debug";
+  }
+
+  return { index, level, message };
+}
+
+// ============================================================================
+// ANSI Color Parsing for Terminal Output
+// ============================================================================
+
+interface AnsiSpan {
+  text: string;
+  className: string;
+}
+
+const ANSI_COLORS: Record<number, string> = {
+  30: "text-black",
+  31: "text-red-500",
+  32: "text-green-500",
+  33: "text-yellow-500",
+  34: "text-blue-500",
+  35: "text-purple-500",
+  36: "text-cyan-500",
+  37: "text-white",
+  90: "text-slate-500",
+  91: "text-red-400",
+  92: "text-green-400",
+  93: "text-yellow-400",
+  94: "text-blue-400",
+  95: "text-purple-400",
+  96: "text-cyan-400",
+  97: "text-slate-200",
+};
+
+const ANSI_BG_COLORS: Record<number, string> = {
+  40: "bg-black",
+  41: "bg-red-900",
+  42: "bg-green-900",
+  43: "bg-yellow-900",
+  44: "bg-blue-900",
+  45: "bg-purple-900",
+  46: "bg-cyan-900",
+  47: "bg-white",
+};
+
+function parseAnsiString(str: string): AnsiSpan[] {
+  const spans: AnsiSpan[] = [];
+  // eslint-disable-next-line no-control-regex
+  const ansiRegex = /\x1b\[([0-9;]*)m/g;
+
+  let lastIndex = 0;
+  let currentClasses: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = ansiRegex.exec(str)) !== null) {
+    // Add text before this escape sequence
+    if (match.index > lastIndex) {
+      const text = str.slice(lastIndex, match.index);
+      if (text) {
+        spans.push({ text, className: currentClasses.join(" ") });
+      }
+    }
+
+    // Parse the escape codes
+    const codes = match[1].split(";").map(Number);
+    for (const code of codes) {
+      if (code === 0) {
+        currentClasses = [];
+      } else if (code === 1) {
+        currentClasses.push("font-bold");
+      } else if (code === 2) {
+        currentClasses.push("opacity-70");
+      } else if (code === 3) {
+        currentClasses.push("italic");
+      } else if (code === 4) {
+        currentClasses.push("underline");
+      } else if (ANSI_COLORS[code]) {
+        // Remove existing text color
+        currentClasses = currentClasses.filter((c) => !c.startsWith("text-"));
+        currentClasses.push(ANSI_COLORS[code]);
+      } else if (ANSI_BG_COLORS[code]) {
+        // Remove existing bg color
+        currentClasses = currentClasses.filter((c) => !c.startsWith("bg-"));
+        currentClasses.push(ANSI_BG_COLORS[code]);
+      }
+    }
+
+    lastIndex = ansiRegex.lastIndex;
+  }
+
+  // Add remaining text
+  if (lastIndex < str.length) {
+    const text = str.slice(lastIndex);
+    if (text) {
+      spans.push({ text, className: currentClasses.join(" ") });
+    }
+  }
+
+  // If no spans were created, return the original string
+  if (spans.length === 0 && str) {
+    spans.push({ text: str, className: "" });
+  }
+
+  return spans;
+}
+
+// ============================================================================
+// Memoized Log Line Component
+// ============================================================================
+
+interface LogLineProps {
+  log: ParsedLog;
+}
+
+const LogLine = memo(function LogLine({ log }: LogLineProps) {
+  const badge = LOG_LEVEL_BADGES[log.level];
+
+  // Split message by newlines and parse ANSI for each line
+  const lines = useMemo(() => {
+    return log.message.split("\n").map((line) => parseAnsiString(line));
+  }, [log.message]);
+
+  // Single line - simple layout
+  if (lines.length === 1) {
+    return (
+      <div className="group flex items-start gap-2 py-0.5 hover:bg-white/5">
+        <span className="w-6 shrink-0 select-none text-right text-slate-600">
+          {log.index + 1}
+        </span>
+        {log.level !== "info" && (
+          <span
+            className={cn(
+              "shrink-0 rounded px-1 text-[10px] font-medium uppercase",
+              badge.bg,
+              badge.text
+            )}
+          >
+            {log.level}
+          </span>
+        )}
+        <span className={cn("flex-1 break-all", LOG_LEVEL_COLORS[log.level])}>
+          {lines[0].map((span, i) => (
+            <span key={i} className={span.className}>
+              {span.text}
+            </span>
+          ))}
+        </span>
+      </div>
+    );
+  }
+
+  // Multi-line - first line has line number and badge, rest are indented
+  return (
+    <div className="group py-0.5 hover:bg-white/5">
+      {lines.map((lineSpans, lineIndex) => (
+        <div key={lineIndex} className="flex items-start gap-2">
+          {lineIndex === 0 ? (
+            <>
+              <span className="w-6 shrink-0 select-none text-right text-slate-600">
+                {log.index + 1}
+              </span>
+              {log.level !== "info" && (
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1 text-[10px] font-medium uppercase",
+                    badge.bg,
+                    badge.text
+                  )}
+                >
+                  {log.level}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="w-6 shrink-0" />
+              {log.level !== "info" && <span className="shrink-0 w-[42px]" />}
+            </>
+          )}
+          <span className={cn("flex-1 break-all", LOG_LEVEL_COLORS[log.level])}>
+            {lineSpans.length === 0 ? (
+              <span>&nbsp;</span>
+            ) : (
+              lineSpans.map((span, i) => (
+                <span key={i} className={span.className}>
+                  {span.text}
+                </span>
+              ))
+            )}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+// ============================================================================
+// Terminal Logs Panel Component
+// ============================================================================
+
+interface TerminalLogsPanelProps {
+  logs: string[];
+  showLogs: boolean;
+  onToggleLogs: () => void;
+  onClearLogs?: () => void;
+  className?: string;
+}
+
+const TerminalLogsPanel = memo(function TerminalLogsPanel({
+  logs,
+  showLogs,
+  onToggleLogs,
+  onClearLogs,
+  className,
+}: TerminalLogsPanelProps) {
+  const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Parse logs with memoization - use index as stable key
+  const parsedLogs = useMemo(
+    () => logs.map((log, index) => parseLogEntry(log, index)),
+    [logs]
+  );
+
+  // Track scroll position
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const isAtBottom =
+        container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+      setUserScrolledUp(!isAtBottom);
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [showLogs]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (showLogs && endRef.current && !userScrolledUp) {
+      endRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [parsedLogs.length, showLogs, userScrolledUp]);
+
+  const handleCopy = useCallback(async () => {
+    const text = logs.join("\n");
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [logs]);
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col overflow-hidden rounded-lg border border-slate-700 bg-slate-900",
+        className
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-700 bg-slate-800/50 px-3 py-1.5">
+        <button
+          type="button"
+          onClick={onToggleLogs}
+          className="flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200"
+        >
+          <Terminal className="h-3.5 w-3.5" />
+          {t("preview.serverLogs", "Server Logs")}
+          <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
+            {logs.length}
+          </span>
+          {showLogs ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
+        </button>
+
+        {showLogs && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+              title={t("preview.copyLogs", "Copy logs")}
+            >
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </button>
+            {onClearLogs && (
+              <button
+                type="button"
+                onClick={onClearLogs}
+                className="flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-700 hover:text-slate-300"
+                title={t("preview.clearLogs", "Clear logs")}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Logs content */}
+      {showLogs && (
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-auto bg-slate-950 p-2 font-mono text-xs leading-relaxed"
+        >
+          {parsedLogs.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-slate-600">
+              <span>{t("preview.waitingForLogs", "Waiting for server output...")}</span>
+            </div>
+          ) : (
+            <>
+              {parsedLogs.map((log) => (
+                <LogLine key={log.index} log={log} />
+              ))}
+              <div ref={endRef} />
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 interface VitePreviewProps {
   /** The URL to preview */
@@ -45,6 +419,8 @@ interface VitePreviewProps {
   onStop?: () => void;
   /** Callback to close the preview panel */
   onClose?: () => void;
+  /** Callback to clear logs */
+  onClearLogs?: () => void;
   /** Hide the built-in header (when parent provides its own toolbar) */
   hideHeader?: boolean;
   /** Additional class names */
@@ -64,42 +440,20 @@ export function VitePreview({
   onStart,
   onStop,
   onClose,
+  onClearLogs,
   hideHeader = false,
   className,
 }: VitePreviewProps) {
   const { t } = useTranslation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const logsContainerRef = useRef<HTMLDivElement>(null);
-  const logsEndRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [iframeKey, setIframeKey] = useState(0);
   const [showLogs, setShowLogs] = useState(true);
-  const [userScrolledUp, setUserScrolledUp] = useState(false);
 
-  // Track if user has scrolled up from bottom
-  useEffect(() => {
-    const container = logsContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
-      setUserScrolledUp(!isAtBottom);
-    };
-
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [showLogs]);
-
-  // Auto-scroll logs to bottom only if user hasn't scrolled up
-  useEffect(() => {
-    if (showLogs && logsEndRef.current && !userScrolledUp) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [logs, showLogs, userScrolledUp]);
-
-  // Handle iframe refresh
+  // Handle iframe refresh using native reload
   const handleRefresh = useCallback(() => {
-    setIframeKey((k) => k + 1);
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.location.reload();
+    }
   }, []);
 
   // Handle open in new tab
@@ -196,43 +550,13 @@ export function VitePreview({
           </div>
 
           {/* Logs panel */}
-          <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-            <button
-              type="button"
-              onClick={() => setShowLogs(!showLogs)}
-              className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              <Terminal className="h-3.5 w-3.5" />
-              {t("preview.serverLogs", "Server Logs")}
-              {showLogs ? (
-                <ChevronUp className="ml-auto h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="ml-auto h-3.5 w-3.5" />
-              )}
-            </button>
-            {showLogs && (
-              <div ref={logsContainerRef} className="flex-1 overflow-auto p-2 font-mono text-xs">
-                {logs.length === 0 ? (
-                  <p className="text-muted-foreground/50">{t("preview.waitingForLogs", "Waiting for server output...")}</p>
-                ) : (
-                  logs.map((log, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "whitespace-pre-wrap break-all py-0.5",
-                        log.startsWith("[Error]") && "text-red-500",
-                        log.startsWith("[stderr]") && "text-yellow-600 dark:text-yellow-400",
-                        log.startsWith("[Retry") && "text-blue-500"
-                      )}
-                    >
-                      {log}
-                    </div>
-                  ))
-                )}
-                <div ref={logsEndRef} />
-              </div>
-            )}
-          </div>
+          <TerminalLogsPanel
+            logs={logs}
+            showLogs={showLogs}
+            onToggleLogs={() => setShowLogs(!showLogs)}
+            onClearLogs={onClearLogs}
+            className="flex-1"
+          />
         </div>
       </div>
     );
@@ -284,39 +608,13 @@ export function VitePreview({
 
           {/* Show logs if available */}
           {logs.length > 0 && (
-            <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
-              <button
-                type="button"
-                onClick={() => setShowLogs(!showLogs)}
-                className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Terminal className="h-3.5 w-3.5" />
-                {t("preview.serverLogs", "Server Logs")}
-                {showLogs ? (
-                  <ChevronUp className="ml-auto h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="ml-auto h-3.5 w-3.5" />
-                )}
-              </button>
-              {showLogs && (
-                <div ref={logsContainerRef} className="flex-1 overflow-auto p-2 font-mono text-xs">
-                  {logs.map((log, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "whitespace-pre-wrap break-all py-0.5",
-                        log.startsWith("[Error]") && "text-red-500",
-                        log.startsWith("[stderr]") && "text-yellow-600 dark:text-yellow-400",
-                        log.startsWith("[Retry") && "text-blue-500"
-                      )}
-                    >
-                      {log}
-                    </div>
-                  ))}
-                  <div ref={logsEndRef} />
-                </div>
-              )}
-            </div>
+            <TerminalLogsPanel
+              logs={logs}
+              showLogs={showLogs}
+              onToggleLogs={() => setShowLogs(!showLogs)}
+              onClearLogs={onClearLogs}
+              className="flex-1"
+            />
           )}
         </div>
       </div>
@@ -392,7 +690,6 @@ export function VitePreview({
       )}
       <div className="flex-1 overflow-hidden bg-white">
         <iframe
-          key={iframeKey}
           ref={iframeRef}
           src={previewUrl}
           className="h-full w-full border-0"

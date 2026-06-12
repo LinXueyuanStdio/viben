@@ -1,5 +1,6 @@
 // apps/desktop/src/pages/settings/pet-section/community-browser.tsx
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, Search, Loader2 } from "lucide-react";
 import { fetchCommunityPets, installPet, fetchSources } from "./api";
 import type { CommunityPetResponse, PetSourceResponse } from "./api";
@@ -9,6 +10,7 @@ interface CommunityBrowserProps {
 }
 
 export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
+  const { t } = useTranslation();
   const [pets, setPets] = useState<CommunityPetResponse[]>([]);
   const [sources, setSources] = useState<PetSourceResponse[]>([]);
   const [selectedSource, setSelectedSource] = useState<string>("");
@@ -40,7 +42,7 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
 
   const handleInstall = async (pet: CommunityPetResponse) => {
     if (!pet.id || !pet.source) {
-      setError("Pet data is incomplete");
+      setError(t("settings.pet.petDataIncomplete"));
       return;
     }
     setInstalling(pet.id);
@@ -48,7 +50,7 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
       await installPet(pet.id, pet.source);
       onInstalled();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Install failed");
+      setError(e instanceof Error ? e.message : t("settings.pet.installFailed"));
     } finally {
       setInstalling(null);
     }
@@ -61,7 +63,7 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
           <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="搜索..."
+            placeholder={t("common.search", "Search...")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-md border bg-background pl-8 pr-3 py-1.5 text-sm"
@@ -72,7 +74,7 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
           onChange={(e) => setSelectedSource(e.target.value)}
           className="rounded-md border bg-background px-2 py-1.5 text-sm"
         >
-          <option value="">全部来源</option>
+          <option value="">{t("settings.pet.allSources", "All Sources")}</option>
           {sources.map((s) => (
             <option key={s.name} value={s.name}>
               {s.name}
@@ -117,7 +119,7 @@ export function CommunityBrowser({ onInstalled }: CommunityBrowserProps) {
                 ) : (
                   <Download className="h-3 w-3" />
                 )}
-                安装
+                {t("common.install", "Install")}
               </button>
             </div>
           ))}

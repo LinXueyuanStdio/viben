@@ -287,19 +287,19 @@ function UserMessage({
       initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-      className="flex gap-3 w-full min-w-0"
+      className="flex gap-2 w-full min-w-0"
     >
       <MessageAvatar
-        className="h-8 w-8 bg-primary/10"
+        className="h-6 w-6 bg-primary/10"
         label={t("chat.avatar.user", "User avatar")}
         message={message}
         onClick={onAvatarClick}
       >
-        {avatar ?? <User className="h-4 w-4 text-primary" />}
+        {avatar ?? <User className="h-3.5 w-3.5 text-primary" />}
       </MessageAvatar>
       <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="w-fit max-w-full rounded-2xl rounded-tl-md bg-primary px-4 py-3 text-primary-foreground min-w-0">
-          <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere]">{content}</p>
+        <div className="w-fit max-w-full rounded-lg bg-primary/10 px-2.5 py-1.5 min-w-0">
+          <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere] text-foreground">{content}</p>
           {attachments?.map((attachment) => (
             <AttachmentPreview key={attachment.id} attachment={attachment} />
           ))}
@@ -321,17 +321,17 @@ function ErrorMessage({ errorMessage, skipAnimation }: { errorMessage: string; s
       initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-      className="flex gap-3 w-full min-w-0"
+      className="flex gap-2 w-full min-w-0"
     >
-      <div data-message-avatar="true" className={cn(MESSAGE_AVATAR_CLASS, "h-8 w-8 bg-destructive/10")}>
-        <AlertCircle className="h-4 w-4 text-destructive" />
+      <div data-message-avatar="true" className={cn(MESSAGE_AVATAR_CLASS, "h-6 w-6 bg-destructive/10")}>
+        <AlertCircle className="h-3.5 w-3.5 text-destructive" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="rounded-2xl rounded-tl-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+        <div className="rounded-lg bg-destructive/5 px-3 py-2">
           <p className="text-sm font-medium text-destructive">
             {t("chat.error", "Error")}
           </p>
-          <p className="mt-1 text-sm text-destructive/80">{errorMessage}</p>
+          <p className="mt-0.5 text-sm text-destructive/80">{errorMessage}</p>
         </div>
       </div>
     </motion.div>
@@ -483,23 +483,18 @@ function AssistantMessage({
       initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-      className="flex gap-3 w-full min-w-0"
+      className="flex gap-2 w-full min-w-0"
     >
       <MessageAvatar
-        className="h-8 w-8 bg-secondary"
+        className="h-6 w-6 bg-secondary"
         label={t("chat.avatar.assistant", "Assistant avatar")}
         message={message}
         onClick={onAvatarClick}
       >
-        {avatar ?? <Bot className="h-4 w-4 text-secondary-foreground" />}
+        {avatar ?? <Bot className="h-3.5 w-3.5 text-secondary-foreground" />}
       </MessageAvatar>
       <div className="flex-1 min-w-0 overflow-hidden">
-        <div
-          className={cn(
-            "rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 overflow-hidden",
-            isResult && "border-primary/30 bg-primary/5"
-          )}
-        >
+        <div className={cn("rounded-lg px-2.5 py-1.5 overflow-hidden", isResult ? "bg-primary/10" : "bg-muted")}>
           <div
             className={cn(
               "prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words text-foreground",

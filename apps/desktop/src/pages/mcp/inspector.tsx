@@ -586,7 +586,7 @@ export function InspectorPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{t("inspector.proxy", "Proxy")}</span>
+                  <span className="text-sm font-medium">{t("inspector.proxy")}</span>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -595,7 +595,7 @@ export function InspectorPage() {
                     onChange={(e) => setUseProxy(e.target.checked)}
                     className="rounded border-input"
                   />
-                  <span className="text-xs text-muted-foreground">{t("inspector.useProxy", "Enable")}</span>
+                  <span className="text-xs text-muted-foreground">{t("inspector.useProxy")}</span>
                 </label>
               </div>
 
@@ -614,7 +614,7 @@ export function InspectorPage() {
                         <div className={`w-2 h-2 rounded-full ${inspectorStatus.available ? "bg-green-500" : "bg-gray-400"}`} />
                         <span className="text-xs text-muted-foreground">
                           {inspectorStatus.available
-                            ? `${t("inspector.proxyBuiltIn", "Built-in")} (${inspectorStatus.sessions} ${t("inspector.sessions", "sessions")})`
+                            ? `${t("inspector.proxyBuiltIn")} (${inspectorStatus.sessions} ${t("inspector.sessions")})`
                             : t("inspector.proxyUnavailable", "Unavailable")}
                         </span>
                       </div>
@@ -871,7 +871,7 @@ export function InspectorPage() {
                 </TabsTrigger>
                 <TabsTrigger value="apps" disabled={!hasTools}>
                   <AppWindow className="w-4 h-4 mr-2" />
-                  {t("inspector.apps", "Apps")}
+                  {t("inspector.apps")}
                 </TabsTrigger>
               </TabsList>
 

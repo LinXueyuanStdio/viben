@@ -65,7 +65,7 @@ export function QueueSettingsModal({
         onOpenChange(false);
       } catch (err) {
         // Error handling - show error message
-        const message = err instanceof Error ? err.message : t("workspace.queueSettingsDialog.saveFailed");
+        const message = err instanceof Error ? err.message : t("workspace.queueSettingsDialog.saveFailed", "Failed to save settings");
         setError(message);
       } finally {
         setIsSubmitting(false);

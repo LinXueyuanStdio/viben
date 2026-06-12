@@ -551,7 +551,7 @@ export function PagePreviewWindow({
     if (!externalUrl) return;
     try {
       await navigator.clipboard.writeText(externalUrl);
-      toast.success(t("pageSection.linkCopied", "Link copied to clipboard"));
+      toast.success(t("page.linkCopied", "Link copied to clipboard"));
     } catch (error) {
       console.error("Failed to copy preview link:", error);
       toast.error(t("common.copyFailed", "Failed to copy"));

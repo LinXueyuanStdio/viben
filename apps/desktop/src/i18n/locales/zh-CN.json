@@ -14,6 +14,7 @@
     "remove": "移除",
     "copy": "复制",
     "copied": "已复制！",
+    "copyItem": "复制{{item}}",
     "refresh": "刷新",
     "start": "启动",
     "stop": "停止",
@@ -155,7 +156,8 @@
     "added": "已添加",
     "free": "免费",
     "noCategories": "暂无分类",
-    "retryStep": "重试 {{step}}"
+    "retryStep": "重试 {{step}}",
+    "install": "安装"
   },
   "elapsedTime": {
     "justNow": "刚刚",
@@ -767,7 +769,16 @@
       "networkError": "网络错误",
       "allSuccess": "全部 {{count}} 个账户连接正常",
       "someFailed": "{{failed}} 个账户连接失败，{{success}} 个正常",
-      "singleTest": "测试连接"
+      "singleTest": "测试连接",
+      "loadFailed": "加载交易所数据失败",
+      "addSuccess": "账户添加成功",
+      "saveFailed": "保存失败",
+      "connectSuccess": "连接成功 ({{latency}}ms)",
+      "connectFailed": "连接失败: {{error}}",
+      "connectNetworkError": "连接失败: 网络错误",
+      "deleteSuccess": "账户已删除",
+      "deleteFailed": "删除失败",
+      "ipCopied": "IP 已复制"
     },
     "notifications": {
       "description": "配置通知的接收方式和时间",
@@ -1014,6 +1025,32 @@
     },
     "mcp": {
       "title": "MCP"
+    },
+    "pet": {
+      "noPet": "暂无宠物",
+      "title": "宠物设置",
+      "zipFilePath": "Zip 文件路径",
+      "importFailed": "导入失败",
+      "petDataIncomplete": "宠物数据不完整",
+      "installFailed": "安装失败",
+      "loadSourcesFailed": "加载源失败",
+      "addSourceFailed": "添加源失败",
+      "removeSourceFailed": "删除源失败",
+      "removeFailed": "删除宠物失败",
+      "enablePet": "启用 Pet",
+      "notSelected": "未选择",
+      "pleaseSelectPet": "请选择一个 Pet",
+      "installed": "已安装",
+      "import": "导入",
+      "communityPets": "社区 Pet",
+      "deleteConfirm": "确定要删除 Pet \"{{id}}\" 吗？此操作不可撤销。",
+      "allSources": "全部来源",
+      "sourceManagement": "来源管理",
+      "addSource": "添加来源",
+      "deleteSourceConfirm": "确定要删除来源 \"{{name}}\" 吗？",
+      "sourceUrlPlaceholder": "URL (https://...)",
+      "importPet": "导入 Pet",
+      "size": "大小"
     }
   },
   "sandbox": {
@@ -1522,7 +1559,11 @@
     "sourceManual": "手动添加",
     "providerSurfaces": "媒体能力",
     "defaultModel": "默认",
-    "setDefault": "设为默认"
+    "setDefault": "设为默认",
+    "category": "类别",
+    "categoryMedia": "媒体",
+    "categoryLLM": "大语言模型",
+    "surfacesCount": "{{count}} 种媒体类型"
   },
   "providers": {
     "title": "数据源",
@@ -4329,7 +4370,8 @@
         "saveAndContinue": "保存并继续",
         "alreadyConfigured": "提供商已配置",
         "useExisting": "使用现有的 {{provider}} 配置",
-        "addNew": "新增"
+        "addNew": "新增",
+        "typeLabel": "供应商"
       },
       "model": {
         "title": "选择模型",
@@ -4798,7 +4840,43 @@
     "screenshotWindow": "窗口截图",
     "selectProvider": "选择提供商...",
     "steer": "引导",
-    "steeringQueued": "{{count}} 条已排队"
+    "steeringQueued": "{{count}} 条已排队",
+    "noSessionsInPanel": "暂无会话",
+    "acpDetail": {
+      "tool": "工具",
+      "callId": "调用 ID",
+      "subagent": "子智能体",
+      "input": "输入",
+      "output": "输出",
+      "artifact": "产物",
+      "id": "ID",
+      "type": "类型",
+      "source": "来源",
+      "sourceMessage": "来源消息",
+      "artifactData": "产物数据",
+      "richView": "富文本",
+      "jsonView": "JSON"
+    },
+    "acp": {
+      "queuedPrompts": "{{count}} 条排队提示",
+      "readyWhenYouAre": "准备就绪，随时可用。",
+      "runningTool": "正在运行 {{name}}...",
+      "tool": "工具",
+      "toolCall": "工具 {{name}}",
+      "call": "调用",
+      "needsAttention": "需要处理一些问题。",
+      "working": "处理中...",
+      "connectFirst": "请先连接以发送提示。",
+      "steeringPlaceholder": "在智能体运行时输入引导指令...",
+      "compactMode": "紧凑模式",
+      "expandedMode": "展开模式",
+      "fullscreenMode": "全屏模式",
+      "openInNewWindow": "在新窗口中打开",
+      "connect": "连接",
+      "recallQueue": "召回队列",
+      "welcomeTitle": "ACP 聊天",
+      "welcomeDescription": "连接、创建或恢复会话，然后与 ACP 后端对话。"
+    }
   },
   "creator": {
     "title": "创作者",
@@ -6305,7 +6383,8 @@
         "closed": "已关闭"
       },
       "viewOnGitHub": "在 GitHub 上查看"
-    }
+    },
+    "dockLabel": "程序坞"
   },
   "noTraceYet": "发送消息以查看调用追踪",
   "debugDescription": "消息和工具调用将显示在此处",

@@ -370,7 +370,7 @@ function FilePreviewContent({
             {t("fileBrowser.unableToPreview")}
           </h3>
           <p className="text-muted-foreground/70 mt-1 text-xs">
-            {t("fileBrowser.fileTooLarge", "File may be too large or binary")}
+            {t("fileBrowser.fileTooLarge")}
           </p>
         </div>
       </div>

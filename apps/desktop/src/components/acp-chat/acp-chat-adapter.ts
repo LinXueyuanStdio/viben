@@ -478,7 +478,7 @@ function normalizeToolInput(input: unknown, toolName?: string): Record<string, u
 
   return {
     ...normalized,
-    description: readString(normalized.description) ?? readString(normalized.title) ?? readString(normalized.task) ?? toolName,
+    description: readString(normalized.description) ?? readString(normalized.title) ?? readString(normalized.task),
     subagent_type: readString(normalized.subagent_type) ?? readString(normalized.agentType) ?? readString(normalized.type),
     prompt: readString(normalized.prompt) ?? readString(normalized.instructions) ?? readString(normalized.message),
   };

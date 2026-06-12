@@ -38,6 +38,42 @@ export function hasMarkdownSyntax(s: string): boolean {
   return MD_SYNTAX_RE.test(s.length > 500 ? s.slice(0, 500) : s);
 }
 
+/**
+ * Detect if content is raw HTML that should be rendered directly (not as markdown).
+ * Matches content that starts with an HTML document structure or contains <script>/<style> tags.
+ */
+const RAW_HTML_RE = /^\s*(<!(DOCTYPE|doctype)|<html[\s>]|<head[\s>]|<body[\s>])/;
+const HAS_SCRIPT_OR_STYLE_RE = /<(script|style)[\s>]/i;
+export function isRawHtml(s: string): boolean {
+  return RAW_HTML_RE.test(s) || HAS_SCRIPT_OR_STYLE_RE.test(s);
+}
+
+/**
+ * Renders raw HTML content with script execution.
+ * Scripts are cloned and re-inserted to trigger execution after innerHTML injection.
+ */
+export function RawHtmlRenderer({ content }: { content: string }) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.innerHTML = content;
+    // innerHTML doesn't execute scripts — clone and re-insert them
+    const scripts = container.querySelectorAll("script");
+    for (const original of scripts) {
+      const clone = document.createElement("script");
+      for (const attr of original.attributes) {
+        clone.setAttribute(attr.name, attr.value);
+      }
+      clone.textContent = original.textContent;
+      original.parentNode?.replaceChild(clone, original);
+    }
+  }, [content]);
+
+  return <div ref={containerRef} />;
+}
+
 interface CachedStreamdownProps {
   content: string;
   mode: "static" | "streaming";
@@ -50,6 +86,7 @@ interface CachedStreamdownProps {
  * - mode="static": checks LRU cache before rendering, stores result after.
  * - mode="streaming": passes through to Streamdown directly (no caching).
  * - Plain text without markdown syntax: renders as <p> directly (fast path).
+ * - Raw HTML (with <script>/<style> or DOCTYPE): renders via dangerouslySetInnerHTML.
  */
 export const CachedStreamdown = React.memo(function CachedStreamdown({
   content,
@@ -57,6 +94,11 @@ export const CachedStreamdown = React.memo(function CachedStreamdown({
   components,
   caret,
 }: CachedStreamdownProps) {
+  // Raw HTML detection — render directly with script execution
+  if (isRawHtml(content)) {
+    return <RawHtmlRenderer content={content} />;
+  }
+
   // Streaming mode — no caching, delegate directly
   if (mode === "streaming") {
     return (

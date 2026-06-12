@@ -882,14 +882,12 @@ export function ToolExecutionItem({
             >
               <StatusDot status={resolvedStatus} isWarning={isWarning} />
               <Bot className="h-3 w-3 shrink-0 text-violet-500" />
-              <span className="min-w-0 truncate font-semibold text-foreground">
-                {subagentTitle}
+              <span className="min-w-0 flex-1 truncate">
+                <span className="font-semibold text-foreground">{subagentTitle}</span>
+                {taskInput.description && (
+                  <span className="text-muted-foreground">({taskInput.description})</span>
+                )}
               </span>
-              {taskInput.description && (
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                  ({taskInput.description})
-                </span>
-              )}
               {toolUseCount > 0 && (
                 <span className="text-[11px] text-muted-foreground shrink-0">
                   · {toolUseCount} tools

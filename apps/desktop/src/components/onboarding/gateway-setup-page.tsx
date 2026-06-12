@@ -83,10 +83,10 @@ export function GatewaySetupPage({ onComplete, onBack }: GatewaySetupPageProps) 
       {/* Header */}
       <div className="text-center">
         <h2 className="text-2xl font-semibold">
-          {t("onboarding.gatewaySetup.title", "连接 Gateway")}
+          {t("onboarding.gatewaySetup.title")}
         </h2>
         <p className="mt-2 text-muted-foreground">
-          {t("onboarding.gatewaySetup.description", "正在配置本地服务...")}
+          {t("onboarding.gatewaySetup.description")}
         </p>
       </div>
 

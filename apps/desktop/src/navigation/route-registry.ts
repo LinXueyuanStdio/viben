@@ -18,7 +18,6 @@ export const ROUTE_ENTRIES: RouteEntry[] = [
   { pattern: "/workspace", icon: { type: "lucide", value: "home" }, title: "Workspaces", titleKey: "workspace.workspaces", isContainer: true, dropdownCategory: "root" },
   { pattern: "/mcp-services", icon: { type: "lucide", value: "server" }, title: "MCP Services", titleKey: "nav.mcpServices", dropdownCategory: "root" },
   { pattern: "/mcp-services/dashboard", icon: { type: "lucide", value: "layout-dashboard" }, title: "Dashboard", titleKey: "nav.dashboard", dropdownCategory: "mcp-section" },
-  { pattern: "/mcp-services/data-sources", icon: { type: "lucide", value: "database" }, title: "Data Sources", titleKey: "nav.dataSources", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/browse-mcp", icon: { type: "lucide", value: "search" }, title: "Browse MCP", titleKey: "nav.browseMcp", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/page-debug", icon: { type: "lucide", value: "bug" }, title: "Page Debug", titleKey: "nav.pageDebug", dropdownCategory: "mcp-section" },
   { pattern: "/mcp-services/inspector", icon: { type: "lucide", value: "telescope" }, title: "Inspector", titleKey: "nav.inspector", dropdownCategory: "mcp-section" },

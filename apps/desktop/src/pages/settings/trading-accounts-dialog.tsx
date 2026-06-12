@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useId } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -114,6 +115,7 @@ interface AccountTestResponse extends AccountMutationResponse {
 }
 
 export function TradingAccountsDialog({ open, onOpenChange }: Props) {
+  const { t } = useTranslation();
   const [exchanges, setExchanges] = useState<ExchangeMeta[]>([]);
   const [accounts, setAccounts] = useState<AccountItem[]>([]);
   const [selectedExchange, setSelectedExchange] = useState<string>("");
@@ -170,7 +172,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
         setSelectedExchange((prev) => prev || exchanges[0].id);
       }
     } catch {
-      toast.error("Failed to load exchange data");
+      toast.error(t("settings.tradingAccounts.loadFailed"));
     }
   }, []);
 
@@ -280,14 +282,14 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
 
       const data = await getGatewayClient().post<AccountMutationResponse>("/api/accounts", body);
       if (data.success) {
-        toast.success("账户添加成功");
+        toast.success(t("settings.tradingAccounts.addSuccess"));
         setShowForm(false);
         await fetchData();
       } else {
-        toast.error(data.error ?? "保存失败");
+        toast.error(data.error ?? t("settings.tradingAccounts.saveFailed"));
       }
     } catch {
-      toast.error("网络错误");
+      toast.error(t("settings.tradingAccounts.networkError"));
     } finally {
       setSaving(false);
     }
@@ -309,22 +311,22 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
             latency_ms: data.latency_ms,
           })
         );
-        setLiveAnnouncement(`连接成功, 延迟 ${data.latency_ms}ms`);
-        toast.success(`连接成功 (${data.latency_ms}ms)`);
+        setLiveAnnouncement(t("settings.tradingAccounts.connectSuccess", { latency: data.latency_ms }));
+        toast.success(t("settings.tradingAccounts.connectSuccess", { latency: data.latency_ms }));
       } else {
         const errMsg = data.error ?? "未知错误";
         setTestResults((prev) =>
           new Map(prev).set(id, { success: false, error: errMsg })
         );
-        setLiveAnnouncement(`连接失败: ${errMsg}`);
-        toast.error(`连接失败: ${errMsg}`);
+        setLiveAnnouncement(t("settings.tradingAccounts.connectFailed", { error: errMsg }));
+        toast.error(t("settings.tradingAccounts.connectFailed", { error: errMsg }));
       }
     } catch {
       setTestResults((prev) =>
-        new Map(prev).set(id, { success: false, error: "网络错误" })
+        new Map(prev).set(id, { success: false, error: t("settings.tradingAccounts.networkError") })
       );
-      setLiveAnnouncement("连接失败: 网络错误");
-      toast.error("连接失败: 网络错误");
+      setLiveAnnouncement(t("settings.tradingAccounts.connectNetworkError"));
+      toast.error(t("settings.tradingAccounts.connectNetworkError"));
     } finally {
       setTestingAccounts((prev) => {
         const next = new Set(prev);
@@ -340,13 +342,13 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
         method: "DELETE",
       });
       if (data.success) {
-        toast.success("账户已删除");
+        toast.success(t("settings.tradingAccounts.deleteSuccess"));
         await fetchData();
       } else {
-        toast.error(data.error ?? "删除失败");
+        toast.error(data.error ?? t("settings.tradingAccounts.deleteFailed"));
       }
     } catch {
-      toast.error("网络错误");
+      toast.error(t("settings.tradingAccounts.networkError"));
     }
   };
 
@@ -513,7 +515,7 @@ export function TradingAccountsDialog({ open, onOpenChange }: Props) {
                           aria-label="复制IP地址"
                           onClick={() => {
                             navigator.clipboard.writeText(publicIp);
-                            toast.success("IP已复制");
+                            toast.success(t("settings.tradingAccounts.ipCopied"));
                           }}
                         >
                           <Copy className="h-3 w-3" />

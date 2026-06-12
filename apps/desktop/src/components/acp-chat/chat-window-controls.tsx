@@ -9,12 +9,14 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
 import { X, Minus, Square, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function ChatWindowControls() {
+  const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
   const [currentPlatform, setCurrentPlatform] = useState<string | null>(null);
 
@@ -101,7 +103,7 @@ export function ChatWindowControls() {
           "text-muted-foreground hover:bg-foreground/10 hover:text-foreground",
           "transition-colors"
         )}
-        aria-label="Minimize"
+        aria-label={t("windowControls.minimize")}
       >
         <Minus className="size-4" />
       </button>
@@ -112,7 +114,7 @@ export function ChatWindowControls() {
           "text-muted-foreground hover:bg-foreground/10 hover:text-foreground",
           "transition-colors"
         )}
-        aria-label={isMaximized ? "Restore" : "Maximize"}
+        aria-label={t(isMaximized ? "windowControls.restore" : "windowControls.maximize")}
       >
         {isMaximized ? <Copy className="size-3.5" /> : <Square className="size-3.5" />}
       </button>
@@ -123,7 +125,7 @@ export function ChatWindowControls() {
           "text-muted-foreground hover:bg-[#c42b1c] hover:text-white",
           "transition-colors"
         )}
-        aria-label="Close"
+        aria-label={t("windowControls.close")}
       >
         <X className="size-4" />
       </button>

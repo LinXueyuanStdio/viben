@@ -37,6 +37,7 @@ export interface ClientStoreExecutor {
   }>;
   findActionByName: (name: string) => { clientId: string; namespace: string; name: string; description: string; inputSchema?: unknown } | undefined;
   findActionByFullName: (fullName: string) => { clientId: string; namespace: string; name: string; description: string; inputSchema?: unknown } | undefined;
+  resolveAction: (action: string) => { clientId: string; namespace: string; name: string; description: string; inputSchema?: unknown } | undefined;
 }
 
 export interface ClientSideMcpServerOptions {
@@ -84,10 +85,18 @@ export function createClientSideMcpServer(options: ClientSideMcpServerOptions = 
         // Handle meta-operations server-side (no desktop dispatch needed)
         if (input.action === "list_actions") {
           const allActions = options.clientStoreExecutor.getAllActions();
-          const actionInfos = allActions.map(a => ({
-            name: `${a.namespace}.${a.name}`,
-            description: a.description,
-          }));
+          // Primary client = callerClientId or first seen; no clientId prefix for it.
+          const primaryClientId = options.callerClientId ?? allActions[0]?.clientId;
+          const actionInfos: Array<{ name: string; description: string }> = [
+            { name: "list_actions", description: "列出所有可用的 action" },
+            { name: "get_action_detail", description: "获取指定 action 的详细信息和参数定义" },
+            ...allActions.map(a => ({
+              name: a.clientId === primaryClientId
+                ? `${a.namespace}.${a.name}`
+                : `${a.clientId}.${a.namespace}.${a.name}`,
+              description: a.description,
+            })),
+          ];
           return { content: [{ type: "text", text: JSON.stringify(actionInfos, null, 2) }] };
         }
         if (input.action === "get_action_detail") {
@@ -95,35 +104,29 @@ export function createClientSideMcpServer(options: ClientSideMcpServerOptions = 
           if (!targetAction) {
             return errorResult('Error: payload.action is required for get_action_detail');
           }
-          const found = targetAction.includes(".")
-            ? options.clientStoreExecutor.findActionByFullName(targetAction)
-            : options.clientStoreExecutor.findActionByName(targetAction);
+          const found = options.clientStoreExecutor.resolveAction(targetAction);
           if (!found) {
             return errorResult(`Action not found: ${targetAction}`);
           }
           return { content: [{ type: "text", text: JSON.stringify(found, null, 2) }] };
         }
 
-        // Fallback: single-part name without namespace → look up in action store by name
-        let resolvedAction = input.action;
-        if (!resolvedAction.includes(".")) {
-          const match = options.clientStoreExecutor.findActionByName(resolvedAction);
-          if (match) {
-            resolvedAction = `${match.namespace}.${match.name}`;
-          }
+        // Resolve action via store index (handles bare name, namespace.name, or clientId.namespace.name)
+        const resolved = options.clientStoreExecutor.resolveAction(input.action);
+        if (!resolved) {
+          return errorResult(`Action not found: ${input.action}`);
         }
 
         try {
-          const parsed = parseActionName(resolvedAction, options.callerClientId);
           return await options.clientStoreExecutor.executeAction(
-            parsed.targetClientId,
-            parsed.namespace,
-            parsed.name,
+            resolved.clientId,
+            resolved.namespace,
+            resolved.name,
             input.payload ?? {},
             {
               sessionId: sessionId ?? "",
               toolUseId: `gui-${randomUUID()}`,
-              callerClientId: options.callerClientId,
+              callerClientId: resolved.clientId,
               source: "mcp",
             }
           );
@@ -224,31 +227,6 @@ async function requestClientSideTool(request: RequestClientSideToolOptions): Pro
   return body.result ?? errorResult(`${request.errorLabel} request completed without a tool result.`);
 }
 
-function parseActionName(action: string, callerClientId?: string): {
-  targetClientId: string;
-  namespace: string;
-  name: string;
-} {
-  const parts = action.split(".");
-
-  if (parts.length === 2) {
-    if (!callerClientId) {
-      throw new Error("Action must include client prefix for external agents");
-    }
-    return {
-      targetClientId: callerClientId,
-      namespace: parts[0],
-      name: parts[1],
-    };
-  } else if (parts.length === 3) {
-    return {
-      targetClientId: parts[0],
-      namespace: parts[1],
-      name: parts[2],
-    };
-  }
-  throw new Error(`Invalid action format: ${action}. Expected namespace.name or clientId.namespace.name`);
-}
 
 function errorResult(text: string): CallToolResult {
   return {

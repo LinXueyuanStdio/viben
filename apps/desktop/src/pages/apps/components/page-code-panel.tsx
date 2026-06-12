@@ -379,9 +379,7 @@ export function PageCodePanel({
         const tab = prev.find((t) => t.path === path);
         if (tab?.isDirty) {
           const confirmed = window.confirm(
-            t("codePanel.unsavedChangesWarning", {
-              defaultValue: "This file has unsaved changes. Close anyway?",
-            })
+            t("codePanel.unsavedChangesWarning")
           );
           if (!confirmed) return prev;
         }
@@ -524,12 +522,12 @@ export function PageCodePanel({
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("codePanel.files", { defaultValue: "Files" })}
+            {t("codePanel.files")}
           </span>
           <button
             onClick={loadTree}
             className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-            title={t("codePanel.refresh", { defaultValue: "Refresh" })}
+            title={t("codePanel.refresh")}
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
@@ -548,7 +546,7 @@ export function PageCodePanel({
               </div>
             ) : treeNodes.length === 0 ? (
               <div className="px-3 py-4 text-sm text-muted-foreground">
-                {t("codePanel.noFiles", { defaultValue: "No files found" })}
+                {t("codePanel.noFiles")}
               </div>
             ) : (
               treeNodes.map((node) => (
@@ -628,9 +626,7 @@ export function PageCodePanel({
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              {t("codePanel.selectFile", {
-                defaultValue: "Select a file from the tree to start editing",
-              })}
+              {t("codePanel.selectFile")}
             </div>
           )}
         </div>
