@@ -9,6 +9,7 @@ import {
   Trash2,
   Loader2,
   Database,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
@@ -16,6 +17,7 @@ import { getGatewayUrl } from "@/lib/gateway/config";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useServiceKeys, type ServiceApiKey } from "@/hooks/use-service-keys";
 import { useAppStore } from "@/stores";
+import type { Provider } from "@/types";
 
 const BROWSE_MCP_PATH = "/api/mcp-server/browse";
 
@@ -24,7 +26,7 @@ export function BrowseMcpPage() {
   const { openPath } = useDesktopRouting();
   const [copied, setCopied] = useState<string | null>(null);
 
-  const { keys, loading: keysLoading, createKey, deleteKey, getKeyById } = useServiceKeys();
+  const { keys, loading: keysLoading, createKey, updateKey, deleteKey, getKeyById } = useServiceKeys();
   const { getAvailableProviders } = useAppStore();
   const availableProviders = getAvailableProviders();
 
@@ -292,6 +294,8 @@ export function BrowseMcpPage() {
                 onDelete={() => handleDeleteKey(key.id, key.name)}
                 onCopy={handleCopy}
                 copied={copied}
+                providers={availableProviders}
+                onUpdateSources={(sources) => updateKey(key.id, { enabled_sources: sources })}
               />
             ))}
           </div>
@@ -433,17 +437,57 @@ interface ApiKeyItemProps {
   onDelete: () => void;
   onCopy: (text: string, key: string) => void;
   copied: string | null;
+  providers: Provider[];
+  onUpdateSources: (sources: string[]) => void;
 }
 
-function ApiKeyItem({ apiKey, fullKey, loading, onDelete, onCopy, copied }: ApiKeyItemProps) {
+function ApiKeyItem({ apiKey, fullKey, loading, onDelete, onCopy, copied, providers, onUpdateSources }: ApiKeyItemProps) {
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
   const copyId = `key-${apiKey.id}`;
+
+  const enabledSources = apiKey.enabled_sources ?? [];
+  const allSourcesEnabled = enabledSources.length === 0;
+
+  const handleToggleSource = (sourceId: string) => {
+    if (allSourcesEnabled) {
+      const allExcept = providers.filter((p) => p.id !== sourceId).map((p) => p.id);
+      onUpdateSources(allExcept);
+    } else if (enabledSources.includes(sourceId)) {
+      const next = enabledSources.filter((s) => s !== sourceId);
+      onUpdateSources(next);
+    } else {
+      const next = [...enabledSources, sourceId];
+      if (next.length === providers.length) {
+        onUpdateSources([]);
+      } else {
+        onUpdateSources(next);
+      }
+    }
+  };
+
+  const handleToggleAll = () => {
+    if (allSourcesEnabled) {
+      onUpdateSources([providers[0]?.id].filter(Boolean));
+    } else {
+      onUpdateSources([]);
+    }
+  };
 
   return (
     <div className="p-3 rounded-lg bg-muted/50">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">{apiKey.name}</p>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded(!expanded)}
+            className="h-7 px-2"
+            title={t("browseMcp.configureSources", "配置数据源权限")}
+          >
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -488,7 +532,54 @@ function ApiKeyItem({ apiKey, fullKey, loading, onDelete, onCopy, copied }: ApiK
         {apiKey.last_used && (
           <span>{t("searchService.lastUsed", { date: apiKey.last_used })}</span>
         )}
+        <span className="ml-auto">
+          {allSourcesEnabled
+            ? t("browseMcp.allSources", "全部数据源")
+            : t("browseMcp.sourceCount", { count: enabledSources.length })}
+        </span>
       </div>
+
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-border/50">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium">
+              {t("browseMcp.sourcePermissions", "数据源权限")}
+            </span>
+            <button
+              onClick={handleToggleAll}
+              className="text-xs text-primary hover:underline"
+            >
+              {allSourcesEnabled
+                ? t("browseMcp.deselectAll", "取消全选")
+                : t("browseMcp.selectAll", "全选")}
+            </button>
+          </div>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {providers.map((provider) => {
+              const checked = allSourcesEnabled || enabledSources.includes(provider.id);
+              return (
+                <label
+                  key={provider.id}
+                  className="flex items-center gap-2 p-1.5 rounded hover:bg-muted cursor-pointer text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => handleToggleSource(provider.id)}
+                    className="rounded border-border"
+                  />
+                  <span>{provider.name}</span>
+                </label>
+              );
+            })}
+          </div>
+          {allSourcesEnabled && (
+            <p className="text-[10px] text-muted-foreground mt-1.5">
+              {t("browseMcp.allSourcesHint", "空列表 = 允许访问全部数据源")}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

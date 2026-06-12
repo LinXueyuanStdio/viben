@@ -217,8 +217,8 @@ export function SubagentSheet({
             data-testid="subagent-sheet-panel"
             className={cn(
               contained
-                ? "absolute right-0 top-0 bottom-0 z-50 flex max-w-[85%] transform-gpu flex-col border-l bg-background shadow-xl will-change-transform"
-                : "fixed right-0 top-0 bottom-0 z-50 flex max-w-[85vw] transform-gpu flex-col border-l bg-background shadow-xl will-change-transform",
+                ? "absolute right-0 top-0 bottom-0 z-50 flex min-w-0 max-w-[85%] transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform"
+                : "fixed right-0 top-0 bottom-0 z-50 flex min-w-0 max-w-[85vw] transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform",
               className
             )}
             style={{ width: `${sheetWidth}px` }}
@@ -277,7 +277,7 @@ export function SubagentSheet({
               </Button>
             </div>
             {/* Message list */}
-            <div className="flex flex-1 flex-col overflow-hidden min-h-0">
+            <div className="flex w-full flex-1 flex-col overflow-hidden min-h-0 min-w-0">
               {effectiveIsLoading && !hasDisplayMessages ? (
                 <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />

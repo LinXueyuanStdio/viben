@@ -1448,21 +1448,68 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   );
 }
 
-function toolOutputToDisplayValue(output: AgentMessage["output"]): string {
+function resolveOutputContentBlocks(output: AgentMessage["output"]): ContentBlock[] | null {
+  if (!output) return null;
+  if (Array.isArray(output)) {
+    if (output.length === 0) return null;
+    if (output.every((b) => typeof b === "object" && b !== null && "type" in b && (b.type === "text" || b.type === "image"))) {
+      return output as ContentBlock[];
+    }
+    return null;
+  }
+  if (typeof output !== "string") return null;
+  const trimmed = output.trim();
+  if (!trimmed.startsWith("[")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    if (parsed.every((b: unknown) => typeof b === "object" && b !== null && "type" in b && ((b as { type: string }).type === "text" || (b as { type: string }).type === "image"))) {
+      return parsed as ContentBlock[];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function toolOutputToJson(output: AgentMessage["output"]): string {
   if (output == null) return "No output";
   if (typeof output === "string") {
     const trimmed = output.trim();
     if (!trimmed) return "";
     if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-      try {
-        return JSON.stringify(JSON.parse(trimmed), null, 2);
-      } catch {
-        return trimmed;
-      }
+      try { return JSON.stringify(JSON.parse(trimmed), null, 2); } catch { return trimmed; }
     }
     return trimmed;
   }
   return JSON.stringify(output, null, 2);
+}
+
+function RichOutputBlocks({ blocks }: { blocks: ContentBlock[] }) {
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, i) => {
+        if (block.type === "image" && block.source?.type === "base64") {
+          return (
+            <img
+              key={i}
+              src={`data:${block.source.media_type};base64,${block.source.data}`}
+              alt="tool output"
+              className="max-w-full max-h-[400px] rounded-lg border border-border"
+            />
+          );
+        }
+        if (block.type === "text") {
+          return (
+            <pre key={i} className="whitespace-pre-wrap break-words text-xs">
+              <code>{block.text}</code>
+            </pre>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
 }
 
 function ToolInspectDialog({
@@ -1472,10 +1519,13 @@ function ToolInspectDialog({
   state: { message: AgentMessage; result?: AgentMessage } | null;
   onClose: () => void;
 }) {
+  const [outputView, setOutputView] = useState<"rich" | "json">("rich");
   if (!state) return null;
   const { message, result } = state;
   const output = result?.output ?? message.output;
   const isError = Boolean(result?.isError ?? message.isError);
+  const contentBlocks = resolveOutputContentBlocks(output);
+  const hasRichContent = contentBlocks !== null;
 
   return (
     <Dialog open onOpenChange={(open: boolean) => { if (!open) onClose(); }}>
@@ -1518,10 +1568,42 @@ function ToolInspectDialog({
             </pre>
           </div>
           <div>
-            <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Output</div>
-            <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
-              {toolOutputToDisplayValue(output)}
-            </pre>
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Output</span>
+              {hasRichContent && (
+                <div className="flex h-6 rounded-md border border-border overflow-hidden text-[10px]">
+                  <button
+                    type="button"
+                    className={cn(
+                      "px-2 transition-colors",
+                      outputView === "rich" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-muted"
+                    )}
+                    onClick={() => setOutputView("rich")}
+                  >
+                    Rich
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "px-2 border-l border-border transition-colors",
+                      outputView === "json" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-muted"
+                    )}
+                    onClick={() => setOutputView("json")}
+                  >
+                    JSON
+                  </button>
+                </div>
+              )}
+            </div>
+            {hasRichContent && outputView === "rich" ? (
+              <div className="max-h-[400px] overflow-auto rounded-lg border border-border bg-muted/30 p-3">
+                <RichOutputBlocks blocks={contentBlocks} />
+              </div>
+            ) : (
+              <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap break-words">
+                {toolOutputToJson(output)}
+              </pre>
+            )}
           </div>
         </div>
       </DialogContent>
