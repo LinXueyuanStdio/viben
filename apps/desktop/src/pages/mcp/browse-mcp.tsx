@@ -18,6 +18,7 @@ import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useServiceKeys, type ServiceApiKey } from "@/hooks/use-service-keys";
 import { useAppStore } from "@/stores";
 import type { Provider } from "@/types";
+import { CreateApiKeyDialog } from "./create-api-key-dialog";
 
 const BROWSE_MCP_PATH = "/api/mcp-server/browse";
 
@@ -33,9 +34,8 @@ export function BrowseMcpPage() {
   const [selectedKeyForConfig, setSelectedKeyForConfig] = useState("");
   const [fullApiKey, setFullApiKey] = useState<string | null>(null);
 
-  // Create key state
-  const [newKeyName, setNewKeyName] = useState("");
-  const [creating, setCreating] = useState(false);
+  // Create key dialog state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<{
     id: string;
     name: string;
@@ -114,17 +114,6 @@ export function BrowseMcpPage() {
 
   const handleOpenInspector = () => {
     openPath("/mcp-services/inspector");
-  };
-
-  const handleCreateKey = async () => {
-    if (!newKeyName.trim()) return;
-    setCreating(true);
-    const result = await createKey(newKeyName);
-    if (result) {
-      setNewlyCreatedKey({ id: result.id, name: result.name, key: result.key });
-      setNewKeyName("");
-    }
-    setCreating(false);
   };
 
   const handleDeleteKey = async (keyId: string, keyName: string) => {
@@ -249,27 +238,14 @@ export function BrowseMcpPage() {
           </div>
         )}
 
-        {/* Create New Key */}
-        <div className="flex gap-2 mb-3">
-          <input
-            type="text"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-            placeholder={t("searchService.keyNamePlaceholder", "Key 名称")}
-            className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-            onKeyDown={(e) => e.key === "Enter" && handleCreateKey()}
-          />
+        {/* Create New Key Button */}
+        <div className="mb-3">
           <Button
-            onClick={handleCreateKey}
-            disabled={creating || !newKeyName.trim()}
+            onClick={() => setShowCreateDialog(true)}
             size="sm"
           >
-            {creating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4 mr-2" />
-            )}
-            {t("common.create", "创建")}
+            <Plus className="h-4 w-4 mr-2" />
+            {t("browseMcp.createApiKey", "创建 API Key")}
           </Button>
         </div>
 
@@ -426,6 +402,14 @@ export function BrowseMcpPage() {
           </Button>
         </div>
       </div>
+
+      {/* Create API Key Dialog */}
+      <CreateApiKeyDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onCreated={(result) => setNewlyCreatedKey(result)}
+        createKey={createKey}
+      />
     </div>
   );
 }

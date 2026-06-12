@@ -155,12 +155,14 @@ export class PreviewManager {
     // Check if already running or starting
     const existing = this.instances.get(taskId);
     if (existing) {
-      if (existing.status === "running") {
+      if (existing.status === "running" || existing.status === "starting") {
         existing.last_accessed_at = new Date();
-        this.resetIdleTimeout(existing);
+        if (existing.status === "running") {
+          this.resetIdleTimeout(existing);
+        }
         return this.getStatusForInstance(existing);
       }
-      // Clean up stale instance (starting/error/stopped) before retrying
+      // Clean up stale instance (error/stopped) before retrying
       await this.cleanup(existing);
     }
 

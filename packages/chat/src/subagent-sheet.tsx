@@ -48,6 +48,8 @@ export interface SubagentSheetProps {
   onInspectTool?: InspectToolHandler;
   /** Render inside a relatively positioned parent instead of the viewport. */
   contained?: boolean;
+  /** Maximum width of the sheet panel (px). Overrides the default CSS max-width. */
+  maxWidth?: number;
   className?: string;
 }
 
@@ -85,6 +87,7 @@ export function SubagentSheet({
   onExpandSubagent,
   onInspectTool,
   contained = false,
+  maxWidth,
   className,
 }: SubagentSheetProps) {
   const { t } = useTranslation();
@@ -217,11 +220,11 @@ export function SubagentSheet({
             data-testid="subagent-sheet-panel"
             className={cn(
               contained
-                ? "absolute right-0 top-0 bottom-0 z-50 flex min-w-0 max-w-[85%] transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform"
-                : "fixed right-0 top-0 bottom-0 z-50 flex min-w-0 max-w-[85vw] transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform",
+                ? "absolute right-0 top-0 bottom-0 z-50 flex min-w-0 transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform"
+                : "fixed right-0 top-0 bottom-0 z-50 flex min-w-0 transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform",
               className
             )}
-            style={{ width: `${sheetWidth}px` }}
+            style={{ width: `${sheetWidth}px`, maxWidth: maxWidth ? `${maxWidth}px` : contained ? "85%" : "85vw" }}
           >
             <div
               role="separator"

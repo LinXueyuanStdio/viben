@@ -708,6 +708,20 @@ export function ChatApp({
     </>
   );
 
+  const overlayRef = React.useRef<HTMLDivElement>(null);
+  const [overlayWidth, setOverlayWidth] = React.useState<number | undefined>(undefined);
+
+  React.useEffect(() => {
+    const el = overlayRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setOverlayWidth(entry.contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const subagentSheetNode = subagentSheet ? (
     <SubagentSheet
       contained
@@ -719,6 +733,7 @@ export function ChatApp({
       liveMessages={subagentSheet.liveMessages}
       context={subagentSheet.context}
       loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
+      maxWidth={overlayWidth}
       onExpandSubagent={onExpandSubagent}
       onInspectTool={onInspectTool}
     />

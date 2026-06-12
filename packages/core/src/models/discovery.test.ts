@@ -11,7 +11,6 @@ import {
   type DiscoveredModel,
 } from "./discovery";
 import { providerManager } from "../providers";
-import { KNOWN_MODELS, getKnownModel } from "./known-models";
 import type { Provider, ProviderType } from "../types";
 
 // Mock the providerManager module
@@ -464,7 +463,7 @@ describe("discoverModels", () => {
   });
 
   describe("Anthropic provider", () => {
-    it("should return known Anthropic models (no API call)", async () => {
+    it("should return empty list (no models list API)", async () => {
       const mockProvider = createMockProvider({
         id: "anthropic-1",
         type: "anthropic",
@@ -479,16 +478,13 @@ describe("discoverModels", () => {
       expect(result.providerId).toBe("anthropic-1");
       expect(result.providerType).toBe("anthropic");
       expect(result.error).toBeUndefined();
-      expect(result.models.length).toBeGreaterThan(0);
-      // Should include Claude models from KNOWN_MODELS
-      expect(result.models.some((m) => m.id.includes("claude"))).toBe(true);
-      // Anthropic discovery doesn't make fetch calls
+      expect(result.models).toHaveLength(0);
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 
   describe("Azure provider", () => {
-    it("should return known Azure-compatible models (no API call)", async () => {
+    it("should return empty list (deployments are user-specific)", async () => {
       const mockProvider = createMockProvider({
         id: "azure-1",
         type: "azure",
@@ -505,9 +501,7 @@ describe("discoverModels", () => {
       expect(result.providerId).toBe("azure-1");
       expect(result.providerType).toBe("azure");
       expect(result.error).toBeUndefined();
-      expect(result.models.length).toBeGreaterThan(0);
-      // Should include OpenAI-compatible models
-      expect(result.models.some((m) => m.id.includes("gpt"))).toBe(true);
+      expect(result.models).toHaveLength(0);
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });
@@ -704,7 +698,7 @@ describe("discoverAllModels", () => {
 });
 
 describe("enrichModel", () => {
-  it("should enrich discovered model with known model information", () => {
+  it("should return discovered model as-is (passthrough)", () => {
     const discovered: DiscoveredModel = {
       id: "gpt-4o",
       name: "gpt-4o",
@@ -714,54 +708,7 @@ describe("enrichModel", () => {
 
     const enriched = enrichModel(discovered);
 
-    // Should return a Model type with known information
-    expect(enriched).toHaveProperty("contextLength");
-    expect(enriched).toHaveProperty("maxOutputTokens");
-    expect(enriched).toHaveProperty("inputPrice");
-    expect(enriched).toHaveProperty("outputPrice");
-
-    // Should match known model data
-    const knownGpt4o = getKnownModel("gpt-4o");
-    expect(enriched.id).toBe("gpt-4o");
-    expect(enriched.name).toBe(knownGpt4o?.name);
-    if ("provider" in enriched) {
-      expect(enriched.provider).toBe(knownGpt4o?.provider);
-      expect(enriched.contextLength).toBe(knownGpt4o?.contextLength);
-    }
-  });
-
-  it("should enrich Claude model with known information", () => {
-    const discovered: DiscoveredModel = {
-      id: "claude-3-5-sonnet-20241022",
-      name: "Claude 3.5 Sonnet",
-      capabilities: ["chat", "vision"],
-    };
-
-    const enriched = enrichModel(discovered);
-
-    expect(enriched.id).toBe("claude-3-5-sonnet-20241022");
-    if ("provider" in enriched) {
-      expect(enriched.provider).toBe("anthropic");
-      expect(enriched.contextLength).toBe(200000);
-    }
-  });
-
-  it("should return discovered model as-is when not in known models", () => {
-    const discovered: DiscoveredModel = {
-      id: "custom-model-xyz",
-      name: "Custom Model XYZ",
-      metadata: { custom: true },
-    };
-
-    const enriched = enrichModel(discovered);
-
-    // Should return the original discovered model
     expect(enriched).toEqual(discovered);
-    expect(enriched.id).toBe("custom-model-xyz");
-    expect(enriched.name).toBe("Custom Model XYZ");
-    // Should not have known model fields
-    expect("contextLength" in enriched).toBe(false);
-    expect("provider" in enriched).toBe(false);
   });
 
   it("should handle discovered model with minimal fields", () => {
@@ -772,52 +719,5 @@ describe("enrichModel", () => {
     const enriched = enrichModel(discovered);
 
     expect(enriched.id).toBe("minimal-model");
-  });
-
-  it("should enrich GPT-4-turbo model", () => {
-    const discovered: DiscoveredModel = {
-      id: "gpt-4-turbo",
-      name: "gpt-4-turbo",
-      owned_by: "openai",
-    };
-
-    const enriched = enrichModel(discovered);
-
-    if ("provider" in enriched) {
-      expect(enriched.provider).toBe("openai");
-      expect(enriched.contextLength).toBe(128000);
-      expect(enriched.maxOutputTokens).toBe(4096);
-    }
-  });
-});
-
-describe("Known models integration", () => {
-  it("should have KNOWN_MODELS available", () => {
-    expect(KNOWN_MODELS).toBeDefined();
-    expect(KNOWN_MODELS.length).toBeGreaterThan(0);
-  });
-
-  it("should include OpenAI models in KNOWN_MODELS", () => {
-    const openaiModels = KNOWN_MODELS.filter((m) => m.provider === "openai");
-    expect(openaiModels.length).toBeGreaterThan(0);
-    expect(openaiModels.some((m) => m.id === "gpt-4o")).toBe(true);
-  });
-
-  it("should include Anthropic models in KNOWN_MODELS", () => {
-    const anthropicModels = KNOWN_MODELS.filter((m) => m.provider === "anthropic");
-    expect(anthropicModels.length).toBeGreaterThan(0);
-    expect(anthropicModels.some((m) => m.id.includes("claude"))).toBe(true);
-  });
-
-  it("should find known model by ID", () => {
-    const model = getKnownModel("gpt-4o");
-    expect(model).toBeDefined();
-    expect(model?.name).toBe("GPT-4o");
-    expect(model?.provider).toBe("openai");
-  });
-
-  it("should return undefined for unknown model ID", () => {
-    const model = getKnownModel("nonexistent-model-id");
-    expect(model).toBeUndefined();
   });
 });

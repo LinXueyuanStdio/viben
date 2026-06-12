@@ -89,7 +89,7 @@ export function registerModelCommand(program: Command): void {
   // model list
   model
     .command("list")
-    .description("List all known models")
+    .description("List all registered models")
     .option("-p, --provider <provider>", "Filter by provider")
     .option("--category <category>", "Filter by model category (llm, media)")
     .option("--surface <surface>", "Filter by model surface")
@@ -160,7 +160,7 @@ export function registerModelCommand(program: Command): void {
           }),
           () => {
             if (!info) {
-              console.log(chalk.yellow(`Model "${modelId}" is not a known model`));
+              console.log(chalk.yellow(`Model "${modelId}" not found`));
               if (resolved !== modelId) {
                 console.log(chalk.gray(`Resolved alias: ${resolved}`));
               }

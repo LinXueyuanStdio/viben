@@ -52,6 +52,7 @@ import type {
   BackgroundTasksSummary,
   ChatAppMode,
   ChatInputProps,
+  ContentBlock,
   ContextTokenBreakdown,
   MessageAttachment,
   QueuedInputRecallItem,

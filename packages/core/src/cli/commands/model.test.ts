@@ -34,35 +34,6 @@ vi.mock("../../models", () => ({
     removeModelConfig: vi.fn(),
     getModelInfo: vi.fn(),
   },
-  KNOWN_MODELS: [
-    {
-      id: "gpt-4o",
-      name: "GPT-4o",
-      provider: "openai",
-      contextLength: 128000,
-      maxOutputTokens: 16384,
-      inputPrice: 2.5,
-      outputPrice: 10,
-    },
-    {
-      id: "gpt-4o-mini",
-      name: "GPT-4o Mini",
-      provider: "openai",
-      contextLength: 128000,
-      maxOutputTokens: 16384,
-      inputPrice: 0.15,
-      outputPrice: 0.6,
-    },
-    {
-      id: "claude-3-5-sonnet-20241022",
-      name: "Claude 3.5 Sonnet",
-      provider: "anthropic",
-      contextLength: 200000,
-      maxOutputTokens: 8192,
-      inputPrice: 3,
-      outputPrice: 15,
-    },
-  ],
   DEFAULT_ALIASES: {
     gpt4: "gpt-4o",
     claude: "claude-3-5-sonnet-20241022",
@@ -87,7 +58,7 @@ vi.spyOn(process, "exit").mockImplementation((code?: number | string | null | un
   throw new Error(`process.exit(${code})`);
 });
 
-import { modelManager, KNOWN_MODELS, DEFAULT_ALIASES } from "../../models";
+import { modelManager, DEFAULT_ALIASES } from "../../models";
 
 /**
  * Helper to create a mock model with proper typing
@@ -269,7 +240,7 @@ describe("Model CLI Commands", () => {
 
       await runCommand(["model", "show", "-n", "unknown-model"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("is not a known model"));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("not found"));
     });
 
     it("should show custom configuration if present", async () => {
