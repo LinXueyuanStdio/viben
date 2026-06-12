@@ -276,7 +276,7 @@ export function resolveLiveSubagentMessages(
       message.id
     );
     if (parent?.id) {
-      return session.messageUpdates[parent.id]?.subagentPreviewMessages;
+      return session.messageUpdates[parent.id]?.subagentMessages;
     }
   }
   return undefined;
@@ -303,29 +303,29 @@ function mergeMessageUpdates(
   if (step.message.type === "tool_use") {
     const parent = findSubagentParentMessage(messages, step.message);
     if (!parent?.id) return current;
-    return appendSubagentPreviewMessage(current, parent.id, subagentPreviewMessageFromToolUse(step.message));
+    return appendSubagentMessage(current, parent.id, subagentPreviewMessageFromToolUse(step.message));
   }
   if (step.message.type === "tool_result" && step.message.toolUseId) {
     const parent = findSubagentParentForToolResult(messages, step.message.toolUseId, current, step.message.subagentId);
     if (!parent?.id) return current;
-    return appendSubagentPreviewMessage(current, parent.id, subagentPreviewMessageFromToolResult(step.message));
+    return appendSubagentMessage(current, parent.id, subagentPreviewMessageFromToolResult(step.message));
   }
   return current;
 }
 
-function appendSubagentPreviewMessage(
+function appendSubagentMessage(
   current: Record<string, Partial<AgentMessage>>,
   parentMessageId: string,
   message: AgentMessage | null
 ): Record<string, Partial<AgentMessage>> {
   if (!message) return current;
-  const existingMessages = current[parentMessageId]?.subagentPreviewMessages ?? [];
+  const existingMessages = current[parentMessageId]?.subagentMessages ?? [];
   const nextMessages = existingMessages.filter((item) => item.id !== message.id);
   return {
     ...current,
     [parentMessageId]: {
       ...current[parentMessageId],
-      subagentPreviewMessages: [...nextMessages, message],
+      subagentMessages: [...nextMessages, message],
     },
   };
 }
@@ -360,10 +360,10 @@ function findSubagentParentForToolResult(
     if (directMatch) return directMatch;
   }
 
-  // Look in subagentPreviewMessages for the tool_use
+  // Look in subagentMessages for the tool_use
   for (const parent of messages) {
     if (parent.type !== "tool_use" || (parent.name !== "Task" && parent.name !== "Agent") || !parent.id) continue;
-    const previewTool = messageUpdates?.[parent.id]?.subagentPreviewMessages?.find((message) =>
+    const previewTool = messageUpdates?.[parent.id]?.subagentMessages?.find((message) =>
       message.type === "tool_use" && message.toolUseId === toolUseId
     );
     if (previewTool) return parent;

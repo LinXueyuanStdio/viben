@@ -95,10 +95,7 @@ export {
 export {
   ModelManager,
   modelManager,
-  KNOWN_MODELS,
   DEFAULT_ALIASES,
-  getKnownModel,
-  getModelsByProvider,
   // Model discovery
   discoverModels,
   discoverAllModels,
@@ -108,7 +105,6 @@ export {
   // Types
   type ModelsFile,
   type ModelConfigEntry,
-  type KnownModel,
 } from "./models";
 
 // MCP management

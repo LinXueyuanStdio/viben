@@ -657,13 +657,10 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
   // ========================================================================
 
   /**
-   * List models for a provider (combines discovery + user configuration)
+   * List models for a provider instance
    * GET /api/providers/:id/models
    *
-   * Returns models from:
-   * 1. Known models for this provider type (from KNOWN_MODELS)
-   * 2. User's custom models for this provider
-   * Each model includes enabled status from user configuration.
+   * Returns models registered to this provider instance (from custom_models).
    */
   fastify.get(
     "/api/providers/:id/models",

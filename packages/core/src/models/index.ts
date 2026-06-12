@@ -11,7 +11,7 @@ import type {
   ModelSurface,
   ModelsFile,
 } from "./types";
-import { KNOWN_MODELS, DEFAULT_ALIASES, getKnownModel } from "./known-models";
+import { DEFAULT_ALIASES } from "./known-models";
 
 export * from "./types";
 export * from "./known-models";
@@ -70,7 +70,7 @@ export class ModelManager {
       configs: loaded?.configs || loaded?.model_config || {},
       // Custom models added by user
       custom_models: loaded?.custom_models || {},
-      // Disabled built-in models
+      // Legacy field, kept for backward compatibility
       disabled_models: loaded?.disabled_models || [],
     };
     return this.config;
@@ -97,37 +97,12 @@ export class ModelManager {
   // ========================================================================
 
   /**
-   * List all available models (built-in + custom)
+   * List all available models (from custom_models only)
    */
   async listModels(): Promise<Model[]> {
     const config = await this.loadConfig();
     const models: Model[] = [];
 
-    // Add known (built-in) models
-    for (const known of KNOWN_MODELS) {
-      const enabled = !config.disabled_models.includes(known.id);
-      const isDefault = config.default === known.id;
-      models.push({
-        id: known.id,
-        name: known.name,
-        provider: known.provider,
-        category: normalizeModelCategory(known.category),
-        surface: normalizeModelSurface(
-          known.surface,
-          normalizeModelCategory(known.category)
-        ),
-        capabilities: known.capabilities,
-        description: known.description,
-        contextLength: known.contextLength,
-        maxOutputTokens: known.maxOutputTokens,
-        inputPrice: known.inputPrice,
-        outputPrice: known.outputPrice,
-        isDefault,
-        enabled,
-      });
-    }
-
-    // Add custom models
     for (const [id, entry] of Object.entries(config.custom_models)) {
       const isDefault = config.default === id;
       models.push({
@@ -155,7 +130,7 @@ export class ModelManager {
   }
 
   /**
-   * Get models by provider type (returns KNOWN_MODELS + custom with matching type)
+   * Get models by provider type
    */
   async getModelsByProvider(provider: string): Promise<Model[]> {
     const all = await this.listModels();
@@ -194,7 +169,6 @@ export class ModelManager {
   async getModel(id: string): Promise<Model | null> {
     const config = await this.loadConfig();
 
-    // Check custom models first
     const customEntry = config.custom_models[id];
     if (customEntry) {
       const isDefault = config.default === id;
@@ -202,6 +176,7 @@ export class ModelManager {
         id,
         name: customEntry.name,
         provider: customEntry.provider,
+        provider_id: customEntry.provider_id,
         category: normalizeModelCategory(customEntry.category),
         surface: normalizeModelSurface(
           customEntry.surface,
@@ -218,31 +193,6 @@ export class ModelManager {
       };
     }
 
-    // Check known models
-    const known = getKnownModel(id);
-    if (known) {
-      const enabled = !config.disabled_models.includes(id);
-      const isDefault = config.default === id;
-      return {
-        id: known.id,
-        name: known.name,
-        provider: known.provider,
-        category: normalizeModelCategory(known.category),
-        surface: normalizeModelSurface(
-          known.surface,
-          normalizeModelCategory(known.category)
-        ),
-        capabilities: known.capabilities,
-        description: known.description,
-        contextLength: known.contextLength,
-        maxOutputTokens: known.maxOutputTokens,
-        inputPrice: known.inputPrice,
-        outputPrice: known.outputPrice,
-        isDefault,
-        enabled,
-      };
-    }
-
     return null;
   }
 
@@ -253,6 +203,7 @@ export class ModelManager {
     id: string;
     name: string;
     provider: string;
+    provider_id?: string;
     category?: ModelCategory;
     surface?: ModelSurface;
     capabilities?: string[];
@@ -263,8 +214,7 @@ export class ModelManager {
   }): Promise<Model> {
     const config = await this.loadConfig();
 
-    // Check if model already exists
-    if (config.custom_models[options.id] || getKnownModel(options.id)) {
+    if (config.custom_models[options.id]) {
       throw new Error(`Model already exists: ${options.id}`);
     }
 
@@ -272,6 +222,7 @@ export class ModelManager {
     const entry: ModelEntry = {
       name: options.name,
       provider: options.provider,
+      provider_id: options.provider_id,
       category: normalizeModelCategory(options.category),
       surface: normalizeModelSurface(
         options.surface,
@@ -288,7 +239,6 @@ export class ModelManager {
 
     config.custom_models[options.id] = entry;
 
-    // Set as default if requested
     const isDefault = options.setAsDefault ?? false;
     if (isDefault) {
       config.default = options.id;
@@ -300,6 +250,7 @@ export class ModelManager {
       id: options.id,
       name: entry.name,
       provider: entry.provider,
+      provider_id: entry.provider_id,
       category: entry.category,
       surface: entry.surface,
       capabilities: entry.capabilities,
@@ -314,15 +265,10 @@ export class ModelManager {
   }
 
   /**
-   * Remove a custom model
+   * Remove a model
    */
   async removeModel(id: string): Promise<void> {
     const config = await this.loadConfig();
-
-    // Can't remove built-in models
-    if (getKnownModel(id)) {
-      throw new Error(`Cannot remove built-in model: ${id}`);
-    }
 
     if (!config.custom_models[id]) {
       throw new Error(`Model not found: ${id}`);
@@ -330,7 +276,6 @@ export class ModelManager {
 
     delete config.custom_models[id];
 
-    // Clear default if it was this model
     if (config.default === id) {
       config.default = undefined;
     }
@@ -339,7 +284,7 @@ export class ModelManager {
   }
 
   /**
-   * Update a custom model
+   * Update a model
    */
   async updateModel(
     id: string,
@@ -351,11 +296,6 @@ export class ModelManager {
     }
   ): Promise<Model> {
     const config = await this.loadConfig();
-
-    // Can't update built-in models
-    if (getKnownModel(id)) {
-      throw new Error(`Cannot update built-in model: ${id}`);
-    }
 
     const entry = config.custom_models[id];
     if (!entry) {
@@ -384,6 +324,7 @@ export class ModelManager {
       id,
       name: entry.name,
       provider: entry.provider,
+      provider_id: entry.provider_id,
       description: entry.description,
       contextLength: entry.context_window,
       maxOutputTokens: entry.max_output_tokens,
@@ -395,9 +336,7 @@ export class ModelManager {
   }
 
   /**
-   * Enable a model (built-in, custom, or discovered)
-   * @param providerType - The provider type (e.g. "openai", "anthropic")
-   * @param providerId - The provider instance ID (e.g. "deepseek-openai")
+   * Enable a model
    */
   async enableModel(id: string, providerType: string, providerId?: string): Promise<void> {
     const config = await this.loadConfig();
@@ -408,22 +347,11 @@ export class ModelManager {
       customEntry.provider = providerType;
       if (providerId) customEntry.provider_id = providerId;
       customEntry.updated_at = new Date().toISOString();
-    } else if (providerId) {
-      // Provider-instance-specific: always create custom_models entry (even for known models)
-      config.custom_models[id] = {
-        name: getKnownModel(id)?.name || id,
-        provider: providerType,
-        provider_id: providerId,
-        enabled: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-    } else if (getKnownModel(id)) {
-      config.disabled_models = config.disabled_models.filter((m) => m !== id);
     } else {
       config.custom_models[id] = {
         name: id,
         provider: providerType,
+        provider_id: providerId,
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -434,9 +362,7 @@ export class ModelManager {
   }
 
   /**
-   * Disable a model (built-in, custom, or discovered)
-   * @param providerType - The provider type (e.g. "openai", "anthropic")
-   * @param providerId - The provider instance ID (e.g. "deepseek-openai")
+   * Disable a model
    */
   async disableModel(id: string, providerType: string, providerId?: string): Promise<void> {
     const config = await this.loadConfig();
@@ -447,20 +373,6 @@ export class ModelManager {
       customEntry.provider = providerType;
       if (providerId) customEntry.provider_id = providerId;
       customEntry.updated_at = new Date().toISOString();
-    } else if (providerId) {
-      // Provider-instance-specific: always create custom_models entry (even for known models)
-      config.custom_models[id] = {
-        name: getKnownModel(id)?.name || id,
-        provider: providerType,
-        provider_id: providerId,
-        enabled: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-    } else if (getKnownModel(id)) {
-      if (!config.disabled_models.includes(id)) {
-        config.disabled_models.push(id);
-      }
     } else {
       config.custom_models[id] = {
         name: id,
@@ -673,62 +585,34 @@ export class ModelManager {
   // ========================================================================
 
   /**
-   * Get model info synchronously (from known models or cached custom models)
+   * Get model info synchronously (from cached custom models)
    */
   getModelInfo(model: string): Model | undefined {
     const resolved = this.resolveAliasSync(model);
 
-    // Check custom models first (if config is cached)
-    if (this.config) {
-      const customEntry = this.config.custom_models[resolved];
-      if (customEntry) {
-        return {
-          id: resolved,
-          name: customEntry.name,
-          provider: customEntry.provider,
-          category: normalizeModelCategory(customEntry.category),
-          surface: normalizeModelSurface(
-            customEntry.surface,
-            normalizeModelCategory(customEntry.category)
-          ),
-          capabilities: customEntry.capabilities,
-          description: customEntry.description,
-          contextLength: customEntry.context_window,
-          maxOutputTokens: customEntry.max_output_tokens,
-          isDefault: this.config.default === resolved,
-          enabled: customEntry.enabled,
-          created_at: customEntry.created_at,
-          updated_at: customEntry.updated_at,
-        };
-      }
-    }
+    if (!this.config) return undefined;
 
-    // Check known models
-    const known = getKnownModel(resolved);
-    if (!known) return undefined;
-
-    const enabled = this.config
-      ? !this.config.disabled_models.includes(resolved)
-      : true;
-    const isDefault = this.config?.default === resolved;
+    const customEntry = this.config.custom_models[resolved];
+    if (!customEntry) return undefined;
 
     return {
-      id: known.id,
-      name: known.name,
-      provider: known.provider,
-      category: normalizeModelCategory(known.category),
+      id: resolved,
+      name: customEntry.name,
+      provider: customEntry.provider,
+      provider_id: customEntry.provider_id,
+      category: normalizeModelCategory(customEntry.category),
       surface: normalizeModelSurface(
-        known.surface,
-        normalizeModelCategory(known.category)
+        customEntry.surface,
+        normalizeModelCategory(customEntry.category)
       ),
-      capabilities: known.capabilities,
-      description: known.description,
-      contextLength: known.contextLength,
-      maxOutputTokens: known.maxOutputTokens,
-      inputPrice: known.inputPrice,
-      outputPrice: known.outputPrice,
-      isDefault,
-      enabled,
+      capabilities: customEntry.capabilities,
+      description: customEntry.description,
+      contextLength: customEntry.context_window,
+      maxOutputTokens: customEntry.max_output_tokens,
+      isDefault: this.config.default === resolved,
+      enabled: customEntry.enabled,
+      created_at: customEntry.created_at,
+      updated_at: customEntry.updated_at,
     };
   }
 }

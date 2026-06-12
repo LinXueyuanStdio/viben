@@ -22,12 +22,24 @@ export function useServiceKeys() {
     }
   }, []);
 
-  const createKey = useCallback(async (name: string) => {
+  const createKey = useCallback(async (name: string, enabledSources?: string[]) => {
     try {
       const client = getGatewayClient();
-      const newKey = await client.createServiceKey(name);
+      const newKey = await client.createServiceKey(name, enabledSources);
       await fetchKeys();
       return newKey;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      return null;
+    }
+  }, [fetchKeys]);
+
+  const updateKey = useCallback(async (keyId: string, updates: { name?: string; enabled_sources?: string[] }) => {
+    try {
+      const client = getGatewayClient();
+      const updated = await client.updateServiceKey(keyId, updates);
+      await fetchKeys();
+      return updated;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       return null;
@@ -65,6 +77,7 @@ export function useServiceKeys() {
     loading,
     error,
     createKey,
+    updateKey,
     deleteKey,
     getKeyById,
     refresh: fetchKeys,

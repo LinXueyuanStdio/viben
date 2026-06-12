@@ -687,12 +687,10 @@ export function ToolExecutionItem({
   const subagentId = message.subagentId;
   const toolUseId = message.toolUseId;
   const subagentMessages = message.subagentMessages;
-  const subagentPreviewMessages = message.subagentPreviewMessages;
   const isError = result?.isError ?? message.isError;
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
-  const hasSubagentPreviewMessages = subagentPreviewMessages && subagentPreviewMessages.length > 0;
 
   // Get tool parameters and result summary
   const param = getToolParam(name, input);
@@ -719,10 +717,10 @@ export function ToolExecutionItem({
 
   // Auto-expand Task/Agent tool when running or when result arrives
   useEffect(() => {
-    if (isTaskTool && ((isRunning && hasSubagentPreviewMessages) || (!canOpenSubagent && (isRunning || output)))) {
+    if (isTaskTool && ((isRunning && hasSubagentMessages) || (!canOpenSubagent && (isRunning || output)))) {
       setIsExpanded(true);
     }
-  }, [canOpenSubagent, hasSubagentPreviewMessages, isRunning, isTaskTool, output]);
+  }, [canOpenSubagent, hasSubagentMessages, isRunning, isTaskTool, output]);
 
   const hasDetails = input || output || hasSubagentMessages;
 
@@ -846,8 +844,8 @@ export function ToolExecutionItem({
       : 0;
     const title = taskInput.description || taskInput.subagent_type || "Sub-Agent";
     const subagentTitle = formatFriendlySubagentType(taskInput.subagent_type);
-    const latestSubagentActivity = isRunning && hasSubagentPreviewMessages
-      ? getPreviewText(subagentPreviewMessages![subagentPreviewMessages!.length - 1], t)
+    const latestSubagentActivity = isRunning && hasSubagentMessages
+      ? getPreviewText(subagentMessages![subagentMessages!.length - 1], t)
       : "";
     const handleOpenSubagent = () => {
       if (!canOpenSubagent) return;
@@ -965,8 +963,8 @@ export function ToolExecutionItem({
                     </details>
                   )}
 
-                  {isRunning && hasSubagentPreviewMessages && (
-                    <SubagentPreview messages={subagentPreviewMessages!} />
+                  {isRunning && hasSubagentMessages && (
+                    <SubagentPreview messages={subagentMessages!} />
                   )}
 
                   {/* Subagent messages (merged, rendered inline) */}

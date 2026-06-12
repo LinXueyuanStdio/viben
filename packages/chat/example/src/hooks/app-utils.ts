@@ -92,7 +92,7 @@ export function buildClaudeCodePlaybackSteps(
       const previewMessages: AgentMessage[] = []
       for (const event of eventsByParent.get(message.toolUseId) ?? []) {
         previewMessages.push(...event.messages)
-        updates[message.id] = { subagentPreviewMessages: [...previewMessages] }
+        updates[message.id] = { subagentMessages: [...previewMessages] }
         steps.push({
           messages: [],
           delayMs: 450,

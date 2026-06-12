@@ -108,8 +108,7 @@ export interface AgentMessage {
   questions?: AgentQuestion[]; // For ask_question type (AskUserQuestion tool)
   planModeAction?: "enter" | "exit"; // For plan_mode type
   subagentId?: string; // For Agent/Task tool, the subagent ID
-  subagentMessages?: AgentMessage[]; // For Agent/Task tool, recursively loaded subagent messages
-  subagentPreviewMessages?: AgentMessage[]; // Transient UI-only preview while a subagent is running
+  subagentMessages?: AgentMessage[]; // Subagent messages (live or historical)
   timestamp?: number; // Unix timestamp (ms) for turn separator display
 }
 

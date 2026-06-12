@@ -495,7 +495,7 @@ export function App() {
     )
     if (!parentMessage?.id) return undefined
 
-    return player.messageUpdates[parentMessage.id]?.subagentPreviewMessages
+    return player.messageUpdates[parentMessage.id]?.subagentMessages
   }, [player.messageUpdates, player.messages, sheetData?.context?.toolUseId])
 
   const loadSubagentDetails = useCallback(async (context: SubagentOpenContext) => {

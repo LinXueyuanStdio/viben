@@ -124,7 +124,7 @@ export function buildBackgroundTasksFromMessages(
         usage: normalizeUsage(input.usage),
         usageLabel: stringValue(input.usage_label) ?? stringValue(input.usageLabel),
         details: stringValue(input.prompt) ?? stringValue(input.details),
-        messages: message.subagentPreviewMessages ?? message.subagentMessages,
+        messages: message.subagentMessages,
         sourceMessage: message,
       },
     ];

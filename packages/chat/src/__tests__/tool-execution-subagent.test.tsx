@@ -160,7 +160,7 @@ describe("ToolExecutionItem subagent cards", () => {
           },
           {
             toolUseId: "tool-3",
-            subagentPreviewMessages: [
+            subagentMessages: [
               {
                 id: "preview-1",
                 type: "tool_use",
@@ -195,7 +195,7 @@ describe("ToolExecutionItem subagent cards", () => {
           },
           {
             toolUseId: "tool-preview-window",
-            subagentPreviewMessages: Array.from({ length: 7 }, (_, index) => ({
+            subagentMessages: Array.from({ length: 7 }, (_, index) => ({
               id: `preview-${index + 1}`,
               type: "text",
               content: `preview event ${index + 1}`,
@@ -226,7 +226,7 @@ describe("ToolExecutionItem subagent cards", () => {
           },
           {
             toolUseId: "tool-preview-window",
-            subagentPreviewMessages: Array.from({ length: 8 }, (_, index) => ({
+            subagentMessages: Array.from({ length: 8 }, (_, index) => ({
               id: `preview-${index + 1}`,
               type: "text",
               content: `preview event ${index + 1}`,
@@ -256,7 +256,7 @@ describe("ToolExecutionItem subagent cards", () => {
             prompt: "Use the repository structure to inspect navigation.",
           },
           {
-            subagentPreviewMessages: [
+            subagentMessages: [
               {
                 id: "preview-1",
                 type: "text",
@@ -290,7 +290,7 @@ describe("ToolExecutionItem subagent cards", () => {
             subagent_type: "Explore",
           },
           {
-            subagentPreviewMessages: [
+            subagentMessages: [
               {
                 id: "preview-1",
                 type: "tool_use",
@@ -322,7 +322,7 @@ describe("ToolExecutionItem subagent cards", () => {
             subagent_type: "Explore",
           },
           {
-            subagentPreviewMessages: [
+            subagentMessages: [
               {
                 id: "preview-2",
                 type: "text",

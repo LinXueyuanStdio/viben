@@ -152,12 +152,16 @@ export class PreviewManager {
   async startPreview(config: PreviewConfig): Promise<PreviewStatus> {
     const { taskId, workDir, port: preferredPort, command, readyPattern, timeout } = config;
 
-    // Check if already running
+    // Check if already running or starting
     const existing = this.instances.get(taskId);
-    if (existing && existing.status === "running") {
-      existing.last_accessed_at = new Date();
-      this.resetIdleTimeout(existing);
-      return this.getStatusForInstance(existing);
+    if (existing) {
+      if (existing.status === "running") {
+        existing.last_accessed_at = new Date();
+        this.resetIdleTimeout(existing);
+        return this.getStatusForInstance(existing);
+      }
+      // Clean up stale instance (starting/error/stopped) before retrying
+      await this.cleanup(existing);
     }
 
     // Check max concurrent previews

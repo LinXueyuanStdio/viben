@@ -6,7 +6,6 @@
 import type { Model } from "../types";
 import type { ProviderType } from "../types";
 import { providerManager } from "../providers";
-import { KNOWN_MODELS, getKnownModel } from "./known-models";
 import { proxyFetch } from "../http";
 
 /**
@@ -87,9 +86,9 @@ async function discoverOpenAI(
 /**
  * Discover models from Anthropic API
  *
- * Note: Anthropic doesn't have a models list endpoint. This is a placeholder that returns an empty list.
+ * Note: Anthropic doesn't have a models list endpoint.
  */
-async function discoverAnthropic(apiKey: string, baseUrl?: string): Promise<DiscoveredModel[]> {
+async function discoverAnthropic(_apiKey: string, _baseUrl?: string): Promise<DiscoveredModel[]> {
   return [];
 }
 
@@ -232,16 +231,11 @@ async function discoverGoogle(apiKey: string): Promise<DiscoveredModel[]> {
 /**
  * Discover models from Azure OpenAI
  *
- * Note: Azure doesn't have a public models list endpoint.
- * Deployments are user-specific.
+ * Azure doesn't have a public models list endpoint.
+ * Deployments are user-specific — returns empty.
  */
 async function discoverAzure(): Promise<DiscoveredModel[]> {
-  // Azure uses deployments which are user-configured
-  // Return known Azure-compatible models
-  return KNOWN_MODELS.filter((m) => m.provider === "openai").map((m) => ({
-    id: m.id,
-    name: m.name,
-  }));
+  return [];
 }
 
 /**
@@ -288,7 +282,6 @@ export async function discoverModels(providerId: string): Promise<DiscoveryResul
         models = await discoverAzure();
         break;
       case "custom":
-        // For custom providers, try OpenAI-compatible endpoint
         if (baseUrl) {
           models = await discoverOpenAI(apiKey, baseUrl);
         }
@@ -335,23 +328,8 @@ export async function discoverAllModels(): Promise<DiscoveryResult[]> {
 }
 
 /**
- * Enrich discovered models with known model information
- *
- * @param discovered - Discovered model
- * @returns Enriched model with known information if available
+ * Enrich discovered models with stored model information
  */
 export function enrichModel(discovered: DiscoveredModel): Model | DiscoveredModel {
-  const known = getKnownModel(discovered.id);
-  if (known) {
-    return {
-      id: known.id,
-      name: known.name,
-      provider: known.provider,
-      contextLength: known.contextLength,
-      maxOutputTokens: known.maxOutputTokens,
-      inputPrice: known.inputPrice,
-      outputPrice: known.outputPrice,
-    };
-  }
   return discovered;
 }

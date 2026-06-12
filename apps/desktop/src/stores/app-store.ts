@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
+import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
 import type { CliToolsInfo } from "@/lib/gateway";
 import { getGatewayClient } from "@/lib/gateway";
 import i18n from "@/i18n";
@@ -57,25 +57,17 @@ interface AppState {
 
   // MCP Servers (multiple instances)
   mcpServers: McpServerInstance[];
-  addMcpServer: (server: Omit<McpServerInstance, "id" | "status" | "apiKeys">) => string;
+  addMcpServer: (server: Omit<McpServerInstance, "id" | "status">) => string;
   updateMcpServer: (id: string, updates: Partial<McpServerInstance>) => void;
   deleteMcpServer: (id: string) => void;
   getMcpServer: (id: string) => McpServerInstance | undefined;
   setMcpServerStatus: (id: string, status: McpServerStatus, pid?: number, error?: string) => void;
-  addServerApiKey: (serverId: string, apiKey: ServiceApiKey) => void;
-  deleteServerApiKey: (serverId: string, keyId: string) => void;
 
   // MCP Server Status Cache (for monitoring)
   mcpServerStatuses: Record<string, McpServerStatusInfo>;
   setMcpServerStatusInfo: (id: string, info: McpServerStatusInfo) => void;
   getMcpServerStatusInfo: (id: string) => McpServerStatusInfo | undefined;
   clearMcpServerStatuses: () => void;
-
-  // Agent Assignments (which server+key each agent uses)
-  agentAssignments: AgentMcpAssignment[];
-  setAgentAssignment: (agentId: string, serverId: string, apiKeyId?: string) => void;
-  removeAgentAssignment: (agentId: string) => void;
-  getAgentAssignment: (agentId: string) => AgentMcpAssignment | undefined;
 
   // Legacy MCP Config (for backward compatibility with single-server mode)
   // These are used when no servers are configured
@@ -274,7 +266,6 @@ export const useAppStore = create<AppState>()(
           id,
           port,
           status: "stopped",
-          apiKeys: [],
         };
         set((state) => ({
           mcpServers: [...state.mcpServers, newServer],
@@ -290,8 +281,6 @@ export const useAppStore = create<AppState>()(
       deleteMcpServer: (id) =>
         set((state) => ({
           mcpServers: state.mcpServers.filter((s) => s.id !== id),
-          // Also remove any agent assignments to this server
-          agentAssignments: state.agentAssignments.filter((a) => a.serverId !== id),
         })),
       getMcpServer: (id) => get().mcpServers.find((s) => s.id === id),
       setMcpServerStatus: (id, status, pid, error) =>
@@ -309,23 +298,6 @@ export const useAppStore = create<AppState>()(
             },
           },
         })),
-      addServerApiKey: (serverId, apiKey) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.map((s) =>
-            s.id === serverId
-              ? { ...s, apiKeys: [...s.apiKeys, apiKey] }
-              : s
-          ),
-        })),
-      deleteServerApiKey: (serverId, keyId) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.map((s) =>
-            s.id === serverId
-              ? { ...s, apiKeys: s.apiKeys.filter((k) => k.id !== keyId) }
-              : s
-          ),
-        })),
-
       // MCP Server Status Cache
       mcpServerStatuses: {},
       setMcpServerStatusInfo: (id, info) =>
@@ -337,29 +309,6 @@ export const useAppStore = create<AppState>()(
         })),
       getMcpServerStatusInfo: (id) => get().mcpServerStatuses[id],
       clearMcpServerStatuses: () => set({ mcpServerStatuses: {} }),
-
-      // Agent Assignments
-      agentAssignments: [],
-      setAgentAssignment: (agentId, serverId, apiKeyId) =>
-        set((state) => {
-          const existing = state.agentAssignments.find((a) => a.agentId === agentId);
-          if (existing) {
-            return {
-              agentAssignments: state.agentAssignments.map((a) =>
-                a.agentId === agentId ? { agentId, serverId, apiKeyId } : a
-              ),
-            };
-          }
-          return {
-            agentAssignments: [...state.agentAssignments, { agentId, serverId, apiKeyId }],
-          };
-        }),
-      removeAgentAssignment: (agentId) =>
-        set((state) => ({
-          agentAssignments: state.agentAssignments.filter((a) => a.agentId !== agentId),
-        })),
-      getAgentAssignment: (agentId) =>
-        get().agentAssignments.find((a) => a.agentId === agentId),
 
       // Legacy MCP Config (single server mode)
       mcpTransport: "sse",
@@ -568,7 +517,6 @@ export const useAppStore = create<AppState>()(
         providers: state.providers,
         apiKeys: state.apiKeys,
         // mcpServers: removed - synced with Gateway file
-        agentAssignments: state.agentAssignments,
         mcpTransport: state.mcpTransport,
         mcpPort: state.mcpPort,
         downloadPath: state.downloadPath,

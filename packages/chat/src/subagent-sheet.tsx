@@ -63,11 +63,6 @@ function getSubagentStats(messages: AgentMessage[]) {
       if (message.isError) errorCount += 1;
     }
 
-    if (message.type === "tool_result") {
-      if (message.isError) errorCount += 1;
-      if (message.toolUseId) completedToolCount += 1;
-    }
-
     if (message.type === "error") {
       errorCount += 1;
     }
@@ -114,7 +109,7 @@ export function SubagentSheet({
   const effectiveSubagentType = loadedSubagentType ?? subagentType;
   const effectiveIsLoading = isLoading || loadState.isLoading;
   const effectiveError = error ?? loadState.error;
-  const { toolCount, errorCount, completedToolCount } = getSubagentStats(effectiveMessages);
+  const { toolCount, errorCount, completedToolCount } = getSubagentStats(displayMessages);
   const status = errorCount > 0
     ? "Error"
     : toolCount > 0 && completedToolCount >= toolCount
@@ -131,7 +126,7 @@ export function SubagentSheet({
     setLoadedSubagentType(undefined);
     setLoadedMessages(null);
     setLoadState({ isLoading: false, error: null });
-  }, [context?.subagentId, context?.toolUseId, open]);
+  }, [context?.subagentId, context?.toolUseId]);
 
   useEffect(() => {
     if (!open || !loadSubagentDetails || !context || messages.length > 0) return;
@@ -159,6 +154,8 @@ export function SubagentSheet({
   }, [context, loadSubagentDetails, messages.length, open]);
 
   useEffect(() => {
+    if (!open) return;
+
     const handleMouseMove = (event: MouseEvent) => {
       const dragState = dragStateRef.current;
       if (!dragState) return;
@@ -182,7 +179,7 @@ export function SubagentSheet({
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, []);
+  }, [open]);
 
   const handleResizeStart = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault();

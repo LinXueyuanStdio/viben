@@ -70,19 +70,3 @@ export interface ModelEntry {
   updated_at: string;
 }
 
-/**
- * Known model definitions
- */
-export interface KnownModel {
-  id: string;
-  name: string;
-  provider: string;
-  category?: ModelCategory;
-  surface?: ModelSurface;
-  capabilities?: string[];
-  description?: string;
-  contextLength?: number;
-  maxOutputTokens?: number;
-  inputPrice?: number; // per 1M tokens
-  outputPrice?: number; // per 1M tokens
-}

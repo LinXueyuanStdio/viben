@@ -131,7 +131,7 @@ describe("useStepPlayer", () => {
         messages: [],
         messageUpdates: {
           "agent-msg": {
-            subagentPreviewMessages: [
+            subagentMessages: [
               { id: "preview", type: "text", content: "live preview" },
             ],
           },
@@ -151,7 +151,7 @@ describe("useStepPlayer", () => {
     expect(result.current.totalSteps).toBe(2);
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0]?.id).toBe("agent-msg");
-    expect(result.current.messageUpdates["agent-msg"]?.subagentPreviewMessages?.[0]?.content)
+    expect(result.current.messageUpdates["agent-msg"]?.subagentMessages?.[0]?.content)
       .toBe("live preview");
   });
 });

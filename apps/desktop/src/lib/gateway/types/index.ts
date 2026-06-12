@@ -132,6 +132,7 @@ export type {
   McpInspectorConfig,
   McpInspectorSession,
   ServiceApiKey,
+  ServiceApiKeyUpdate,
   WorkspaceSkillConfig,
   WorkspaceSkillsResponse,
   WorkspaceAgentConfigData,

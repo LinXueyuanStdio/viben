@@ -49,7 +49,7 @@ describe("acp chat state", () => {
     const withReadResult = applyQueuedUiStep(withReadPreview, readResultStep, []);
 
     expect(withReadResult.uiMessages.map((message) => message.id)).toEqual(["task-tool-1"]);
-    expect(withReadResult.messageUpdates["task-tool-1"].subagentPreviewMessages).toMatchObject([
+    expect(withReadResult.messageUpdates["task-tool-1"].subagentMessages).toMatchObject([
       {
         id: "read-tool-1",
         type: "tool_use",

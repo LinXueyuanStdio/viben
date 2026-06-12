@@ -13,7 +13,7 @@ import {
   outputList,
   handleCommandError,
 } from "../lib";
-import { modelManager, KNOWN_MODELS, DEFAULT_ALIASES } from "../../models";
+import { modelManager, DEFAULT_ALIASES } from "../../models";
 import type { ModelCategory, ModelSurface } from "../../models";
 
 const MODEL_CATEGORIES: ModelCategory[] = ["llm", "media"];
@@ -662,7 +662,7 @@ export function registerModelCommand(program: Command): void {
     .action(async function (this: Command) {
       const ctx = getContext(this);
       try {
-        const models = KNOWN_MODELS;
+        const models = await modelManager.listModels();
         const providers = [...new Set(models.map((m) => m.provider))];
         const providerInfo = providers.map((p) => ({
           provider: p,

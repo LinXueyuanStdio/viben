@@ -647,7 +647,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     [sessionOrder, sessionsById]
   );
 
-  const liveSubagentMessages = resolveLiveSubagentMessages(sessionsById, subagentSheet);
+  const liveSubagentMessages = useMemo(() => resolveLiveSubagentMessages(sessionsById, subagentSheet), [sessionsById, subagentSheet]);
 
   const [toolInspectState, setToolInspectState] = useState<{ message: AgentMessage; result?: AgentMessage } | null>(null);
   const [artifactDialogState, setArtifactDialogState] = useState<{ artifact: Artifact; message?: AgentMessage } | null>(null);
@@ -1441,6 +1441,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           }
         }
         return { title, subagentType, messages: liveMessages };
+      }
+      if (context.messages && context.messages.length > 0) {
+        return { messages: context.messages };
       }
       return { messages: [] };
     },

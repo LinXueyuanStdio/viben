@@ -58,16 +58,16 @@ const APPROVAL_MODE_CONFIG: Record<ApprovalMode, { icon: typeof ShieldCheck; lab
   },
 };
 
-function getUsageColor(percentage: number): { text: string; stroke: string } {
-  if (percentage > 90) return { text: "text-red-500", stroke: "stroke-red-500" };
-  if (percentage > 70) return { text: "text-yellow-500", stroke: "stroke-yellow-500" };
-  return { text: "text-muted-foreground", stroke: "stroke-primary" };
+function getUsageColor(percentage: number): { text: string; color: string } {
+  if (percentage > 90) return { text: "text-red-500", color: "var(--color-red-500, #ef4444)" };
+  if (percentage > 70) return { text: "text-yellow-500", color: "var(--color-yellow-500, #eab308)" };
+  return { text: "text-muted-foreground", color: "var(--primary, #6366f1)" };
 }
 
 function MiniCircularProgress({
   percentage,
   size = 20,
-  strokeWidth = 2,
+  strokeWidth = 3,
 }: {
   percentage: number;
   size?: number;
@@ -86,9 +86,9 @@ function MiniCircularProgress({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-muted/30"
+          style={{ stroke: "color-mix(in oklch, currentColor 20%, transparent)" }}
+          className="text-muted-foreground"
         />
         <circle
           cx={size / 2}
@@ -99,10 +99,10 @@ function MiniCircularProgress({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className={cn("transition-all duration-300", colors.stroke)}
+          style={{ stroke: colors.color, transition: "stroke-dashoffset 0.3s ease" }}
         />
       </svg>
-      <span className={cn("text-[8px] font-medium leading-none", colors.text)}>
+      <span className={cn("text-[8px] font-semibold leading-none tabular-nums", colors.text)}>
         {percentage.toFixed(0)}
       </span>
     </div>
@@ -174,8 +174,8 @@ export function ContextApprovalButton({
       disabled={disabled}
       aria-label={`${config.label}, Context 使用率 ${usagePercentage.toFixed(0)}%`}
     >
-      <ApprovalIcon className="h-3.5 w-3.5 text-muted-foreground" />
-      <MiniCircularProgress percentage={usagePercentage} size={20} strokeWidth={2} />
+      <ApprovalIcon className="h-4 w-4 text-muted-foreground" />
+      <MiniCircularProgress percentage={usagePercentage} />
     </button>
   );
 
