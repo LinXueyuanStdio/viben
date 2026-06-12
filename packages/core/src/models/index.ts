@@ -387,15 +387,17 @@ export class ModelManager {
 
   /**
    * Enable a model (built-in, custom, or discovered)
-   * @param providerType - Required when the model is not yet registered (discovered models)
+   * @param providerType - The provider type (e.g. "openai", "anthropic")
+   * @param providerId - The provider instance ID (e.g. "deepseek-openai")
    */
-  async enableModel(id: string, providerType: string): Promise<void> {
+  async enableModel(id: string, providerType: string, providerId?: string): Promise<void> {
     const config = await this.loadConfig();
 
     const customEntry = config.custom_models[id];
     if (customEntry) {
       customEntry.enabled = true;
       customEntry.provider = providerType;
+      if (providerId) customEntry.provider_id = providerId;
       customEntry.updated_at = new Date().toISOString();
     } else if (getKnownModel(id)) {
       config.disabled_models = config.disabled_models.filter((m) => m !== id);
@@ -403,6 +405,7 @@ export class ModelManager {
       config.custom_models[id] = {
         name: id,
         provider: providerType,
+        provider_id: providerId,
         enabled: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -414,15 +417,17 @@ export class ModelManager {
 
   /**
    * Disable a model (built-in, custom, or discovered)
-   * @param providerType - Required when the model is not yet registered (discovered models)
+   * @param providerType - The provider type (e.g. "openai", "anthropic")
+   * @param providerId - The provider instance ID (e.g. "deepseek-openai")
    */
-  async disableModel(id: string, providerType: string): Promise<void> {
+  async disableModel(id: string, providerType: string, providerId?: string): Promise<void> {
     const config = await this.loadConfig();
 
     const customEntry = config.custom_models[id];
     if (customEntry) {
       customEntry.enabled = false;
       customEntry.provider = providerType;
+      if (providerId) customEntry.provider_id = providerId;
       customEntry.updated_at = new Date().toISOString();
     } else if (getKnownModel(id)) {
       if (!config.disabled_models.includes(id)) {
@@ -432,6 +437,7 @@ export class ModelManager {
       config.custom_models[id] = {
         name: id,
         provider: providerType,
+        provider_id: providerId,
         enabled: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

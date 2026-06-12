@@ -199,6 +199,9 @@ export function PageCodePanel({
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
 
+  // Sidebar resize state
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+
   // Auto-save timer refs
   const saveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -513,141 +516,125 @@ export function PageCodePanel({
 
   return (
     <div className={cn("flex h-full min-h-0", className)}>
-      <Group orientation="horizontal" className="h-full min-h-0">
-        {/* Left Panel: File Tree */}
-        <Panel
-          id="code-file-tree"
-          defaultSize={25}
-          minSize={15}
-          maxSize={50}
-          className="min-w-0 min-h-0"
-        >
-          <div className="flex flex-col h-full border-r">
-            {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("codePanel.files", { defaultValue: "Files" })}
-              </span>
-              <button
-                onClick={loadTree}
-                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                title={t("codePanel.refresh", { defaultValue: "Refresh" })}
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </button>
-            </div>
+      {/* Left Panel: File Tree */}
+      <div
+        className="relative shrink-0 flex flex-col h-full border-r min-h-0"
+        style={{ width: sidebarWidth }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            {t("codePanel.files", { defaultValue: "Files" })}
+          </span>
+          <button
+            onClick={loadTree}
+            className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            title={t("codePanel.refresh", { defaultValue: "Refresh" })}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
-            {/* Tree content */}
-            <ScrollArea className="flex-1 min-h-0">
-              <div className="p-1">
-                {isLoadingTree ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : treeError ? (
-                  <div className="px-3 py-4 text-sm text-destructive">
-                    {treeError}
-                  </div>
-                ) : treeNodes.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-muted-foreground">
-                    {t("codePanel.noFiles", { defaultValue: "No files found" })}
-                  </div>
-                ) : (
-                  treeNodes.map((node) => (
-                    <FileTreeNode
-                      key={node.entry.path}
-                      node={node}
-                      depth={0}
-                      selectedPath={activeTabPath}
-                      onSelectFile={openFile}
-                      onToggleDir={toggleDir}
-                    />
-                  ))
-                )}
+        {/* Tree content */}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-1">
+            {isLoadingTree ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            </ScrollArea>
-          </div>
-        </Panel>
-
-        {/* Separator */}
-        <Separator
-          id="code-panel-separator"
-          className={cn(
-            "relative z-10 bg-border cursor-col-resize group touch-none",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-            "w-1 hover:w-1.5 transition-all"
-          )}
-        />
-
-        {/* Right Panel: Editor with Tabs */}
-        <Panel
-          id="code-editor-area"
-          defaultSize={75}
-          minSize={40}
-          className="min-w-0 min-h-0"
-        >
-          <div className="flex flex-col h-full">
-            {/* Tab bar */}
-            {openTabs.length > 0 && (
-              <div className="flex items-center border-b shrink-0 overflow-x-auto">
-                {openTabs.map((tab) => (
-                  <div
-                    key={tab.path}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 text-sm border-r cursor-pointer shrink-0",
-                      "hover:bg-accent/50 transition-colors",
-                      tab.path === activeTabPath
-                        ? "bg-background text-foreground border-b-2 border-b-primary"
-                        : "text-muted-foreground bg-muted/30"
-                    )}
-                    onClick={() => setActiveTabPath(tab.path)}
-                  >
-                    {/* Dirty indicator */}
-                    {tab.isDirty && (
-                      <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                    )}
-                    <span className="truncate max-w-32">{tab.name}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        closeTab(tab.path);
-                      }}
-                      className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
+            ) : treeError ? (
+              <div className="px-3 py-4 text-sm text-destructive">
+                {treeError}
               </div>
-            )}
-
-            {/* Editor area */}
-            <div className="flex-1 min-h-0">
-              {activeTab ? (
-                <CodeEditor
-                  key={activeTab.path}
-                  value={activeTab.content}
-                  filename={activeTab.name}
-                  height="100%"
-                  saveStatus={activeTab.saveStatus}
-                  onChange={(newValue) => {
-                    if (newValue !== undefined) {
-                      handleEditorChange(activeTab.path, newValue);
-                    }
-                  }}
-                  onSave={(content) => saveFile(activeTab.path, content)}
+            ) : treeNodes.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-muted-foreground">
+                {t("codePanel.noFiles", { defaultValue: "No files found" })}
+              </div>
+            ) : (
+              treeNodes.map((node) => (
+                <FileTreeNode
+                  key={node.entry.path}
+                  node={node}
+                  depth={0}
+                  selectedPath={activeTabPath}
+                  onSelectFile={openFile}
+                  onToggleDir={toggleDir}
                 />
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                  {t("codePanel.selectFile", {
-                    defaultValue: "Select a file from the tree to start editing",
-                  })}
-                </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
-        </Panel>
-      </Group>
+        </ScrollArea>
+
+        {/* Resize handle */}
+        <ResizeHandle
+          side="left"
+          onResize={(delta) =>
+            setSidebarWidth((w) => Math.min(400, Math.max(150, w + delta)))
+          }
+        />
+      </div>
+
+      {/* Right Panel: Editor with Tabs */}
+      <div className="flex flex-col flex-1 h-full min-w-0 min-h-0">
+        {/* Tab bar */}
+        {openTabs.length > 0 && (
+          <div className="flex items-center border-b shrink-0 overflow-x-auto">
+            {openTabs.map((tab) => (
+              <div
+                key={tab.path}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-sm border-r cursor-pointer shrink-0",
+                  "hover:bg-accent/50 transition-colors",
+                  tab.path === activeTabPath
+                    ? "bg-background text-foreground border-b-2 border-b-primary"
+                    : "text-muted-foreground bg-muted/30"
+                )}
+                onClick={() => setActiveTabPath(tab.path)}
+              >
+                {/* Dirty indicator */}
+                {tab.isDirty && (
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                )}
+                <span className="truncate max-w-32">{tab.name}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTab(tab.path);
+                  }}
+                  className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Editor area */}
+        <div className="flex-1 min-h-0">
+          {activeTab ? (
+            <CodeEditor
+              key={activeTab.path}
+              value={activeTab.content}
+              filename={activeTab.name}
+              height="100%"
+              saveStatus={activeTab.saveStatus}
+              onChange={(newValue) => {
+                if (newValue !== undefined) {
+                  handleEditorChange(activeTab.path, newValue);
+                }
+              }}
+              onSave={(content) => saveFile(activeTab.path, content)}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+              {t("codePanel.selectFile", {
+                defaultValue: "Select a file from the tree to start editing",
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

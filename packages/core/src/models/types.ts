@@ -57,6 +57,8 @@ export type ModelSurface =
 export interface ModelEntry {
   name: string;
   provider: string;
+  /** Provider instance ID (e.g. "deepseek-openai") that registered this model */
+  provider_id?: string;
   category?: ModelCategory;
   surface?: ModelSurface;
   capabilities?: string[];
