@@ -196,7 +196,13 @@ export function TripleSelector({
             <ChevronDown className="h-2.5 w-2.5 shrink-0" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
+        <PopoverContent
+          className="w-auto p-0"
+          side="top"
+          align="start"
+          sideOffset={8}
+          collisionPadding={8}
+        >
           <div className="flex">
             {/* 第一级 */}
             {!hideFirst && (

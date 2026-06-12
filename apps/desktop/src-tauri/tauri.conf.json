@@ -76,6 +76,7 @@
         "visible": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "useHttpsScheme": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "resizable": true,

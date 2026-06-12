@@ -1339,10 +1339,12 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // Determine mode-specific content
   let modeContent: React.ReactNode;
 
+  // For standalone window mode: render full-screen, no floating wrapper.
+  // macOS uses the native title bar overlay, matching the main desktop window.
   if (windowMode) {
     modeContent = (
       <ChatDragProvider value={dragContextValue}>
-        <div className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl bg-background", className)}>
+        <div className={cn("flex h-full w-full flex-col overflow-hidden bg-background", className)}>
           {displayError && (
             <div className="absolute left-4 right-4 top-14 z-40 rounded-lg border border-destructive/35 bg-background px-3 py-2 text-sm text-destructive shadow-lg">
               {displayError}
