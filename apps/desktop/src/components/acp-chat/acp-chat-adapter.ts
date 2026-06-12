@@ -107,6 +107,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         id: createStepId("text"),
         type: "text",
         content: contentBlockToText(update.content),
+        subagentId: extractSubagentId(update),
         timestamp: Date.now(),
       });
     case "agent_thought_chunk":
@@ -114,6 +115,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         id: createStepId("thinking"),
         type: "thinking",
         content: contentBlockToText(update.content),
+        subagentId: extractSubagentId(update),
         timestamp: Date.now(),
       });
     case "tool_call": {

@@ -6,6 +6,7 @@ import { OverlayRoot } from "@/components/overlay";
 import { ActionApprovalDialog } from "@/components/action-system";
 import { PresentationActionProvider } from "@/components/overlay/layers/presentation-action-provider";
 import { PetWindowManager } from "@/components/pet-window-manager";
+import { useGatewayActionSocket } from "@/hooks/use-gateway-action-socket";
 import {
   DashboardPage,
   ProvidersPage,
@@ -50,6 +51,9 @@ const MarketplacePage = lazy(() =>
 );
 const SkillsMarketPage = lazy(() =>
   import("@/pages/skills-market").then((m) => ({ default: m.SkillsMarketPage }))
+);
+const BrowseSourceStorePage = lazy(() =>
+  import("@/pages/mcp/browse-source-store").then((m) => ({ default: m.BrowseSourceStorePage }))
 );
 
 import { useTranslation } from "react-i18next";
@@ -132,6 +136,8 @@ function WorkspaceRedirect() {
 }
 
 function App() {
+  useGatewayActionSocket();
+
   return (
     <AppErrorBoundary>
       <BrowserRouter>
@@ -177,6 +183,16 @@ function App() {
               element={
                 <Suspense fallback={<PageLoadingFallback />}>
                   <SkillsMarketPage />
+                </Suspense>
+              }
+            />
+
+            {/* Browse source store */}
+            <Route
+              path="browse-source-store"
+              element={
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <BrowseSourceStorePage />
                 </Suspense>
               }
             />

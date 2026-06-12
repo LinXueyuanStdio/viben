@@ -6,6 +6,7 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createBrowseMcpServer, type BrowseMcpServerOptions } from "../../../mcp/server/browse-mcp/mcp-server";
 import { logger as globalLogger } from "../../../telemetry";
+import { getBrowsePluginsDir } from "../browse-plugins";
 
 const log = globalLogger.child({ module: "browse-mcp-server" });
 const BROWSE_MCP_PATH = "/api/mcp-server/browse";
@@ -62,6 +63,15 @@ export function registerBrowseMcpServerRoutes(
   fastify: FastifyInstance,
   options: BrowseMcpRoutesOptions = {},
 ): void {
+  // Ensure browse-sdk plugin discovery includes user-installed plugins
+  const pluginsDir = getBrowsePluginsDir();
+  if (!process.env.BROWSE_MCP_PLUGIN_DIRS) {
+    process.env.BROWSE_MCP_PLUGIN_DIRS = pluginsDir;
+  } else if (!process.env.BROWSE_MCP_PLUGIN_DIRS.includes(pluginsDir)) {
+    const sep = process.platform === "win32" ? ";" : ":";
+    process.env.BROWSE_MCP_PLUGIN_DIRS = `${process.env.BROWSE_MCP_PLUGIN_DIRS}${sep}${pluginsDir}`;
+  }
+
   const createServer = options.createServer ?? (() => createBrowseMcpServer(options.browseMcpServerOptions));
   const createTransport = options.createTransport ?? ((pendingSessionId: string) =>
     new StreamableHTTPServerTransport({

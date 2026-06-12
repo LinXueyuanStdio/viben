@@ -47,9 +47,7 @@ import { useCommandQueue } from "@viben/chat";
 import type { MessageAttachment as ChatMessageAttachment } from "@viben/chat";
 import {
   handleClientSideBash,
-  handleGUIExecute,
   isClientSideBashTool,
-  isGUIExecuteTool,
 } from "@/lib/action-system";
 
 /**
@@ -595,15 +593,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           }
         }
 
-        // GUI Action system interception
-        if (isGUIExecuteTool(toolName)) {
-          handleGUIExecute(data.id || toolId, sessionIdRef.current || "", {
-            action: (toolInput as { action?: string }).action || "",
-            payload: (toolInput as { payload?: unknown }).payload,
-          }).catch((err) => {
-            console.error("[GUI_execute] Failed:", err);
-          });
-        } else if (isClientSideBashTool(toolName)) {
+        // Client-side bash interception (runs locally, not via socket.io)
+        if (isClientSideBashTool(toolName)) {
           handleClientSideBash(data.id || toolId, sessionIdRef.current || "", {
             script: typeof toolInput.script === "string" ? toolInput.script : "",
           }).catch((err) => {

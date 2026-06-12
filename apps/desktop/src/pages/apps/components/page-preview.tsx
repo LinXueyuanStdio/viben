@@ -43,6 +43,12 @@ export interface PagePreviewProps {
   livePreviewStatus?: PreviewStatus;
   /** Live preview error (from useVitePreview) */
   livePreviewError?: string | null;
+  /** Live preview logs (from useVitePreview) */
+  livePreviewLogs?: string[];
+  /** Live preview retry attempt (from useVitePreview) */
+  livePreviewRetryAttempt?: number | null;
+  /** Live preview max retry attempts (from useVitePreview) */
+  livePreviewMaxRetryAttempts?: number | null;
   /** Callback to start live preview */
   onStartLivePreview?: () => void;
   /** Callback to stop live preview */
@@ -70,6 +76,9 @@ export function PagePreview({
   livePreviewUrl,
   livePreviewStatus = "idle",
   livePreviewError,
+  livePreviewLogs,
+  livePreviewRetryAttempt,
+  livePreviewMaxRetryAttempts,
   onStartLivePreview,
   onStopLivePreview,
   onOpenPage,
@@ -184,6 +193,9 @@ export function PagePreview({
                     previewUrl={livePreviewUrl ?? null}
                     status={livePreviewStatus}
                     error={livePreviewError ?? null}
+                    logs={livePreviewLogs}
+                    retryAttempt={livePreviewRetryAttempt}
+                    maxRetryAttempts={livePreviewMaxRetryAttempts}
                     onStart={onStartLivePreview}
                     onStop={onStopLivePreview}
                     hideHeader

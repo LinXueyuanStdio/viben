@@ -405,6 +405,9 @@ export function PagePreviewWindow({
     previewUrl,
     status: previewStatus,
     error: previewError,
+    logs: previewLogs,
+    retryAttempt: previewRetryAttempt,
+    maxRetryAttempts: previewMaxRetryAttempts,
     startPreview,
     stopPreview,
     portConflict,
@@ -834,6 +837,9 @@ export function PagePreviewWindow({
             livePreviewUrl={previewUrl}
             livePreviewStatus={previewStatus}
             livePreviewError={previewError}
+            livePreviewLogs={previewLogs}
+            livePreviewRetryAttempt={previewRetryAttempt}
+            livePreviewMaxRetryAttempts={previewMaxRetryAttempts}
             onStartLivePreview={handleStartLivePreview}
             onStopLivePreview={stopPreview}
             className="h-full min-h-0"

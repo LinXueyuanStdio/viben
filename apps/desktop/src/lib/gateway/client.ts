@@ -261,6 +261,12 @@ import {
   getFlatSources,
   clearProviderCache,
 
+  // Browse Plugins module
+  getBrowsePluginRegistry,
+  getInstalledBrowsePlugins,
+  installBrowsePlugin,
+  uninstallBrowsePlugin,
+
   // Official Registry module
   listOfficialServers,
   getOfficialServer,
@@ -433,6 +439,10 @@ import type {
   // Marketplace types
   ProviderIndex,
   FlatSource,
+  // Browse Plugins types
+  BrowsePluginRegistry,
+  InstalledBrowsePluginsResponse,
+  InstallBrowsePluginResponse,
   // Official Registry types
   OfficialServerDisplay,
   OfficialServerListResponse,
@@ -2638,6 +2648,38 @@ export class GatewayClient {
    */
   async clearProviderCache(): Promise<void> {
     return clearProviderCache(this.baseUrl);
+  }
+
+  // ==========================================================================
+  // Browse Plugins Module Methods
+  // ==========================================================================
+
+  /**
+   * Get browse plugins registry
+   */
+  async getBrowsePluginRegistry(forceRefresh = false): Promise<BrowsePluginRegistry> {
+    return getBrowsePluginRegistry(this.baseUrl, forceRefresh);
+  }
+
+  /**
+   * List installed browse plugins
+   */
+  async getInstalledBrowsePlugins(): Promise<InstalledBrowsePluginsResponse> {
+    return getInstalledBrowsePlugins(this.baseUrl);
+  }
+
+  /**
+   * Install a browse plugin
+   */
+  async installBrowsePlugin(pluginId: string, downloadUrl: string): Promise<InstallBrowsePluginResponse> {
+    return installBrowsePlugin(this.baseUrl, pluginId, downloadUrl);
+  }
+
+  /**
+   * Uninstall a browse plugin
+   */
+  async uninstallBrowsePlugin(pluginId: string): Promise<void> {
+    return uninstallBrowsePlugin(this.baseUrl, pluginId);
   }
 
   // ==========================================================================

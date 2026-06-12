@@ -17,6 +17,7 @@ import type { Model, ModelConfig } from "../../types";
 vi.mock("../../models", () => ({
   modelManager: {
     listModels: vi.fn(),
+    listModelsFiltered: vi.fn(),
     getModelsByProvider: vi.fn(),
     getDefault: vi.fn(),
     setDefault: vi.fn(),
@@ -124,12 +125,12 @@ describe("Model CLI Commands", () => {
         createMockModel({ id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: "anthropic" }),
       ];
 
-      vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue(mockModels);
       vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
 
       await runCommand(["model", "list"]);
 
-      expect(modelManager.listModels).toHaveBeenCalled();
+      expect(modelManager.listModelsFiltered).toHaveBeenCalled();
       expect(modelManager.getDefault).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalled();
     });
@@ -138,20 +139,21 @@ describe("Model CLI Commands", () => {
       const mockModels = [
         createMockModel({ id: "gpt-4o", name: "GPT-4o", provider: "openai" }),
         createMockModel({ id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" }),
-        createMockModel({ id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: "anthropic" }),
       ];
 
-      vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue(mockModels);
       vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
 
       await runCommand(["model", "list", "--provider", "openai"]);
 
-      expect(modelManager.listModels).toHaveBeenCalled();
+      expect(modelManager.listModelsFiltered).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: "openai" })
+      );
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no models found", async () => {
-      vi.mocked(modelManager.listModels).mockResolvedValue([]);
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue([]);
       vi.mocked(modelManager.getDefault).mockResolvedValue(undefined);
 
       await runCommand(["model", "list"]);
@@ -162,7 +164,7 @@ describe("Model CLI Commands", () => {
     it("should output JSON when --json flag is provided", async () => {
       const mockModels = [createMockModel()];
 
-      vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue(mockModels);
       vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
 
       await runCommand(["--json", "model", "list"]);
@@ -798,7 +800,7 @@ describe("Model CLI Commands", () => {
 
   describe("error handling", () => {
     it("should handle errors in model list", async () => {
-      vi.mocked(modelManager.listModels).mockRejectedValue(new Error("Failed to list models"));
+      vi.mocked(modelManager.listModelsFiltered).mockRejectedValue(new Error("Failed to list models"));
 
       await expect(runCommand(["model", "list"])).rejects.toThrow();
 

@@ -56,6 +56,34 @@ export interface PreviewStatus {
 }
 
 /**
+ * SSE event types for preview startup
+ */
+export type PreviewSSEEventType =
+  | "status"      // Status update
+  | "log"         // Log message (stdout/stderr)
+  | "retry"       // Port retry attempt
+  | "complete"    // Startup complete (success or final error)
+  | "error";      // Error during startup
+
+/**
+ * SSE event data for preview startup
+ */
+export interface PreviewSSEEvent {
+  type: PreviewSSEEventType;
+  data: {
+    status?: PreviewStatus["status"];
+    message?: string;
+    port?: number;
+    attempt?: number;
+    maxAttempts?: number;
+    url?: string;
+    error?: string;
+    /** Final status object (only for 'complete' event) */
+    result?: PreviewStatus;
+  };
+}
+
+/**
  * Internal representation of a preview instance
  */
 interface PreviewInstance {
@@ -69,6 +97,8 @@ interface PreviewInstance {
   healthCheckInterval?: ReturnType<typeof setInterval>;
   idleTimeout?: ReturnType<typeof setTimeout>;
   process?: ChildProcess;
+  /** SSE emitter for startup events */
+  sseEmitter?: (event: PreviewSSEEvent) => void;
 }
 
 /**
@@ -116,41 +146,77 @@ function generateViteConfig(port: number): string {
 // Port range for preview servers
 const PORT_RANGE_START = 5173;
 const PORT_RANGE_END = 5273;
+const CUSTOM_PORT_RANGE_START = 3001;
+const CUSTOM_PORT_RANGE_END = 3100;
 const MAX_CONCURRENT_PREVIEWS = 5;
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const HEALTH_CHECK_INTERVAL_MS = 10 * 1000; // 10 seconds
 const STARTUP_TIMEOUT_MS = 120 * 1000; // 120 seconds (2 minutes) for npm install + vite start
+const MAX_PORT_RETRY_ATTEMPTS = 10;
+const INITIAL_RETRY_DELAY_MS = 100;
 
 /**
  * PreviewManager - Manages Vite dev server instances
  *
  * Features:
  * - Port management in range 5173-5273
- * - Auto-allocation of available ports
+ * - Auto-allocation of available ports with exponential backoff retry
  * - Health monitoring with periodic checks
  * - Idle timeout for automatic cleanup
  * - Zero-config support (auto-generates package.json and vite.config.js)
  * - Maximum concurrent previews limit
+ * - SSE support for real-time startup feedback
  */
 export class PreviewManager {
   private instances: Map<string, PreviewInstance> = new Map();
   private usedPorts: Set<number> = new Set();
-  private cleanupRegistered = false;
+  private static cleanupRegistered = false;
 
   constructor() {
-    // Cleanup on process exit (only register once)
-    if (!this.cleanupRegistered) {
+    // Cleanup on process exit (only register once using static flag)
+    if (!PreviewManager.cleanupRegistered) {
       process.on("SIGTERM", () => this.stopAll());
       process.on("SIGINT", () => this.stopAll());
-      this.cleanupRegistered = true;
+      PreviewManager.cleanupRegistered = true;
     }
   }
 
   /**
-   * Start a Vite preview server for the given task
+   * Start a Vite preview server for the given task (non-SSE version for backward compatibility)
    */
   async startPreview(config: PreviewConfig): Promise<PreviewStatus> {
-    const { taskId, workDir, port: preferredPort, command, readyPattern, timeout } = config;
+    return new Promise((resolve) => {
+      let finalStatus: PreviewStatus | null = null;
+
+      this.startPreviewWithSSE(config, (event) => {
+        if (event.type === "complete" && event.data.result) {
+          finalStatus = event.data.result;
+          resolve(finalStatus);
+        }
+      });
+
+      // Fallback timeout in case SSE never completes
+      setTimeout(() => {
+        if (!finalStatus) {
+          resolve({
+            id: `preview-${config.taskId}`,
+            task_id: config.taskId,
+            status: "error",
+            error: "Startup timed out",
+          });
+        }
+      }, (config.timeout ?? STARTUP_TIMEOUT_MS) + 5000);
+    });
+  }
+
+  /**
+   * Start a Vite preview server with SSE events for real-time feedback
+   */
+  startPreviewWithSSE(
+    config: PreviewConfig,
+    onEvent: (event: PreviewSSEEvent) => void
+  ): void {
+    const { taskId } = config;
 
     // Check if already running or starting
     const existing = this.instances.get(taskId);
@@ -160,10 +226,12 @@ export class PreviewManager {
         if (existing.status === "running") {
           this.resetIdleTimeout(existing);
         }
-        return this.getStatusForInstance(existing);
+        const status = this.getStatusForInstance(existing);
+        onEvent({ type: "complete", data: { result: status } });
+        return;
       }
       // Clean up stale instance (error/stopped) before retrying
-      await this.cleanup(existing);
+      this.cleanup(existing);
     }
 
     // Check max concurrent previews
@@ -175,52 +243,165 @@ export class PreviewManager {
       // Try to stop the oldest idle preview
       const oldestIdle = this.findOldestIdlePreview();
       if (oldestIdle) {
-        await this.stopPreview(oldestIdle.task_id);
+        this.stopPreview(oldestIdle.task_id);
       } else {
-        return {
+        const errorStatus: PreviewStatus = {
           id: `preview-${taskId}`,
           task_id: taskId,
           status: "error",
           error: `Maximum concurrent previews (${MAX_CONCURRENT_PREVIEWS}) reached. Please stop an existing preview first.`,
         };
+        onEvent({ type: "error", data: { error: errorStatus.error } });
+        onEvent({ type: "complete", data: { result: errorStatus } });
+        return;
       }
     }
 
-    // Allocate port
-    let port: number | null = null;
+    // Start the async startup process
+    this.startPreviewAsync(config, onEvent);
+  }
+
+  /**
+   * Async preview startup with port retry and SSE events
+   */
+  private async startPreviewAsync(
+    config: PreviewConfig,
+    onEvent: (event: PreviewSSEEvent) => void
+  ): Promise<void> {
+    const { taskId, workDir, port: preferredPort, command, readyPattern, timeout } = config;
+
+    onEvent({
+      type: "status",
+      data: { status: "starting", message: "Initializing preview server..." },
+    });
+
+    // If preferred port is specified and already has a running service, reuse it
     if (preferredPort) {
-      port = this.allocatePort(preferredPort);
-      if (port) {
-        const portBusy = await this.isPortInUse(port);
-        if (portBusy) {
-          this.releasePort(port);
-          return {
-            id: `preview-${taskId}`,
-            task_id: taskId,
-            status: "error",
-            error: `PORT_IN_USE:${port}`,
-          };
-        }
+      const portBusy = await this.isPortInUse(preferredPort);
+      if (portBusy) {
+        log.info({ port: preferredPort }, "Preferred port already has a running service, reusing it");
+        onEvent({
+          type: "log",
+          data: {
+            message: `Port ${preferredPort} already has a running service, connecting to existing server...`,
+            port: preferredPort,
+          },
+        });
+
+        // Create instance for the existing server
+        const instance: PreviewInstance = {
+          id: `preview-${taskId}`,
+          task_id: taskId,
+          port: preferredPort,
+          status: "running",
+          started_at: new Date(),
+          last_accessed_at: new Date(),
+          sseEmitter: onEvent,
+        };
+
+        this.instances.set(taskId, instance);
+        this.usedPorts.add(preferredPort);
+        this.startHealthCheck(instance);
+        this.resetIdleTimeout(instance);
+
+        onEvent({
+          type: "status",
+          data: {
+            status: "running",
+            message: "Connected to existing server",
+            url: `http://localhost:${preferredPort}`,
+            port: preferredPort,
+          },
+        });
+
+        const finalStatus = this.getStatusForInstance(instance);
+        onEvent({ type: "complete", data: { result: finalStatus } });
+        return;
       }
-    } else {
-      // Auto-assign: try ports in range until finding a free one
-      for (let candidate = PORT_RANGE_START; candidate <= PORT_RANGE_END; candidate++) {
-        if (this.usedPorts.has(candidate)) continue;
-        const busy = await this.isPortInUse(candidate);
+    }
+
+    // Determine port range based on whether we have a custom command
+    const isCustomCommand = Boolean(command);
+    const portRangeStart = isCustomCommand ? CUSTOM_PORT_RANGE_START : PORT_RANGE_START;
+    const portRangeEnd = isCustomCommand ? CUSTOM_PORT_RANGE_END : PORT_RANGE_END;
+
+    // Try to allocate a port with exponential backoff retry
+    let port: number | null = null;
+    let lastError: string | null = null;
+
+    for (let attempt = 1; attempt <= MAX_PORT_RETRY_ATTEMPTS; attempt++) {
+      // Calculate exponential backoff delay
+      const delay = attempt > 1 ? INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 2) : 0;
+
+      if (delay > 0) {
+        onEvent({
+          type: "retry",
+          data: {
+            attempt,
+            maxAttempts: MAX_PORT_RETRY_ATTEMPTS,
+            message: `Retrying in ${delay}ms...`,
+          },
+        });
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      // Try preferred port first on first attempt (we already checked it's not in use above)
+      if (attempt === 1 && preferredPort && !this.usedPorts.has(preferredPort)) {
+        port = preferredPort;
+        this.usedPorts.add(port);
+        break;
+      }
+
+      // First attempt with preferred port already handled above
+      if (attempt === 1 && preferredPort) {
+        onEvent({
+          type: "log",
+          data: {
+            message: `Preferred port ${preferredPort} is reserved by another preview, trying alternative...`,
+            port: preferredPort,
+          },
+        });
+      }
+
+      // Try random port in range
+      const candidatePort = this.getRandomPort(portRangeStart, portRangeEnd);
+      if (candidatePort && !this.usedPorts.has(candidatePort)) {
+        const busy = await this.isPortInUse(candidatePort);
         if (!busy) {
-          this.usedPorts.add(candidate);
-          port = candidate;
+          port = candidatePort;
+          this.usedPorts.add(port);
+          onEvent({
+            type: "log",
+            data: {
+              message: `Found available port: ${port}`,
+              port,
+            },
+          });
           break;
         }
       }
+
+      lastError = `All ports in range ${portRangeStart}-${portRangeEnd} are in use`;
+      onEvent({
+        type: "retry",
+        data: {
+          attempt,
+          maxAttempts: MAX_PORT_RETRY_ATTEMPTS,
+          message: `Port ${candidatePort || "unknown"} is in use (attempt ${attempt}/${MAX_PORT_RETRY_ATTEMPTS})`,
+        },
+      });
     }
+
     if (!port) {
-      return {
+      const errorStatus: PreviewStatus = {
         id: `preview-${taskId}`,
         task_id: taskId,
         status: "error",
-        error: "No available ports in range 5173-5273",
+        error: lastError || "No available ports found",
       };
+      onEvent({ type: "error", data: { error: errorStatus.error } });
+      onEvent({ type: "complete", data: { result: errorStatus } });
+      return;
     }
 
     // Create instance
@@ -231,19 +412,57 @@ export class PreviewManager {
       status: "starting",
       started_at: new Date(),
       last_accessed_at: new Date(),
+      sseEmitter: onEvent,
     };
 
     this.instances.set(taskId, instance);
 
-    // Start the server asynchronously
-    this.startServer(instance, workDir, { command, readyPattern, timeout }).catch((error) => {
+    onEvent({
+      type: "status",
+      data: { status: "starting", message: `Starting server on port ${port}...`, port },
+    });
+
+    // Start the server
+    try {
+      await this.startServer(instance, workDir, { command, readyPattern, timeout }, onEvent);
+
+      // Send completion event
+      const finalStatus = this.getStatusForInstance(instance);
+      onEvent({ type: "complete", data: { result: finalStatus } });
+    } catch (error) {
       log.error({ err: error, taskId }, "Failed to start preview");
       instance.status = "error";
       instance.error = error instanceof Error ? error.message : String(error);
       this.releasePort(port);
-    });
 
-    return this.getStatusForInstance(instance);
+      const errorStatus = this.getStatusForInstance(instance);
+      onEvent({ type: "error", data: { error: instance.error } });
+      onEvent({ type: "complete", data: { result: errorStatus } });
+    }
+  }
+
+  /**
+   * Get a random port in the given range
+   */
+  private getRandomPort(start: number, end: number): number | null {
+    const range = end - start + 1;
+    const attempts = Math.min(range, 20); // Try up to 20 random ports
+
+    for (let i = 0; i < attempts; i++) {
+      const port = start + Math.floor(Math.random() * range);
+      if (!this.usedPorts.has(port)) {
+        return port;
+      }
+    }
+
+    // Fall back to sequential search
+    for (let port = start; port <= end; port++) {
+      if (!this.usedPorts.has(port)) {
+        return port;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -279,18 +498,19 @@ export class PreviewManager {
   private async startServer(
     instance: PreviewInstance,
     workDir: string,
-    options: { command?: string; readyPattern?: string; timeout?: number }
+    options: { command?: string; readyPattern?: string; timeout?: number },
+    onEvent?: (event: PreviewSSEEvent) => void
   ): Promise<void> {
     try {
       if (options.command) {
         // Use custom command from SKILL.md
         log.info({ taskId: instance.task_id, port: instance.port, command: options.command }, "Starting custom server");
-        await this.startCustomProcess(instance, workDir, options);
+        await this.startCustomProcess(instance, workDir, options, onEvent);
       } else {
         // Default: Vite zero-config
         await this.ensureProjectFiles(workDir, instance.port);
         log.info({ taskId: instance.task_id, port: instance.port }, "Starting Vite server");
-        await this.startViteProcess(instance, workDir, options.timeout);
+        await this.startViteProcess(instance, workDir, options.timeout, onEvent);
       }
     } catch (error) {
       log.error({ err: error }, "Error starting server");
@@ -306,7 +526,8 @@ export class PreviewManager {
   private async startCustomProcess(
     instance: PreviewInstance,
     workDir: string,
-    options: { command?: string; readyPattern?: string; timeout?: number }
+    options: { command?: string; readyPattern?: string; timeout?: number },
+    onEvent?: (event: PreviewSSEEvent) => void
   ): Promise<void> {
     const command = options.command!;
     // timeout from SKILL.md is in seconds, convert to ms; fallback to default
@@ -324,6 +545,11 @@ export class PreviewManager {
 
     if (needsInstall) {
       log.info({ workDir }, "node_modules not found, installing dependencies...");
+      onEvent?.({
+        type: "log",
+        data: { message: "Installing dependencies..." },
+      });
+
       await new Promise<void>((resolve, reject) => {
         const npmInstall = spawn("npm", ["install"], {
           cwd: workDir,
@@ -332,7 +558,13 @@ export class PreviewManager {
         });
 
         let stderr = "";
-        npmInstall.stderr?.on("data", (data: Buffer) => { stderr += data.toString(); });
+        npmInstall.stderr?.on("data", (data: Buffer) => {
+          stderr += data.toString();
+          onEvent?.({
+            type: "log",
+            data: { message: `npm: ${data.toString().trim()}` },
+          });
+        });
 
         const installTimeout = setTimeout(() => {
           npmInstall.kill();
@@ -343,6 +575,10 @@ export class PreviewManager {
           clearTimeout(installTimeout);
           if (code === 0) {
             log.info("npm install completed");
+            onEvent?.({
+              type: "log",
+              data: { message: "Dependencies installed successfully" },
+            });
             resolve();
           } else {
             reject(new Error(`npm install failed (exit code ${code}): ${stderr}`));
@@ -357,6 +593,10 @@ export class PreviewManager {
     }
 
     log.info({ command, port: instance.port }, "Running custom command");
+    onEvent?.({
+      type: "log",
+      data: { message: `Running: ${command}`, port: instance.port },
+    });
 
     const childProcess = spawn(command, [], {
       cwd: workDir,
@@ -376,10 +616,17 @@ export class PreviewManager {
     let readyDetected = false;
     const readyRegex = readyPattern ? new RegExp(readyPattern) : null;
 
+    // Detect EADDRINUSE error
+    let portInUseDetected = false;
+
     childProcess.stdout?.on("data", (data: Buffer) => {
       const output = data.toString().trim();
       if (output) {
         log.info({ output }, "server stdout");
+        onEvent?.({
+          type: "log",
+          data: { message: output },
+        });
         if (readyRegex && readyRegex.test(output)) {
           readyDetected = true;
         }
@@ -391,8 +638,16 @@ export class PreviewManager {
       if (output) {
         stderrOutput += output + "\n";
         log.info({ output }, "server stderr");
+        onEvent?.({
+          type: "log",
+          data: { message: `[stderr] ${output}` },
+        });
         if (readyRegex && readyRegex.test(output)) {
           readyDetected = true;
+        }
+        // Check for EADDRINUSE
+        if (output.includes("EADDRINUSE") || output.includes("address already in use")) {
+          portInUseDetected = true;
         }
       }
     });
@@ -402,7 +657,12 @@ export class PreviewManager {
       processExitCode = code;
       if (instance.status === "running" || instance.status === "starting") {
         log.info({ code, stderr: stderrOutput }, "Custom server process exited");
-        instance.status = "stopped";
+        if (portInUseDetected) {
+          instance.status = "error";
+          instance.error = `Port ${instance.port} is already in use (EADDRINUSE)`;
+        } else {
+          instance.status = "stopped";
+        }
         this.cleanup(instance);
       }
     });
@@ -412,6 +672,10 @@ export class PreviewManager {
       log.error({ err: error }, "Custom server process error");
       instance.status = "error";
       instance.error = error.message;
+      onEvent?.({
+        type: "error",
+        data: { error: error.message },
+      });
       this.cleanup(instance);
     });
 
@@ -429,14 +693,29 @@ export class PreviewManager {
         this.startHealthCheck(instance);
         this.resetIdleTimeout(instance);
         log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Custom server running (pattern matched)");
+        onEvent?.({
+          type: "status",
+          data: {
+            status: "running",
+            message: "Server is running",
+            url: `http://localhost:${instance.port}`,
+            port: instance.port,
+          },
+        });
       } else {
-        const errMsg = processExited
-          ? `Process exited with code ${processExitCode}: ${stderrOutput}`
-          : "Server failed to emit ready pattern within timeout";
+        let errMsg: string;
+        if (portInUseDetected) {
+          errMsg = `Port ${instance.port} is already in use (EADDRINUSE)`;
+        } else if (processExited) {
+          errMsg = `Process exited with code ${processExitCode}: ${stderrOutput}`;
+        } else {
+          errMsg = "Server failed to emit ready pattern within timeout";
+        }
         instance.status = "error";
         instance.error = errMsg;
         if (!processExited) childProcess.kill();
         this.cleanup(instance);
+        throw new Error(errMsg);
       }
     } else {
       // Fall back to HTTP polling (with process alive check)
@@ -446,14 +725,29 @@ export class PreviewManager {
         this.startHealthCheck(instance);
         this.resetIdleTimeout(instance);
         log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Custom server running");
+        onEvent?.({
+          type: "status",
+          data: {
+            status: "running",
+            message: "Server is running",
+            url: `http://localhost:${instance.port}`,
+            port: instance.port,
+          },
+        });
       } else {
-        const errMsg = processExited
-          ? `Process exited with code ${processExitCode}: ${stderrOutput}`
-          : "Server failed to start within timeout";
+        let errMsg: string;
+        if (portInUseDetected) {
+          errMsg = `Port ${instance.port} is already in use (EADDRINUSE)`;
+        } else if (processExited) {
+          errMsg = `Process exited with code ${processExitCode}: ${stderrOutput}`;
+        } else {
+          errMsg = "Server failed to start within timeout";
+        }
         instance.status = "error";
         instance.error = errMsg;
         if (!processExited) childProcess.kill();
         this.cleanup(instance);
+        throw new Error(errMsg);
       }
     }
   }
@@ -481,7 +775,8 @@ export class PreviewManager {
   private async startViteProcess(
     instance: PreviewInstance,
     workDir: string,
-    timeout?: number
+    timeout?: number,
+    onEvent?: (event: PreviewSSEEvent) => void
   ): Promise<void> {
     // Install dependencies if vite is not installed
     const viteBinPath = path.join(workDir, "node_modules", ".bin", "vite");
@@ -496,6 +791,10 @@ export class PreviewManager {
 
     if (needsInstall) {
       log.info("Vite not found, installing dependencies...");
+      onEvent?.({
+        type: "log",
+        data: { message: "Installing Vite dependencies..." },
+      });
       const installStart = Date.now();
 
       // Use system npm (Live Preview requires Node.js to be installed)
@@ -528,16 +827,20 @@ export class PreviewManager {
         });
 
         // Set a timeout for npm install (2 minutes)
-        const timeout = setTimeout(() => {
+        const installTimeoutId = setTimeout(() => {
           npmInstall.kill();
           reject(new Error("npm install timed out after 2 minutes"));
         }, 120000);
 
         npmInstall.on("close", (code) => {
-          clearTimeout(timeout);
+          clearTimeout(installTimeoutId);
           const elapsed = ((Date.now() - installStart) / 1000).toFixed(1);
           if (code === 0) {
             log.info({ elapsed }, "npm install completed");
+            onEvent?.({
+              type: "log",
+              data: { message: `Dependencies installed in ${elapsed}s` },
+            });
             resolve();
           } else {
             reject(
@@ -547,7 +850,7 @@ export class PreviewManager {
         });
 
         npmInstall.on("error", (err) => {
-          clearTimeout(timeout);
+          clearTimeout(installTimeoutId);
           reject(err);
         });
       });
@@ -555,6 +858,10 @@ export class PreviewManager {
 
     // Start Vite
     log.info({ port: instance.port }, "Starting Vite dev server");
+    onEvent?.({
+      type: "log",
+      data: { message: `Starting Vite on port ${instance.port}...`, port: instance.port },
+    });
 
     // Run Vite using system Node.js (Live Preview requires Node.js to be installed)
     const viteCliPath = path.join(
@@ -594,6 +901,10 @@ export class PreviewManager {
       const output = data.toString().trim();
       if (output) {
         log.debug({ output }, "vite stdout");
+        onEvent?.({
+          type: "log",
+          data: { message: output },
+        });
       }
     });
 
@@ -601,6 +912,10 @@ export class PreviewManager {
       const output = data.toString().trim();
       if (output) {
         log.debug({ output }, "vite stderr");
+        onEvent?.({
+          type: "log",
+          data: { message: `[stderr] ${output}` },
+        });
       }
     });
 
@@ -616,6 +931,10 @@ export class PreviewManager {
       log.error({ err: error }, "Vite process error");
       instance.status = "error";
       instance.error = error.message;
+      onEvent?.({
+        type: "error",
+        data: { error: error.message },
+      });
       this.cleanup(instance);
     });
 
@@ -626,11 +945,21 @@ export class PreviewManager {
       this.startHealthCheck(instance);
       this.resetIdleTimeout(instance);
       log.info({ port: instance.port, url: `http://localhost:${instance.port}` }, "Vite server running");
+      onEvent?.({
+        type: "status",
+        data: {
+          status: "running",
+          message: "Server is running",
+          url: `http://localhost:${instance.port}`,
+          port: instance.port,
+        },
+      });
     } else {
       instance.status = "error";
       instance.error = "Server failed to start within timeout";
       viteProcess.kill();
       this.cleanup(instance);
+      throw new Error(instance.error);
     }
   }
 
@@ -953,6 +1282,9 @@ export class PreviewManager {
       }
       instance.process = undefined;
     }
+
+    // Clear SSE emitter reference to prevent memory leak
+    instance.sseEmitter = undefined;
 
     this.releasePort(instance.port);
     this.instances.delete(instance.task_id);

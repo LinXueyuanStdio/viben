@@ -190,6 +190,15 @@ export type {
   OfficialServerListResponse,
 } from "./marketplace";
 
+// Browse Plugins Types
+export type {
+  BrowsePluginRegistryEntry,
+  BrowsePluginRegistry,
+  InstalledBrowsePlugin,
+  InstalledBrowsePluginsResponse,
+  InstallBrowsePluginResponse,
+} from "./browse-plugins";
+
 // Kanban Types
 export type {
   CommentAuthor,

@@ -769,6 +769,7 @@ export function ChatApp({
 
     return (
       <motion.div
+        ref={overlayRef}
         layoutId="viben-overlay-surface"
         transition={OVERLAY_TRANSITION}
         initial={false}
@@ -928,6 +929,7 @@ export function ChatApp({
 
   return (
     <motion.div
+      ref={overlayRef}
       layoutId="viben-overlay-surface"
       transition={OVERLAY_TRANSITION}
       initial={false}

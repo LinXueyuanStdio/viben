@@ -14,8 +14,9 @@ import { parseErrorMessage } from "./core";
 
 /**
  * Preview server status
+ * Note: "idle" is a frontend-only status representing "stopped" or "not started"
  */
-export type PreviewServerStatus = "starting" | "running" | "stopped" | "error";
+export type PreviewServerStatus = "idle" | "starting" | "running" | "stopped" | "error";
 
 /**
  * Response from preview API endpoints
@@ -316,4 +317,140 @@ export async function killPort(
   }
 
   return response.json();
+}
+
+// ============================================================================
+// SSE Types and Functions
+// ============================================================================
+
+/**
+ * SSE event types for preview startup
+ */
+export type PreviewSSEEventType =
+  | "status"      // Status update
+  | "log"         // Log message (stdout/stderr)
+  | "retry"       // Port retry attempt
+  | "complete"    // Startup complete (success or final error)
+  | "error";      // Error during startup
+
+/**
+ * SSE event data for preview startup
+ */
+export interface PreviewSSEEvent {
+  type: PreviewSSEEventType;
+  data: {
+    status?: PreviewServerStatus;
+    message?: string;
+    port?: number;
+    attempt?: number;
+    maxAttempts?: number;
+    url?: string;
+    error?: string;
+    /** Final status object (only for 'complete' event) */
+    result?: PreviewStatusResponse;
+  };
+}
+
+/**
+ * Callbacks for SSE preview events
+ */
+export interface PreviewSSECallbacks {
+  onStatus?: (status: PreviewServerStatus, message?: string, port?: number, url?: string) => void;
+  onLog?: (message: string) => void;
+  onRetry?: (attempt: number, maxAttempts: number, message: string) => void;
+  onComplete?: (result: PreviewStatusResponse) => void;
+  onError?: (error: string) => void;
+}
+
+/**
+ * Start a preview server with SSE streaming for real-time feedback
+ *
+ * @param baseUrl - Gateway base URL
+ * @param taskId - Task identifier
+ * @param workDir - Working directory path
+ * @param options - Optional server options
+ * @param callbacks - Event callbacks
+ * @returns Abort function to cancel the SSE connection
+ */
+export function startPreviewWithSSE(
+  baseUrl: string,
+  taskId: string,
+  workDir: string,
+  options?: { port?: number; command?: string; ready_pattern?: string; timeout?: number },
+  callbacks?: PreviewSSECallbacks
+): () => void {
+  const params = new URLSearchParams({
+    task_id: taskId,
+    work_dir: workDir,
+  });
+
+  if (options?.port !== undefined) {
+    params.set("port", String(options.port));
+  }
+  if (options?.command) {
+    params.set("command", options.command);
+  }
+  if (options?.ready_pattern) {
+    params.set("ready_pattern", options.ready_pattern);
+  }
+  if (options?.timeout !== undefined) {
+    params.set("timeout", String(options.timeout));
+  }
+
+  const url = `${baseUrl}/api/preview/start-sse?${params.toString()}`;
+  const eventSource = new EventSource(url);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const parsed: PreviewSSEEvent = JSON.parse(event.data);
+
+      switch (parsed.type) {
+        case "status":
+          callbacks?.onStatus?.(
+            parsed.data.status!,
+            parsed.data.message,
+            parsed.data.port,
+            parsed.data.url
+          );
+          break;
+        case "log":
+          callbacks?.onLog?.(parsed.data.message ?? "");
+          break;
+        case "retry":
+          callbacks?.onRetry?.(
+            parsed.data.attempt ?? 0,
+            parsed.data.maxAttempts ?? 10,
+            parsed.data.message ?? ""
+          );
+          break;
+        case "complete":
+          if (parsed.data.result) {
+            callbacks?.onComplete?.(parsed.data.result);
+          }
+          eventSource.close();
+          break;
+        case "error":
+          callbacks?.onError?.(parsed.data.error ?? "Unknown error");
+          break;
+      }
+    } catch (err) {
+      console.error("[Preview SSE] Failed to parse event:", err, event.data);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    // EventSource errors don't provide much detail
+    // Check readyState to determine connection status
+    const errorMsg = eventSource.readyState === EventSource.CLOSED
+      ? "SSE connection closed by server"
+      : "SSE connection error - network issue or server unavailable";
+    console.error("[Preview SSE] Connection error:", err, "readyState:", eventSource.readyState);
+    callbacks?.onError?.(errorMsg);
+    eventSource.close();
+  };
+
+  // Return abort function
+  return () => {
+    eventSource.close();
+  };
 }

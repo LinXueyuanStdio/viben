@@ -80,7 +80,8 @@ import {
   type SubagentSheetState,
   type UiSessionState,
 } from "./acp-chat-state";
-import { executeClientTool, isGuiExecuteTool } from "./client-tool-executor";
+import { executeClientTool } from "./client-tool-executor";
+import { isClientSideBashTool } from "@/lib/action-system/client-side-bash";
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:18790/ws/agent/acp";
 const DEFAULT_MODEL = "claude-sonnet-4-6";
@@ -756,9 +757,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const handleExecuteClientTool = useCallback(
     (request: ClientToolExecutionRequest): CallToolResult => {
-      // For GUI_execute tools, we need to execute async but return sync
+      // For ClientSideBash tools, we need to execute async but return sync
       // The actual execution happens in requestClientToolResult which is async
-      if (isGuiExecuteTool(request.toolName)) {
+      if (isClientSideBashTool(request.toolName)) {
         // Return a placeholder - actual execution is done async
         return {
           content: [{ type: "text", text: "Executing..." }],

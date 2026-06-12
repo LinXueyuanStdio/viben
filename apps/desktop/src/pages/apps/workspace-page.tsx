@@ -323,6 +323,9 @@ export function WorkspacePage() {
     previewUrl,
     status: previewStatus,
     error: previewError,
+    logs: previewLogs,
+    retryAttempt: previewRetryAttempt,
+    maxRetryAttempts: previewMaxRetryAttempts,
     portConflict,
     startPreview,
     stopPreview,
@@ -610,6 +613,9 @@ export function WorkspacePage() {
             livePreviewUrl={previewUrl}
             livePreviewStatus={previewStatus}
             livePreviewError={previewError}
+            livePreviewLogs={previewLogs}
+            livePreviewRetryAttempt={previewRetryAttempt}
+            livePreviewMaxRetryAttempts={previewMaxRetryAttempts}
             onStartLivePreview={handleStartLivePreview}
             onStopLivePreview={stopPreview}
             onOpenPage={handleOpenPage}

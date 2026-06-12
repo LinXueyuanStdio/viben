@@ -5,12 +5,13 @@
  * Supports live preview with HMR for HTML/JS/CSS files.
  */
 
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   getPreviewManager,
   isNodeAvailable,
   type PreviewConfig,
   type PreviewStatus,
+  type PreviewSSEEvent,
 } from "../../services/preview";
 import { logger as globalLogger } from "../../telemetry";
 
@@ -49,6 +50,14 @@ interface PreviewListResponse {
 }
 
 /**
+ * Helper to send SSE event
+ */
+function sendSSEEvent(reply: FastifyReply, event: PreviewSSEEvent): void {
+  const data = JSON.stringify(event);
+  reply.raw.write(`data: ${data}\n\n`);
+}
+
+/**
  * Register preview routes
  */
 export function registerPreviewRoutes(fastify: FastifyInstance): void {
@@ -76,7 +85,98 @@ export function registerPreviewRoutes(fastify: FastifyInstance): void {
   });
 
   /**
-   * Start a Vite preview server
+   * Start a Vite preview server with SSE streaming
+   * GET /api/preview/start-sse
+   *
+   * Query params: task_id, work_dir, port?, command?, ready_pattern?, timeout?
+   */
+  fastify.get<{
+    Querystring: {
+      task_id: string;
+      work_dir: string;
+      port?: string;
+      command?: string;
+      ready_pattern?: string;
+      timeout?: string;
+    };
+  }>("/api/preview/start-sse", {
+    schema: {
+      description: "Start a Vite preview server with SSE streaming for real-time feedback",
+      tags: ["preview"],
+      querystring: {
+        type: "object",
+        required: ["task_id", "work_dir"],
+        properties: {
+          task_id: { type: "string", description: "Task identifier" },
+          work_dir: { type: "string", description: "Working directory path" },
+          port: { type: "string", description: "Preferred port (optional)" },
+          command: { type: "string", description: "Custom command to run (e.g., 'npm run serve')" },
+          ready_pattern: { type: "string", description: "Regex pattern to detect server ready in stdout/stderr" },
+          timeout: { type: "string", description: "Startup timeout in milliseconds" },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { task_id, work_dir, port, command, ready_pattern, timeout } = request.query;
+
+    if (!task_id) {
+      return reply.status(400).send({ error: "task_id is required" });
+    }
+
+    if (!work_dir) {
+      return reply.status(400).send({ error: "work_dir is required" });
+    }
+
+    log.info({ taskId: task_id, workDir: work_dir, command }, "Starting preview with SSE");
+
+    // Set up SSE headers
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    const config: PreviewConfig = {
+      taskId: task_id,
+      workDir: work_dir,
+      port: port ? parseInt(port, 10) : undefined,
+      command,
+      readyPattern: ready_pattern,
+      timeout: timeout ? parseInt(timeout, 10) : undefined,
+    };
+
+    const manager = getPreviewManager();
+
+    // Handle client disconnect
+    let clientDisconnected = false;
+    request.raw.on("close", () => {
+      clientDisconnected = true;
+      log.debug({ taskId: task_id }, "SSE client disconnected");
+    });
+
+    // Start preview with SSE events
+    manager.startPreviewWithSSE(config, (event) => {
+      if (clientDisconnected) return;
+
+      try {
+        sendSSEEvent(reply, event);
+
+        // Close connection after complete event
+        if (event.type === "complete") {
+          reply.raw.end();
+        }
+      } catch (error) {
+        log.error({ err: error }, "Error sending SSE event");
+      }
+    });
+
+    // Don't return anything - SSE handles the response
+    return reply;
+  });
+
+  /**
+   * Start a Vite preview server (legacy non-SSE endpoint)
    * POST /api/preview/start
    */
   fastify.post<{ Body: PreviewStartRequest }>("/api/preview/start", {

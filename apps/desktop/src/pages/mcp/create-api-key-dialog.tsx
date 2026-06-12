@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Search, Loader2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,8 +31,11 @@ interface CreateApiKeyDialogProps {
 export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }: CreateApiKeyDialogProps) {
   const { t } = useTranslation();
   const { openPath } = useDesktopRouting();
-  const { getAvailableProviders } = useAppStore();
-  const builtinProviders = getAvailableProviders();
+  const providers = useAppStore((s) => s.providers);
+  const builtinProviders = useMemo(
+    () => providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
+    [providers]
+  );
   const { sources: installedSources } = useInstalledSources();
 
   const [name, setName] = useState("");
@@ -40,6 +43,18 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
   const [selectAll, setSelectAll] = useState(true);
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setName("");
+      setSelectedSources(new Set());
+      setSelectAll(true);
+      setSearchQuery("");
+      setError(null);
+    }
+  }, [open]);
 
   const allSources = useMemo((): SourceItem[] => {
     const items: SourceItem[] = [];
@@ -81,7 +96,7 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectAll(false);
-      setSelectedSources(new Set());
+      setSelectedSources(new Set(allSources.map((s) => s.id)));
     } else {
       setSelectAll(true);
       setSelectedSources(new Set());
@@ -91,22 +106,21 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
   const handleCreate = async () => {
     if (!name.trim()) return;
     setCreating(true);
+    setError(null);
 
     const enabledSources = selectAll ? undefined : Array.from(selectedSources);
     const result = await createKey(name.trim(), enabledSources);
     if (result) {
       onCreated(result);
-      setName("");
-      setSelectedSources(new Set());
-      setSelectAll(true);
-      setSearchQuery("");
       onOpenChange(false);
+    } else {
+      setError(t("browseMcp.createKeyFailed", "创建失败，请重试"));
     }
     setCreating(false);
   };
 
   const handleOpenMarketplace = () => {
-    openPath("/mcp-marketplace");
+    openPath("/browse-source-store");
   };
 
   const effectiveCount = selectAll ? allSources.length : selectedSources.size;
@@ -224,6 +238,9 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
         </div>
 
         <DialogFooter>
+          {error && (
+            <p className="text-xs text-destructive mb-2 w-full">{error}</p>
+          )}
           <div className="flex items-center justify-between w-full">
             <span className="text-xs text-muted-foreground">
               {selectAll

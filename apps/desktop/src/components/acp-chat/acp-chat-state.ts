@@ -291,6 +291,9 @@ function isSubagentChildStep(session: UiSessionState, step: AcpUiStep): boolean 
   if (message.type === "tool_result" && message.toolUseId) {
     return Boolean(findSubagentParentForToolResult(session.uiMessages, message.toolUseId, session.messageUpdates, message.subagentId));
   }
+  if ((message.type === "text" || message.type === "thinking") && message.subagentId) {
+    return Boolean(findSubagentParentById(session.uiMessages, message.subagentId));
+  }
   return false;
 }
 
@@ -309,6 +312,11 @@ function mergeMessageUpdates(
     const parent = findSubagentParentForToolResult(messages, step.message.toolUseId, current, step.message.subagentId);
     if (!parent?.id) return current;
     return appendSubagentMessage(current, parent.id, subagentPreviewMessageFromToolResult(step.message));
+  }
+  if ((step.message.type === "text" || step.message.type === "thinking") && step.message.subagentId) {
+    const parent = findSubagentParentById(messages, step.message.subagentId);
+    if (!parent?.id) return current;
+    return appendSubagentTextChunk(current, parent.id, step.message);
   }
   return current;
 }
@@ -330,9 +338,45 @@ function appendSubagentMessage(
   };
 }
 
+function appendSubagentTextChunk(
+  current: Record<string, Partial<AgentMessage>>,
+  parentMessageId: string,
+  message: AgentMessage
+): Record<string, Partial<AgentMessage>> {
+  const existingMessages = current[parentMessageId]?.subagentMessages ?? [];
+  const lastIndex = existingMessages.length - 1;
+  const last = lastIndex >= 0 ? existingMessages[lastIndex] : undefined;
+  if (last && last.type === message.type) {
+    const updatedMessages = [...existingMessages];
+    updatedMessages[lastIndex] = { ...last, content: (last.content ?? "") + (message.content ?? "") };
+    return {
+      ...current,
+      [parentMessageId]: {
+        ...current[parentMessageId],
+        subagentMessages: updatedMessages,
+      },
+    };
+  }
+  return {
+    ...current,
+    [parentMessageId]: {
+      ...current[parentMessageId],
+      subagentMessages: [...existingMessages, message],
+    },
+  };
+}
+
 function findSubagentParentMessage(messages: AgentMessage[], candidate: AgentMessage): AgentMessage | undefined {
   const subagentId = candidate.subagentId;
   if (!subagentId || candidate.name === "Task" || candidate.name === "Agent") return undefined;
+  return messages.find((message) =>
+    message.type === "tool_use" &&
+    (message.name === "Task" || message.name === "Agent") &&
+    (message.subagentId === subagentId || message.toolUseId === subagentId)
+  );
+}
+
+function findSubagentParentById(messages: AgentMessage[], subagentId: string): AgentMessage | undefined {
   return messages.find((message) =>
     message.type === "tool_use" &&
     (message.name === "Task" || message.name === "Agent") &&

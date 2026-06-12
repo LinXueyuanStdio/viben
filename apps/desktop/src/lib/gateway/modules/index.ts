@@ -99,5 +99,8 @@ export * from "./pages";
 // Client Tools module
 export * from "./client-tools";
 
+// Browse Plugins module
+export * from "./browse-plugins";
+
 // Devices & Mesh module
 export * from "./devices";

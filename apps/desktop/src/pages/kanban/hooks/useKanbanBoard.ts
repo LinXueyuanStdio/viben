@@ -556,7 +556,7 @@ export function useKanbanBoard() {
 
       createTask.mutate({
         workspace_path: workspace.path,
-        title: i18n.t("kanban.taskCopy", { title: task.title }),
+        title: t("kanban.taskCopy", { title: task.title }),
         description: task.description ?? undefined,
       });
     },

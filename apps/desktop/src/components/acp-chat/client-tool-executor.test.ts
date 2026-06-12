@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { executeClientTool, isGuiExecuteTool } from "./client-tool-executor";
+import { executeClientTool } from "./client-tool-executor";
 import { setApprovalHandler } from "@/lib/action-system/execution-context";
 import { useActionStore } from "@/stores/action-store";
 
@@ -27,7 +27,7 @@ describe("ACP client tool executor", () => {
     setApprovalHandler((pending) => pending.resolve(true));
   });
 
-  it("executes builtin read_window instead of requiring an action-store registration", async () => {
+  it("returns error for GUI_execute (now handled via socket.io)", async () => {
     const result = await executeClientTool({
       sessionId: "session-1",
       toolCallId: "tool-call-1",
@@ -35,29 +35,7 @@ describe("ACP client tool executor", () => {
       input: { action: "read_window" },
     });
 
-    expect(result.isError).toBeUndefined();
-    expect(result.content[0]).toEqual({
-      type: "image",
-      data: "bmF0aXZlLXBuZw==",
-      mimeType: "image/png",
-    });
-  });
-
-  it("includes builtin actions in ACP list_actions", async () => {
-    const result = await executeClientTool({
-      sessionId: "session-1",
-      toolCallId: "tool-call-1",
-      toolName: "GUI_execute",
-      input: { action: "list_actions" },
-    });
-
-    expect(result.isError).toBeUndefined();
-    expect(JSON.parse(result.content[0]?.type === "text" ? result.content[0].text : "[]")).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: "read_window" }),
-        expect.objectContaining({ name: "navigate_to" }),
-      ])
-    );
+    expect(result.isError).toBe(true);
   });
 
   it("executes ClientSideBash through the ACP client-side tool bridge", async () => {
@@ -72,9 +50,15 @@ describe("ACP client tool executor", () => {
     expect(result.content[0]?.type === "text" ? result.content[0].text : "").toContain("desktop-bash");
   });
 
-  it("recognizes the unified client_side MCP server tool names", () => {
-    expect(isGuiExecuteTool("GUI_execute")).toBe(true);
-    expect(isGuiExecuteTool("mcp__client_side__GUI_execute")).toBe(true);
-    expect(isGuiExecuteTool("mcp__client_side__ClientSideBash")).toBe(true);
+  it("returns error for unknown tools", async () => {
+    const result = await executeClientTool({
+      sessionId: "session-1",
+      toolCallId: "tool-call-1",
+      toolName: "unknown_tool",
+      input: {},
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.type === "text" ? result.content[0].text : "").toContain("no handler");
   });
 });

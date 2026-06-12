@@ -3,6 +3,7 @@
  *
  * Displays a live Vite dev server preview in an iframe with controls
  * for refresh, open in new tab, fullscreen, and stop server.
+ * Shows real-time logs and retry status during server startup.
  */
 
 import { useRef, useState, useCallback, useEffect } from "react";
@@ -10,6 +11,8 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
   ExternalLink,
   Loader2,
   Maximize2,
@@ -17,6 +20,7 @@ import {
   Play,
   RefreshCw,
   Square,
+  Terminal,
   X,
 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -29,6 +33,12 @@ interface VitePreviewProps {
   status: PreviewStatus;
   /** Error message if any */
   error: string | null;
+  /** Log messages from server startup */
+  logs?: string[];
+  /** Current retry attempt */
+  retryAttempt?: number | null;
+  /** Max retry attempts */
+  maxRetryAttempts?: number | null;
   /** Callback to start preview */
   onStart?: () => void;
   /** Callback to stop preview */
@@ -48,6 +58,9 @@ export function VitePreview({
   previewUrl,
   status,
   error,
+  logs = [],
+  retryAttempt,
+  maxRetryAttempts,
   onStart,
   onStop,
   onClose,
@@ -56,8 +69,33 @@ export function VitePreview({
 }: VitePreviewProps) {
   const { t } = useTranslation();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
+  const logsEndRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [showLogs, setShowLogs] = useState(true);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+
+  // Track if user has scrolled up from bottom
+  useEffect(() => {
+    const container = logsContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+      setUserScrolledUp(!isAtBottom);
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [showLogs]);
+
+  // Auto-scroll logs to bottom only if user hasn't scrolled up
+  useEffect(() => {
+    if (showLogs && logsEndRef.current && !userScrolledUp) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs, showLogs, userScrolledUp]);
 
   // Handle iframe refresh
   const handleRefresh = useCallback(() => {
@@ -91,7 +129,7 @@ export function VitePreview({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleRefresh]);
 
-  // Render loading state
+  // Render starting state with logs
   if (status === "starting") {
     return (
       <div
@@ -113,17 +151,62 @@ export function VitePreview({
             isFullscreen={isFullscreen}
           />
         )}
-        <div className="flex flex-1 flex-col items-center justify-center bg-muted/20 p-8">
-          <Loader2 className="mb-4 h-8 w-8 animate-spin text-primary" />
-          <h3 className="mb-1 text-sm font-medium text-foreground">
-            {t("preview.startingServer")}
-          </h3>
-          <p className="mb-2 max-w-xs text-center text-xs text-muted-foreground">
-            {t("preview.installingDeps")}
-          </p>
-          <p className="max-w-xs text-center text-xs text-muted-foreground/70">
-            {t("preview.firstRunHint")}
-          </p>
+        <div className="flex flex-1 flex-col bg-muted/20 p-4">
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-foreground">
+                {t("preview.startingServer")}
+              </h3>
+              {retryAttempt && maxRetryAttempts && (
+                <p className="text-xs text-muted-foreground">
+                  {t("preview.retryAttempt", "Attempt {{attempt}} of {{max}}", {
+                    attempt: retryAttempt,
+                    max: maxRetryAttempts,
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Logs panel */}
+          <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+            <button
+              type="button"
+              onClick={() => setShowLogs(!showLogs)}
+              className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Terminal className="h-3.5 w-3.5" />
+              {t("preview.serverLogs", "Server Logs")}
+              {showLogs ? (
+                <ChevronUp className="ml-auto h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="ml-auto h-3.5 w-3.5" />
+              )}
+            </button>
+            {showLogs && (
+              <div ref={logsContainerRef} className="flex-1 overflow-auto p-2 font-mono text-xs">
+                {logs.length === 0 ? (
+                  <p className="text-muted-foreground/50">{t("preview.waitingForLogs", "Waiting for server output...")}</p>
+                ) : (
+                  logs.map((log, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "whitespace-pre-wrap break-all py-0.5",
+                        log.startsWith("[Error]") && "text-red-500",
+                        log.startsWith("[stderr]") && "text-yellow-600 dark:text-yellow-400",
+                        log.startsWith("[Retry") && "text-blue-500"
+                      )}
+                    >
+                      {log}
+                    </div>
+                  ))
+                )}
+                <div ref={logsEndRef} />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -151,24 +234,63 @@ export function VitePreview({
             isFullscreen={isFullscreen}
           />
         )}
-        <div className="flex flex-1 flex-col items-center justify-center bg-muted/20 p-8">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
-            <AlertCircle className="h-8 w-8 text-red-500" />
+        <div className="flex flex-1 flex-col bg-muted/20 p-4">
+          <div className="mb-4 flex flex-col items-center justify-center">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+              <AlertCircle className="h-8 w-8 text-red-500" />
+            </div>
+            <h3 className="mb-2 text-sm font-medium text-foreground">
+              {t("preview.previewError")}
+            </h3>
+            <p className="mb-4 max-w-md text-center text-xs text-muted-foreground">
+              {error}
+            </p>
+            {onStart && (
+              <button
+                onClick={onStart}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <Play className="h-4 w-4" />
+                {t("preview.retry")}
+              </button>
+            )}
           </div>
-          <h3 className="mb-2 text-sm font-medium text-foreground">
-            {t("preview.previewError")}
-          </h3>
-          <p className="mb-4 max-w-md text-center text-xs text-muted-foreground">
-            {error}
-          </p>
-          {onStart && (
-            <button
-              onClick={onStart}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Play className="h-4 w-4" />
-              {t("preview.retry")}
-            </button>
+
+          {/* Show logs if available */}
+          {logs.length > 0 && (
+            <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card">
+              <button
+                type="button"
+                onClick={() => setShowLogs(!showLogs)}
+                className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Terminal className="h-3.5 w-3.5" />
+                {t("preview.serverLogs", "Server Logs")}
+                {showLogs ? (
+                  <ChevronUp className="ml-auto h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="ml-auto h-3.5 w-3.5" />
+                )}
+              </button>
+              {showLogs && (
+                <div ref={logsContainerRef} className="flex-1 overflow-auto p-2 font-mono text-xs">
+                  {logs.map((log, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "whitespace-pre-wrap break-all py-0.5",
+                        log.startsWith("[Error]") && "text-red-500",
+                        log.startsWith("[stderr]") && "text-yellow-600 dark:text-yellow-400",
+                        log.startsWith("[Retry") && "text-blue-500"
+                      )}
+                    >
+                      {log}
+                    </div>
+                  ))}
+                  <div ref={logsEndRef} />
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

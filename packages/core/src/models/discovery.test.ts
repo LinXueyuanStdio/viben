@@ -21,9 +21,11 @@ vi.mock("../providers", () => ({
   },
 }));
 
-// Mock global fetch
+// Mock proxyFetch from ../http
 const mockFetch = vi.fn();
-global.fetch = mockFetch;
+vi.mock("../http", () => ({
+  proxyFetch: (...args: unknown[]) => mockFetch(...args),
+}));
 
 /**
  * Helper to create a mock provider with required fields
