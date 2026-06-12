@@ -7,9 +7,10 @@ export type {
   JSONSchema7,
 } from "./types";
 export { UserCancelledException } from "./errors";
-export { createExecutionContext, setApprovalHandler, clearApprovalHandler } from "./execution-context";
+export { createExecutionContext, createSocketExecutionContext, setApprovalHandler, clearApprovalHandler } from "./execution-context";
 export type { PendingApproval } from "./execution-context";
-export { executeBuiltin } from "./builtins";
+export { executeBuiltin, getRegistrableBuiltins } from "./builtins";
+export { executeGUIAction } from "./action-executor";
 export {
   handleClientSideBash,
   handleGUIExecute,
