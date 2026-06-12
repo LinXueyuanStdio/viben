@@ -329,3 +329,24 @@ function normalizeNavigationPath(url: string): string | null {
 
   return path;
 }
+
+export function getRegistrableBuiltins(): Record<string, {
+  description: string
+  inputSchema?: Record<string, unknown>
+  outputSchema?: Record<string, unknown>
+}> {
+  const readWindow = getBuiltinActionDetail("read_window");
+  const navigateTo = getBuiltinActionDetail("navigate_to");
+  return {
+    read_window: {
+      description: readWindow!.description,
+      inputSchema: readWindow!.input_schema as Record<string, unknown>,
+      outputSchema: readWindow!.output_schema as Record<string, unknown>,
+    },
+    navigate_to: {
+      description: navigateTo!.description,
+      inputSchema: navigateTo!.input_schema as Record<string, unknown>,
+      outputSchema: navigateTo!.output_schema as Record<string, unknown>,
+    },
+  };
+}
