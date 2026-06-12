@@ -30,7 +30,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useUnifiedSessions, type UnifiedSession } from "@/hooks/use-unified-sessions";
 import type { LogEntry } from "@/hooks/use-logs";
 import type { ApiLogEntry } from "@/hooks/use-api-logs";
-import { useMcpStatusMonitor, useOnPageEnter } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
@@ -65,12 +64,9 @@ export function LogsPage() {
     openLogsFolder,
   } = useUnifiedSessions();
 
-  // Use the MCP status monitor for server process status
+  // MCP status monitor removed - browse-mcp migrated to gateway HTTP route
   const { mcpServers } = useAppStore();
-  const { statuses: mcpServerStatuses, checkAllServers } = useMcpStatusMonitor();
-
-  // Trigger status check on page enter
-  useOnPageEnter({ enabled: mcpServers.length > 0 });
+  const mcpServerStatuses: Record<string, { status: string; pid?: number }> = {};
 
   const [activeTab, setActiveTab] = useState<TabType>("server");
   const [exporting, setExporting] = useState(false);
@@ -166,14 +162,13 @@ export function LogsPage() {
     return undefined;
   }, [mcpServerStatuses, mcpServers, directPidStatus]);
 
-  // Handle refresh - also trigger status check and re-check orphaned PIDs
+  // Handle refresh - re-check orphaned PIDs
   const handleRefresh = useCallback(async () => {
     refresh();
     // Clear cached direct PID status to force re-check
     setDirectPidStatus({});
     checkedPidsRef.current.clear();
-    await checkAllServers(true);
-  }, [refresh, checkAllServers]);
+  }, [refresh]);
 
   const handleExport = async () => {
     if (!selectedSession?.serverLog) return;

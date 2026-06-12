@@ -12,7 +12,7 @@ import { io, type Socket } from "socket.io-client";
 import { generateKeyPair, sign } from "../src/utils/crypto";
 
 const GATEWAY_URL = process.argv[2] || process.env.GATEWAY_URL || "http://127.0.0.1:18791";
-const PAGE_SLUG = "canvas";
+const PAGE_UID = "0612-e2e-page";
 
 const { publicKey, privateKey } = generateKeyPair();
 const clientId = `client_page_${publicKey.slice(0, 12)}`;
@@ -42,7 +42,7 @@ socket.on("connect", async () => {
     {
       clientId,
       source: "page_iframe",
-      pageSlug: PAGE_SLUG,
+      pageUid: PAGE_UID,
       publicKey,
       signature,
       timestamp,

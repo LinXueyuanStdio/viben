@@ -39,18 +39,6 @@
         "useHttpsScheme": true
       },
       {
-        "label": "tray-popup",
-        "title": "Server Status",
-        "width": 400,
-        "height": 500,
-        "visible": false,
-        "decorations": false,
-        "skipTaskbar": true,
-        "alwaysOnTop": true,
-        "resizable": false,
-        "url": "/tray-popup.html"
-      },
-      {
         "label": "pet-window",
         "title": "Viben Pet",
         "width": 128,

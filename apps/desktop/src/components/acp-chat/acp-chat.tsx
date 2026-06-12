@@ -78,7 +78,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@viben/ui";
-import { usePet } from "@/hooks";
+import { usePet, useModels } from "@/hooks";
 import { openAndReadFiles } from "@/lib/tauri-file-attach";
 import { EmojiTab } from "@/components/ui/icon-picker/tabs/emoji-tab";
 import { ScreenshotDropdown } from "@/components/chat/screenshot-dropdown";
@@ -918,6 +918,14 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     [t, voice]
   );
 
+  // Get model context window from gateway model metadata
+  const { models: vibenModels } = useModels();
+  const modelContextWindow = useMemo(() => {
+    if (!model) return 128000;
+    const found = vibenModels.find((m) => m.id === model);
+    return found?.context_window ?? 128000;
+  }, [model, vibenModels]);
+
   // Context token breakdown for approval button
   const contextBreakdown = useMemo<ContextTokenBreakdown>(() => {
     const conversationTokens = Math.max(0, Math.ceil(JSON.stringify(messages).length / 4));
@@ -925,15 +933,14 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     const skillTokens = Math.max(0, Math.ceil(JSON.stringify(slashCommands).length / 4));
     const historyTokens = Math.max(0, Math.ceil(JSON.stringify(steerQueueItems).length / 4));
     const assistantProfile = 2000;
-    const total = assistantProfile + skillTokens + historyTokens + conversationTokens + streamingTokens + 4000;
     return {
       assistantProfile,
       skillSettings: skillTokens,
       historySummary: historyTokens,
       conversationMessages: conversationTokens + streamingTokens,
-      totalContext: Math.max(8000, total),
+      totalContext: modelContextWindow,
     };
-  }, [messages, streamingText, slashCommands, steerQueueItems]);
+  }, [messages, streamingText, slashCommands, steerQueueItems, modelContextWindow]);
 
   const contextPopupProps = useContextApprovalPopupProps(contextBreakdown, approvalMode, setApprovalMode);
 

@@ -66,17 +66,10 @@ async fn auto_start_gateway(state: &GatewayState, exe_dir: Option<std::path::Pat
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Create menu items
     let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
-    let start_all_item =
-        MenuItem::with_id(app, "start_all", "Start All Servers", true, None::<&str>)?;
-    let stop_all_item =
-        MenuItem::with_id(app, "stop_all", "Stop All Servers", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
     // Create menu
-    let menu = Menu::with_items(
-        app,
-        &[&show_item, &start_all_item, &stop_all_item, &quit_item],
-    )?;
+    let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
 
     // Get the default icon
     let icon = app
@@ -88,7 +81,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let _tray = TrayIconBuilder::with_id("main-tray")
         .icon(icon)
         .menu(&menu)
-        .show_menu_on_left_click(false) // Left click shows popup, not menu
+        .show_menu_on_left_click(false) // Left click shows main window, right click shows menu
         .tooltip("Viben")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
@@ -97,14 +90,6 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     let _ = window.show();
                     let _ = window.set_focus();
                 }
-            }
-            "start_all" => {
-                // Emit event to frontend to start all servers
-                let _ = app.emit("tray-start-all", ());
-            }
-            "stop_all" => {
-                // Emit event to frontend to stop all servers
-                let _ = app.emit("tray-stop-all", ());
             }
             "quit" => {
                 app.exit(0);
@@ -120,68 +105,11 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             {
                 let app = tray.app_handle();
 
-                // Toggle popup visibility
-                if let Some(popup) = app.get_webview_window("tray-popup") {
-                    if popup.is_visible().unwrap_or(false) {
-                        let _ = popup.hide();
-                    } else {
-                        // Position popup near tray icon if possible
-                        if let Ok(Some(rect)) = tray.rect() {
-                            // Convert Position/Size enums to physical values
-                            let (pos_x, pos_y) = match rect.position {
-                                tauri::Position::Physical(p) => (p.x, p.y),
-                                tauri::Position::Logical(l) => (l.x as i32, l.y as i32),
-                            };
-                            let tray_height = match rect.size {
-                                tauri::Size::Physical(s) => s.height as i32,
-                                tauri::Size::Logical(s) => s.height as i32,
-                            };
-
-                            // Get popup window size for positioning calculations
-                            let popup_height = popup
-                                .outer_size()
-                                .map(|s| s.height as i32)
-                                .unwrap_or(500);
-                            let popup_width = popup
-                                .outer_size()
-                                .map(|s| s.width as i32)
-                                .unwrap_or(400);
-
-                            // Get the monitor where the tray icon is located
-                            let monitor = popup.current_monitor().ok().flatten();
-                            let screen_height = monitor
-                                .as_ref()
-                                .map(|m| m.size().height as i32)
-                                .unwrap_or(1080);
-                            let screen_y = monitor
-                                .as_ref()
-                                .map(|m| m.position().y)
-                                .unwrap_or(0);
-
-                            // Calculate horizontal position: center popup on tray icon
-                            let x = pos_x.saturating_sub(popup_width / 2);
-
-                            // Auto-detect tray position:
-                            // If tray is in the top half of the screen, show popup below
-                            // If tray is in the bottom half, show popup above
-                            let tray_center_y = pos_y + tray_height / 2;
-                            let screen_center_y = screen_y + screen_height / 2;
-
-                            let y = if tray_center_y < screen_center_y {
-                                // Tray is at top (e.g., macOS menu bar) - show popup below
-                                pos_y + tray_height + 5
-                            } else {
-                                // Tray is at bottom (e.g., Windows taskbar) - show popup above
-                                pos_y.saturating_sub(popup_height + 5)
-                            };
-
-                            let _ = popup.set_position(tauri::Position::Physical(
-                                tauri::PhysicalPosition { x, y },
-                            ));
-                        }
-                        let _ = popup.show();
-                        let _ = popup.set_focus();
-                    }
+                // Show and focus main window on left click
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
                 }
             }
         })
@@ -223,7 +151,7 @@ pub fn run() {
         builder = builder
             .plugin(
                 tauri_plugin_window_state::Builder::new()
-                    .with_denylist(&["tray-popup", "screenshot-overlay", "pet-window"])
+                    .with_denylist(&["screenshot-overlay", "pet-window"])
                     .build(),
             )
             .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -262,11 +190,7 @@ pub fn run() {
             .manage(ScreenshotStore::default())
             .invoke_handler(tauri::generate_handler![
                 // Tray commands (native system tray)
-                commands::tray::update_tray_status,
-                commands::tray::show_tray_popup,
-                commands::tray::hide_tray_popup,
                 commands::tray::show_main_window,
-                commands::tray::get_tray_position,
                 // Gateway commands (process management)
                 commands::gateway::start_gateway,
                 commands::gateway::stop_gateway,
@@ -337,20 +261,6 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 if let Some(main_win) = app.get_webview_window("main") {
                     let _ = main_win.set_decorations(false);
-                }
-
-                // Set up blur handler for popup window and ensure it starts hidden
-                if let Some(popup) = app.get_webview_window("tray-popup") {
-                    // Ensure popup is hidden on startup (safety net)
-                    let _ = popup.hide();
-
-                    let popup_clone = popup.clone();
-                    popup.on_window_event(move |event| {
-                        if let tauri::WindowEvent::Focused(false) = event {
-                            // Hide popup when it loses focus
-                            let _ = popup_clone.hide();
-                        }
-                    });
                 }
 
                 // Configure pet-window on macOS

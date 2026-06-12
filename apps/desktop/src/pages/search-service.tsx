@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMcp } from "@/hooks/use-mcp";
-import { usePython } from "@/hooks/use-python";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useServiceKeys } from "@/hooks/use-service-keys";
 import { useUsage, type ApiKeyUsage } from "@/hooks/use-usage";
@@ -37,7 +36,6 @@ import { useTranslation } from "react-i18next";
 
 export function SearchServicePage() {
   const { t } = useTranslation();
-  const { selectedPython, browseMcpInfo } = usePython();
   const {
     mcpServers,
     addMcpServer,
@@ -47,7 +45,6 @@ export function SearchServicePage() {
     addServerApiKey,
     deleteServerApiKey,
     getAvailableProviders,
-    setupStatus,
   } = useAppStore();
 
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
@@ -55,14 +52,6 @@ export function SearchServicePage() {
 
   // Enable status monitoring on page enter
   useOnPageEnter({ enabled: mcpServers.length > 0 });
-
-  // Use global setup status (calculated in AppLayout)
-  // Only show requirements card when cache explicitly says setup is incomplete
-  const isSetupComplete = setupStatus?.isComplete === true;
-  const canStart = isSetupComplete;
-
-  // Only show requirements warning when we're certain setup is incomplete
-  const showRequirementsWarning = setupStatus !== null && setupStatus.isComplete === false;
 
   // Auto-expand first server only on initial mount
   useEffect(() => {
@@ -101,33 +90,12 @@ export function SearchServicePage() {
             {t("searchService.subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateServer} disabled={!canStart}>
+        <Button onClick={handleCreateServer}>
           <Plus className="h-4 w-4 mr-2" />
           {t("searchService.newServer")}
         </Button>
       </div>
 
-      {/* Requirements Check - only show when cache confirms incomplete */}
-      {showRequirementsWarning && (
-        <div className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                {t("searchService.requirementsNotMet")}
-              </h3>
-              <ul className="text-sm text-yellow-700 dark:text-yellow-300 mt-1 space-y-1">
-                {!selectedPython?.is_valid && (
-                  <li>- {t("searchService.python310Required")}</li>
-                )}
-                {selectedPython?.is_valid && !browseMcpInfo?.installed && (
-                  <li>- {t("searchService.browseMcpNotInstalled")}</li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Server List */}
       {mcpServers.length === 0 ? (
@@ -137,7 +105,7 @@ export function SearchServicePage() {
           <p className="text-sm text-muted-foreground mb-4">
             {t("searchService.noServersDesc")}
           </p>
-          <Button onClick={handleCreateServer} disabled={!canStart}>
+          <Button onClick={handleCreateServer}>
             <Plus className="h-4 w-4 mr-2" />
             {t("searchService.createServer")}
           </Button>
@@ -162,8 +130,6 @@ export function SearchServicePage() {
               onAddApiKey={(key) => addServerApiKey(server.id, key)}
               onDeleteApiKey={(keyId) => deleteServerApiKey(server.id, keyId)}
               availableProviders={getAvailableProviders()}
-              canStart={canStart ?? false}
-              pythonPath={selectedPython?.path}
             />
           ))}
         </div>
@@ -182,8 +148,6 @@ interface ServerCardProps {
   onAddApiKey: (key: ServiceApiKey) => void;
   onDeleteApiKey: (keyId: string) => void;
   availableProviders: { id: string; name: string }[];
-  canStart: boolean;
-  pythonPath?: string;
 }
 
 function ServerCard({
@@ -196,8 +160,6 @@ function ServerCard({
   onAddApiKey,
   onDeleteApiKey,
   availableProviders,
-  canStart,
-  pythonPath,
 }: ServerCardProps) {
   const { t } = useTranslation();
   const { startServer, stopServer, loading, error, checkPortStatus, killProcess } = useMcp();
@@ -262,7 +224,7 @@ function ServerCard({
 
     if (isUnexpectedCrash) {
       hasShownCrashToastRef.current = true;
-      const commandLine = `${pythonPath} -m browse_mcp --transport ${server.transport} --port ${server.port}`;
+      const commandLine = `browse-mcp --transport ${server.transport} --port ${server.port}`;
       const errorMessage = statusInfo?.error || t("searchService.processTerminatedUnexpectedly");
 
       toast.error(t("searchService.serverCrashed"), {
@@ -287,7 +249,7 @@ function ServerCard({
     if (monitoredStatus === "running") {
       hasShownCrashToastRef.current = false;
     }
-  }, [monitoredStatus, statusInfo?.error, pythonPath, server.transport, server.port, t, onStatusChange]);
+  }, [monitoredStatus, statusInfo?.error, server.transport, server.port, t, onStatusChange]);
 
   // Auto-select first API key when apiKeys change and none is selected
   useEffect(() => {
@@ -323,13 +285,10 @@ function ServerCard({
   }, [notification]);
 
   const doStartServer = async (port: number) => {
-    if (!pythonPath) return;
-
     const latestApiKeys = await getAllApiKeys();
 
     try {
       const status = await startServer({
-        python_path: pythonPath,
         transport: server.transport,
         port,
         download_path: server.downloadPath,
@@ -343,7 +302,7 @@ function ServerCard({
       // Show success toast with details action
       const commandLine = status.command && status.args
         ? `${status.command} ${status.args.join(" ")}`
-        : `python -m browse_mcp --transport ${server.transport} --port ${port}`;
+        : `browse-mcp --transport ${server.transport} --port ${port}`;
 
       toast.success(t("searchService.serverStarted"), {
         description: status.endpointUrl || `http://localhost:${port}`,
@@ -363,7 +322,7 @@ function ServerCard({
       console.error("Failed to start server:", err);
 
       // Show error toast with details action
-      const commandLine = `${pythonPath} -m browse_mcp --transport ${server.transport} --port ${port}`;
+      const commandLine = `browse-mcp --transport ${server.transport} --port ${port}`;
 
       toast.error(t("searchService.serverStartFailed"), {
         description: errorMessage.slice(0, 100),
@@ -382,8 +341,6 @@ function ServerCard({
   };
 
   const handleStart = async () => {
-    if (!pythonPath) return;
-
     // Default port based on transport if not set
     const port = server.port ?? (server.transport === "stdio" ? undefined : 3000);
 
@@ -722,7 +679,7 @@ function ServerCard({
             variant={isRunning ? "destructive" : "default"}
             size="sm"
             onClick={isRunning ? handleStop : handleStart}
-            disabled={loading || (!canStart && !isRunning)}
+            disabled={loading}
             className={isRunning ? "text-white hover:text-white" : ""}
           >
             {loading ? (

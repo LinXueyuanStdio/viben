@@ -15,8 +15,8 @@ const log = globalLogger.child({ module: "origin-validation" });
  */
 const DEFAULT_ALLOWED_ORIGINS = [
   // Desktop app (Vite dev server)
-  "http://localhost:1420",
-  "http://127.0.0.1:1420",
+  "http://localhost:1549",
+  "http://127.0.0.1:1549",
   // Gateway itself
   "http://localhost:18790",
   "http://127.0.0.1:18790",

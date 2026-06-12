@@ -1,7 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  Check,
-  AlertCircle,
   RefreshCw,
   Loader2,
   Copy,
@@ -16,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 import { getGatewayClient } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
@@ -26,11 +23,6 @@ import { CLI_TOOLS } from "./constants";
 
 export function EnvironmentSection() {
   const { t } = useTranslation();
-  const {
-    browseMcpInfo,
-    getInstallCommand,
-    checkBrowseMcp,
-  } = usePython();
 
   const appStore = useAppStore();
   const {
@@ -61,8 +53,6 @@ export function EnvironmentSection() {
     continue: { value: continuePath, setter: setContinuePath },
     cursor: { value: cursorPath, setter: setCursorPath },
   };
-
-  const [installCommand, setInstallCommand] = useState<string | null>(null);
 
   // CLI Tools detection state - initialize from cache if available
   const [cliToolsInfo, setCliToolsInfo] = useState<Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string; alternatives?: Array<{ path: string; version?: string; source: string }> } | null>>(() => {
@@ -138,24 +128,15 @@ export function EnvironmentSection() {
     return sourceLabels[source] || source;
   };
 
-  // Update global setup status when Python detection changes
+  // Update global setup status - browse-mcp is now built into the gateway,
+  // so setup is always complete from that perspective.
   const updateSetupStatus = useCallback(() => {
-    const pythonInfo = cliToolsInfo.python;
-    const isSetupComplete = pythonInfo?.found === true && browseMcpInfo?.installed === true;
-    setSetupStatus(isSetupComplete);
-  }, [cliToolsInfo.python, browseMcpInfo, setSetupStatus]);
+    setSetupStatus(true);
+  }, [setSetupStatus]);
 
   useEffect(() => {
     updateSetupStatus();
   }, [updateSetupStatus]);
-
-  const handleShowInstallCommand = async () => {
-    const pythonInfo = cliToolsInfo.python;
-    if (pythonInfo?.path) {
-      const cmd = await getInstallCommand(pythonInfo.path);
-      setInstallCommand(cmd);
-    }
-  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -198,12 +179,6 @@ export function EnvironmentSection() {
       } else {
         // Always save the selected path
         setCustomPath(value);
-        // For Python, also check browse-mcp with the new path
-        if (config.key === "python") {
-          checkBrowseMcp(value).catch((err) => {
-            console.error("[EnvironmentSection] browse-mcp check failed:", err);
-          });
-        }
       }
     };
 
@@ -342,58 +317,6 @@ export function EnvironmentSection() {
         <div className="divide-y">
           {coreTools.map((tool, index) => renderToolRow(tool, index === 0))}
         </div>
-      </div>
-
-      {/* browse-mcp Package */}
-      <div className="rounded-xl border bg-card p-4 space-y-4">
-        <h3 className="text-sm font-semibold">{t("settings.browseMcpPackage")}</h3>
-
-        {browseMcpInfo?.installed ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <Check className="h-4 w-4 text-green-600" />
-              <span>{t("settings.installedVersion", { version: browseMcpInfo.version })}</span>
-            </div>
-            <Button variant="outline" size="sm" className="rounded-xl">
-              {t("common.update")}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              <span>{t("common.notInstalled")}</span>
-            </div>
-
-            {!installCommand ? (
-              <Button size="sm" onClick={handleShowInstallCommand} className="rounded-xl" disabled={!cliToolsInfo.python?.found}>
-                {t("settings.showInstallCommand")}
-              </Button>
-            ) : (
-              <div className="bg-muted rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">
-                    {t("settings.runToInstall")}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copyToClipboard(installCommand)}
-                    className="rounded-xl"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <code className="text-sm bg-background rounded-lg px-2 py-1 block">
-                  {installCommand}
-                </code>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {t("settings.orUsingUv")}<code>{t("settings.uvCommand")}</code>
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* CLI Tools - AI Assistants */}

@@ -27,9 +27,9 @@ function normalizeUrlPreservingHash(url: string): string {
 /**
  * Tab-Router Bridge
  *
- * Bidirectional sync between the tab store's navigation state and React Router.
- * Uses URL-based deduplication to prevent infinite loops (more reliable than
- * timing-based locks like requestAnimationFrame).
+ * Unidirectional sync: Tab Store → React Router.
+ * The tab store is the single source of truth for navigation state.
+ * The router is a pure projection — it never writes back to the store.
  */
 export function TabRouterBridge() {
   const routerNavigate = useRouterNavigate();
@@ -108,12 +108,6 @@ export function TabRouterBridge() {
     }
 
     if (normalizedStoreUrl === currentRouterPath) return;
-
-    // Skip if this store URL was set by our Router->Store sync
-    if (normalizedStoreUrl === lastPushedToStoreRef.current) {
-      lastPushedToStoreRef.current = null;
-      return;
-    }
 
     lastPushedToRouterRef.current = normalizedStoreUrl;
     console.warn("[TabRouterBridge] Store→Router: navigating", { from: currentRouterPath, to: normalizedStoreUrl });

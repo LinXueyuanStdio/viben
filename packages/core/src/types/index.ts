@@ -424,6 +424,8 @@ export interface Model {
   id: string;
   name: string;
   provider: string;
+  /** Provider instance ID (e.g. "deepseek-openai") */
+  provider_id?: string;
   category?: "llm" | "media";
   surface?: "chat" | "image" | "video" | "music" | "speech" | "sfx";
   capabilities?: string[];

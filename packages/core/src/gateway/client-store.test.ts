@@ -59,7 +59,7 @@ describe("ClientStore", () => {
       await store.registerClient("client_abc", {
         ...createMockRegisterOptions("socket_2"),
         source: "page_iframe",
-        pageSlug: "canvas",
+        pageUid: "canvas",
       });
 
       const client = store.getClient("client_abc");
@@ -96,7 +96,7 @@ describe("ClientStore", () => {
       await store.registerClient("client_abc", {
         ...createMockRegisterOptions("socket_1"),
         source: "page_iframe",
-        pageSlug: "canvas",
+        pageUid: "canvas",
       });
 
       const result = store.registerAction("client_abc", "socket_1", {

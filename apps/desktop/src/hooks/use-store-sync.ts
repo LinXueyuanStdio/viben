@@ -20,7 +20,7 @@ interface StoreSyncPayload {
   /** Which part of the store was updated */
   updated: "mcpServers" | "mcpServerStatuses" | "all";
   /** Source window that made the update */
-  source: "main" | "tray";
+  source: "main";
 }
 
 /**
@@ -153,7 +153,8 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
  * 4. Listens for events from other windows
  * 5. Listens for WebSocket config change events from Gateway
  */
-export function useStoreSync(windowType: "main" | "tray" = "main") {
+export function useStoreSync() {
+  const windowType = "main";
   debugLog(`${LOG_PREFIX} 🔄 useStoreSync initialized for window: ${windowType}`);
 
   const {
@@ -392,14 +393,5 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
  */
 export function useMainWindowStoreSync() {
   debugLog(`${LOG_PREFIX} 🖥️ useMainWindowStoreSync() called`);
-  return useStoreSync("main");
-}
-
-/**
- * Hook specifically for the tray window
- * Listens for store changes from the main window
- */
-export function useTrayWindowStoreSync() {
-  debugLog(`${LOG_PREFIX} 📱 useTrayWindowStoreSync() called`);
-  return useStoreSync("tray");
+  return useStoreSync();
 }

@@ -14,7 +14,6 @@ export { usePython } from "./use-python";
 export { useVibenCli } from "./use-viben-cli";
 export type { UseVibenCliReturn, VibenCliPath, VibenCliSource } from "./use-viben-cli";
 export { useMcp } from "./use-mcp";
-export { useMcpStatusMonitor, useMcpStatusWebSocket, useOnPageEnter, useServerStatus } from "./use-mcp-status-monitor";
 export { useUsage } from "./use-usage";
 export { useMarketplace } from "./use-marketplace";
 export { useInstalledSources } from "./use-installed-sources";
@@ -75,8 +74,7 @@ export type {
   UsePackageUpdatesOptions,
   UsePackageUpdatesReturn,
 } from "./use-package-updates";
-export { useTrayStatus, useTrayStatusSync } from "./use-tray-status";
-export { useStoreSync, useMainWindowStoreSync, useTrayWindowStoreSync } from "./use-store-sync";
+export { useStoreSync, useMainWindowStoreSync } from "./use-store-sync";
 export {
   useLocalWorkspaces,
   useWorkspaceMcpServers,

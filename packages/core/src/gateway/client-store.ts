@@ -12,7 +12,7 @@ export type SocketSource = "main_window" | "page_iframe" | "chat_window" | "stan
 export interface SocketInfo {
   socketId: string;
   source: SocketSource;
-  pageSlug?: string;
+  pageUid?: string;
   connectedAt: number;
 }
 
@@ -43,7 +43,7 @@ export interface ClientState {
 export interface RegisterClientOptions {
   source: SocketSource;
   socketId: string;
-  pageSlug?: string;
+  pageUid?: string;
   theme?: "light" | "dark";
   workspacePath?: string;
   publicKey: string;
@@ -178,7 +178,7 @@ export class ClientStore {
       client.sockets.set(options.socketId, {
         socketId: options.socketId,
         source: options.source,
-        pageSlug: options.pageSlug,
+        pageUid: options.pageUid,
         connectedAt: Date.now(),
       });
       log.info({ clientId, socketId: options.socketId, source: options.source }, "Socket added to client");

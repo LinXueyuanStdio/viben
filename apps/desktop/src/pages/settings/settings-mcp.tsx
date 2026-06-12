@@ -22,7 +22,6 @@ import {
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { InspectorPage } from "@/pages/inspector";
 
 // Lazy load marketplace page
@@ -261,10 +260,6 @@ export function SettingsMcpPage() {
           ))}
         </div>
 
-        {/* MCP Status Indicator at bottom */}
-        <div className="mt-4 pt-4 border-t border-border">
-          <McpStatusIndicator collapsed={false} />
-        </div>
       </motion.nav>
 
       {/* Right Content Area */}

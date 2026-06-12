@@ -13,7 +13,7 @@ interface VibenConfig {
   theme?: Theme;
   workspacePath?: string;
   source?: SocketSource;
-  pageSlug?: string;
+  pageUid?: string;
 }
 
 async function signMessage(message: string, privateKeyHex: string): Promise<string> {
@@ -94,12 +94,37 @@ class VibenPageSDK {
   }
 
   private init(): void {
+    console.log("[VibenSDK] init() called");
     const config = (window as unknown as { __VIBEN_CONFIG__?: VibenConfig }).__VIBEN_CONFIG__;
-    if (!config) {
-      this.readyReject?.(new Error("config_missing: window.__VIBEN_CONFIG__ not set"));
+    console.log("[VibenSDK] __VIBEN_CONFIG__:", config ? JSON.stringify({ gatewayUrl: config.gatewayUrl, clientId: config.clientId, source: config.source, pageUid: config.pageUid }) : "null");
+    if (config) {
+      this.applyConfig(config);
       return;
     }
 
+    console.log("[VibenSDK] no config found, waiting for postMessage from parent...");
+    // Config not yet available — wait for postMessage from parent
+    const timeout = setTimeout(() => {
+      console.error("[VibenSDK] TIMEOUT: no viben-config postMessage received in 5s");
+      window.removeEventListener("message", handler);
+      this.readyReject?.(new Error("config_missing: window.__VIBEN_CONFIG__ not set (timeout)"));
+    }, 5000);
+
+    const handler = (e: MessageEvent) => {
+      console.log("[VibenSDK] postMessage received:", e.data?.type, "origin:", e.origin);
+      if (e.data && e.data.type === "viben-config") {
+        console.log("[VibenSDK] got viben-config via postMessage:", JSON.stringify({ gatewayUrl: e.data.payload?.gatewayUrl, clientId: e.data.payload?.clientId }));
+        clearTimeout(timeout);
+        window.removeEventListener("message", handler);
+        (window as unknown as { __VIBEN_CONFIG__?: VibenConfig }).__VIBEN_CONFIG__ = e.data.payload;
+        this.applyConfig(e.data.payload);
+      }
+    };
+    window.addEventListener("message", handler);
+  }
+
+  private applyConfig(config: VibenConfig): void {
+    console.log("[VibenSDK] applyConfig:", { gatewayUrl: config.gatewayUrl, clientId: config.clientId, source: config.source, pageUid: config.pageUid });
     this.config = config;
     this._theme = config.theme ?? "light";
     this.connect();
@@ -112,9 +137,10 @@ class VibenPageSDK {
     this.notifyStateChange();
 
     const url = this.config.gatewayUrl.replace(/\/$/, "");
+    console.log("[VibenSDK] connecting to:", url, "path: /socket.io/client");
     this.socket = io(url, {
       path: "/socket.io/client",
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -122,45 +148,65 @@ class VibenPageSDK {
     });
 
     this.socket.on("connect", async () => {
+      console.log("[VibenSDK] socket.io 'connect' event fired, socket.id:", this.socket?.id);
       try {
         const timestamp = Date.now();
         const message = `${this.config!.clientId}:${timestamp}`;
+        console.log("[VibenSDK] signing message:", message);
         const signature = await signMessage(message, this.config!.privateKey);
+        console.log("[VibenSDK] signature generated, emitting client:connect...");
 
         this.socket!.emit(
           "client:connect",
           {
             clientId: this.config!.clientId,
             source: this.config!.source ?? this.detectSource(),
-            pageSlug: this.config!.pageSlug,
+            pageUid: this.config!.pageUid,
             publicKey: this.config!.publicKey,
             signature,
             timestamp,
           },
           (ack: { success: boolean; error?: string }) => {
+            console.log("[VibenSDK] client:connect ack received:", JSON.stringify(ack));
             if (ack.success) {
               this._state = "connected";
               this.notifyStateChange();
               this.readyResolve?.(true);
               this.reregisterActions();
             } else {
+              console.error("[VibenSDK] client:connect FAILED:", ack.error);
               this.readyReject?.(new Error(ack.error ?? "Connection failed"));
             }
           },
         );
       } catch (error) {
+        console.error("[VibenSDK] error in connect handler:", error);
         this.readyReject?.(error instanceof Error ? error : new Error("Signature failed"));
       }
     });
 
-    this.socket.on("disconnect", () => {
+    this.socket.on("connect_error", (err) => {
+      console.error("[VibenSDK] connect_error:", err.message, "type:", (err as any).type, "description:", (err as any).description);
+    });
+
+    this.socket.on("disconnect", (reason) => {
+      console.log("[VibenSDK] disconnected, reason:", reason);
       this._state = "disconnected";
       this.notifyStateChange();
     });
 
-    this.socket.io.on("reconnect_attempt", () => {
+    this.socket.io.on("reconnect_attempt", (attempt) => {
+      console.log("[VibenSDK] reconnect_attempt #" + attempt);
       this._state = "reconnecting";
       this.notifyStateChange();
+    });
+
+    this.socket.io.on("reconnect_failed", () => {
+      console.error("[VibenSDK] reconnect_failed (all attempts exhausted)");
+    });
+
+    this.socket.io.on("error", (err) => {
+      console.error("[VibenSDK] manager error:", err);
     });
 
     this.socket.on("client:init", (data: { theme: Theme; workspacePath?: string }) => {

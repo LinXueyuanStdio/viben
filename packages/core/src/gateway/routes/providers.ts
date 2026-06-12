@@ -684,8 +684,8 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
         };
       }
 
-      // Get models for this provider from modelManager (includes enabled status)
-      const models = await modelManager.getModelsByProvider(provider.type);
+      // Get models registered to this specific provider instance
+      const models = await modelManager.getModelsByProviderId(id);
 
       // Transform to response format
       const responseModels: ProviderModelResponse[] = models.map((m) => ({
@@ -737,7 +737,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
 
       try {
         // Enable the model via modelManager (persists to config)
-        await modelManager.enableModel(model_id, provider.type);
+        await modelManager.enableModel(model_id, provider.type, provider_id);
 
         return {
           success: true,
@@ -785,7 +785,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
 
       try {
         // Disable the model via modelManager (persists to config)
-        await modelManager.disableModel(model_id, provider.type);
+        await modelManager.disableModel(model_id, provider.type, provider_id);
 
         return {
           success: true,

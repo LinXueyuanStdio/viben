@@ -134,6 +134,7 @@ export class ModelManager {
         id,
         name: entry.name,
         provider: entry.provider,
+        provider_id: entry.provider_id,
         category: normalizeModelCategory(entry.category),
         surface: normalizeModelSurface(
           entry.surface,
@@ -154,11 +155,19 @@ export class ModelManager {
   }
 
   /**
-   * Get models by provider
+   * Get models by provider type (returns KNOWN_MODELS + custom with matching type)
    */
   async getModelsByProvider(provider: string): Promise<Model[]> {
     const all = await this.listModels();
     return all.filter((m) => m.provider === provider);
+  }
+
+  /**
+   * Get models by provider instance ID
+   */
+  async getModelsByProviderId(providerId: string): Promise<Model[]> {
+    const all = await this.listModels();
+    return all.filter((m) => m.provider_id === providerId);
   }
 
   async listModelsFiltered(filters: {

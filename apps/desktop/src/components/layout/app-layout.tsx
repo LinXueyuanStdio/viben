@@ -2,11 +2,9 @@ import { Outlet } from "react-router-dom";
 import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { GlobalTabBar } from "@/components/global-tab-bar";
-import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
 import { useChannelNotifications } from "@/hooks/use-channel-notifications";
 import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapter";
-import { useMcpStatusWebSocket } from "@/hooks/use-mcp-status-monitor";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { useVoiceConfigInit } from "@/hooks/use-voice-config-init";
 import { useDesktopDeepLink } from "@/hooks/use-desktop-deep-link";
@@ -27,14 +25,8 @@ export function AppLayout() {
   // Initialize global keyboard shortcuts (Ctrl+Shift+J for create task, etc.)
   useGlobalShortcuts();
 
-  // Initialize tray status synchronization
-  useTrayStatusSync();
-
   // Initialize store synchronization across windows
   useMainWindowStoreSync();
-
-  // Initialize MCP status WebSocket connection (singleton - only one connection for the entire app)
-  useMcpStatusWebSocket();
 
   // Initialize channel notifications WebSocket connection
   useChannelNotifications();

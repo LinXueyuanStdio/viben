@@ -4,10 +4,8 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton, SkeletonCard, SkeletonChart, SkeletonHeatmap } from "@/components/ui/skeleton";
 import { BentoGrid, BentoCard } from "@/components/layout";
-import { usePython } from "@/hooks/use-python";
 import { useUsage } from "@/hooks/use-usage";
 import { useExecutors } from "@/hooks/use-workspace-resources";
-import { useMcpStatusMonitor, useOnPageEnter } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
 import { useMemo, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -20,7 +18,6 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const { executors, loading: executorsLoading } = useExecutors();
-  const { selectedPython, browseMcpInfo } = usePython();
   const { stats, loading: usageLoading } = useUsage();
   const {
     providers,
@@ -31,9 +28,6 @@ export function DashboardPage() {
     setupStatus,
   } = useAppStore();
 
-  // MCP Status Monitor - triggers status check on page enter and starts polling
-  const { getStats } = useMcpStatusMonitor();
-  useOnPageEnter({ enabled: mcpServers.length > 0 });
 
   // Count configured executors (those with workspace config or supporting MCP)
   const configuredAgents = executors.filter((e) =>
@@ -42,9 +36,9 @@ export function DashboardPage() {
   );
   const availableProviders = getAvailableProviders();
 
-  // Get server stats from the status monitor (includes real-time status)
-  const serverStats = getStats();
-  const runningServers = serverStats.running;
+  // Server stats (MCP status monitor removed - browse-mcp migrated to gateway HTTP route)
+  const runningServers = 0;
+  const serverStats = { running: 0, error: 0 };
 
   // Read global setup status (calculated in AppLayout)
   // ONLY show banner when cache explicitly confirms setup is incomplete
@@ -106,9 +100,7 @@ export function DashboardPage() {
                   {t("dashboard.setupRequired")}
                 </h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                  {!selectedPython?.is_valid
-                    ? t("dashboard.pythonRequired")
-                    : t("dashboard.installRequired")}
+                  {t("dashboard.installRequired")}
                 </p>
               </div>
               <Button asChild size="sm">
@@ -330,24 +322,6 @@ export function DashboardPage() {
           <BentoCard size="full" className="h-full">
             <h2 className="text-lg font-semibold mb-4">{t("dashboard.environmentStatus")}</h2>
             <div className="space-y-3">
-              <StatusRow
-                label={t("dashboard.python")}
-                value={
-                  selectedPython
-                    ? `${selectedPython.version} (${selectedPython.path})`
-                    : t("common.notConfigured")
-                }
-                ok={selectedPython?.is_valid ?? false}
-              />
-              <StatusRow
-                label={t("dashboard.browseMcp")}
-                value={
-                  browseMcpInfo?.installed
-                    ? `v${browseMcpInfo.version}`
-                    : t("common.notInstalled")
-                }
-                ok={browseMcpInfo?.installed ?? false}
-              />
               <StatusRow
                 label={t("dashboard.mcpServers")}
                 value={

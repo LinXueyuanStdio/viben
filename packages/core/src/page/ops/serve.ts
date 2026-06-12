@@ -105,11 +105,38 @@ function serveStaticFile(
   const ext = extname(resolvedPath).toLowerCase();
   const contentType = MIME_TYPES[ext] || "application/octet-stream";
 
+  if (contentType === "text/html") {
+    const html = content.toString("utf-8");
+    const injected = injectConfigListener(html);
+    return {
+      success: true,
+      content: Buffer.from(injected, "utf-8"),
+      content_type: contentType,
+    };
+  }
+
   return {
     success: true,
     content,
     content_type: contentType,
   };
+}
+
+const CONFIG_LISTENER_SCRIPT = `<script>window.addEventListener("message",function(e){if(e.data&&e.data.type==="viben-config"){window.__VIBEN_CONFIG__=e.data.payload}});</script>`;
+
+function injectConfigListener(html: string): string {
+  const headClose = html.indexOf("</head>");
+  if (headClose !== -1) {
+    return html.slice(0, headClose) + CONFIG_LISTENER_SCRIPT + html.slice(headClose);
+  }
+  const htmlOpen = html.indexOf("<html");
+  if (htmlOpen !== -1) {
+    const tagEnd = html.indexOf(">", htmlOpen);
+    if (tagEnd !== -1) {
+      return html.slice(0, tagEnd + 1) + CONFIG_LISTENER_SCRIPT + html.slice(tagEnd + 1);
+    }
+  }
+  return CONFIG_LISTENER_SCRIPT + html;
 }
 
 function serveMarkdownContent(

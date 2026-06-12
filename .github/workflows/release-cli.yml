@@ -211,6 +211,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build page SDK
+        run: pnpm build:page-sdk
+
       - name: Build CLI package and dependencies
         run: pnpm --filter viben... build
 

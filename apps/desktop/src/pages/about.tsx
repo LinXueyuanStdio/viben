@@ -1,9 +1,7 @@
-import { ExternalLink, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug, User, Download, Loader2 } from "lucide-react";
+import { ExternalLink, RefreshCw, CheckCircle2, Home, Book, Bug, User, Download, Loader2 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { usePython } from "@/hooks/use-python";
-import { useAppStore } from "@/stores";
 import { motion, useReducedMotion } from "framer-motion";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { VibenLogo } from "@/components/ui/viben-logo";
@@ -15,8 +13,6 @@ import { useEffect, useState } from "react";
 export function AboutPage() {
   const { t } = useTranslation();
   const [appVersion, setAppVersion] = useState("0.1.0");
-  const { selectedPython, browseMcpInfo } = usePython();
-  const { setupBannerDismissed, setSetupBannerDismissed } = useAppStore();
   const prefersReducedMotion = useReducedMotion();
 
   const {
@@ -60,10 +56,6 @@ export function AboutPage() {
     },
   };
 
-  // Setup status
-  const pythonValid = selectedPython?.is_valid ?? false;
-  const mcpInstalled = browseMcpInfo?.installed ?? false;
-  const isSetupComplete = pythonValid && mcpInstalled;
 
   // Handle external link click using Tauri opener
   const handleExternalLink = async (url: string) => {
@@ -95,61 +87,10 @@ export function AboutPage() {
           {t("about.systemStatus")}
         </h2>
         <div className="rounded-xl border bg-card p-4 space-y-3">
-          {/* Python Status */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {pythonValid ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <XCircle className="h-4 w-4 text-red-600" />
-              )}
-              <span className="text-sm">{t("about.python310", "Python 3.10+")}</span>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {pythonValid ? selectedPython?.version || t("about.detected", "Detected") : t("about.notFound", "Not found")}
-            </span>
-          </div>
-
-          {/* Viben Status */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {mcpInstalled ? (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              ) : (
-                <XCircle className="h-4 w-4 text-red-600" />
-              )}
-              <span className="text-sm">{t("about.browseMcpPackage", "browse-mcp package")}</span>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {mcpInstalled ? browseMcpInfo?.version || t("common.installed") : t("common.notInstalled")}
-            </span>
-          </div>
-
           {/* Overall Status */}
-          <div className="pt-2 border-t">
-            <div className="flex items-center gap-2">
-              {isSetupComplete ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">{t("about.systemReady")}</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm font-medium">{t("about.setupRequired")}</span>
-                  {setupBannerDismissed && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-auto text-xs h-6"
-                      onClick={() => setSetupBannerDismissed(false)}
-                    >
-                      {t("about.showBanner")}
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium">{t("about.systemReady")}</span>
           </div>
         </div>
       </motion.section>

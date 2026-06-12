@@ -168,10 +168,6 @@ import {
   closeMcpInspectorSession,
 
   // MCP Browse module
-  getMcpStatus,
-  startMcpServer,
-  stopMcpServer,
-  testMcpConnection,
   checkPortStatus,
   killProcess,
   isProcessAlive,
@@ -394,8 +390,6 @@ import type {
   McpInspectorToken,
   McpInspectorConfig,
   McpInspectorSession,
-  McpStatus,
-  McpStartConfig,
   PortStatus,
   // Service Keys types
   ServiceApiKey,
@@ -1972,36 +1966,8 @@ export class GatewayClient {
   }
 
   // ==========================================================================
-  // MCP Browse Module Methods
+  // MCP Browse Module Methods (Port/Process Utilities)
   // ==========================================================================
-
-  /**
-   * Get browse-mcp server status
-   */
-  async getMcpStatus(): Promise<McpStatus> {
-    return getMcpStatus(this.baseUrl);
-  }
-
-  /**
-   * Start browse-mcp server
-   */
-  async startMcpServer(config: McpStartConfig): Promise<McpStatus> {
-    return startMcpServer(this.baseUrl, config);
-  }
-
-  /**
-   * Stop browse-mcp server
-   */
-  async stopMcpServer(): Promise<{ success: boolean }> {
-    return stopMcpServer(this.baseUrl);
-  }
-
-  /**
-   * Test browse-mcp connection
-   */
-  async testMcpConnection(pythonPath: string): Promise<boolean> {
-    return testMcpConnection(this.baseUrl, pythonPath);
-  }
 
   /**
    * Check port status

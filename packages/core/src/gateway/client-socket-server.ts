@@ -19,7 +19,7 @@ export type ExecuteSource = SocketSource | "mcp";
 interface ClientConnectData {
   clientId: string;
   source: SocketSource;
-  pageSlug?: string;
+  pageUid?: string;
   publicKey: string;
   signature: string;
   timestamp: number;
@@ -179,7 +179,7 @@ export class ClientSocketServer {
       const client = await this.clientStore.registerClient(data.clientId, {
         source: data.source,
         socketId: socket.id,
-        pageSlug: data.pageSlug,
+        pageUid: data.pageUid,
         publicKey: data.publicKey,
         signature: data.signature,
         timestamp: data.timestamp,

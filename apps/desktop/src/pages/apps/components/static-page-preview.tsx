@@ -121,8 +121,9 @@ export function StaticPagePreview({
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow || !identity) return;
 
-    try {
-      (iframe.contentWindow as unknown as { __VIBEN_CONFIG__?: unknown }).__VIBEN_CONFIG__ = {
+    iframe.contentWindow.postMessage({
+      type: "viben-config",
+      payload: {
         gatewayUrl: getGatewayUrl(),
         clientId: identity.clientId,
         publicKey: identity.publicKey,
@@ -131,10 +132,8 @@ export function StaticPagePreview({
         workspacePath,
         source: "page_iframe" as const,
         pageUid: page.uid,
-      };
-    } catch {
-      console.error("Cannot inject config into cross-origin iframe");
-    }
+      },
+    }, "*");
   }, [identity, resolvedTheme, workspacePath, page.uid]);
 
   // For HTML and fallback: use iframe with gateway serve
