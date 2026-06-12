@@ -58,9 +58,6 @@ interface ModelsQuery {
 
 /**
  * Check if a provider type has any configured provider with API key
- *
- * This checks by provider TYPE (e.g., "anthropic", "openai") rather than
- * provider ID (e.g., "本地-claude"), because KNOWN_MODELS use type names.
  */
 async function isProviderAvailable(providerType: string): Promise<boolean> {
   try {
@@ -610,7 +607,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     }
   });
 
-  // Create/register a new model (Note: KNOWN_MODELS is read-only, this sets config)
+  // Create/register a new model
   fastify.post("/api/models", async (
     request: FastifyRequest<{ Body: CreateModelBody }>,
     reply: FastifyReply

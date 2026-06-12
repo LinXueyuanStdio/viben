@@ -51,6 +51,16 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { IconDisplay } from "@/components/ui/icon-picker";
@@ -850,6 +860,35 @@ export function PagePreviewWindow({
           onMessageChange={setForwardMessage}
           onSend={() => void handleForwardSend()}
         />
+        {portConflict && (
+          <AlertDialog open>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t("page.portConflict.title", "Port {{port}} is in use", { port: portConflict.port })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t(
+                    "page.portConflict.description",
+                    "Another process is already using port {{port}}. How would you like to proceed?",
+                    { port: portConflict.port }
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                <AlertDialogCancel onClick={dismissPortConflict}>
+                  {t("common.cancel", "Cancel")}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={retryWithNewPort} className="bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                  {t("page.portConflict.useNewPort", "Use another port")}
+                </AlertDialogAction>
+                <AlertDialogAction onClick={killPortAndRetry}>
+                  {t("page.portConflict.killAndRetry", "Kill process & retry")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </div>
   );

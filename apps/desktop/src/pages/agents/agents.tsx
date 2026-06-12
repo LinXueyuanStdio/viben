@@ -12,34 +12,10 @@ import { mapExecutorToDisplay } from "./utils";
 export function AgentsPage() {
   const { t } = useTranslation();
   const { executors, loading, error, refresh } = useExecutors();
-  const {
-    mcpServers,
-    setAgentAssignment,
-    removeAgentAssignment,
-    getAgentAssignment,
-  } = useAppStore();
+  const { mcpServers } = useAppStore();
 
   // Map executors to display format
   const agents = executors.map(mapExecutorToDisplay);
-
-  // Note: MCP configuration is no longer handled via Gateway API
-  // The configureBrowseMcp functionality has been removed
-  const handleConfigure = async (
-    agentId: string,
-    serverId: string,
-    apiKeyId?: string
-  ) => {
-    const server = mcpServers.find((s) => s.id === serverId);
-    if (!server) return;
-
-    try {
-      // Save the assignment locally (actual MCP config must be done manually)
-      setAgentAssignment(agentId, serverId, apiKeyId);
-      console.log("[AgentsPage] Note: MCP configuration must be done manually. Assignment saved locally.");
-    } catch (err) {
-      console.error("Failed to configure:", err);
-    }
-  };
 
   return (
     <div className="p-6">
@@ -71,14 +47,6 @@ export function AgentsPage() {
         </div>
       )}
 
-      {mcpServers.length === 0 && (
-        <div className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            {t("agents.noServersWarning")}
-          </p>
-        </div>
-      )}
-
       {loading && agents.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -90,9 +58,6 @@ export function AgentsPage() {
               key={agent.id}
               agent={agent}
               servers={mcpServers}
-              assignment={getAgentAssignment(agent.id)}
-              onConfigure={handleConfigure}
-              onRemoveAssignment={() => removeAgentAssignment(agent.id)}
             />
           ))}
         </div>

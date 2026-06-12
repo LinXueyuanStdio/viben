@@ -129,7 +129,6 @@ interface ProviderModelResponse {
   provider: string;
   description?: string;
   enabled: boolean;
-  is_known: boolean;
   capabilities?: {
     chat?: boolean;
     code?: boolean;
@@ -691,7 +690,6 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
         provider: m.provider,
         description: m.description,
         enabled: m.enabled ?? true,
-        is_known: true, // TODO: distinguish known vs custom models
         context_window: m.contextLength,
         max_output_tokens: m.maxOutputTokens,
         input_price: m.inputPrice,

@@ -11,14 +11,8 @@
 // This includes ExecutorType, AgentTypeInfo, AGENT_TYPES, getAgentTypeInfo
 export * from "./types";
 
-// Re-export known models (pure data, no file I/O)
-export {
-  KNOWN_MODELS,
-  DEFAULT_ALIASES,
-  getKnownModel,
-  getModelsByProvider,
-} from "./models/known-models";
-export type { KnownModel } from "./models/types";
+// Re-export model aliases (pure data, no file I/O)
+export { DEFAULT_ALIASES } from "./models/known-models";
 
 // Re-export provider types
 export type {

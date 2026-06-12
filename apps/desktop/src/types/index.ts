@@ -21,16 +21,6 @@ export interface Provider {
   description?: string;
 }
 
-// Service API Key - for authenticating external clients
-export interface ServiceApiKey {
-  id: string;
-  name: string;
-  keyPrefix: string; // Masked key for display
-  createdAt: string;
-  lastUsed?: string;
-  usageCount?: number; // Number of requests made with this key
-}
-
 // MCP Server Status - runtime status of a server
 export type McpServerStatus = "stopped" | "running" | "error";
 
@@ -42,7 +32,6 @@ export interface McpServerInstance {
   port?: number;
   downloadPath: string;
   enabledSources: string[]; // Provider IDs
-  apiKeys: ServiceApiKey[];
   // Runtime state
   status: McpServerStatus;
   pid?: number;
@@ -75,13 +64,6 @@ export interface McpStatus {
   transport: string | null;
   port: number | null;
   session_id?: string | null;
-}
-
-// Agent MCP Configuration - which server and key to use
-export interface AgentMcpAssignment {
-  agentId: string;
-  serverId: string;
-  apiKeyId?: string; // Optional, for SSE/HTTP
 }
 
 // MCP config format for agent config files
