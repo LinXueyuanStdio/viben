@@ -188,8 +188,7 @@ export interface AgentConfigPayload {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
   dangerously_skip_permissions?: boolean;
   permission_mode?: string;
 }

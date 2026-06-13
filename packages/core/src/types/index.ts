@@ -185,10 +185,8 @@ export interface Agent {
   mcpServers: (string | AgentMcpServerEntry)[];
   /** List of skill IDs this agent can use */
   skills: string[];
-  /** Whether plan mode is enabled (for Claude Code) */
-  planMode: boolean;
-  /** Whether approvals are required (for Claude Code) */
-  approvals: boolean;
+  /** Approval mode: bypass (skip all), rules (rule-based), ai (AI-evaluated) */
+  approvalMode: "bypass" | "rules" | "ai";
   /** Whether this agent is a template */
   isTemplate?: boolean;
   /** Template description (shown in template picker) */
@@ -217,8 +215,7 @@ export interface AgentConfig {
   executorConfig?: Record<string, unknown>;
   mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  planMode?: boolean;
-  approvals?: boolean;
+  approvalMode?: "bypass" | "rules" | "ai";
   isTemplate?: boolean;
   templateDescription?: string;
   templateTags?: string[];
@@ -266,8 +263,7 @@ export interface CreateAgentOptions {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
   from_template?: string;
   /** Custom base path for storing the agent (e.g., workspace path) */
   base_path?: string;
@@ -290,8 +286,7 @@ export interface AgentUpdate {
   executorConfig?: Record<string, unknown>;
   mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  planMode?: boolean;
-  approvals?: boolean;
+  approvalMode?: "bypass" | "rules" | "ai";
 }
 
 // ============================================================================

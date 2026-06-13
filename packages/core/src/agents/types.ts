@@ -36,8 +36,7 @@ export interface AgentConfigFile {
   executorConfig?: Record<string, unknown>;
   mcpServers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  planMode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
   isTemplate?: boolean;
   templateDescription?: string;
   /** Template tags for categorization (snake_case for YAML) */

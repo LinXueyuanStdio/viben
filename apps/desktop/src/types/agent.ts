@@ -50,8 +50,8 @@ export interface ClaudeCodeConfig {
   append_prompt?: string;
   /** Enable plan mode */
   plan?: boolean;
-  /** Enable approvals mode */
-  approvals?: boolean;
+  /** Approval mode */
+  approval_mode?: "bypass" | "rules" | "ai";
   /** Model to use (e.g., claude-3-opus-20240229) */
   model?: string;
   /** Skip permission checks (dangerous) */
@@ -173,7 +173,7 @@ export function getDefaultConfig(agentType: ExecutorType): ExecutorConfig {
         type: "CLAUDE_CODE",
         config: {
           plan: false,
-          approvals: false,
+          approval_mode: "rules",
           dangerously_skip_permissions: false,
         },
       };

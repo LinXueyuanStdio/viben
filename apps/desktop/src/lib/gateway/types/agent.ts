@@ -22,8 +22,7 @@ export interface CreateAgentOptions {
   executor_config?: Record<string, unknown>;
   mcp_servers?: string[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
   from_template?: string;
   /** Workspace path for workspace-scoped agents */
   base_path?: string;
@@ -124,10 +123,8 @@ export interface AgentResponse {
   mcp_servers?: (string | AgentMcpEntry)[];
   /** Skills (may be omitted if empty due to skip_serializing_if) */
   skills?: string[];
-  /** Plan mode (defaults to false if omitted) */
-  plan_mode?: boolean;
-  /** Approvals (defaults to false if omitted) */
-  approvals?: boolean;
+  /** Approval mode */
+  approval_mode?: "bypass" | "rules" | "ai";
   /** Whether this agent is marked as a template */
   is_template?: boolean;
   /** Template description for selection UI */
@@ -159,8 +156,7 @@ export interface UpdateAgentOptions {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpEntry)[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
   /** Whether this agent is marked as a template */
   is_template?: boolean;
   /** Template description for selection UI */

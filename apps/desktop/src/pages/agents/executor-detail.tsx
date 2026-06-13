@@ -170,8 +170,7 @@ export function ExecutorDetailPage() {
   } = useAgentConversation(workspacePath || "", {
     agentConfig: {
       executor_type: executorTypeString,
-      plan_mode: false,
-      approvals: false,
+      approval_mode: "rules",
     },
   });
 

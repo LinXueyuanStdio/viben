@@ -144,10 +144,8 @@ export interface AgentInfo {
   mcp_servers?: string[];
   /** Skills (Viben agents only) */
   skills?: string[];
-  /** Plan mode (Viben agents only) */
-  plan_mode?: boolean;
-  /** Approvals (Viben agents only) */
-  approvals?: boolean;
+  /** Approval mode (Viben agents only) */
+  approval_mode?: "bypass" | "rules" | "ai";
   /** Whether this agent is marked as a template (Viben agents only) */
   is_template?: boolean;
   /** Template description for selection UI (Viben agents only) */

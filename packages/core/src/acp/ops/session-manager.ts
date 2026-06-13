@@ -860,8 +860,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       executor_type: config.executorType,
       mcp_servers: config.mcpServers,
       skills: config.skills,
-      plan_mode: config.planMode,
-      approvals: config.approvals,
+      approval_mode: config.approval_mode,
     };
   } catch (error) {
     log.error({ err: error, configPath }, "Failed to load ACP agent config");

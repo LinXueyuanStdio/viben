@@ -22,10 +22,8 @@ import { BaseExecutor } from "./base";
  * Claude Code specific configuration
  */
 export interface ClaudeExecutorConfig extends ExecutorConfig {
-  /** Enable plan mode */
-  planMode?: boolean;
-  /** Enable approvals mode */
-  approvals?: boolean;
+  /** Approval mode: bypass (skip all), rules (rule-based), ai (AI-evaluated) */
+  approvalMode?: "bypass" | "rules" | "ai";
 }
 
 export class ClaudeExecutor extends BaseExecutor {
@@ -70,8 +68,6 @@ export class ClaudeExecutor extends BaseExecutor {
       "SESSION_RESUME",
       "SESSION_FORK",
       "CONTEXT_USAGE",
-      "PLAN_MODE",
-      "APPROVALS",
     ];
   }
 
@@ -183,10 +179,13 @@ export class ClaudeExecutor extends BaseExecutor {
       args.push("--dangerously-skip-permissions");
     }
 
-    if (this.config.planMode || this.config.approvals) {
+    if (this.config.approvalMode === "bypass") {
+      args.push("--dangerously-skip-permissions");
+    } else if (this.config.approvalMode === "ai") {
       args.push("--permission-prompt-tool", "stdio");
-      args.push("--permission-mode", "bypass");
+      args.push("--permission-mode", "auto");
     }
+    // "rules" mode: no extra flags needed, uses default permission behavior
 
     if (jsonOutput) {
       args.push(

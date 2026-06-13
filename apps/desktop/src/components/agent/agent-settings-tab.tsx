@@ -151,8 +151,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     model,
     temperature,
     executorType,
-    planMode,
-    approvals,
+    approvalMode,
     models,
     executors,
     selectedMcpServers,
@@ -166,14 +165,14 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
     onModelChange,
     onTemperatureChange,
     onExecutorTypeChange,
-    onPlanModeChange,
-    onApprovalsChange,
+    onApprovalModeChange,
     onCheckAvailability,
     availability,
     checkingAvailability,
     providerConstraintHint,
     onConfigureMcp,
     onConfigureSkills,
+    onMcpServersChange,
     onRemoveMcpServer,
     onRemoveSkill,
     onEditMemory,
@@ -249,8 +248,7 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             model={model}
             temperature={temperature}
             executorType={executorType}
-            planMode={planMode}
-            approvals={approvals}
+            approvalMode={approvalMode}
             models={models}
             executors={executors}
             selectedMcpServers={selectedMcpServers}
@@ -265,14 +263,14 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             onModelChange={onModelChange}
             onTemperatureChange={onTemperatureChange}
             onExecutorTypeChange={onExecutorTypeChange}
-            onPlanModeChange={onPlanModeChange}
-            onApprovalsChange={onApprovalsChange}
+            onApprovalModeChange={onApprovalModeChange}
             onCheckAvailability={onCheckAvailability}
             availability={availability}
             checkingAvailability={checkingAvailability}
             providerConstraintHint={providerConstraintHint}
             onConfigureMcp={onConfigureMcp}
             onConfigureSkills={onConfigureSkills}
+            onMcpServersChange={onMcpServersChange}
             onRemoveMcpServer={onRemoveMcpServer}
             onRemoveSkill={onRemoveSkill}
             onEditMemory={onEditMemory}

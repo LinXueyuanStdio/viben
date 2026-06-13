@@ -73,8 +73,7 @@ function createMockAgent(overrides: Partial<Agent> = {}): Agent {
     name: "Test Agent",
     mcpServers: [],
     skills: [],
-    planMode: false,
-    approvals: false,
+    approvalMode: "rules",
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
@@ -260,7 +259,7 @@ describe("Agent CLI Commands", () => {
         name: "My Agent",
         executorType: "CLAUDE_CODE" as ExecutorType,
         model: "claude-3-opus",
-        planMode: true,
+        approvalMode: "bypass",
       });
 
       vi.mocked(agentManager.createFromTemplate).mockResolvedValue(mockAgent);
@@ -291,8 +290,7 @@ describe("Agent CLI Commands", () => {
         description: "Test description",
         executorType: "CLAUDE_CODE" as ExecutorType,
         model: "claude-3-opus",
-        planMode: true,
-        approvals: true,
+        approvalMode: "bypass",
         temperature: 0.7,
         maxTokens: 4096,
       });
@@ -313,20 +311,19 @@ describe("Agent CLI Commands", () => {
         "0.7",
         "--max-tokens",
         "4096",
-        "--plan-mode",
-        "--approvals",
+        "--approval-mode",
+        "bypass",
       ]);
 
       expect(agentManager.createAgent).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "My Agent",
           model: "claude-3-opus",
-          executorType: "CLAUDE_CODE",
+          executor_type: "CLAUDE_CODE",
           description: "Test description",
           temperature: 0.7,
-          maxTokens: 4096,
-          planMode: true,
-          approvals: true,
+          max_tokens: 4096,
+          approval_mode: "bypass",
         })
       );
     });
@@ -343,7 +340,7 @@ describe("Agent CLI Commands", () => {
         provider: "anthropic",
         mcpServers: ["filesystem", "git"],
         skills: ["code-review"],
-        planMode: true,
+        approvalMode: "bypass",
         temperature: 0.7,
         maxTokens: 4096,
         updated_at: "2024-01-02T00:00:00Z",
@@ -528,7 +525,7 @@ describe("Agent CLI Commands", () => {
         provider: "anthropic",
         temperature: 0.7,
         maxTokens: 4096,
-        planMode: true,
+        approvalMode: "bypass",
       });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
@@ -602,15 +599,15 @@ describe("Agent CLI Commands", () => {
 
       const updatedAgent = createMockAgent({
         ...mockAgent,
-        planMode: true,
+        approvalMode: "bypass",
       });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.updateAgent).mockResolvedValue(updatedAgent);
 
-      await runCommand(["agent", "config", "-n", "my-agent", "--set", "planMode=true"]);
+      await runCommand(["agent", "config", "-n", "my-agent", "--set", "approvalMode=bypass"]);
 
-      expect(agentManager.updateAgent).toHaveBeenCalledWith("my-agent", { planMode: true });
+      expect(agentManager.updateAgent).toHaveBeenCalledWith("my-agent", { approvalMode: "bypass" });
     });
 
     it("should show error for invalid --set format (empty key)", async () => {

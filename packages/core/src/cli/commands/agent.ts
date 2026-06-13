@@ -138,8 +138,7 @@ export function registerAgentCommand(program: Command): void {
     .option("--append-prompt <prompt>", "Append prompt")
     .option("--temperature <temp>", "Temperature (0-2)", parseFloat)
     .option("--max-tokens <tokens>", "Max output tokens", parseInt)
-    .option("--plan-mode", "Enable plan mode (Claude Code)")
-    .option("--approvals", "Enable approvals (Claude Code)")
+    .option("--approval-mode <mode>", "Approval mode: bypass, rules, ai (default: rules)")
     .option("-w, --workspace <path>", "Create in workspace instead of global")
     .action(async (name, options) => {
       const ctx = getOutputContext(program);
@@ -202,8 +201,7 @@ export function registerAgentCommand(program: Command): void {
             append_prompt: options.appendPrompt,
             temperature: options.temperature,
             max_tokens: options.maxTokens,
-            plan_mode: options.planMode,
-            approvals: options.approvals,
+            approval_mode: options.approvalMode as "bypass" | "rules" | "ai" | undefined,
           });
         }
 
@@ -244,8 +242,7 @@ export function registerAgentCommand(program: Command): void {
     .option("--append-prompt <prompt>", "Update append prompt")
     .option("--temperature <temp>", "Update temperature (0-2)", parseFloat)
     .option("--max-tokens <tokens>", "Update max output tokens", parseInt)
-    .option("--plan-mode <enabled>", "Update plan mode (true/false)", parseBool)
-    .option("--approvals <enabled>", "Update approvals (true/false)", parseBool)
+    .option("--approval-mode <mode>", "Update approval mode: bypass, rules, ai")
     .option("--is-template <enabled>", "Mark as template (true/false)", parseBool)
     .option("--template-desc <desc>", "Template description")
     .option("-w, --workspace <path>", "Update workspace agent instead of global")
@@ -259,8 +256,7 @@ export function registerAgentCommand(program: Command): void {
       appendPrompt?: string;
       temperature?: number;
       maxTokens?: number;
-      planMode?: boolean;
-      approvals?: boolean;
+      approvalMode?: string;
       isTemplate?: boolean;
       templateDesc?: string;
       workspace?: string;
@@ -290,8 +286,7 @@ export function registerAgentCommand(program: Command): void {
         if (options.appendPrompt !== undefined) updates.appendPrompt = options.appendPrompt;
         if (options.temperature !== undefined) updates.temperature = options.temperature;
         if (options.maxTokens !== undefined) updates.maxTokens = options.maxTokens;
-        if (options.planMode !== undefined) updates.planMode = options.planMode;
-        if (options.approvals !== undefined) updates.approvals = options.approvals;
+        if (options.approvalMode !== undefined) updates.approvalMode = options.approvalMode as "bypass" | "rules" | "ai";
         if (options.isTemplate !== undefined) updates.isTemplate = options.isTemplate;
         if (options.templateDesc !== undefined) updates.templateDescription = options.templateDesc;
 
@@ -360,8 +355,7 @@ export function registerAgentCommand(program: Command): void {
               agentData.maxTokens !== undefined
                 ? String(agentData.maxTokens)
                 : "-",
-            "Plan Mode": agentData.planMode ? "Enabled" : "Disabled",
-            Approvals: agentData.approvals ? "Enabled" : "Disabled",
+            "Approval Mode": agentData.approvalMode,
             "Created At": agentData.created_at,
             "Updated At": agentData.updated_at,
           });
@@ -485,8 +479,7 @@ export function registerAgentCommand(program: Command): void {
                 agentData.maxTokens !== undefined
                   ? String(agentData.maxTokens)
                   : "",
-              planMode: String(agentData.planMode),
-              approvals: String(agentData.approvals),
+              approvalMode: agentData.approvalMode,
             });
           });
         }

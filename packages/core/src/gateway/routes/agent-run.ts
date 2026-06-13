@@ -119,8 +119,7 @@ export interface AgentConfigPayload {
   executor_type?: string;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
 }
 
 /**
@@ -181,8 +180,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       executor_type: config.executorType,
       mcp_servers: config.mcpServers,
       skills: config.skills,
-      plan_mode: config.planMode,
-      approvals: config.approvals,
+      approval_mode: config.approval_mode,
     };
   } catch (error) {
     moduleLog.error({ err: error, configPath }, "Failed to load agent config");
@@ -503,8 +501,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         executor_type: agentConfig.executor_type,
         mcp_servers: agentConfig.mcp_servers,
         skills: agentConfig.skills,
-        plan_mode: agentConfig.plan_mode,
-        approvals: agentConfig.approvals,
+        approval_mode: agentConfig.approval_mode,
         // Don't log full system prompt, just indicate if present
         hasSystemPrompt: !!agentConfig.system_prompt,
         hasAppendPrompt: !!agentConfig.append_prompt,

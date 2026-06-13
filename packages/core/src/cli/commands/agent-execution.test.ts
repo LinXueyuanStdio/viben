@@ -112,8 +112,7 @@ async function createExecutionTestContext(): Promise<ExecutionTestContext> {
         updatedAt: config.updated_at || now,
         mcpServers: config.mcpServers || [],
         skills: config.skills || [],
-        planMode: config.planMode ?? false,
-        approvals: config.approvals ?? false,
+        approval_mode: config.approval_mode ?? "rules",
         ...config,
       };
 

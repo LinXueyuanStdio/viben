@@ -21,3 +21,6 @@ export { AgentDebugTab } from "./agent-debug-tab";
 export type { AgentDebugTabProps } from "./agent-debug-tab";
 export { AgentSettingsTab } from "./agent-settings-tab";
 export type { AgentSettingsTabProps } from "./agent-settings-tab";
+export { McpConfigEditor } from "./mcp-config-editor";
+export { SkillMarketGrid } from "./skill-market-grid";
+export type { SkillMarketGridProps } from "./skill-market-grid";

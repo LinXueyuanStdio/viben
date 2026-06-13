@@ -49,18 +49,22 @@ export function isRawHtml(s: string): boolean {
 }
 
 /**
- * Renders raw HTML content with script execution.
- * Scripts are cloned and re-inserted to trigger execution after innerHTML injection.
+ * Renders raw HTML content inside a Shadow DOM.
+ * CSS is fully isolated (no leaking in/out), JS executes directly without iframe overhead.
  */
 export function RawHtmlRenderer({ content }: { content: string }) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const hostRef = React.useRef<HTMLDivElement>(null);
+  const shadowRef = React.useRef<ShadowRoot | null>(null);
 
   React.useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    container.innerHTML = content;
-    // innerHTML doesn't execute scripts — clone and re-insert them
-    const scripts = container.querySelectorAll("script");
+    const host = hostRef.current;
+    if (!host) return;
+    if (!shadowRef.current) {
+      shadowRef.current = host.attachShadow({ mode: "open" });
+    }
+    const shadow = shadowRef.current;
+    shadow.innerHTML = content;
+    const scripts = shadow.querySelectorAll("script");
     for (const original of scripts) {
       const clone = document.createElement("script");
       for (const attr of original.attributes) {
@@ -71,7 +75,7 @@ export function RawHtmlRenderer({ content }: { content: string }) {
     }
   }, [content]);
 
-  return <div ref={containerRef} />;
+  return <div ref={hostRef} />;
 }
 
 interface CachedStreamdownProps {

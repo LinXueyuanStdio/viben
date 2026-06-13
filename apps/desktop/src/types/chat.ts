@@ -191,8 +191,7 @@ export interface WsClientMessage {
     executorType?: string;
     mcpServers?: string[];
     skills?: string[];
-    planMode?: boolean;
-    approvals?: boolean;
+    approval_mode?: "bypass" | "rules" | "ai";
   };
   // For "answer" - respond to AskUserQuestion
   questionId?: string;

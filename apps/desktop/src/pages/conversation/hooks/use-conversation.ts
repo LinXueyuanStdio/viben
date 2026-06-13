@@ -42,8 +42,7 @@ export interface UseConversationReturn {
     executor_type?: string;
     mcp_servers?: string[];
     skills?: string[];
-    plan_mode?: boolean;
-    approvals?: boolean;
+    approval_mode?: "bypass" | "rules" | "ai";
   } | null;
   /** Loading agent details */
   agentLoading: boolean;
@@ -135,8 +134,7 @@ export function useConversation(
       executor_type: agentDetail.executor_type,
       mcp_servers: agentDetail.mcp_servers?.map((s) => typeof s === "string" ? s : s.name),
       skills: agentDetail.skills,
-      plan_mode: agentDetail.plan_mode,
-      approvals: agentDetail.approvals,
+      approval_mode: agentDetail.approval_mode,
     };
   }, [agentDetail]);
 

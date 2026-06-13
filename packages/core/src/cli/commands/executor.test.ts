@@ -51,7 +51,7 @@ vi.mock("../../executors/ops", () => {
     capabilities: () => {
       switch (type) {
         case "CLAUDE_CODE":
-          return ["SPAWN", "CHAT", "CHAT_SDK", "CHAT_STREAMING", "SESSION_RESUME", "SESSION_FORK", "CONTEXT_USAGE", "PLAN_MODE", "APPROVALS"];
+          return ["SPAWN", "CHAT", "CHAT_SDK", "CHAT_STREAMING", "SESSION_RESUME", "SESSION_FORK", "CONTEXT_USAGE"];
         case "GEMINI":
           return ["SPAWN", "CHAT", "SESSION_FORK"];
         case "CODEX":

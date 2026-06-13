@@ -23,9 +23,7 @@ export type ExecutorCapability =
   | "CHAT_STREAMING"  // Supports streaming chat
   | "SESSION_RESUME"  // Supports session resume
   | "SESSION_FORK"    // Supports session fork (matches existing AgentCapability)
-  | "CONTEXT_USAGE"   // Supports context usage stats (matches existing AgentCapability)
-  | "PLAN_MODE"       // Supports plan mode
-  | "APPROVALS";      // Supports approval mode
+  | "CONTEXT_USAGE";  // Supports context usage stats (matches existing AgentCapability)
 
 // =============================================================================
 // Spawn Types
@@ -293,8 +291,7 @@ export interface RunCommandOptions {
 export interface ExecutorConfig {
   model?: string;
   appendPrompt?: string;
-  planMode?: boolean;
-  approvals?: boolean;
+  approvalMode?: "bypass" | "rules" | "ai";
   dangerouslySkipPermissions?: boolean;
   baseCommandOverride?: string;
   env?: Record<string, string>;

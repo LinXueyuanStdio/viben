@@ -8,7 +8,7 @@ import type { AgentMessage, ExpandSubagentHandler, InspectToolHandler, MessageAt
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanSummary } from "./plan-approval";
 import { QuestionInput } from "./question-input";
-import { CachedStreamdown } from "./cached-markdown";
+import { CachedStreamdown, isRawHtml } from "./cached-markdown";
 import { ASSISTANT_MARKDOWN_TYPOGRAPHY } from "./message-typography";
 
 const MESSAGE_AVATAR_CLASS = "sticky top-0 flex shrink-0 items-center justify-center self-start rounded-full";
@@ -471,12 +471,13 @@ function AssistantMessage({
   avatar?: React.ReactNode;
   onAvatarClick?: (message: AgentMessage) => void;
 }) {
-  const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const markdownComponents = useMemo(
     () => createMarkdownComponents(onLinkClick),
     [onLinkClick]
   );
+
+  const rawHtml = isRawHtml(content);
 
   return (
     <motion.div
@@ -485,16 +486,22 @@ function AssistantMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-2 w-full min-w-0"
     >
-      <MessageAvatar
-        className="h-6 w-6 bg-secondary"
-        label={t("chat.avatar.assistant", "Assistant avatar")}
-        message={message}
-        onClick={onAvatarClick}
-      >
-        {avatar ?? <Bot className="h-3.5 w-3.5 text-secondary-foreground" />}
-      </MessageAvatar>
+      {!isResult && (
+        <MessageAvatar
+          className="h-6 w-6 bg-secondary"
+          label="Assistant"
+          message={message}
+          onClick={onAvatarClick}
+        >
+          {avatar ?? <Bot className="h-3.5 w-3.5 text-secondary-foreground" />}
+        </MessageAvatar>
+      )}
       <div className="flex-1 min-w-0 overflow-hidden">
-        <div className={cn("rounded-lg px-2.5 py-1.5 overflow-hidden", isResult ? "bg-primary/10" : "bg-muted")}>
+        <div className={cn(
+          "rounded-lg overflow-hidden",
+          rawHtml ? "" : "px-2.5 py-1.5",
+          isResult ? "bg-primary/10" : "bg-muted"
+        )}>
           <div
             className={cn(
               "prose prose-sm dark:prose-invert max-w-none overflow-hidden break-words text-foreground",

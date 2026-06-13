@@ -230,8 +230,7 @@ export interface AgentConfig {
   executor_type?: string;
   mcp_servers?: (string | AgentMcpEntry)[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
   executor_config?: Record<string, unknown>;
 }
 

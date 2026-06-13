@@ -26,6 +26,9 @@ import {
   Plus,
   Trash2,
   X,
+  ShieldOff,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +36,6 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -49,6 +51,7 @@ import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import { OpenClawConfigSection } from "./openclaw-config-section";
+import { McpConfigEditor } from "./mcp-config-editor";
 
 // Section IDs for scroll navigation
 export type ConfigSectionId = "prompts" | "model" | "capabilities" | "memory" | "variables";
@@ -76,15 +79,13 @@ export interface AgentConfigPanelProps {
   model: string;
   temperature: number;
   executorType: ExecutorType;
-  planMode: boolean;
-  approvals: boolean;
+  approvalMode: "bypass" | "rules" | "ai";
   models: ModelOption[];
   executors: ExecutorOption[];
   onModelChange: (value: string) => void;
   onTemperatureChange: (value: number) => void;
   onExecutorTypeChange: (value: ExecutorType) => void;
-  onPlanModeChange: (value: boolean) => void;
-  onApprovalsChange: (value: boolean) => void;
+  onApprovalModeChange: (mode: "bypass" | "rules" | "ai") => void;
   onCheckAvailability: () => void;
   availability: AvailabilityInfo | null;
   checkingAvailability?: boolean;
@@ -95,6 +96,7 @@ export interface AgentConfigPanelProps {
   selectedSkills: string[];
   onConfigureMcp: () => void;
   onConfigureSkills: () => void;
+  onMcpServersChange?: (servers: AgentMcpEntry[]) => void;
   onRemoveMcpServer?: (serverName: string) => void;
   onRemoveSkill?: (skillId: string) => void;
 
@@ -141,15 +143,13 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       model,
       temperature,
       executorType,
-      planMode,
-      approvals,
+      approvalMode,
       models,
       executors,
       onModelChange,
       onTemperatureChange,
       onExecutorTypeChange,
-      onPlanModeChange,
-      onApprovalsChange,
+      onApprovalModeChange,
       onCheckAvailability,
       availability,
       checkingAvailability,
@@ -159,6 +159,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       selectedSkills,
       onConfigureMcp,
       onConfigureSkills,
+      onMcpServersChange,
       onRemoveMcpServer,
       onRemoveSkill,
       // Memory
@@ -397,19 +398,37 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               {isClaudeCode && (
                 <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                   <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {t("settingsAgents.claudeCodeOptions")}
+                    执行器选项
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-normal">
-                      {t("settingsAgents.planMode")}
-                    </Label>
-                    <Switch checked={planMode} onCheckedChange={onPlanModeChange} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-normal">
-                      {t("settingsAgents.approvals")}
-                    </Label>
-                    <Switch checked={approvals} onCheckedChange={onApprovalsChange} />
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-normal">审批模式</Label>
+                    <div className="flex h-8 rounded-md border border-border overflow-hidden">
+                      {([
+                        { mode: "bypass" as const, icon: ShieldOff, label: "绕过审批" },
+                        { mode: "rules" as const, icon: ShieldCheck, label: "规则审批" },
+                        { mode: "ai" as const, icon: ShieldAlert, label: "AI 审批" },
+                      ]).map(({ mode, icon: Icon, label }, idx) => {
+                        const isActive = approvalMode === mode;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            className={cn(
+                              "flex flex-1 items-center justify-center gap-1.5 text-xs transition-colors",
+                              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
+                              idx < 2 && "border-r border-border",
+                              isActive
+                                ? "bg-accent text-accent-foreground font-medium"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                            onClick={() => onApprovalModeChange(mode)}
+                          >
+                            <Icon className="size-3.5" />
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -496,43 +515,20 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                       </Badge>
                     )}
                   </Label>
-                  <Button variant="outline" size="sm" onClick={onConfigureMcp}>
-                    <Plus className="h-3.5 w-3.5 mr-1" />
-                    {t("common.configure")}
-                  </Button>
                 </div>
-                {selectedMcpServers.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {selectedMcpServers.map((server) => (
-                      <div
-                        key={server.name}
-                        className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group"
-                      >
-                        <Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1 truncate">{server.name}</span>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
-                          {server.type.toUpperCase()}
-                        </Badge>
-                        {onRemoveMcpServer && (
-                          <button
-                            type="button"
-                            onClick={() => onRemoveMcpServer(server.name)}
-                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed p-4 text-center">
-                    <Server className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noMcpServers")}
-                    </p>
-                  </div>
-                )}
+                <McpConfigEditor
+                  servers={selectedMcpServers}
+                  onServersChange={onMcpServersChange ?? ((servers) => {
+                    // Fallback: use onRemoveMcpServer for deletion compatibility
+                    if (onRemoveMcpServer) {
+                      const removedNames = selectedMcpServers
+                        .filter((s) => !servers.some((ns) => ns.name === s.name))
+                        .map((s) => s.name);
+                      removedNames.forEach((name) => onRemoveMcpServer(name));
+                    }
+                  })}
+                  onOpenDialog={onConfigureMcp}
+                />
               </div>
 
               {/* Skills */}

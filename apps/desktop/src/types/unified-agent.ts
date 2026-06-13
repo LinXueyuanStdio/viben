@@ -77,10 +77,8 @@ export interface UnifiedAgent {
   mcpServers?: string[];
   /** 技能列表 */
   skills?: string[];
-  /** 是否计划模式 */
-  planMode?: boolean;
-  /** 是否需要审批 */
-  approvals?: boolean;
+  /** 审批模式 */
+  approvalMode?: "bypass" | "rules" | "ai";
   /** 创建时间 */
   createdAt?: string;
   /** 更新时间 */
@@ -158,8 +156,7 @@ export function vibenAgentToUnified(agent: AgentInfo): UnifiedAgent {
     maxTokens: agent.max_tokens,
     mcpServers: agent.mcp_servers,
     skills: agent.skills,
-    planMode: agent.plan_mode,
-    approvals: agent.approvals,
+    approvalMode: agent.approval_mode,
     createdAt: agent.created_at,
     updatedAt: agent.updated_at,
     rawVibenAgent: agent,

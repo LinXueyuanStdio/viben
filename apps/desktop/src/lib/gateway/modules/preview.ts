@@ -330,6 +330,7 @@ export type PreviewSSEEventType =
   | "status"      // Status update
   | "log"         // Log message (stdout/stderr)
   | "retry"       // Port retry attempt
+  | "port_conflict" // Port is occupied, awaiting user decision
   | "complete"    // Startup complete (success or final error)
   | "error";      // Error during startup
 
@@ -358,6 +359,7 @@ export interface PreviewSSECallbacks {
   onStatus?: (status: PreviewServerStatus, message?: string, port?: number, url?: string) => void;
   onLog?: (message: string) => void;
   onRetry?: (attempt: number, maxAttempts: number, message: string) => void;
+  onPortConflict?: (port: number, message: string) => void;
   onComplete?: (result: PreviewStatusResponse) => void;
   onError?: (error: string) => void;
 }
@@ -421,6 +423,12 @@ export function startPreviewWithSSE(
             parsed.data.attempt ?? 0,
             parsed.data.maxAttempts ?? 10,
             parsed.data.message ?? ""
+          );
+          break;
+        case "port_conflict":
+          callbacks?.onPortConflict?.(
+            parsed.data.port ?? 0,
+            parsed.data.message ?? "Port is occupied"
           );
           break;
         case "complete":

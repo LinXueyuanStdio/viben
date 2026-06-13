@@ -24,12 +24,10 @@ describe("executor/engines/claude", () => {
       expect(caps).toContain("SESSION_RESUME");
       expect(caps).toContain("SESSION_FORK");
       expect(caps).toContain("CONTEXT_USAGE");
-      expect(caps).toContain("PLAN_MODE");
-      expect(caps).toContain("APPROVALS");
     });
 
-    it("should return 9 capabilities", () => {
-      expect(executor.capabilities()).toHaveLength(9);
+    it("should return 7 capabilities", () => {
+      expect(executor.capabilities()).toHaveLength(7);
     });
   });
 

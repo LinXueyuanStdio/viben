@@ -61,8 +61,7 @@ interface AgentConfigPayload {
   executor_config?: Record<string, unknown>;
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
-  plan_mode?: boolean;
-  approvals?: boolean;
+  approval_mode?: "bypass" | "rules" | "ai";
 }
 
 /**
@@ -221,8 +220,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       executor_type: config.executorType,
       mcp_servers: config.mcpServers,
       skills: config.skills,
-      plan_mode: config.planMode,
-      approvals: config.approvals,
+      approval_mode: config.approval_mode,
     };
   } catch (error) {
     log.error({ err: error, configPath }, "Failed to load agent config");
@@ -355,8 +353,8 @@ async function executeOpenClawAgent(session: WsSession, prompt: string, resume?:
       session.active_openclaw_client = client;
     }
 
-    // Check if agent has approvals enabled (non-YOLO)
-    const approvalMode = agentConfig?.approvals ? "interactive" : "yolo";
+    // Determine approval mode for OpenClaw proxy
+    const approvalMode = agentConfig?.approval_mode === "bypass" ? "yolo" : "interactive";
     const proxy = new OpenClawChatProxy(client, { approvalMode: approvalMode as "yolo" | "interactive" });
     session.active_openclaw_proxy = proxy;
 

@@ -214,7 +214,6 @@ describe("executor/engines/base", () => {
 
       expect(executor.supports("CHAT_STREAMING")).toBe(false);
       expect(executor.supports("SESSION_RESUME")).toBe(false);
-      expect(executor.supports("PLAN_MODE")).toBe(false);
     });
 
     it("should return false for empty capabilities array", () => {
@@ -233,8 +232,6 @@ describe("executor/engines/base", () => {
         "SESSION_RESUME",
         "SESSION_FORK",
         "CONTEXT_USAGE",
-        "PLAN_MODE",
-        "APPROVALS",
       ];
 
       executor.setCapabilities(allCapabilities);
@@ -245,7 +242,7 @@ describe("executor/engines/base", () => {
     });
 
     it("should be consistent with capabilities() return value", () => {
-      const caps: ExecutorCapability[] = ["SPAWN", "CHAT_SDK", "APPROVALS"];
+      const caps: ExecutorCapability[] = ["SPAWN", "CHAT_SDK", "CONTEXT_USAGE"];
       executor.setCapabilities(caps);
 
       const returned = executor.capabilities();
@@ -468,8 +465,7 @@ describe("executor/engines/base", () => {
       const fullConfig: ExecutorConfig = {
         model: "claude-3",
         appendPrompt: "Test prompt",
-        planMode: true,
-        approvals: false,
+        approvalMode: "bypass",
         dangerouslySkipPermissions: true,
         baseCommandOverride: "custom-cli",
         env: { CUSTOM_VAR: "value" },
@@ -479,8 +475,7 @@ describe("executor/engines/base", () => {
       const internal = configuredExecutor.getInternalConfig();
       expect(internal.model).toBe("claude-3");
       expect(internal.appendPrompt).toBe("Test prompt");
-      expect(internal.planMode).toBe(true);
-      expect(internal.approvals).toBe(false);
+      expect(internal.approvalMode).toBe("bypass");
       expect(internal.dangerouslySkipPermissions).toBe(true);
       expect(internal.baseCommandOverride).toBe("custom-cli");
       expect(internal.env).toEqual({ CUSTOM_VAR: "value" });

@@ -276,6 +276,13 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
             setMaxRetryAttempts(max);
             addLog(`[Retry ${attempt}/${max}] ${message}`);
           },
+          onPortConflict: (conflictPort, message) => {
+            if (!mountedRef.current) return;
+            console.log("[useVitePreview] SSE port_conflict:", conflictPort, message);
+            addLog(message);
+            setPortConflict({ port: conflictPort, workingDir, options });
+            setStatus("error");
+          },
           onComplete: (result) => {
             if (!mountedRef.current) return;
             console.log("[useVitePreview] SSE complete:", result);

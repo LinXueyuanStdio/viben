@@ -63,6 +63,7 @@ export type PreviewSSEEventType =
   | "status"      // Status update
   | "log"         // Log message (stdout/stderr)
   | "retry"       // Port retry attempt
+  | "port_conflict" // Port is occupied, awaiting user decision
   | "complete"    // Startup complete (success or final error)
   | "error";      // Error during startup
 
@@ -322,15 +323,25 @@ export class PreviewManager {
           onEvent({ type: "complete", data: { result: finalStatus } });
           return;
         } else {
-          // Service is not responding - need to start fresh
-          log.warn({ port: preferredPort }, "Port is occupied but service is not responding, will start new server");
+          // Service is not responding - notify frontend and stop, let user decide
+          log.warn({ port: preferredPort }, "Port is occupied but service is not responding");
           onEvent({
-            type: "log",
+            type: "port_conflict",
             data: {
-              message: `Port ${preferredPort} is occupied but not responding. Starting new server on a different port...`,
+              port: preferredPort,
+              message: `Port ${preferredPort} is occupied by another process that is not responding.`,
             },
           });
-          // Fall through to start new server (don't use preferred port)
+          // Send complete with error so the SSE connection closes
+          const errorStatus: PreviewStatus = {
+            id: `preview-${taskId}`,
+            task_id: taskId,
+            status: "error",
+            error: `Port ${preferredPort} is occupied`,
+            host_port: preferredPort,
+          };
+          onEvent({ type: "complete", data: { result: errorStatus } });
+          return;
         }
       }
     }
@@ -360,7 +371,7 @@ export class PreviewManager {
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
 
-      // Try preferred port first on first attempt (we already checked it's not in use above)
+      // Try preferred port first on first attempt
       if (attempt === 1 && preferredPort && !this.usedPorts.has(preferredPort)) {
         port = preferredPort;
         this.usedPorts.add(port);
