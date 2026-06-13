@@ -2,7 +2,7 @@
  * usePageGitStatus Hook
  *
  * Fetches git status and diff data for a page directory via the gateway API.
- * Used by PageDiffPanel to display file changes and diffs.
+ * Used by PageCodePanel to display file changes and diffs.
  */
 
 import { useState, useEffect, useCallback } from "react";

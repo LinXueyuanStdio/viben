@@ -322,9 +322,9 @@ export function registerFilesystemRoutes(fastify: FastifyInstance): void {
       : workspace_path;
 
     try {
-      // Run git status in the workspace root
+      // Use --untracked-files=all so individual files are listed instead of collapsed directories
       const { stdout } = await execAsync(
-        `git -C "${workspace_path}" status --porcelain --no-renames "${targetDir}"`,
+        `git -C "${workspace_path}" status --porcelain --no-renames --untracked-files=all "${targetDir}"`,
       );
 
       if (!stdout.trim()) {

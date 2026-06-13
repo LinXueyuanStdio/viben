@@ -27,7 +27,6 @@ import {
   Pencil,
   CopyPlus,
   Code2,
-  GitCompare,
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,7 +53,6 @@ import { WorkspaceHeader } from "@/components/workspace";
 import { toast } from "@/hooks/use-toast";
 import { PagePreview, PageIconGrid } from "./components";
 import { PageCodePanel } from "./components/page-code-panel";
-import { PageDiffPanel } from "./components/page-diff-panel";
 import { PageSettingPanel } from "./components/page-setting-panel";
 import { EditPageDialog } from "./components/edit-page-dialog";
 import type { PageViewMode } from "./components/page-preview";
@@ -71,7 +69,7 @@ import {
 import { buildColdStartBreadcrumb, registry } from "@/navigation/navigate";
 
 /** Workspace page tab for server/static pages */
-type WorkspacePageTab = "preview" | "code" | "diff" | "setting";
+type WorkspacePageTab = "preview" | "code" | "setting";
 
 /**
  * Extract uid from legacy page path
@@ -442,7 +440,6 @@ export function WorkspacePage() {
     ];
     if (page?.type !== "proxy") {
       tabs.push({ key: "code", icon: Code2, label: t("page.tab.code", "Code") });
-      tabs.push({ key: "diff", icon: GitCompare, label: t("page.tab.diff", "Diff") });
     }
     tabs.push({ key: "setting", icon: Settings, label: t("page.tab.setting", "Setting") });
     return tabs;
@@ -631,18 +628,6 @@ export function WorkspacePage() {
       return (
         <div className="flex-1 overflow-hidden">
           <PageCodePanel
-            workspacePath={workspace.path}
-            pageUid={page.uid}
-            className="h-full"
-          />
-        </div>
-      );
-    }
-
-    if (activeTab === "diff") {
-      return (
-        <div className="flex-1 overflow-hidden">
-          <PageDiffPanel
             workspacePath={workspace.path}
             pageUid={page.uid}
             className="h-full"

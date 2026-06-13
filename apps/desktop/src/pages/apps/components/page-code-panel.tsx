@@ -6,28 +6,40 @@ import {
   useMemo,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { DiffEditor } from "@monaco-editor/react";
 import {
   ChevronDown,
   ChevronRight,
   File,
+  FileEdit,
+  Plus,
+  Trash2,
+  ArrowRightLeft,
   Folder,
   FolderOpen,
   X,
   Loader2,
   RefreshCw,
+  FolderTree,
+  GitCompare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CodeEditor } from "@/components/skill-files/code-editor";
 import { ResizeHandle } from "@/pages/conversation/components/resize-handle";
+import { useTheme } from "@/hooks/use-theme";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { readDirectory, readFileContent, writeFile } from "@/lib/gateway/modules/files";
+import { usePageGitStatus } from "@/hooks/use-page-git-status";
+import type { GitFileChange } from "@/hooks/use-page-git-status";
 import type { FileEntry } from "@/lib/gateway/types/file";
 import type { SaveStatus } from "@/hooks";
 
 // ============================================================================
 // Types
 // ============================================================================
+
+type SidebarMode = "files" | "changes";
 
 interface PageCodePanelProps {
   workspacePath: string;
@@ -89,6 +101,60 @@ function getFileIcon(name: string) {
     default:
       return <File className="h-4 w-4 text-muted-foreground" />;
   }
+}
+
+// ============================================================================
+// Diff helpers
+// ============================================================================
+
+function getChangeStatusIcon(status: GitFileChange["status"]) {
+  switch (status) {
+    case "modified":
+      return FileEdit;
+    case "added":
+      return Plus;
+    case "deleted":
+      return Trash2;
+    case "renamed":
+      return ArrowRightLeft;
+  }
+}
+
+function getChangeStatusColor(status: GitFileChange["status"]): string {
+  switch (status) {
+    case "modified":
+      return "text-yellow-600 dark:text-yellow-400";
+    case "added":
+      return "text-green-600 dark:text-green-400";
+    case "deleted":
+      return "text-red-600 dark:text-red-400";
+    case "renamed":
+      return "text-blue-600 dark:text-blue-400";
+  }
+}
+
+function getChangeStatusBadge(status: GitFileChange["status"]): { label: string; classes: string } {
+  switch (status) {
+    case "modified":
+      return { label: "M", classes: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300" };
+    case "added":
+      return { label: "A", classes: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" };
+    case "deleted":
+      return { label: "D", classes: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" };
+    case "renamed":
+      return { label: "R", classes: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
+  }
+}
+
+function getFileLanguage(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+  const langMap: Record<string, string> = {
+    ts: "typescript", tsx: "typescriptreact", js: "javascript", jsx: "javascriptreact",
+    json: "json", md: "markdown", css: "css", scss: "scss", html: "html",
+    yaml: "yaml", yml: "yaml", py: "python", rs: "rust", go: "go",
+    sh: "shell", bash: "shell", sql: "sql", xml: "xml", svg: "xml",
+  };
+  return langMap[ext] || "plaintext";
 }
 
 // ============================================================================
@@ -184,11 +250,15 @@ export function PageCodePanel({
   className,
 }: PageCodePanelProps) {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const baseUrl = getGatewayUrl();
   const pageDirPath = useMemo(
     () => `${workspacePath}/pages/${pageUid}`,
     [workspacePath, pageUid]
   );
+
+  // Sidebar mode: file tree or git changes
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("files");
 
   // File tree state
   const [treeNodes, setTreeNodes] = useState<TreeNode[]>([]);
@@ -202,6 +272,13 @@ export function PageCodePanel({
   // Sidebar resize state
   const [sidebarWidth, setSidebarWidth] = useState(250);
 
+  // Diff state
+  const { changes, loading: changesLoading, refresh: refreshChanges, fetchDiff } = usePageGitStatus(workspacePath, pageUid);
+  const [selectedDiffFile, setSelectedDiffFile] = useState<string | null>(null);
+  const [diffOld, setDiffOld] = useState("");
+  const [diffNew, setDiffNew] = useState("");
+  const [diffLoading, setDiffLoading] = useState(false);
+
   // Auto-save timer refs
   const saveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -209,7 +286,7 @@ export function PageCodePanel({
   // File tree loading — prefetch first N levels in parallel
   // ============================================================================
 
-  const PREFETCH_DEPTH = 3;
+  const PREFETCH_DEPTH = 1;
 
   const loadDirectory = useCallback(
     async (dirPath: string): Promise<TreeNode[]> => {
@@ -500,6 +577,45 @@ export function PageCodePanel({
   }, []);
 
   // ============================================================================
+  // Diff file loading
+  // ============================================================================
+
+  useEffect(() => {
+    if (!selectedDiffFile) {
+      setDiffOld("");
+      setDiffNew("");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadDiff() {
+      setDiffLoading(true);
+      const result = await fetchDiff(selectedDiffFile!);
+      if (!cancelled) {
+        if (result) {
+          setDiffOld(result.oldContent);
+          setDiffNew(result.newContent);
+        } else {
+          setDiffOld("");
+          setDiffNew("");
+        }
+        setDiffLoading(false);
+      }
+    }
+
+    loadDiff();
+    return () => { cancelled = true; };
+  }, [selectedDiffFile, fetchDiff]);
+
+  const diffLanguage = useMemo(
+    () => (selectedDiffFile ? getFileLanguage(selectedDiffFile) : "plaintext"),
+    [selectedDiffFile]
+  );
+
+  const monacoTheme = resolvedTheme === "dark" ? "vs-dark" : "vs";
+
+  // ============================================================================
   // Active tab content
   // ============================================================================
 
@@ -508,59 +624,134 @@ export function PageCodePanel({
     [openTabs, activeTabPath]
   );
 
+  // Whether showing diff mode (changes selected in sidebar)
+  const showingDiff = sidebarMode === "changes" && selectedDiffFile !== null;
+
   // ============================================================================
   // Render
   // ============================================================================
 
   return (
     <div className={cn("flex h-full min-h-0", className)}>
-      {/* Left Panel: File Tree */}
+      {/* Left Panel: File Tree / Changes */}
       <div
         className="relative shrink-0 flex flex-col h-full border-r min-h-0"
         style={{ width: sidebarWidth }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("codePanel.files")}
-          </span>
+        {/* Mode toggle */}
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b shrink-0">
           <button
-            onClick={loadTree}
+            onClick={() => setSidebarMode("files")}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              sidebarMode === "files"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+          >
+            <FolderTree className="h-3.5 w-3.5" />
+            {t("codePanel.files")}
+          </button>
+          <button
+            onClick={() => { setSidebarMode("changes"); refreshChanges(); }}
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+              sidebarMode === "changes"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            {t("pages.diff.changes", "Changes")}
+            {changes.length > 0 && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-semibold">
+                {changes.length}
+              </span>
+            )}
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={sidebarMode === "files" ? loadTree : refreshChanges}
             className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={t("codePanel.refresh")}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={cn("h-3.5 w-3.5", (sidebarMode === "files" ? isLoadingTree : changesLoading) && "animate-spin")} />
           </button>
         </div>
 
-        {/* Tree content */}
+        {/* Content: File tree or Changes list */}
         <ScrollArea className="flex-1 min-h-0">
-          <div className="p-1">
-            {isLoadingTree ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : treeError ? (
-              <div className="px-3 py-4 text-sm text-destructive">
-                {treeError}
-              </div>
-            ) : treeNodes.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-muted-foreground">
-                {t("codePanel.noFiles")}
-              </div>
-            ) : (
-              treeNodes.map((node) => (
-                <FileTreeNode
-                  key={node.entry.path}
-                  node={node}
-                  depth={0}
-                  selectedPath={activeTabPath}
-                  onSelectFile={openFile}
-                  onToggleDir={toggleDir}
-                />
-              ))
-            )}
-          </div>
+          {sidebarMode === "files" ? (
+            <div className="p-1">
+              {isLoadingTree ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : treeError ? (
+                <div className="px-3 py-4 text-sm text-destructive">
+                  {treeError}
+                </div>
+              ) : treeNodes.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-muted-foreground">
+                  {t("codePanel.noFiles")}
+                </div>
+              ) : (
+                treeNodes.map((node) => (
+                  <FileTreeNode
+                    key={node.entry.path}
+                    node={node}
+                    depth={0}
+                    selectedPath={activeTabPath}
+                    onSelectFile={openFile}
+                    onToggleDir={toggleDir}
+                  />
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="py-1">
+              {changesLoading && changes.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : changes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-1 py-8 text-muted-foreground">
+                  <p className="text-xs">{t("pages.diff.noChanges", "No changes detected")}</p>
+                </div>
+              ) : (
+                changes.map((change) => {
+                  const StatusIcon = getChangeStatusIcon(change.status);
+                  const badge = getChangeStatusBadge(change.status);
+                  const isSelected = change.path === selectedDiffFile;
+                  const fileName = change.path.split("/").pop() ?? change.path;
+                  const fileDir = change.path.split("/").slice(0, -1).join("/");
+
+                  return (
+                    <button
+                      key={change.path}
+                      className={cn(
+                        "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors",
+                        "hover:bg-accent/50",
+                        isSelected && "bg-accent text-accent-foreground"
+                      )}
+                      onClick={() => setSelectedDiffFile(change.path)}
+                    >
+                      <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", getChangeStatusColor(change.status))} />
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-medium">{fileName}</span>
+                        {fileDir && (
+                          <span className="truncate text-[10px] text-muted-foreground">{fileDir}</span>
+                        )}
+                      </div>
+                      <span className={cn("shrink-0 rounded px-1 py-0.5 text-[10px] font-bold", badge.classes)}>
+                        {badge.label}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          )}
         </ScrollArea>
 
         {/* Resize handle */}
@@ -572,10 +763,10 @@ export function PageCodePanel({
         />
       </div>
 
-      {/* Right Panel: Editor with Tabs */}
+      {/* Right Panel: Editor or Diff */}
       <div className="flex flex-col flex-1 h-full min-w-0 min-h-0">
-        {/* Tab bar */}
-        {openTabs.length > 0 && (
+        {/* Tab bar (only when in files mode or no diff selected) */}
+        {!showingDiff && openTabs.length > 0 && (
           <div className="flex items-center border-b shrink-0 overflow-x-auto">
             {openTabs.map((tab) => (
               <div
@@ -589,7 +780,6 @@ export function PageCodePanel({
                 )}
                 onClick={() => setActiveTabPath(tab.path)}
               >
-                {/* Dirty indicator */}
                 {tab.isDirty && (
                   <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                 )}
@@ -608,9 +798,47 @@ export function PageCodePanel({
           </div>
         )}
 
-        {/* Editor area */}
+        {/* Diff header when showing diff */}
+        {showingDiff && (
+          <div className="flex items-center gap-2 px-3 py-2 border-b shrink-0">
+            <File className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="truncate text-xs font-medium text-foreground">
+              {selectedDiffFile}
+            </span>
+          </div>
+        )}
+
+        {/* Content area */}
         <div className="flex-1 min-h-0">
-          {activeTab ? (
+          {showingDiff ? (
+            diffLoading ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : (
+              <DiffEditor
+                original={diffOld}
+                modified={diffNew}
+                language={diffLanguage}
+                theme={monacoTheme}
+                options={{
+                  readOnly: true,
+                  renderSideBySide: false,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  lineNumbers: "on",
+                  fontSize: 12,
+                  wordWrap: "on",
+                  diffWordWrap: "on",
+                  renderOverviewRuler: false,
+                  scrollbar: {
+                    verticalScrollbarSize: 8,
+                    horizontalScrollbarSize: 8,
+                  },
+                }}
+              />
+            )
+          ) : activeTab ? (
             <CodeEditor
               key={activeTab.path}
               value={activeTab.content}
