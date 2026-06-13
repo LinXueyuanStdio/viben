@@ -28,7 +28,7 @@ packages/core/src/acp/ops/
 ```
 WS 连接建立
     ↓
-newSession / loadSession → 写入内存 Map + 写磁盘 meta.json
+newSession / loadSession → 写入内存 Map + 写磁盘 meta.json（status: "active"）
     ↓
 执行中：backend 流式 → sessionUpdate → SdkAcpConnection → 前端
     ↓
@@ -39,14 +39,16 @@ WS 断开 → parkSession()
     └── 每 5s 或 prompt 完成时 → appendEvent() → events.jsonl
 
 WS 重连 → loadSession(id)
-    ├── 内存有（正常断线重连）：
-    │     swap 回真实 connection
-    │     回放内存缓冲 + 磁盘 buffer 合并
-    │     挂起的 permission/tool_call 推给用户交互
+    ├── 内存有（正常断线重连，connection 是 DetachedConnection）：
+    │     detachedConn.resume(newConnection) → 返回 history
+    │     loadSession 响应携带 history 字段
+    │     resume() 异步处理 pending permission/tool_call（不阻塞响应返回）
     └── 内存无（gateway 重启）：
           从 meta.json 读取 sdk_session_id
           重建 session，backend 用 sdk_session_id 恢复上下文
-          回放 events.jsonl 作历史显示（pending 事件标为 abandoned）
+          回放 events.jsonl → 收集 session_update 事件放入 history
+          pending 事件标为 abandoned
+          loadSession 响应携带 history 字段
 ```
 
 ### 数据丢失边界
@@ -69,7 +71,7 @@ WS 重连 → loadSession(id)
 ~/.viben/acp/sessions/
   <session-id>/
     meta.json       ← AcpSessionRecord（会话元数据）
-    events.jsonl    ← append-only 完整事件流
+    events.jsonl    ← append-only 完整事件流（事件行 + patch 行混合）
 ```
 
 ### 类型定义
@@ -83,18 +85,20 @@ export interface AcpSessionRecord {
   cwd: string;
   created_at: string;
   last_active_at: string;
-  title?: string;                // 会话标题，取自 agentCapabilities._meta?.title 或 agent_config.name
+  title?: string;                // 取自 agentCapabilities._meta?.title 或 agent_config.name
   agent_config_path?: string;
   agent_dir?: string;
   agent_config?: AgentConfigPayload;
   sandbox_config?: AcpSandboxConfig;
   mcp_servers: AcpMcpServer[];
   sdk_session_id?: string;       // claude-code 内部 session ID，用于重建 backend
+  agent_capabilities?: AcpAgentCapabilities;  // park 时保存，用于 listSessions 返回
   persist_session_id?: string;
   persist_task_id?: string;
   gateway_url?: string;
 }
 
+// 事件行：追加到 events.jsonl 的普通事件
 export interface AcpSessionEvent {
   seq: number;
   ts: string;
@@ -106,10 +110,29 @@ export interface AcpSessionEvent {
     | "client_tool_call"
     | "client_tool_result"
     | "notification";
-  id?: string;                    // 需要响应的请求 ID
+  // 以下字段仅在需要响应的类型上存在（permission_request / client_tool_call）
+  id?: string;                   // 请求 ID，用于响应关联
   status?: "pending" | "resolved" | "cancelled" | "abandoned";
-  request_id?: string;            // 响应对应的请求 ID
-  data: unknown;
+  request_id?: string;           // 响应对应的请求 ID
+  data: AcpSessionEventData;     // 见下方各 type 对应的 data 类型
+}
+
+// data 字段按 type 对应：
+//   "session_update"      → AcpSessionUpdate（来自 backend 的流式数据）
+//   "permission_request"  → AcpRequestPermissionRequest
+//   "permission_response" → AcpRequestPermissionResponse
+//   "client_tool_call"    → AcpClientToolCallRequest
+//   "client_tool_result"  → unknown（工具执行结果）
+//   "prompt"              → AcpPromptRequest
+//   "notification"        → unknown
+export type AcpSessionEventData = unknown;
+
+// Patch 行：用于更新事件 status，追加到同一 events.jsonl
+// 与事件行的区分标志：存在 _type: "patch" 字段
+export interface AcpSessionEventPatch {
+  _type: "patch";                // 必填，用于区分 patch 行和事件行
+  target_seq: number;            // 目标事件的 seq（注意：用 target_seq 而非 seq）
+  patch: { status: AcpSessionEvent["status"] };
 }
 
 export interface AcpSessionStore {
@@ -117,11 +140,13 @@ export interface AcpSessionStore {
   loadRecord(id: string): Promise<AcpSessionRecord | null>;
   listRecords(): Promise<AcpSessionRecord[]>;
   deleteRecord(id: string): Promise<void>;
-  appendEvent(sessionId: string, event: AcpSessionEvent): Promise<void>;
+  // appendEvent 内部分配并返回该事件的 seq（调用方用于后续 updateEventStatus）
+  appendEvent(sessionId: string, event: Omit<AcpSessionEvent, "seq">): Promise<number>;
   loadEvents(sessionId: string): Promise<AcpSessionEvent[]>;
+  // 直接按 seq 更新状态，无需全量扫描
   updateEventStatus(
     sessionId: string,
-    eventId: string,
+    seq: number,
     status: AcpSessionEvent["status"]
   ): Promise<void>;
 }
@@ -129,39 +154,62 @@ export interface AcpSessionStore {
 
 ### 文件系统实现说明
 
-- `listRecords()`：扫描目录，读所有子目录的 `meta.json`
-- `appendEvent()`：追加一行到 `events.jsonl`
-- `updateEventStatus()`：追加一条 `{seq, patch: {status}}` patch 行，避免重写整个文件
-- `loadEvents()`：读取所有行，合并 patch（同一 `seq` 的最新 patch 优先），返回最终状态列表
+- `listRecords()`：扫描目录，`Promise.allSettled` 并行读所有子目录的 `meta.json`
+- `appendEvent()`：
+  - 内部维护 per-session 的 `nextSeq` 计数器（从 0 开始，或从上次 `saveRecord` 记录的 `last_seq + 1` 恢复）
+  - 追加一行 JSON + `\n` 到 `events.jsonl`
+  - 写入中途 crash 可能导致末尾行 JSON 不完整；`loadEvents()` 解析时对每行做 `try-catch`，静默跳过损坏行并记录 warning
+- `updateEventStatus(seq, status)`：追加一条 `AcpSessionEventPatch` 行，避免重写整个文件
+- `loadEvents()`：
+  - 逐行解析，用 `_type === "patch"` 区分 patch 行和事件行
+  - 维护 `patchMap: Map<number, status>`（`target_seq` → 最新 status）
+  - 最终对每个事件，若 `patchMap.has(event.seq)`，则用 patch 覆盖 `event.status`
+  - **边界条件**：
+    - 孤儿 patch（无对应事件行）：静默忽略，记录 debug 日志
+    - 同一 `target_seq` 多个 patch：last-write-wins（用最后一个 patch 的 status）
+    - 损坏行（JSON 解析失败）：try-catch 跳过，记录 warning
 
 ### 并发写锁
 
-`appendEvent()` 和 `updateEventStatus()` 对同一 session 的 `events.jsonl` 是并发追加操作（定时刷盘 + `resume()` 触发的最终刷盘可能交叉）。需要 **per-session 异步写锁**，防止并发 `write` 系统调用导致行交叉损坏。
-
-实现参考项目已有的 `taskLock.withLock()` 模式（见 `packages/core/src/services/event-store.ts`）：
+`appendEvent()` 和 `updateEventStatus()` 可能并发调用（定时刷盘 + `resume()` 触发的最终刷盘交叉）。直接复用项目已有的 `AsyncLock`（`packages/core/src/utils/async-lock.ts`），实现 per-session 写锁：
 
 ```typescript
-// session-store.ts 内部
-private writeLocks = new Map<string, Promise<void>>();
+import { AsyncLock } from "../../utils/async-lock";
 
-private async withWriteLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
-  const current = this.writeLocks.get(sessionId) ?? Promise.resolve();
-  let release!: () => void;
-  const next = new Promise<void>((res) => (release = res));
-  this.writeLocks.set(sessionId, next);
-  await current;
-  try {
-    return await fn();
-  } finally {
-    release();
-    if (this.writeLocks.get(sessionId) === next) {
-      this.writeLocks.delete(sessionId);
-    }
+export class FileSystemAcpSessionStore implements AcpSessionStore {
+  private writeLock = new AsyncLock();
+
+  async appendEvent(sessionId: string, event: Omit<AcpSessionEvent, "seq">): Promise<number> {
+    return this.writeLock.withLock(sessionId, async () => {
+      const seq = this.getNextSeq(sessionId);
+      const line = JSON.stringify({ ...event, seq }) + "\n";
+      await fs.appendFile(this.eventsPath(sessionId), line, "utf8");
+      return seq;
+    });
+  }
+
+  async updateEventStatus(sessionId: string, seq: number, status: AcpSessionEvent["status"]): Promise<void> {
+    return this.writeLock.withLock(sessionId, async () => {
+      const patch: AcpSessionEventPatch = { _type: "patch", target_seq: seq, patch: { status } };
+      await fs.appendFile(this.eventsPath(sessionId), JSON.stringify(patch) + "\n", "utf8");
+    });
   }
 }
 ```
 
-`appendEvent()` 和 `updateEventStatus()` 均通过 `withWriteLock(sessionId, ...)` 包裹文件写入操作。
+### Seq 初始化
+
+`appendEvent()` 内部维护 `private seqCounters = new Map<string, number>()`。
+
+**Gateway 重启时的恢复**：在 `loadSession()` 的"内存无，磁盘有"路径中，调用 `loadEvents()` 后将 `maxSeq + 1` 写入 `seqCounters`：
+
+```typescript
+const allEvents = await store.loadEvents(id);
+const maxSeq = allEvents.reduce((max, e) => Math.max(max, e.seq), -1);
+store.initSeqCounter(sessionId, maxSeq + 1);
+```
+
+`initSeqCounter(sessionId, startSeq)` 作为 `AcpSessionStore` 的内部方法（不在接口中暴露）。
 
 ### 导出
 
@@ -179,32 +227,38 @@ export function createDefaultAcpSessionStore(): AcpSessionStore
 
 ```typescript
 class DetachedConnection implements AcpConnection {
-  private memoryBuffer: AcpSessionEvent[];           // 内存缓冲
-  private flushTimer: NodeJS.Timeout | null;         // 5s 定时刷盘
+  private memoryBuffer: AcpSessionEvent[];
+  private flushTimer: NodeJS.Timeout | null;
   private pendingPermissions: Map<string, PendingRequest<AcpRequestPermissionResponse>>;
   private pendingToolCalls: Map<string, PendingRequest<unknown>>;
-  private seq: number;
   private store: AcpSessionStore;
   private sessionId: string;
   private approvalMode: ApprovalMode;
+  private draining = false;      // 防止 drainPendingAsync 并发执行
 }
 ```
 
 ### `requestPermission` 处理逻辑
 
 ```
-approval_mode = "bypass"  → 直接 resolve(allow_once)，追加 permission_response 事件
-approval_mode = "rules"   → ApprovalHandler.evaluateRules(params)
-                              通过 → resolve，追加 response 事件
-                              不通过 → 追加 permission_request(pending)，挂入 pendingPermissions
-approval_mode = "ai"      → ApprovalHandler.evaluateWithAI(params)（异步）
-                              AI 决定通过 → resolve，追加 response 事件
-                              AI 决定拒绝 / 超时 → 追加 permission_request(pending)，挂入 pendingPermissions
+approval_mode = "bypass"  → 直接 resolve(allow_once)，appendEvent(permission_response)
+approval_mode = "rules"   → ApprovalHandler.evaluate("rules", params)
+                              auto: true  → resolve，appendEvent(permission_response)
+                              auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
+approval_mode = "ai"      → ApprovalHandler.evaluate("ai", params)（异步）
+                              auto: true  → resolve，appendEvent(permission_response)
+                              auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
 ```
+
+注：`appendEvent()` 返回 `seq`，存入 `pendingPermissions` 的 `PendingRequest` 结构中，供后续 `updateEventStatus(seq)` 使用。
+
+### Backend client tool call 超时对齐
+
+Backend 端（`clientToolCompletionRegistry.registerToolOptions`）对 client tool call 有约 60 秒超时。`DetachedConnection` 在 `pendingToolCalls` 中同样设置 60 秒超时：超时后 reject 对应 Promise，从 map 中移除，追加 `client_tool_call(abandoned)` 事件。`resume()` 时跳过已超时的 tool call。
 
 ### `requestClient` 处理逻辑
 
-追加 `client_tool_call` 事件（status: "pending"），挂入 `pendingToolCalls` 等待重连后执行。
+追加 `client_tool_call` 事件（status: "pending"），记录返回的 `seq`，挂入 `pendingToolCalls` 等待重连后执行。同时启动 60 秒超时定时器。
 
 ### 刷盘触发时机
 
@@ -223,47 +277,77 @@ approval_mode = "ai"      → ApprovalHandler.evaluateWithAI(params)（异步）
 interface AcpLoadSessionResponse {
   sessionId: string;
   configOptions?: AcpConfigOption[];
-  history?: AcpSessionEvent[];   // ← 新增：历史事件列表，前端批量渲染
+  history?: AcpSessionEvent[];   // 新增：历史事件列表，前端批量渲染
 }
 ```
 
-前端 `loadSession()` 收到 `history` 后，调用专用的批量渲染路径（不走 `enqueueUiSteps`），直接 `appendUiMessagesImmediately` 构建历史消息列表。
+### History 截止点
+
+`resume()` 被调用时刻的 `memoryBuffer` 快照即为 history。此后 backend 产生的新事件，通过 `newConnection.sessionUpdate()` 直接推送（实时流式路径，不进入 history）。
+
+前端需要能够处理"history 渲染完成后立即收到流式 sessionUpdate"的情况，按 seq 顺序展示即可。
 
 ### `resume()` 方法
 
 ```typescript
 async resume(newConnection: AcpConnection): Promise<AcpSessionEvent[]> {
-  // 返回历史事件列表，由 loadSession 写入响应的 history 字段
+  // 先停止定时器，防止与最终刷盘竞争
+  this.stopFlushTimer();
+
+  // 快照当前 memoryBuffer 作为 history（截止点）
   const history = [...this.memoryBuffer];
 
-  // 停止定时器，切换连接前执行最终刷盘
+  // 执行最终刷盘（将 memoryBuffer 写入磁盘）
   await this.flush();
 
-  // 把内存 pending map 中未 resolve 的请求推给新连接（让用户交互）
-  // 按原始 seq 顺序串行处理，确保 backend 收到正确的响应顺序
-  const sorted = [...this.pendingPermissions.entries()]
+  // 异步处理 pending 请求，不阻塞 resume() 返回
+  // 这样 loadSession 响应可以立即携带 history 返回给前端
+  this.drainPendingAsync(newConnection);
+
+  return history;
+}
+
+// 异步推送 pending 请求给新连接，串行处理保证 backend 收到正确的响应顺序
+private async drainPendingAsync(newConnection: AcpConnection): Promise<void> {
+  if (this.draining) return;
+  this.draining = true;
+
+  const sortedPermissions = [...this.pendingPermissions.entries()]
     .sort((a, b) => a[1].seq - b[1].seq);
-  for (const [id, pending] of sorted) {
-    const decision = await newConnection.requestPermission(pending.params);
-    pending.resolve(decision);
+
+  for (const [id, pending] of sortedPermissions) {
+    try {
+      const decision = await newConnection.requestPermission(pending.params);
+      pending.resolve(decision);
+      await this.store.updateEventStatus(this.sessionId, pending.seq, "resolved");
+    } catch (err) {
+      pending.reject(err);
+    }
     this.pendingPermissions.delete(id);
   }
+
   const sortedTools = [...this.pendingToolCalls.entries()]
     .sort((a, b) => a[1].seq - b[1].seq);
+
   for (const [id, pending] of sortedTools) {
-    const result = await newConnection.requestClient("_viben/client_tool_call", pending.params);
-    pending.resolve(result);
+    try {
+      const result = await newConnection.requestClient("_viben/client_tool_call", pending.params);
+      pending.resolve(result);
+      await this.store.updateEventStatus(this.sessionId, pending.seq, "resolved");
+    } catch (err) {
+      pending.reject(err);
+    }
     this.pendingToolCalls.delete(id);
   }
 
-  return history;
+  this.draining = false;
 }
 ```
 
 ### 定时器生命周期
 
 - **启动**：`parkSession()` 时启动 5s 定时器
-- **停止**：`resume()` 调用时或 `closeSession()` 时清除定时器并执行一次最终刷盘
+- **停止**：`resume()` 调用时先 `stopFlushTimer()` 再执行最终刷盘；`closeSession()` 时同理
 
 ---
 
@@ -275,73 +359,108 @@ async resume(newConnection: AcpConnection): Promise<AcpSessionEvent[]> {
 // 断开时：换成 DetachedConnection，backend 继续运行
 async parkSession(sessionId: string): Promise<void>
 
-// 重连时：换回真实连接，回放历史 + resume pending
+// 重连时：换回真实连接，回放历史 + 异步 resume pending
 async resumeSession(
   sessionId: string,
   newConnection: AcpConnection
-): Promise<void>
+): Promise<AcpSessionEvent[]>
 ```
 
 ### `parkSession()` 实现
 
 ```
-1. 取出 session
-2. 读取 approval_mode：session.agent_config?.approval_mode ?? "rules"
-3. 创建 DetachedConnection（传入 store、sessionId、approval_mode）
-4. session.connection = detachedConnection
-5. store.saveRecord({ ...record, status: "parked" })
-6. 启动 DetachedConnection 的定时刷盘
+1. 取出 session，若不存在则 return
+2. Guard：if session.connection instanceof DetachedConnection → log.warn + return（防止重复 park）
+3. 读取 approval_mode：session.agent_config?.approval_mode ?? "rules"
+4. 创建 DetachedConnection（传入 store、sessionId、approval_mode）
+5. session.connection = detachedConnection
+6. store.saveRecord({ ...record, status: "parked", agent_capabilities: session.agentCapabilities })
+7. 启动 DetachedConnection 的定时刷盘
 ```
 
 ### `loadSession()` 改造
 
 ```
-loadSession(request, newConnection, context) →
+loadSession(request, newConnection: AcpConnection, context) →
+
   case 内存有 session：
     if session.connection instanceof DetachedConnection →
-      resumeSession(id, newConnection)
-    else →
-      session.connection = newConnection   // 普通重连
+      history = await detachedConn.resume(newConnection)
+      session.connection = newConnection
       session.last_active_at = new Date()
+      store.saveRecord({ ...record, status: "active" })
+      return { sessionId, configOptions, history }
+    else →
+      session.connection = newConnection   // 普通重连（如刷新页面）
+      session.last_active_at = new Date()
+      return { sessionId, configOptions }
+
   case 内存无，磁盘有 →
     record = store.loadRecord(id)
-    创建 session record，backend_load_session_id = record.sdk_session_id
+    session = createSessionRecord(request, newConnection, context)
+    session.backend_load_session_id = record.sdk_session_id
+    //   ↑ ensureBackend() 通过 session.backend_load_session_id 构造 loadSession 请求传给 backend
+    session.sdk_session_id = record.sdk_session_id
     sessions.set(id, session)
+
     allEvents = store.loadEvents(id)
-    // 只回放 session_update 类型的事件作为历史显示
-    // permission_request / client_tool_call 类型标为 abandoned（backend 已不在等待）
-    for event of allEvents:
-      if event.type === "session_update" → newConnection.sessionUpdate(event.data)
-      if event.status === "pending" → store.updateEventStatus(id, event.id, "abandoned")
+    store.initSeqCounter(id, maxSeq(allEvents) + 1)
+
+    // 统一用 history 字段返回，不逐条调用 sessionUpdate（与正常重连路径一致）
+    const history = allEvents.filter(e => e.type === "session_update")
+
+    // pending 事件标为 abandoned（backend 已不在等待）
+    for (const event of allEvents) {
+      if (event.status === "pending") {
+        await store.updateEventStatus(id, event.seq, "abandoned")
+      }
+    }
+
+    return { sessionId: id, configOptions: session.config_options, history }
+
   case 都没有 →
-    createSessionRecord(...)   // 现有逻辑
+    createSessionRecord(...)   // 现有逻辑，status: "active"
+    store.saveRecord(record)
+    return { sessionId, configOptions }
 ```
 
 ### `listSessions()` 改造
 
 ```
 内存 Map sessions（in-memory）
-  + store.listRecords()（status = "parked"）
+  + store.listRecords()（包含 parked/finished）
 合并去重（内存优先），按 last_active_at 降序返回
+
+parked sessions 转换为 AcpSessionSummary：
+  queueDepth: 0
+  promptRunning: false
+  agentCapabilities: record.agent_capabilities ?? DEFAULT_AGENT_CAPABILITIES
+  status: "parked"
 ```
 
 ### `createSession()` 改造
 
-创建 session record 后立即 `store.saveRecord()`。
+创建 session record（`status: "active"`）后立即 `store.saveRecord()`。
 
 ### `ensureBackend()` 改造
 
-`session.sdk_session_id = backend.backendSessionId` 赋值后，同步调用 `store.saveRecord()` 更新磁盘，同时写入 `title`：
+`session.sdk_session_id = backend.backendSessionId` 赋值后，同步调用 `store.saveRecord()` 更新磁盘，同时写入 `title` 和 `agent_capabilities`：
 
 ```
 title = backend.agentCapabilities?._meta?.title
      ?? session.agent_config?.name
      ?? undefined
+agent_capabilities = backend.agentCapabilities
 ```
 
 ### `closeSession()` 改造
 
-显式关闭（用户主动关闭，非 WebSocket 断开）时额外调用 `store.deleteRecord()`。
+显式关闭（用户主动关闭，非 WebSocket 断开）时：
+1. 清除 `DetachedConnection` 的定时器（若存在）
+2. `store.saveRecord({ ...record, status: "finished" })`（保留 JSONL 历史）
+3. `sessions.delete(id)`
+
+> 注：`store.deleteRecord()` 仅在前端调用"删除会话"（物理删除）时使用。
 
 ---
 
@@ -358,13 +477,26 @@ export type ApprovalMode = "rules" | "bypass" | "ai";
 
 | 文件 | 变更内容 |
 |------|---------|
-| `packages/core/src/agents/types.ts` | `AgentConfigFile`：新增 `approval_mode?: ApprovalMode`（保留 `planMode`，两者正交，`planMode` 移除另立任务） |
-| `packages/core/src/acp/types.ts` | `AgentConfigPayload`：移除 `approvals?: boolean` 和 `dangerously_skip_permissions?: boolean`，新增 `approval_mode?: ApprovalMode` |
+| `packages/core/src/agents/types.ts` | `AgentConfigFile`：新增 `approval_mode?: ApprovalMode`（保留 `planMode`，两者正交） |
+| `packages/core/src/acp/types.ts` | `AgentConfigPayload`：新增 `approval_mode?: ApprovalMode`；**保留** `dangerously_skip_permissions?: boolean`（见下方说明） |
 | `packages/core/src/agents/index.ts` | 将 `approvals` 读写替换为 `approval_mode`（默认值 `"rules"`），保留 `planMode` 不动 |
 | `packages/core/src/types/index.ts` | 同步相关 Agent 类型中的字段 |
 | `apps/desktop/src/lib/gateway/types/agent.ts` | gateway 客户端类型同步 |
 | `apps/desktop/src/types/unified-agent.ts` | 前端 unified agent 类型同步 |
 | `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload` 新增 `approval_mode?: ApprovalMode` |
+
+### `dangerously_skip_permissions` 保留说明
+
+`dangerously_skip_permissions` 是**全局开发者偏好**（通过 `git config` 存储在 `developer.dangerously_skip_permissions`，用于调试时临时跳过所有审批），与 **agent 级别的 `approval_mode`** 是两个独立机制，不能互相替代，**不能移除**。
+
+有效 approval 模式的计算（在 `DetachedConnection` 和 `SdkAcpConnection` 中均适用）：
+
+```
+effective_mode =
+  global_prefs.dangerously_skip_permissions
+    ? "bypass"                            // 全局 bypass 优先
+    : agent_config.approval_mode ?? "rules"
+```
 
 ### YAML 字段
 
@@ -426,6 +558,12 @@ const acpSessionManager = new AcpSessionManager(
 );
 ```
 
+### 多 WebSocket 连接同一 Session
+
+`ownedSessionIds` 按 WebSocket 连接管理。若第二个连接 `loadSession` 了一个 parked session，第一个连接（若还在）的 `ownedSessionIds` 中仍有该 sessionId，但 session 的 `connection` 已切换到第二个连接——第一个连接后续的操作（发送消息、关闭等）会通过 sessionManager 路由到当前 connection，不会造成数据损坏，但可能出现双方操作同一 session 的情况。
+
+**当前约束**：同一 session 同时只应有一个活跃 WebSocket 连接。多客户端并发操作同一 session 的行为是未定义的，留待后续版本处理。
+
 ---
 
 ## 七、`approval-handler.ts`
@@ -453,33 +591,31 @@ export type ApprovalDecision =
 
 ### ApprovalHandler 在活跃连接中的集成
 
-`ApprovalHandler` **不只在 `DetachedConnection` 中使用**。当 session 处于活跃连接状态（`SdkAcpConnection`），`requestPermission` 同样应先经过 `ApprovalHandler.evaluate()` 过滤，自动通过的请求无需打断用户，只有 `auto: false` 时才真正推送给前端等待用户决策。
+`ApprovalHandler` **不只在 `DetachedConnection` 中使用**。当 session 处于活跃连接状态（`SdkAcpConnection`），`requestPermission` 同样应先经过 `ApprovalHandler.evaluate()` 过滤（使用上述 `effective_mode` 计算逻辑），自动通过的请求无需打断用户，只有 `auto: false` 时才真正推送给前端等待用户决策。
 
 集成位置：`SdkAcpConnection.requestPermission()` 在向 WebSocket 推送权限请求前，先调用 `ApprovalHandler.evaluate()`：
 
 ```
 requestPermission(params):
-  decision = approvalHandler.evaluate(params, approvalMode)
+  effective_mode = dangerously_skip_permissions ? "bypass" : agent_config.approval_mode ?? "rules"
+  decision = approvalHandler.evaluate(params, effective_mode)
   if decision.auto → 直接 resolve(decision.optionId)，无需 UI 交互
   else             → 走原有 WebSocket push → 等待前端 permission:response
 ```
 
-这样 `ApprovalHandler` 对三种 `ApprovalMode` 的处理逻辑在活跃和断开两种状态下保持一致，不需要在两处维护重复的规则判断逻辑。
+这样 `ApprovalHandler` 在活跃和断开两种状态下保持一致，不在两处维护重复的规则判断逻辑。
 
 ---
 
 ## 八、会话清理与超时机制
 
-### 问题
-
-`parked` 状态的 session 如果从不清理，`~/.viben/acp/sessions/` 目录会无限增长。
-
 ### 策略
 
 | 情形 | 处理 |
 |------|------|
-| 用户主动关闭会话（前端 deleteSession） | 立即 `store.deleteRecord()` + 删除 session 目录 |
-| Parked 超过 TTL（默认 7 天） | 后台清理任务标记为 `finished`，不删除 JSONL（保留历史） |
+| 用户主动删除会话（前端 deleteSession） | 立即 `store.deleteRecord()` + 删除 session 目录（物理删除） |
+| 用户主动关闭会话（前端 closeSession） | `store.saveRecord(status: "finished")`，保留 JSONL 历史 |
+| Parked 超过 TTL（默认 7 天） | 后台清理任务标记为 `finished`，不删除 JSONL |
 | Finished/error 超过归档 TTL（默认 30 天） | 可配置自动删除（默认关闭） |
 
 ### 实现
@@ -510,31 +646,58 @@ async function cleanupStaleSessions(store: AcpSessionStore, parkTTLDays = 7): Pr
 
 ### `acp-client.ts`
 
-`AgentConfigPayload` 新增 `approval_mode?: ApprovalMode`，移除 `approvals?: boolean`。
+`AgentConfigPayload` 新增 `approval_mode?: ApprovalMode`（保留 `approvals?: boolean` 仅用于向后兼容读取，新写入使用 `approval_mode`）。
 
 ### `use-acp-session.ts`
 
-**loadSession 响应处理**：当响应包含 `history?: AcpSessionEvent[]` 时，走批量渲染路径而非逐条 `sessionUpdate` 流式回调：
+**loadSession 响应处理**：当响应包含 `history?: AcpSessionEvent[]` 时，走批量渲染路径：
 
 ```typescript
 const response = await acpClient.loadSession(request);
 if (response.history && response.history.length > 0) {
-  // 批量渲染历史，不经过 enqueueUiSteps
   batchRenderHistory(response.history);
+}
+// 之后正常绑定 sessionUpdate / requestPermission 等回调
+```
+
+**`batchRenderHistory()` 实现路径**：
+
+```typescript
+function batchRenderHistory(events: AcpSessionEvent[]): void {
+  // 收集所有 session_update 事件的 UI steps（复用现有转换函数）
+  const allSteps: AcpUiStep[] = [];
+  for (const event of events) {
+    if (event.type === "session_update") {
+      const steps = acpSessionUpdateToUiSteps(event.data as AcpSessionUpdate);
+      allSteps.push(...steps);
+    }
+  }
+  // 一次性非队列应用（不走 enqueueUiSteps 动画队列）
+  applyUiStepsImmediately(setSessionsById, sessionId, allSteps);
 }
 ```
 
-`batchRenderHistory()` 只处理 `type === "session_update"` 的事件，其他类型（permission_request 等）根据 status 判断：
-- `status: "pending"` → 推给用户交互
-- `status: "resolved" | "cancelled" | "abandoned"` → 仅作为历史展示，不再等待响应
+注意事项：
+- `session_update` 事件的 `data` 字段为 `AcpSessionUpdate`，通过现有 `acpSessionUpdateToUiSteps()` 转换
+- history 中的 agent_message_chunk 事件通过 `applyUiStepsImmediately` 顺序拼接成完整消息，不显示流式动画
+- `permission_request` 事件：`status === "pending"` 的请求由 `drainPendingAsync()` 异步推送，前端会在 history 渲染后收到正常的 `requestPermission` 回调，提示用户"恢复的权限请求"；其他状态（resolved/abandoned）仅作历史展示
 
-**listSessions 响应**：服务端现在会返回 `parked` 状态的 session（从磁盘读取），前端不需要修改，已有的 "加载最近 session" 逻辑自动受益。
+**`listSessions` 响应**：服务端会返回 `parked` 状态的 session，前端 session 列表需要读取并展示 `status` 字段：
+- `active`：正常展示
+- `parked`：显示"已暂停"标识（如灰色背景、badge）
+- `finished`：可选展示或折叠
 
 ### 相关文件
 
 | 文件 | 变更内容 |
 |------|---------|
 | `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload` 新增 `approval_mode` |
-| `apps/desktop/src/components/acp-chat/use-acp-session.ts` | loadSession 添加 `history` 批量渲染 |
+| `apps/desktop/src/components/acp-chat/use-acp-session.ts` | `loadSession` 添加 `history` 批量渲染，`batchRenderHistory` 函数 |
+| `apps/desktop/src/components/acp-chat/acp-chat-state.ts` | 新增 `applyUiStepsImmediately` 路径（如不存在） |
 | `apps/desktop/src/lib/gateway/types/agent.ts` | 同步 `approval_mode` 字段 |
 | `apps/desktop/src/types/unified-agent.ts` | 同步 `approval_mode` 字段 |
+| session 列表 UI 组件 | 展示 session `status`，parked 状态视觉标识 |
+
+### `agent_config` 快照语义
+
+**设计决策**：`AcpSessionRecord.agent_config` 存储的是 session 创建时的配置快照。重连恢复的 session 使用原始配置，而不是当前 agent YAML 的最新配置。如需使用新配置，用户应创建新 session。
