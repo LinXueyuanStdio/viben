@@ -104,11 +104,38 @@ export function enqueueUiSteps(
   steps: AcpUiStep[]
 ): void {
   if (steps.length === 0) return;
-  updateSession(setSessionsById, sessionId, (session) => ({
-    ...session,
-    uiStepQueue: [...session.uiStepQueue, ...steps],
-    lastActiveAt: new Date().toISOString(),
-  }));
+  updateSession(setSessionsById, sessionId, (session) => {
+    let queue = [...session.uiStepQueue];
+    let uiMessages = session.uiMessages;
+    let messagesChanged = false;
+    for (const step of steps) {
+      if (step.kind === "message" && step.merge === "tool_use" && step.message.toolUseId) {
+        const existingQueueIdx = queue.findIndex(
+          (q) => q.kind === "message" && q.merge === "tool_use" && q.message.toolUseId === step.message.toolUseId
+        );
+        if (existingQueueIdx !== -1) {
+          const existing = queue[existingQueueIdx] as { kind: "message"; merge: "tool_use"; message: AgentMessage };
+          queue[existingQueueIdx] = { ...existing, message: { ...existing.message, ...step.message } };
+          continue;
+        }
+        const existingMsgIdx = uiMessages.findIndex(
+          (m) => m.type === "tool_use" && m.toolUseId === step.message.toolUseId
+        );
+        if (existingMsgIdx !== -1) {
+          if (!messagesChanged) { uiMessages = [...uiMessages]; messagesChanged = true; }
+          uiMessages[existingMsgIdx] = { ...uiMessages[existingMsgIdx], ...step.message };
+          continue;
+        }
+      }
+      queue.push(step);
+    }
+    return {
+      ...session,
+      uiStepQueue: queue,
+      ...(messagesChanged ? { uiMessages } : {}),
+      lastActiveAt: new Date().toISOString(),
+    };
+  });
 }
 
 /**
