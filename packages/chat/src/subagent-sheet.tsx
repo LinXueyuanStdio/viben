@@ -1,4 +1,3 @@
-import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -226,125 +225,112 @@ export function SubagentSheet({
     document.body.style.userSelect = "none";
   };
 
+  if (!open) return null;
+
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
-            data-testid="subagent-sheet-backdrop"
-            className={contained ? "absolute inset-0 z-40 bg-black/20" : "fixed inset-0 z-40 bg-black/20"}
-            onClick={onClose}
-          />
-          {/* Panel */}
-          <motion.div
-            key="panel"
-            initial={{ x: "50%", opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: "50%", opacity: 0 }}
-            transition={{ type: "tween", duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            data-testid="subagent-sheet-panel"
-            className={cn(
-              contained
-                ? "absolute right-0 top-0 bottom-0 z-50 flex min-w-0 transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform"
-                : "fixed right-0 top-0 bottom-0 z-50 flex min-w-0 transform-gpu flex-col overflow-hidden border-l bg-background shadow-xl will-change-transform",
-              className
-            )}
-            style={{ width: `${sheetWidth}px`, maxWidth: maxWidth ? `${maxWidth}px` : contained ? "85%" : "85vw" }}
-          >
-            <div
-              role="separator"
-              aria-orientation="vertical"
-              aria-label={t("chat.resizeSubagentPanel", "Resize subagent panel")}
-              data-testid="subagent-sheet-resize-handle"
-              className="absolute inset-y-0 left-0 z-10 w-2 -translate-x-1/2 cursor-ew-resize touch-none"
-              onMouseDown={handleResizeStart}
-            >
-              <div className="absolute left-1/2 top-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-border transition-colors hover:bg-primary/60" />
-            </div>
-            {/* Header */}
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <h3 className="truncate text-sm font-medium">{effectiveTitle}</h3>
-                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
-                  {effectiveSubagentType && (
-                    <Badge variant="secondary" className="max-w-full truncate px-1.5 py-0 text-[10px]">
-                      {effectiveSubagentType}
-                    </Badge>
-                  )}
-                  <Badge
-                    variant={effectiveError || errorCount > 0 ? "destructive" : status === "Done" ? "success" : "warning"}
-                    className="px-1.5 py-0 text-[10px]"
-                  >
-                    {effectiveError
-                      ? t("chat.error", "Error")
-                      : effectiveIsLoading
-                        ? t("chat.subAgentRunning", "Running…")
-                        : statusLabel}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {t("chat.subagentMessageCount", {
-                      count: effectiveMessages.length,
-                      defaultValue: `${effectiveMessages.length} messages`,
-                    })}
-                    {toolCount > 0
-                      ? ` · ${t("chat.subagentToolCount", {
-                          count: toolCount,
-                          defaultValue: `${toolCount} tools`,
-                        })}`
-                      : ""}
-                  </span>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="ml-2 shrink-0"
-                onClick={onClose}
+    <>
+      {/* Backdrop */}
+      <div
+        data-testid="subagent-sheet-backdrop"
+        className={contained ? "absolute inset-0 z-40 bg-black/20" : "fixed inset-0 z-40 bg-black/20"}
+        onClick={onClose}
+      />
+      {/* Panel */}
+      <div
+        data-testid="subagent-sheet-panel"
+        className={cn(
+          contained
+            ? "absolute right-0 top-0 bottom-0 z-50 flex min-w-0 flex-col overflow-hidden border-l bg-background shadow-xl"
+            : "fixed right-0 top-0 bottom-0 z-50 flex min-w-0 flex-col overflow-hidden border-l bg-background shadow-xl",
+          className
+        )}
+        style={{ width: `${sheetWidth}px`, maxWidth: maxWidth ? `${maxWidth}px` : contained ? "85%" : "85vw" }}
+      >
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t("chat.resizeSubagentPanel", "Resize subagent panel")}
+          data-testid="subagent-sheet-resize-handle"
+          className="absolute inset-y-0 left-0 z-10 w-2 -translate-x-1/2 cursor-ew-resize touch-none"
+          onMouseDown={handleResizeStart}
+        >
+          <div className="absolute left-1/2 top-1/2 h-12 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-border transition-colors hover:bg-primary/60" />
+        </div>
+        {/* Header */}
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-medium">{effectiveTitle}</h3>
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+              {effectiveSubagentType && (
+                <Badge variant="secondary" className="max-w-full truncate px-1.5 py-0 text-[10px]">
+                  {effectiveSubagentType}
+                </Badge>
+              )}
+              <Badge
+                variant={effectiveError || errorCount > 0 ? "destructive" : status === "Done" ? "success" : "warning"}
+                className="px-1.5 py-0 text-[10px]"
               >
-                <X className="h-4 w-4" />
-              </Button>
+                {effectiveError
+                  ? t("chat.error", "Error")
+                  : effectiveIsLoading
+                    ? t("chat.subAgentRunning", "Running…")
+                    : statusLabel}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {t("chat.subagentMessageCount", {
+                  count: effectiveMessages.length,
+                  defaultValue: `${effectiveMessages.length} messages`,
+                })}
+                {toolCount > 0
+                  ? ` · ${t("chat.subagentToolCount", {
+                      count: toolCount,
+                      defaultValue: `${toolCount} tools`,
+                    })}`
+                  : ""}
+              </span>
             </div>
-            {/* Message list */}
-            <div className="flex w-full flex-1 flex-col overflow-hidden min-h-0 min-w-0">
-              {effectiveIsLoading && !hasDisplayMessages ? (
-                <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-2 shrink-0"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        {/* Message list */}
+        <div className="flex w-full flex-1 flex-col overflow-hidden min-h-0 min-w-0">
+          {effectiveIsLoading && !hasDisplayMessages ? (
+            <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("chat.loadingSubagent", "Loading subagent…")}
+            </div>
+          ) : (
+            <>
+              {effectiveError && (
+                <div className="m-3 shrink-0 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive">
+                  {effectiveError}
+                </div>
+              )}
+              {effectiveIsLoading && hasDisplayMessages && (
+                <div className="mx-3 mt-2 flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
                   {t("chat.loadingSubagent", "Loading subagent…")}
                 </div>
-              ) : (
-                <>
-                  {effectiveError && (
-                    <div className="m-3 shrink-0 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1.5 text-xs text-destructive">
-                      {effectiveError}
-                    </div>
-                  )}
-                  {effectiveIsLoading && hasDisplayMessages && (
-                    <div className="mx-3 mt-2 flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      {t("chat.loadingSubagent", "Loading subagent…")}
-                    </div>
-                  )}
-                  <MessageList
-                    messages={displayMessages}
-                    simpleMode
-                    toolExpandedInline
-                    maxMessageWidth="100%"
-                    onExpandSubagent={onExpandSubagent}
-                    onInspectTool={onInspectTool}
-                    {...messageListConfig}
-                  />
-                </>
               )}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+              <MessageList
+                messages={displayMessages}
+                simpleMode
+                maxMessageWidth="100%"
+                onExpandSubagent={onExpandSubagent}
+                onInspectTool={onInspectTool}
+                {...messageListConfig}
+              />
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

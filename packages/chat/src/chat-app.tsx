@@ -730,28 +730,41 @@ export function ChatApp({
     return () => observer.disconnect();
   }, []);
 
-  const subagentSheetNode = subagentSheet ? (
-    <SubagentSheet
-      contained
-      open={subagentSheet.open}
-      onClose={subagentSheet.onClose}
-      title={subagentSheet.title}
-      subagentType={subagentSheet.subagentType}
-      messages={subagentSheet.messages}
-      liveMessages={subagentSheet.liveMessages}
-      answer={subagentSheet.answer}
-      context={subagentSheet.context}
-      loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
-      maxWidth={overlayWidth}
-      onExpandSubagent={onExpandSubagent}
-      onInspectTool={onInspectTool}
-      messageListConfig={subagentSheet.messageListConfig ?? {
-        assistantAvatar: staticAssistantAvatar,
-        artifacts,
-        onArtifactClick,
-      }}
-    />
-  ) : null;
+  const subagentSheetNode = (
+    <AnimatePresence>
+      {subagentSheet?.open && (
+        <motion.div
+          key="subagent-sheet"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+          className="absolute inset-0 z-40"
+        >
+          <SubagentSheet
+            contained
+            open
+            onClose={subagentSheet.onClose}
+            title={subagentSheet.title}
+            subagentType={subagentSheet.subagentType}
+            messages={subagentSheet.messages}
+            liveMessages={subagentSheet.liveMessages}
+            answer={subagentSheet.answer}
+            context={subagentSheet.context}
+            loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
+            maxWidth={overlayWidth}
+            onExpandSubagent={onExpandSubagent}
+            onInspectTool={onInspectTool}
+            messageListConfig={subagentSheet.messageListConfig ?? {
+              assistantAvatar: staticAssistantAvatar,
+              artifacts,
+              onArtifactClick,
+            }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   // WritingMode overlay - contained within ChatApp container
   const writingModeNode = enableWritingMode && isWritingMode ? (
