@@ -110,20 +110,37 @@ export type AcpLoadSessionResponse = LoadSessionResponse & {
 
 （不引入跨包 import，直接用字面量联合类型）
 
-- [ ] **Step 4: 验证 TypeScript 编译**
+- [ ] **Step 4: 在 `packages/core/src/agents/index.ts` 中添加 `approvals` → `permission_mode` 向后兼容读取**
+
+在 `agents/index.ts` 中找到读取 YAML 配置并构造 `AgentConfigPayload` 的地方，将旧 `approvals` 字段转换为 `permission_mode`：
+
+```typescript
+// 旧 approvals 字段向后兼容（YAML 迁移）
+// 若 YAML 中有 approvals: true/false，转换为 permission_mode
+function migrateApprovals(config: AgentConfigFile): void {
+  if (!config.permission_mode && (config as Record<string, unknown>).approvals !== undefined) {
+    const approvals = (config as Record<string, unknown>).approvals;
+    config.permission_mode = approvals === true ? "bypassPermissions" : "default";
+  }
+}
+```
+
+在 `loadAgentConfig()` 返回 config 之前调用 `migrateApprovals(config)`。
+
+- [ ] **Step 5: 验证 TypeScript 编译**
 
 ```bash
 cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
 pnpm --filter @viben/core typecheck 2>&1 | head -30
 ```
 
-预期：只有因 `AcpSessionEvent` 尚未定义导致的 1-2 个错误，其余无新增错误。
+预期：只有因 `AcpSessionEvent` 尚未定义导致的 1-2 个错误（Task 2 完成后归零），其余无新增错误。
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add packages/core/src/acp/types.ts packages/core/src/agents/types.ts
-git commit -m "types(acp): add AcpPermissionMode, extend AcpLoadSessionResponse with history"
+git add packages/core/src/acp/types.ts packages/core/src/agents/types.ts packages/core/src/agents/index.ts
+git commit -m "types(acp): add AcpPermissionMode, extend AcpLoadSessionResponse with history, migrate approvals field"
 ```
 
 ---
@@ -552,17 +569,14 @@ export class DetachedConnection implements AcpConnection {
       // Omit seq — appendEvent assigns it
       const { seq: _seq, ...rest } = event;
       const assignedSeq = await this.store.appendEvent(this.sessionId, rest as Omit<AcpSessionEvent, "seq">);
-      // Update pending maps with the real seq
-      this.updatePendingSeq(event, assignedSeq);
-    }
-  }
-
-  private updatePendingSeq(event: AcpSessionEvent, assignedSeq: number): void {
-    if (event.id) {
-      const perm = this.pendingPermissions.get(event.id);
-      if (perm && perm.seq === event.seq) perm.seq = assignedSeq;
-      const tool = this.pendingToolCalls.get(event.id);
-      if (tool && tool.seq === event.seq) tool.seq = assignedSeq;
+      // Update pending maps: identify entry by event.id, then overwrite seq with real value.
+      // Must do this BEFORE moving on, so drainPendingAsync sees the correct seq.
+      if (event.id) {
+        const perm = this.pendingPermissions.get(event.id);
+        if (perm) perm.seq = assignedSeq;
+        const tool = this.pendingToolCalls.get(event.id);
+        if (tool) tool.seq = assignedSeq;
+      }
     }
   }
 
@@ -802,6 +816,7 @@ git commit -m "fix(acp): add 'auto' to CLAUDE_PERMISSION_MODES set"
 
 ```typescript
 import type { AcpSessionStore, AcpSessionRecord } from "./session-store";
+import type { FileSystemAcpSessionStore } from "./session-store";
 import { DetachedConnection } from "./detached-connection";
 ```
 
@@ -856,9 +871,19 @@ export class AcpSessionManager {
 ```typescript
   private async persistRecord(session: AcpSession): Promise<void> {
     if (!this.store) return;
+    // Map AcpSession.status → AcpSessionRecord.status
+    // "initializing" and "cancelled" have no direct equivalent; both map to "active"/"finished"
+    const statusMap: Record<string, AcpSessionRecord["status"]> = {
+      initializing: "active",
+      active: "active",
+      cancelled: "finished",
+      finished: "finished",
+      error: "error",
+      parked: "parked",
+    };
     const record: AcpSessionRecord = {
       id: session.id,
-      status: session.status === "initializing" ? "active" : session.status as AcpSessionRecord["status"],
+      status: statusMap[session.status] ?? "active",
       cwd: session.cwd,
       created_at: session.created_at.toISOString(),
       last_active_at: session.last_active_at.toISOString(),
@@ -1008,7 +1033,7 @@ function createNullStore(): AcpSessionStore {
 
         const allEvents = await this.store.loadEvents(request.sessionId);
         const maxSeq = allEvents.reduce((max, e) => Math.max(max, e.seq), -1);
-        (this.store as import("./session-store").FileSystemAcpSessionStore).initSeqCounter?.(request.sessionId, maxSeq + 1);
+        (this.store as FileSystemAcpSessionStore).initSeqCounter?.(request.sessionId, maxSeq + 1);
 
         // pending 事件标为 abandoned（backend 已死）
         for (const event of allEvents) {
@@ -1216,7 +1241,13 @@ export async function getActiveAcpSessionCount(): Promise<number> {
 }
 ```
 
-同时在 `packages/core/src/gateway/routes/index.ts` 中找到调用 `getActiveAcpSessionCount()` 的地方，加上 `await`。
+同时检查实际调用方（`routes/index.ts` 只是 re-export，不是调用方）：
+
+```bash
+grep -rn "getActiveAcpSessionCount" --include="*.ts" packages/ apps/ | grep -v "export\|function\|declare"
+```
+
+对找到的每处调用加上 `await`。
 
 - [ ] **Step 5: TypeCheck**
 
@@ -1378,7 +1409,199 @@ git commit -m "types(desktop): sync permission_mode field to AcpPermissionMode v
 
 ---
 
-## Task 11: 端到端验证
+## Task 11: `ApprovalHandler` 集成到 `SdkAcpConnection.requestPermission()`
+
+Spec 七要求活跃连接下的 `requestPermission` 也先经过 `ApprovalHandler.evaluate()` 过滤，自动通过的请求不打断用户。
+
+**Files:**
+- Modify: `packages/core/src/gateway/routes/agent-acp.ts`
+
+- [ ] **Step 1: 给 `SdkAcpConnection` 注入 `ApprovalHandler` 和 session 上下文**
+
+修改 `SdkAcpConnection` 构造函数，新增可选参数：
+
+```typescript
+import { createDefaultApprovalHandler, type ApprovalHandler } from "../../acp/ops/approval-handler";
+import type { AcpPermissionMode } from "../../acp";
+
+class SdkAcpConnection implements AcpConnection {
+  private approvalHandler: ApprovalHandler;
+  private permissionMode: AcpPermissionMode;
+  private dangerouslySkipPermissions: boolean;
+
+  constructor(
+    private readonly sdkConnection: AgentSideConnection,
+    permissionMode: AcpPermissionMode = "default",
+    dangerouslySkipPermissions = false,
+    approvalHandler?: ApprovalHandler
+  ) {
+    this.permissionMode = permissionMode;
+    this.dangerouslySkipPermissions = dangerouslySkipPermissions;
+    this.approvalHandler = approvalHandler ?? createDefaultApprovalHandler();
+  }
+```
+
+- [ ] **Step 2: 修改 `requestPermission()` 加入 ApprovalHandler 过滤**
+
+```typescript
+  async requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequestPermissionResponse> {
+    const effectiveMode: AcpPermissionMode = this.dangerouslySkipPermissions
+      ? "bypassPermissions"
+      : this.permissionMode;
+
+    // bypassPermissions: backend 不发 requestPermission，此处理论上不会被调用，但防御处理
+    if (effectiveMode === "bypassPermissions") {
+      const firstOption = (params as { options?: Array<{ id: string }> }).options?.[0];
+      return { optionId: firstOption?.id ?? "yes", ...firstOption } as AcpRequestPermissionResponse;
+    }
+
+    const decision = await this.approvalHandler.evaluate(params, effectiveMode);
+    if (decision.auto) {
+      return { optionId: decision.optionId } as AcpRequestPermissionResponse;
+    }
+
+    // auto: false — 推送给前端等待用户决策（原有逻辑）
+    return await this.sdkConnection.requestPermission(params);
+  }
+```
+
+- [ ] **Step 3: 修改 `createVibenAcpAgent` 中 `SdkAcpConnection` 的构造调用**
+
+在 `createVibenAcpAgent` 中，`SdkAcpConnection` 构造时从 session 的 `agentConfig` 读取 `permission_mode`：
+
+```typescript
+// 新建 session 时（newSession / loadSession）还不知道 agentConfig，先用默认值
+// permission_mode 在第一次 prompt 时才确定；此处在 connection 创建后通过 setPermissionMode() 更新
+// 实现简化：SdkAcpConnection 暴露 setPermissionMode(mode, dangerouslySkip) 方法
+// agent-acp.ts 在 newSession/loadSession 回调里调用
+```
+
+修改 `SdkAcpConnection` 新增方法：
+```typescript
+  setPermissionMode(mode: AcpPermissionMode, dangerouslySkip: boolean): void {
+    this.permissionMode = mode;
+    this.dangerouslySkipPermissions = dangerouslySkip;
+  }
+```
+
+在 `newSession` 和 `loadSession` 回调里，从 `request.agent_config?.permission_mode` 更新：
+```typescript
+    async newSession(request: AcpNewSessionRequest) {
+      const response = await acpSessionManager.createSession(request, connection, context);
+      ownedSessionIds.add(response.sessionId);
+      // 更新 connection 的 permission mode（agent_config 已在 request 中）
+      const mode = (request.agent_config?.permission_mode ?? "default") as AcpPermissionMode;
+      connection.setPermissionMode(mode, false);
+      return response;
+    },
+```
+
+- [ ] **Step 4: TypeCheck**
+
+```bash
+pnpm --filter @viben/core typecheck 2>&1 | head -30
+```
+
+预期：无错误。
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/core/src/gateway/routes/agent-acp.ts
+git commit -m "feat(acp): integrate ApprovalHandler into SdkAcpConnection.requestPermission()"
+```
+
+---
+
+## Task 12: 前端 `use-acp-session.ts` — history 批量渲染 + parked 状态展示
+
+**Files:**
+- Modify: `apps/desktop/src/components/acp-chat/use-acp-session.ts`（或等效 hook 文件）
+- Modify: session 列表 UI 组件（展示 parked badge）
+
+- [ ] **Step 1: 定位前端 loadSession 调用处**
+
+```bash
+grep -rn "loadSession\|batchRenderHistory\|applyUiStepsImmediately" \
+  apps/desktop/src/components/acp-chat/ 2>/dev/null | head -20
+```
+
+- [ ] **Step 2: 在 `loadSession` 响应处理中添加 `history` 批量渲染**
+
+找到调用 `acpClient.loadSession()` 的代码，在响应处理后添加：
+
+```typescript
+const response = await acpClient.loadSession(request);
+if (response.history && response.history.length > 0) {
+  batchRenderHistory(response.history);
+}
+// 之后正常绑定 sessionUpdate / requestPermission 等回调（现有逻辑不变）
+```
+
+- [ ] **Step 3: 实现 `batchRenderHistory()`**
+
+在同一文件（或提取到 `acp-chat-state.ts`）中实现：
+
+```typescript
+import type { AcpSessionEvent } from "@viben/core";
+
+function batchRenderHistory(events: AcpSessionEvent[]): void {
+  // 收集所有 session_update 事件，转换为 UI steps
+  const allSteps: AcpUiStep[] = [];
+  for (const event of events) {
+    if (event.type === "session_update") {
+      const steps = acpSessionUpdateToUiSteps(event.data as AcpSessionUpdate);
+      allSteps.push(...steps);
+    }
+  }
+  if (allSteps.length === 0) return;
+  // 一次性应用，不走流式动画队列
+  applyUiStepsImmediately(setSessionsById, sessionId, allSteps);
+}
+```
+
+注意：`acpSessionUpdateToUiSteps` 和 `applyUiStepsImmediately` 应从现有 `acp-chat-state.ts` 导入或在其中实现；若 `applyUiStepsImmediately` 不存在，则提取现有的 `enqueueUiSteps` 中的同步路径为新函数。
+
+- [ ] **Step 4: session 列表展示 `parked` 状态**
+
+在 session 列表 UI 组件中，找到渲染 session item 的地方，添加 parked 状态的视觉标识：
+
+```typescript
+// 找到 session status 展示逻辑（通常是 badge 或 icon）
+{session.status === "parked" && (
+  <Badge variant="secondary" className="text-xs">
+    {t("session.parked")}  {/* 已暂停 */}
+  </Badge>
+)}
+```
+
+并在 `en.json` / `zh-CN.json` 中添加翻译键：
+```json
+// en.json
+"session.parked": "Paused"
+
+// zh-CN.json
+"session.parked": "已暂停"
+```
+
+- [ ] **Step 5: Desktop typecheck**
+
+```bash
+pnpm --filter @viben/desktop typecheck 2>&1 | head -30
+```
+
+预期：0 错误。
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/desktop/src/
+git commit -m "feat(desktop): handle loadSession history batch rendering and parked session badge"
+```
+
+---
+
+## Task 13: 端到端验证
 
 - [ ] **Step 1: 启动 gateway**
 
