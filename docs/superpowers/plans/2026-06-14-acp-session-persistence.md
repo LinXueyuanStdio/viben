@@ -54,9 +54,28 @@ export type AcpPermissionMode = "default" | "bypassPermissions" | "auto";
 
 （删除 `approval_mode` 字段——它已被 `permission_mode` 取代）
 
-- [ ] **Step 2: 在 `types.ts` 中定义 `AcpSessionEvent`，并扩展 `AcpLoadSessionResponse`**
+- [ ] **Step 2: 在 `types.ts` 中扩展 `AcpSessionStatus`，定义 `AcpSessionEvent`，并扩展 `AcpLoadSessionResponse`**
 
 为避免循环依赖（`session-store.ts` 导入 `types.ts`，若反向 import 会成环），`AcpSessionEvent` 定义在 `types.ts`，`session-store.ts` 从 `types.ts` 导入。
+
+首先在 `types.ts` 找到 `AcpSessionStatus` 类型（当前为 `"initializing" | "active" | "cancelled" | "finished" | "error"`），添加 `"parked"`：
+
+```typescript
+// 旧：
+export type AcpSessionStatus = "initializing" | "active" | "cancelled" | "finished" | "error";
+
+// 新：
+export type AcpSessionStatus = "initializing" | "active" | "cancelled" | "finished" | "error" | "parked";
+```
+
+这让 `{ ...session, status: "parked" }` 通过 TypeScript 类型检查，`persistRecord` 的 `statusMap` 也已包含 `parked: "parked"` 映射。
+
+`AcpSessionSummary.status` 同理需更新（若该字段类型是 `AcpSessionStatus` 则自动继承；若是字面量联合则添加 `"parked"`）：
+
+```typescript
+// 找到 AcpSessionSummary.status 字段，如果是独立联合类型，添加 "parked"：
+  status: AcpSessionStatus;  // 使用引用类型即可，无需单独修改
+```
 
 在 `types.ts` 末尾 `AcpConnection` 接口之前追加：
 
@@ -906,7 +925,7 @@ export class AcpSessionManager {
   }
 ```
 
-- [ ] **Step 4: 修改 `ensureBackend()`，backend 初始化后更新磁盘记录**
+- [ ] **Step 4: 修改 `ensureBackend()`，backend 初始化后更新磁盘记录（含 title 提取）**
 
 在 `session.backend = backend;` 之后追加：
 
@@ -915,10 +934,20 @@ export class AcpSessionManager {
     session.sdk_session_id = backend.backendSessionId;
     session.agent_capabilities = backend.agentCapabilities ?? DEFAULT_AGENT_CAPABILITIES;
     session.config_options = backend.configOptions;
+    // 从 agentCapabilities._meta?.title 或 agent_config?.name 提取 title 存入磁盘
+    // （spec 四要求：ensureBackend 后须更新 title）
+    if (!session.title) {
+      session.title =
+        (session.agent_capabilities._meta as Record<string, unknown> | undefined)?.title as string | undefined
+        ?? session.agent_config?.name
+        ?? undefined;
+    }
     // 更新 sdk_session_id + title + agent_capabilities 到磁盘
     await this.persistRecord(session);
     return backend;
 ```
+
+注意：`persistRecord()` 中需透传 `session.title` 到 `record.title`（当前实现已包含该字段，见 Step 3 的 `record` 对象，若缺少则在 Step 3 代码块中的 `AcpSessionRecord` 构造里补上 `title: session.title`）。
 
 - [ ] **Step 5: 新增 `parkSession()` 方法**
 
@@ -1072,7 +1101,7 @@ function createNullStore(): AcpSessionStore {
   }
 ```
 
-- [ ] **Step 7: 修改 `closeSession()`，新增持久化 + DetachedConnection 清理**
+- [ ] **Step 7: 修改 `closeSession()`，新增持久化 + DetachedConnection 清理 + ACP session/close 协议调用**
 
 ```typescript
   closeSession(sessionId: string): void {
@@ -1086,6 +1115,15 @@ function createNullStore(): AcpSessionStore {
       session.connection.close().catch((err) => {
         log.warn({ err, sessionId }, "DetachedConnection close failed during closeSession");
       });
+    }
+    // 发送 ACP session/close 协议通知 backend（spec 四要求）
+    // backend.acpClient 是 @agentclientprotocol/sdk 的 client，调用 session/close 方法
+    if (session.backend && session.sdk_session_id) {
+      (session.backend as { acpClient?: { sessionClose?: (p: { sessionId: string }) => Promise<void> } })
+        .acpClient?.sessionClose?.({ sessionId: session.sdk_session_id })
+        .catch((err: unknown) => {
+          log.debug({ err, sessionId }, "ACP session/close notification failed (non-fatal)");
+        });
     }
     void session.backend?.close().catch((error) => {
       log.debug({ err: error, sessionId }, "ACP backend close failed");
@@ -1276,10 +1314,11 @@ git commit -m "feat(acp): park sessions on WS disconnect, inject AcpSessionStore
 找到现有的 `export * from "./ops/..."` 行，追加：
 
 ```typescript
+// 注意：AcpSessionEvent 和 AcpSessionEventPatch 已从 ./types 导出（在 Task 1 Step 2 中定义）
+// session-store.ts 通过 re-export 透出它们，但 acp/index.ts 已经 export * from "./types"
+// 因此这里不再重复导出 AcpSessionEvent/AcpSessionEventPatch，避免 duplicate export 错误
 export type {
   AcpSessionRecord,
-  AcpSessionEvent,
-  AcpSessionEventPatch,
   AcpSessionStore,
 } from "./ops/session-store";
 export { createDefaultAcpSessionStore, FileSystemAcpSessionStore } from "./ops/session-store";
@@ -1288,7 +1327,7 @@ export { createDefaultApprovalHandler, DefaultApprovalHandler } from "./ops/appr
 export { DetachedConnection } from "./ops/detached-connection";
 ```
 
-同时在 `types.ts` 中补上 Task 1 Step 2 遗留的 `AcpSessionEvent` import（从 `./ops/session-store`）。
+**重要**：`AcpSessionEvent` 和 `AcpSessionEventPatch` 定义在 `types.ts`，`acp/index.ts` 通过 `export * from "./types"` 已经将其导出。`session-store.ts` 中 `export type { AcpSessionEvent, AcpSessionEventPatch }` 是为了方便 `session-store.ts` 的消费者直接从 `session-store` 导入，不影响 `index.ts` 的导出路径。若编译时出现 "duplicate identifier" 错误，则删除 `session-store.ts` 中的 re-export 行。
 
 - [ ] **Step 2: Full typecheck**
 
@@ -1339,18 +1378,35 @@ export async function cleanupStaleSessions(
 }
 ```
 
-- [ ] **Step 2: 在 gateway 启动时调用清理**
+- [ ] **Step 2: 在 gateway 启动时调用清理，复用 singleton 的 store 实例**
 
-在 `packages/core/src/gateway/index.ts` 中找到 gateway 启动的地方（`startGateway` 或 `registerRoutes` 处），在初始化 AcpSessionManager 之后追加：
+Task 7 Step 3 已将 `createDefaultAcpSessionStore()` 注入到 `acpSessionManager` 单例。这里**不要再创建第二个实例**（否则两个 store 共享同一磁盘目录但各有独立 `seqCounters`，造成架构混乱）。
+
+在 `packages/core/src/gateway/index.ts` 中找到 `startGateway` 函数（约 line 80-120），在调用 `server.listen()` 之前追加：
 
 ```typescript
-import { cleanupStaleSessions, createDefaultAcpSessionStore } from "../acp/ops/session-store";
+import { cleanupStaleSessions } from "../acp/ops/session-store";
+// acpSessionManager 已在 session-manager.ts 末尾的单例中持有 store
+// 通过公开 getter 或直接访问 store 字段来复用
+// 若 AcpSessionManager 未暴露 store，则添加 public readonly store 字段
+// 临时方案（store 未暴露时）：使用 acpSessionManager 的 store 通过类型转换获取
+import { acpSessionManager } from "../acp/ops/session-manager";
 
 // gateway 启动时异步清理（不阻塞启动）
-const sessionStore = createDefaultAcpSessionStore();
-cleanupStaleSessions(sessionStore).catch((err) => {
-  log.warn({ err }, "Stale session cleanup failed (non-fatal)");
-});
+// 注意：直接访问 store 字段（需在 AcpSessionManager 添加 public readonly store accessor）
+const storeForCleanup = (acpSessionManager as unknown as { store: import("../acp/ops/session-store").AcpSessionStore | null }).store;
+if (storeForCleanup) {
+  cleanupStaleSessions(storeForCleanup).catch((err) => {
+    log.warn({ err }, "Stale session cleanup failed (non-fatal)");
+  });
+}
+```
+
+为此在 `session-manager.ts` 中将 `private store` 改为 `readonly store`（仅访问权限，不影响封装）：
+
+```typescript
+// session-manager.ts 构造函数参数：
+  public readonly store: AcpSessionStore | null;
 ```
 
 - [ ] **Step 3: Commit**
@@ -1538,15 +1594,44 @@ if (response.history && response.history.length > 0) {
 // 之后正常绑定 sessionUpdate / requestPermission 等回调（现有逻辑不变）
 ```
 
-- [ ] **Step 3: 实现 `batchRenderHistory()`**
+- [ ] **Step 3: 在 `acp-chat-state.ts` 中实现 `applyUiStepsImmediately()`，并实现 `batchRenderHistory()`**
 
-在同一文件（或提取到 `acp-chat-state.ts`）中实现：
+首先确认 `acp-chat-state.ts` 中已有 `enqueueUiSteps` 函数。`applyUiStepsImmediately` 是其同步版本，直接调用 `setSessionsById` 而不走动画队列。
+
+**子步骤 3a**：在 `acp-chat-state.ts` 中提取同步 apply 函数：
+
+```typescript
+// 在 enqueueUiSteps 附近添加：
+export function applyUiStepsImmediately(
+  setSessionsById: (updater: (prev: Map<string, AcpSession>) => Map<string, AcpSession>) => void,
+  sessionId: string,
+  steps: AcpUiStep[]
+): void {
+  if (steps.length === 0) return;
+  setSessionsById((prev) => {
+    const next = new Map(prev);
+    const session = next.get(sessionId);
+    if (!session) return prev;
+    // 逐步应用，与 enqueueUiSteps 中的单步 reducer 逻辑相同
+    const updated = steps.reduce(
+      (s, step) => applyUiStep(s, step),
+      session
+    );
+    next.set(sessionId, updated);
+    return next;
+  });
+}
+```
+
+注意：`applyUiStep` 是 `enqueueUiSteps` 内部用的 reducer（若未单独导出，在此 step 中将其提取为独立函数并导出）。
+
+**子步骤 3b**：在 `use-acp-session.ts`（或 loadSession 所在文件）中实现 `batchRenderHistory()`：
 
 ```typescript
 import type { AcpSessionEvent } from "@viben/core";
+import { acpSessionUpdateToUiSteps, applyUiStepsImmediately } from "./acp-chat-state";
 
 function batchRenderHistory(events: AcpSessionEvent[]): void {
-  // 收集所有 session_update 事件，转换为 UI steps
   const allSteps: AcpUiStep[] = [];
   for (const event of events) {
     if (event.type === "session_update") {
@@ -1555,12 +1640,11 @@ function batchRenderHistory(events: AcpSessionEvent[]): void {
     }
   }
   if (allSteps.length === 0) return;
-  // 一次性应用，不走流式动画队列
   applyUiStepsImmediately(setSessionsById, sessionId, allSteps);
 }
 ```
 
-注意：`acpSessionUpdateToUiSteps` 和 `applyUiStepsImmediately` 应从现有 `acp-chat-state.ts` 导入或在其中实现；若 `applyUiStepsImmediately` 不存在，则提取现有的 `enqueueUiSteps` 中的同步路径为新函数。
+（`setSessionsById` 和 `sessionId` 均为所在 hook 作用域内的现有变量）
 
 - [ ] **Step 4: session 列表展示 `parked` 状态**
 
