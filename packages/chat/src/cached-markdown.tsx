@@ -49,33 +49,41 @@ export function isRawHtml(s: string): boolean {
 }
 
 /**
- * Renders raw HTML content inside a Shadow DOM.
- * CSS is fully isolated (no leaking in/out), JS executes directly without iframe overhead.
+ * Renders raw HTML content inside a sandboxed iframe using srcdoc.
+ * Uses allow-same-origin to read content dimensions for auto-sizing.
+ * Width fits content; height fully expands.
  */
 export function RawHtmlRenderer({ content }: { content: string }) {
-  const hostRef = React.useRef<HTMLDivElement>(null);
-  const shadowRef = React.useRef<ShadowRoot | null>(null);
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const [size, setSize] = React.useState<{ w: number; h: number }>({ w: 300, h: 150 });
+  const observerRef = React.useRef<ResizeObserver | null>(null);
 
-  React.useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    if (!shadowRef.current) {
-      shadowRef.current = host.attachShadow({ mode: "open" });
-    }
-    const shadow = shadowRef.current;
-    shadow.innerHTML = content;
-    const scripts = shadow.querySelectorAll("script");
-    for (const original of scripts) {
-      const clone = document.createElement("script");
-      for (const attr of original.attributes) {
-        clone.setAttribute(attr.name, attr.value);
-      }
-      clone.textContent = original.textContent;
-      original.parentNode?.replaceChild(clone, original);
-    }
-  }, [content]);
+  const handleLoad = React.useCallback(() => {
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    if (!doc) return;
+    observerRef.current?.disconnect();
+    const update = () => {
+      const h = doc.documentElement.scrollHeight;
+      const w = doc.documentElement.scrollWidth;
+      if (h > 0 && w > 0) setSize({ w, h });
+    };
+    observerRef.current = new ResizeObserver(update);
+    observerRef.current.observe(doc.documentElement);
+    update();
+  }, []);
 
-  return <div ref={hostRef} />;
+  React.useEffect(() => () => observerRef.current?.disconnect(), []);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      srcDoc={content}
+      sandbox="allow-same-origin allow-scripts"
+      onLoad={handleLoad}
+      style={{ width: size.w, height: size.h, maxWidth: "100%", border: "none", display: "block" }}
+    />
+  );
 }
 
 interface CachedStreamdownProps {
