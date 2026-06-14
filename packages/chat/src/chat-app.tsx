@@ -733,35 +733,48 @@ export function ChatApp({
   const subagentSheetNode = (
     <AnimatePresence>
       {subagentSheet?.open && (
-        <motion.div
-          key="subagent-sheet"
-          initial={{ x: "100%" }}
-          animate={{ x: 0 }}
-          exit={{ x: "100%" }}
-          transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-          className="absolute inset-0 z-40"
-        >
-          <SubagentSheet
-            contained
-            open
-            onClose={subagentSheet.onClose}
-            title={subagentSheet.title}
-            subagentType={subagentSheet.subagentType}
-            messages={subagentSheet.messages}
-            liveMessages={subagentSheet.liveMessages}
-            answer={subagentSheet.answer}
-            context={subagentSheet.context}
-            loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
-            maxWidth={overlayWidth}
-            onExpandSubagent={onExpandSubagent}
-            onInspectTool={onInspectTool}
-            messageListConfig={subagentSheet.messageListConfig ?? {
-              assistantAvatar: staticAssistantAvatar,
-              artifacts,
-              onArtifactClick,
-            }}
+        <>
+          {/* Backdrop - fades independently */}
+          <motion.div
+            key="subagent-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
+            className="absolute inset-0 z-40 bg-black/20"
+            onClick={subagentSheet.onClose}
           />
-        </motion.div>
+          {/* Panel wrapper - slides from right */}
+          <motion.div
+            key="subagent-panel-wrapper"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute right-0 top-0 bottom-0 z-50"
+          >
+            <SubagentSheet
+              contained
+              open
+              onClose={subagentSheet.onClose}
+              title={subagentSheet.title}
+              subagentType={subagentSheet.subagentType}
+              messages={subagentSheet.messages}
+              liveMessages={subagentSheet.liveMessages}
+              answer={subagentSheet.answer}
+              context={subagentSheet.context}
+              loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
+              maxWidth={overlayWidth}
+              onExpandSubagent={onExpandSubagent}
+              onInspectTool={onInspectTool}
+              messageListConfig={subagentSheet.messageListConfig ?? {
+                assistantAvatar: staticAssistantAvatar,
+                artifacts,
+                onArtifactClick,
+              }}
+            />
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
