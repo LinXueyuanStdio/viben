@@ -1,0 +1,130 @@
+name: Release Client SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.2.0). Leave empty to use version from generated package.json'
+        required: false
+        type: string
+      regenerate:
+        description: 'Regenerate SDK from gateway OpenAPI spec before publishing'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Dry run (build only, skip npm publish)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-sdk
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  release-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Speakeasy CLI
+        if: inputs.regenerate
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/speakeasy-api/speakeasy/main/install.sh | sh
+          echo "$HOME/.speakeasy" >> $GITHUB_PATH
+
+      - name: Regenerate SDK from OpenAPI spec
+        if: inputs.regenerate
+        env:
+          SPEAKEASY_API_KEY: ${{ secrets.SPEAKEASY_API_KEY }}
+        run: |
+          echo "Building @viben/core..."
+          pnpm turbo build --filter=@viben/core
+
+          echo "Starting gateway and exporting OpenAPI spec..."
+          pnpm generate-client-sdk
+
+      - name: Verify SDK exists
+        run: |
+          if [ ! -f "packages/client-sdk/typescript/package.json" ]; then
+            echo "::error::SDK not found at packages/client-sdk/typescript/"
+            echo "Run with 'Regenerate' enabled, or generate locally first with: pnpm generate-client-sdk"
+            exit 1
+          fi
+          echo "SDK found:"
+          jq '{name, version}' packages/client-sdk/typescript/package.json
+
+      - name: Set version
+        working-directory: packages/client-sdk/typescript
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "Setting version to ${VERSION}"
+            jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp
+            mv package.json.tmp package.json
+          fi
+          echo "Publishing version: $(jq -r '.version' package.json)"
+
+      - name: Install dependencies
+        working-directory: packages/client-sdk/typescript
+        run: |
+          npm install
+
+      - name: Build SDK
+        working-directory: packages/client-sdk/typescript
+        run: npm run build
+
+      - name: Verify build output
+        working-directory: packages/client-sdk/typescript
+        run: |
+          echo "=== Build output ==="
+          ls -la dist/ 2>/dev/null || ls -la .tshy-build/ 2>/dev/null || echo "Checking tshy output..."
+          echo "=== Package exports ==="
+          jq '.exports' package.json
+
+      - name: Publish to npm (dry run)
+        if: inputs.dry_run
+        working-directory: packages/client-sdk/typescript
+        run: npm publish --access public --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        working-directory: packages/client-sdk/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          VERSION=$(jq -r '.version' packages/client-sdk/typescript/package.json)
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "## 🏗️ Dry Run Complete" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "SDK **@viben/client-sdk@${VERSION}** built successfully." >> $GITHUB_STEP_SUMMARY
+            echo "Re-run with dry_run=false to publish to npm." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## 🚀 Published @viben/client-sdk@${VERSION}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Install:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "npm install @viben/client-sdk@${VERSION}" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "[npm package](https://www.npmjs.com/package/@viben/client-sdk)" >> $GITHUB_STEP_SUMMARY
+          fi
