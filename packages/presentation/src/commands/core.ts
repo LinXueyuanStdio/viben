@@ -260,6 +260,21 @@ export const coreCommands: StepCommandDef[] = [
     }),
   },
   {
+    name: "html",
+    description: "Isolated HTML card via iframe srcdoc — renders arbitrary HTML with full style/script encapsulation",
+    category: "core",
+    defaultDurationMs: 5000,
+    parseArgs: (args) => ({
+      type: "html",
+      position: json(args.position, { x: 280, y: 180 }),
+      html: str(args.html, "<div style='padding:20px;color:#fff;font-family:system-ui;'>Hello World</div>"),
+      width: numOpt(args.width) ?? 400,
+      height: numOpt(args.height) ?? 300,
+      enterFrom: (strOpt(args.enterFrom) as "left" | "right" | "bottom" | "top") ?? "bottom",
+      animate: bool(args.animate, true),
+    }),
+  },
+  {
     name: "clear",
     description: "Remove all current annotations",
     category: "core",

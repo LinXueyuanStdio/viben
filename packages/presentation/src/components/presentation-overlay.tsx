@@ -50,6 +50,7 @@ import { Tooltip } from "../overlays/tooltip"
 import { BadgeGroup } from "../overlays/badge-group"
 import { Scatter } from "../overlays/scatter"
 import { Meter } from "../overlays/meter"
+import { Html } from "../overlays/html"
 
 /** Buffer frames for sequence virtualization pre-mount */
 const BUFFER_FRAMES = 5
@@ -176,6 +177,8 @@ const CommandRenderer = memo(function CommandRenderer({ command }: { command: Pr
       return <Scatter command={command} />
     case "meter":
       return <Meter command={command} />
+    case "html":
+      return <Html command={command} />
     case "clear":
     case "wait":
       return null

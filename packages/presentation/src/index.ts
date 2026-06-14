@@ -56,6 +56,7 @@ export type {
   BadgeGroupCommand,
   ScatterCommand,
   MeterCommand,
+  HtmlCommand,
   // Core types
   Point,
   Rect,
@@ -211,6 +212,7 @@ export { Tooltip } from "./overlays/tooltip"
 export { BadgeGroup } from "./overlays/badge-group"
 export { Scatter } from "./overlays/scatter"
 export { Meter } from "./overlays/meter"
+export { Html } from "./overlays/html"
 
 // Timeline utilities
 export {

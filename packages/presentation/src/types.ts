@@ -128,6 +128,7 @@ export type PresentationCommand =
   | BadgeGroupCommand
   | ScatterCommand
   | MeterCommand
+  | HtmlCommand
 
 /** Info card */
 export interface CardCommand {
@@ -835,6 +836,21 @@ export interface ScatterCommand {
   cardSize?: CardSizeMode
 }
 
+/** Html: isolated HTML card rendered via iframe srcdoc */
+export interface HtmlCommand {
+  type: "html"
+  position: PositionOrTarget
+  /** HTML string to render inside iframe via srcdoc */
+  html: string
+  /** iframe width (default 400) */
+  width?: number
+  /** iframe height (default 300) */
+  height?: number
+  /** Entrance animation direction */
+  enterFrom?: "left" | "right" | "bottom" | "top"
+  animate?: boolean
+}
+
 /** Meter: linear meter with gradient fill, tick marks, and animated needle */
 export interface MeterCommand {
   type: "meter"
@@ -1046,6 +1062,8 @@ export function describeCommand(cmd: PresentationCommand): string {
       return `Scatter ${cmd.points.length} points`
     case "meter":
       return `Meter ${cmd.value}${cmd.unit ?? ""}${cmd.label ? ` "${cmd.label}"` : ""}`
+    case "html":
+      return `Html ${cmd.html.length} chars`
     case "clear":
       return "Clear canvas"
     case "wait":
