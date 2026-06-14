@@ -57,7 +57,7 @@ function JsonTreeViewer({ data }: { data: unknown }) {
     return () => { editor.destroy(); };
   }, [data]);
 
-  return <div ref={containerRef} className="jse-theme-dark max-h-[min(50vh,400px)] overflow-y-auto" />;
+  return <div ref={containerRef} className="jse-theme-dark max-h-[min(50vh,400px)] overflow-y-auto overflow-x-hidden w-full min-w-0" />;
 }
 
 function CollapsibleInput({ command, icon }: { command: string; icon: React.ReactNode }) {
@@ -80,7 +80,7 @@ function CollapsibleInput({ command, icon }: { command: string; icon: React.Reac
   const lineCount = command.split("\n").length;
 
   return (
-    <div className="mb-3 rounded-md border border-border/50 bg-code-block">
+    <div className="mb-3 rounded-md border border-border/50 bg-code-block overflow-hidden min-w-0">
       {jsonData !== undefined ? (
         <>
           <div className="flex items-start gap-2 p-3 pb-2">
@@ -90,7 +90,7 @@ function CollapsibleInput({ command, icon }: { command: string; icon: React.Reac
             </pre>
           </div>
           {expanded && (
-            <div className="border-t border-border/30 px-1">
+            <div className="border-t border-border/30 px-1 overflow-hidden min-w-0">
               <JsonTreeViewer data={jsonData} />
             </div>
           )}
@@ -295,7 +295,7 @@ export function ExecApproval({
       animate={{ opacity: 1, y: 0 }}
       exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
       transition={{ duration: 0.15 }}
-      className={cn("rounded-lg border bg-card p-4 shadow-sm", className)}
+      className={cn("rounded-lg border bg-card p-4 shadow-sm overflow-hidden min-w-0", className)}
     >
       {/* Header */}
       <div className="mb-3 flex items-start gap-3">
