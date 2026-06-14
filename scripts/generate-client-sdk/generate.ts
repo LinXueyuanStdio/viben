@@ -130,9 +130,30 @@ async function main() {
   await writeFile(SPEC_PATH, JSON.stringify(fixedSpec, null, 2), "utf-8");
   console.log(`[generate-client-sdk] Spec saved: ${SPEC_PATH} (${Object.keys((fixedSpec.paths as object) || {}).length} paths)`);
 
-  await runSpeakeasy("typescript");
-  await runSpeakeasy("python");
-  console.log("\n[generate-client-sdk] Done! SDKs generated at packages/client-sdk/");
+  const targets: Array<"typescript" | "python"> = ["typescript", "python"];
+  const results: Array<{ target: string; success: boolean }> = [];
+
+  for (const target of targets) {
+    try {
+      await runSpeakeasy(target);
+      results.push({ target, success: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Upgrade Required") || msg.includes("generation access blocked")) {
+        console.warn(`\n[generate-client-sdk] ⚠ ${target} skipped (Speakeasy free plan limit)`);
+      } else {
+        console.error(`\n[generate-client-sdk] ✗ ${target} failed: ${msg}`);
+      }
+      results.push({ target, success: false });
+    }
+  }
+
+  const succeeded = results.filter((r) => r.success);
+  if (succeeded.length === 0) {
+    throw new Error("No SDKs generated successfully");
+  }
+
+  console.log(`\n[generate-client-sdk] Done! Generated: ${succeeded.map((r) => r.target).join(", ")}`);
 }
 
 main().catch((err) => {
