@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Settings, FileText, Smartphone } from "lucide-react";
+import { Settings, FileText, Smartphone, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConsoleDialog } from "@/components/console";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
@@ -50,6 +51,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
   const { openPath, openSettings } = useDesktopRouting();
   const { status, error } = useGatewayStatus();
   const [isOpen, setIsOpen] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Notify parent of open state changes
@@ -161,7 +163,39 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
                   </button>
                 )}
                 {/* Nav items with text labels */}
-                {NAV_ITEMS.map((item) => (
+                {NAV_ITEMS.slice(0, 1).map((item) => (
+                  <button
+                    key={item.href}
+                    type="button"
+                    onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
+                    className={cn(
+                      "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                      "transition-colors duration-200",
+                      "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+                    <span>{t(item.titleKey)}</span>
+                  </button>
+                ))}
+                {/* Console button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConsoleOpen(true);
+                    handleOpenChange(false);
+                  }}
+                  className={cn(
+                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                    "transition-colors duration-200",
+                    "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+                  )}
+                >
+                  <Terminal className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+                  <span>{t("nav.console")}</span>
+                </button>
+                {/* Remaining nav items */}
+                {NAV_ITEMS.slice(1).map((item) => (
                   <button
                     key={item.href}
                     type="button"
@@ -185,6 +219,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
             </PopoverContent>
           </div>
         </Popover>
+        <ConsoleDialog open={consoleOpen} onOpenChange={setConsoleOpen} />
       </>
     );
   }
@@ -230,7 +265,39 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
                 </button>
               )}
               {/* Nav items — same gap-3 px-3 py-2 rounded-lg text-sm as NavItemComponent */}
-              {NAV_ITEMS.map((item) => (
+              {NAV_ITEMS.slice(0, 1).map((item) => (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => handleNavigate(item.href, item.titleKey, item.iconValue, item.settingsSection)}
+                  className={cn(
+                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                    "transition-colors duration-200",
+                    "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+                  <span>{t(item.titleKey)}</span>
+                </button>
+              ))}
+              {/* Console button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setConsoleOpen(true);
+                  handleOpenChange(false);
+                }}
+                className={cn(
+                  "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full text-left",
+                  "transition-colors duration-200",
+                  "text-popover-foreground/70 hover:bg-accent hover:text-popover-foreground"
+                )}
+              >
+                <Terminal className="h-4 w-4 shrink-0 transition-colors duration-200 group-hover:text-primary" />
+                <span>{t("nav.console")}</span>
+              </button>
+              {/* Remaining nav items */}
+              {NAV_ITEMS.slice(1).map((item) => (
                 <button
                   key={item.href}
                   type="button"
@@ -254,6 +321,7 @@ export function SidebarBottomDrawer({ collapsed, onOpenChange }: SidebarBottomDr
           </PopoverContent>
         </div>
       </Popover>
+      <ConsoleDialog open={consoleOpen} onOpenChange={setConsoleOpen} />
     </>
   );
 }
