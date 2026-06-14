@@ -27,7 +27,8 @@
     "mcp-server": "pnpm --filter @viben/mcp-server",
     "docs": "pnpm --filter @viben/docs",
     "release": "./scripts/release.sh",
-    "check:release": "./scripts/check-before-release.sh"
+    "check:release": "./scripts/check-before-release.sh",
+    "generate-client-sdk": "tsx scripts/generate-client-sdk/generate.ts"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^4.0.4",

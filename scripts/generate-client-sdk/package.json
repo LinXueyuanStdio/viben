@@ -1,0 +1,11 @@
+{
+  "name": "generate-client-sdk",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "tsx generate.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}
