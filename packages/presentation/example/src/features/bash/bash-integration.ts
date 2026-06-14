@@ -185,15 +185,38 @@ function closesQuote(line: string, quoteType: '"' | "'"): boolean {
   return !open // Closed if we ended outside the quote
 }
 
+/** Top-level commands exposed directly (high-frequency, generic) */
+const TOP_LEVEL_COMMANDS = new Set([
+  "html", "clear", "wait",
+  "text", "card", "spotlight", "arrow", "highlight", "chart",
+])
+
+/** Category labels for help output */
+const CATEGORY_LABELS: Record<string, string> = {
+  core: "core",
+  dataviz: "dataviz",
+  narrative: "narrative",
+  effects: "effects",
+  advanced: "advanced",
+}
+
 /**
- * Create a just-bash instance with all presentation commands registered.
+ * Create a just-bash instance with presentation commands using progressive disclosure.
  *
- * Registers a single `presentation` command that dispatches to subcommands:
+ * Top-level (directly accessible):
  * ```bash
- * presentation spotlight region='{"x":100,"y":100,"width":200,"height":50}'
- * presentation arrow from='{"x":0,"y":0}' to='{"x":100,"y":100}' color=red
+ * presentation html html='<div>...</div>' width=400
  * presentation clear
- * presentation --help
+ * presentation wait ms=2000
+ * ```
+ *
+ * Category sub-subcommands (specialized):
+ * ```bash
+ * presentation core spotlight region='{"x":100,"y":100,"width":200,"height":50}'
+ * presentation dataviz chart chartType=bar data='[...]'
+ * presentation effects confetti position='{"x":480,"y":300}'
+ * presentation narrative timeline events='[...]'
+ * presentation advanced radar axes='[...]'
  * ```
  */
 export function createPresentationBash(opts: PresentationBashOptions) {
@@ -206,53 +229,129 @@ export function createPresentationBash(opts: PresentationBashOptions) {
     nextId: () => `bash-step-${++idCounter}`,
   })
 
-  // Build tool lookup
+  // Build tool lookup by name
   const toolMap = new Map<string, PresentationToolDef>()
   for (const [key, def] of Object.entries(tools)) {
-    // key is "presentation.spotlight" -> subcommand is "spotlight"
     const sub = key.replace("presentation.", "")
     toolMap.set(sub, def)
   }
 
-  // Register a single "presentation" dispatcher command
+  // Build category -> commands index
+  const categoryCommands = new Map<string, typeof ALL_STEP_COMMANDS>()
+  for (const cmd of ALL_STEP_COMMANDS) {
+    if (TOP_LEVEL_COMMANDS.has(cmd.name)) continue
+    const list = categoryCommands.get(cmd.category) ?? []
+    list.push(cmd)
+    categoryCommands.set(cmd.category, list)
+  }
+
+  function formatTopLevelHelp(): string {
+    const topLevelDefs = ALL_STEP_COMMANDS.filter(c => TOP_LEVEL_COMMANDS.has(c.name))
+    const topHelp = topLevelDefs
+      .map(c => `  ${c.name.padEnd(14)} ${c.description}`)
+      .join("\n")
+
+    const categories = [...categoryCommands.keys()].sort()
+    const catHelp = categories
+      .map(cat => `  ${cat.padEnd(14)} ${categoryCommands.get(cat)!.length} commands (use: presentation ${cat} --help)`)
+      .join("\n")
+
+    return [
+      `presentation - overlay annotation engine`,
+      ``,
+      `Usage:`,
+      `  presentation <command> [key=value ...]`,
+      `  presentation <category> <command> [key=value ...]`,
+      ``,
+      `Commands:`,
+      topHelp,
+      ``,
+      `Categories:`,
+      catHelp,
+      ``,
+    ].join("\n")
+  }
+
+  function formatCategoryHelp(category: string): string {
+    const cmds = categoryCommands.get(category)
+    if (!cmds) return ""
+    const lines = cmds
+      .map(c => `  ${c.name.padEnd(18)} ${c.description}`)
+      .join("\n")
+    return [
+      `presentation ${category} - ${cmds.length} commands`,
+      ``,
+      `Usage: presentation ${category} <command> [key=value ...]`,
+      ``,
+      `Commands:`,
+      lines,
+      ``,
+    ].join("\n")
+  }
+
   const presentationCmd = defineCommand("presentation", async (args) => {
-    const subcommand = args[0]
+    const first = args[0]
 
-    if (!subcommand || subcommand === "--help") {
-      const help = ALL_STEP_COMMANDS
-        .map(c => `  ${c.name.padEnd(18)} ${c.description}`)
-        .join("\n")
-      return {
-        stdout: `presentation - ${ALL_STEP_COMMANDS.length} overlay commands\n\nUsage: presentation <command> [key=value ...]\n\nCommands:\n${help}\n`,
-        stderr: "",
-        exitCode: 0,
+    // No args or --help → top-level help
+    if (!first || first === "--help") {
+      return { stdout: formatTopLevelHelp(), stderr: "", exitCode: 0 }
+    }
+
+    // Top-level commands: html, clear, wait
+    if (TOP_LEVEL_COMMANDS.has(first)) {
+      const tool = toolMap.get(first)!
+      try {
+        const parsedArgs = parseArgs(args.slice(1))
+        const result = tool.execute(parsedArgs)
+        return { stdout: `${result.summary}\n`, stderr: "", exitCode: 0 }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { stdout: "", stderr: `presentation ${first}: ${msg}\n`, exitCode: 1 }
       }
     }
 
-    const tool = toolMap.get(subcommand)
-    if (!tool) {
-      return {
-        stdout: "",
-        stderr: `presentation: unknown subcommand '${subcommand}'\n`,
-        exitCode: 1,
+    // Category sub-subcommand: presentation <category> [--help | <command> ...]
+    if (categoryCommands.has(first)) {
+      const category = first
+      const subcommand = args[1]
+
+      if (!subcommand || subcommand === "--help") {
+        return { stdout: formatCategoryHelp(category), stderr: "", exitCode: 0 }
+      }
+
+      const tool = toolMap.get(subcommand)
+      if (!tool) {
+        return {
+          stdout: "",
+          stderr: `presentation ${category}: unknown command '${subcommand}'\n`,
+          exitCode: 1,
+        }
+      }
+
+      // Verify the command belongs to this category
+      const cmdDef = ALL_STEP_COMMANDS.find(c => c.name === subcommand)
+      if (cmdDef && cmdDef.category !== category) {
+        return {
+          stdout: "",
+          stderr: `presentation ${category}: '${subcommand}' belongs to category '${cmdDef.category}'\n`,
+          exitCode: 1,
+        }
+      }
+
+      try {
+        const parsedArgs = parseArgs(args.slice(2))
+        const result = tool.execute(parsedArgs)
+        return { stdout: `${result.summary}\n`, stderr: "", exitCode: 0 }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { stdout: "", stderr: `presentation ${category} ${subcommand}: ${msg}\n`, exitCode: 1 }
       }
     }
 
-    try {
-      const parsedArgs = parseArgs(args.slice(1))
-      const result = tool.execute(parsedArgs)
-      return {
-        stdout: `${result.summary}\n`,
-        stderr: "",
-        exitCode: 0,
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err)
-      return {
-        stdout: "",
-        stderr: `presentation ${subcommand}: ${msg}\n`,
-        exitCode: 1,
-      }
+    return {
+      stdout: "",
+      stderr: `presentation: unknown command '${first}'. Use 'presentation --help' for usage.\n`,
+      exitCode: 1,
     }
   })
 
