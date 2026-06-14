@@ -9,7 +9,6 @@ import { Search, Plus, Loader2, X, Server, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useOfficialRegistry } from "@/hooks/use-official-registry";
 import type { OfficialServerDisplay } from "@/types/official-registry";
@@ -70,7 +69,7 @@ export function McpMarketList({ onAdd, selectedServerNames = [], className }: Mc
       </div>
 
       {/* Server grid */}
-      <ScrollArea className="max-h-[320px]">
+      <div className="max-h-[320px] overflow-y-auto">
         <div className="space-y-2 pb-2">
           {isLoading && displayServers.length === 0 ? (
             <div className="flex items-center justify-center py-10">
@@ -204,7 +203,7 @@ export function McpMarketList({ onAdd, selectedServerNames = [], className }: Mc
             </>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
