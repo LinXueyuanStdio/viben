@@ -1336,20 +1336,26 @@ export class PreviewManager {
       instance.idleTimeout = undefined;
     }
 
+    const port = instance.port;
+
     if (instance.process) {
       try {
+        // Kill the process tree (npm/pnpm spawns child processes)
         instance.process.kill("SIGTERM");
       } catch (error) {
         log.error({ err: error }, "Error killing process");
       }
       instance.process = undefined;
-    } else if (instance.isExternalProcess) {
-      // For external processes (port reuse), we need to kill the process by port
-      log.info({ port: instance.port }, "Killing external process on port");
+    }
+
+    // Always kill by port to ensure child processes (e.g., next dev spawned by npm) are terminated
+    // This handles both external processes and child processes that survive SIGTERM
+    if (port) {
+      log.info({ port }, "Killing any remaining process on port");
       try {
-        await this.killPort(instance.port);
+        await this.killPort(port);
       } catch (error) {
-        log.error({ err: error, port: instance.port }, "Error killing external process on port");
+        log.error({ err: error, port }, "Error killing process on port");
       }
     }
 
