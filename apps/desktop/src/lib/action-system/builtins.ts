@@ -18,13 +18,19 @@ interface ScreenshotResult {
 
 /**
  * Execute a built-in action. Returns null if the action name is not a built-in.
+ * Accepts both bare names (e.g., "read_window") and namespaced names (e.g., "desktop_main.read_window").
  */
 export async function executeBuiltin(
   action: string,
   payload: unknown,
   ctx: ExecutionContext
 ): Promise<ClientToolResult | null> {
-  switch (action) {
+  // Strip desktop_main. prefix if present
+  const actionName = action.startsWith(`${DESKTOP_MAIN_NAMESPACE}.`)
+    ? action.slice(DESKTOP_MAIN_NAMESPACE.length + 1)
+    : action;
+
+  switch (actionName) {
     case "list_actions":
       return handleListActions();
     case "get_action_detail":
@@ -68,10 +74,19 @@ function handleGetActionDetail(payload: unknown): ClientToolResult {
     };
   }
 
-  const builtinDetail = getBuiltinActionDetail(action);
+  // Strip desktop_main. prefix for builtin lookup
+  const actionName = action.startsWith(`${DESKTOP_MAIN_NAMESPACE}.`)
+    ? action.slice(DESKTOP_MAIN_NAMESPACE.length + 1)
+    : action;
+
+  const builtinDetail = getBuiltinActionDetail(actionName);
   if (builtinDetail) {
+    // Return with full namespaced name for namespaced builtins
+    const fullName = NAMESPACED_BUILTINS.includes(actionName)
+      ? `${DESKTOP_MAIN_NAMESPACE}.${actionName}`
+      : actionName;
     return {
-      content: [{ type: "text", text: JSON.stringify(builtinDetail, null, 2) }],
+      content: [{ type: "text", text: JSON.stringify({ ...builtinDetail, name: fullName }, null, 2) }],
     };
   }
 
@@ -276,16 +291,27 @@ function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, 
   }
 }
 
+const DESKTOP_MAIN_NAMESPACE = "desktop_main";
+
+// Builtins that are namespace-scoped (registered under desktop_main)
+const NAMESPACED_BUILTINS = ["read_window", "navigate_to"];
+// Builtins that are global (no namespace prefix)
+const GLOBAL_BUILTINS = ["list_actions", "get_action_detail"];
+
 function getBuiltinActionInfos() {
-  return ["list_actions", "get_action_detail", "read_window", "navigate_to"]
+  const allBuiltins = [...GLOBAL_BUILTINS, ...NAMESPACED_BUILTINS];
+  return allBuiltins
     .map((name) => {
       const detail = getBuiltinActionDetail(name);
-      return detail
-        ? {
-            name: detail.name,
-            description: detail.description,
-          }
-        : null;
+      if (!detail) return null;
+      // Add namespace prefix for non-global builtins
+      const fullName = NAMESPACED_BUILTINS.includes(name)
+        ? `${DESKTOP_MAIN_NAMESPACE}.${name}`
+        : name;
+      return {
+        name: fullName,
+        description: detail.description,
+      };
     })
     .filter((detail): detail is { name: string; description: string } => detail !== null);
 }
