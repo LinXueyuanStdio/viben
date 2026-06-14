@@ -2,7 +2,8 @@ import * as React from "react";
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Shield, Terminal, FileEdit, Eye } from "lucide-react";
+import { Shield, Terminal, FileEdit, Eye, ChevronDown, ChevronRight } from "lucide-react";
+import { createJSONEditor, type JSONEditorPropsOptional } from "vanilla-jsoneditor";
 import { cn, Button } from "@viben/ui";
 import type { PendingExecApproval } from "./types";
 
@@ -22,6 +23,116 @@ const kindConfig = {
   edit: { icon: FileEdit, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10" },
   execute: { icon: Terminal, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/10" },
 } as const;
+
+function tryParseJson(text: string): unknown | undefined {
+  try {
+    const trimmed = text.trim();
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      return JSON.parse(trimmed);
+    }
+  } catch { /* not JSON */ }
+  return undefined;
+}
+
+function JsonTreeViewer({ data }: { data: unknown }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<ReturnType<typeof createJSONEditor> | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const editor = createJSONEditor({
+      target: containerRef.current,
+      props: {
+        content: { json: data },
+        readOnly: true,
+        mode: "tree",
+        mainMenuBar: false,
+        navigationBar: false,
+        statusBar: false,
+        indentation: 2,
+      } as JSONEditorPropsOptional,
+    });
+    editorRef.current = editor;
+    return () => { editor.destroy(); };
+  }, [data]);
+
+  return <div ref={containerRef} className="jse-theme-dark max-h-[min(50vh,400px)] overflow-y-auto" />;
+}
+
+function CollapsibleInput({ command, icon }: { command: string; icon: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  const jsonData = React.useMemo(() => tryParseJson(command), [command]);
+
+  useEffect(() => {
+    if (jsonData !== undefined) {
+      setOverflows(true);
+      return;
+    }
+    const el = preRef.current;
+    if (!el) return;
+    setOverflows(el.scrollHeight > el.clientHeight + 2);
+  }, [command, jsonData]);
+
+  const lineCount = command.split("\n").length;
+
+  return (
+    <div className="mb-3 rounded-md border border-border/50 bg-code-block">
+      {jsonData !== undefined ? (
+        <>
+          <div className="flex items-start gap-2 p-3 pb-2">
+            {icon}
+            <pre className="min-w-0 whitespace-pre-wrap break-words font-mono text-sm leading-5 text-foreground max-h-[6.25rem] overflow-hidden">
+              {command}
+            </pre>
+          </div>
+          {expanded && (
+            <div className="border-t border-border/30 px-1">
+              <JsonTreeViewer data={jsonData} />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex w-full items-center justify-center gap-1 border-t border-border/30 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors cursor-pointer"
+          >
+            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {expanded ? "收起" : "展开 JSON 树"}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex items-start gap-2 p-3 pb-0">
+            {icon}
+            <pre
+              ref={preRef}
+              className={cn(
+                "min-w-0 whitespace-pre-wrap break-words font-mono text-sm leading-5 text-foreground",
+                !expanded && "max-h-[6.25rem] overflow-hidden",
+                expanded && "max-h-[min(50vh,400px)] overflow-y-auto",
+              )}
+            >
+              {command}
+            </pre>
+          </div>
+          {overflows && (
+            <button
+              type="button"
+              onClick={() => setExpanded(!expanded)}
+              className="flex w-full items-center justify-center gap-1 border-t border-border/30 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors cursor-pointer"
+            >
+              {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {expanded ? "收起" : `展开全部 (${lineCount} 行)`}
+            </button>
+          )}
+          {!overflows && <div className="pb-3" />}
+        </>
+      )}
+    </div>
+  );
+}
 
 export function ExecApproval({
   approval,
@@ -208,14 +319,7 @@ export function ExecApproval({
       </div>
 
       {/* Tool call info */}
-      <div className="mb-3 rounded-md border border-border/50 bg-code-block p-3">
-        <div className="flex items-start gap-2">
-          <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", config.color)} />
-          <pre className="min-w-0 max-h-[calc(5*1.25rem)] overflow-y-auto whitespace-pre-wrap break-words font-mono text-sm leading-5 text-foreground">
-            {command}
-          </pre>
-        </div>
-      </div>
+      <CollapsibleInput command={command} icon={<Icon className={cn("h-4 w-4 shrink-0 mt-0.5", config.color)} />} />
 
       {/* Action buttons */}
       <div className="flex items-center gap-2">
