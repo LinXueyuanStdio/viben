@@ -1422,7 +1422,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           type: "object",
           properties: {
             task_id: { type: "string" },
-            events: { type: "array" },
+            events: { type: "array", items: { type: "object" } },
             count: { type: "number" },
             next_sequence: { type: "number" },
           },
@@ -1493,7 +1493,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
           properties: {
             prd_content: { type: "string", nullable: true },
             prd_path: { type: "string", nullable: true },
-            subtasks: { type: "array" },
+            subtasks: { type: "array", items: { type: "object" } },
             logs: { type: "object", nullable: true },
             task_dir: { type: "string" },
           },

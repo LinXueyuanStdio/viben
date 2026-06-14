@@ -854,7 +854,7 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
   // CORS Preflight
   // ========================================================================
 
-  fastify.options("/api/mcp/tauri/*", async (_request, reply) => {
+  fastify.options("/api/mcp/tauri/*", { schema: { hide: true } }, async (_request, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
     reply.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     reply.header(
