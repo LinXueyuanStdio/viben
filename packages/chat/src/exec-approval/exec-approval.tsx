@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Shield, Terminal, FileEdit, Eye, ChevronDown, ChevronRight } from "lucide-react";
 import { createJSONEditor, type JSONEditorPropsOptional } from "vanilla-jsoneditor";
+import "vanilla-jsoneditor/themes/jse-theme-dark.css";
 import { cn, Button } from "@viben/ui";
 import type { PendingExecApproval } from "./types";
 
