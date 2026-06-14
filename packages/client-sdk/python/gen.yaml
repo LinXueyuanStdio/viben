@@ -1,0 +1,7 @@
+python:
+  version: 0.1.0
+  author: Viben
+  packageName: viben-client
+  description: Viben Gateway Python Client SDK
+generate:
+  baseServerUrl: http://127.0.0.1:18790
