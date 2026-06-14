@@ -1,0 +1,1421 @@
+# ACP Session 持久化 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 实现 ACP session 持久化，支持 WebSocket 断线重连恢复，backend 进程断开期间继续运行并缓冲输出。
+
+**Architecture:** 三层设计——`AcpSessionStore`（JSONL 磁盘持久化）+ `DetachedConnection`（断开时内存缓冲代理）+ `AcpSessionManager` 改造（park/resume 生命周期）。前端 `loadSession` 响应扩展 `history` 字段，支持批量回放历史而非逐条流式推送。
+
+**Tech Stack:** Node.js `fs/promises`（JSONL 追加写入）、`AsyncLock`（per-session 写锁）、`@agentclientprotocol/sdk`（ACP session/resume、session/load、session/close）
+
+---
+
+## 文件结构
+
+| 操作 | 路径 |
+|------|------|
+| 新建 | `packages/core/src/acp/ops/session-store.ts` |
+| 新建 | `packages/core/src/acp/ops/detached-connection.ts` |
+| 新建 | `packages/core/src/acp/ops/approval-handler.ts` |
+| 新建 | `packages/core/src/acp/ops/session-store.test.ts` |
+| 修改 | `packages/core/src/acp/types.ts` |
+| 修改 | `packages/core/src/acp/ops/session-manager.ts` |
+| 修改 | `packages/core/src/acp/ops/backend-adapter.ts` |
+| 修改 | `packages/core/src/gateway/routes/agent-acp.ts` |
+| 修改 | `packages/core/src/agents/types.ts` |
+| 修改 | `packages/core/src/acp/index.ts` |
+
+---
+
+## Task 1: 类型定义 — `AcpPermissionMode` + `AcpSessionRecord` + `AcpSessionEvent`
+
+**Files:**
+- Modify: `packages/core/src/acp/types.ts`
+- Modify: `packages/core/src/agents/types.ts`
+
+- [ ] **Step 1: 在 `packages/core/src/acp/types.ts` 中新增 `AcpPermissionMode` 类型，并收窄 `AgentConfigPayload.permission_mode` 字段类型**
+
+在文件末尾（`AcpConnection` 接口之前）找到 `AgentConfigPayload` 接口，做以下修改：
+
+```typescript
+// 在文件顶部的类型区块中新增（放在 AcpSessionStatus 附近）
+export type AcpPermissionMode = "default" | "bypassPermissions" | "auto";
+```
+
+然后将 `AgentConfigPayload` 中：
+```typescript
+// 旧：
+  approval_mode?: "bypass" | "rules" | "ai";
+  permission_mode?: string;
+
+// 新：
+  permission_mode?: AcpPermissionMode;
+```
+
+（删除 `approval_mode` 字段——它已被 `permission_mode` 取代）
+
+- [ ] **Step 2: 在 `types.ts` 中定义 `AcpSessionEvent`，并扩展 `AcpLoadSessionResponse`**
+
+为避免循环依赖（`session-store.ts` 导入 `types.ts`，若反向 import 会成环），`AcpSessionEvent` 定义在 `types.ts`，`session-store.ts` 从 `types.ts` 导入。
+
+在 `types.ts` 末尾 `AcpConnection` 接口之前追加：
+
+```typescript
+export interface AcpSessionEvent {
+  seq: number;
+  ts: string;
+  type:
+    | "prompt"
+    | "session_update"
+    | "permission_request"
+    | "permission_response"
+    | "client_tool_call"
+    | "client_tool_result"
+    | "notification";
+  id?: string;
+  status?: "pending" | "resolved" | "cancelled" | "abandoned";
+  request_id?: string;
+  data: unknown;
+}
+
+export interface AcpSessionEventPatch {
+  _type: "patch";
+  target_seq: number;
+  patch: { status: AcpSessionEvent["status"] };
+}
+```
+
+然后修改 `AcpLoadSessionResponse`（line 41）：
+
+```typescript
+// 修改前：
+export type AcpLoadSessionResponse = LoadSessionResponse & { sessionId?: string };
+
+// 修改后：
+export type AcpLoadSessionResponse = LoadSessionResponse & {
+  sessionId?: string;
+  history?: AcpSessionEvent[];
+};
+```
+
+- [ ] **Step 3: 在 `packages/core/src/agents/types.ts` 中更新 `AgentConfigFile`**
+
+```typescript
+// 旧（line 39）：
+  approval_mode?: "bypass" | "rules" | "ai";
+
+// 新：
+  permission_mode?: "default" | "bypassPermissions" | "auto";
+```
+
+（不引入跨包 import，直接用字面量联合类型）
+
+- [ ] **Step 4: 验证 TypeScript 编译**
+
+```bash
+cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
+pnpm --filter @viben/core typecheck 2>&1 | head -30
+```
+
+预期：只有因 `AcpSessionEvent` 尚未定义导致的 1-2 个错误，其余无新增错误。
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add packages/core/src/acp/types.ts packages/core/src/agents/types.ts
+git commit -m "types(acp): add AcpPermissionMode, extend AcpLoadSessionResponse with history"
+```
+
+---
+
+## Task 2: `AcpSessionStore` — 接口 + 文件系统实现
+
+**Files:**
+- Create: `packages/core/src/acp/ops/session-store.ts`
+- Create: `packages/core/src/acp/ops/session-store.test.ts`
+
+- [ ] **Step 1: 创建 `session-store.ts`**
+
+```typescript
+// packages/core/src/acp/ops/session-store.ts
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import * as os from "node:os";
+import { AsyncLock } from "../../utils/async-lock";
+import { logger as globalLogger } from "../../telemetry";
+import type {
+  AgentConfigPayload,
+  AcpAgentCapabilities,
+  AcpMcpServer,
+  AcpSandboxConfig,
+  AcpSessionEvent,         // 定义在 types.ts，避免循环依赖
+  AcpSessionEventPatch,
+} from "../types";
+
+const log = globalLogger.child({ module: "acp-session-store" });
+
+export type { AcpSessionEvent, AcpSessionEventPatch }; // re-export 方便外部使用
+
+export interface AcpSessionRecord {
+  id: string;
+  status: "active" | "parked" | "finished" | "error";
+  cwd: string;
+  created_at: string;
+  last_active_at: string;
+  title?: string;
+  agent_config_path?: string;
+  agent_dir?: string;
+  agent_config?: AgentConfigPayload;
+  sandbox_config?: AcpSandboxConfig;
+  mcp_servers: AcpMcpServer[];
+  sdk_session_id?: string;
+  agent_capabilities?: AcpAgentCapabilities;
+  persist_session_id?: string;
+  persist_task_id?: string;
+  gateway_url?: string;
+}
+
+// （AcpSessionEvent 和 AcpSessionEventPatch 定义在 types.ts，此处通过 import + re-export 透出）
+
+export interface AcpSessionStore {
+  saveRecord(record: AcpSessionRecord): Promise<void>;
+  loadRecord(id: string): Promise<AcpSessionRecord | null>;
+  listRecords(): Promise<AcpSessionRecord[]>;
+  deleteRecord(id: string): Promise<void>;
+  appendEvent(sessionId: string, event: Omit<AcpSessionEvent, "seq">): Promise<number>;
+  loadEvents(sessionId: string): Promise<AcpSessionEvent[]>;
+  updateEventStatus(
+    sessionId: string,
+    seq: number,
+    status: AcpSessionEvent["status"]
+  ): Promise<void>;
+}
+
+export function createDefaultAcpSessionStore(): AcpSessionStore {
+  const baseDir = path.join(os.homedir(), ".viben", "acp", "sessions");
+  return new FileSystemAcpSessionStore(baseDir);
+}
+
+export class FileSystemAcpSessionStore implements AcpSessionStore {
+  private writeLock = new AsyncLock();
+  private seqCounters = new Map<string, number>();
+
+  constructor(private readonly baseDir: string) {}
+
+  private sessionDir(id: string): string {
+    return path.join(this.baseDir, id);
+  }
+
+  private metaPath(id: string): string {
+    return path.join(this.sessionDir(id), "meta.json");
+  }
+
+  private eventsPath(id: string): string {
+    return path.join(this.sessionDir(id), "events.jsonl");
+  }
+
+  private getNextSeq(sessionId: string): number {
+    const next = this.seqCounters.get(sessionId) ?? 0;
+    this.seqCounters.set(sessionId, next + 1);
+    return next;
+  }
+
+  initSeqCounter(sessionId: string, startSeq: number): void {
+    this.seqCounters.set(sessionId, startSeq);
+  }
+
+  async saveRecord(record: AcpSessionRecord): Promise<void> {
+    const dir = this.sessionDir(record.id);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(this.metaPath(record.id), JSON.stringify(record, null, 2), "utf8");
+  }
+
+  async loadRecord(id: string): Promise<AcpSessionRecord | null> {
+    try {
+      const raw = await fs.readFile(this.metaPath(id), "utf8");
+      return JSON.parse(raw) as AcpSessionRecord;
+    } catch {
+      return null;
+    }
+  }
+
+  async listRecords(): Promise<AcpSessionRecord[]> {
+    try {
+      const entries = await fs.readdir(this.baseDir, { withFileTypes: true });
+      const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+      const results = await Promise.allSettled(dirs.map((id) => this.loadRecord(id)));
+      return results
+        .filter((r): r is PromiseFulfilledResult<AcpSessionRecord> => r.status === "fulfilled" && r.value !== null)
+        .map((r) => r.value);
+    } catch {
+      return [];
+    }
+  }
+
+  async deleteRecord(id: string): Promise<void> {
+    await fs.rm(this.sessionDir(id), { recursive: true, force: true });
+    this.seqCounters.delete(id);
+  }
+
+  async appendEvent(sessionId: string, event: Omit<AcpSessionEvent, "seq">): Promise<number> {
+    return this.writeLock.withLock(sessionId, async () => {
+      const seq = this.getNextSeq(sessionId);
+      const line = JSON.stringify({ ...event, seq }) + "\n";
+      await fs.mkdir(this.sessionDir(sessionId), { recursive: true });
+      await fs.appendFile(this.eventsPath(sessionId), line, "utf8");
+      return seq;
+    });
+  }
+
+  async loadEvents(sessionId: string): Promise<AcpSessionEvent[]> {
+    let raw: string;
+    try {
+      raw = await fs.readFile(this.eventsPath(sessionId), "utf8");
+    } catch {
+      return [];
+    }
+
+    const events: AcpSessionEvent[] = [];
+    const patchMap = new Map<number, AcpSessionEvent["status"]>();
+
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed._type === "patch") {
+          const p = parsed as AcpSessionEventPatch;
+          patchMap.set(p.target_seq, p.patch.status);
+        } else {
+          events.push(parsed as AcpSessionEvent);
+        }
+      } catch {
+        log.warn({ sessionId, line: trimmed.slice(0, 80) }, "Skipping corrupt JSONL line");
+      }
+    }
+
+    // Apply patches
+    for (const event of events) {
+      if (patchMap.has(event.seq)) {
+        event.status = patchMap.get(event.seq);
+      }
+    }
+
+    return events;
+  }
+
+  async updateEventStatus(
+    sessionId: string,
+    seq: number,
+    status: AcpSessionEvent["status"]
+  ): Promise<void> {
+    return this.writeLock.withLock(sessionId, async () => {
+      const patch: AcpSessionEventPatch = { _type: "patch", target_seq: seq, patch: { status } };
+      await fs.appendFile(this.eventsPath(sessionId), JSON.stringify(patch) + "\n", "utf8");
+    });
+  }
+}
+```
+
+- [ ] **Step 2: 写测试 `session-store.test.ts`**
+
+```typescript
+// packages/core/src/acp/ops/session-store.test.ts
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
+import { FileSystemAcpSessionStore } from "./session-store";
+import type { AcpSessionRecord, AcpSessionEvent } from "./session-store";
+
+function makeRecord(id: string): AcpSessionRecord {
+  return {
+    id,
+    status: "active",
+    cwd: "/tmp",
+    created_at: new Date().toISOString(),
+    last_active_at: new Date().toISOString(),
+    mcp_servers: [],
+  };
+}
+
+describe("FileSystemAcpSessionStore", () => {
+  let tmpDir: string;
+  let store: FileSystemAcpSessionStore;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "acp-store-test-"));
+    store = new FileSystemAcpSessionStore(tmpDir);
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it("saveRecord / loadRecord roundtrip", async () => {
+    const record = makeRecord("sess-1");
+    await store.saveRecord(record);
+    const loaded = await store.loadRecord("sess-1");
+    expect(loaded?.id).toBe("sess-1");
+    expect(loaded?.status).toBe("active");
+  });
+
+  it("loadRecord returns null for missing id", async () => {
+    expect(await store.loadRecord("nope")).toBeNull();
+  });
+
+  it("listRecords returns all saved records", async () => {
+    await store.saveRecord(makeRecord("a"));
+    await store.saveRecord(makeRecord("b"));
+    const list = await store.listRecords();
+    expect(list.map((r) => r.id).sort()).toEqual(["a", "b"]);
+  });
+
+  it("deleteRecord removes files", async () => {
+    await store.saveRecord(makeRecord("del-me"));
+    await store.deleteRecord("del-me");
+    expect(await store.loadRecord("del-me")).toBeNull();
+  });
+
+  it("appendEvent assigns sequential seq numbers", async () => {
+    const base: Omit<AcpSessionEvent, "seq"> = {
+      ts: new Date().toISOString(),
+      type: "session_update",
+      data: {},
+    };
+    const seq0 = await store.appendEvent("s1", base);
+    const seq1 = await store.appendEvent("s1", base);
+    expect(seq0).toBe(0);
+    expect(seq1).toBe(1);
+  });
+
+  it("loadEvents returns events in order", async () => {
+    await store.appendEvent("s2", { ts: "", type: "prompt", data: "hello" });
+    await store.appendEvent("s2", { ts: "", type: "session_update", data: {} });
+    const events = await store.loadEvents("s2");
+    expect(events).toHaveLength(2);
+    expect(events[0].seq).toBe(0);
+    expect(events[1].seq).toBe(1);
+  });
+
+  it("updateEventStatus applies patch via last-write-wins", async () => {
+    const seq = await store.appendEvent("s3", { ts: "", type: "permission_request", status: "pending", data: {} });
+    await store.updateEventStatus("s3", seq, "resolved");
+    const events = await store.loadEvents("s3");
+    expect(events[0].status).toBe("resolved");
+  });
+
+  it("loadEvents skips corrupt lines silently", async () => {
+    const eventsPath = path.join(tmpDir, "s4", "events.jsonl");
+    await fs.mkdir(path.dirname(eventsPath), { recursive: true });
+    await fs.writeFile(eventsPath, '{"seq":0,"ts":"","type":"prompt","data":{}}\nNOT_JSON\n{"seq":1,"ts":"","type":"notification","data":{}}\n');
+    const events = await store.loadEvents("s4");
+    expect(events).toHaveLength(2);
+  });
+
+  it("initSeqCounter resumes from given start", async () => {
+    store.initSeqCounter("s5", 10);
+    const seq = await store.appendEvent("s5", { ts: "", type: "notification", data: {} });
+    expect(seq).toBe(10);
+  });
+});
+```
+
+- [ ] **Step 3: 运行测试**
+
+```bash
+cd /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben
+pnpm --filter @viben/core test -- session-store 2>&1 | tail -20
+```
+
+预期：8 个测试全部 PASS。
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add packages/core/src/acp/ops/session-store.ts packages/core/src/acp/ops/session-store.test.ts
+git commit -m "feat(acp): add AcpSessionStore interface and FileSystemAcpSessionStore implementation"
+```
+
+---
+
+## Task 3: `ApprovalHandler` — 接口 + stub 实现
+
+**Files:**
+- Create: `packages/core/src/acp/ops/approval-handler.ts`
+
+- [ ] **Step 1: 创建 `approval-handler.ts`**
+
+```typescript
+// packages/core/src/acp/ops/approval-handler.ts
+import type { AcpPermissionMode, AcpRequestPermissionRequest } from "../types";
+
+export type ApprovalDecision =
+  | { auto: true; optionId: string }
+  | { auto: false };
+
+export interface ApprovalHandler {
+  evaluate(
+    params: AcpRequestPermissionRequest,
+    permissionMode: AcpPermissionMode
+  ): Promise<ApprovalDecision>;
+}
+
+export class DefaultApprovalHandler implements ApprovalHandler {
+  async evaluate(
+    _params: AcpRequestPermissionRequest,
+    permissionMode: AcpPermissionMode
+  ): Promise<ApprovalDecision> {
+    // "bypassPermissions" 模式下 backend 不会发 requestPermission，此处不会被调用
+    // "auto" 模式：stub — 待后续接入 LLM，暂时全部挂起由人工决定
+    // "default" 模式：暂时全部挂起由人工决定（后续可加规则判断）
+    return { auto: false };
+  }
+}
+
+export function createDefaultApprovalHandler(): ApprovalHandler {
+  return new DefaultApprovalHandler();
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add packages/core/src/acp/ops/approval-handler.ts
+git commit -m "feat(acp): add ApprovalHandler interface with stub DefaultApprovalHandler"
+```
+
+---
+
+## Task 4: `DetachedConnection` — 断开时的连接代理
+
+**Files:**
+- Create: `packages/core/src/acp/ops/detached-connection.ts`
+
+- [ ] **Step 1: 创建 `detached-connection.ts`**
+
+```typescript
+// packages/core/src/acp/ops/detached-connection.ts
+import { logger as globalLogger } from "../../telemetry";
+import type { AcpConnection, AcpPermissionMode, AcpRequestPermissionRequest, AcpRequestPermissionResponse, AcpSessionNotification } from "../types";
+import type { AcpSessionStore, AcpSessionEvent } from "./session-store";
+import { createDefaultApprovalHandler, type ApprovalHandler } from "./approval-handler";
+
+const log = globalLogger.child({ module: "detached-connection" });
+
+const CLIENT_TOOL_TIMEOUT_MS = 60_000;
+
+interface PendingRequest<T> {
+  seq: number;
+  params: unknown;
+  resolve: (value: T) => void;
+  reject: (error: unknown) => void;
+  timeoutTimer?: NodeJS.Timeout;
+}
+
+export class DetachedConnection implements AcpConnection {
+  private memoryBuffer: AcpSessionEvent[] = [];
+  private flushTimer: NodeJS.Timeout | null = null;
+  private pendingPermissions = new Map<string, PendingRequest<AcpRequestPermissionResponse>>();
+  private pendingToolCalls = new Map<string, PendingRequest<unknown>>();
+  private draining = false;
+  private approvalHandler: ApprovalHandler;
+
+  constructor(
+    private readonly store: AcpSessionStore,
+    private readonly sessionId: string,
+    private readonly permissionMode: AcpPermissionMode,
+    approvalHandler?: ApprovalHandler
+  ) {
+    this.approvalHandler = approvalHandler ?? createDefaultApprovalHandler();
+  }
+
+  startFlushTimer(): void {
+    if (this.flushTimer) return;
+    this.flushTimer = setInterval(() => {
+      this.flush().catch((err) => {
+        log.warn({ err, sessionId: this.sessionId }, "DetachedConnection periodic flush failed");
+      });
+    }, 5_000);
+  }
+
+  stopFlushTimer(): void {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
+  }
+
+  async flush(): Promise<void> {
+    const toFlush = this.memoryBuffer.splice(0);
+    for (const event of toFlush) {
+      // Omit seq — appendEvent assigns it
+      const { seq: _seq, ...rest } = event;
+      const assignedSeq = await this.store.appendEvent(this.sessionId, rest as Omit<AcpSessionEvent, "seq">);
+      // Update pending maps with the real seq
+      this.updatePendingSeq(event, assignedSeq);
+    }
+  }
+
+  private updatePendingSeq(event: AcpSessionEvent, assignedSeq: number): void {
+    if (event.id) {
+      const perm = this.pendingPermissions.get(event.id);
+      if (perm && perm.seq === event.seq) perm.seq = assignedSeq;
+      const tool = this.pendingToolCalls.get(event.id);
+      if (tool && tool.seq === event.seq) tool.seq = assignedSeq;
+    }
+  }
+
+  async sessionUpdate(params: AcpSessionNotification): Promise<void> {
+    const event: AcpSessionEvent = {
+      seq: -1, // placeholder, replaced on flush
+      ts: new Date().toISOString(),
+      type: "session_update",
+      data: params,
+    };
+    this.memoryBuffer.push(event);
+  }
+
+  async requestPermission(params: AcpRequestPermissionRequest): Promise<AcpRequestPermissionResponse> {
+    const decision = await this.approvalHandler.evaluate(params, this.permissionMode);
+    if (decision.auto) {
+      const event: AcpSessionEvent = {
+        seq: -1,
+        ts: new Date().toISOString(),
+        type: "permission_response",
+        data: { optionId: decision.optionId },
+      };
+      this.memoryBuffer.push(event);
+      const option = (params as { options?: Array<{ id: string }> }).options?.find(
+        (o) => o.id === decision.optionId
+      );
+      return { optionId: decision.optionId, ...(option ?? {}) } as AcpRequestPermissionResponse;
+    }
+
+    const requestId = (params as { requestId?: string }).requestId ?? `perm-${Date.now()}`;
+    const placeholderSeq = -(this.pendingPermissions.size + 1000);
+    const event: AcpSessionEvent = {
+      seq: placeholderSeq,
+      ts: new Date().toISOString(),
+      type: "permission_request",
+      id: requestId,
+      status: "pending",
+      data: params,
+    };
+    this.memoryBuffer.push(event);
+
+    return new Promise<AcpRequestPermissionResponse>((resolve, reject) => {
+      this.pendingPermissions.set(requestId, { seq: placeholderSeq, params, resolve, reject });
+    });
+  }
+
+  async requestClient(method: string, params?: Record<string, unknown>): Promise<unknown> {
+    const toolCallId = (params?.toolCallId as string | undefined) ?? `tool-${Date.now()}`;
+    const placeholderSeq = -(this.pendingToolCalls.size + 2000);
+    const event: AcpSessionEvent = {
+      seq: placeholderSeq,
+      ts: new Date().toISOString(),
+      type: "client_tool_call",
+      id: toolCallId,
+      status: "pending",
+      data: { method, params },
+    };
+    this.memoryBuffer.push(event);
+
+    return new Promise<unknown>((resolve, reject) => {
+      const timeoutTimer = setTimeout(() => {
+        this.pendingToolCalls.delete(toolCallId);
+        const abandonEvent: Omit<AcpSessionEvent, "seq"> = {
+          ts: new Date().toISOString(),
+          type: "client_tool_call",
+          id: toolCallId,
+          status: "abandoned",
+          data: { method, params, reason: "timeout" },
+        };
+        this.store.appendEvent(this.sessionId, abandonEvent).catch(() => {});
+        reject(new Error(`Client tool call timed out: ${toolCallId}`));
+      }, CLIENT_TOOL_TIMEOUT_MS);
+
+      this.pendingToolCalls.set(toolCallId, {
+        seq: placeholderSeq,
+        params: { method, params },
+        resolve,
+        reject,
+        timeoutTimer,
+      });
+    });
+  }
+
+  async notifyClient(method: string, params?: Record<string, unknown>): Promise<void> {
+    const event: AcpSessionEvent = {
+      seq: -1,
+      ts: new Date().toISOString(),
+      type: "notification",
+      data: { method, params },
+    };
+    this.memoryBuffer.push(event);
+  }
+
+  /**
+   * 重连时调用：返回 history 快照，并异步处理 pending 请求。
+   */
+  async resume(newConnection: AcpConnection): Promise<AcpSessionEvent[]> {
+    this.stopFlushTimer();
+    const history = [...this.memoryBuffer];
+    await this.flush();
+    this.drainPendingAsync(newConnection);
+    return history;
+  }
+
+  private drainPendingAsync(newConnection: AcpConnection): void {
+    if (this.draining) return;
+    this.draining = true;
+
+    const run = async () => {
+      const sortedPermissions = [...this.pendingPermissions.entries()].sort(
+        (a, b) => a[1].seq - b[1].seq
+      );
+      for (const [id, pending] of sortedPermissions) {
+        try {
+          const decision = await newConnection.requestPermission(
+            pending.params as AcpRequestPermissionRequest
+          );
+          pending.resolve(decision);
+          await this.store.updateEventStatus(this.sessionId, pending.seq, "resolved");
+        } catch (err) {
+          pending.reject(err);
+        }
+        this.pendingPermissions.delete(id);
+      }
+
+      const sortedTools = [...this.pendingToolCalls.entries()].sort(
+        (a, b) => a[1].seq - b[1].seq
+      );
+      for (const [id, pending] of sortedTools) {
+        if (pending.timeoutTimer) clearTimeout(pending.timeoutTimer);
+        try {
+          const result = await newConnection.requestClient(
+            "_viben/client_tool_call",
+            pending.params as Record<string, unknown>
+          );
+          pending.resolve(result);
+          await this.store.updateEventStatus(this.sessionId, pending.seq, "resolved");
+        } catch (err) {
+          pending.reject(err);
+        }
+        this.pendingToolCalls.delete(id);
+      }
+
+      this.draining = false;
+    };
+
+    run().catch((err) => {
+      log.warn({ err, sessionId: this.sessionId }, "drainPendingAsync failed");
+      this.draining = false;
+    });
+  }
+
+  /**
+   * 关闭时调用：停止定时器并执行最终刷盘。
+   */
+  async close(): Promise<void> {
+    this.stopFlushTimer();
+    await this.flush();
+    // Reject all pending requests
+    for (const [, pending] of this.pendingPermissions) {
+      pending.reject(new Error("DetachedConnection closed"));
+    }
+    for (const [, pending] of this.pendingToolCalls) {
+      if (pending.timeoutTimer) clearTimeout(pending.timeoutTimer);
+      pending.reject(new Error("DetachedConnection closed"));
+    }
+    this.pendingPermissions.clear();
+    this.pendingToolCalls.clear();
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add packages/core/src/acp/ops/detached-connection.ts
+git commit -m "feat(acp): add DetachedConnection for session buffering during WS disconnect"
+```
+
+---
+
+## Task 5: `backend-adapter.ts` — 添加 `"auto"` 到 `CLAUDE_PERMISSION_MODES`
+
+**Files:**
+- Modify: `packages/core/src/acp/ops/backend-adapter.ts`
+
+- [ ] **Step 1: 修改 `CLAUDE_PERMISSION_MODES` 集合，添加 `"auto"`**
+
+定位 `backend-adapter.ts` 第 49-55 行：
+
+```typescript
+// 旧：
+const CLAUDE_PERMISSION_MODES = new Set([
+  "default",
+  "acceptEdits",
+  "dontAsk",
+  "plan",
+  "bypassPermissions",
+]);
+
+// 新：
+const CLAUDE_PERMISSION_MODES = new Set([
+  "default",
+  "acceptEdits",
+  "dontAsk",
+  "plan",
+  "bypassPermissions",
+  "auto",
+]);
+```
+
+- [ ] **Step 2: 验证编译**
+
+```bash
+pnpm --filter @viben/core typecheck 2>&1 | head -20
+```
+
+预期：无新增错误。
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add packages/core/src/acp/ops/backend-adapter.ts
+git commit -m "fix(acp): add 'auto' to CLAUDE_PERMISSION_MODES set"
+```
+
+---
+
+## Task 6: `AcpSessionManager` 改造 — park/resume + loadSession + closeSession
+
+**Files:**
+- Modify: `packages/core/src/acp/ops/session-manager.ts`
+
+- [ ] **Step 1: 在 `session-manager.ts` 顶部添加新依赖 import**
+
+在现有 import 块末尾追加：
+
+```typescript
+import type { AcpSessionStore, AcpSessionRecord } from "./session-store";
+import { DetachedConnection } from "./detached-connection";
+```
+
+- [ ] **Step 2: 修改 `AcpSessionManager` 构造函数，注入 `AcpSessionStore`**
+
+```typescript
+// 旧：
+export class AcpSessionManager {
+  private sessions = new Map<string, AcpSession>();
+  private backendAdapter: AcpBackendAdapter;
+  private steerPromptStore: AcpSteerPromptStore;
+
+  constructor(
+    backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter(),
+    steerPromptStore: AcpSteerPromptStore = createDefaultAcpSteerPromptStore()
+  ) {
+    this.backendAdapter = backendAdapter;
+    this.steerPromptStore = steerPromptStore;
+  }
+
+// 新：
+export class AcpSessionManager {
+  private sessions = new Map<string, AcpSession>();
+  private backendAdapter: AcpBackendAdapter;
+  private steerPromptStore: AcpSteerPromptStore;
+  private store: AcpSessionStore | null;
+
+  constructor(
+    backendAdapter: AcpBackendAdapter = createDefaultAcpBackendAdapter(),
+    steerPromptStore: AcpSteerPromptStore = createDefaultAcpSteerPromptStore(),
+    store: AcpSessionStore | null = null
+  ) {
+    this.backendAdapter = backendAdapter;
+    this.steerPromptStore = steerPromptStore;
+    this.store = store;
+  }
+```
+
+- [ ] **Step 3: 修改 `createSession()`，新增 session 创建后 `store.saveRecord()`**
+
+在 `createSession()` 方法中，`this.sessions.set(sessionId, session)` 之后追加：
+
+```typescript
+    this.sessions.set(sessionId, session);
+    // 持久化到磁盘
+    await this.persistRecord(session);
+    log.info({ sessionId, cwd: session.cwd, agentConfigPath: session.agent_config_path }, "ACP session created");
+```
+
+新增私有方法（放在 `requireSession` 附近）：
+
+```typescript
+  private async persistRecord(session: AcpSession): Promise<void> {
+    if (!this.store) return;
+    const record: AcpSessionRecord = {
+      id: session.id,
+      status: session.status === "initializing" ? "active" : session.status as AcpSessionRecord["status"],
+      cwd: session.cwd,
+      created_at: session.created_at.toISOString(),
+      last_active_at: session.last_active_at.toISOString(),
+      agent_config_path: session.agent_config_path,
+      agent_dir: session.agent_dir,
+      agent_config: session.agent_config,
+      sandbox_config: session.sandbox_config,
+      mcp_servers: session.mcp_servers,
+      sdk_session_id: session.sdk_session_id,
+      agent_capabilities: session.agent_capabilities,
+      persist_session_id: session.persist_session_id,
+      persist_task_id: session.persist_task_id,
+      gateway_url: session.gateway_url,
+    };
+    try {
+      await this.store.saveRecord(record);
+    } catch (err) {
+      log.warn({ err, sessionId: session.id }, "Failed to persist ACP session record");
+    }
+  }
+```
+
+- [ ] **Step 4: 修改 `ensureBackend()`，backend 初始化后更新磁盘记录**
+
+在 `session.backend = backend;` 之后追加：
+
+```typescript
+    session.backend = backend;
+    session.sdk_session_id = backend.backendSessionId;
+    session.agent_capabilities = backend.agentCapabilities ?? DEFAULT_AGENT_CAPABILITIES;
+    session.config_options = backend.configOptions;
+    // 更新 sdk_session_id + title + agent_capabilities 到磁盘
+    await this.persistRecord(session);
+    return backend;
+```
+
+- [ ] **Step 5: 新增 `parkSession()` 方法**
+
+在 `closeSession()` 方法之前插入：
+
+```typescript
+  async parkSession(sessionId: string): Promise<void> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    if (session.connection instanceof DetachedConnection) {
+      log.warn({ sessionId }, "Session already parked, skipping");
+      return;
+    }
+
+    const permissionMode = session.agent_config?.permission_mode ?? "default";
+    const detached = new DetachedConnection(
+      this.store ?? createNullStore(),
+      sessionId,
+      permissionMode
+    );
+    session.connection = detached;
+    session.last_active_at = new Date();
+
+    if (this.store) {
+      await this.persistRecord({ ...session, status: "parked" } as AcpSession & { status: "parked" });
+    }
+
+    detached.startFlushTimer();
+    log.info({ sessionId }, "ACP session parked");
+  }
+```
+
+还需要一个 null store helper（防御性，store 为 null 时 DetachedConnection 仍可运行但不落盘）：
+
+```typescript
+function createNullStore(): AcpSessionStore {
+  return {
+    async saveRecord() {},
+    async loadRecord() { return null; },
+    async listRecords() { return []; },
+    async deleteRecord() {},
+    async appendEvent() { return 0; },
+    async loadEvents() { return []; },
+    async updateEventStatus() {},
+  };
+}
+```
+
+- [ ] **Step 6: 修改 `loadSession()`，处理 parked session 重连**
+
+替换现有 `loadSession()` 方法：
+
+```typescript
+  async loadSession(
+    request: AcpLoadSessionRequest,
+    connection: AcpConnection,
+    context: AcpSessionContext = {}
+  ): Promise<AcpLoadSessionResponse> {
+    const existing = this.sessions.get(request.sessionId);
+
+    // Case 1: 内存有，且 connection 是 DetachedConnection（正常断线重连）
+    if (existing && existing.connection instanceof DetachedConnection) {
+      const detached = existing.connection;
+      // 通知 backend 继续推送（ACP session/resume）
+      if (existing.backend) {
+        try {
+          await (existing.backend as { resumeSession?: (id: string) => Promise<void> }).resumeSession?.(existing.sdk_session_id ?? request.sessionId);
+        } catch (err) {
+          log.debug({ err, sessionId: request.sessionId }, "session/resume notification failed (non-fatal)");
+        }
+      }
+      const history = await detached.resume(connection);
+      existing.connection = connection;
+      existing.last_active_at = new Date();
+      await this.persistRecord(existing);
+      log.info({ sessionId: request.sessionId, historyLength: history.length }, "ACP session resumed from parked state");
+      return { sessionId: existing.id, configOptions: existing.config_options, history };
+    }
+
+    // Case 2: 内存有，普通连接（如浏览器刷新）
+    if (existing) {
+      existing.connection = connection;
+      existing.last_active_at = new Date();
+      if (!existing.backend) {
+        existing.backend_load_session_id = request.sessionId;
+      }
+      return { sessionId: existing.id, configOptions: existing.config_options };
+    }
+
+    // Case 3: 内存无，磁盘有（gateway 重启后恢复）
+    if (this.store) {
+      const diskRecord = await this.store.loadRecord(request.sessionId);
+      if (diskRecord) {
+        const session = await this.createSessionRecord(
+          request.sessionId,
+          {
+            cwd: diskRecord.cwd,
+            mcpServers: diskRecord.mcp_servers,
+            agent_config_path: diskRecord.agent_config_path,
+            agent_dir: diskRecord.agent_dir,
+            agent_config: diskRecord.agent_config,
+            persist_session_id: diskRecord.persist_session_id,
+            persist_task_id: diskRecord.persist_task_id,
+            sandbox_config: diskRecord.sandbox_config,
+          },
+          connection,
+          context
+        );
+        session.backend_load_session_id = diskRecord.sdk_session_id ?? request.sessionId;
+        session.sdk_session_id = diskRecord.sdk_session_id;
+        this.sessions.set(request.sessionId, session);
+
+        const allEvents = await this.store.loadEvents(request.sessionId);
+        const maxSeq = allEvents.reduce((max, e) => Math.max(max, e.seq), -1);
+        (this.store as import("./session-store").FileSystemAcpSessionStore).initSeqCounter?.(request.sessionId, maxSeq + 1);
+
+        // pending 事件标为 abandoned（backend 已死）
+        for (const event of allEvents) {
+          if (event.status === "pending") {
+            await this.store.updateEventStatus(request.sessionId, event.seq, "abandoned");
+          }
+        }
+
+        const history = allEvents.filter((e) => e.type === "session_update");
+        log.info({ sessionId: request.sessionId, historyLength: history.length }, "ACP session recovered from disk after gateway restart");
+        return { sessionId: request.sessionId, configOptions: session.config_options, history };
+      }
+    }
+
+    // Case 4: 都没有 → 新建
+    const session = await this.createSessionRecord(
+      request.sessionId,
+      {
+        cwd: request.cwd,
+        mcpServers: request.mcpServers ?? [],
+        agent_config_path: request.agent_config_path ?? request.agentConfigPath ?? context.agent_config_path,
+        agent_dir: request.agent_dir ?? request.agentDir ?? context.agent_dir,
+        agent_config: request.agent_config ?? request.agentConfig ?? context.agent_config,
+        persist_session_id: request.persist_session_id ?? request.persistSessionId ?? context.session_id,
+        persist_task_id: request.persist_task_id ?? request.persistTaskId ?? context.task_id,
+        sandbox_config: request.sandbox_config ?? request.sandboxConfig ?? context.sandbox_config,
+      },
+      connection,
+      context
+    );
+    session.backend_load_session_id = request.sessionId;
+    this.sessions.set(request.sessionId, session);
+    await this.persistRecord(session);
+    log.info({ sessionId: request.sessionId, cwd: session.cwd }, "ACP session loaded as new live session");
+    return { sessionId: request.sessionId, configOptions: session.config_options };
+  }
+```
+
+- [ ] **Step 7: 修改 `closeSession()`，新增持久化 + DetachedConnection 清理**
+
+```typescript
+  closeSession(sessionId: string): void {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    if (session.prompt_running) {
+      clientToolCompletionRegistry.cancelSession(sessionId);
+    }
+    // 若是 DetachedConnection，先同步关闭（清理定时器、刷盘）
+    if (session.connection instanceof DetachedConnection) {
+      session.connection.close().catch((err) => {
+        log.warn({ err, sessionId }, "DetachedConnection close failed during closeSession");
+      });
+    }
+    void session.backend?.close().catch((error) => {
+      log.debug({ err: error, sessionId }, "ACP backend close failed");
+    });
+    for (const item of session.prompt_queue.splice(0)) {
+      item.resolve({ stopReason: "cancelled" });
+    }
+    // 持久化 finished 状态（保留 JSONL 历史）
+    if (this.store) {
+      this.persistRecord({ ...session, status: "finished" } as AcpSession).catch((err) => {
+        log.warn({ err, sessionId }, "Failed to persist finished session record");
+      });
+    }
+    this.sessions.delete(sessionId);
+    log.info({ sessionId }, "ACP session closed");
+  }
+```
+
+- [ ] **Step 8: 修改 `listSessions()`，合并磁盘 parked 记录**
+
+```typescript
+  async listSessions(): Promise<AcpSessionSummary[]> {
+    const memorySessions = Array.from(this.sessions.values()).map((s) => toSummary(s));
+    if (!this.store) return memorySessions;
+
+    const diskRecords = await this.store.listRecords();
+    const memoryIds = new Set(this.sessions.keys());
+    const parkedFromDisk = diskRecords
+      .filter((r) => r.status === "parked" && !memoryIds.has(r.id))
+      .map((r): AcpSessionSummary => ({
+        id: r.id,
+        status: "parked",
+        cwd: r.cwd,
+        createdAt: r.created_at,
+        lastActiveAt: r.last_active_at,
+        queueDepth: 0,
+        promptRunning: false,
+        sdkSessionId: r.sdk_session_id,
+        agentCapabilities: r.agent_capabilities ?? DEFAULT_AGENT_CAPABILITIES,
+      }));
+
+    return [...memorySessions, ...parkedFromDisk].sort(
+      (a, b) => new Date(b.lastActiveAt).getTime() - new Date(a.lastActiveAt).getTime()
+    );
+  }
+```
+
+注意：原来的 `listSessions()` 是同步的，改为 `async`，需要更新所有调用方（`agent-acp.ts` 的 `listSessions` handler）。
+
+- [ ] **Step 9: 运行测试确认无回归**
+
+```bash
+pnpm --filter @viben/core test -- session-manager 2>&1 | tail -20
+```
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add packages/core/src/acp/ops/session-manager.ts
+git commit -m "feat(acp): add parkSession/resumeSession, persist session lifecycle to disk"
+```
+
+---
+
+## Task 7: `agent-acp.ts` — WS 断开改为 parkSession + listSessions 改为 async
+
+**Files:**
+- Modify: `packages/core/src/gateway/routes/agent-acp.ts`
+
+- [ ] **Step 1: 修改 WS 断开处理，`closeSession` → `parkSession`**
+
+```typescript
+// 旧：
+    const cleanup = () => {
+      for (const sessionId of ownedSessionIds) {
+        acpSessionManager.closeSession(sessionId);
+      }
+      log.info({ sessions: ownedSessionIds.size }, "ACP WebSocket disconnected");
+    };
+
+// 新：
+    const cleanup = async () => {
+      for (const sessionId of ownedSessionIds) {
+        await acpSessionManager.parkSession(sessionId);
+      }
+      log.info({ sessions: ownedSessionIds.size }, "ACP WebSocket disconnected, sessions parked");
+    };
+```
+
+然后将 `socket.once("close", cleanup)` 改为：
+
+```typescript
+    socket.once("close", () => { cleanup().catch((err) => log.warn({ err }, "Session park cleanup failed")); });
+```
+
+- [ ] **Step 2: 修改 `listSessions` handler，改为 async**
+
+```typescript
+// 旧：
+    async listSessions(_request: ListSessionsRequest): Promise<ListSessionsResponse> {
+      return {
+        sessions: acpSessionManager.listSessions().map((session) => ({
+          sessionId: session.id,
+          cwd: session.cwd,
+          title: session.agentCapabilities._meta?.title as string | undefined,
+          updatedAt: session.lastActiveAt,
+        })),
+      };
+    },
+
+// 新：
+    async listSessions(_request: ListSessionsRequest): Promise<ListSessionsResponse> {
+      const sessions = await acpSessionManager.listSessions();
+      return {
+        sessions: sessions.map((session) => ({
+          sessionId: session.id,
+          cwd: session.cwd,
+          title: session.agentCapabilities._meta?.title as string | undefined,
+          updatedAt: session.lastActiveAt,
+        })),
+      };
+    },
+```
+
+- [ ] **Step 3: 在 gateway 初始化时注入 `AcpSessionStore`**
+
+定位 `packages/core/src/acp/ops/session-manager.ts` 末尾的单例：
+
+```typescript
+// 旧：
+export const acpSessionManager = new AcpSessionManager();
+
+// 新：
+import { createDefaultAcpSessionStore } from "./session-store";
+export const acpSessionManager = new AcpSessionManager(
+  createDefaultAcpBackendAdapter(),
+  createDefaultAcpSteerPromptStore(),
+  createDefaultAcpSessionStore()
+);
+```
+
+- [ ] **Step 4: 修改 `getActiveAcpSessionCount()` 以兼容 async listSessions**
+
+```typescript
+// 旧：
+export function getActiveAcpSessionCount(): number {
+  return acpSessionManager.listSessions().length;
+}
+
+// 新：
+export async function getActiveAcpSessionCount(): Promise<number> {
+  return (await acpSessionManager.listSessions()).length;
+}
+```
+
+同时在 `packages/core/src/gateway/routes/index.ts` 中找到调用 `getActiveAcpSessionCount()` 的地方，加上 `await`。
+
+- [ ] **Step 5: TypeCheck**
+
+```bash
+pnpm --filter @viben/core typecheck 2>&1 | head -30
+```
+
+预期：无错误。
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/core/src/gateway/routes/agent-acp.ts packages/core/src/acp/ops/session-manager.ts
+git commit -m "feat(acp): park sessions on WS disconnect, inject AcpSessionStore into singleton"
+```
+
+---
+
+## Task 8: 导出新类型和函数到 `acp/index.ts`
+
+**Files:**
+- Modify: `packages/core/src/acp/index.ts`
+
+- [ ] **Step 1: 在 `acp/index.ts` 中新增导出**
+
+找到现有的 `export * from "./ops/..."` 行，追加：
+
+```typescript
+export type {
+  AcpSessionRecord,
+  AcpSessionEvent,
+  AcpSessionEventPatch,
+  AcpSessionStore,
+} from "./ops/session-store";
+export { createDefaultAcpSessionStore, FileSystemAcpSessionStore } from "./ops/session-store";
+export type { ApprovalDecision, ApprovalHandler } from "./ops/approval-handler";
+export { createDefaultApprovalHandler, DefaultApprovalHandler } from "./ops/approval-handler";
+export { DetachedConnection } from "./ops/detached-connection";
+```
+
+同时在 `types.ts` 中补上 Task 1 Step 2 遗留的 `AcpSessionEvent` import（从 `./ops/session-store`）。
+
+- [ ] **Step 2: Full typecheck**
+
+```bash
+pnpm --filter @viben/core typecheck 2>&1
+```
+
+预期：0 错误。
+
+- [ ] **Step 3: 运行所有 core 测试**
+
+```bash
+pnpm --filter @viben/core test 2>&1 | tail -30
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add packages/core/src/acp/index.ts packages/core/src/acp/types.ts
+git commit -m "feat(acp): export session persistence types and classes from acp/index.ts"
+```
+
+---
+
+## Task 9: Gateway 启动时清理过期 parked sessions
+
+**Files:**
+- Modify: `packages/core/src/gateway/index.ts` 或 `routes/index.ts`
+
+- [ ] **Step 1: 在 `session-store.ts` 末尾新增 `cleanupStaleSessions` 函数**
+
+```typescript
+// packages/core/src/acp/ops/session-store.ts（追加到文件末尾）
+export async function cleanupStaleSessions(
+  store: AcpSessionStore,
+  parkTTLDays = 7
+): Promise<void> {
+  const records = await store.listRecords();
+  const now = Date.now();
+  for (const record of records) {
+    if (record.status === "parked") {
+      const age = now - new Date(record.last_active_at).getTime();
+      if (age > parkTTLDays * 24 * 60 * 60 * 1000) {
+        await store.saveRecord({ ...record, status: "finished" });
+      }
+    }
+  }
+}
+```
+
+- [ ] **Step 2: 在 gateway 启动时调用清理**
+
+在 `packages/core/src/gateway/index.ts` 中找到 gateway 启动的地方（`startGateway` 或 `registerRoutes` 处），在初始化 AcpSessionManager 之后追加：
+
+```typescript
+import { cleanupStaleSessions, createDefaultAcpSessionStore } from "../acp/ops/session-store";
+
+// gateway 启动时异步清理（不阻塞启动）
+const sessionStore = createDefaultAcpSessionStore();
+cleanupStaleSessions(sessionStore).catch((err) => {
+  log.warn({ err }, "Stale session cleanup failed (non-fatal)");
+});
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add packages/core/src/acp/ops/session-store.ts packages/core/src/gateway/index.ts
+git commit -m "feat(acp): cleanup stale parked sessions on gateway startup"
+```
+
+---
+
+## Task 10: 前端类型同步 — `permission_mode` 字段
+
+**Files:**
+- Modify: `apps/desktop/src/components/acp-chat/acp-client.ts`
+- Modify: `apps/desktop/src/lib/gateway/types/agent.ts`（若存在）
+- Modify: `apps/desktop/src/types/unified-agent.ts`（若存在）
+
+- [ ] **Step 1: 更新前端 `AgentConfigPayload` 中的 `permission_mode` 字段类型**
+
+在 `apps/desktop/src/components/acp-chat/acp-client.ts` 中找到 `AgentConfigPayload` 或 agent 相关类型定义，将：
+```typescript
+  approval_mode?: "bypass" | "rules" | "ai";
+  // 或
+  permission_mode?: string;
+```
+改为：
+```typescript
+  permission_mode?: "default" | "bypassPermissions" | "auto";
+```
+
+- [ ] **Step 2: 同步 gateway 类型文件（如存在）**
+
+```bash
+grep -n "approval_mode\|permission_mode" \
+  apps/desktop/src/lib/gateway/types/agent.ts \
+  apps/desktop/src/types/unified-agent.ts 2>/dev/null
+```
+
+对找到的旧 `approval_mode` 字段做同样替换。
+
+- [ ] **Step 3: Desktop typecheck**
+
+```bash
+pnpm --filter @viben/desktop typecheck 2>&1 | head -30
+```
+
+预期：0 错误。
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/desktop/src/
+git commit -m "types(desktop): sync permission_mode field to AcpPermissionMode values"
+```
+
+---
+
+## Task 11: 端到端验证
+
+- [ ] **Step 1: 启动 gateway**
+
+```bash
+pnpm gateway:restart
+```
+
+确认 `http://127.0.0.1:18790/health` 返回 200。
+
+- [ ] **Step 2: 验证 session 目录创建**
+
+在 desktop 中新建一个 ACP chat session，发送一条消息，然后检查：
+
+```bash
+ls ~/.viben/acp/sessions/
+```
+
+预期：出现以 UUID 命名的 session 目录，包含 `meta.json` 和 `events.jsonl`。
+
+- [ ] **Step 3: 验证断线 park**
+
+关闭 desktop 窗口（触发 WS disconnect），检查：
+
+```bash
+cat ~/.viben/acp/sessions/<session-id>/meta.json | grep status
+```
+
+预期：`"status": "parked"`。
+
+- [ ] **Step 4: 验证重连 resume**
+
+重新打开 desktop，执行 loadSession，检查响应中 `history` 字段是否包含之前的 session_update 事件。
+
+- [ ] **Step 5: 验证 gateway 重启恢复**
+
+```bash
+pnpm gateway:restart
+```
+
+在 desktop 中对 parked session 执行 loadSession，预期：从磁盘恢复，返回 history，pending 事件被 abandoned。
