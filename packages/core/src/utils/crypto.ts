@@ -18,7 +18,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 export function generateKeyPair(): KeyPair {
-  const privateKey = ed.utils.randomPrivateKey();
+  const privateKey = ed.utils.randomSecretKey();
   const publicKey = ed.getPublicKey(privateKey);
 
   return {
