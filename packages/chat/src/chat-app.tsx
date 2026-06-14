@@ -746,11 +746,9 @@ export function ChatApp({
       onExpandSubagent={onExpandSubagent}
       onInspectTool={onInspectTool}
       messageListConfig={subagentSheet.messageListConfig ?? {
-        assistantAvatar,
+        assistantAvatar: staticAssistantAvatar,
         artifacts,
         onArtifactClick,
-        showUserAvatar,
-        showAssistantAvatar,
       }}
     />
   ) : null;
