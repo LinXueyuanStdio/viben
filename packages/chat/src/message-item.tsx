@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit, BarChart3 } from "lucide-react";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, ChevronRight, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { AgentMessage, ExpandSubagentHandler, InspectToolHandler, MessageAttachment, SummaryMessageData } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
@@ -47,6 +47,10 @@ export interface MessageItemProps {
   onUserAvatarClick?: (message: AgentMessage) => void;
   /** Called when an assistant text/result message avatar is clicked. */
   onAssistantAvatarClick?: (message: AgentMessage) => void;
+  /** Whether to show user message avatar. Defaults to false. */
+  showUserAvatar?: boolean;
+  /** Whether to show assistant message avatar. Defaults to false. */
+  showAssistantAvatar?: boolean;
 }
 
 function MessageAvatar({
@@ -272,6 +276,7 @@ function UserMessage({
   skipAnimation,
   avatar,
   onAvatarClick,
+  showAvatar = false,
 }: {
   message: AgentMessage;
   content: string;
@@ -279,6 +284,7 @@ function UserMessage({
   skipAnimation?: boolean;
   avatar?: React.ReactNode;
   onAvatarClick?: (message: AgentMessage) => void;
+  showAvatar?: boolean;
 }) {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
@@ -289,14 +295,16 @@ function UserMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-2 w-full min-w-0"
     >
-      <MessageAvatar
-        className="h-6 w-6 bg-primary/10"
-        label={t("chat.avatar.user", "User avatar")}
-        message={message}
-        onClick={onAvatarClick}
-      >
-        {avatar ?? <User className="h-3.5 w-3.5 text-primary" />}
-      </MessageAvatar>
+      {showAvatar && (
+        <MessageAvatar
+          className="h-6 w-6 bg-primary/10"
+          label={t("chat.avatar.user", "User avatar")}
+          message={message}
+          onClick={onAvatarClick}
+        >
+          {avatar ?? <User className="h-3.5 w-3.5 text-primary" />}
+        </MessageAvatar>
+      )}
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="w-fit max-w-full rounded-lg bg-primary/10 px-2.5 py-1.5 min-w-0">
           <p className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere] text-foreground">{content}</p>
@@ -461,6 +469,7 @@ function AssistantMessage({
   skipAnimation,
   avatar,
   onAvatarClick,
+  showAvatar = false,
 }: {
   message: AgentMessage;
   content: string;
@@ -470,6 +479,7 @@ function AssistantMessage({
   skipAnimation?: boolean;
   avatar?: React.ReactNode;
   onAvatarClick?: (message: AgentMessage) => void;
+  showAvatar?: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const markdownComponents = useMemo(
@@ -486,7 +496,7 @@ function AssistantMessage({
       transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
       className="flex gap-2 w-full min-w-0"
     >
-      {!isResult && (
+      {showAvatar && !isResult && (
         <MessageAvatar
           className="h-6 w-6 bg-secondary"
           label="Assistant"
@@ -541,30 +551,25 @@ function SummaryMessage({
       initial={skipAnimation ? false : { opacity: 0, y: prefersReducedMotion ? 0 : 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
-      className="flex gap-3 w-full min-w-0"
+      className="w-full min-w-0"
     >
-      <div data-message-avatar="true" className={cn(MESSAGE_AVATAR_CLASS, "h-7 w-7 bg-muted")}>
-        <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-      </div>
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="w-fit max-w-full rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          {customContent ?? (
-            entries.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                {entries.map((entry) => (
-                  <div key={entry.key} className="min-w-0">
-                    <span className="text-muted-foreground/70">{entry.label}</span>
-                    <span className="ml-1 font-medium text-foreground/80">{entry.value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <pre className="max-w-[min(100%,32rem)] overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed">
-                {safeStringify(data)}
-              </pre>
-            )
-          )}
-        </div>
+      <div className="w-fit max-w-full rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        {customContent ?? (
+          entries.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              {entries.map((entry) => (
+                <div key={entry.key} className="min-w-0">
+                  <span className="text-muted-foreground/70">{entry.label}</span>
+                  <span className="ml-1 font-medium text-foreground/80">{entry.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <pre className="max-w-[min(100%,32rem)] overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed">
+              {safeStringify(data)}
+            </pre>
+          )
+        )}
       </div>
     </motion.div>
   );
@@ -659,6 +664,25 @@ function PlanModeMessage({ action, skipAnimation }: { action: "enter" | "exit"; 
   );
 }
 
+function StatusUpdateCard({ content, skipAnimation }: { content: string; skipAnimation?: boolean }) {
+  const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={skipAnimation ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
+      className="flex justify-center w-full"
+    >
+      <div className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
+        <span className="opacity-60">{t("chat.statusUpdate.modeSwitch", "Mode")}</span>
+        <span className="font-medium text-foreground/70">{content}</span>
+      </div>
+    </motion.div>
+  );
+}
+
 function MessageItemImpl({
   message,
   isStreaming,
@@ -675,6 +699,8 @@ function MessageItemImpl({
   assistantAvatar,
   onUserAvatarClick,
   onAssistantAvatarClick,
+  showUserAvatar = false,
+  showAssistantAvatar = false,
 }: MessageItemProps) {
   const { t } = useTranslation();
 
@@ -691,6 +717,7 @@ function MessageItemImpl({
         skipAnimation={isStatic}
         avatar={userAvatar}
         onAvatarClick={onUserAvatarClick}
+        showAvatar={showUserAvatar}
       />
     );
   }
@@ -783,6 +810,10 @@ function MessageItemImpl({
   else if (message.type === "plan_mode" && message.planModeAction) {
     content = <PlanModeMessage action={message.planModeAction} skipAnimation={isStatic} />;
   }
+  // Status update (mode switch, etc.) - small inline card, no avatar/bubble
+  else if (message.type === "status_update") {
+    content = <StatusUpdateCard content={message.content || ""} skipAnimation={isStatic} />;
+  }
   // Text/Result message from agent
   else {
     content = (
@@ -795,6 +826,7 @@ function MessageItemImpl({
         skipAnimation={isStatic}
         avatar={assistantAvatar}
         onAvatarClick={onAssistantAvatarClick}
+        showAvatar={showAssistantAvatar}
       />
     );
   }
@@ -841,6 +873,8 @@ export function areMessageItemPropsEqual(
   if (prev.assistantAvatar !== next.assistantAvatar) return false;
   if (prev.onUserAvatarClick !== next.onUserAvatarClick) return false;
   if (prev.onAssistantAvatarClick !== next.onAssistantAvatarClick) return false;
+  if (prev.showUserAvatar !== next.showUserAvatar) return false;
+  if (prev.showAssistantAvatar !== next.showAssistantAvatar) return false;
 
   // If both are static, safe to skip re-render — content is frozen
   if (prev.isStatic && next.isStatic) return true;

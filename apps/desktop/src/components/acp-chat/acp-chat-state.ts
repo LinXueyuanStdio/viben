@@ -41,11 +41,14 @@ export interface SubagentSheetState {
   title: string;
   subagentType?: string;
   messages: AgentMessage[];
+  /** Final answer/output from the Agent/Task tool. */
+  answer?: AgentMessage["output"];
   context?: {
     subagentId?: string;
     toolUseId?: string;
     parentMessage?: AgentMessage;
     messages?: AgentMessage[];
+    answer?: AgentMessage["output"];
   };
 }
 

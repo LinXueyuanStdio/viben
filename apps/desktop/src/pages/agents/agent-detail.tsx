@@ -38,6 +38,7 @@ import {
   useLocalWorkspaces,
   useExecutors,
   useWorkspaceParam,
+  useWorkspaceSkills,
 } from "@/hooks";
 import { useAgentConversation } from "@/pages/conversation/hooks/use-agent-conversation";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
@@ -195,6 +196,12 @@ export function AgentDetailPage() {
   // MCP and Skills selection
   const [selectedMcpServers, setSelectedMcpServers] = useState<AgentMcpEntry[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+
+  // Pre-load discovered skills for the current executor
+  const { skills: discoveredSkills, loading: discoveredSkillsLoading } = useWorkspaceSkills(
+    workspacePath || null,
+    formExecutorType || null
+  );
 
   // Trace visualization state
   const [traceTree, setTraceTree] = useState<TraceTree | null>(null);
@@ -829,7 +836,7 @@ export function AgentDetailPage() {
             showRefresh={false}
             showRemove={false}
             centerContent={
-              <div className="flex h-10 items-center gap-1 rounded-lg bg-muted p-1">
+              <div className="flex h-8 items-center gap-1 rounded-lg bg-muted p-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab("settings")}
@@ -896,6 +903,7 @@ export function AgentDetailPage() {
                         variant="outline"
                         size="icon"
                         onClick={handleOpenFolder}
+                        className="h-8"
                         disabled={!agentFolderPath}
                       >
                         <ExternalLink className="h-4 w-4" />
@@ -904,7 +912,7 @@ export function AgentDetailPage() {
                     <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <Button onClick={handleSave} disabled={saving || !isDirty}>
+                <Button className="h-8" onClick={handleSave} disabled={saving || !isDirty}>
                   {saving ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
@@ -1016,6 +1024,8 @@ export function AgentDetailPage() {
             onMcpServersChange={setSelectedMcpServers}
             onRemoveMcpServer={(name) => setSelectedMcpServers((prev) => prev.filter((s) => s.name !== name))}
             onRemoveSkill={(id) => setSelectedSkills((prev) => prev.filter((s) => s !== id))}
+            discoveredSkills={discoveredSkills}
+            discoveredSkillsLoading={discoveredSkillsLoading}
             onEditMemory={() => setMemoryDialogOpen(true)}
             onViewTodayLog={() => setMemoryDialogOpen(true)}
             onViewYesterdayLog={() => setMemoryDialogOpen(true)}
@@ -1042,6 +1052,9 @@ export function AgentDetailPage() {
         selectedSkillIds={selectedSkills}
         onSkillsChange={setSelectedSkills}
         workspacePath={workspacePath || ""}
+        executorType={formExecutorType}
+        discoveredSkills={discoveredSkills}
+        discoveredSkillsLoading={discoveredSkillsLoading}
       />
 
       <AgentMemoryDialog

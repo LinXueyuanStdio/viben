@@ -273,6 +273,8 @@ export function AgentSettingsTab(props: AgentSettingsTabProps) {
             onMcpServersChange={onMcpServersChange}
             onRemoveMcpServer={onRemoveMcpServer}
             onRemoveSkill={onRemoveSkill}
+            discoveredSkills={props.discoveredSkills}
+            discoveredSkillsLoading={props.discoveredSkillsLoading}
             onEditMemory={onEditMemory}
             onViewTodayLog={onViewTodayLog}
             onViewYesterdayLog={onViewYesterdayLog}

@@ -173,7 +173,17 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
       return sdkSessionId ? systemTextToUiSteps(`Backend session: ${sdkSessionId}`) : [];
     }
     case "usage_update":
-      return [{ kind: "summary", summary: update }];
+      return [];
+    case "current_mode_update":
+      return [{
+        kind: "message",
+        message: {
+          id: createStepId("status"),
+          type: "status_update",
+          content: readString(update.currentModeId) ?? "unknown",
+          timestamp: Date.now(),
+        },
+      }];
     case "available_commands_update":
       return [{ kind: "slash_commands", commands: availableCommandsToSlashCommands(update.availableCommands) }];
     case "error":

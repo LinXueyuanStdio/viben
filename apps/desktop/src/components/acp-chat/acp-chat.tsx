@@ -86,6 +86,7 @@ import { useScreenshot } from "@/hooks/use-screenshot";
 import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useDesktopRouting } from "@/hooks/use-desktop-routing";
 import { useAcpSession } from "./use-acp-session";
 import { ContextSettingsPopup } from "./context-settings-popup";
 import { useChatDrag } from "@/hooks/use-chat-drag";
@@ -346,6 +347,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
   // Get active workspace name
   const activeWorkspace = useWorkspaceStore((state) => state.getActiveWorkspace());
   const workspaceName = activeWorkspace?.name;
+  const { openWorkspaceAgentDetail } = useDesktopRouting();
 
   // Platform detection for macOS traffic light spacing
   const [isMacOS, setIsMacOS] = useState(false);
@@ -741,6 +743,14 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     },
     [selectedAgentId, executorType, selectedProviderId, model, agentOptions, setSelectedAgentId, setExecutorType, setSelectedProviderId, setModel]
   );
+
+  const handleAssistantAvatarClick = useCallback((_message: AgentMessage) => {
+    const workspaceId = activeWorkspace?.id;
+    const agentId = selectedAgentId;
+    if (workspaceId && agentId) {
+      openWorkspaceAgentDetail(workspaceId, agentId);
+    }
+  }, [activeWorkspace?.id, selectedAgentId, openWorkspaceAgentDetail]);
 
   const formatDisplayLabel = useCallback(
     ({ first, third }: DisplayLabelFormatParams): string => {
@@ -1260,6 +1270,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           onRejectPlan={handleRejectPlan}
           onApprovalDecision={handleApprovalDecision}
           onAnswerQuestions={handleQuestionAnswers}
+          onAssistantAvatarClick={handleAssistantAvatarClick}
           welcomeTitle={t("chat.acp.welcomeTitle")}
           welcomeDescription={t("chat.acp.welcomeDescription")}
         />
@@ -1316,6 +1327,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
           subagentType: subagentSheet.subagentType,
           messages: subagentSheet.messages,
           liveMessages: liveSubagentMessages,
+          answer: subagentSheet.answer,
           context: subagentSheet.context,
           loadSubagentDetails: handleLoadSubagentDetails,
         }

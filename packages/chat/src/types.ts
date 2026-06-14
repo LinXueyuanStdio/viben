@@ -33,7 +33,8 @@ export type AgentMessageType =
   | "result"
   | "error"
   | "ask_question"  // AskUserQuestion tool call
-  | "plan_mode";    // EnterPlanMode/ExitPlanMode tool calls
+  | "plan_mode"     // EnterPlanMode/ExitPlanMode tool calls
+  | "status_update"; // Session status changes (mode switch, etc.)
 
 /** Generic summary card data for usage, cost, debug metadata, etc. */
 export type SummaryMessageData = Record<string, unknown>;
@@ -124,6 +125,8 @@ export interface SubagentOpenContext {
   toolUseId?: string;
   parentMessage?: AgentMessage;
   messages?: AgentMessage[];
+  /** Final answer/output returned by the Agent/Task tool. */
+  answer?: AgentMessage["output"];
 }
 
 export interface LoadedSubagentDetails {

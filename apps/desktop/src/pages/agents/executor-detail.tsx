@@ -377,14 +377,12 @@ export function ExecutorDetailPage() {
           className="relative flex flex-col shrink-0"
           style={{ width: leftPanelWidth }}
         >
-          <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm">{t("settingsAgents.systemPrompt")}</h3>
-            <p className="text-xs text-muted-foreground mt-1">CLAUDE.md</p>
+          <div className="h-10 flex items-center p-4 border-b">
+            <h3 className="font-semibold text-sm">{t("settingsAgents.systemPrompt")}<span className="text-xs text-muted-foreground ml-1">CLAUDE.md</span></h3>
           </div>
-          <ResizeHandle side="left" onResize={handleLeftResize} />
 
           <ScrollArea className="flex-1">
-            <div className="p-4">
+            <div className="p-2">
               {claudeMdLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -410,13 +408,15 @@ export function ExecutorDetailPage() {
               )}
             </div>
           </ScrollArea>
+
+          <ResizeHandle side="left" onResize={handleLeftResize} />
         </div>
 
         {/* ================================================================
             MIDDLE COLUMN: Configuration & Capabilities
             ================================================================ */}
         <div className="flex-1 flex flex-col min-w-0 border-r">
-          <div className="p-4 border-b">
+          <div className="h-10 flex items-center p-4 border-b">
             <h3 className="font-semibold text-sm">{t("settingsAgents.capabilities")}</h3>
           </div>
 
@@ -546,17 +546,17 @@ export function ExecutorDetailPage() {
         >
           <ResizeHandle side="right" onResize={handleRightResize} />
           {/* Header with actions */}
-          <div className="p-4 border-b flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
+          <div className="h-10 p-4 border-b flex items-center justify-between">
+            <div className="flex items-center">
+              <Avatar className="h-4 w-4">
                 <AvatarFallback className={cn(executorColor.bg, executorColor.text, "flex items-center justify-center")}>
                   {getExecutorIcon(executor.type, { size: 20 })}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <h3 className="font-semibold text-sm">{executor.name}</h3>
-                <p className="text-xs text-muted-foreground">{t("settingsAgents.previewDebug")}</p>
-              </div>
+              <h3 className="font-semibold text-sm">
+                {executor.name}
+                <span className="ml-4 text-xs text-muted-foreground">{t("settingsAgents.previewDebug")}</span>
+              </h3>
             </div>
             <div className="flex items-center gap-1">
               {messages.length > 0 && (
@@ -614,9 +614,6 @@ export function ExecutorDetailPage() {
               slashCommands={slashCommands}
               onSlashCommand={handleSlashCommand}
             />
-            <p className="text-xs text-muted-foreground py-2 text-center">
-              {t("settingsAgents.aiDisclaimer")}
-            </p>
           </div>
         </div>
       </div>

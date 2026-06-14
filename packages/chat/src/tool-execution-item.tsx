@@ -853,6 +853,7 @@ export function ToolExecutionItem({
         subagentId,
         toolUseId,
         messages: subagentMessages,
+        answer: output,
       });
     };
     const handleToggleInlineDetails = () => {
@@ -976,8 +977,8 @@ export function ToolExecutionItem({
                     </div>
                   )}
 
-                  {/* Output (fallback when no subagent messages) */}
-                  {output && !hasSubagentMessages && (() => {
+                  {/* Output / final answer from Agent/Task tool */}
+                  {output && (() => {
                     const blocks = resolveContentBlocks(output);
                     if (blocks) {
                       return (

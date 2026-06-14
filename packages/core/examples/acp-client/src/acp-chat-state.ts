@@ -36,11 +36,13 @@ export interface SubagentSheetState {
   title: string;
   subagentType?: string;
   messages: AgentMessage[];
+  answer?: AgentMessage["output"];
   context?: {
     subagentId?: string;
     toolUseId?: string;
     parentMessage?: AgentMessage;
     messages?: AgentMessage[];
+    answer?: AgentMessage["output"];
   };
 }
 

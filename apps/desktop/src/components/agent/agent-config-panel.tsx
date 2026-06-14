@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
+import type { WorkspaceSkill } from "@/types";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
 import { OpenClawConfigSection } from "./openclaw-config-section";
@@ -99,6 +100,9 @@ export interface AgentConfigPanelProps {
   onMcpServersChange?: (servers: AgentMcpEntry[]) => void;
   onRemoveMcpServer?: (serverName: string) => void;
   onRemoveSkill?: (skillId: string) => void;
+  /** Executor-discovered skills (inherited from executor) */
+  discoveredSkills?: WorkspaceSkill[];
+  discoveredSkillsLoading?: boolean;
 
   // Memory
   onEditMemory: () => void;
@@ -162,6 +166,8 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       onMcpServersChange,
       onRemoveMcpServer,
       onRemoveSkill,
+      discoveredSkills = [],
+      discoveredSkillsLoading = false,
       // Memory
       onEditMemory,
       onViewTodayLog,
@@ -548,6 +554,38 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                     {t("common.configure")}
                   </Button>
                 </div>
+
+                {/* Executor-inherited skills */}
+                {discoveredSkillsLoading ? (
+                  <div className="flex items-center gap-2 py-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">加载 Executor Skills...</span>
+                  </div>
+                ) : discoveredSkills.length > 0 ? (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] text-muted-foreground">
+                      继承自 Executor ({discoveredSkills.length})
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {discoveredSkills.slice(0, 8).map((skill) => (
+                        <Badge
+                          key={skill.id}
+                          variant={selectedSkills.includes(skill.id) ? "default" : "outline"}
+                          className="text-[11px] px-2 py-0.5 font-normal"
+                        >
+                          {skill.name}
+                        </Badge>
+                      ))}
+                      {discoveredSkills.length > 8 && (
+                        <Badge variant="outline" className="text-[11px] px-2 py-0.5 font-normal">
+                          +{discoveredSkills.length - 8}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* User-selected skills */}
                 {selectedSkills.length > 0 ? (
                   <div className="space-y-1.5">
                     {selectedSkills.map((skill) => (
@@ -569,14 +607,14 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : discoveredSkills.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-4 text-center">
                     <Sparkles className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
                     <p className="text-xs text-muted-foreground">
                       {t("settingsAgents.noSkills")}
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </section>

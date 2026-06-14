@@ -127,6 +127,10 @@ export interface MessageListProps {
   onUserAvatarClick?: (message: AgentMessage) => void;
   /** Called when an assistant text/result message avatar is clicked. */
   onAssistantAvatarClick?: (message: AgentMessage) => void;
+  /** Whether to show user message avatar. Defaults to false. */
+  showUserAvatar?: boolean;
+  /** Whether to show assistant message avatar. Defaults to false. */
+  showAssistantAvatar?: boolean;
 }
 
 interface TaskMessageGroup {
@@ -1044,6 +1048,8 @@ interface MessageRowProps {
   assistantAvatar?: React.ReactNode;
   onUserAvatarClick?: (message: AgentMessage) => void;
   onAssistantAvatarClick?: (message: AgentMessage) => void;
+  showUserAvatar?: boolean;
+  showAssistantAvatar?: boolean;
   // Ref callback for scroll-to-message
   registerRef?: (id: string, el: HTMLDivElement | null) => void;
 }
@@ -1068,6 +1074,8 @@ const MessageRow = React.memo(function MessageRow({
   assistantAvatar,
   onUserAvatarClick,
   onAssistantAvatarClick,
+  showUserAvatar,
+  showAssistantAvatar,
   registerRef,
 }: MessageRowProps) {
   const message = useMemo(() => {
@@ -1116,6 +1124,8 @@ const MessageRow = React.memo(function MessageRow({
           assistantAvatar={assistantAvatar}
           onUserAvatarClick={onUserAvatarClick}
           onAssistantAvatarClick={onAssistantAvatarClick}
+          showUserAvatar={showUserAvatar}
+          showAssistantAvatar={showAssistantAvatar}
         />
       </div>
     </React.Fragment>
@@ -1150,8 +1160,10 @@ const MessageRow = React.memo(function MessageRow({
       prev.userAvatar === next.userAvatar &&
       prev.assistantAvatar === next.assistantAvatar &&
       prev.onUserAvatarClick === next.onUserAvatarClick &&
-      prev.onAssistantAvatarClick === next.onAssistantAvatarClick
-      && prev.onInspectTool === next.onInspectTool
+      prev.onAssistantAvatarClick === next.onAssistantAvatarClick &&
+      prev.showUserAvatar === next.showUserAvatar &&
+      prev.showAssistantAvatar === next.showAssistantAvatar &&
+      prev.onInspectTool === next.onInspectTool
     );
   }
   // Non-static: always re-render
@@ -1182,6 +1194,8 @@ function areMessageListPropsEqual(prev: MessageListProps, next: MessageListProps
   if (prev.assistantAvatar !== next.assistantAvatar) return false;
   if (prev.onUserAvatarClick !== next.onUserAvatarClick) return false;
   if (prev.onAssistantAvatarClick !== next.onAssistantAvatarClick) return false;
+  if (prev.showUserAvatar !== next.showUserAvatar) return false;
+  if (prev.showAssistantAvatar !== next.showAssistantAvatar) return false;
   if (prev.autoScroll !== next.autoScroll) return false;
   if (prev.welcomeTitle !== next.welcomeTitle) return false;
   if (prev.welcomeDescription !== next.welcomeDescription) return false;
@@ -1223,6 +1237,8 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
   assistantAvatar,
   onUserAvatarClick,
   onAssistantAvatarClick,
+  showUserAvatar = false,
+  showAssistantAvatar = false,
 }, ref) {
   const { t } = useTranslation();
 
@@ -1700,10 +1716,12 @@ export const MessageList = React.memo(React.forwardRef<MessageListHandle, Messag
                     onExpandSubagent={stableOnExpandSubagent}
                     onInspectTool={stableOnInspectTool}
                     renderSummary={renderSummary}
-                    userAvatar={userAvatar}
-                    assistantAvatar={assistantAvatar}
-                    onUserAvatarClick={stableOnUserAvatarClick}
-                    onAssistantAvatarClick={stableOnAssistantAvatarClick}
+                    userAvatar={showUserAvatar ? userAvatar : undefined}
+                    assistantAvatar={showAssistantAvatar ? assistantAvatar : undefined}
+                    onUserAvatarClick={showUserAvatar ? stableOnUserAvatarClick : undefined}
+                    onAssistantAvatarClick={showAssistantAvatar ? stableOnAssistantAvatarClick : undefined}
+                    showUserAvatar={showUserAvatar}
+                    showAssistantAvatar={showAssistantAvatar}
                     registerRef={registerRef}
                   />
                 </MessageWidthShell>

@@ -1376,7 +1376,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   const handleExpandSubagent = useCallback(
     (title: string, subagentType: string | undefined, subagentMessages: AgentMessage[], context?: SubagentSheetState["context"]) => {
-      setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
+      setSubagentSheet({ title, subagentType, messages: subagentMessages, answer: context?.answer, context });
     },
     [setSubagentSheet]
   );

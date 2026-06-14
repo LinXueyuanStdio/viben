@@ -2,10 +2,12 @@
  * MCP Market List
  *
  * A reusable marketplace grid for browsing MCP servers from the official registry.
+ * Shows icons, package type badges, version, and "already added" indicators.
  */
 import { useState, useCallback } from "react";
-import { Search, Plus, Loader2, X } from "lucide-react";
+import { Search, Plus, Loader2, X, Server, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -14,10 +16,12 @@ import type { OfficialServerDisplay } from "@/types/official-registry";
 
 interface McpMarketListProps {
   onAdd: (server: OfficialServerDisplay) => void;
+  /** Names of servers already selected in the parent dialog */
+  selectedServerNames?: string[];
   className?: string;
 }
 
-export function McpMarketList({ onAdd, className }: McpMarketListProps) {
+export function McpMarketList({ onAdd, selectedServerNames = [], className }: McpMarketListProps) {
   const [localSearch, setLocalSearch] = useState("");
   const {
     displayServers,
@@ -80,31 +84,106 @@ export function McpMarketList({ onAdd, className }: McpMarketListProps) {
             </div>
           ) : (
             <>
-              {displayServers.map((server) => (
-                <div
-                  key={server.id}
-                  className="rounded-lg border bg-card p-3 space-y-2"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-medium truncate">
-                        {server.name}
-                      </h4>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                        {server.description}
-                      </p>
+              {displayServers.map((server) => {
+                const isAdded = selectedServerNames.includes(server.name);
+                return (
+                  <div
+                    key={server.id}
+                    className={cn(
+                      "rounded-lg border p-3 transition-all",
+                      isAdded
+                        ? "border-primary/50 bg-primary/5"
+                        : "bg-card hover:border-muted-foreground/30 hover:shadow-sm"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Icon */}
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/50 overflow-hidden">
+                        {server.iconUrl ? (
+                          <img
+                            src={server.iconUrl}
+                            alt={server.name}
+                            className="h-6 w-6 object-contain"
+                            onError={(e) => {
+                              // Fallback to Server icon on load error
+                              const target = e.currentTarget;
+                              target.style.display = "none";
+                              target.nextElementSibling?.classList.remove("hidden");
+                            }}
+                          />
+                        ) : null}
+                        <Server
+                          className={cn(
+                            "h-4 w-4 text-muted-foreground",
+                            server.iconUrl ? "hidden" : ""
+                          )}
+                        />
+                      </div>
+
+                      {/* Content */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-medium truncate">
+                            {server.name}
+                          </h4>
+                          {server.version && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 shrink-0 text-muted-foreground"
+                            >
+                              v{server.version}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          {server.description}
+                        </p>
+                        {/* Package type badges */}
+                        {server.packageTypes.length > 0 && (
+                          <div className="flex gap-1 mt-1.5">
+                            {server.packageTypes.map((pt) => (
+                              <Badge
+                                key={pt}
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                {pt}
+                              </Badge>
+                            ))}
+                            {server.hasRemotes && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0"
+                              >
+                                remote
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action button */}
+                      <div className="shrink-0">
+                        {isAdded ? (
+                          <Badge variant="secondary" className="shrink-0">
+                            <Check className="h-3 w-3 mr-1" />
+                            已添加
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onAdd(server)}
+                          >
+                            <Plus className="h-3.5 w-3.5 mr-1" />
+                            添加
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onAdd(server)}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      添加
-                    </Button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Load more */}
               {hasMore && (

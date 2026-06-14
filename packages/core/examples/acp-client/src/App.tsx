@@ -1006,7 +1006,7 @@ export function App() {
   }, [elicitationDialogs, pendingPlan, sendSteerPromptText, sessionId]);
 
   const handleExpandSubagent = useCallback<ExpandSubagentHandler>((title, subagentType, subagentMessages, context) => {
-    setSubagentSheet({ title, subagentType, messages: subagentMessages, context });
+    setSubagentSheet({ title, subagentType, messages: subagentMessages, answer: context?.answer, context });
   }, []);
 
   const handleLoadSubagentDetails = useCallback<LoadSubagentDetails>(async (context: SubagentOpenContext): Promise<LoadedSubagentDetails> => {
@@ -1729,6 +1729,7 @@ export function App() {
           subagentType={subagentSheet?.subagentType}
           messages={subagentSheet?.messages ?? []}
           liveMessages={resolveLiveSubagentMessages(sessionsById, subagentSheet)}
+          answer={subagentSheet?.answer}
           context={subagentSheet?.context}
           loadSubagentDetails={handleLoadSubagentDetails}
           onExpandSubagent={handleExpandSubagent}
@@ -2323,6 +2324,7 @@ function AcpChatSurface({
           subagentType: subagentSheet.subagentType,
           messages: subagentSheet.messages,
           liveMessages: liveSubagentMessages,
+          answer: subagentSheet.answer,
           context: subagentSheet.context,
           loadSubagentDetails,
         } : undefined}

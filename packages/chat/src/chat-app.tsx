@@ -32,6 +32,7 @@ import { MessageList } from "./message-list";
 import { PlanApproval } from "./plan-approval";
 import { QuestionInput } from "./question-input";
 import { SubagentSheet } from "./subagent-sheet";
+import type { SubagentMessageListConfig } from "./subagent-sheet";
 import { TodoListPanel, buildTodoListItemsFromMessages } from "./todo-list";
 import type { BackgroundTaskItem } from "./background-task-list";
 import type { ChatInputProps } from "./chat-input";
@@ -146,9 +147,11 @@ export interface ChatAppSubagentSheetState {
   subagentType?: string;
   messages: AgentMessage[];
   liveMessages?: AgentMessage[];
+  answer?: AgentMessage["output"];
   context?: SubagentOpenContext;
   loadSubagentDetails?: LoadSubagentDetails;
   onClose: () => void;
+  messageListConfig?: SubagentMessageListConfig;
 }
 
 export interface ChatAppFullscreenPanelProps {
@@ -178,6 +181,11 @@ export interface ChatAppFullscreenMessagePanelProps {
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
+  onAssistantAvatarClick?: (message: AgentMessage) => void;
+  /** Whether to show user message avatar. Defaults to false. */
+  showUserAvatar?: boolean;
+  /** Whether to show assistant message avatar. Defaults to false. */
+  showAssistantAvatar?: boolean;
 }
 
 export interface ChatAppFullscreenCommandQueueProps {
@@ -731,11 +739,19 @@ export function ChatApp({
       subagentType={subagentSheet.subagentType}
       messages={subagentSheet.messages}
       liveMessages={subagentSheet.liveMessages}
+      answer={subagentSheet.answer}
       context={subagentSheet.context}
       loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
       maxWidth={overlayWidth}
       onExpandSubagent={onExpandSubagent}
       onInspectTool={onInspectTool}
+      messageListConfig={subagentSheet.messageListConfig ?? {
+        assistantAvatar,
+        artifacts,
+        onArtifactClick,
+        showUserAvatar,
+        showAssistantAvatar,
+      }}
     />
   ) : null;
 
@@ -996,6 +1012,9 @@ export function ChatAppFullscreenMessagePanel({
   onRejectPlan,
   onApprovalDecision,
   onAnswerQuestions,
+  onAssistantAvatarClick,
+  showUserAvatar = false,
+  showAssistantAvatar = false,
 }: ChatAppFullscreenMessagePanelProps) {
   const { t } = useTranslation();
 
@@ -1021,6 +1040,9 @@ export function ChatAppFullscreenMessagePanel({
       onRejectPlan={onRejectPlan}
       onApprovalDecision={onApprovalDecision}
       onAnswerQuestions={onAnswerQuestions}
+      onAssistantAvatarClick={showAssistantAvatar ? onAssistantAvatarClick : undefined}
+      showUserAvatar={showUserAvatar}
+      showAssistantAvatar={showAssistantAvatar}
     />
   );
 }
@@ -1239,6 +1261,9 @@ function ChatAppMessagePanel({
   onRejectPlan,
   onApprovalDecision,
   onAnswerQuestions,
+  onAssistantAvatarClick,
+  showUserAvatar = false,
+  showAssistantAvatar = false,
 }: {
   messages: AgentMessage[];
   messageUpdates?: Record<string, Partial<AgentMessage>>;
@@ -1260,6 +1285,9 @@ function ChatAppMessagePanel({
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
   onAnswerQuestions?: (answers: Record<string, string[]>) => void;
+  onAssistantAvatarClick?: (message: AgentMessage) => void;
+  showUserAvatar?: boolean;
+  showAssistantAvatar?: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -1285,6 +1313,9 @@ function ChatAppMessagePanel({
       onRejectPlan={onRejectPlan}
       onApprovalDecision={onApprovalDecision}
       onAnswerQuestions={onAnswerQuestions}
+      onAssistantAvatarClick={showAssistantAvatar ? onAssistantAvatarClick : undefined}
+      showUserAvatar={showUserAvatar}
+      showAssistantAvatar={showAssistantAvatar}
     />
   );
 }

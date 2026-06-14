@@ -4,7 +4,19 @@ import { Loader2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn, Badge, Button } from "@viben/ui";
 import { MessageList } from "./message-list";
+import type { MessageListProps } from "./message-list";
 import type { AgentMessage, ExpandSubagentHandler, InspectToolHandler, LoadSubagentDetails, SubagentOpenContext } from "./types";
+
+/** MessageList props that SubagentSheet forwards to its internal MessageList. */
+export type SubagentMessageListConfig = Pick<MessageListProps,
+  | "assistantAvatar"
+  | "showUserAvatar"
+  | "showAssistantAvatar"
+  | "artifacts"
+  | "onArtifactClick"
+  | "renderSummary"
+  | "onLinkClick"
+>;
 
 const DEFAULT_SHEET_WIDTH = 480;
 const MIN_SHEET_WIDTH = 320;
@@ -40,12 +52,16 @@ export interface SubagentSheetProps {
   messages: AgentMessage[];
   /** Transient messages that update while the parent Agent/Task is still running. */
   liveMessages?: AgentMessage[];
+  /** Final answer/output from the Agent/Task tool (tool_result). */
+  answer?: AgentMessage["output"];
   context?: SubagentOpenContext;
   loadSubagentDetails?: LoadSubagentDetails;
   isLoading?: boolean;
   error?: string | null;
   onExpandSubagent?: ExpandSubagentHandler;
   onInspectTool?: InspectToolHandler;
+  /** MessageList visual/rendering configuration forwarded from the parent. */
+  messageListConfig?: SubagentMessageListConfig;
   /** Render inside a relatively positioned parent instead of the viewport. */
   contained?: boolean;
   /** Maximum width of the sheet panel (px). Overrides the default CSS max-width. */
@@ -80,12 +96,14 @@ export function SubagentSheet({
   subagentType,
   messages,
   liveMessages,
+  answer,
   context,
   loadSubagentDetails,
   isLoading = false,
   error,
   onExpandSubagent,
   onInspectTool,
+  messageListConfig,
   contained = false,
   maxWidth,
   className,
@@ -106,7 +124,20 @@ export function SubagentSheet({
     : messages.length > 0
       ? messages
       : (loadedMessages ?? messages);
-  const displayMessages = useMemo(() => mergeToolResultsIntoToolCalls(effectiveMessages), [effectiveMessages]);
+  const displayMessages = useMemo(() => {
+    const merged = mergeToolResultsIntoToolCalls(effectiveMessages);
+    if (!answer) return merged;
+    const answerContent = typeof answer === "string" ? answer : Array.isArray(answer)
+      ? answer.map((b) => ("text" in b ? b.text : "")).join("\n")
+      : "";
+    if (!answerContent) return merged;
+    const resultMessage: AgentMessage = {
+      id: "subagent-final-answer",
+      type: "result",
+      content: answerContent,
+    };
+    return [...merged, resultMessage];
+  }, [effectiveMessages, answer]);
   const hasDisplayMessages = effectiveMessages.length > 0;
   const effectiveTitle = loadedTitle ?? title;
   const effectiveSubagentType = loadedSubagentType ?? subagentType;
@@ -306,6 +337,7 @@ export function SubagentSheet({
                     maxMessageWidth="100%"
                     onExpandSubagent={onExpandSubagent}
                     onInspectTool={onInspectTool}
+                    {...messageListConfig}
                   />
                 </>
               )}

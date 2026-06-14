@@ -1,11 +1,13 @@
 /**
  * Agent Skills Configuration Dialog
  *
- * Single-page layout with an embedded SkillMarketGrid at the top
- * and a local path section at the bottom.
+ * Layout:
+ * 1. Executor-discovered skills (继承自 Executor, toggleable)
+ * 2. Cloud marketplace (remote skill packages)
+ * 3. Local path input
  */
 import { useState, useEffect } from "react";
-import { FolderOpen, Plus, X } from "lucide-react";
+import { FolderOpen, Plus, X, Check, Loader2, Sparkles } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   Dialog,
@@ -16,9 +18,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { setsEqual } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn, setsEqual } from "@/lib/utils";
+import type { WorkspaceSkill } from "@/types";
 import { SkillMarketGrid } from "./skill-market-grid";
 
 // ---------------------------------------------------------------------------
@@ -30,15 +35,17 @@ interface AgentSkillsDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedSkillIds: string[];
   onSkillsChange: (skillIds: string[]) => void;
-  /** Used to compute relative paths for local skill directories. */
   workspacePath?: string;
+  executorType?: string;
+  /** Pre-loaded discovered skills from parent */
+  discoveredSkills?: WorkspaceSkill[];
+  discoveredSkillsLoading?: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns true when `id` looks like a local file-system path. */
 function isLocalPath(id: string): boolean {
   return id.startsWith("./") || id.startsWith("/");
 }
@@ -53,9 +60,13 @@ export function AgentSkillsDialog({
   selectedSkillIds,
   onSkillsChange,
   workspacePath,
+  executorType,
+  discoveredSkills = [],
+  discoveredSkillsLoading = false,
 }: AgentSkillsDialogProps) {
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [pathInput, setPathInput] = useState("");
+  const [activeTab, setActiveTab] = useState("discovered");
 
   // Sync local state when dialog opens
   useEffect(() => {
@@ -66,7 +77,6 @@ export function AgentSkillsDialog({
   }, [dialogOpen, selectedSkillIds]);
 
   // Derived
-  const marketplaceIds = localSelected.filter((id) => !isLocalPath(id));
   const localPaths = localSelected.filter(isLocalPath);
 
   // ---------------------------------------------------------------------------
@@ -121,70 +131,192 @@ export function AgentSkillsDialog({
 
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>配置 Skills</DialogTitle>
-          <DialogDescription>从市场选择 Skills 或添加本地路径</DialogDescription>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            配置 Skills
+            {localSelected.length > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {localSelected.length} 已选
+              </Badge>
+            )}
+          </DialogTitle>
+          <DialogDescription>从已发现的 Skills 中选择，或从市场添加</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-6 py-4">
-            {/* Marketplace grid */}
-            <SkillMarketGrid
-              selectedIds={marketplaceIds}
-              onToggle={handleToggle}
-            />
+        <div className="px-6 flex-1 min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger
+                value="discovered"
+                className={cn(
+                  "px-3 py-2 text-xs",
+                  activeTab === "discovered" && "border-primary text-foreground"
+                )}
+              >
+                已发现
+                {discoveredSkills.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                    {discoveredSkills.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="market"
+                className={cn(
+                  "px-3 py-2 text-xs",
+                  activeTab === "market" && "border-primary text-foreground"
+                )}
+              >
+                市场
+              </TabsTrigger>
+              <TabsTrigger
+                value="local"
+                className={cn(
+                  "px-3 py-2 text-xs",
+                  activeTab === "local" && "border-primary text-foreground"
+                )}
+              >
+                本地路径
+                {localPaths.length > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                    {localPaths.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Local Path section */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground font-medium">本地路径</span>
-                <div className="h-px flex-1 bg-border" />
+            {/* Tab: Discovered (继承自 Executor) */}
+            <TabsContent value="discovered" className="mt-3">
+              <div className="max-h-[calc(80vh-240px)] overflow-y-auto">
+                {discoveredSkillsLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : discoveredSkills.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <Sparkles className="h-6 w-6 text-muted-foreground/40 mb-2" />
+                    <p className="text-sm text-muted-foreground">未发现已安装的 Skills</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {executorType
+                        ? `Executor "${executorType}" 未发现任何 Skill`
+                        : "请先选择 Executor 类型"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 pb-2">
+                    <p className="text-xs text-muted-foreground mb-2">
+                      继承自 Executor · 点击切换启用状态
+                    </p>
+                    {discoveredSkills.map((skill) => {
+                      const isSelected = localSelected.includes(skill.id);
+                      return (
+                        <button
+                          key={skill.id}
+                          type="button"
+                          onClick={() => handleToggle(skill.id)}
+                          className={cn(
+                            "w-full flex items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-muted-foreground/30"
+                          )}
+                        >
+                          <div className="flex items-center justify-center h-4 w-4 shrink-0">
+                            {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate block">{skill.name}</span>
+                            {skill.description && (
+                              <span className="text-xs text-muted-foreground line-clamp-1 block mt-0.5">
+                                {skill.description}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {skill.version && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                v{skill.version}
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {skill.source}
+                            </Badge>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+            </TabsContent>
 
-              <div className="flex gap-2">
-                <Input
-                  placeholder="./skills/my-skill 或 /abs/path"
-                  value={pathInput}
-                  onChange={(e) => setPathInput(e.target.value)}
-                  className="h-8 flex-1"
-                  onKeyDown={(e) => e.key === "Enter" && handleAddPath()}
-                />
-                <Button variant="outline" size="sm" onClick={handleBrowse}>
-                  <FolderOpen className="h-3.5 w-3.5 mr-1" />
-                  浏览
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleAddPath} disabled={!pathInput.trim()}>
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  添加
-                </Button>
-              </div>
+            {/* Tab: Marketplace (cloud) */}
+            <TabsContent value="market" className="mt-3">
+              <SkillMarketGrid
+                selectedIds={localSelected.filter((id) => !isLocalPath(id))}
+                onToggle={handleToggle}
+              />
+            </TabsContent>
 
-              {localPaths.length > 0 && (
-                <div className="space-y-1.5">
-                  {localPaths.map((path) => (
-                    <div key={path} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group">
-                      <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-sm flex-1 truncate font-mono">{path}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePath(path)}
-                        className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+            {/* Tab: Local paths */}
+            <TabsContent value="local" className="mt-3">
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="./skills/my-skill 或 /abs/path"
+                    value={pathInput}
+                    onChange={(e) => setPathInput(e.target.value)}
+                    className="h-8 flex-1"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddPath()}
+                  />
+                  <Button variant="outline" size="sm" onClick={handleBrowse}>
+                    <FolderOpen className="h-3.5 w-3.5 mr-1" />
+                    浏览
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleAddPath} disabled={!pathInput.trim()}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    添加
+                  </Button>
                 </div>
-              )}
-            </div>
-          </div>
-        </ScrollArea>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button onClick={handleSave} disabled={!hasChanges}>保存</Button>
+                {localPaths.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {localPaths.map((path) => (
+                      <div key={path} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group">
+                        <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="text-sm flex-1 truncate font-mono">{path}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePath(path)}
+                          className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-6 text-center">
+                    <FolderOpen className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
+                    <p className="text-xs text-muted-foreground">
+                      添加本地 Skill 目录路径
+                    </p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <DialogFooter className="p-6 pt-4 border-t bg-muted/30 mt-4">
+          <div className="flex w-full items-center justify-end gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button onClick={handleSave} disabled={!hasChanges}>保存</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

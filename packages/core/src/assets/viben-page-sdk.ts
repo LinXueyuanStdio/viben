@@ -16,6 +16,12 @@ interface VibenConfig {
   pageUid?: string;
 }
 
+interface PageIdentity {
+  clientId: string;
+  publicKey: string;
+  privateKey: string;
+}
+
 async function signMessage(message: string, privateKeyHex: string): Promise<string> {
   const privateKey = hexToBytes(privateKeyHex);
   const messageBytes = new TextEncoder().encode(message);
@@ -37,13 +43,19 @@ function bytesToHex(bytes: Uint8Array): string {
     .join("");
 }
 
+// Action definition: full form
 interface ActionDef {
   description: string;
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
   timeout?: number;
-  execute: (payload: unknown, context: ExecuteContext) => Promise<ActionResult>;
+  execute: (payload: unknown, context: ExecuteContext) => Promise<unknown>;
 }
+
+// Action definition accepted by register(): bare function OR full object
+type ActionDefinition =
+  | ((payload: unknown, context: ExecuteContext) => Promise<unknown>)
+  | ActionDef;
 
 interface ExecuteContext {
   sessionId: string;
@@ -65,7 +77,7 @@ interface RegisteredAction {
   inputSchema?: Record<string, unknown>;
   outputSchema?: Record<string, unknown>;
   timeout?: number;
-  execute: ActionDef["execute"];
+  execute: (payload: unknown, context: ExecuteContext) => Promise<unknown>;
 }
 
 class VibenPageSDK {
@@ -90,41 +102,98 @@ class VibenPageSDK {
       this.readyResolve = resolve;
       this.readyReject = reject;
     });
-    this.init();
+    this.init().catch((error) => {
+      this.readyReject?.(error instanceof Error ? error : new Error(String(error)));
+    });
   }
 
-  private init(): void {
-    console.log("[VibenSDK] init() called");
+  // ─── Identity Utility ──────────────────────────────────────────────────────
+
+  static async generateIdentity(pageUid?: string): Promise<PageIdentity> {
+    const privateKeyBytes = ed.utils.randomSecretKey();
+    const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+    return {
+      clientId: `${pageUid ?? "page"}-${Date.now().toString(36)}`,
+      publicKey: bytesToHex(publicKeyBytes),
+      privateKey: bytesToHex(privateKeyBytes),
+    };
+  }
+
+  // ─── Initialization ────────────────────────────────────────────────────────
+
+  private async init(): Promise<void> {
     const config = (window as unknown as { __VIBEN_CONFIG__?: VibenConfig }).__VIBEN_CONFIG__;
-    console.log("[VibenSDK] __VIBEN_CONFIG__:", config ? JSON.stringify({ gatewayUrl: config.gatewayUrl, clientId: config.clientId, source: config.source, pageUid: config.pageUid }) : "null");
     if (config) {
       this.applyConfig(config);
       return;
     }
 
-    console.log("[VibenSDK] no config found, waiting for postMessage from parent...");
-    // Config not yet available — wait for postMessage from parent
-    const timeout = setTimeout(() => {
-      console.error("[VibenSDK] TIMEOUT: no viben-config postMessage received in 5s");
-      window.removeEventListener("message", handler);
-      this.readyReject?.(new Error("config_missing: window.__VIBEN_CONFIG__ not set (timeout)"));
-    }, 5000);
-
-    const handler = (e: MessageEvent) => {
-      console.log("[VibenSDK] postMessage received:", e.data?.type, "origin:", e.origin);
-      if (e.data && e.data.type === "viben-config") {
-        console.log("[VibenSDK] got viben-config via postMessage:", JSON.stringify({ gatewayUrl: e.data.payload?.gatewayUrl, clientId: e.data.payload?.clientId }));
-        clearTimeout(timeout);
-        window.removeEventListener("message", handler);
-        (window as unknown as { __VIBEN_CONFIG__?: VibenConfig }).__VIBEN_CONFIG__ = e.data.payload;
-        this.applyConfig(e.data.payload);
-      }
-    };
-    window.addEventListener("message", handler);
+    await this.selfBootstrap();
   }
 
+  private async selfBootstrap(): Promise<void> {
+    const sdkScriptElement = document.querySelector(
+      'script[src*="viben-page-sdk"]',
+    ) as HTMLScriptElement | null;
+
+    const gatewayUrl = sdkScriptElement
+      ? new URL(sdkScriptElement.src).origin
+      : window.location.origin;
+
+    const pageUid =
+      sdkScriptElement?.dataset.page ??
+      sdkScriptElement?.dataset.pageUid ??
+      (document.title.toLowerCase().replace(/\s+/g, "-") || "unknown");
+
+    const identity = await this.resolveIdentity(pageUid, sdkScriptElement);
+
+    const config: VibenConfig = {
+      gatewayUrl,
+      clientId: identity.clientId,
+      publicKey: identity.publicKey,
+      privateKey: identity.privateKey,
+      pageUid,
+      source: "standalone",
+    };
+
+    (window as unknown as { __VIBEN_CONFIG__?: VibenConfig }).__VIBEN_CONFIG__ = config;
+    this.applyConfig(config);
+  }
+
+  private async resolveIdentity(
+    pageUid: string,
+    sdkScriptElement: HTMLScriptElement | null,
+  ): Promise<PageIdentity> {
+    if (
+      sdkScriptElement?.dataset.clientId &&
+      sdkScriptElement?.dataset.publicKey &&
+      sdkScriptElement?.dataset.privateKey
+    ) {
+      return {
+        clientId: sdkScriptElement.dataset.clientId,
+        publicKey: sdkScriptElement.dataset.publicKey,
+        privateKey: sdkScriptElement.dataset.privateKey,
+      };
+    }
+
+    const storageKey = `viben_identity_${pageUid}`;
+    const storedIdentity = localStorage.getItem(storageKey);
+    if (storedIdentity) {
+      try {
+        return JSON.parse(storedIdentity);
+      } catch {
+        // corrupted, regenerate
+      }
+    }
+
+    const identity = await VibenPageSDK.generateIdentity(pageUid);
+    localStorage.setItem(storageKey, JSON.stringify(identity));
+    return identity;
+  }
+
+  // ─── Connection ────────────────────────────────────────────────────────────
+
   private applyConfig(config: VibenConfig): void {
-    console.log("[VibenSDK] applyConfig:", { gatewayUrl: config.gatewayUrl, clientId: config.clientId, source: config.source, pageUid: config.pageUid });
     this.config = config;
     this._theme = config.theme ?? "light";
     this.connect();
@@ -137,7 +206,6 @@ class VibenPageSDK {
     this.notifyStateChange();
 
     const url = this.config.gatewayUrl.replace(/\/$/, "");
-    console.log("[VibenSDK] connecting to:", url, "path: /socket.io/client");
     this.socket = io(url, {
       path: "/socket.io/client",
       transports: ["polling", "websocket"],
@@ -148,13 +216,10 @@ class VibenPageSDK {
     });
 
     this.socket.on("connect", async () => {
-      console.log("[VibenSDK] socket.io 'connect' event fired, socket.id:", this.socket?.id);
       try {
         const timestamp = Date.now();
         const message = `${this.config!.clientId}:${timestamp}`;
-        console.log("[VibenSDK] signing message:", message);
         const signature = await signMessage(message, this.config!.privateKey);
-        console.log("[VibenSDK] signature generated, emitting client:connect...");
 
         this.socket!.emit(
           "client:connect",
@@ -167,46 +232,30 @@ class VibenPageSDK {
             timestamp,
           },
           (ack: { success: boolean; error?: string }) => {
-            console.log("[VibenSDK] client:connect ack received:", JSON.stringify(ack));
             if (ack.success) {
               this._state = "connected";
               this.notifyStateChange();
               this.readyResolve?.(true);
               this.reregisterActions();
+              window.dispatchEvent(new CustomEvent("viben:connected", { detail: this }));
             } else {
-              console.error("[VibenSDK] client:connect FAILED:", ack.error);
               this.readyReject?.(new Error(ack.error ?? "Connection failed"));
             }
           },
         );
       } catch (error) {
-        console.error("[VibenSDK] error in connect handler:", error);
         this.readyReject?.(error instanceof Error ? error : new Error("Signature failed"));
       }
     });
 
-    this.socket.on("connect_error", (err) => {
-      console.error("[VibenSDK] connect_error:", err.message, "type:", (err as any).type, "description:", (err as any).description);
-    });
-
     this.socket.on("disconnect", (reason) => {
-      console.log("[VibenSDK] disconnected, reason:", reason);
       this._state = "disconnected";
       this.notifyStateChange();
     });
 
-    this.socket.io.on("reconnect_attempt", (attempt) => {
-      console.log("[VibenSDK] reconnect_attempt #" + attempt);
+    this.socket.io.on("reconnect_attempt", () => {
       this._state = "reconnecting";
       this.notifyStateChange();
-    });
-
-    this.socket.io.on("reconnect_failed", () => {
-      console.error("[VibenSDK] reconnect_failed (all attempts exhausted)");
-    });
-
-    this.socket.io.on("error", (err) => {
-      console.error("[VibenSDK] manager error:", err);
     });
 
     this.socket.on("client:init", (data: { theme: Theme; workspacePath?: string }) => {
@@ -292,6 +341,31 @@ class VibenPageSDK {
     }
   }
 
+  // ─── Result Normalization ──────────────────────────────────────────────────
+
+  private normalizeResult(raw: unknown): ActionResult {
+    if (
+      raw &&
+      typeof raw === "object" &&
+      "content" in raw &&
+      Array.isArray((raw as ActionResult).content)
+    ) {
+      return raw as ActionResult;
+    }
+    if (typeof raw === "string") {
+      return { content: [{ type: "text", text: raw }] };
+    }
+    const text = JSON.stringify(raw, null, 2);
+    return {
+      content: [{ type: "text", text }],
+      structuredContent: typeof raw === "object" && raw !== null
+        ? (raw as Record<string, unknown>)
+        : { value: raw },
+    };
+  }
+
+  // ─── Action Execution ──────────────────────────────────────────────────────
+
   private async handleExecute(data: {
     requestId: string;
     namespace: string;
@@ -322,7 +396,8 @@ class VibenPageSDK {
     };
 
     try {
-      const result = await action.execute(data.payload, context);
+      const rawResult = await action.execute(data.payload, context);
+      const result = this.normalizeResult(rawResult);
       this.socket?.emit("action:result", {
         requestId: data.requestId,
         result,
@@ -374,7 +449,7 @@ class VibenPageSDK {
     });
   }
 
-  // Public API
+  // ─── Public API ────────────────────────────────────────────────────────────
 
   get state(): ConnectionState {
     return this._state;
@@ -396,6 +471,10 @@ class VibenPageSDK {
     return this.config?.gatewayUrl ?? "";
   }
 
+  get pageUid(): string {
+    return this.config?.pageUid ?? "";
+  }
+
   onStateChange(fn: (state: ConnectionState) => void): () => void {
     this.stateListeners.add(fn);
     return () => this.stateListeners.delete(fn);
@@ -407,25 +486,35 @@ class VibenPageSDK {
   }
 
   actions = {
-    register: (namespace: string, actions: Record<string, ActionDef>): (() => void) => {
+    register: (namespace: string, actions: Record<string, ActionDefinition>): (() => void) => {
       const actionsToRegister: Record<string, Omit<ActionDef, "execute">> = {};
 
-      for (const [name, def] of Object.entries(actions)) {
-        const fullName = `${namespace}.${name}`;
-        this.registeredActions.set(fullName, {
-          namespace,
-          name,
-          description: def.description,
-          inputSchema: def.inputSchema,
-          outputSchema: def.outputSchema,
-          timeout: def.timeout,
-          execute: def.execute,
-        });
-        actionsToRegister[name] = {
-          description: def.description,
-          inputSchema: def.inputSchema,
-          outputSchema: def.outputSchema,
-          timeout: def.timeout,
+      for (const [actionName, definition] of Object.entries(actions)) {
+        const fullName = `${namespace}.${actionName}`;
+        const normalizedAction: RegisteredAction =
+          typeof definition === "function"
+            ? {
+                namespace,
+                name: actionName,
+                description: actionName,
+                execute: definition,
+              }
+            : {
+                namespace,
+                name: actionName,
+                description: definition.description,
+                inputSchema: definition.inputSchema,
+                outputSchema: definition.outputSchema,
+                timeout: definition.timeout,
+                execute: definition.execute,
+              };
+
+        this.registeredActions.set(fullName, normalizedAction);
+        actionsToRegister[actionName] = {
+          description: normalizedAction.description,
+          inputSchema: normalizedAction.inputSchema,
+          outputSchema: normalizedAction.outputSchema,
+          timeout: normalizedAction.timeout,
         };
       }
 
@@ -466,5 +555,5 @@ class VibenPageSDK {
 const vibenPage = new VibenPageSDK();
 (window as unknown as { VibenPage?: VibenPageSDK }).VibenPage = vibenPage;
 
-export { vibenPage as VibenPage };
-export type { VibenPageSDK, ActionDef, ActionResult, ExecuteContext };
+export { vibenPage as VibenPage, VibenPageSDK };
+export type { ActionDef, ActionDefinition, ActionResult, ExecuteContext, PageIdentity };
