@@ -294,7 +294,8 @@ docs/index/
 .superpowers/
 
 /pages/*
-!/pages/0612-trading
+!/pages/vibe-trading
+!/pages/SKILL.md
 
 /infra/
 !/infra/Yoopta-Editor/

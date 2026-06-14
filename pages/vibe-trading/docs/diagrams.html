@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Vibe Trading · 架构图 &amp; 时序图</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  padding: 28px 32px 48px;
+}
+h1 { color: #58a6ff; font-size: 22px; margin-bottom: 3px; letter-spacing: -0.3px; }
+.meta { color: #6e7681; font-size: 12px; margin-bottom: 36px; }
+.section { margin-bottom: 52px; }
+h2 { color: #79c0ff; font-size: 14px; font-weight: 600; letter-spacing: 0.6px;
+     text-transform: uppercase; margin-bottom: 14px; }
+canvas { display: block; border-radius: 10px; border: 1px solid #21262d; }
+</style>
+</head>
+<body>
+<h1>Vibe Trading · 系统可视化文档</h1>
+<div class="meta">源自 USER_STORY_CORE.md · 架构图 + 时序图</div>
+
+<div class="section">
+  <h2>▌ 架构图 — 布局层次 &amp; 组件关系</h2>
+  <canvas id="arch" width="1300" height="760"></canvas>
+</div>
+
+<div class="section">
+  <h2>▌ 时序图 — 四大核心故事完整流程</h2>
+  <canvas id="seq" width="1300" height="1180"></canvas>
+</div>
+
+<script>
+/* ─── helpers ─────────────────────────────────────────── */
+function rr(ctx, x, y, w, h, r, fill, stroke, sw) {
+  sw = sw || 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+  if (fill)  { ctx.fillStyle = fill; ctx.fill(); }
+  if (stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = sw; ctx.stroke(); }
+}
+
+function txt(ctx, s, x, y, sz, col, align, bold) {
+  ctx.font = (bold ? '600 ' : '') + (sz||12) + 'px -apple-system,sans-serif';
+  ctx.fillStyle = col || '#e6edf3';
+  ctx.textAlign = align || 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(s, x, y);
+}
+
+function arrow(ctx, x1, y1, x2, y2, col, dashed) {
+  const ang = Math.atan2(y2-y1, x2-x1);
+  ctx.save();
+  if (dashed) ctx.setLineDash([5,3]);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+  ctx.strokeStyle = col||'#8b949e'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2 - 9*Math.cos(ang-0.38), y2 - 9*Math.sin(ang-0.38));
+  ctx.lineTo(x2 - 9*Math.cos(ang+0.38), y2 - 9*Math.sin(ang+0.38));
+  ctx.closePath(); ctx.fillStyle = col||'#8b949e'; ctx.fill();
+  ctx.restore();
+}
+
+/* ═══════════════════════════════════════════════════════
+   ARCHITECTURE DIAGRAM
+══════════════════════════════════════════════════════════ */
+(function(){
+  const cv = document.getElementById('arch');
+  const c  = cv.getContext('2d');
+  const W=1300, H=760;
+
+  /* background */
+  c.fillStyle='#0d1117'; c.fillRect(0,0,W,H);
+  /* subtle dot grid */
+  c.fillStyle='#161b22';
+  for(let x=0;x<W;x+=30) for(let y=0;y<H;y+=30){
+    c.beginPath(); c.arc(x,y,1,0,Math.PI*2); c.fill();
+  }
+
+  /* ── 外部侧边栏 ──────────────────────────────────── */
+  rr(c, 12, 12, 218, 736, 10, '#0a0d12', '#30363d', 1);
+  txt(c,'外部侧边栏',121,30,10,'#444c56');
+
+  /* Agent */
+  rr(c, 24,44,194,102,8,'#0c1829','#1f6feb',2);
+  txt(c,'🤖',70,86,22,'#e6edf3');
+  txt(c,'Agent',148,68,14,'#58a6ff','center',true);
+  txt(c,'推理引擎',148,86,11,'#79c0ff');
+  txt(c,'决策 · 工具调用',148,104,10,'#8b949e');
+
+  /* Chat */
+  rr(c, 24,160,194,58,8,'#0c1424','#30363d');
+  txt(c,'💬 对话界面',121,183,12,'#e6edf3','center',true);
+  txt(c,'用户输入 · 响应输出',121,202,10,'#8b949e');
+
+  /* User persona */
+  rr(c, 24,590,194,68,8,'#0d1f0d','#2ea043');
+  txt(c,'👤 懒研究员',121,613,13,'#3fb950','center',true);
+  txt(c,'观察 · 纠偏 · 确认',121,634,10,'#8b949e');
+  txt(c,'复盘 · 评论',121,650,10,'#8b949e');
+
+  /* legend */
+  rr(c, 24,668,194,70,6,'#0a0d12','#30363d');
+  txt(c,'图例',121,680,10,'#6e7681');
+  const lgd=[['#388bfd','A/C  Agent控制'],['#2ea043','D  行情数据'],['#8957e5','E  数据面板'],['#6e40c9','F  决策/日志'],['#f85149','G  弹窗确认']];
+  lgd.forEach(([col,lbl],i)=>{
+    rr(c,30,691+i*8.5,8,8,2,col,'transparent');
+    txt(c,lbl,44,695+i*8.5,9,col,'left');
+  });
+
+  /* tool-call arrow */
+  arrow(c,218,95,255,95,'#1f6feb');
+  txt(c,'工具调用',236,84,9,'#388bfd');
+
+  /* ── Trading App ─────────────────────────────────── */
+  rr(c, 252, 12, 1036, 736, 10, '#0a0d12', '#30363d', 1);
+  txt(c,'Trading App  —  单页应用，所有交互在面板 / Tab / Dialog 内发生',770,30,11,'#6e7681');
+
+  /* A TopNav */
+  rr(c,264,44,1012,48,6,'#0b1320','#388bfd',2);
+  txt(c,'A',291,68,10,'#388bfd','center',true);
+  txt(c,'TopNav',318,61,12,'#79c0ff','left',true);
+  txt(c,'状态灯  ·  Session 控制  ·  活动指示 (🤖 正在分析 ETH…  下轮 4m22s)  ·  回放入口',770,68,11,'#8b949e');
+
+  /* B PlayerBar */
+  rr(c,264,100,1012,34,5,'#0f0f12','#30363d');
+  txt(c,'B',291,117,10,'#444c56','center',true);
+  txt(c,'PlayerBar  (回放模式时出现)',380,114,11,'#444c56','left');
+  txt(c,'◀  ▶  ⏸  ══════●════════  15/42 · Cycle 8  ·  1x  2x  4x  8x  ·  🟢 实时',770,117,10,'#444c56');
+
+  /* C StatCards */
+  rr(c,264,142,1012,70,6,'#0b1320','#388bfd');
+  txt(c,'C',291,169,10,'#388bfd','center',true);
+  txt(c,'StatCards',320,162,12,'#79c0ff','left',true);
+  txt(c,'(数值跳动动画 600ms)',420,162,10,'#6e7681','left');
+  const cards=[['总收益','+¥2,840','#3fb950'],['未实现PnL','+¥164','#3fb950'],['胜率','63%','#e6edf3'],['持仓数','2','#e6edf3'],['可用余额','¥3,872','#e6edf3'],['最大回撤','-4.2%','#f85149']];
+  cards.forEach(([title,val,vc],i)=>{
+    const cx=303+i*166,cy=155;
+    rr(c,cx,cy,156,50,5,'#0d1117','#21262d');
+    txt(c,title,cx+78,cy+16,10,'#8b949e');
+    txt(c,val,cx+78,cy+36,13,vc,'center',true);
+  });
+
+  /* D ChartArea */
+  rr(c,264,220,620,312,6,'#0b180b','#2ea043',2);
+  txt(c,'D',291,244,10,'#2ea043','center',true);
+  txt(c,'ChartArea',320,240,12,'#3fb950','left',true);
+  /* tabs */
+  rr(c,316,254,106,26,4,'#162016','#2ea043');
+  txt(c,'行情图表',369,267,11,'#3fb950');
+  rr(c,428,254,106,26,4,'#0d1117','#21262d');
+  txt(c,'净值曲线',481,267,11,'#6e7681');
+  /* K-line area */
+  rr(c,276,287,596,237,4,'#090f09','#21262d');
+  txt(c,'TradingView K线 嵌入',574,406,13,'#2d333b');
+  /* fake candles */
+  const cdata=[70,95,55,120,80,40,115,60,90,105,75];
+  cdata.forEach((h,i)=>{
+    const cx=296+i*52, bot=508, ht=h*1.7;
+    const green=i%3!==1;
+    c.fillStyle=green?'#2ea04322':'#f8514922';
+    c.strokeStyle=green?'#2ea043':'#f85149';
+    c.lineWidth=1;
+    c.fillRect(cx-8,bot-ht,16,ht); c.strokeRect(cx-8,bot-ht,16,ht);
+    c.beginPath(); c.moveTo(cx,bot-ht-8); c.lineTo(cx,bot-ht); c.stroke();
+    c.beginPath(); c.moveTo(cx,bot); c.lineTo(cx,bot+8); c.stroke();
+  });
+
+  /* F SidePanel */
+  rr(c,892,220,384,312,6,'#100f1a','#6e40c9',2);
+  txt(c,'F',919,244,10,'#6e40c9','center',true);
+  txt(c,'SidePanel',948,240,12,'#a371f7','left',true);
+  rr(c,930,254,110,26,4,'#1a1030','#6e40c9');
+  txt(c,'决策日志',985,267,11,'#d2a8ff');
+  rr(c,1046,254,60,26,4,'#0d1117','#21262d');
+  txt(c,'Agent',1076,267,11,'#6e7681');
+  /* entries */
+  const decs=[
+    {icon:'🔵',tag:'#24 · 分析中',body:'ETH RSI=78 超买 → 减仓30%',col:'#58a6ff',bg:'#0c1829'},
+    {icon:'⚪',tag:'#23 · 观望',  body:'BTC 1h 横盘，无信号',        col:'#8b949e',bg:'#0d1117'},
+    {icon:'🟢',tag:'#22 · 买入', body:'BTC 回调支撑位 → 加仓10%',   col:'#3fb950',bg:'#0d1f0d'},
+    {icon:'🔴',tag:'#21 · 止损', body:'ETH 跌破止损线 → 清仓',      col:'#f85149',bg:'#1f0d0d'},
+  ];
+  decs.forEach((d,i)=>{
+    const dy=288+i*59;
+    rr(c,900,dy,369,54,4,d.bg,'#21262d');
+    txt(c,d.icon+' '+d.tag,916,dy+17,12,d.col,'left',true);
+    txt(c,d.body,916,dy+38,10,'#8b949e','left');
+  });
+
+  /* E DataPanel */
+  rr(c,264,540,1012,160,6,'#0f0f1a','#8957e5',2);
+  txt(c,'E',291,564,10,'#8957e5','center',true);
+  txt(c,'DataPanel',320,560,12,'#d2a8ff','left',true);
+  txt(c,'(可拖拽高度 / 折叠)',420,560,10,'#6e7681','left');
+  ['持仓','历史成交','订单'].forEach((t,i)=>{
+    rr(c,310+i*110,572,98,24,4,i===0?'#1a1030':'#0d1117',i===0?'#8957e5':'#21262d');
+    txt(c,t,359+i*110,584,11,i===0?'#d2a8ff':'#6e7681');
+  });
+  rr(c,276,603,988,90,4,'#090912','#21262d');
+  const cols=['币种','方向','数量','开仓价','当前价','PnL','止损','操作'];
+  cols.forEach((col,i)=>txt(c,col,314+i*122,620,10,'#8b949e'));
+  c.strokeStyle='#21262d'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(276,630); c.lineTo(1264,630); c.stroke();
+  /* BTC row highlighted */
+  rr(c,277,631,985,28,3,'#0d1f3322','#388bfd');
+  ['BTC','Long','0.1','61,200','62,840','+164U','60,000','平仓'].forEach((v,i)=>
+    txt(c,v,314+i*122,645,11,i===5?'#3fb950':i===7?'#f85149':'#e6edf3'));
+  /* ETH row */
+  ['ETH','Short','0.3','3,900','3,842','+17U','3,950','平仓'].forEach((v,i)=>
+    txt(c,v,314+i*122,673,11,i===5?'#3fb950':i===7?'#f85149':'#e6edf3'));
+
+  /* G Dialog overlay */
+  rr(c,520,180,340,358,10,'rgba(10,13,18,0.94)','#f85149',2);
+  txt(c,'G  ·  Dialog / Overlay',690,202,12,'#ff7b72','center',true);
+  txt(c,'涉及资金 → 必须用户确认',690,222,10,'#6e7681');
+  c.strokeStyle='#21262d30'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(530,232); c.lineTo(850,232); c.stroke();
+  const flds=[['币种','ETH','#e6edf3'],['方向','卖出 ▼','#f85149'],['数量','0.3 ETH (30%)','#e6edf3'],['价格','市价','#e6edf3'],['预计成交','≈ ¥1,152','#3fb950']];
+  flds.forEach(([lbl,val,vc],i)=>{
+    txt(c,lbl,542,255+i*42,10,'#8b949e','left');
+    rr(c,590,242+i*42,240,26,4,'#161b22','#30363d');
+    txt(c,val,710,255+i*42,12,vc);
+  });
+  rr(c,533,470,138,38,6,'#2e1212','#f85149',2);
+  txt(c,'确认卖出',602,489,13,'#ff7b72','center',true);
+  rr(c,683,470,138,38,6,'#161b22','#30363d');
+  txt(c,'取消',752,489,13,'#8b949e');
+  /* dashed connector to DataPanel */
+  c.save(); c.setLineDash([4,3]);
+  c.strokeStyle='#f8514960'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(690,538); c.lineTo(690,540); c.stroke();
+  c.restore();
+})();
+
+/* ═══════════════════════════════════════════════════════
+   SEQUENCE DIAGRAM
+══════════════════════════════════════════════════════════ */
+(function(){
+  const cv = document.getElementById('seq');
+  const c  = cv.getContext('2d');
+  const W=1300, H=1180;
+
+  c.fillStyle='#0d1117'; c.fillRect(0,0,W,H);
+  for(let x=0;x<W;x+=30) for(let y=0;y<H;y+=30){
+    c.fillStyle='#161b22';
+    c.beginPath(); c.arc(x,y,0.8,0,Math.PI*2); c.fill();
+  }
+
+  /* participants */
+  const P=[
+    {name:['用户','(侧边栏)'],  x:72,  col:'#3fb950'},
+    {name:['Agent','推理引擎'], x:214, col:'#58a6ff'},
+    {name:['TopNav','(A)'],      x:368, col:'#388bfd'},
+    {name:['StatCards','(C)'],   x:500, col:'#388bfd'},
+    {name:['ChartArea','(D)'],   x:640, col:'#2ea043'},
+    {name:['DataPanel','(E)'],   x:784, col:'#d2a8ff'},
+    {name:['SidePanel','(F)'],   x:930, col:'#a371f7'},
+    {name:['Dialog','(G)'],      x:1072,col:'#ff7b72'},
+  ];
+  const TOP=18, BH=54;
+  P.forEach(p=>{
+    rr(c,p.x-54,TOP,108,BH,7,'#161b22',p.col,2);
+    p.name.forEach((ln,i)=>txt(c,ln,p.x,TOP+17+i*20,11,p.col,'center',i===0));
+    c.save(); c.setLineDash([4,4]);
+    c.beginPath(); c.moveTo(p.x,TOP+BH); c.lineTo(p.x,H-18);
+    c.strokeStyle='#21262d'; c.lineWidth=1.5; c.stroke();
+    c.restore();
+  });
+
+  let y=TOP+BH+18;
+
+  function row(fx,tx,label,col,dashed,noteStr){
+    const dir=tx>fx?1:-1;
+    c.save();
+    if(dashed) c.setLineDash([5,3]);
+    c.beginPath(); c.moveTo(fx,y); c.lineTo(tx-dir*8,y);
+    c.strokeStyle=col||'#c9d1d9'; c.lineWidth=1.5; c.stroke();
+    c.setLineDash([]);
+    c.beginPath(); c.moveTo(tx,y);
+    c.lineTo(tx-dir*9,y-4); c.lineTo(tx-dir*9,y+4);
+    c.closePath(); c.fillStyle=col||'#c9d1d9'; c.fill();
+    if(label){
+      const mx=(fx+tx)/2;
+      c.font='11px -apple-system,sans-serif';
+      c.fillStyle='#c9d1d9'; c.textAlign='center'; c.textBaseline='bottom';
+      c.fillText(label,mx,y-2);
+    }
+    if(noteStr){
+      const nx=Math.max(fx,tx)+10;
+      c.font='10px -apple-system,sans-serif';
+      c.fillStyle='#6e7681'; c.textAlign='left'; c.textBaseline='middle';
+      c.fillText('← '+noteStr, nx, y);
+    }
+    c.restore();
+    y+=30;
+  }
+
+  function phase(label){
+    rr(c,0,y-2,W,22,0,'#161b22','transparent');
+    c.strokeStyle='#30363d'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(0,y); c.lineTo(W,y); c.stroke();
+    c.beginPath(); c.moveTo(0,y+22); c.lineTo(W,y+22); c.stroke();
+    c.font='600 12px -apple-system,sans-serif';
+    c.fillStyle='#79c0ff'; c.textAlign='left'; c.textBaseline='middle';
+    c.fillText(label, 14, y+11);
+    y+=36;
+  }
+
+  function act(x,y1,y2,col){
+    rr(c,x-5,y1,10,y2-y1,3,col+'20',col,1);
+  }
+
+  const U=72, AG=214, A=368, C=500, D=640, E=784, F=930, G=1072;
+  const S=30; /* step */
+
+  /* ── 故事 1 ──────────────────────────────────────── */
+  phase('故事 1 · 启动配置  —  用户给目标，Agent 弹出策略弹窗配置并启动');
+  row(U,AG,'"帮我投 5000U，中等风险"','#3fb950');
+  const a1s=y-S;
+  row(AG,G,'open_strategy_dialog()','#58a6ff',false,'策略弹窗右侧滑入 300ms');
+  row(AG,G,'set_param("symbols", ["BTC","ETH"])','#58a6ff',false,'字段蓝框 → 打入 → 消退');
+  row(AG,G,'set_param("amount", 5000)','#58a6ff',false,'数字滚动填入');
+  row(AG,G,'set_param("risk", "moderate")','#58a6ff',false,'选项高亮选中');
+  act(AG,a1s,y,'#58a6ff');
+  row(U,G,'用户点击"确认启动"','#3fb950',false,'modal 关闭');
+  const a2s=y-S;
+  row(AG,A,'confirm_start() → 状态灯亮绿','#388bfd',false);
+  row(AG,C,'update_metrics({capital:5000})','#388bfd',false,'本金数字滚入');
+  row(AG,D,'switch_symbol("BTC")','#2ea043',false,'K线加载');
+  row(AG,F,'append_decision({session 启动})','#a371f7',false,'第一条决策日志');
+  act(AG,a2s,y,'#388bfd');
+  y+=8;
+
+  /* ── 故事 2 ──────────────────────────────────────── */
+  phase('故事 2 · 实时操盘  —  Agent 周期性分析，主页面全区域联动');
+  const b1s=y;
+  row(AG,D,'switch_chart_tab("kline")','#58a6ff',false,'tab 切换 200ms');
+  row(AG,D,'switch_symbol("ETH")','#58a6ff',false,'K线重新加载');
+  row(AG,F,'append_decision({#24, 分析中, ETH RSI=78})','#a371f7',false,'打字机效果滑入');
+  row(AG,E,'expand_data_panel()','#58a6ff',false,'拉高动画');
+  row(AG,E,'switch_data_tab("positions")','#58a6ff',false,'tab 切换');
+  row(AG,E,'highlight_row("position","ETH")','#58a6ff',false,'蓝色底色 2s');
+  row(AG,A,'(更新 TopNav 活动指示)','#388bfd',true,'"🤖 正在分析 ETH... 下轮 4m22s"');
+  act(AG,b1s,y-S,'#58a6ff');
+  y+=8;
+
+  /* ── 故事 2 续：下单流程 ───────────────────────────── */
+  phase('故事 2 (续) · 涉及资金操作  —  弹窗确认，用户优先级始终最高');
+  const c1s=y;
+  row(AG,G,'open_order_dialog({sell,ETH,30%})','#58a6ff',false,'弹窗滑出，字段已填');
+  row(G,U,'弹窗展示（主页面不可交互）','#ff7b72',true);
+  act(AG,c1s,y,'#58a6ff');
+  row(U,G,'用户点击"确认卖出"','#3fb950',false,'modal 确认');
+  row(G,AG,'成交回调','#ff7b72',true);
+  const c2s=y;
+  row(AG,C,'update_metrics({pnl,balance})','#58a6ff',false,'数值跳动 600ms');
+  row(AG,C,'flash_stat("pnl")','#58a6ff',false,'卡片辉光效果');
+  row(AG,E,'update_positions([ETH已清仓])','#58a6ff',false,'持仓表更新');
+  row(AG,F,'append_decision({#24, 卖出成交@3842})','#a371f7',false,'追加成交记录');
+  act(AG,c2s,y-S,'#58a6ff');
+  y+=8;
+
+  /* ── 故事 3 ──────────────────────────────────────── */
+  phase('故事 3 · 用户纠偏  —  侧边栏对话 → App 面板实时响应变化');
+  row(U,AG,'"先停一停"','#3fb950');
+  const d1s=y-S;
+  row(AG,A,'pause_session()','#388bfd',false,'状态灯变黄 200ms');
+  row(AG,F,'append_decision({已暂停})','#a371f7',false);
+  act(AG,d1s,y-S,'#388bfd');
+
+  row(U,AG,'"切到看 ETH 净值曲线"','#3fb950');
+  const d2s=y-S;
+  row(AG,D,'switch_symbol("ETH")','#2ea043',false);
+  row(AG,D,'switch_chart_tab("nav")','#2ea043',false,'切到净值 tab');
+  act(AG,d2s,y-S,'#2ea043');
+
+  row(U,AG,'"平掉一半 BTC"','#3fb950');
+  const d3s=y-S;
+  row(AG,G,'open_order_dialog({sell,BTC,50%})','#ff7b72',false,'弹窗滑出');
+  row(U,G,'用户点击"确认"','#3fb950');
+  row(G,AG,'成交','#ff7b72',true);
+  act(AG,d3s,y-S,'#ff7b72');
+  y+=8;
+
+  /* ── 故事 4 ──────────────────────────────────────── */
+  phase('故事 4 · 复盘回放  —  PlayerBar 出现，整个 App 重演历史面板状态');
+  row(U,AG,'"看看昨天的操作"','#3fb950');
+  const e1s=y-S;
+  row(AG,A,'enter_replay(startIndex:0)','#388bfd',false,'TopNav 标注"回放中"，PlayerBar 出现');
+  row(AG,C,'(恢复历史 StatCards 快照)','#388bfd',true);
+  row(AG,D,'(恢复历史 ChartArea 快照)','#2ea043',true);
+  row(AG,E,'(恢复历史 DataPanel 快照)','#d2a8ff',true);
+  row(AG,F,'(决策日志滚动到起始条目)','#a371f7',true);
+  act(AG,e1s,y-S,'#388bfd');
+
+  row(U,AG,'拖动进度条到 #22 (买入BTC)','#3fb950');
+  const e2s=y-S;
+  row(AG,C,'(跳转到该时刻指标快照)','#388bfd',true);
+  row(AG,D,'(跳转到该时刻 K线位置)','#2ea043',true);
+  row(AG,F,'(高亮 #22 决策日志条目)','#a371f7',true);
+  act(AG,e2s,y-S,'#a371f7');
+
+  row(U,AG,'"这步不该买"  (复盘评论)','#3fb950');
+  const e3s=y-S;
+  row(AG,F,'append_decision({用户标注 #22})','#a371f7',false,'评论显示在条目下方');
+  act(AG,e3s,y-S,'#a371f7');
+
+  row(U,A,'点击"🟢 实时"按钮','#3fb950');
+  const e4s=y-S;
+  row(A,AG,'exit_replay()','#388bfd',true);
+  const e4e=y;
+  act(A,e4s,e4e,'#388bfd');
+  row(AG,A,'(PlayerBar 消失，恢复实时)','#388bfd',true);
+
+  /* footer */
+  c.font='10px -apple-system,sans-serif';
+  c.fillStyle='#444c56'; c.textAlign='center'; c.textBaseline='middle';
+  c.fillText('实线 = 主动工具调用  ·  虚线 = 响应/回调/被动更新  ·  绿色 = 用户操作（优先级始终最高）',W/2,H-10);
+})();
+</script>
+</body>
+</html>
