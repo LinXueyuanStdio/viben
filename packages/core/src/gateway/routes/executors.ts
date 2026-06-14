@@ -1179,17 +1179,17 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   }
 
   /**
-   * GET /api/executors/:type/skills?workspace_path=...
+   * GET /api/executors/:type/skills?workspace_path=...&include_global=true
    */
   fastify.get<{
     Params: { type: string };
-    Querystring: { workspace_path?: string };
+    Querystring: { workspace_path?: string; include_global?: string };
   }>("/api/executors/:type/skills", async (request) => {
     const { type } = request.params;
-    const { workspace_path } = request.query;
+    const { workspace_path, include_global } = request.query;
 
     const executorType = type as ExecutorType;
-    const { jsonPath, folderPath } = getSkillsConfigPath(workspace_path, executorType);
+    const includeGlobal = include_global !== "false";
     const skills: Array<{
       id: string;
       name: string;
@@ -1199,26 +1199,93 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
       description?: string;
     }> = [];
 
-    // Load from skills.json if exists
-    if (jsonPath && fs.existsSync(jsonPath)) {
-      try {
-        const content = fs.readFileSync(jsonPath, "utf-8");
-        const config = JSON.parse(content);
-        if (Array.isArray(config.skills)) {
-          skills.push(...config.skills);
+    // Load workspace-scoped skills
+    if (workspace_path) {
+      const { jsonPath, folderPath } = getSkillsConfigPath(workspace_path, executorType);
+
+      if (jsonPath && fs.existsSync(jsonPath)) {
+        try {
+          const content = fs.readFileSync(jsonPath, "utf-8");
+          const config = JSON.parse(content);
+          if (Array.isArray(config.skills)) {
+            skills.push(...config.skills);
+          }
+        } catch {
+          // Invalid JSON
         }
-      } catch {
-        // Invalid JSON
+      }
+
+      if (folderPath) {
+        const folderSkills = scanSkillsFolder(folderPath);
+        for (const skill of folderSkills) {
+          if (!skills.find((s) => s.id === skill.id)) {
+            skills.push(skill);
+          }
+        }
       }
     }
 
-    // Scan skills folder
-    if (folderPath) {
-      const folderSkills = scanSkillsFolder(folderPath);
-      // Merge, avoiding duplicates by id
-      for (const skill of folderSkills) {
-        if (!skills.find((s) => s.id === skill.id)) {
-          skills.push(skill);
+    // Load global skills (from ~/.claude/skills etc.)
+    if (includeGlobal) {
+      const globalBase = os.homedir();
+      const isAlreadyGlobal = !workspace_path || workspace_path === globalBase;
+
+      if (!isAlreadyGlobal) {
+        const { jsonPath: globalJsonPath, folderPath: globalFolderPath } = getSkillsConfigPath(undefined, executorType);
+
+        if (globalJsonPath && fs.existsSync(globalJsonPath)) {
+          try {
+            const content = fs.readFileSync(globalJsonPath, "utf-8");
+            const config = JSON.parse(content);
+            if (Array.isArray(config.skills)) {
+              for (const skill of config.skills) {
+                if (!skills.find((s) => s.id === skill.id)) {
+                  skills.push(skill);
+                }
+              }
+            }
+          } catch {
+            // Invalid JSON
+          }
+        }
+
+        if (globalFolderPath) {
+          const folderSkills = scanSkillsFolder(globalFolderPath);
+          for (const skill of folderSkills) {
+            if (!skills.find((s) => s.id === skill.id)) {
+              skills.push(skill);
+            }
+          }
+        }
+      }
+    }
+
+    // If no workspace_path was provided, just load from global (old behavior)
+    if (!workspace_path) {
+      const { jsonPath, folderPath } = getSkillsConfigPath(undefined, executorType);
+
+      if (jsonPath && fs.existsSync(jsonPath)) {
+        try {
+          const content = fs.readFileSync(jsonPath, "utf-8");
+          const config = JSON.parse(content);
+          if (Array.isArray(config.skills)) {
+            for (const skill of config.skills) {
+              if (!skills.find((s) => s.id === skill.id)) {
+                skills.push(skill);
+              }
+            }
+          }
+        } catch {
+          // Invalid JSON
+        }
+      }
+
+      if (folderPath) {
+        const folderSkills = scanSkillsFolder(folderPath);
+        for (const skill of folderSkills) {
+          if (!skills.find((s) => s.id === skill.id)) {
+            skills.push(skill);
+          }
         }
       }
     }
