@@ -51,6 +51,29 @@ WS 重连 → loadSession(id)
           loadSession 响应携带 history 字段
 ```
 
+### ACP 原生能力利用
+
+Backend（claude-code）在 `initialize` 响应中声明的能力，本设计均应充分利用，不重复造轮子：
+
+| ACP 能力 | 本设计中的用途 |
+|---------|--------------|
+| `agentCapabilities.loadSession: true` | gateway 重启后调用 `session/load { sessionId: sdk_session_id }` 恢复 backend 上下文（ACP 原生协议，不是自定义机制） |
+| `sessionCapabilities.resume` | WS 重连时向 backend 发 `session/resume { sessionId }` 通知其继续流式输出（backend 可能在连接断开后暂停推送） |
+| `sessionCapabilities.list` | `listSessions()` 向活跃 backend 请求 `session/list`，合并磁盘 parked 记录，得到完整 session 列表 |
+| `sessionCapabilities.close` | 用户主动关闭 session 时发 `session/close { sessionId }`，backend 正确清理内部状态 |
+| `_meta.claudeCode.promptQueueing: true` | backend 支持在前一 prompt 执行中接受新 prompt；断开期间若有 prompt 未完成，重连后继续消费 |
+| `dangerously_skip_permissions` in agent_config | `approval_mode: "bypass"` 时设为 `true`，backend 进入 `bypassPermissions` 模式，彻底不发 `requestPermission` |
+
+**协议层边界**（重要）：
+
+```
+前端 ←─── Gateway WebSocket（gateway 自定义协议，含 history 字段扩展）─────→ Gateway
+Gateway ←── ACP 协议（session/new, session/load, session/resume, session/list, session/close,
+              requestPermission, sessionUpdate...）───────────────────────────→ Backend（claude-code）
+```
+
+本设计的 `history` 字段、`AcpSessionStore`、`DetachedConnection` 均在 Gateway 层，不影响 ACP 协议本身。
+
 ### 数据丢失边界
 
 **设计决策（trade-off 声明）：**
@@ -240,8 +263,9 @@ class DetachedConnection implements AcpConnection {
 
 ### `requestPermission` 处理逻辑
 
+> `approval_mode: "bypass"` 时 backend 配置了 `bypassPermissions` 模式（ACP 协议），backend **根本不发 `requestPermission`**，本方法永远不会被调用。以下逻辑仅适用于 `"rules"` 和 `"ai"` 模式。
+
 ```
-approval_mode = "bypass"  → 直接 resolve(allow_once)，appendEvent(permission_response)
 approval_mode = "rules"   → ApprovalHandler.evaluate("rules", params)
                               auto: true  → resolve，appendEvent(permission_response)
                               auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
@@ -383,33 +407,40 @@ async resumeSession(
 ```
 loadSession(request, newConnection: AcpConnection, context) →
 
-  case 内存有 session：
-    if session.connection instanceof DetachedConnection →
-      history = await detachedConn.resume(newConnection)
-      session.connection = newConnection
-      session.last_active_at = new Date()
-      store.saveRecord({ ...record, status: "active" })
-      return { sessionId, configOptions, history }
-    else →
-      session.connection = newConnection   // 普通重连（如刷新页面）
-      session.last_active_at = new Date()
-      return { sessionId, configOptions }
+  case 内存有 session，connection 是 DetachedConnection（正常断线重连）：
+    // 1. 通知 backend：session 正在被 resume（ACP session/resume 协议）
+    //    backend 可能在连接断开后暂停了推送，此信号让它继续
+    await backend.acpClient.sessionResume({ sessionId: session.sdk_session_id })
 
-  case 内存无，磁盘有 →
+    // 2. resume DetachedConnection：返回 history 快照，异步处理 pending
+    history = await detachedConn.resume(newConnection)
+    session.connection = newConnection
+    session.last_active_at = new Date()
+    store.saveRecord({ ...record, status: "active" })
+    return { sessionId, configOptions, history }
+
+  case 内存有 session，connection 是普通连接（如刷新页面）：
+    session.connection = newConnection
+    session.last_active_at = new Date()
+    return { sessionId, configOptions }
+
+  case 内存无，磁盘有（gateway 重启后恢复）→
     record = store.loadRecord(id)
     session = createSessionRecord(request, newConnection, context)
+
+    // 关键：用 sdk_session_id 恢复 backend 上下文（ACP session/load 原生协议）
+    // ensureBackend() 会以 backend_load_session_id 作为 ACP session/load 请求的 sessionId 字段
     session.backend_load_session_id = record.sdk_session_id
-    //   ↑ ensureBackend() 通过 session.backend_load_session_id 构造 loadSession 请求传给 backend
     session.sdk_session_id = record.sdk_session_id
     sessions.set(id, session)
 
     allEvents = store.loadEvents(id)
     store.initSeqCounter(id, maxSeq(allEvents) + 1)
 
-    // 统一用 history 字段返回，不逐条调用 sessionUpdate（与正常重连路径一致）
+    // 统一用 history 字段返回（与正常重连路径一致，不逐条 sessionUpdate）
     const history = allEvents.filter(e => e.type === "session_update")
 
-    // pending 事件标为 abandoned（backend 已不在等待）
+    // pending 事件标为 abandoned（backend 已不在等待，subprocess 已死）
     for (const event of allEvents) {
       if (event.status === "pending") {
         await store.updateEventStatus(id, event.seq, "abandoned")
@@ -424,12 +455,31 @@ loadSession(request, newConnection: AcpConnection, context) →
     return { sessionId, configOptions }
 ```
 
+**关于 `session/load` vs `session/resume`（ACP 协议）：**
+
+| 场景 | ACP 调用 | 说明 |
+|------|---------|------|
+| gateway 重启，backend 也死了 | `session/load { sessionId: sdk_session_id }` | backend 重新加载保存的上下文 |
+| frontend WS 断开，backend 仍运行 | `session/resume { sessionId: sdk_session_id }` | backend 继续推送流式数据 |
+
 ### `listSessions()` 改造
 
 ```
-内存 Map sessions（in-memory）
-  + store.listRecords()（包含 parked/finished）
-合并去重（内存优先），按 last_active_at 降序返回
+// 三路合并，得到完整 session 列表
+
+// 1. 内存 Map（in-memory，最准确，包含 active/parked sessions）
+const memorySessions = [...this.sessions.values()]
+
+// 2. 向 backend 查询（ACP session/list 原生协议）
+//    backend 知道它当前持有哪些 session（可能因 gateway 重启而不同步）
+const backendSessions = await backend.acpClient.sessionList()
+//    backendSessions 包含 backend 自己知道的 sdk_session_id 列表
+
+// 3. 磁盘 parked records（backend 已不持有，纯磁盘记录）
+const diskRecords = await store.listRecords()
+
+// 合并规则：内存优先 > backend 补充 > 磁盘 parked
+// 按 last_active_at 降序排序
 
 parked sessions 转换为 AcpSessionSummary：
   queueDepth: 0
@@ -456,11 +506,12 @@ agent_capabilities = backend.agentCapabilities
 ### `closeSession()` 改造
 
 显式关闭（用户主动关闭，非 WebSocket 断开）时：
-1. 清除 `DetachedConnection` 的定时器（若存在）
-2. `store.saveRecord({ ...record, status: "finished" })`（保留 JSONL 历史）
-3. `sessions.delete(id)`
+1. 清除 `DetachedConnection` 的定时器（若存在）并执行最终刷盘
+2. 向 backend 发送 **`session/close { sessionId: session.sdk_session_id }`**（ACP 原生协议），让 backend 正确清理内部状态
+3. `store.saveRecord({ ...record, status: "finished" })`（保留 JSONL 历史）
+4. `sessions.delete(id)`
 
-> 注：`store.deleteRecord()` 仅在前端调用"删除会话"（物理删除）时使用。
+> 注：`store.deleteRecord()` 仅在前端调用"删除会话"（物理删除，彻底清除磁盘文件）时使用。
 
 ---
 
@@ -485,9 +536,30 @@ export type ApprovalMode = "rules" | "bypass" | "ai";
 | `apps/desktop/src/types/unified-agent.ts` | 前端 unified agent 类型同步 |
 | `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload` 新增 `approval_mode?: ApprovalMode` |
 
-### `dangerously_skip_permissions` 保留说明
+### `approval_mode` → Backend ACP 模式映射
 
-`dangerously_skip_permissions` 是**全局开发者偏好**（通过 `git config` 存储在 `developer.dangerously_skip_permissions`，用于调试时临时跳过所有审批），与 **agent 级别的 `approval_mode`** 是两个独立机制，不能互相替代，**不能移除**。
+`approval_mode` 的核心作用是控制 **backend 的权限模式**，通过 `agent_config` 中的 `dangerously_skip_permissions` 字段传递给 backend（ACP `session/new` / `session/load` 请求的 `agent_config` 参数）。
+
+| `approval_mode` | `agent_config.dangerously_skip_permissions` | Backend 行为 | Gateway 行为 |
+|----------------|---------------------------------------------|-------------|-------------|
+| `"bypass"` | `true` | Backend 进入 `bypassPermissions` 模式，**完全不发 `requestPermission`** | 无需任何 approval 逻辑，`DetachedConnection.pendingPermissions` 永远为空 |
+| `"rules"` | `false`（默认） | Backend 正常发 `requestPermission` | Gateway `ApprovalHandler` 拦截，自动通过或挂起 |
+| `"ai"` | `false`（默认） | Backend 正常发 `requestPermission` | Gateway `ApprovalHandler` 调用 AI 判断，AI 决定或挂起 |
+
+构建 backend `agent_config`（在 `ensureBackend()` 中）：
+
+```typescript
+const effectiveConfig: AgentConfigPayload = {
+  ...session.agent_config,
+  // approval_mode: "bypass" 映射到 backend 的 bypassPermissions 模式
+  dangerously_skip_permissions:
+    global_prefs.dangerously_skip_permissions ||
+    session.agent_config?.approval_mode === "bypass",
+};
+// effectiveConfig 通过 ACP session/new 或 session/load 的 agent_config 字段传给 backend
+```
+
+> **注意**：`dangerously_skip_permissions` 在 `AgentConfigPayload` 中保留作为底层 ACP 协议字段，但用户面向的配置应使用 `approval_mode`。两者均保留是因为全局开发者偏好（`git config developer.dangerously_skip_permissions`）和 agent 级别的 `approval_mode` 是两个独立来源。
 
 有效 approval 模式的计算（在 `DetachedConnection` 和 `SdkAcpConnection` 中均适用）：
 
@@ -584,8 +656,8 @@ export type ApprovalDecision =
 ```
 
 - `"rules"`：检查工具名、命令模式等规则，能自动决定则 `auto: true`，否则 `auto: false` 挂起
-- `"bypass"`：始终返回 `{ auto: true, optionId: "allow_once" }`
 - `"ai"`：调用 AI 判断；AI 决定安全 → `auto: true`；AI 决定不安全或超时 → `auto: false` 挂起
+- `"bypass"`：**不经过 `ApprovalHandler`**——`bypass` 模式下 backend 配置了 `bypassPermissions`（ACP 协议），backend 根本不发 `requestPermission`，gateway 永远不会收到权限请求，`ApprovalHandler.evaluate()` 不会被调用
 
 初版 `"ai"` 实现可为 stub（直接返回 `auto: false`），待后续接入 LLM。
 
@@ -597,6 +669,8 @@ export type ApprovalDecision =
 
 ```
 requestPermission(params):
+  // bypass 模式下 backend 配置了 bypassPermissions，不发 requestPermission，此处不会被调用
+  // 以下逻辑仅在 effective_mode 为 "rules" 或 "ai" 时触发
   effective_mode = dangerously_skip_permissions ? "bypass" : agent_config.approval_mode ?? "rules"
   decision = approvalHandler.evaluate(params, effective_mode)
   if decision.auto → 直接 resolve(decision.optionId)，无需 UI 交互
