@@ -1,0 +1,7 @@
+typescript:
+  version: 0.1.0
+  author: Viben
+  packageName: "@viben/client-sdk"
+  description: Viben Gateway TypeScript Client SDK
+generate:
+  baseServerUrl: http://127.0.0.1:18790

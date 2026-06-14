@@ -22,7 +22,7 @@ const OUTPUT_DIR = join(ROOT, "packages", "client-sdk");
 const SPEC_PATH = join(OUTPUT_DIR, "openapi.json");
 const GATEWAY_URL = process.env.GATEWAY_URL || "http://127.0.0.1:18790";
 
-async function downloadSpec(): Promise<void> {
+async function downloadSpec(): Promise<Record<string, unknown>> {
   const url = `${GATEWAY_URL}/openapi.json`;
   console.log(`[generate-client-sdk] Downloading OpenAPI spec from ${url}...`);
 
@@ -31,18 +31,80 @@ async function downloadSpec(): Promise<void> {
     throw new Error(`Failed to fetch OpenAPI spec: ${res.status} ${res.statusText}`);
   }
 
-  const spec = await res.json();
-  await mkdir(OUTPUT_DIR, { recursive: true });
-  await writeFile(SPEC_PATH, JSON.stringify(spec, null, 2), "utf-8");
-
-  console.log(`[generate-client-sdk] OpenAPI spec saved: ${SPEC_PATH}`);
-  console.log(`[generate-client-sdk] Paths: ${Object.keys(spec.paths || {}).length}`);
+  return await res.json() as Record<string, unknown>;
 }
 
-function runSpeakeasy(target: "python" | "typescript"): void {
+function fixSpec(spec: Record<string, unknown>): Record<string, unknown> {
+  let fixCount = 0;
+
+  // Fix 1: Add missing `items` to arrays (OpenAPI 3.0.x requires items for arrays)
+  function addMissingItems(obj: unknown): void {
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      const record = obj as Record<string, unknown>;
+      if (record.type === "array" && !record.items) {
+        record.items = {};
+        fixCount++;
+      }
+      for (const value of Object.values(record)) {
+        addMissingItems(value);
+      }
+    } else if (Array.isArray(obj)) {
+      for (const item of obj) {
+        addMissingItems(item);
+      }
+    }
+  }
+  addMissingItems(spec);
+
+  // Fix 2: Remove paths with invalid wildcard params like /api/mcp/tauri/{*}
+  const paths = spec.paths as Record<string, unknown> | undefined;
+  if (paths) {
+    const invalidPaths: string[] = [];
+    for (const path of Object.keys(paths)) {
+      if (path.includes("{*}") || path.includes("{*path}")) {
+        invalidPaths.push(path);
+      }
+    }
+    for (const path of invalidPaths) {
+      delete paths[path];
+      fixCount++;
+    }
+    if (invalidPaths.length > 0) {
+      console.log(`[generate-client-sdk] Removed invalid paths: ${invalidPaths.join(", ")}`);
+    }
+  }
+
+  console.log(`[generate-client-sdk] Applied ${fixCount} spec fixes`);
+  return spec;
+}
+
+async function writeGenYaml(target: "python" | "typescript", outputDir: string): Promise<void> {
+  const config =
+    target === "python"
+      ? `python:
+  version: 0.1.0
+  author: Viben
+  packageName: viben-client
+  description: Viben Gateway Python Client SDK
+generate:
+  baseServerUrl: http://127.0.0.1:18790
+`
+      : `typescript:
+  version: 0.1.0
+  author: Viben
+  packageName: "@viben/client-sdk"
+  description: Viben Gateway TypeScript Client SDK
+generate:
+  baseServerUrl: http://127.0.0.1:18790
+`;
+
+  await writeFile(join(outputDir, "gen.yaml"), config, "utf-8");
+}
+
+async function runSpeakeasy(target: "python" | "typescript"): Promise<void> {
   const outputDir = join(OUTPUT_DIR, target);
-  const sdkName = "viben";
-  const packageName = target === "python" ? "viben-client" : "@viben/client-sdk";
+  await mkdir(outputDir, { recursive: true });
+  await writeGenYaml(target, outputDir);
 
   console.log(`\n[generate-client-sdk] Generating ${target} SDK...`);
 
@@ -50,11 +112,9 @@ function runSpeakeasy(target: "python" | "typescript"): void {
     "speakeasy",
     "generate",
     "sdk",
-    "-s", SPEC_PATH,
-    "-t", target,
-    "-o", outputDir,
-    "-n", sdkName,
-    "-p", packageName,
+    "--schema", SPEC_PATH,
+    "--lang", target,
+    "--out", outputDir,
   ].join(" ");
 
   execSync(cmd, { stdio: "inherit", cwd: ROOT });
@@ -63,9 +123,15 @@ function runSpeakeasy(target: "python" | "typescript"): void {
 }
 
 async function main() {
-  await downloadSpec();
-  runSpeakeasy("python");
-  runSpeakeasy("typescript");
+  const spec = await downloadSpec();
+  const fixedSpec = fixSpec(spec);
+
+  await mkdir(OUTPUT_DIR, { recursive: true });
+  await writeFile(SPEC_PATH, JSON.stringify(fixedSpec, null, 2), "utf-8");
+  console.log(`[generate-client-sdk] Spec saved: ${SPEC_PATH} (${Object.keys((fixedSpec.paths as object) || {}).length} paths)`);
+
+  await runSpeakeasy("typescript");
+  await runSpeakeasy("python");
   console.log("\n[generate-client-sdk] Done! SDKs generated at packages/client-sdk/");
 }
 

@@ -2689,7 +2689,8 @@
                       "type": "string"
                     },
                     "events": {
-                      "type": "array"
+                      "type": "array",
+                      "items": {}
                     },
                     "count": {
                       "type": "number"
@@ -2767,7 +2768,8 @@
                       "nullable": true
                     },
                     "subtasks": {
-                      "type": "array"
+                      "type": "array",
+                      "items": {}
                     },
                     "logs": {
                       "type": "object",
@@ -11091,25 +11093,6 @@
     },
     "/api/mcp/tauri/message": {
       "post": {
-        "responses": {
-          "200": {
-            "description": "Default Response"
-          }
-        }
-      }
-    },
-    "/api/mcp/tauri/{*}": {
-      "options": {
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "path",
-            "name": "*",
-            "required": true
-          }
-        ],
         "responses": {
           "200": {
             "description": "Default Response"
