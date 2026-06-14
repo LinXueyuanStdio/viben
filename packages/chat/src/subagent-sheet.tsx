@@ -229,18 +229,20 @@ export function SubagentSheet({
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        data-testid="subagent-sheet-backdrop"
-        className={contained ? "absolute inset-0 z-40 bg-black/20" : "fixed inset-0 z-40 bg-black/20"}
-        onClick={onClose}
-      />
+      {/* Backdrop - only rendered in standalone (non-contained) mode */}
+      {!contained && (
+        <div
+          data-testid="subagent-sheet-backdrop"
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={onClose}
+        />
+      )}
       {/* Panel */}
       <div
         data-testid="subagent-sheet-panel"
         className={cn(
           contained
-            ? "absolute right-0 top-0 bottom-0 z-50 flex min-w-0 flex-col overflow-hidden border-l bg-background shadow-xl"
+            ? "flex h-full min-w-0 flex-col overflow-hidden border-l bg-background shadow-xl"
             : "fixed right-0 top-0 bottom-0 z-50 flex min-w-0 flex-col overflow-hidden border-l bg-background shadow-xl",
           className
         )}
