@@ -30,6 +30,7 @@ export async function getSkills(
 ): Promise<WorkspaceSkillsResponse> {
   const params = new URLSearchParams();
   if (workspacePath) params.set("workspace_path", workspacePath);
+  params.set("include_global", "true");
 
   const response = await fetch(
     `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/skills?${params.toString()}`,
