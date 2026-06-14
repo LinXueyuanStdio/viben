@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0891B2;
+  --color-gain: #16a34a;
+  --color-loss: #dc2626;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f8fafc;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Inter", sans-serif;
+  background: var(--color-surface);
+  color: #0f172a;
+}
+
+/* ─── Flash animations for price changes ─────────────────────────────────── */
+.flash-gain {
+  background-color: rgba(22, 163, 74, 0.15);
+}
+
+.flash-loss {
+  background-color: rgba(220, 38, 38, 0.15);
+}
+
+/* ─── Tab content fade-in transition ─────────────────────────────────────── */
+.tab-content-enter {
+  animation: tabFadeIn 200ms ease-out;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Row slide-in animation for new trades ──────────────────────────────── */
+.row-enter {
+  animation: rowSlideIn 300ms ease-out;
+}
+
+@keyframes rowSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Order row fade-in ──────────────────────────────────────────────────── */
+.order-enter {
+  animation: orderFadeIn 250ms ease-out;
+}
+
+@keyframes orderFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─── Badge scale pulse animation ────────────────────────────────────────── */
+.badge-pulse {
+  animation: badgePulse 300ms ease-out;
+}
+
+@keyframes badgePulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ─── Empty state floating animation ─────────────────────────────────────── */
+.float-animation {
+  animation: floatUpDown 3s ease-in-out infinite;
+}
+
+@keyframes floatUpDown {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* ─── Decision card hover effect ─────────────────────────────────────────── */
+.decision-card {
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.decision-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Decision card fade-in animation ────────────────────────────────────── */
+.decision-card-enter {
+  animation: decisionFadeIn 300ms ease-out;
+}
+
+@keyframes decisionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Thinking section collapse transition ───────────────────────────────── */
+.thinking-collapse {
+  transition: max-height 250ms ease-in-out;
+}
