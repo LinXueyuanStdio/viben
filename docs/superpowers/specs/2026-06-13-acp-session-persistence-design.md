@@ -62,7 +62,7 @@ Backend（claude-code）在 `initialize` 响应中声明的能力，本设计均
 | `sessionCapabilities.list` | `listSessions()` 向活跃 backend 请求 `session/list`，合并磁盘 parked 记录，得到完整 session 列表 |
 | `sessionCapabilities.close` | 用户主动关闭 session 时发 `session/close { sessionId }`，backend 正确清理内部状态 |
 | `_meta.claudeCode.promptQueueing: true` | backend 支持在前一 prompt 执行中接受新 prompt；断开期间若有 prompt 未完成，重连后继续消费 |
-| `dangerously_skip_permissions` in agent_config | `approval_mode: "bypass"` 时设为 `true`，backend 进入 `bypassPermissions` 模式，彻底不发 `requestPermission` |
+| `dangerously_skip_permissions` in agent_config | `permission_mode: "bypassPermissions"` 时 backend 进入 `bypassPermissions` 模式，彻底不发 `requestPermission` |
 
 **协议层边界**（重要）：
 
@@ -256,22 +256,22 @@ class DetachedConnection implements AcpConnection {
   private pendingToolCalls: Map<string, PendingRequest<unknown>>;
   private store: AcpSessionStore;
   private sessionId: string;
-  private approvalMode: ApprovalMode;
+  private permissionMode: AcpPermissionMode;
   private draining = false;      // 防止 drainPendingAsync 并发执行
 }
 ```
 
 ### `requestPermission` 处理逻辑
 
-> `approval_mode: "bypass"` 时 backend 配置了 `bypassPermissions` 模式（ACP 协议），backend **根本不发 `requestPermission`**，本方法永远不会被调用。以下逻辑仅适用于 `"rules"` 和 `"ai"` 模式。
+> `permission_mode: "bypassPermissions"` 时 backend 配置了 `bypassPermissions` 模式（ACP 协议），backend **根本不发 `requestPermission`**，本方法永远不会被调用。以下逻辑仅适用于 `"default"` 和 `"auto"` 模式。
 
 ```
-approval_mode = "rules"   → ApprovalHandler.evaluate("rules", params)
-                              auto: true  → resolve，appendEvent(permission_response)
-                              auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
-approval_mode = "ai"      → ApprovalHandler.evaluate("ai", params)（异步）
-                              auto: true  → resolve，appendEvent(permission_response)
-                              auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
+permission_mode = "default"  → ApprovalHandler.evaluate("default", params)
+                                 auto: true  → resolve，appendEvent(permission_response)
+                                 auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
+permission_mode = "auto"     → ApprovalHandler.evaluate("auto", params)（异步）
+                                 auto: true  → resolve，appendEvent(permission_response)
+                                 auto: false → appendEvent(permission_request{pending})，挂入 pendingPermissions
 ```
 
 注：`appendEvent()` 返回 `seq`，存入 `pendingPermissions` 的 `PendingRequest` 结构中，供后续 `updateEventStatus(seq)` 使用。
@@ -395,8 +395,8 @@ async resumeSession(
 ```
 1. 取出 session，若不存在则 return
 2. Guard：if session.connection instanceof DetachedConnection → log.warn + return（防止重复 park）
-3. 读取 approval_mode：session.agent_config?.approval_mode ?? "rules"
-4. 创建 DetachedConnection（传入 store、sessionId、approval_mode）
+3. 读取 permission_mode：session.agent_config?.permission_mode ?? "default"
+4. 创建 DetachedConnection（传入 store、sessionId、permission_mode）
 5. session.connection = detachedConnection
 6. store.saveRecord({ ...record, status: "parked", agent_capabilities: session.agentCapabilities })
 7. 启动 DetachedConnection 的定时刷盘
@@ -515,67 +515,65 @@ agent_capabilities = backend.agentCapabilities
 
 ---
 
-## 五、`approval_mode` 类型变更
+## 五、`permission_mode` 类型变更
 
 ### 类型定义
 
+使用 **ACP 协议原生的 permission mode 变量名**，与 `normalizeClaudePermissionMode()` 中的规范名称保持一致：
+
 ```typescript
 // packages/core/src/acp/types.ts
-export type ApprovalMode = "rules" | "bypass" | "ai";
+export type AcpPermissionMode = "default" | "bypassPermissions" | "auto";
 ```
+
+| `permission_mode` | ACP 协议含义 | Backend 行为 | Gateway 行为 |
+|-------------------|-------------|-------------|-------------|
+| `"default"` | 标准权限模式 | Backend 正常发 `requestPermission` | Gateway `ApprovalHandler` 拦截，按规则自动通过或挂起 |
+| `"bypassPermissions"` | 跳过所有权限 | Backend **完全不发 `requestPermission`** | 无需 approval 逻辑，`pendingPermissions` 永远为空 |
+| `"auto"` | 自动/AI 模式 | Backend 正常发 `requestPermission` | Gateway `ApprovalHandler` 调用 AI 判断，AI 决定或挂起 |
 
 ### 变更清单
 
 | 文件 | 变更内容 |
 |------|---------|
-| `packages/core/src/agents/types.ts` | `AgentConfigFile`：新增 `approval_mode?: ApprovalMode`（保留 `planMode`，两者正交） |
-| `packages/core/src/acp/types.ts` | `AgentConfigPayload`：新增 `approval_mode?: ApprovalMode`；**保留** `dangerously_skip_permissions?: boolean`（见下方说明） |
-| `packages/core/src/agents/index.ts` | 将 `approvals` 读写替换为 `approval_mode`（默认值 `"rules"`），保留 `planMode` 不动 |
+| `packages/core/src/acp/types.ts` | 新增 `AcpPermissionMode` 类型；`AgentConfigPayload.permission_mode` 从 `string` 改为 `AcpPermissionMode`（原字段已存在，仅收窄类型） |
+| `packages/core/src/acp/ops/backend-adapter.ts` | `normalizeClaudePermissionMode()` 的 `CLAUDE_PERMISSION_MODES` 添加 `"auto"` |
+| `packages/core/src/agents/types.ts` | `AgentConfigFile`：新增 `permission_mode?: AcpPermissionMode`（保留 `planMode`，两者正交） |
+| `packages/core/src/agents/index.ts` | 将 `approvals` 读写替换为 `permission_mode`（默认值 `"default"`），保留 `planMode` 不动 |
 | `packages/core/src/types/index.ts` | 同步相关 Agent 类型中的字段 |
 | `apps/desktop/src/lib/gateway/types/agent.ts` | gateway 客户端类型同步 |
 | `apps/desktop/src/types/unified-agent.ts` | 前端 unified agent 类型同步 |
-| `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload` 新增 `approval_mode?: ApprovalMode` |
+| `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload.permission_mode` 类型收窄为 `AcpPermissionMode` |
 
-### `approval_mode` → Backend ACP 模式映射
+### `permission_mode` → Backend ACP 机制
 
-`approval_mode` 的核心作用是控制 **backend 的权限模式**，通过 `agent_config` 中的 `dangerously_skip_permissions` 字段传递给 backend（ACP `session/new` / `session/load` 请求的 `agent_config` 参数）。
-
-| `approval_mode` | `agent_config.dangerously_skip_permissions` | Backend 行为 | Gateway 行为 |
-|----------------|---------------------------------------------|-------------|-------------|
-| `"bypass"` | `true` | Backend 进入 `bypassPermissions` 模式，**完全不发 `requestPermission`** | 无需任何 approval 逻辑，`DetachedConnection.pendingPermissions` 永远为空 |
-| `"rules"` | `false`（默认） | Backend 正常发 `requestPermission` | Gateway `ApprovalHandler` 拦截，自动通过或挂起 |
-| `"ai"` | `false`（默认） | Backend 正常发 `requestPermission` | Gateway `ApprovalHandler` 调用 AI 判断，AI 决定或挂起 |
-
-构建 backend `agent_config`（在 `ensureBackend()` 中）：
+`permission_mode` 直接通过 `agent_config.permission_mode` 传给 backend（ACP `session/new` / `session/load` 请求），backend 在 `prepareClaudeConfigDir()` 中写入 `settings.json` 的 `permissions.defaultMode`：
 
 ```typescript
-const effectiveConfig: AgentConfigPayload = {
-  ...session.agent_config,
-  // approval_mode: "bypass" 映射到 backend 的 bypassPermissions 模式
-  dangerously_skip_permissions:
-    global_prefs.dangerously_skip_permissions ||
-    session.agent_config?.approval_mode === "bypass",
-};
-// effectiveConfig 通过 ACP session/new 或 session/load 的 agent_config 字段传给 backend
+// packages/core/src/acp/ops/backend-adapter.ts（已有逻辑，仅修改 normalizeClaudePermissionMode）
+const requestedMode = normalizeClaudePermissionMode(context.agentConfig?.permission_mode);
+// "default"            → permissions.defaultMode = "default"
+// "bypassPermissions"  → permissions.defaultMode = "bypassPermissions"
+// "auto"               → permissions.defaultMode = "auto"（新增支持）
 ```
 
-> **注意**：`dangerously_skip_permissions` 在 `AgentConfigPayload` 中保留作为底层 ACP 协议字段，但用户面向的配置应使用 `approval_mode`。两者均保留是因为全局开发者偏好（`git config developer.dangerously_skip_permissions`）和 agent 级别的 `approval_mode` 是两个独立来源。
-
-有效 approval 模式的计算（在 `DetachedConnection` 和 `SdkAcpConnection` 中均适用）：
+有效 permission mode 的计算（在 `DetachedConnection` 和 `SdkAcpConnection` 中均适用）：
 
 ```
 effective_mode =
   global_prefs.dangerously_skip_permissions
-    ? "bypass"                            // 全局 bypass 优先
-    : agent_config.approval_mode ?? "rules"
+    ? "bypassPermissions"             // 全局 bypass 优先（开发者偏好）
+    : session.agent_config?.permission_mode ?? "default"
 ```
+
+> `dangerously_skip_permissions` 是全局开发者偏好（`git config` 存储），与 agent 级别的 `permission_mode` 是两个独立来源，两者均保留。
 
 ### YAML 字段
 
 ```yaml
-approval_mode: "rules"   # 规则审批（默认）
-# approval_mode: "bypass"  # 绕过审批
-# approval_mode: "ai"      # AI 审批
+permission_mode: "default"           # 规则审批（默认）
+# permission_mode: "bypassPermissions"  # 绕过审批
+# permission_mode: "auto"               # AI 自动审批
 ```
 
 ### 向后兼容迁移
@@ -583,9 +581,9 @@ approval_mode: "rules"   # 规则审批（默认）
 读取旧 YAML 时（`agents/index.ts` 的 YAML 读取处）：
 
 ```
-approvals: true  → approval_mode: "bypass"
-approvals: false → approval_mode: "rules"
-无 approvals 字段 → approval_mode: "rules"（默认）
+approvals: true  → permission_mode: "bypassPermissions"
+approvals: false → permission_mode: "default"
+无 approvals 字段 → permission_mode: "default"（默认）
 ```
 
 ---
@@ -646,7 +644,7 @@ const acpSessionManager = new AcpSessionManager(
 export interface ApprovalHandler {
   evaluate(
     params: AcpRequestPermissionRequest,
-    approvalMode: ApprovalMode
+    permissionMode: AcpPermissionMode
   ): Promise<ApprovalDecision>;
 }
 
@@ -655,11 +653,11 @@ export type ApprovalDecision =
   | { auto: false };                    // 需要人工，挂起
 ```
 
-- `"rules"`：检查工具名、命令模式等规则，能自动决定则 `auto: true`，否则 `auto: false` 挂起
-- `"ai"`：调用 AI 判断；AI 决定安全 → `auto: true`；AI 决定不安全或超时 → `auto: false` 挂起
-- `"bypass"`：**不经过 `ApprovalHandler`**——`bypass` 模式下 backend 配置了 `bypassPermissions`（ACP 协议），backend 根本不发 `requestPermission`，gateway 永远不会收到权限请求，`ApprovalHandler.evaluate()` 不会被调用
+- `"default"`：检查工具名、命令模式等规则，能自动决定则 `auto: true`，否则 `auto: false` 挂起
+- `"auto"`：调用 AI 判断；AI 决定安全 → `auto: true`；AI 决定不安全或超时 → `auto: false` 挂起
+- `"bypassPermissions"`：**不经过 `ApprovalHandler`**——backend 配置了 `bypassPermissions` 模式（ACP 协议），根本不发 `requestPermission`，gateway 永远不会收到权限请求，`ApprovalHandler.evaluate()` 不会被调用
 
-初版 `"ai"` 实现可为 stub（直接返回 `auto: false`），待后续接入 LLM。
+初版 `"auto"` 实现可为 stub（直接返回 `auto: false`），待后续接入 LLM。
 
 ### ApprovalHandler 在活跃连接中的集成
 
@@ -669,9 +667,9 @@ export type ApprovalDecision =
 
 ```
 requestPermission(params):
-  // bypass 模式下 backend 配置了 bypassPermissions，不发 requestPermission，此处不会被调用
-  // 以下逻辑仅在 effective_mode 为 "rules" 或 "ai" 时触发
-  effective_mode = dangerously_skip_permissions ? "bypass" : agent_config.approval_mode ?? "rules"
+  // bypassPermissions 模式下 backend 配置了 bypassPermissions，不发 requestPermission，此处不会被调用
+  // 以下逻辑仅在 effective_mode 为 "default" 或 "auto" 时触发
+  effective_mode = dangerously_skip_permissions ? "bypassPermissions" : agent_config.permission_mode ?? "default"
   decision = approvalHandler.evaluate(params, effective_mode)
   if decision.auto → 直接 resolve(decision.optionId)，无需 UI 交互
   else             → 走原有 WebSocket push → 等待前端 permission:response
@@ -720,7 +718,7 @@ async function cleanupStaleSessions(store: AcpSessionStore, parkTTLDays = 7): Pr
 
 ### `acp-client.ts`
 
-`AgentConfigPayload` 新增 `approval_mode?: ApprovalMode`（保留 `approvals?: boolean` 仅用于向后兼容读取，新写入使用 `approval_mode`）。
+`AgentConfigPayload` 新增 `permission_mode?: AcpPermissionMode`（保留 `approvals?: boolean` 仅用于向后兼容读取，新写入使用 `permission_mode`）。
 
 ### `use-acp-session.ts`
 
@@ -765,11 +763,11 @@ function batchRenderHistory(events: AcpSessionEvent[]): void {
 
 | 文件 | 变更内容 |
 |------|---------|
-| `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload` 新增 `approval_mode` |
+| `apps/desktop/src/components/acp-chat/acp-client.ts` | `AgentConfigPayload` 新增 `permission_mode` |
 | `apps/desktop/src/components/acp-chat/use-acp-session.ts` | `loadSession` 添加 `history` 批量渲染，`batchRenderHistory` 函数 |
 | `apps/desktop/src/components/acp-chat/acp-chat-state.ts` | 新增 `applyUiStepsImmediately` 路径（如不存在） |
-| `apps/desktop/src/lib/gateway/types/agent.ts` | 同步 `approval_mode` 字段 |
-| `apps/desktop/src/types/unified-agent.ts` | 同步 `approval_mode` 字段 |
+| `apps/desktop/src/lib/gateway/types/agent.ts` | 同步 `permission_mode` 字段 |
+| `apps/desktop/src/types/unified-agent.ts` | 同步 `permission_mode` 字段 |
 | session 列表 UI 组件 | 展示 session `status`，parked 状态视觉标识 |
 
 ### `agent_config` 快照语义
