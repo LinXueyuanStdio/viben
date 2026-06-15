@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { exists } from "@tauri-apps/plugin-fs";
 import {
   Camera,
   Keyboard,
@@ -26,12 +25,9 @@ import { useTranslation } from "react-i18next";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getGatewayClient } from "@/lib/gateway";
 
-const SOCKET_PATH = "/tmp/viben-mcp.sock";
+const MCP_BRIDGE_WS_PORT = 9223;
 const GATEWAY_PORT = 18790;
 const isDev = import.meta.env.DEV;
-
-// List of 10 tools provided by tauri-plugin-mcp-server
-// Reference: https://www.npmjs.com/package/tauri-plugin-mcp-server
 const MCP_TOOLS = [
   { icon: Camera, toolKey: "take_screenshot" },
   { icon: Search, toolKey: "query_page" },
@@ -56,35 +52,23 @@ export function PageDebugPage() {
   const [isChecking, setIsChecking] = useState(false);
   const [activeTab, setActiveTab] = useState("http");
 
-  // Check if the MCP socket server is running
   const checkSocketStatus = async () => {
     setIsChecking(true);
     try {
-      // Try to check via Gateway API first
-      const response = await getGatewayClient().request<Response>("/api/mcp/tauri/status", {
+      const response = await getGatewayClient().request<Response>("/api/mcp-server/tauri/status", {
         method: "GET",
         responseType: "response",
       });
       if (response.ok) {
         const data = await response.json();
         setSocketStatus(data.available && data.connected ? "connected" : "disconnected");
-        setIsChecking(false);
         return;
       }
     } catch {
-      // Gateway not available, try direct file check
+      // Gateway not available
     }
-
-    try {
-      // Fallback: check if the socket file exists using Tauri's fs plugin
-      const socketExists = await exists(SOCKET_PATH);
-      setSocketStatus(socketExists ? "connected" : "disconnected");
-    } catch {
-      // If we can't check, assume disconnected
-      setSocketStatus("disconnected");
-    } finally {
-      setIsChecking(false);
-    }
+    setSocketStatus("disconnected");
+    setIsChecking(false);
   };
 
   useEffect(() => {
@@ -101,26 +85,23 @@ export function PageDebugPage() {
     mcpServers: {
       "viben-page-debug": {
         transport: "sse",
-        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/sse`,
+        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp-server/tauri/sse`,
       },
     },
   };
 
-  // Legacy stdio config (requires npm package)
-  const stdioMcpConfig = {
+  // Streamable HTTP config (alternative - modern MCP transport)
+  const streamableHttpConfig = {
     mcpServers: {
-      "tauri-mcp": {
-        command: "node",
-        args: ["node_modules/tauri-plugin-mcp-server/build/index.js"],
-        env: {
-          TAURI_MCP_IPC_PATH: SOCKET_PATH,
-        },
+      "viben-page-debug": {
+        transport: "streamable-http",
+        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp-server/tauri`,
       },
     },
   };
 
   // Test command to verify MCP server connection
-  const testCommand = `curl -X GET http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/status`;
+  const testCommand = `curl -X GET http://127.0.0.1:${GATEWAY_PORT}/api/mcp-server/tauri/status`;
 
   const handleCopy = (
     textToCopy: string,
@@ -132,7 +113,7 @@ export function PageDebugPage() {
   };
 
   const copyHttpConfig = () => handleCopy(JSON.stringify(httpMcpConfig, null, 2), setCopiedHttp);
-  const copyStdioConfig = () => handleCopy(JSON.stringify(stdioMcpConfig, null, 2), setCopied);
+  const copyStdioConfig = () => handleCopy(JSON.stringify(streamableHttpConfig, null, 2), setCopied);
   const copyTestCommand = () => handleCopy(testCommand, setCopiedTest);
 
   // Show disabled message in production
@@ -213,13 +194,13 @@ export function PageDebugPage() {
         </div>
         <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
           <div>
-            <span className="font-medium">{t("pageDebug.socketPath")}: </span>
-            <code className="bg-muted px-2 py-0.5 rounded text-xs">{SOCKET_PATH}</code>
+            <span className="font-medium">WebSocket: </span>
+            <code className="bg-muted px-2 py-0.5 rounded text-xs">ws://127.0.0.1:{MCP_BRIDGE_WS_PORT}</code>
           </div>
           <div>
             <span className="font-medium">{t("pageDebug.httpEndpoint")}: </span>
             <code className="bg-muted px-2 py-0.5 rounded text-xs">
-              http://127.0.0.1:{GATEWAY_PORT}/api/mcp/tauri/sse
+              http://127.0.0.1:{GATEWAY_PORT}/api/mcp-server/tauri/sse
             </code>
           </div>
         </div>
@@ -238,7 +219,7 @@ export function PageDebugPage() {
                 {t("pageDebug.setupDescription")}
               </p>
               <a
-                href="https://github.com/P3GLEG/tauri-plugin-mcp"
+                href="https://github.com/nicholasgriffintn/tauri-plugin-mcp"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-300 hover:underline"
@@ -288,7 +269,7 @@ export function PageDebugPage() {
             </TabsTrigger>
             <TabsTrigger value="stdio" className="flex items-center gap-2">
               <Server className="h-4 w-4" />
-              Stdio
+              WebSocket
             </TabsTrigger>
           </TabsList>
 
@@ -317,7 +298,7 @@ export function PageDebugPage() {
           <TabsContent value="stdio" className="space-y-3 mt-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                {t("pageDebug.stdioConfigHint")}
+                {t("pageDebug.wsConfigHint")}
               </p>
               <Button variant="ghost" size="sm" onClick={copyStdioConfig}>
                 {copied ? (
@@ -329,10 +310,10 @@ export function PageDebugPage() {
               </Button>
             </div>
             <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
-              {JSON.stringify(stdioMcpConfig, null, 2)}
+              {JSON.stringify(streamableHttpConfig, null, 2)}
             </pre>
             <p className="text-xs text-muted-foreground">
-              {t("pageDebug.stdioNote")}
+              {t("pageDebug.wsNote")}
             </p>
           </TabsContent>
         </Tabs>
