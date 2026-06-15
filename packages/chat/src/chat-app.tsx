@@ -652,6 +652,7 @@ export function ChatApp({
     <>
       <motion.div
         layoutId="viben-overlay-message-panel"
+        layoutDependency={mode}
         transition={INTERNAL_LAYOUT_TRANSITION}
         className="flex min-h-0 flex-1 flex-col overflow-hidden overscroll-contain border-y border-border/70"
         data-shared-element="overlay-message-panel"
@@ -681,6 +682,7 @@ export function ChatApp({
       </motion.div>
       <motion.div
         layoutId="viben-overlay-input-panel"
+        layoutDependency={mode}
         transition={INTERNAL_LAYOUT_TRANSITION}
         className="w-full shrink-0 border-t border-border"
         data-shared-element="overlay-input-panel"
@@ -705,6 +707,7 @@ export function ChatApp({
       {headerContent ? (
         <motion.div
           layoutId="viben-overlay-header"
+          layoutDependency={mode}
           transition={INTERNAL_LAYOUT_TRANSITION}
           className="shrink-0"
           data-shared-element="overlay-header"
@@ -732,45 +735,51 @@ export function ChatApp({
 
   const subagentSheetOpen = !!subagentSheet?.open;
   const subagentSheetNode = (
-    <div className="absolute inset-0 z-40 pointer-events-none" aria-hidden={!subagentSheetOpen}>
-      {/* Backdrop - CSS fade */}
-      <div
-        className={cn(
-          "absolute inset-0 bg-black/20 transition-opacity duration-150",
-          subagentSheetOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        )}
-        onClick={subagentSheet?.onClose}
-      />
-      {/* Panel wrapper - CSS slide */}
-      <div
-        className={cn(
-          "absolute right-0 top-0 bottom-0 z-10 transition-transform duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-          subagentSheetOpen ? "pointer-events-auto translate-x-0" : "pointer-events-none translate-x-full"
-        )}
-      >
+    <div className="absolute inset-0 z-40 pointer-events-none">
+      <AnimatePresence>
         {subagentSheetOpen && subagentSheet && (
-          <SubagentSheet
-            contained
-            open
-            onClose={subagentSheet.onClose}
-            title={subagentSheet.title}
-            subagentType={subagentSheet.subagentType}
-            messages={subagentSheet.messages}
-            liveMessages={subagentSheet.liveMessages}
-            answer={subagentSheet.answer}
-            context={subagentSheet.context}
-            loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
-            maxWidth={overlayWidth}
-            onExpandSubagent={onExpandSubagent}
-            onInspectTool={onInspectTool}
-            messageListConfig={subagentSheet.messageListConfig ?? {
-              assistantAvatar: staticAssistantAvatar,
-              artifacts,
-              onArtifactClick,
-            }}
-          />
+          <>
+            <motion.div
+              key="subagent-backdrop"
+              className="absolute inset-0 bg-black/20 pointer-events-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={subagentSheet.onClose}
+            />
+            <motion.div
+              key="subagent-panel"
+              className="absolute right-0 top-0 bottom-0 z-10 pointer-events-auto"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <SubagentSheet
+                contained
+                open
+                onClose={subagentSheet.onClose}
+                title={subagentSheet.title}
+                subagentType={subagentSheet.subagentType}
+                messages={subagentSheet.messages}
+                liveMessages={subagentSheet.liveMessages}
+                answer={subagentSheet.answer}
+                context={subagentSheet.context}
+                loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
+                maxWidth={overlayWidth}
+                onExpandSubagent={onExpandSubagent}
+                onInspectTool={onInspectTool}
+                messageListConfig={subagentSheet.messageListConfig ?? {
+                  assistantAvatar: staticAssistantAvatar,
+                  artifacts,
+                  onArtifactClick,
+                }}
+              />
+            </motion.div>
+          </>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 
@@ -803,12 +812,8 @@ export function ChatApp({
       : { borderRadius: OVERLAY_RADIUS.full };
 
     return (
-      <motion.div
+      <div
         ref={overlayRef}
-        layoutId="viben-overlay-surface"
-        transition={OVERLAY_TRANSITION}
-        initial={false}
-        data-transition-role="expand-to-full"
         className={cn(
           "overlay-shared-surface relative flex min-h-0 flex-col bg-background shadow-none",
           contained ? "z-30 h-full" : "fixed inset-y-0 right-0 z-50 h-full",
@@ -853,7 +858,7 @@ export function ChatApp({
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
     );
   }
 
@@ -899,20 +904,18 @@ export function ChatApp({
   if (mode === "compact") {
     return (
       <motion.div
-        layoutId="viben-overlay-surface"
-        transition={OVERLAY_TRANSITION}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
-        data-shared-surface="overlay"
+        transition={OVERLAY_TRANSITION}
         data-transition-role="panel-fade"
         onMouseLeave={() => {
           if (!hasCompactDraft) onModeChange("floating");
         }}
-        className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 rounded-3xl ${
+        className={`overlay-shared-surface flex ${OVERLAY_PANEL_WIDTH_CLASS} flex-col gap-2 overflow-hidden rounded-3xl ${
           contained ? "z-20" : "fixed bottom-5 left-5 z-50"
         }`}
-        style={{ borderRadius: OVERLAY_RADIUS.compact }}
+        style={{ borderRadius: OVERLAY_RADIUS.compact, width: expandedWidth, maxWidth: `min(${expandedMaxWidth}px, calc(100dvw - 2rem))` }}
         data-testid="compact-overlay"
       >
         <AgentPopup
@@ -923,7 +926,10 @@ export function ChatApp({
           onExpand={() => onModeChange("expanded")}
           onMinimize={() => onModeChange("floating")}
         />
-        <section
+        <motion.section
+          layoutId="viben-overlay-input-panel"
+          layoutDependency={mode}
+          transition={INTERNAL_LAYOUT_TRANSITION}
           data-testid="compact-chat-input"
           data-variant="compact"
           className={`overlay-input-shell overflow-hidden rounded-xl border border-border bg-background shadow-2xl ${isStreaming ? "overlay-input-shell--running" : ""}`}
@@ -938,7 +944,7 @@ export function ChatApp({
             onApprovalDecision={onApprovalDecision}
             onAnswerQuestions={onAnswerQuestions}
           />
-        </section>
+        </motion.section>
       </motion.div>
     );
   }
@@ -949,6 +955,7 @@ export function ChatApp({
     ? {
         width: expandedWidth,
         height: expandedHeight,
+        maxWidth: `min(${expandedMaxWidth}px, calc(100dvw - 2rem))`,
         borderRadius: OVERLAY_RADIUS.expanded,
       }
     : { borderRadius: OVERLAY_RADIUS.expanded };
@@ -963,12 +970,8 @@ export function ChatApp({
       }`;
 
   return (
-    <motion.div
+    <div
       ref={overlayRef}
-      layoutId="viben-overlay-surface"
-      transition={OVERLAY_TRANSITION}
-      initial={false}
-      data-transition-role="expand-to-full"
       className={expandedClassName}
       style={expandedStyle}
       data-testid="expanded-overlay"
@@ -984,7 +987,7 @@ export function ChatApp({
           isResizing={isExpandedResizing}
         />
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -997,6 +1000,7 @@ export function ChatAppFullscreenPanel({
     <div className="flex min-h-0 flex-1 flex-col">
       <motion.div
         layoutId="viben-overlay-message-panel"
+        layoutDependency="full"
         transition={INTERNAL_LAYOUT_TRANSITION}
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
         data-shared-element="overlay-message-panel"
@@ -1109,6 +1113,7 @@ export function ChatAppFullscreenInputPanel({
   return (
     <motion.div
       layoutId="viben-overlay-input-panel"
+      layoutDependency="full"
       transition={INTERNAL_LAYOUT_TRANSITION}
       className="w-full border-t border-border"
       data-shared-element="overlay-input-panel"
@@ -1209,10 +1214,10 @@ function AgentPopup({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18 }}
-      className="overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
+      className="w-full overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
       onClick={onExpand}
     >
-      <div className="flex items-start gap-3 p-3">
+      <div className="flex items-start gap-3 p-3 w-full min-w-0">
         <motion.div
           className="size-14 shrink-0"
           data-testid="agent-popup-avatar"
@@ -1224,7 +1229,7 @@ function AgentPopup({
         >
           {avatar}
         </motion.div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-foreground" data-testid="agent-popup-title">
