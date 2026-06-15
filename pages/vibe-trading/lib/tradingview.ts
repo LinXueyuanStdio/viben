@@ -5,6 +5,7 @@ import type { ExchangeId } from "./types";
  */
 const EXCHANGE_TV_MAP: Record<ExchangeId, string> = {
   binance: "BINANCE",
+  binance_futures: "BINANCE",
   okx: "OKX",
   bybit: "BYBIT",
   bitget: "BITGET",

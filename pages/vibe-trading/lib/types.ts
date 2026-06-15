@@ -1,4 +1,4 @@
-export type ExchangeId = "binance" | "okx" | "bitget" | "bybit" | "gate";
+export type ExchangeId = "binance" | "binance_futures" | "okx" | "bitget" | "bybit" | "gate";
 
 export interface Position {
   symbol: string;
@@ -91,6 +91,7 @@ export interface MarketContextEvent {
     strength: number;
   }>;
   market_summary?: string;
+  funding_rates?: Record<string, { rate: number; next_time: string }>;
 }
 
 export interface AgentInputEvent {
@@ -362,6 +363,7 @@ export interface Account {
   api_key: string;
   secret: string;
   passphrase?: string;
+  market_type?: "spot" | "futures";
   is_demo?: boolean;
   created_at: string;
 }

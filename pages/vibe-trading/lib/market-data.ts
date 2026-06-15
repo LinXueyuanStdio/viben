@@ -222,22 +222,23 @@ function intervalToMs(interval: string): number {
 async function fetchBinanceKlines(
   symbol: string,
   interval: string,
-  limit: number
+  limit: number,
+  futures?: boolean
 ): Promise<OHLCV[]> {
-  // Binance public API (no authentication required)
-  // symbol format: "BTC/USDT" -> "BTCUSDT"
   const binanceSymbol = symbol.replace("/", "");
-  const url = `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
+  const baseUrl = futures
+    ? "https://fapi.binance.com/fapi/v1/klines"
+    : "https://api.binance.com/api/v3/klines";
+  const url = `${baseUrl}?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
 
   const res = await proxyFetch(url);
   if (!res.ok) {
     throw new Error(
-      `Binance API error: ${res.status} ${res.statusText}`
+      `Binance ${futures ? "Futures " : ""}API error: ${res.status} ${res.statusText}`
     );
   }
   const data: unknown[] = await res.json();
 
-  // Binance returns: [[openTime, open, high, low, close, volume, ...], ...]
   return data.map((k) => {
     const row = k as [number, string, string, string, string, string, ...unknown[]];
     return {
@@ -251,16 +252,40 @@ async function fetchBinanceKlines(
   });
 }
 
+async function fetchFundingRate(
+  symbol: string
+): Promise<{ rate: number; next_time: string } | null> {
+  const binanceSymbol = symbol.replace("/", "");
+  const url = `https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${binanceSymbol}`;
+
+  try {
+    const res = await proxyFetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      lastFundingRate: string;
+      nextFundingTime: number;
+    };
+    return {
+      rate: parseFloat(data.lastFundingRate),
+      next_time: new Date(data.nextFundingTime).toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchMarketData(
   options: MarketDataOptions
 ): Promise<MarketContextEvent> {
-  const { symbols, interval = "1h", limit = 100, market_mode } = options;
+  const { exchange, symbols, interval = "1h", limit = 100, market_mode } = options;
   const intervalMs = intervalToMs(interval);
   const isDemo = market_mode !== "real";
+  const isFutures = exchange === "binance_futures";
 
   const klines: Record<string, { interval: string; data: OHLCV[] }> = {};
   const indicators: MarketContextEvent["indicators"] = {};
   const signals: MarketContextEvent["signals"] = {};
+  const fundingRates: Record<string, { rate: number; next_time: string }> = {};
 
   for (const symbol of symbols) {
     let data: OHLCV[];
@@ -269,11 +294,15 @@ export async function fetchMarketData(
       data = generateDemoKlines(symbol, limit, intervalMs);
     } else {
       try {
-        data = await fetchBinanceKlines(symbol, interval, limit);
+        data = await fetchBinanceKlines(symbol, interval, limit, isFutures);
       } catch {
-        // Fallback to simulated data on error
         data = generateDemoKlines(symbol, limit, intervalMs);
       }
+    }
+
+    if (!isDemo && isFutures) {
+      const fr = await fetchFundingRate(symbol);
+      if (fr) fundingRates[symbol] = fr;
     }
 
     klines[symbol] = { interval, data };
@@ -342,5 +371,6 @@ export async function fetchMarketData(
     indicators,
     signals,
     market_summary: summaryParts.join("\n"),
+    funding_rates: Object.keys(fundingRates).length > 0 ? fundingRates : undefined,
   };
 }

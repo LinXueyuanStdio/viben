@@ -12,6 +12,10 @@ export interface OrderParams {
   type: "market" | "limit";
   quantity: number;
   price?: number;
+  leverage?: number;
+  margin_type?: "ISOLATED" | "CROSSED";
+  reduce_only?: boolean;
+  position_side?: "BOTH" | "LONG" | "SHORT";
 }
 
 export interface OrderResponse {
