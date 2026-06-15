@@ -854,6 +854,7 @@ export function ToolExecutionItem({
         toolUseId,
         messages: subagentMessages,
         answer: output,
+        prompt: taskInput.prompt,
       });
     };
     const handleToggleInlineDetails = () => {

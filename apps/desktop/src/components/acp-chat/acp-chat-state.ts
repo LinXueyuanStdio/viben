@@ -49,6 +49,7 @@ export interface SubagentSheetState {
     parentMessage?: AgentMessage;
     messages?: AgentMessage[];
     answer?: AgentMessage["output"];
+    prompt?: string;
   };
 }
 

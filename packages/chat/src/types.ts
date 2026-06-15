@@ -127,6 +127,8 @@ export interface SubagentOpenContext {
   messages?: AgentMessage[];
   /** Final answer/output returned by the Agent/Task tool. */
   answer?: AgentMessage["output"];
+  /** The prompt passed to the Agent/Task tool. */
+  prompt?: string;
 }
 
 export interface LoadedSubagentDetails {

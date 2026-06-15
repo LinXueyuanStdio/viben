@@ -123,20 +123,32 @@ export function SubagentSheet({
     : messages.length > 0
       ? messages
       : (loadedMessages ?? messages);
+  const prompt = context?.prompt;
   const displayMessages = useMemo(() => {
     const merged = mergeToolResultsIntoToolCalls(effectiveMessages);
-    if (!answer) return merged;
-    const answerContent = typeof answer === "string" ? answer : Array.isArray(answer)
-      ? answer.map((b) => ("text" in b ? b.text : "")).join("\n")
-      : "";
-    if (!answerContent) return merged;
-    const resultMessage: AgentMessage = {
-      id: "subagent-final-answer",
-      type: "result",
-      content: answerContent,
-    };
-    return [...merged, resultMessage];
-  }, [effectiveMessages, answer]);
+    const result: AgentMessage[] = [];
+    if (prompt) {
+      result.push({
+        id: "subagent-prompt",
+        type: "user",
+        content: prompt,
+      });
+    }
+    result.push(...merged);
+    if (answer) {
+      const answerContent = typeof answer === "string" ? answer : Array.isArray(answer)
+        ? answer.map((b) => ("text" in b ? b.text : "")).join("\n")
+        : "";
+      if (answerContent) {
+        result.push({
+          id: "subagent-final-answer",
+          type: "result",
+          content: answerContent,
+        });
+      }
+    }
+    return result;
+  }, [effectiveMessages, answer, prompt]);
   const hasDisplayMessages = effectiveMessages.length > 0;
   const effectiveTitle = loadedTitle ?? title;
   const effectiveSubagentType = loadedSubagentType ?? subagentType;
@@ -328,6 +340,8 @@ export function SubagentSheet({
                 onExpandSubagent={onExpandSubagent}
                 onInspectTool={onInspectTool}
                 {...messageListConfig}
+                userAvatar={messageListConfig?.assistantAvatar}
+                showUserAvatar={!!prompt}
               />
             </>
           )}
