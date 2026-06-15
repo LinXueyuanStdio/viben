@@ -735,50 +735,50 @@ export function ChatApp({
 
   const subagentSheetOpen = !!subagentSheet?.open;
 
-  // Keep last valid sheet data during exit transition so content stays visible while sliding out
-  const lastSubagentSheetRef = React.useRef(subagentSheet);
-  if (subagentSheet) lastSubagentSheetRef.current = subagentSheet;
-  const sheetData = subagentSheet ?? lastSubagentSheetRef.current;
+  // Delayed unmount: keep SubagentSheet content mounted during the CSS exit transition
+  const [subagentSheetMounted, setSubagentSheetMounted] = React.useState(false);
+  React.useEffect(() => {
+    if (subagentSheetOpen) {
+      setSubagentSheetMounted(true);
+    } else {
+      const timer = setTimeout(() => setSubagentSheetMounted(false), 240);
+      return () => clearTimeout(timer);
+    }
+  }, [subagentSheetOpen]);
 
-  // Always-mounted panel with CSS transitions — avoids framer-motion layout interference
   const subagentSheetNode = (
-    <div
-      className={cn(
-        "absolute inset-0 z-40",
-        subagentSheetOpen ? "pointer-events-auto" : "pointer-events-none"
-      )}
-    >
-      {/* Backdrop */}
+    <div className="absolute inset-0 z-40 pointer-events-none">
+      {/* Backdrop — CSS opacity transition, no framer-motion */}
       <div
         className={cn(
           "absolute inset-0 bg-black/20 transition-opacity duration-150 ease-out",
-          subagentSheetOpen ? "opacity-100" : "opacity-0"
+          subagentSheetOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={subagentSheet?.onClose}
       />
-      {/* Panel */}
+      {/* Panel — CSS transform transition, no framer-motion */}
       <div
         className={cn(
           "absolute right-0 top-0 bottom-0 z-10 transition-transform duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-          subagentSheetOpen ? "translate-x-0" : "translate-x-full"
+          subagentSheetOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"
         )}
       >
-        {sheetData && (
+        {subagentSheetMounted && subagentSheet && (
           <SubagentSheet
             contained
             open
-            onClose={sheetData.onClose}
-            title={sheetData.title}
-            subagentType={sheetData.subagentType}
-            messages={sheetData.messages}
-            liveMessages={sheetData.liveMessages}
-            answer={sheetData.answer}
-            context={sheetData.context}
-            loadSubagentDetails={sheetData.loadSubagentDetails ?? loadSubagentDetails}
+            onClose={subagentSheet.onClose}
+            title={subagentSheet.title}
+            subagentType={subagentSheet.subagentType}
+            messages={subagentSheet.messages}
+            liveMessages={subagentSheet.liveMessages}
+            answer={subagentSheet.answer}
+            context={subagentSheet.context}
+            loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
             maxWidth={overlayWidth}
             onExpandSubagent={onExpandSubagent}
             onInspectTool={onInspectTool}
-            messageListConfig={sheetData.messageListConfig ?? {
+            messageListConfig={subagentSheet.messageListConfig ?? {
               assistantAvatar: staticAssistantAvatar,
               artifacts,
               onArtifactClick,
