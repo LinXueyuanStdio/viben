@@ -43,7 +43,7 @@ import { registerPackagesRoutes } from "./packages";
 import { registerMcpInspectorRoutes } from "./mcp-inspector";
 import { registerQueueRoutes } from "./queue";
 import { registerGitHubRoutes } from "./github";
-import { registerTauriMcpRoutes } from "./tauri-mcp";
+import { registerTauriMcpServerRoutes } from "./mcp-server/tauri-mcp-server";
 import { registerPreferencesRoutes } from "./preferences";
 import { registerTaskEventRoutes } from "./task-events";
 import { registerPreviewRoutes } from "./preview";
@@ -105,7 +105,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerMcpInspectorRoutes(fastify);
   registerQueueRoutes(fastify, state);
   registerGitHubRoutes(fastify);
-  registerTauriMcpRoutes(fastify);
+  registerTauriMcpServerRoutes(fastify);
   registerPreferencesRoutes(fastify);
   registerTaskEventRoutes(fastify);
   registerPreviewRoutes(fastify);
@@ -169,7 +169,7 @@ export {
 } from "./mcp-inspector";
 export { registerQueueRoutes } from "./queue";
 export { registerGitHubRoutes } from "./github";
-export { registerTauriMcpRoutes, DEFAULT_SOCKET_PATH as TAURI_MCP_SOCKET_PATH } from "./tauri-mcp";
+export { registerTauriMcpServerRoutes, DEFAULT_WS_PORT as TAURI_MCP_WS_PORT } from "./mcp-server/tauri-mcp-server";
 export { registerPreferencesRoutes } from "./preferences";
 export type { DeveloperPreferences, PreferencesResponse } from "./preferences";
 export { registerTaskEventRoutes } from "./task-events";
