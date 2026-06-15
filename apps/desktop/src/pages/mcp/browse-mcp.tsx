@@ -79,7 +79,7 @@ export function BrowseMcpPage() {
   const mcpConfig = useMemo(() => {
     const serverConfig: Record<string, unknown> = {
       url: browseMcpUrl,
-      transport: "streamable-http",
+      type: "streamable-http",
     };
     if (fullApiKey) {
       serverConfig.headers = { Authorization: `Bearer ${fullApiKey}` };
@@ -96,7 +96,7 @@ export function BrowseMcpPage() {
     const externalUrl = `${url.protocol}//${host}:${url.port}${url.pathname}`;
     const serverConfig: Record<string, unknown> = {
       url: externalUrl,
-      transport: "streamable-http",
+      type: "streamable-http",
     };
     if (fullApiKey) {
       serverConfig.headers = { Authorization: `Bearer ${fullApiKey}` };

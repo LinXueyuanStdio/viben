@@ -44,7 +44,7 @@ export function ClientMcpPage() {
       mcpServers: {
         "viben-gui-action": {
           url: `${mcpServerUrl}?session_id=${activeSessionId}`,
-          transport: "streamable-http",
+          type: "streamable-http",
         },
       },
     };
@@ -63,7 +63,7 @@ export function ClientMcpPage() {
       mcpServers: {
         "viben-gui-action": {
           url: mcpServerUrl,
-          transport: "streamable-http",
+          type: "streamable-http",
           ...(Object.keys(headers).length > 0 ? { headers } : {}),
         },
       },
