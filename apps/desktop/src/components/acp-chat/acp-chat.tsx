@@ -145,12 +145,43 @@ export interface AcpChatProps {
 }
 
 async function openChatWindow() {
+  console.log("[AcpChat] openChatWindow called");
   try {
     const chatWindow = await WebviewWindow.getByLabel("chat-window");
+    console.log("[AcpChat] getByLabel result:", chatWindow);
     if (chatWindow) {
+      console.log("[AcpChat] Existing window found, showing...");
+      try { await chatWindow.unminimize(); } catch {}
       await chatWindow.show();
       await chatWindow.setFocus();
+      try { await chatWindow.center(); } catch {}
+      console.log("[AcpChat] Window shown and focused");
+      return;
     }
+    console.log("[AcpChat] No existing window, creating new one...");
+    const newWindow = new WebviewWindow("chat-window", {
+      url: "/chat-window.html",
+      title: "Chat",
+      width: 420,
+      height: 600,
+      minWidth: 360,
+      minHeight: 400,
+      titleBarStyle: "overlay",
+      hiddenTitle: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: true,
+      shadow: true,
+      focus: true,
+      center: true,
+    });
+    console.log("[AcpChat] WebviewWindow constructor returned:", newWindow);
+    newWindow.once("tauri://created", () => {
+      console.log("[AcpChat] Chat window created successfully");
+    });
+    newWindow.once("tauri://error", (e) => {
+      console.error("[AcpChat] Chat window creation error:", e.payload);
+    });
   } catch (err) {
     console.error("[AcpChat] Failed to open chat window:", err);
   }

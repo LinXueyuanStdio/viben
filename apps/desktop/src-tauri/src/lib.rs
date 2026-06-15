@@ -154,7 +154,7 @@ pub fn run() {
         builder = builder
             .plugin(
                 tauri_plugin_window_state::Builder::new()
-                    .with_denylist(&["screenshot-overlay", "pet-window"])
+                    .with_denylist(&["screenshot-overlay", "pet-window", "chat-window"])
                     .build(),
             )
             .plugin(tauri_plugin_global_shortcut::Builder::new().build())

@@ -13,7 +13,26 @@ async function openChatWindow() {
     if (chatWindow) {
       await chatWindow.show();
       await chatWindow.setFocus();
+      return;
     }
+    const newWindow = new WebviewWindow("chat-window", {
+      url: "/chat-window.html",
+      title: "Chat",
+      width: 420,
+      height: 600,
+      minWidth: 360,
+      minHeight: 400,
+      titleBarStyle: "overlay",
+      hiddenTitle: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      resizable: true,
+      shadow: true,
+      focus: true,
+    });
+    await newWindow.once("tauri://error", (e) => {
+      console.error("[PetWindow] Failed to create chat window:", e.payload);
+    });
   } catch (err) {
     console.error("[PetWindow] Failed to open chat window:", err);
   }
