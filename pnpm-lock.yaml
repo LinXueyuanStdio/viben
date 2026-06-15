@@ -1664,6 +1664,9 @@ importers:
       undici:
         specifier: ^7.22.0
         version: 7.22.0
+      ws:
+        specifier: ^8.20.1
+        version: 8.20.1
       xstate:
         specifier: ^5.31.1
         version: 5.32.0

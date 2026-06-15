@@ -59,6 +59,7 @@ import { registerAccountsRoutes } from "./accounts";
 import { registerPetRoutes } from "./pet";
 import { registerGuiActionMcpServerRoutes } from "./mcp-server/gui-action-mcp-server";
 import { registerBrowseMcpServerRoutes } from "./mcp-server/browse-mcp-server";
+import { registerPythonMcpServerRoutes } from "./mcp-server/python-mcp-server";
 
 /**
  * Register all routes
@@ -120,6 +121,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerPetRoutes(fastify);
   registerGuiActionMcpServerRoutes(fastify, state);
   registerBrowseMcpServerRoutes(fastify);
+  registerPythonMcpServerRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -194,6 +196,11 @@ export {
   getActiveBrowseMcpServerSessionCount,
   closeAllBrowseMcpServerSessions,
 } from "./mcp-server/browse-mcp-server";
+export {
+  registerPythonMcpServerRoutes,
+  getActivePythonMcpServerSessionCount,
+  closeAllPythonMcpServerSessions,
+} from "./mcp-server/python-mcp-server";
 // Task SSE manager for state machine events
 export { TaskSSEManager, taskSSEManager, type TaskSSEEvent, type TaskSSEEventType, type TaskSSEListener } from "../sse/task-sse-manager";
 export type {
