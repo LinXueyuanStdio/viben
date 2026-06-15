@@ -36,6 +36,7 @@ export interface SessionStateContextValue {
   replay: ReplayControls;
   setMode: (mode: Mode) => void;
   nextCycleAt: number | null;
+  allEvents: SessionEvent[];
 }
 
 // ─── Context ────────────────────────────────────────────────────────────────
@@ -279,7 +280,8 @@ export function SessionStateProvider({
     replay,
     setMode: handleSetMode,
     nextCycleAt,
-  }), [state, mode, replay, handleSetMode, nextCycleAt]);
+    allEvents,
+  }), [state, mode, replay, handleSetMode, nextCycleAt, allEvents]);
 
   return (
     <SessionStateCtx.Provider value={value}>

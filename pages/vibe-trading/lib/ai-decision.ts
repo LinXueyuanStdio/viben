@@ -3,6 +3,7 @@ import type {
   AgentDecisionEvent,
   AgentErrorEvent,
 } from "./types";
+import { runAgentDecision } from "./viben-agent";
 
 export interface AIDecisionOptions {
   model: string;
@@ -11,8 +12,7 @@ export interface AIDecisionOptions {
   risk_level: "low" | "medium" | "high";
 }
 
-const isDemo =
-  !process.env.AI_API_KEY || process.env.DEMO_MODE === "true";
+const isDemo = process.env.DEMO_MODE === "true";
 
 // Quantity multipliers based on risk level
 const RISK_QTY_MULTIPLIER: Record<string, number> = {
@@ -178,20 +178,18 @@ function generateDemoDecision(
   };
 }
 
-// TODO: Implement live AI integration
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function callLiveAI(
-  _input: AgentInputEvent,
-  _marketSummary: string,
-  _options: AIDecisionOptions
+  input: AgentInputEvent,
+  marketSummary: string,
+  options: AIDecisionOptions
 ): Promise<AgentDecisionEvent | AgentErrorEvent> {
-  // Placeholder for live AI API call (e.g., Anthropic, OpenAI)
-  // Implementation would:
-  // 1. Build structured prompt with market context and positions
-  // 2. Call AI API with JSON response format
-  // 3. Parse response into AgentDecisionEvent
-  // 4. Handle errors (timeout, quota, etc.)
-  throw new Error("Live AI integration not yet implemented. Set DEMO_MODE=true.");
+  return runAgentDecision(input, marketSummary, {
+    model: options.model,
+    strategy_name: options.strategy_name,
+    strategy_description: options.strategy_description,
+    risk_level: options.risk_level,
+    timeout_ms: 120_000,
+  });
 }
 
 export async function getAIDecision(

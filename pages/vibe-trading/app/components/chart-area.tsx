@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import type { ExchangeId, NavPoint } from "@/lib/types";
 import { toTradingViewSymbol } from "@/lib/tradingview";
 import { NavChart } from "./nav-chart";
+import dynamic from "next/dynamic";
+
+const ReplayKlineChart = dynamic(() => import("./replay-kline-chart"), { ssr: false });
 import { useSessionState } from "@/app/context/session-state-context";
 
 interface ChartAreaProps {
@@ -15,7 +18,7 @@ interface ChartAreaProps {
 }
 
 export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHistory, initialNav: propInitialNav }: ChartAreaProps) {
-  const { state } = useSessionState();
+  const { state, mode } = useSessionState();
   const navHistory = state.nav_history.length > 0 ? state.nav_history : propNavHistory;
   const initialNav = Object.keys(state.initial_balance).length > 0
     ? Object.values(state.initial_balance).reduce((s, v) => s + v, 0)
@@ -25,7 +28,7 @@ export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHis
   const [selectedSymbol, setSelectedSymbol] = useState((symbols ?? [])[0] ?? "BTCUSDT");
 
   useEffect(() => {
-    if (activeTab !== "kline" || !containerRef.current) return;
+    if (activeTab !== "kline" || mode === "replay" || !containerRef.current) return;
 
     containerRef.current.innerHTML = "";
 
@@ -61,7 +64,7 @@ export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHis
     wrapper.appendChild(inner);
     wrapper.appendChild(script);
     containerRef.current.appendChild(wrapper);
-  }, [activeTab, selectedSymbol, exchange]);
+  }, [activeTab, selectedSymbol, exchange, mode]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col border-b border-slate-200">
@@ -94,7 +97,11 @@ export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHis
       </div>
       <div className="flex-1 min-h-0">
         {activeTab === "kline" ? (
-          <div ref={containerRef} className="h-full w-full" />
+          mode === "replay" ? (
+            <ReplayKlineChart symbol={selectedSymbol} />
+          ) : (
+            <div ref={containerRef} className="h-full w-full" />
+          )
         ) : (
           <NavChart navHistory={navHistory} initialNav={initialNav} />
         )}

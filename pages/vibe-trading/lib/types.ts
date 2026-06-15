@@ -139,6 +139,8 @@ export interface AgentDecisionEvent {
     value: string;
     interpretation: string;
   }>;
+  prompt?: string;
+  raw_response?: string;
 }
 
 export interface AgentErrorEvent {
@@ -149,6 +151,8 @@ export interface AgentErrorEvent {
   error: string;
   error_code: "quota_exceeded" | "timeout" | "api_error" | "context_too_long" | "refused";
   retry_after?: number;
+  prompt?: string;
+  raw_response?: string;
 }
 
 export interface OrderSubmitEvent {
