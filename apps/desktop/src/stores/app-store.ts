@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpServerInstance, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
+import type { PythonInfo, Provider, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
 import type { CliToolsInfo } from "@/lib/gateway";
 import { getGatewayClient } from "@/lib/gateway";
 import i18n from "@/i18n";
@@ -13,7 +13,6 @@ interface CliToolsCache {
 
 // Provider definitions with all 18 sources
 // Note: enabled is removed - providers only track installation/API key status
-// Source selection is now per-server in McpServerInstance.enabledSources
 const DEFAULT_PROVIDERS: Provider[] = [
   // Free & Open Access
   { id: "arxiv", name: "arXiv", category: "free", requiresApiKey: false, description: i18n.t("providers.descriptions.arxiv", "Pre-prints in physics, mathematics, computer science") },
@@ -55,15 +54,7 @@ interface AppState {
   apiKeys: ApiKeys;
   setApiKey: (provider: string, key: string | undefined) => void;
 
-  // MCP Servers (multiple instances)
-  mcpServers: McpServerInstance[];
-  addMcpServer: (server: Omit<McpServerInstance, "id" | "status">) => string;
-  updateMcpServer: (id: string, updates: Partial<McpServerInstance>) => void;
-  deleteMcpServer: (id: string) => void;
-  getMcpServer: (id: string) => McpServerInstance | undefined;
-
   // Legacy MCP Config (for backward compatibility with single-server mode)
-  // These are used when no servers are configured
   mcpTransport: "stdio" | "sse" | "http";
   mcpPort: number;
   downloadPath: string;
@@ -247,35 +238,6 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           apiKeys: { ...state.apiKeys, [provider]: key },
         })),
-
-      // MCP Servers
-      mcpServers: [],
-      addMcpServer: (server) => {
-        const id = generateId();
-        // Ensure port has a default value for non-stdio transports
-        const port = server.port ?? (server.transport === "stdio" ? undefined : 3000);
-        const newServer: McpServerInstance = {
-          ...server,
-          id,
-          port,
-          status: "stopped",
-        };
-        set((state) => ({
-          mcpServers: [...state.mcpServers, newServer],
-        }));
-        return id;
-      },
-      updateMcpServer: (id, updates) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.map((s) =>
-            s.id === id ? { ...s, ...updates } : s
-          ),
-        })),
-      deleteMcpServer: (id) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.filter((s) => s.id !== id),
-        })),
-      getMcpServer: (id) => get().mcpServers.find((s) => s.id === id),
 
       // Legacy MCP Config (single server mode)
       mcpTransport: "sse",
@@ -481,7 +443,6 @@ export const useAppStore = create<AppState>()(
         selectedPython: state.selectedPython,
         providers: state.providers,
         apiKeys: state.apiKeys,
-        // mcpServers: removed - synced with Gateway file
         mcpTransport: state.mcpTransport,
         mcpPort: state.mcpPort,
         downloadPath: state.downloadPath,
