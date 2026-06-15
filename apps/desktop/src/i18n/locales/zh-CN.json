@@ -188,7 +188,8 @@
     "about": "关于",
     "github": "GitHub",
     "browseMcp": "浏览 MCP",
-    "clientMcp": "端侧 MCP"
+    "clientMcp": "端侧 MCP",
+    "pythonMcp": "Python MCP"
   },
   "devices": {
     "pairTitle": "设备配对",

@@ -188,7 +188,8 @@
     "about": "About",
     "github": "GitHub",
     "browseMcp": "Browse MCP",
-    "clientMcp": "Client MCP"
+    "clientMcp": "Client MCP",
+    "pythonMcp": "Python MCP"
   },
   "devices": {
     "pairTitle": "Device Pairing",

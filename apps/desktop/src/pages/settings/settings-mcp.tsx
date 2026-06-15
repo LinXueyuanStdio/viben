@@ -18,6 +18,7 @@ import {
   Loader2,
   Server,
   Monitor,
+  Terminal,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
@@ -44,6 +45,10 @@ const TauriMcpPage = lazy(() =>
 
 const ClientMcpPage = lazy(() =>
   import("@/pages/mcp/client-mcp").then((m) => ({ default: m.ClientMcpPage }))
+);
+
+const PythonMcpPage = lazy(() =>
+  import("@/pages/mcp/python-mcp").then((m) => ({ default: m.PythonMcpPage }))
 );
 
 const LogsPage = lazy(() =>
@@ -76,6 +81,7 @@ const NAV_SECTIONS: NavSection[] = [
       { id: "dashboard", titleKey: "nav.dashboard", icon: LayoutDashboard },
       { id: "browse-mcp", titleKey: "nav.browseMcp", icon: Search },
       { id: "client-mcp", titleKey: "nav.clientMcp", icon: Monitor },
+      { id: "python-mcp", titleKey: "nav.pythonMcp", icon: Terminal },
       { id: "tauri-mcp", titleKey: "nav.tauriMcp", icon: Bug },
       { id: "logs", titleKey: "nav.logs", icon: FileText },
     ],
@@ -98,7 +104,7 @@ function PageLoadingFallback() {
 }
 
 // Valid tab IDs
-const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "client-mcp", "tauri-mcp", "logs"];
+const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "client-mcp", "python-mcp", "tauri-mcp", "logs"];
 
 export function SettingsMcpPage() {
   const { t } = useTranslation();
@@ -175,6 +181,12 @@ export function SettingsMcpPage() {
         return (
           <Suspense fallback={<PageLoadingFallback />}>
             <ClientMcpPage />
+          </Suspense>
+        );
+      case "python-mcp":
+        return (
+          <Suspense fallback={<PageLoadingFallback />}>
+            <PythonMcpPage />
           </Suspense>
         );
       case "tauri-mcp":
