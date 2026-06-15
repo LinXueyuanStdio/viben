@@ -69,6 +69,8 @@ export interface InstallSkillOptions {
   executor?: string;
   /** Conflict resolution strategy for file conflicts (default: "fail") */
   conflictResolution?: "skip" | "overwrite" | "fail";
+  /** Registry source: "viben" (default) or "clawhub" */
+  registry?: "viben" | "clawhub";
 }
 
 /**

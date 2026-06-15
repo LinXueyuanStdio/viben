@@ -181,6 +181,71 @@ export async function downloadSkillFromRegistry(
 }
 
 // =============================================================================
+// ClaWHub Registry Operations
+// =============================================================================
+
+const CLAWHUB_API_URL = "https://clawhub.ai/api/v1";
+
+/**
+ * Download skill from ClaWHub registry
+ * ClaWHub download URL: GET /api/v1/packages/<name>/download → returns ZIP
+ */
+export async function downloadSkillFromClawhub(
+  name: string,
+  _version: string | undefined,
+  targetDir: string
+): Promise<{ success: boolean; error?: string; version?: string }> {
+  try {
+    await ensureDir(targetDir);
+
+    // Fetch package info first to get version
+    const infoRes = await proxyFetch(`${CLAWHUB_API_URL}/packages/${encodeURIComponent(name)}`, {
+      headers: { Accept: "application/json" },
+    });
+    let resolvedVersion = _version || "1.0.0";
+    if (infoRes.ok) {
+      const info = await infoRes.json() as { package?: { latestVersion?: string } };
+      if (info.package?.latestVersion) {
+        resolvedVersion = info.package.latestVersion;
+      }
+    }
+
+    // Download the ZIP
+    const downloadUrl = `${CLAWHUB_API_URL}/packages/${encodeURIComponent(name)}/download`;
+    const response = await proxyFetch(downloadUrl, {
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `ClaWHub download failed: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    const zipPath = join(targetDir, "package.zip");
+    const buffer = Buffer.from(await response.arrayBuffer());
+    await writeFile(zipPath, buffer);
+
+    await extractZipToDirectory({
+      zipPath,
+      targetDir,
+      overwrite: true,
+      validate: true,
+    });
+
+    await rm(zipPath, { force: true });
+
+    return { success: true, version: resolvedVersion };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "ClaWHub download failed",
+    };
+  }
+}
+
+// =============================================================================
 // Helpers
 // =============================================================================
 

@@ -16,7 +16,7 @@ import {
   getClaudeSkillsDir,
 } from "./paths";
 import { extractZipToDirectory, parseSkillMetadataFromContent } from "./extract";
-import { getSkillFromRegistry, downloadSkillFromRegistry } from "./registry";
+import { getSkillFromRegistry, downloadSkillFromRegistry, downloadSkillFromClawhub } from "./registry";
 import type {
   SkillTarget,
   InstallSkillOptions,
@@ -246,8 +246,48 @@ export async function installSkill(
         target,
         message: `Skill '${skillName}' installed successfully from GitHub (${ghOwner}/${ghRepo})`,
       };
+    } else if (options.registry === "clawhub") {
+      // Download from ClaWHub registry
+      const downloadResult = await downloadSkillFromClawhub(
+        skillName,
+        skillVersion,
+        skillDir
+      );
+
+      if (!downloadResult.success) {
+        await rm(skillDir, { recursive: true, force: true });
+        return {
+          success: false,
+          error: downloadResult.error,
+          name: skillName,
+          version: skillVersion || "",
+          path: "",
+          target,
+          message: downloadResult.error || "ClaWHub download failed",
+        };
+      }
+
+      const downloadVersion = downloadResult.version || skillVersion || "1.0.0";
+
+      // Update installed.yaml with ClaWHub source
+      await addToInstalledList(targetDir, {
+        name: skillName,
+        version: downloadVersion,
+        path: skillDir,
+        source: "marketplace",
+        installed_at: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        name: skillName,
+        version: downloadVersion,
+        path: skillDir,
+        target,
+        message: `Skill '${skillName}' installed successfully from ClaWHub`,
+      };
     } else {
-      // Download from marketplace
+      // Download from Viben marketplace
       const pkgInfo = await getSkillFromRegistry(skillName);
       if (!pkgInfo.success || !pkgInfo.skill) {
         // Clean up empty skill directory

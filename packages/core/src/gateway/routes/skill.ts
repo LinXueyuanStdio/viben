@@ -448,6 +448,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       zip_path?: string;
       version?: string;
       force?: boolean;
+      registry?: "viben" | "clawhub";
     };
     Reply: InstallSkillResult | ErrorResponse;
   }>("/api/skill/install", {
@@ -469,6 +470,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
           zip_path: { type: "string", description: "Zip file path" },
           version: { type: "string" },
           force: { type: "boolean", default: false },
+          registry: { type: "string", enum: ["viben", "clawhub"], description: "Registry source" },
         },
         required: ["name"],
       },
@@ -513,6 +515,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
       zip_path,
       version,
       force = false,
+      registry,
     } = request.body;
 
     if (!name) {
@@ -540,6 +543,7 @@ export function registerSkillRoutes(fastify: FastifyInstance): void {
         zipPath: zip_path,
         version,
         force,
+        registry,
       });
 
       if (!result.success) {
