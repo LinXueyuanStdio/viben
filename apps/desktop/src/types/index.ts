@@ -37,13 +37,6 @@ export interface McpServerInstance {
   pid?: number;
 }
 
-// MCP Server Status Info - cached status with metadata
-export interface McpServerStatusInfo {
-  status: McpServerStatus;
-  lastChecked: number; // timestamp
-  error?: string;
-  pid?: number; // Process ID for matching with log sessions
-}
 
 // MCP Config for starting a server (internal use)
 export interface McpStartConfig {

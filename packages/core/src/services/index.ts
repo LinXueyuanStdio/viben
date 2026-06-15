@@ -21,9 +21,6 @@ export {
   type GatewayEvent,
   type CronJobData,
   type EventListener,
-  type McpProcessStatusData,
-  type McpServerEventData,
-  type McpConfigChangedData,
   // Task state machine event types
   type TaskStateChangedData,
   type TaskRecoveredData,
@@ -167,21 +164,6 @@ export {
 
 // GitHub service
 export * from "./github";
-
-// MCP Monitor service
-export {
-  McpMonitorService,
-  type McpProcessStatus,
-  type McpServerInfo,
-  type McpMonitorConfig,
-} from "./mcp-monitor";
-
-// Config Watcher service
-export {
-  ConfigWatcherService,
-  getMcpServersConfigPath,
-  type ConfigWatcherConfig,
-} from "./config-watcher";
 
 // Preview service
 export {

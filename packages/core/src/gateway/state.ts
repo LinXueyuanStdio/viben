@@ -9,8 +9,6 @@ import { CronService } from "../cron";
 import { ContainerService } from "../services/container";
 import { HistoryService } from "../services/history";
 import { MessageBus } from "../services/message-bus";
-import { McpMonitorService } from "../services/mcp-monitor";
-import { ConfigWatcherService, getMcpServersConfigPath } from "../services/config-watcher";
 import { ChannelRouter, ChannelRuntime, channelManager } from "../channels";
 import { TaskQueueManager } from "./queue";
 import { TaskRecoveryService } from "../task/recovery/task-recovery";
@@ -46,10 +44,6 @@ export interface AppState {
   channelRuntime: ChannelRuntime;
   /** Task queue for concurrent agent execution control */
   taskQueue: TaskQueueManager;
-  /** MCP monitor for tracking MCP server process status */
-  mcpMonitor: McpMonitorService;
-  /** Config watcher for monitoring MCP config file changes */
-  configWatcher: ConfigWatcherService;
   /** Task recovery service for stuck task detection */
   taskRecovery: TaskRecoveryService;
   /** Task SSE manager for real-time task state updates */
@@ -105,20 +99,6 @@ export function createAppState(config: AppStateConfig = {}): AppState {
 
   // Create task queue manager
   const taskQueue = new TaskQueueManager(events);
-
-  // Create MCP monitor service (checks every 30 seconds)
-  const mcpMonitor = new McpMonitorService(events, {
-    checkInterval: 30000, // 30 seconds
-  });
-  mcpMonitor.start();
-
-  // Create config watcher service
-  const configWatcher = new ConfigWatcherService(events, {
-    debounceMs: 500, // 500ms debounce
-  });
-  configWatcher.start();
-  // Watch the MCP servers config file
-  configWatcher.watch(getMcpServersConfigPath());
 
   // Create task SSE manager for real-time task state updates
   // Configure with automatic stale subscriber cleanup
@@ -184,8 +164,6 @@ export function createAppState(config: AppStateConfig = {}): AppState {
     channelRouter,
     channelRuntime,
     taskQueue,
-    mcpMonitor,
-    configWatcher,
     taskRecovery,
     taskSSEManager,
     commandQueue,

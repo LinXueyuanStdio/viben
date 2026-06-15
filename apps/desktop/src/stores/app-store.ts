@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
+import type { PythonInfo, Provider, McpServerInstance, InspectorConnectionStatus, InspectorNotification, InspectorHistoryEntry } from "@/types";
 import type { CliToolsInfo } from "@/lib/gateway";
 import { getGatewayClient } from "@/lib/gateway";
 import i18n from "@/i18n";
@@ -61,13 +61,6 @@ interface AppState {
   updateMcpServer: (id: string, updates: Partial<McpServerInstance>) => void;
   deleteMcpServer: (id: string) => void;
   getMcpServer: (id: string) => McpServerInstance | undefined;
-  setMcpServerStatus: (id: string, status: McpServerStatus, pid?: number, error?: string) => void;
-
-  // MCP Server Status Cache (for monitoring)
-  mcpServerStatuses: Record<string, McpServerStatusInfo>;
-  setMcpServerStatusInfo: (id: string, info: McpServerStatusInfo) => void;
-  getMcpServerStatusInfo: (id: string) => McpServerStatusInfo | undefined;
-  clearMcpServerStatuses: () => void;
 
   // Legacy MCP Config (for backward compatibility with single-server mode)
   // These are used when no servers are configured
@@ -283,32 +276,6 @@ export const useAppStore = create<AppState>()(
           mcpServers: state.mcpServers.filter((s) => s.id !== id),
         })),
       getMcpServer: (id) => get().mcpServers.find((s) => s.id === id),
-      setMcpServerStatus: (id, status, pid, error) =>
-        set((state) => ({
-          mcpServers: state.mcpServers.map((s) =>
-            s.id === id ? { ...s, status, pid: status === "stopped" ? undefined : pid } : s
-          ),
-          // Also update the status cache
-          mcpServerStatuses: {
-            ...state.mcpServerStatuses,
-            [id]: {
-              status,
-              lastChecked: Date.now(),
-              error,
-            },
-          },
-        })),
-      // MCP Server Status Cache
-      mcpServerStatuses: {},
-      setMcpServerStatusInfo: (id, info) =>
-        set((state) => ({
-          mcpServerStatuses: {
-            ...state.mcpServerStatuses,
-            [id]: info,
-          },
-        })),
-      getMcpServerStatusInfo: (id) => get().mcpServerStatuses[id],
-      clearMcpServerStatuses: () => set({ mcpServerStatuses: {} }),
 
       // Legacy MCP Config (single server mode)
       mcpTransport: "sse",
@@ -497,8 +464,6 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "viben-storage",
-      // Note: mcpServers and mcpServerStatuses are NOT persisted to localStorage
-      // They are synced with Gateway's ~/.viben/mcp-servers.json via use-store-sync.ts
       // Merge persisted state with default state to handle new fields
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<AppState>;

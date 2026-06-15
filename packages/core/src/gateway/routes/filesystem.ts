@@ -26,10 +26,6 @@ interface FileEntry {
   modified?: string;
 }
 
-interface McpServersConfig {
-  mcpServers: Record<string, unknown>;
-}
-
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -43,13 +39,6 @@ function getConfigDir(): string {
     : process.platform === "win32"
       ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "viben")
       : join(homedir(), ".config", "viben");
-}
-
-/**
- * Get the MCP servers config file path
- */
-function getMcpServersPath(): string {
-  return join(getConfigDir(), "mcp-servers.json");
 }
 
 /**
@@ -257,42 +246,6 @@ export function registerFilesystemRoutes(fastify: FastifyInstance): void {
   // Note: GET /api/files/content is defined in files.ts
   // to avoid duplicate route registration
 
-  /**
-   * Read MCP servers config file
-   * GET /api/files/mcp-servers
-   */
-  fastify.get("/api/files/mcp-servers", async () => {
-    const configPath = getMcpServersPath();
-
-    try {
-      if (!existsSync(configPath)) {
-        return { mcpServers: {} };
-      }
-
-      const content = await readFile(configPath, "utf-8");
-      return JSON.parse(content);
-    } catch {
-      return { mcpServers: {} };
-    }
-  });
-
-  /**
-   * Write MCP servers config file
-   * PUT /api/files/mcp-servers
-   */
-  fastify.put<{
-    Body: McpServersConfig;
-  }>("/api/files/mcp-servers", async (request) => {
-    const configPath = getMcpServersPath();
-    const dir = dirname(configPath);
-
-    if (!existsSync(dir)) {
-      await mkdir(dir, { recursive: true });
-    }
-
-    await writeFile(configPath, JSON.stringify(request.body, null, 2), "utf-8");
-    return { written: true };
-  });
 
   /**
    * Get config directory path

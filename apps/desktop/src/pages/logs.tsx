@@ -64,9 +64,7 @@ export function LogsPage() {
     openLogsFolder,
   } = useUnifiedSessions();
 
-  // MCP status monitor removed - browse-mcp migrated to gateway HTTP route
   const { mcpServers } = useAppStore();
-  const mcpServerStatuses: Record<string, { status: string; pid?: number }> = {};
 
   const [activeTab, setActiveTab] = useState<TabType>("server");
   const [exporting, setExporting] = useState(false);
@@ -93,11 +91,9 @@ export function LogsPage() {
       if (!session.isActive || !session.pid) continue;
 
       // Skip if this PID matches a current server
-      const matchesServer = session.serverId && mcpServerStatuses[session.serverId];
-      const matchesPid = Object.values(mcpServerStatuses).some(s => s.pid === session.pid);
       const matchesServerPid = mcpServers.some(s => s.pid === session.pid);
 
-      if (!matchesServer && !matchesPid && !matchesServerPid) {
+      if (!matchesServerPid) {
         orphanedPids.push(session.pid);
       }
     }
@@ -120,47 +116,31 @@ export function LogsPage() {
         pidCheckInProgress.current.delete(pid);
       }
     }
-  }, [sessions, mcpServerStatuses, mcpServers]); // Removed directPidStatus to break the cycle
+  }, [sessions, mcpServers]);
 
   // Check orphaned PIDs on mount and when sessions change
   useEffect(() => {
     checkOrphanedPids();
   }, [sessions, checkOrphanedPids]);
 
-  // Map server statuses from the monitor to session process status
+  // Map server statuses to session process status
   const processStatus = useCallback((session: UnifiedSession): boolean | undefined => {
-    // If session has ended, don't show as alive
     if (!session.isActive) return undefined;
-    // If no PID, can't determine
     if (!session.pid) return undefined;
 
-    // Option 1: Try to find the server by matching session's server_id
-    if (session.serverId && mcpServerStatuses[session.serverId]) {
-      return mcpServerStatuses[session.serverId].status === "running";
-    }
-
-    // Option 2: Fallback - search by matching PID across all server statuses
-    const matchingStatusByPid = Object.values(mcpServerStatuses).find(
-      (status) => status.pid === session.pid
-    );
-    if (matchingStatusByPid) {
-      return matchingStatusByPid.status === "running";
-    }
-
-    // Option 3: Direct check against mcpServers if status not cached
+    // Check against mcpServers
     const matchingServer = mcpServers.find((s) => s.pid === session.pid);
     if (matchingServer) {
       return matchingServer.status === "running";
     }
 
-    // Option 4: Check directly checked PID status
+    // Check directly checked PID status
     if (session.pid && directPidStatus[session.pid] !== undefined) {
       return directPidStatus[session.pid];
     }
 
-    // Fallback: can't determine from monitor
     return undefined;
-  }, [mcpServerStatuses, mcpServers, directPidStatus]);
+  }, [mcpServers, directPidStatus]);
 
   // Handle refresh - re-check orphaned PIDs
   const handleRefresh = useCallback(async () => {

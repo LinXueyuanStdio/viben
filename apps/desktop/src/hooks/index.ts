@@ -74,7 +74,6 @@ export type {
   UsePackageUpdatesOptions,
   UsePackageUpdatesReturn,
 } from "./use-package-updates";
-export { useStoreSync, useMainWindowStoreSync } from "./use-store-sync";
 export {
   useLocalWorkspaces,
   useWorkspaceMcpServers,
@@ -297,12 +296,6 @@ export type {
   GatewayWsMessage,
   UseGatewayWebSocketOptions,
 } from "./use-gateway-websocket";
-export { useMcpWebSocket } from "./use-mcp-websocket";
-export type {
-  McpWebSocketCallbacks,
-  UseMcpWebSocketOptions,
-  UseMcpWebSocketReturn,
-} from "./use-mcp-websocket";
 
 // Background Tasks
 export { useBackgroundTasks } from "./use-background-tasks";

@@ -9,7 +9,6 @@ import type {
   FileEntry,
   FileListResponse,
   FileContentResponse,
-  McpServersConfig,
 } from "../types";
 
 // ============================================================================
@@ -449,55 +448,6 @@ export async function readFileContent(
   return data.content;
 }
 
-/**
- * Read MCP servers config file
- */
-export async function readMcpServersFile(
-  baseUrl: string
-): Promise<McpServersConfig> {
-  // Log call stack for debugging frequent requests
-  console.log("[API] readMcpServersFile called", new Error().stack?.split("\n").slice(1, 5).join("\n"));
-
-  const response = await fetch(`${baseUrl}/api/files/mcp-servers`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  });
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to read MCP servers file: ${errorMessage}`,
-      response.status
-    );
-  }
-
-  return response.json();
-}
-
-/**
- * Write MCP servers config file
- */
-export async function writeMcpServersFile(
-  baseUrl: string,
-  config: McpServersConfig
-): Promise<void> {
-  const response = await fetch(`${baseUrl}/api/files/mcp-servers`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(config),
-  });
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to write MCP servers file: ${errorMessage}`,
-      response.status
-    );
-  }
-}
 
 /**
  * Get config directory path

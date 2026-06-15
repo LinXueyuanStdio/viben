@@ -35,14 +35,3 @@ export interface FileContentResponse {
   encoding: string;
 }
 
-// ============================================================================
-// MCP Servers Config File Types
-// ============================================================================
-
-/** MCP servers config - file format for ~/.viben/mcp-servers.json */
-export interface McpServersConfig {
-  mcpServers?: unknown[];
-  mcpServerStatuses?: Record<string, unknown>;
-  lastUpdated?: number;
-  [key: string]: unknown;
-}

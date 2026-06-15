@@ -2,7 +2,6 @@ import { Outlet } from "react-router-dom";
 import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { GlobalTabBar } from "@/components/global-tab-bar";
-import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
 import { useChannelNotifications } from "@/hooks/use-channel-notifications";
 import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapter";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
@@ -25,8 +24,6 @@ export function AppLayout() {
   // Initialize global keyboard shortcuts (Ctrl+Shift+J for create task, etc.)
   useGlobalShortcuts();
 
-  // Initialize store synchronization across windows
-  useMainWindowStoreSync();
 
   // Initialize channel notifications WebSocket connection
   useChannelNotifications();

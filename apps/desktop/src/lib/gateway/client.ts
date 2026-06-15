@@ -207,8 +207,6 @@ import {
   revealInFileManager,
   readDirectory,
   readFileContent,
-  readMcpServersFile,
-  writeMcpServersFile,
   getConfigDir,
 
   // System module
@@ -413,7 +411,6 @@ import type {
   FileEntry,
   FileListResponse,
   FileContentResponse,
-  McpServersConfig,
   // System types
   SystemInfo,
   PublicIpResponse,
@@ -2281,20 +2278,6 @@ export class GatewayClient {
     maxSize?: number
   ): Promise<string> {
     return readFileContent(this.baseUrl, workspacePath, filePath, maxSize);
-  }
-
-  /**
-   * Read MCP servers config file
-   */
-  async readMcpServersFile(): Promise<McpServersConfig> {
-    return readMcpServersFile(this.baseUrl);
-  }
-
-  /**
-   * Write MCP servers config file
-   */
-  async writeMcpServersFile(config: McpServersConfig): Promise<void> {
-    return writeMcpServersFile(this.baseUrl, config);
   }
 
   /**

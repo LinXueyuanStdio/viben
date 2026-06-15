@@ -148,7 +148,6 @@ export type {
   FileEntry,
   FileListResponse,
   FileContentResponse,
-  McpServersConfig,
 } from "./file";
 
 // System Types
@@ -240,15 +239,6 @@ export type {
   GatewayNotificationPreferences,
 } from "./agent";
 
-// MCP WebSocket Event Types
-export type {
-  McpProcessStatus,
-  McpProcessStatusChangedData,
-  McpServerEventData,
-  McpConfigChangedData,
-  McpWebSocketEventType,
-  McpWebSocketEvent,
-} from "./mcp-events";
 
 // Page Types
 export type {
