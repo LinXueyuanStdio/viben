@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { type AgentMcpEntry } from "@/lib/gateway/types/agent";
@@ -99,11 +98,18 @@ export function AgentMcpDialog({
     onOpenChange(false);
   };
 
-  const hasChanges = JSON.stringify(localSelected) !== JSON.stringify(selectedServers);
+  const hasChanges = useMemo(() => {
+    if (localSelected.length !== selectedServers.length) return true;
+    const origMap = new Map(selectedServers.map((s) => [s.name, s]));
+    return localSelected.some((s) => {
+      const orig = origMap.get(s.name);
+      return !orig || JSON.stringify(s) !== JSON.stringify(orig);
+    });
+  }, [localSelected, selectedServers]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden p-0 gap-0">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -179,8 +185,8 @@ export function AgentMcpDialog({
             </TabsList>
 
             {/* Tab: Built-in */}
-            <TabsContent value="builtin" className="mt-3 flex-1 min-h-0">
-              <ScrollArea className="max-h-[320px]">
+            <TabsContent value="builtin" className="mt-3 flex-1 min-h-0 overflow-hidden">
+              <div className="max-h-[320px] overflow-y-auto">
                 <div className="space-y-2 pb-2">
                   {BUILTIN_SERVERS.map((server) => {
                     const selected = isSelected(server.name);
@@ -223,11 +229,11 @@ export function AgentMcpDialog({
                     );
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             {/* Tab: Market */}
-            <TabsContent value="market" className="mt-3 flex-1 min-h-0">
+            <TabsContent value="market" className="mt-3 flex-1 min-h-0 overflow-hidden">
               <McpMarketList
                 onAdd={handleMarketAdd}
                 selectedServerNames={selectedServerNames}
@@ -256,6 +262,7 @@ export function AgentMcpDialog({
         }}
         serverName={configTarget?.name ?? ""}
         serverDescription={configTarget?.description ?? undefined}
+        serverData={configTarget ?? undefined}
         onConfirm={handleConfigConfirm}
       />
     </Dialog>

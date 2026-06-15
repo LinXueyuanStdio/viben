@@ -23,6 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn, setsEqual } from "@/lib/utils";
 import type { WorkspaceSkill } from "@/types";
+import type { ClawhubSkillDisplay } from "@/types/clawhub-registry";
+import { getGatewayClient } from "@/lib/gateway";
+import { toast } from "@/hooks/use-toast";
 import { SkillMarketGrid } from "./skill-market-grid";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +42,8 @@ interface AgentSkillsDialogProps {
   /** Pre-loaded discovered skills from parent */
   discoveredSkills?: WorkspaceSkill[];
   discoveredSkillsLoading?: boolean;
+  /** Agent folder name (used when installing skills from marketplace) */
+  agentId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +67,7 @@ export function AgentSkillsDialog({
   executorType,
   discoveredSkills = [],
   discoveredSkillsLoading = false,
+  agentId,
 }: AgentSkillsDialogProps) {
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [pathInput, setPathInput] = useState("");
@@ -72,6 +78,7 @@ export function AgentSkillsDialog({
     if (dialogOpen) {
       setLocalSelected(selectedSkillIds);
       setPathInput("");
+      setActiveTab("discovered");
     }
   }, [dialogOpen, selectedSkillIds]);
 
@@ -104,9 +111,10 @@ export function AgentSkillsDialog({
       title: "选择 Skill 目录",
     });
     if (result) {
-      const path = workspacePath
-        ? "./" + result.replace(workspacePath + "/", "")
-        : result;
+      const path =
+        workspacePath && result.startsWith(workspacePath + "/")
+          ? "./" + result.slice(workspacePath.length + 1)
+          : result;
       if (!localSelected.includes(path)) {
         setLocalSelected((prev) => [...prev, path]);
       }
@@ -115,6 +123,38 @@ export function AgentSkillsDialog({
 
   function handleRemovePath(path: string) {
     setLocalSelected((prev) => prev.filter((id) => id !== path));
+  }
+
+  async function handleInstallSkill(skill: ClawhubSkillDisplay): Promise<boolean> {
+    if (!agentId) {
+      // No agentId provided - just toggle selection without downloading
+      handleToggle(skill.id);
+      return true;
+    }
+
+    try {
+      const client = getGatewayClient();
+      const res = await client.post("/api/skill/install", {
+        name: skill.slug,
+        target: "agent",
+        agent_id: agentId,
+        registry: "clawhub",
+      }) as { path?: string; version?: string };
+      // Add to selected after successful install
+      setLocalSelected((prev) =>
+        prev.includes(skill.id) ? prev : [...prev, skill.id]
+      );
+      toast.success(`已安装 ${skill.name} v${res.version || "latest"}`, {
+        description: res.path ? `路径: ${res.path}` : undefined,
+      });
+      return true;
+    } catch (err) {
+      console.error("[AgentSkillsDialog] Failed to install skill:", err);
+      toast.error(`安装 ${skill.name} 失败`, {
+        description: err instanceof Error ? err.message : String(err),
+      });
+      return false;
+    }
   }
 
   const hasChanges = !setsEqual(localSelected, selectedSkillIds);
@@ -130,7 +170,7 @@ export function AgentSkillsDialog({
 
   return (
     <Dialog open={dialogOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden p-0 gap-0">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -254,10 +294,13 @@ export function AgentSkillsDialog({
             </TabsContent>
 
             {/* Tab: Marketplace (cloud) */}
-            <TabsContent value="market" className="mt-3">
+            <TabsContent value="market" className="mt-3" forceMount hidden={activeTab !== "market"}>
               <SkillMarketGrid
-                selectedIds={localSelected.filter((id) => !isLocalPath(id))}
+                selectedIds={localSelected.filter(
+                  (id) => !isLocalPath(id) && !discoveredSkills.some((s) => s.id === id)
+                )}
                 onToggle={handleToggle}
+                onInstall={handleInstallSkill}
               />
             </TabsContent>
 
@@ -282,30 +325,32 @@ export function AgentSkillsDialog({
                   </Button>
                 </div>
 
-                {localPaths.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {localPaths.map((path) => (
-                      <div key={path} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group">
-                        <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-sm flex-1 truncate font-mono">{path}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePath(path)}
-                          className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed p-6 text-center">
-                    <FolderOpen className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
-                    <p className="text-xs text-muted-foreground">
-                      添加本地 Skill 目录路径
-                    </p>
-                  </div>
-                )}
+                <div className="max-h-[calc(80vh-280px)] overflow-y-auto">
+                  {localPaths.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {localPaths.map((path) => (
+                        <div key={path} className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 group">
+                          <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm flex-1 truncate font-mono">{path}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePath(path)}
+                            className="p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed p-6 text-center">
+                      <FolderOpen className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1.5" />
+                      <p className="text-xs text-muted-foreground">
+                        添加本地 Skill 目录路径
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
           </Tabs>

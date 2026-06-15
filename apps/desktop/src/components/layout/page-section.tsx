@@ -287,11 +287,11 @@ function PageTreeItemContent({
               )}
             </Tooltip>
 
-            {/* Read-only indicator */}
-            {isReadOnly && (
+            {/* Read-only indicator - hidden when actions are shown */}
+            {isReadOnly && !showActions && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="flex shrink-0 items-center text-muted-foreground/50">
+                  <span className="flex shrink-0 items-center pr-1 text-muted-foreground/50">
                     <Lock className="h-3 w-3" />
                   </span>
                 </TooltipTrigger>
@@ -301,10 +301,11 @@ function PageTreeItemContent({
               </Tooltip>
             )}
 
-            {/* Action buttons - only use opacity for show/hide to avoid layout shifts */}
+            {/* Action buttons - absolutely positioned to overlay right side on hover */}
             <div
               className={cn(
-                "flex shrink-0 items-center gap-0.5 pr-1",
+                "absolute right-0 top-0 flex h-full shrink-0 items-center gap-0.5 rounded-r-md pr-1 pl-4",
+                "bg-gradient-to-l from-sidebar-accent from-70% to-transparent",
                 "transition-opacity duration-150 ease-out",
                 showActions
                   ? "opacity-100"

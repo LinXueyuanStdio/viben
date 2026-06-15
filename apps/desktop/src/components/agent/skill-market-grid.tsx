@@ -62,10 +62,11 @@ function SkillCardSkeleton() {
 interface SkillCardProps {
   skill: ClawhubSkillDisplay;
   isSelected: boolean;
-  onToggle: () => void;
+  isInstalling: boolean;
+  onAdd: () => void;
 }
 
-function SkillCard({ skill, isSelected, onToggle }: SkillCardProps) {
+function SkillCard({ skill, isSelected, isInstalling, onAdd }: SkillCardProps) {
   return (
     <div
       className={cn(
@@ -148,8 +149,13 @@ function SkillCard({ skill, isSelected, onToggle }: SkillCardProps) {
               <Check className="h-3 w-3 mr-1" />
               已选
             </Badge>
+          ) : isInstalling ? (
+            <Button size="sm" variant="outline" disabled>
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              安装中
+            </Button>
           ) : (
-            <Button size="sm" variant="outline" onClick={onToggle}>
+            <Button size="sm" variant="outline" onClick={onAdd}>
               <Plus className="h-3.5 w-3.5 mr-1" />
               添加
             </Button>
@@ -167,6 +173,8 @@ function SkillCard({ skill, isSelected, onToggle }: SkillCardProps) {
 export interface SkillMarketGridProps {
   selectedIds: string[];
   onToggle: (skillId: string) => void;
+  /** If provided, clicking "添加" will call this to install the skill first, then add to selected */
+  onInstall?: (skill: ClawhubSkillDisplay) => Promise<boolean>;
   className?: string;
 }
 
@@ -177,9 +185,11 @@ export interface SkillMarketGridProps {
 export function SkillMarketGrid({
   selectedIds,
   onToggle,
+  onInstall,
   className,
 }: SkillMarketGridProps) {
   const [localSearch, setLocalSearch] = useState("");
+  const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
 
   const {
     displaySkills,
@@ -205,6 +215,26 @@ export function SkillMarketGrid({
     setLocalSearch("");
     clearSearch();
   }, [clearSearch]);
+
+  const handleAdd = useCallback(
+    async (skill: ClawhubSkillDisplay) => {
+      if (onInstall) {
+        setInstallingIds((prev) => new Set(prev).add(skill.id));
+        try {
+          await onInstall(skill);
+        } finally {
+          setInstallingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(skill.id);
+            return next;
+          });
+        }
+      } else {
+        onToggle(skill.id);
+      }
+    },
+    [onInstall, onToggle]
+  );
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -242,7 +272,7 @@ export function SkillMarketGrid({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refreshSkills()}
+              onClick={refreshSkills}
               className="gap-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -277,7 +307,7 @@ export function SkillMarketGrid({
               {!searchQuery && (
                 <button
                   type="button"
-                  onClick={() => refreshSkills()}
+                  onClick={refreshSkills}
                   disabled={isLoading}
                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -293,7 +323,8 @@ export function SkillMarketGrid({
                 key={skill.id}
                 skill={skill}
                 isSelected={selectedIds.includes(skill.id)}
-                onToggle={() => onToggle(skill.id)}
+                isInstalling={installingIds.has(skill.id)}
+                onAdd={() => handleAdd(skill)}
               />
             ))}
 

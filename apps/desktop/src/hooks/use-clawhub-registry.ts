@@ -364,7 +364,7 @@ export function useClawhubRegistry(options: UseClawhubRegistryOptions = {}) {
       return;
     }
     await skillsHook.loadMore();
-  }, [searchHook.searchQuery, skillsHook]);
+  }, [searchHook.searchQuery, skillsHook.loadMore]);
 
   return {
     // Skills list

@@ -1055,6 +1055,7 @@ export function AgentDetailPage() {
         executorType={formExecutorType}
         discoveredSkills={discoveredSkills}
         discoveredSkillsLoading={discoveredSkillsLoading}
+        agentId={agentId}
       />
 
       <AgentMemoryDialog
