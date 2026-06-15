@@ -197,28 +197,29 @@ export function registerTauriMcpServerRoutes(
       },
     },
   }, async () => {
-    const { createConnection } = await import("node:net");
+    const { default: WebSocket } = await import("ws");
     return new Promise<{ available: boolean; port: number; connected: boolean; error?: string }>((resolve) => {
       let settled = false;
-      const socket = createConnection({ host: "127.0.0.1", port }, () => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+
+      const settle = (result: { available: boolean; port: number; connected: boolean; error?: string }) => {
         if (settled) return;
         settled = true;
-        socket.destroy();
-        resolve({ available: true, port, connected: true });
+        clearTimeout(timeout);
+        ws.close();
+        resolve(result);
+      };
+
+      const timeout = setTimeout(() => {
+        settle({ available: false, port, connected: false, error: "Connection timeout. Is the Tauri app running?" });
+      }, 2000);
+
+      ws.once("open", () => {
+        settle({ available: true, port, connected: true });
       });
 
-      socket.once("error", (err) => {
-        if (settled) return;
-        settled = true;
-        socket.destroy();
-        resolve({ available: false, port, connected: false, error: `Cannot connect: ${err.message}` });
-      });
-
-      socket.setTimeout(2000, () => {
-        if (settled) return;
-        settled = true;
-        socket.destroy();
-        resolve({ available: false, port, connected: false, error: "Connection timeout. Is the Tauri app running?" });
+      ws.once("error", (err) => {
+        settle({ available: false, port, connected: false, error: `Cannot connect: ${err.message}` });
       });
     });
   });

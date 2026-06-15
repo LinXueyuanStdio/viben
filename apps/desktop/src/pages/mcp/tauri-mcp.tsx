@@ -112,7 +112,7 @@ export function TauriMcpPage() {
   useEffect(() => {
     if (isDev) {
       checkSocketStatus();
-      const interval = setInterval(checkSocketStatus, 5000);
+      const interval = setInterval(checkSocketStatus, 5 * 60 * 1000);
       return () => clearInterval(interval);
     }
   }, []);
