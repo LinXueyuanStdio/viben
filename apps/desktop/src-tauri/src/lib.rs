@@ -8,6 +8,9 @@ use commands::gateway::GatewayState;
 use commands::screenshot::ScreenshotStore;
 
 #[cfg(desktop)]
+use commands::wakeword::WakeWordState;
+
+#[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -188,6 +191,7 @@ pub fn run() {
         builder = builder
             .manage(GatewayState::default())
             .manage(ScreenshotStore::default())
+            .manage(WakeWordState::default())
             .invoke_handler(tauri::generate_handler![
                 // Tray commands (native system tray)
                 commands::tray::show_main_window,
@@ -236,6 +240,10 @@ pub fn run() {
                 commands::window::open_workspace_page_preview_window,
                 commands::window::get_workspace_windows,
                 commands::window::close_workspace_window,
+                // Wake word commands (voice activation)
+                commands::wakeword::start_wakeword,
+                commands::wakeword::stop_wakeword,
+                commands::wakeword::get_wakeword_status,
             ]);
     }
 

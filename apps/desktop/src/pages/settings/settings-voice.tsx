@@ -133,26 +133,18 @@ export function SettingsVoice() {
   const handleWakeWordTestToggle = useCallback(async () => {
     setWakeWordError(null);
     if (wakeWord.isListening) {
-      wakeWord.stop();
+      await wakeWord.stop();
       setLastDetection(null);
     } else {
-      // Load and activate the selected wake word
-      const selectedWakeWord = config.wakeWord === "你好微本" ? "nihao_weiben" : "hey_jarvis";
       try {
-        await wakeWord.loadKeyword(selectedWakeWord);
-        wakeWord.setActiveKeywords([selectedWakeWord]);
         await wakeWord.start();
       } catch (err) {
         console.error("Failed to start wake word detection:", err);
         const errorMsg = err instanceof Error ? err.message : String(err);
-        if (errorMsg.includes("404") || errorMsg.includes("not found") || errorMsg.includes("Failed to fetch")) {
-          setWakeWordError(t("settings.voice.wakeWord.test.modelNotFound", "Wake word model file not found. Please download the model first."));
-        } else {
-          setWakeWordError(errorMsg);
-        }
+        setWakeWordError(errorMsg);
       }
     }
-  }, [wakeWord, config.wakeWord, t]);
+  }, [wakeWord]);
 
   if (isLoading) {
     return (

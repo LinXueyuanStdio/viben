@@ -43,7 +43,7 @@ class SharedAudioStream {
     this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
 
     // 80ms 帧 @ 16kHz = 1280 samples
-    this.processorNode = this.audioContext.createScriptProcessor(1280, 1, 1);
+    this.processorNode = this.audioContext.createScriptProcessor(2048, 1, 1);
     this.processorNode.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
       const audioData = new Float32Array(inputData);

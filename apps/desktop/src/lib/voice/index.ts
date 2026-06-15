@@ -3,9 +3,8 @@
 // 共享音频流
 export { sharedAudioStream } from './shared-audio-stream';
 
-// 唤醒词引擎
-export { wakeWordEngine, WakeWordEngine } from './wake-word-engine';
-export type { WakeWordDetection, WakeWordCallback } from './wake-word-engine';
+// 唤醒词 (Rust backend via Tauri commands)
+export type { WakeWordDetectionEvent } from '@/hooks/use-wake-word';
 
 // Vocal Bridge 客户端
 export { vocalBridgeClient, VocalBridgeClient } from './vocal-bridge-client';

@@ -57,13 +57,9 @@ export function WakeWordTaskButton({
       setError(null);
 
       if (wakeWord.isListening || wakeWord.state === "detected") {
-        wakeWord.stop();
+        await wakeWord.stop();
       } else if (!isLoading) {
-        const keyword =
-          config.wakeWord === "你好微本" ? "nihao_weiben" : "hey_jarvis";
         try {
-          await wakeWord.loadKeyword(keyword);
-          wakeWord.setActiveKeywords([keyword]);
           await wakeWord.start();
         } catch (err) {
           console.error("[WakeWordTaskButton] Failed to start:", err);
@@ -71,7 +67,7 @@ export function WakeWordTaskButton({
         }
       }
     },
-    [wakeWord, config.wakeWord, isLoading],
+    [wakeWord, isLoading],
   );
 
   const listeningTooltip = isLoading
@@ -108,7 +104,6 @@ export function WakeWordTaskButton({
                 )}
               >
                 <AudioWaveform className="h-4 w-4 text-sidebar-foreground" />
-                {/* Small green dot when listening */}
                 {isActive && (
                   <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]" />
                 )}

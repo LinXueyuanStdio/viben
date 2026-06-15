@@ -90,6 +90,9 @@
     "externalBin": [
       "binaries/viben"
     ],
+    "resources": [
+      "resources/ni_hao_wei_ben.onnx"
+    ],
     "createUpdaterArtifacts": true,
     "macOS": {
       "entitlements": "entitlements.plist"

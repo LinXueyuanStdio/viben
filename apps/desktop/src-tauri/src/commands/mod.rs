@@ -12,4 +12,6 @@ pub mod screenshot;
 #[cfg(desktop)]
 pub mod tray;
 #[cfg(desktop)]
+pub mod wakeword;
+#[cfg(desktop)]
 pub mod window;
