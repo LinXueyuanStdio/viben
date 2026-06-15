@@ -44,6 +44,8 @@ interface AgentSkillsDialogProps {
   discoveredSkillsLoading?: boolean;
   /** Agent folder name (used when installing skills from marketplace) */
   agentId?: string;
+  /** Agent folder path - absolute path to the agent's directory */
+  agentFolderPath?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +70,7 @@ export function AgentSkillsDialog({
   discoveredSkills = [],
   discoveredSkillsLoading = false,
   agentId,
+  agentFolderPath,
 }: AgentSkillsDialogProps) {
   const [localSelected, setLocalSelected] = useState<string[]>(selectedSkillIds);
   const [pathInput, setPathInput] = useState("");
@@ -126,20 +129,25 @@ export function AgentSkillsDialog({
   }
 
   async function handleInstallSkill(skill: ClawhubSkillDisplay): Promise<boolean> {
-    if (!agentId) {
-      // No agentId provided - just toggle selection without downloading
+    if (!agentId && !agentFolderPath) {
       handleToggle(skill.id);
       return true;
     }
 
     try {
       const client = getGatewayClient();
-      const res = await client.post("/api/skill/install", {
+      const installBody: Record<string, unknown> = {
         name: skill.slug,
-        target: "agent",
-        agent_id: agentId,
         registry: "clawhub",
-      }) as { path?: string; version?: string };
+      };
+      if (agentFolderPath) {
+        installBody.target = "custom";
+        installBody.custom_path = agentFolderPath + "/skills";
+      } else {
+        installBody.target = "agent";
+        installBody.agent_id = agentId;
+      }
+      const res = await client.post("/api/skill/install", installBody) as { path?: string; version?: string };
       // Add to selected after successful install
       setLocalSelected((prev) =>
         prev.includes(skill.id) ? prev : [...prev, skill.id]

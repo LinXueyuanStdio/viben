@@ -6,7 +6,7 @@
  * Unified "selected" section above tabs for clarity.
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Server, Plus, Check, Trash2 } from "lucide-react";
+import { Server, Plus, Check, Trash2, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,10 +18,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { type AgentMcpEntry } from "@/lib/gateway/types/agent";
 import { McpMarketList } from "./mcp-market-list";
 import { McpServerConfigDialog } from "./mcp-server-config-dialog";
+import { useServiceKeys } from "@/hooks/use-service-keys";
+import { getGatewayUrl } from "@/lib/gateway/config";
 import type { OfficialServerDisplay } from "@/types/official-registry";
 
 // Re-export the type for consumers
@@ -34,9 +44,18 @@ interface AgentMcpDialogProps {
   onServersChange: (servers: AgentMcpEntry[]) => void;
 }
 
-const BUILTIN_SERVERS: Array<{ name: string; description: string; type: "builtin" }> = [
-  { name: "browse-mcp", description: "Viben Gateway MCP 代理服务", type: "builtin" },
-  { name: "presentation", description: "演示模式工具", type: "builtin" },
+const BROWSE_MCP_PATH = "/api/mcp-server/browse";
+const GUI_ACTION_MCP_PATH = "/api/mcp-server/gui-action";
+
+interface BuiltinServerDef {
+  name: string;
+  description: string;
+  needsApiKey?: boolean;
+}
+
+const BUILTIN_SERVERS: BuiltinServerDef[] = [
+  { name: "browse-mcp", description: "搜索与浏览服务，支持多种数据源（需要 API Key）", needsApiKey: true },
+  { name: "client-mcp", description: "端侧 GUI Action 工具，允许 Agent 操作桌面端界面" },
 ];
 
 export function AgentMcpDialog({
@@ -51,12 +70,18 @@ export function AgentMcpDialog({
   // Config dialog state for market additions
   const [configTarget, setConfigTarget] = useState<OfficialServerDisplay | null>(null);
 
+  // Browse MCP: API key selection
+  const { keys, loading: keysLoading, getKeyById } = useServiceKeys();
+  const [browseMcpKeyId, setBrowseMcpKeyId] = useState("");
+  const [browseMcpKeyLoading, setBrowseMcpKeyLoading] = useState(false);
+
   // Sync local state when dialog opens
   useEffect(() => {
     if (open) {
       setLocalSelected(selectedServers);
       setActiveTab("builtin");
       setConfigTarget(null);
+      setBrowseMcpKeyId("");
     }
   }, [open, selectedServers]);
 
@@ -70,12 +95,28 @@ export function AgentMcpDialog({
     [localSelected]
   );
 
-  const addBuiltinEntry = useCallback((server: { name: string; type: "builtin" }) => {
-    setLocalSelected((prev) => {
-      if (prev.some((s) => s.name === server.name)) return prev;
-      return [...prev, { name: server.name, type: server.type }];
-    });
-  }, []);
+  const addBrowseMcpEntry = useCallback(async () => {
+    if (!browseMcpKeyId) return;
+    setBrowseMcpKeyLoading(true);
+    try {
+      const keyData = await getKeyById(browseMcpKeyId);
+      if (!keyData?.key) return;
+      const gatewayUrl = getGatewayUrl();
+      const browseMcpUrl = `${gatewayUrl}${BROWSE_MCP_PATH}`;
+      const entry: AgentMcpEntry = {
+        name: "browse-mcp",
+        type: "http",
+        url: browseMcpUrl,
+        headers: { Authorization: `Bearer ${keyData.key}` },
+      };
+      setLocalSelected((prev) => {
+        const filtered = prev.filter((s) => s.name !== "browse-mcp");
+        return [...filtered, entry];
+      });
+    } finally {
+      setBrowseMcpKeyLoading(false);
+    }
+  }, [browseMcpKeyId, getKeyById]);
 
   const removeEntry = useCallback((name: string) => {
     setLocalSelected((prev) => prev.filter((s) => s.name !== name));
@@ -214,17 +255,77 @@ export function AgentMcpDialog({
                               <Check className="h-3 w-3 mr-1" />
                               已添加
                             </Badge>
-                          ) : (
+                          ) : !server.needsApiKey ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => addBuiltinEntry(server)}
+                              onClick={() => {
+                                const gatewayUrl = getGatewayUrl();
+                                const entry: AgentMcpEntry = {
+                                  name: server.name,
+                                  type: "http",
+                                  url: `${gatewayUrl}${GUI_ACTION_MCP_PATH}`,
+                                };
+                                setLocalSelected((prev) => {
+                                  if (prev.some((s) => s.name === server.name)) return prev;
+                                  return [...prev, entry];
+                                });
+                              }}
                             >
                               <Plus className="h-3.5 w-3.5 mr-1" />
                               添加
                             </Button>
-                          )}
+                          ) : null}
                         </div>
+                        {/* Browse MCP: API Key selector */}
+                        {server.needsApiKey && !selected && (
+                          <div className="space-y-2 pt-1">
+                            <Label className="text-xs text-muted-foreground">
+                              选择 API Key
+                            </Label>
+                            {keysLoading ? (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                加载中...
+                              </div>
+                            ) : keys.length === 0 ? (
+                              <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                                请先在 MCP 服务页面创建 API Key
+                              </p>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={browseMcpKeyId}
+                                  onValueChange={setBrowseMcpKeyId}
+                                >
+                                  <SelectTrigger className="h-8 text-sm flex-1">
+                                    <SelectValue placeholder="选择 API Key" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {keys.map((key) => (
+                                      <SelectItem key={key.id} value={key.id}>
+                                        {key.name} ({key.key_prefix})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={addBrowseMcpEntry}
+                                  disabled={!browseMcpKeyId || browseMcpKeyLoading}
+                                >
+                                  {browseMcpKeyLoading ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                                  ) : (
+                                    <Plus className="h-3.5 w-3.5 mr-1" />
+                                  )}
+                                  添加
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}

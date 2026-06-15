@@ -1056,6 +1056,7 @@ export function AgentDetailPage() {
         discoveredSkills={discoveredSkills}
         discoveredSkillsLoading={discoveredSkillsLoading}
         agentId={agentId}
+        agentFolderPath={agentFolderPath}
       />
 
       <AgentMemoryDialog
