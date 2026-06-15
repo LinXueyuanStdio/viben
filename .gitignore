@@ -13,9 +13,6 @@
 *.sublime-project
 *.sublime-workspace
 
-# MCP config (contains session-specific headers)
-.mcp.json
-
 # ===========================================
 # Node.js / Frontend
 # ===========================================
@@ -250,9 +247,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# Claude Code local files
-**/CLAUDE.local.md
-
 # ===========================================
 # Build Tools & Caches
 # ===========================================
@@ -302,13 +296,21 @@ docs/index/
 
 /infra/
 !/infra/Yoopta-Editor/
+
 /wdio-results.xml
 /apps/desktop/wdio-results.xml
 /test-screenshots/
 /apps/desktop/test-screenshots/
 /desktop-artifact/
+
 /apps/acp-ui/
 /apps/OpenACP/
+
 /logs
+
 /resources/page-templates/fullstack/
+
 .claude/scheduled_tasks.json
+.claude.json
+.mcp.json
+**/CLAUDE.local.md
