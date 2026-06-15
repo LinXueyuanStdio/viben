@@ -45,7 +45,7 @@ tauri-plugin-opener = "2.5"
 tauri-plugin-shell = "2.3"
 tauri-plugin-dialog = "2.7"
 tauri-plugin-fs = "2.5"
-tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp", version = "0.1.0" }
+tauri-plugin-mcp-bridge = "0.11"
 tauri-plugin-screenshots = "2.2.0"
 xcap = "0.3"
 

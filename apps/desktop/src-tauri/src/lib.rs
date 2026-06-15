@@ -173,17 +173,11 @@ pub fn run() {
             .plugin(tauri_plugin_safe_area_insets_css::init());
     }
 
-    // MCP plugin for AI debugging - only in desktop development builds
+    // MCP Bridge plugin for AI debugging - only in desktop development builds
     #[cfg(all(desktop, debug_assertions))]
     {
-        eprintln!("[MCP] Enabling MCP plugin for AI debugging");
-        builder = builder.plugin(
-            tauri_plugin_mcp::init_with_config(
-                tauri_plugin_mcp::PluginConfig::new("viben-desktop".to_string())
-                    .start_socket_server(true)
-                    .socket_path(std::path::PathBuf::from("/tmp/viben-mcp.sock")),
-            ),
-        );
+        eprintln!("[MCP Bridge] Enabling MCP Bridge plugin for AI debugging");
+        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
     }
 
     #[cfg(desktop)]

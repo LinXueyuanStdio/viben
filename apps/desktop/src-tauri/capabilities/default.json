@@ -25,6 +25,7 @@
     "store:allow-set",
     "store:allow-save",
     "store:allow-load",
-    "store:allow-delete"
+    "store:allow-delete",
+    "mcp-bridge:default"
   ]
 }

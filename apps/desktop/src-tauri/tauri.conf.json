@@ -23,6 +23,7 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "macOSPrivateApi": true,
     "windows": [
       {
