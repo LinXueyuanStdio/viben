@@ -10,5 +10,6 @@ packages:
   - "infra/Yoopta-Editor/packages/plugins/*"
   - "infra/Yoopta-Editor/packages/marks"
   - "infra/Yoopta-Editor/packages/themes/*"
+  - "!pages/**"
 shamefullyHoist: true
 strictPeerDependencies: false
