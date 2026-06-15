@@ -22,13 +22,13 @@ export function ConsoleDialog({ open, onOpenChange }: ConsoleDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-w-3xl w-[90vw] h-[70vh] p-0 flex flex-col overflow-hidden",
-          "bg-black/95 border-border/50"
+          "max-w-4xl w-[85vw] h-[70vh] p-0 flex flex-col overflow-hidden",
+          "bg-background border-border/40 rounded-xl shadow-2xl"
         )}
       >
-        <DialogHeader className="px-4 pt-4 pb-2 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <Terminal className="h-4 w-4" />
+        <DialogHeader className="px-4 py-2.5 shrink-0 border-b border-border/20">
+          <DialogTitle className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Terminal className="h-3.5 w-3.5" />
             {t("nav.console")}
           </DialogTitle>
         </DialogHeader>
