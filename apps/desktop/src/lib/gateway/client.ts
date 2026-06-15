@@ -222,14 +222,6 @@ import {
   saveCliToolsConfig,
   updateCliToolPath,
 
-  // Usage module
-  initUsage,
-  getUsageStats,
-  recordUsage,
-  getApiKeyUsage,
-  getServerUsage,
-  getSourceUsage,
-
   // Sources module
   getInstalledSources,
   showInstalledProvider,
@@ -420,9 +412,6 @@ import type {
   CliToolInfo,
   CliToolsInfo,
   CliToolsConfig,
-  // Usage types
-  UsageStats,
-  ApiKeyUsage,
   // Sources types
   InstalledSourcesResponse,
   // Logs types
@@ -2387,56 +2376,6 @@ export class GatewayClient {
     path: string | null
   ): Promise<void> {
     return updateCliToolPath(this.baseUrl, tool, path);
-  }
-
-  // ==========================================================================
-  // Usage Module Methods
-  // ==========================================================================
-
-  /**
-   * Initialize usage tracking
-   */
-  async initUsage(): Promise<void> {
-    return initUsage(this.baseUrl);
-  }
-
-  /**
-   * Get usage statistics
-   */
-  async getUsageStats(): Promise<UsageStats> {
-    return getUsageStats(this.baseUrl);
-  }
-
-  /**
-   * Record a usage event
-   */
-  async recordUsage(
-    serverId: string,
-    sourceId: string,
-    apiKeyId?: string
-  ): Promise<void> {
-    return recordUsage(this.baseUrl, serverId, sourceId, apiKeyId);
-  }
-
-  /**
-   * Get usage for a specific API key
-   */
-  async getApiKeyUsage(keyId: string): Promise<ApiKeyUsage> {
-    return getApiKeyUsage(this.baseUrl, keyId);
-  }
-
-  /**
-   * Get usage for a specific server
-   */
-  async getServerUsage(serverId: string): Promise<number> {
-    return getServerUsage(this.baseUrl, serverId);
-  }
-
-  /**
-   * Get usage for a specific source
-   */
-  async getSourceUsage(sourceId: string): Promise<number> {
-    return getSourceUsage(this.baseUrl, sourceId);
   }
 
   // ==========================================================================

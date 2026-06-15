@@ -26,7 +26,6 @@ export function EnvironmentSection() {
 
   const appStore = useAppStore();
   const {
-    setSetupStatus,
     pythonPath, setPythonPath,
     gitPath, setGitPath,
     ghPath, setGhPath,
@@ -127,16 +126,6 @@ export function EnvironmentSection() {
     };
     return sourceLabels[source] || source;
   };
-
-  // Update global setup status - browse-mcp is now built into the gateway,
-  // so setup is always complete from that perspective.
-  const updateSetupStatus = useCallback(() => {
-    setSetupStatus(true);
-  }, [setSetupStatus]);
-
-  useEffect(() => {
-    updateSetupStatus();
-  }, [updateSetupStatus]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

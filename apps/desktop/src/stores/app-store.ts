@@ -48,7 +48,6 @@ interface AppState {
   providers: Provider[];
   setProviderApiKey: (id: string, hasKey: boolean) => void;
   getAvailableProviders: () => Provider[]; // All providers that can be used (free or has API key)
-  updateProvidersFromCli: (installedSources: { name: string; provider: string; enabled: boolean }[]) => void;
 
   // API Keys stored separately (for security)
   apiKeys: ApiKeys;
@@ -61,7 +60,6 @@ interface AppState {
   setMcpTransport: (transport: "stdio" | "sse" | "http") => void;
   setMcpPort: (port: number) => void;
   setDownloadPath: (path: string) => void;
-  getEnabledSourceIds: () => string[]; // For legacy compatibility
 
   // Statistics
   totalSearches: number;
@@ -86,18 +84,6 @@ interface AppState {
   setAutoSetTimezone: (value: boolean) => void;
   timezone: string;
   setTimezone: (timezone: string) => void;
-
-  // Setup Banner
-  setupBannerDismissed: boolean;
-  setSetupBannerDismissed: (dismissed: boolean) => void;
-
-  // Setup Status (cached to avoid repeated checks)
-  setupStatus: {
-    isComplete: boolean;
-    lastChecked: number; // timestamp
-  } | null;
-  setSetupStatus: (isComplete: boolean) => void;
-  shouldCheckSetup: () => boolean; // Returns true if check is needed
 
   // Inspector State
   inspectorSelectedServerId: string | null;
@@ -173,9 +159,6 @@ interface AppState {
   clearCliToolsCache: () => void;
 }
 
-// Generate unique ID
-const generateId = () => `srv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
 // Default shortcuts
 const DEFAULT_SHORTCUTS = {
   sendMessage: "Enter",
@@ -205,32 +188,6 @@ export const useAppStore = create<AppState>()(
         })),
       getAvailableProviders: () =>
         get().providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
-      updateProvidersFromCli: (installedSources) => {
-        // Update providers based on CLI output
-        // This merges installed sources with default providers
-        set((state) => {
-          const newProviders = [...state.providers];
-
-          // Mark sources as installed and update info
-          for (const source of installedSources) {
-            const existing = newProviders.find((p) => p.id === source.name);
-            if (existing) {
-              // Source already in defaults, keep it
-              continue;
-            }
-            // New source from plugin - add it
-            newProviders.push({
-              id: source.name,
-              name: source.name.charAt(0).toUpperCase() + source.name.slice(1).replace(/_/g, ' '),
-              category: source.provider as 'free' | 'api_key' | 'institutional',
-              requiresApiKey: false,
-              description: `${source.provider} source`,
-            });
-          }
-
-          return { providers: newProviders };
-        });
-      },
 
       // API Keys
       apiKeys: {},
@@ -246,11 +203,6 @@ export const useAppStore = create<AppState>()(
       setMcpTransport: (transport) => set({ mcpTransport: transport }),
       setMcpPort: (port) => set({ mcpPort: port }),
       setDownloadPath: (path) => set({ downloadPath: path }),
-      // Legacy: returns all available providers (free + has API key)
-      getEnabledSourceIds: () =>
-        get()
-          .providers.filter((p) => !p.requiresApiKey || p.hasApiKey)
-          .map((p) => p.id),
 
       // Statistics
       totalSearches: 0,
@@ -277,10 +229,6 @@ export const useAppStore = create<AppState>()(
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       setTimezone: (timezone) => set({ timezone }),
 
-      // Setup Banner
-      setupBannerDismissed: false,
-      setSetupBannerDismissed: (dismissed) => set({ setupBannerDismissed: dismissed }),
-
       // Setup Status
       setupStatus: null,
       setSetupStatus: (isComplete) =>
@@ -290,12 +238,6 @@ export const useAppStore = create<AppState>()(
             lastChecked: Date.now(),
           },
         }),
-      shouldCheckSetup: () => {
-        const status = get().setupStatus;
-        if (!status) return true; // Never checked before
-        const fiveMinutes = 5 * 60 * 1000;
-        return Date.now() - status.lastChecked > fiveMinutes; // Re-check every 5 minutes
-      },
 
       // Inspector State
       inspectorSelectedServerId: null,
@@ -454,7 +396,6 @@ export const useAppStore = create<AppState>()(
         dateFormat: state.dateFormat,
         autoSetTimezone: state.autoSetTimezone,
         timezone: state.timezone,
-        setupBannerDismissed: state.setupBannerDismissed,
         setupStatus: state.setupStatus,
         onboardingCompleted: state.onboardingCompleted,
         shortcuts: state.shortcuts,

@@ -21,23 +21,6 @@ export interface Provider {
   description?: string;
 }
 
-// MCP Server Status - runtime status of a server
-export type McpServerStatus = "stopped" | "running" | "error";
-
-// MCP Server Instance - a configured server with selected sources
-export interface McpServerInstance {
-  id: string;
-  name: string;
-  transport: "stdio" | "sse" | "http";
-  port?: number;
-  downloadPath: string;
-  enabledSources: string[]; // Provider IDs
-  // Runtime state
-  status: McpServerStatus;
-  pid?: number;
-}
-
-
 // MCP Config for starting a server (internal use)
 export interface McpStartConfig {
   python_path: string;

@@ -214,10 +214,6 @@ export type {
 export type {
   CacheInfo,
   CacheSettings,
-  DailyUsage,
-  ActivityDay,
-  UsageStats,
-  ApiKeyUsage,
 } from "./cache";
 
 // Agent CRUD Types

@@ -14,7 +14,6 @@ export { usePython } from "./use-python";
 export { useVibenCli } from "./use-viben-cli";
 export type { UseVibenCliReturn, VibenCliPath, VibenCliSource } from "./use-viben-cli";
 export { useMcp } from "./use-mcp";
-export { useUsage } from "./use-usage";
 export { useMarketplace } from "./use-marketplace";
 export { useInstalledSources } from "./use-installed-sources";
 export { useApiLogs } from "./use-api-logs";
