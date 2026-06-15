@@ -4,7 +4,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useExecutors } from "@/hooks/use-workspace-resources";
-import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import { AgentCard } from "./components";
 import { mapExecutorToDisplay } from "./utils";
@@ -12,7 +11,6 @@ import { mapExecutorToDisplay } from "./utils";
 export function AgentsPage() {
   const { t } = useTranslation();
   const { executors, loading, error, refresh } = useExecutors();
-  const { mcpServers } = useAppStore();
 
   // Map executors to display format
   const agents = executors.map(mapExecutorToDisplay);
@@ -57,7 +55,6 @@ export function AgentsPage() {
             <AgentCard
               key={agent.id}
               agent={agent}
-              servers={mcpServers}
             />
           ))}
         </div>

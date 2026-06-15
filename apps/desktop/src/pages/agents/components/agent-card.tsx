@@ -1,6 +1,5 @@
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { McpServerInstance } from "@/types";
 import { useTranslation } from "react-i18next";
 import type { ExecutorDisplayInfo } from "../types";
 
@@ -34,7 +33,6 @@ export function StatusBadge({ label, active }: StatusBadgeProps) {
 
 interface AgentCardProps {
   agent: ExecutorDisplayInfo;
-  servers: McpServerInstance[];
 }
 
 export function AgentCard({ agent }: AgentCardProps) {

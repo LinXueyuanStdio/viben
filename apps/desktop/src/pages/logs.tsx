@@ -30,7 +30,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useUnifiedSessions, type UnifiedSession } from "@/hooks/use-unified-sessions";
 import type { LogEntry } from "@/hooks/use-logs";
 import type { ApiLogEntry } from "@/hooks/use-api-logs";
-import { useAppStore } from "@/stores";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 
@@ -64,8 +63,6 @@ export function LogsPage() {
     openLogsFolder,
   } = useUnifiedSessions();
 
-  const { mcpServers } = useAppStore();
-
   const [activeTab, setActiveTab] = useState<TabType>("server");
   const [exporting, setExporting] = useState(false);
   const [cleaning, setCleaning] = useState(false);
@@ -84,22 +81,10 @@ export function LogsPage() {
   const checkedPidsRef = useRef<Set<number>>(new Set());
 
   const checkOrphanedPids = useCallback(async () => {
-    const orphanedPids: number[] = [];
-
     for (const session of sessions) {
-      // Skip if session has ended or no PID
       if (!session.isActive || !session.pid) continue;
 
-      // Skip if this PID matches a current server
-      const matchesServerPid = mcpServers.some(s => s.pid === session.pid);
-
-      if (!matchesServerPid) {
-        orphanedPids.push(session.pid);
-      }
-    }
-
-    // Check each orphaned PID
-    for (const pid of orphanedPids) {
+      const pid = session.pid;
       // Skip if already checking or already checked (use ref to avoid dependency cycle)
       if (pidCheckInProgress.current.has(pid) || checkedPidsRef.current.has(pid)) {
         continue;
@@ -116,7 +101,7 @@ export function LogsPage() {
         pidCheckInProgress.current.delete(pid);
       }
     }
-  }, [sessions, mcpServers]);
+  }, [sessions]);
 
   // Check orphaned PIDs on mount and when sessions change
   useEffect(() => {
@@ -128,19 +113,12 @@ export function LogsPage() {
     if (!session.isActive) return undefined;
     if (!session.pid) return undefined;
 
-    // Check against mcpServers
-    const matchingServer = mcpServers.find((s) => s.pid === session.pid);
-    if (matchingServer) {
-      return matchingServer.status === "running";
-    }
-
-    // Check directly checked PID status
-    if (session.pid && directPidStatus[session.pid] !== undefined) {
+    if (directPidStatus[session.pid] !== undefined) {
       return directPidStatus[session.pid];
     }
 
     return undefined;
-  }, [mcpServers, directPidStatus]);
+  }, [directPidStatus]);
 
   // Handle refresh - re-check orphaned PIDs
   const handleRefresh = useCallback(async () => {

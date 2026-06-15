@@ -229,16 +229,6 @@ export const useAppStore = create<AppState>()(
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       setTimezone: (timezone) => set({ timezone }),
 
-      // Setup Status
-      setupStatus: null,
-      setSetupStatus: (isComplete) =>
-        set({
-          setupStatus: {
-            isComplete,
-            lastChecked: Date.now(),
-          },
-        }),
-
       // Inspector State
       inspectorSelectedServerId: null,
       inspectorConnectionStatus: "disconnected",
@@ -396,7 +386,6 @@ export const useAppStore = create<AppState>()(
         dateFormat: state.dateFormat,
         autoSetTimezone: state.autoSetTimezone,
         timezone: state.timezone,
-        setupStatus: state.setupStatus,
         onboardingCompleted: state.onboardingCompleted,
         shortcuts: state.shortcuts,
         showHideWindowScope: state.showHideWindowScope,
