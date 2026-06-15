@@ -6,6 +6,7 @@ import {
   Server,
   Bug,
   Monitor,
+  Terminal,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
@@ -38,9 +39,10 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    titleKey: "nav.pageDebugServices",
+    titleKey: "nav.tauriMcpServices",
     items: [
-      { titleKey: "nav.pageDebug", href: "/mcp-services/page-debug", icon: Bug },
+      { titleKey: "nav.tauriMcp", href: "/mcp-services/tauri-mcp", icon: Bug },
+      { titleKey: "nav.pythonMcp", href: "/mcp-services/python-mcp", icon: Terminal },
     ],
   },
   {

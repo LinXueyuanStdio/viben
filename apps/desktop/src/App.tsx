@@ -37,7 +37,8 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
-  PageDebugPage,
+  TauriMcpPage,
+  PythonMcpPage,
   WorkspacePage,
   WorkspaceWebPage,
   OsPage,
@@ -148,7 +149,8 @@ function App() {
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="browse-mcp" element={<BrowseMcpPage />} />
               <Route path="client-mcp" element={<ClientMcpPage />} />
-              <Route path="page-debug" element={<PageDebugPage />} />
+              <Route path="tauri-mcp" element={<TauriMcpPage />} />
+              <Route path="python-mcp" element={<PythonMcpPage />} />
               <Route path="inspector" element={<InspectorPage />} />
               <Route path="logs" element={<LogsPage />} />
               {/* Default redirect for /mcp-services */}

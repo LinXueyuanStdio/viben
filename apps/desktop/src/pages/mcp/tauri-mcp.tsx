@@ -10,47 +10,84 @@ import {
   MousePointer,
   Navigation,
   Search,
-  Database,
   AppWindow,
   Clock,
-  Mouse,
   RefreshCw,
   ExternalLink,
   CircleAlert,
-  Globe,
   Server,
+  MonitorSmartphone,
+  Activity,
+  Eye,
+  Hand,
+  FileCode,
+  Crosshair,
+  Pointer,
+  Paintbrush,
+  ScrollText,
+  Radio,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getGatewayClient } from "@/lib/gateway";
 
 const MCP_BRIDGE_WS_PORT = 9223;
 const GATEWAY_PORT = 18790;
 const isDev = import.meta.env.DEV;
-const MCP_TOOLS = [
-  { icon: Camera, toolKey: "take_screenshot" },
-  { icon: Search, toolKey: "query_page" },
-  { icon: MousePointer, toolKey: "click" },
-  { icon: Keyboard, toolKey: "type_text" },
-  { icon: Mouse, toolKey: "mouse_action" },
-  { icon: Navigation, toolKey: "navigate" },
-  { icon: Terminal, toolKey: "execute_js" },
-  { icon: Database, toolKey: "manage_storage" },
-  { icon: AppWindow, toolKey: "manage_window" },
-  { icon: Clock, toolKey: "wait_for" },
-].map((tool) => ({ ...tool, descKey: `pageDebug.tools.${tool.toolKey}` }));
+
+const MCP_TOOLS_CATEGORIES = [
+  {
+    categoryKey: "pageDebug.toolCategories.setup",
+    tools: [
+      { icon: Server, toolKey: "driver_session", descKey: "pageDebug.tools.driver_session" },
+      { icon: FileCode, toolKey: "get_setup_instructions", descKey: "pageDebug.tools.get_setup_instructions" },
+    ],
+  },
+  {
+    categoryKey: "pageDebug.toolCategories.uiAutomation",
+    tools: [
+      { icon: Camera, toolKey: "webview_screenshot", descKey: "pageDebug.tools.webview_screenshot" },
+      { icon: Eye, toolKey: "webview_dom_snapshot", descKey: "pageDebug.tools.webview_dom_snapshot" },
+      { icon: Search, toolKey: "webview_find_element", descKey: "pageDebug.tools.webview_find_element" },
+      { icon: Crosshair, toolKey: "webview_select_element", descKey: "pageDebug.tools.webview_select_element" },
+      { icon: Pointer, toolKey: "webview_get_pointed_element", descKey: "pageDebug.tools.webview_get_pointed_element" },
+      { icon: MousePointer, toolKey: "webview_interact", descKey: "pageDebug.tools.webview_interact" },
+      { icon: Keyboard, toolKey: "webview_keyboard", descKey: "pageDebug.tools.webview_keyboard" },
+      { icon: Terminal, toolKey: "webview_execute_js", descKey: "pageDebug.tools.webview_execute_js" },
+      { icon: Paintbrush, toolKey: "webview_get_styles", descKey: "pageDebug.tools.webview_get_styles" },
+      { icon: Clock, toolKey: "webview_wait_for", descKey: "pageDebug.tools.webview_wait_for" },
+      { icon: AppWindow, toolKey: "manage_window", descKey: "pageDebug.tools.manage_window" },
+      { icon: ScrollText, toolKey: "read_logs", descKey: "pageDebug.tools.read_logs" },
+    ],
+  },
+  {
+    categoryKey: "pageDebug.toolCategories.ipc",
+    tools: [
+      { icon: Zap, toolKey: "ipc_execute_command", descKey: "pageDebug.tools.ipc_execute_command" },
+      { icon: Activity, toolKey: "ipc_get_backend_state", descKey: "pageDebug.tools.ipc_get_backend_state" },
+      { icon: Radio, toolKey: "ipc_monitor", descKey: "pageDebug.tools.ipc_monitor" },
+      { icon: Hand, toolKey: "ipc_get_captured", descKey: "pageDebug.tools.ipc_get_captured" },
+      { icon: Navigation, toolKey: "ipc_emit_event", descKey: "pageDebug.tools.ipc_emit_event" },
+    ],
+  },
+  {
+    categoryKey: "pageDebug.toolCategories.mobile",
+    tools: [
+      { icon: MonitorSmartphone, toolKey: "list_devices", descKey: "pageDebug.tools.list_devices" },
+    ],
+  },
+];
 
 type SocketStatus = "checking" | "connected" | "disconnected";
 
-export function PageDebugPage() {
+export function TauriMcpPage() {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
-  const [copiedHttp, setCopiedHttp] = useState(false);
   const [copiedTest, setCopiedTest] = useState(false);
+
   const [socketStatus, setSocketStatus] = useState<SocketStatus>("checking");
   const [isChecking, setIsChecking] = useState(false);
-  const [activeTab, setActiveTab] = useState("http");
 
   const checkSocketStatus = async () => {
     setIsChecking(true);
@@ -62,6 +99,7 @@ export function PageDebugPage() {
       if (response.ok) {
         const data = await response.json();
         setSocketStatus(data.available && data.connected ? "connected" : "disconnected");
+        setIsChecking(false);
         return;
       }
     } catch {
@@ -74,33 +112,20 @@ export function PageDebugPage() {
   useEffect(() => {
     if (isDev) {
       checkSocketStatus();
-      // Poll every 5 seconds
       const interval = setInterval(checkSocketStatus, 5000);
       return () => clearInterval(interval);
     }
   }, []);
 
-  // HTTP/SSE config (recommended - works with Gateway)
-  const httpMcpConfig = {
+  const mcpConfig = {
     mcpServers: {
-      "viben-page-debug": {
-        transport: "sse",
-        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp-server/tauri/sse`,
-      },
-    },
-  };
-
-  // Streamable HTTP config (alternative - modern MCP transport)
-  const streamableHttpConfig = {
-    mcpServers: {
-      "viben-page-debug": {
-        transport: "streamable-http",
+      "viben-tauri-mcp": {
+        type: "streamable-http",
         url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp-server/tauri`,
       },
     },
   };
 
-  // Test command to verify MCP server connection
   const testCommand = `curl -X GET http://127.0.0.1:${GATEWAY_PORT}/api/mcp-server/tauri/status`;
 
   const handleCopy = (
@@ -112,11 +137,9 @@ export function PageDebugPage() {
     setTimeout(() => setCopiedState(false), 2000);
   };
 
-  const copyHttpConfig = () => handleCopy(JSON.stringify(httpMcpConfig, null, 2), setCopiedHttp);
-  const copyStdioConfig = () => handleCopy(JSON.stringify(streamableHttpConfig, null, 2), setCopied);
+  const copyConfig = () => handleCopy(JSON.stringify(mcpConfig, null, 2), setCopied);
   const copyTestCommand = () => handleCopy(testCommand, setCopiedTest);
 
-  // Show disabled message in production
   if (!isDev) {
     return (
       <div className="p-6">
@@ -194,13 +217,13 @@ export function PageDebugPage() {
         </div>
         <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
           <div>
-            <span className="font-medium">WebSocket: </span>
+            <span className="font-medium">{t("pageDebug.bridgeWs")}: </span>
             <code className="bg-muted px-2 py-0.5 rounded text-xs">ws://127.0.0.1:{MCP_BRIDGE_WS_PORT}</code>
           </div>
           <div>
-            <span className="font-medium">{t("pageDebug.httpEndpoint")}: </span>
+            <span className="font-medium">{t("pageDebug.gatewayEndpoint")}: </span>
             <code className="bg-muted px-2 py-0.5 rounded text-xs">
-              http://127.0.0.1:{GATEWAY_PORT}/api/mcp-server/tauri/sse
+              http://127.0.0.1:{GATEWAY_PORT}/api/mcp-server/tauri
             </code>
           </div>
         </div>
@@ -219,7 +242,7 @@ export function PageDebugPage() {
                 {t("pageDebug.setupDescription")}
               </p>
               <a
-                href="https://github.com/nicholasgriffintn/tauri-plugin-mcp"
+                href="https://github.com/hypothesi/mcp-server-tauri"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-300 hover:underline"
@@ -233,96 +256,65 @@ export function PageDebugPage() {
       )}
 
       {/* Available Tools */}
-      <div>
-        <h3 className="text-sm font-medium mb-3">{t("pageDebug.features")}</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {MCP_TOOLS.map((tool) => {
-            const Icon = tool.icon;
-            return (
-              <div
-                key={tool.toolKey}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-card"
-              >
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Icon className="h-5 w-5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{t(tool.descKey)}</p>
-                  <code className="text-xs text-muted-foreground">
-                    {tool.toolKey}
-                  </code>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium">{t("pageDebug.features")} (20)</h3>
+        {MCP_TOOLS_CATEGORIES.map((category) => (
+          <div key={category.categoryKey}>
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              {t(category.categoryKey)}
+            </h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {category.tools.map((tool) => {
+                const Icon = tool.icon;
+                return (
+                  <div
+                    key={tool.toolKey}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border bg-card"
+                  >
+                    <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                      <Icon className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <code className="text-xs font-medium">{tool.toolKey}</code>
+                      <p className="text-xs text-muted-foreground truncate">{t(tool.descKey)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* AI Client Configuration */}
-      <div>
-        <h3 className="text-sm font-medium mb-3">{t("pageDebug.aiInstructions")}</h3>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="http" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              HTTP/SSE ({t("pageDebug.recommended")})
-            </TabsTrigger>
-            <TabsTrigger value="stdio" className="flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              WebSocket
-            </TabsTrigger>
-          </TabsList>
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium">{t("pageDebug.aiInstructions")}</h3>
 
-          <TabsContent value="http" className="space-y-3 mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {t("pageDebug.httpConfigHint")}
-              </p>
-              <Button variant="ghost" size="sm" onClick={copyHttpConfig}>
-                {copiedHttp ? (
-                  <Check className="h-4 w-4 mr-2 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-2" />
-                )}
-                {t("pageDebug.copyConfig")}
-              </Button>
-            </div>
-            <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
-              {JSON.stringify(httpMcpConfig, null, 2)}
-            </pre>
-            <p className="text-xs text-muted-foreground">
-              {t("pageDebug.httpNote")}
-            </p>
-          </TabsContent>
-
-          <TabsContent value="stdio" className="space-y-3 mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {t("pageDebug.wsConfigHint")}
-              </p>
-              <Button variant="ghost" size="sm" onClick={copyStdioConfig}>
-                {copied ? (
-                  <Check className="h-4 w-4 mr-2 text-green-600" />
-                ) : (
-                  <Copy className="h-4 w-4 mr-2" />
-                )}
-                {t("pageDebug.copyConfig")}
-              </Button>
-            </div>
-            <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
-              {JSON.stringify(streamableHttpConfig, null, 2)}
-            </pre>
-            <p className="text-xs text-muted-foreground">
-              {t("pageDebug.wsNote")}
-            </p>
-          </TabsContent>
-        </Tabs>
+        <div className="rounded-lg border bg-card p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium">Streamable HTTP</p>
+            <Button variant="ghost" size="sm" onClick={copyConfig}>
+              {copied ? (
+                <Check className="h-4 w-4 mr-2 text-green-600" />
+              ) : (
+                <Copy className="h-4 w-4 mr-2" />
+              )}
+              {t("pageDebug.copyConfig")}
+            </Button>
+          </div>
+          <pre className="bg-muted rounded-md p-3 text-xs overflow-x-auto">
+            {JSON.stringify(mcpConfig, null, 2)}
+          </pre>
+          <p className="text-xs text-muted-foreground">
+            {t("pageDebug.manualConfigHint")}
+          </p>
+        </div>
       </div>
 
-      {/* Usage Note */}
+      {/* Architecture Note */}
       <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 p-4">
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          <strong>{t("pageDebug.usageNote")}:</strong> {t("pageDebug.usageNoteDescription")}
+          <strong>{t("pageDebug.architectureNote")}:</strong> {t("pageDebug.architectureDescription")}
         </p>
       </div>
 

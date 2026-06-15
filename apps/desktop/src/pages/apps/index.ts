@@ -1,6 +1,6 @@
 // Route pages
 export { WorkspacePage } from "./workspace-page";
-export { PageDebugPage } from "../mcp/page-debug";
+export { TauriMcpPage } from "../mcp/tauri-mcp";
 
 // Components
 export { PagePreview, type PagePreviewProps, type PageViewMode } from "./components";

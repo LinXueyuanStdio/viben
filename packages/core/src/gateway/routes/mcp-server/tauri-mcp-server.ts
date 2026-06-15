@@ -91,7 +91,7 @@ const TOOL_MAP = new Map(TOOLS.map((tool) => [tool.name, tool]));
  */
 function createTauriMcpServer(): Server {
   const server = new Server(
-    { name: "viben-tauri-mcp", version: "1.0.0" },
+    { name: "tauri-mcp", version: "1.0.0" },
     { capabilities: { tools: {} } },
   );
 

@@ -38,8 +38,8 @@ const BrowseMcpPage = lazy(() =>
   import("@/pages/mcp/browse-mcp").then((m) => ({ default: m.BrowseMcpPage }))
 );
 
-const PageDebugPage = lazy(() =>
-  import("@/pages/mcp/page-debug").then((m) => ({ default: m.PageDebugPage }))
+const TauriMcpPage = lazy(() =>
+  import("@/pages/mcp/tauri-mcp").then((m) => ({ default: m.TauriMcpPage }))
 );
 
 const ClientMcpPage = lazy(() =>
@@ -76,7 +76,7 @@ const NAV_SECTIONS: NavSection[] = [
       { id: "dashboard", titleKey: "nav.dashboard", icon: LayoutDashboard },
       { id: "browse-mcp", titleKey: "nav.browseMcp", icon: Search },
       { id: "client-mcp", titleKey: "nav.clientMcp", icon: Monitor },
-      { id: "page-debug", titleKey: "nav.pageDebug", icon: Bug },
+      { id: "tauri-mcp", titleKey: "nav.tauriMcp", icon: Bug },
       { id: "logs", titleKey: "nav.logs", icon: FileText },
     ],
   },
@@ -98,7 +98,7 @@ function PageLoadingFallback() {
 }
 
 // Valid tab IDs
-const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "client-mcp", "page-debug", "logs"];
+const VALID_TABS = ["marketplace", "inspector", "dashboard", "browse-mcp", "client-mcp", "tauri-mcp", "logs"];
 
 export function SettingsMcpPage() {
   const { t } = useTranslation();
@@ -177,10 +177,10 @@ export function SettingsMcpPage() {
             <ClientMcpPage />
           </Suspense>
         );
-      case "page-debug":
+      case "tauri-mcp":
         return (
           <Suspense fallback={<PageLoadingFallback />}>
-            <PageDebugPage />
+            <TauriMcpPage />
           </Suspense>
         );
       case "logs":
