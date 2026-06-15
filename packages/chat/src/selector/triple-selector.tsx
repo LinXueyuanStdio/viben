@@ -197,16 +197,16 @@ export function TripleSelector({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-auto p-0"
+          className="w-auto max-w-[calc(100vw-16px)] overflow-x-auto p-0"
           side="top"
           align="start"
           sideOffset={8}
           collisionPadding={8}
         >
-          <div className="flex">
+          <div className="flex min-w-0">
             {/* 第一级 */}
             {!hideFirst && (
-              <div className="w-36 border-r border-border/50">
+              <div className="min-w-28 max-w-36 flex-1 border-r border-border/50">
                 {firstLabel && (
                   <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50">
                     {firstLabel}
@@ -231,7 +231,7 @@ export function TripleSelector({
 
             {/* 第二级 */}
             {!hideSecond && value.first && (
-              <div className="w-36 border-r border-border/50">
+              <div className="min-w-28 max-w-36 flex-1 border-r border-border/50">
                 {secondLabel && (
                   <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50">
                     {secondLabel}
@@ -256,7 +256,7 @@ export function TripleSelector({
 
             {/* 第三级 */}
             {!hideThird && value.second && (
-              <div className="w-44">
+              <div className="min-w-32 max-w-44 flex-1">
                 {thirdLabel && (
                   <div className="px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50">
                     {thirdLabel}
