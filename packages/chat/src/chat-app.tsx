@@ -734,52 +734,58 @@ export function ChatApp({
   }, []);
 
   const subagentSheetOpen = !!subagentSheet?.open;
+
+  // Delayed unmount: keep SubagentSheet content mounted during the CSS exit transition
+  const [subagentSheetMounted, setSubagentSheetMounted] = React.useState(false);
+  React.useEffect(() => {
+    if (subagentSheetOpen) {
+      setSubagentSheetMounted(true);
+    } else {
+      const timer = setTimeout(() => setSubagentSheetMounted(false), 240);
+      return () => clearTimeout(timer);
+    }
+  }, [subagentSheetOpen]);
+
   const subagentSheetNode = (
     <div className="absolute inset-0 z-40 pointer-events-none">
-      <AnimatePresence>
-        {subagentSheetOpen && subagentSheet && (
-          <>
-            <motion.div
-              key="subagent-backdrop"
-              className="absolute inset-0 bg-black/20 pointer-events-auto"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={subagentSheet.onClose}
-            />
-            <motion.div
-              key="subagent-panel"
-              className="absolute right-0 top-0 bottom-0 z-10 pointer-events-auto"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "tween", duration: 0.24, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <SubagentSheet
-                contained
-                open
-                onClose={subagentSheet.onClose}
-                title={subagentSheet.title}
-                subagentType={subagentSheet.subagentType}
-                messages={subagentSheet.messages}
-                liveMessages={subagentSheet.liveMessages}
-                answer={subagentSheet.answer}
-                context={subagentSheet.context}
-                loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
-                maxWidth={overlayWidth}
-                onExpandSubagent={onExpandSubagent}
-                onInspectTool={onInspectTool}
-                messageListConfig={subagentSheet.messageListConfig ?? {
-                  assistantAvatar: staticAssistantAvatar,
-                  artifacts,
-                  onArtifactClick,
-                }}
-              />
-            </motion.div>
-          </>
+      {/* Backdrop — CSS opacity transition, no framer-motion */}
+      <div
+        className={cn(
+          "absolute inset-0 bg-black/20 transition-opacity duration-150 ease-out",
+          subagentSheetOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
-      </AnimatePresence>
+        onClick={subagentSheet?.onClose}
+      />
+      {/* Panel — CSS transform transition, no framer-motion */}
+      <div
+        className={cn(
+          "absolute right-0 top-0 bottom-0 z-10 transition-transform duration-[240ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          subagentSheetOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"
+        )}
+      >
+        {subagentSheetMounted && subagentSheet && (
+          <SubagentSheet
+            contained
+            open
+            onClose={subagentSheet.onClose}
+            title={subagentSheet.title}
+            subagentType={subagentSheet.subagentType}
+            messages={subagentSheet.messages}
+            liveMessages={subagentSheet.liveMessages}
+            answer={subagentSheet.answer}
+            context={subagentSheet.context}
+            loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
+            maxWidth={overlayWidth}
+            onExpandSubagent={onExpandSubagent}
+            onInspectTool={onInspectTool}
+            messageListConfig={subagentSheet.messageListConfig ?? {
+              assistantAvatar: staticAssistantAvatar,
+              artifacts,
+              onArtifactClick,
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 
