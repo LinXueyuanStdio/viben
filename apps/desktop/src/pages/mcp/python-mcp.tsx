@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Copy,
   Check,
@@ -8,14 +8,14 @@ import {
   Trash2,
   Save,
   RefreshCw,
-  ChevronDown,
-  ChevronRight,
   Terminal,
   Wifi,
   WifiOff,
   History,
-  Eye,
-  Code2,
+  Circle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,13 +25,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { useAcpSessionStore } from "@/stores/acp-session-store";
@@ -93,9 +86,6 @@ export function PythonMcpPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const gatewayUrl = useMemo(() => getGatewayUrl(), []);
   const activeSessionId = useAcpSessionStore((s) => s.activeSessionId);
-  const [activeKernels, setActiveKernels] = useState<
-    Array<{ kernel_id: string; session_id: string }>
-  >([]);
 
   void t;
 
@@ -104,25 +94,6 @@ export function PythonMcpPage() {
     setCopied(key);
     setTimeout(() => setCopied(null), 2000);
   };
-
-  const refreshKernels = useCallback(async () => {
-    try {
-      const res = await fetch(`${gatewayUrl}${API_PREFIX}/sessions`);
-      if (res.ok) {
-        const sessions: SessionInfo[] = await res.json();
-        setActiveKernels(
-          sessions.map((s) => ({
-            kernel_id: s.current_kernel_id,
-            session_id: s.acp_session_id,
-          }))
-        );
-      }
-    } catch {}
-  }, [gatewayUrl]);
-
-  useEffect(() => {
-    refreshKernels();
-  }, [refreshKernels]);
 
   return (
     <div className="h-full overflow-auto">
@@ -135,10 +106,7 @@ export function PythonMcpPage() {
         </div>
 
         <JupyterConfigSection gatewayUrl={gatewayUrl} />
-        <SessionMappingSection
-          gatewayUrl={gatewayUrl}
-          onKernelsChange={refreshKernels}
-        />
+        <SessionMappingSection gatewayUrl={gatewayUrl} />
         <SkillsSection gatewayUrl={gatewayUrl} />
         <McpConfigSection
           gatewayUrl={gatewayUrl}
@@ -243,20 +211,18 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
   );
 }
 
-function SessionMappingSection({
-  gatewayUrl,
-  onKernelsChange,
-}: {
-  gatewayUrl: string;
-  onKernelsChange: () => void;
-}) {
+const PAGE_SIZE = 5;
+
+function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  const [creatingTemp, setCreatingTemp] = useState(false);
+  const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(0);
 
   const refresh = async () => {
     const res = await fetch(`${gatewayUrl}${API_PREFIX}/sessions`);
     if (res.ok) {
       setSessions(await res.json());
-      onKernelsChange();
     }
   };
 
@@ -264,22 +230,122 @@ function SessionMappingSection({
     refresh();
   }, [gatewayUrl]);
 
+  const createTempSession = async () => {
+    setCreatingTemp(true);
+    try {
+      const res = await fetch(`${gatewayUrl}${API_PREFIX}/sessions/temp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        await refresh();
+      }
+    } catch {
+      // ignore
+    }
+    setCreatingTemp(false);
+  };
+
+  const filtered = useMemo(() => {
+    if (!filter.trim()) return sessions;
+    const q = filter.toLowerCase();
+    return sessions.filter(
+      (s) =>
+        s.acp_session_id.toLowerCase().includes(q) ||
+        s.current_kernel_id.toLowerCase().includes(q)
+    );
+  }, [sessions, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paged = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(0);
+  }, [filter]);
+
   return (
     <section className="rounded-xl border bg-card p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Session → Kernel 映射</h2>
-        <Button size="sm" variant="ghost" onClick={refresh}>
-          <RefreshCw className="h-3 w-3" />
-        </Button>
-      </div>
-      {sessions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">暂无活跃 Session</p>
-      ) : (
-        <div className="space-y-1.5">
-          {sessions.map((s) => (
-            <SessionRow key={s.acp_session_id} session={s} gatewayUrl={gatewayUrl} />
-          ))}
+        <h2 className="font-semibold">代码会话</h2>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" onClick={createTempSession} disabled={creatingTemp}>
+            <Plus className="h-3 w-3 mr-1" />
+            {creatingTemp ? "创建中..." : "新建"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={refresh}>
+            <RefreshCw className="h-3 w-3" />
+          </Button>
         </div>
+      </div>
+
+      {/* Filter input */}
+      {sessions.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <input
+            className="w-full rounded-md border bg-muted/50 pl-8 pr-3 py-1.5 text-sm font-mono placeholder:text-muted-foreground/60"
+            placeholder="过滤 Session ID / Kernel ID..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+      )}
+
+      {sessions.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-4">
+          <p className="text-sm text-muted-foreground">暂无活跃 Session</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={createTempSession}
+            disabled={creatingTemp}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            {creatingTemp ? "创建中..." : "创建临时会话"}
+          </Button>
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          无匹配结果
+        </p>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            {paged.map((s) => (
+              <SessionRow key={s.acp_session_id} session={s} gatewayUrl={gatewayUrl} />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-muted-foreground">
+                {filtered.length} 条会话，第 {currentPage + 1}/{totalPages} 页
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </section>
   );
@@ -292,28 +358,99 @@ function SessionRow({
   session: SessionInfo;
   gatewayUrl: string;
 }) {
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [kernelAlive, setKernelAlive] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch(`${gatewayUrl}${API_PREFIX}/kernel/${session.current_kernel_id}/status`)
+      .then((r) => {
+        setKernelAlive(r.ok);
+        return r.ok ? r.json() : null;
+      })
+      .then((data) => {
+        if (data && data.alive !== undefined) setKernelAlive(data.alive);
+      })
+      .catch(() => setKernelAlive(false));
+  }, [gatewayUrl, session.current_kernel_id]);
+
+  const copyField = (value: string, field: string) => {
+    navigator.clipboard.writeText(value);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 1500);
+  };
+
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2.5">
-      <Terminal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-      <div className="flex-1 min-w-0">
-        <code className="text-xs font-mono block truncate">
+    <div className="rounded-lg border bg-muted/30 px-4 py-3 space-y-1.5">
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase w-16 shrink-0">
+          Session
+        </span>
+        <code className="text-xs font-mono flex-1 truncate">
           {session.acp_session_id}
         </code>
-        <span className="text-[10px] text-muted-foreground">
-          kernel: {session.current_kernel_id.slice(0, 12)}... ·{" "}
-          {session.kernel_count} kernel(s)
-        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 shrink-0"
+          onClick={() => copyField(session.acp_session_id, "session")}
+        >
+          {copiedField === "session" ? (
+            <Check className="h-2.5 w-2.5 text-green-500" />
+          ) : (
+            <Copy className="h-2.5 w-2.5" />
+          )}
+        </Button>
       </div>
-      <HistoryDialog
-        sessionId={session.acp_session_id}
-        kernelId={session.current_kernel_id}
-        gatewayUrl={gatewayUrl}
-      />
-      <DebugDialog
-        kernelId={session.current_kernel_id}
-        sessionId={session.acp_session_id}
-        gatewayUrl={gatewayUrl}
-      />
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-medium text-muted-foreground uppercase w-16 shrink-0">
+          Kernel
+        </span>
+        <code className="text-xs font-mono flex-1 truncate">
+          {session.current_kernel_id}
+        </code>
+        <span className="shrink-0">
+          {kernelAlive === null ? (
+            <Circle className="h-2.5 w-2.5 text-muted-foreground" />
+          ) : kernelAlive ? (
+            <Circle className="h-2.5 w-2.5 fill-green-500 text-green-500" />
+          ) : (
+            <Circle className="h-2.5 w-2.5 fill-destructive text-destructive" />
+          )}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 shrink-0"
+          onClick={() => copyField(session.current_kernel_id, "kernel")}
+        >
+          {copiedField === "kernel" ? (
+            <Check className="h-2.5 w-2.5 text-green-500" />
+          ) : (
+            <Copy className="h-2.5 w-2.5" />
+          )}
+        </Button>
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <span className="text-[10px] text-muted-foreground">
+          {session.kernel_count} kernel(s) ·{" "}
+          {kernelAlive === null
+            ? "检测中..."
+            : kernelAlive
+              ? "运行中"
+              : "已断开"}
+        </span>
+        <div className="flex-1" />
+        <HistoryDialog
+          sessionId={session.acp_session_id}
+          kernelId={session.current_kernel_id}
+          gatewayUrl={gatewayUrl}
+        />
+        <DebugDialog
+          kernelId={session.current_kernel_id}
+          sessionId={session.acp_session_id}
+          gatewayUrl={gatewayUrl}
+        />
+      </div>
     </div>
   );
 }
@@ -575,14 +712,14 @@ function DebugDialog({
 
         {/* Input area */}
         <div className="mt-3 space-y-2 border-t pt-3">
-          <div className="rounded-lg border bg-zinc-900 overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-700/50 bg-zinc-800/50">
-              <span className="text-xs text-zinc-400">
+          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-200 dark:border-zinc-700/50 bg-zinc-100/50 dark:bg-zinc-800/50">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 [{results.length + 1}] Python
               </span>
             </div>
             <textarea
-              className="w-full bg-transparent px-3 py-2 text-sm font-mono min-h-[80px] resize-y text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
+              className="w-full bg-transparent px-3 py-2 text-sm font-mono min-h-[80px] resize-y text-zinc-800 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 focus:outline-none"
               placeholder="# 输入 Python 代码..."
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -616,10 +753,10 @@ function PythonCodeBlock({ code }: { code: string }) {
   const lines = code.split("\n");
 
   return (
-    <div className="rounded-lg border bg-zinc-900 overflow-hidden">
+    <div className="overflow-hidden bg-zinc-50 dark:bg-zinc-900">
       <div className="flex text-xs font-mono">
         {/* Line numbers */}
-        <div className="select-none px-3 py-3 text-right text-zinc-500 bg-zinc-900/80 border-r border-zinc-700/50">
+        <div className="select-none px-3 py-3 text-right text-zinc-400 dark:text-zinc-500 bg-zinc-100/80 dark:bg-zinc-900/80 border-r border-zinc-200 dark:border-zinc-700/50">
           {lines.map((_, i) => (
             <div key={i} className="h-5 leading-5">
               {i + 1}
@@ -628,7 +765,7 @@ function PythonCodeBlock({ code }: { code: string }) {
         </div>
         {/* Code with Python highlighting */}
         <pre className="flex-1 p-3 overflow-x-auto">
-          <code className="text-zinc-200">
+          <code className="text-zinc-800 dark:text-zinc-200">
             {lines.map((line, i) => (
               <div key={i} className="h-5 leading-5">
                 <PythonHighlightedLine line={line} />
@@ -674,7 +811,7 @@ function tokenizePythonLine(line: string): Token[] {
       if (commentMatch[1]) {
         result.push(...tokenizeNonComment(commentMatch[1]));
       }
-      result.push({ text: commentMatch[2], className: "text-zinc-500 italic" });
+      result.push({ text: commentMatch[2], className: "text-zinc-500 dark:text-zinc-500 italic" });
       remaining = "";
       continue;
     }
@@ -693,7 +830,7 @@ function tokenizePythonLine(line: string): Token[] {
     for (const pat of strPatterns) {
       const m = remaining.match(pat);
       if (m && m[2] && m[1].length < earliest.index) {
-        earliest = { index: m[1].length, length: m[2].length, className: "text-emerald-400", match: m[2] };
+        earliest = { index: m[1].length, length: m[2].length, className: "text-emerald-600 dark:text-emerald-400", match: m[2] };
         foundStr = true;
       }
     }
@@ -727,44 +864,44 @@ function tokenizeNonComment(text: string): Token[] {
       )
     ) {
       if (buffer) {
-        tokens.push({ text: buffer, className: "text-zinc-200" });
+        tokens.push({ text: buffer, className: "text-zinc-800 dark:text-zinc-200" });
         buffer = "";
       }
-      tokens.push({ text: word, className: "text-purple-400 font-medium" });
+      tokens.push({ text: word, className: "text-purple-600 dark:text-purple-400 font-medium" });
     } else if (/^(True|False|None)$/.test(word)) {
       if (buffer) {
-        tokens.push({ text: buffer, className: "text-zinc-200" });
+        tokens.push({ text: buffer, className: "text-zinc-800 dark:text-zinc-200" });
         buffer = "";
       }
-      tokens.push({ text: word, className: "text-orange-400" });
+      tokens.push({ text: word, className: "text-orange-600 dark:text-orange-400" });
     } else if (
       /^(print|len|range|int|str|float|list|dict|set|tuple|type|isinstance|getattr|setattr|hasattr|enumerate|zip|map|filter|sorted|reversed|open|super|property|staticmethod|classmethod|chr|ord)$/.test(
         word
       )
     ) {
       if (buffer) {
-        tokens.push({ text: buffer, className: "text-zinc-200" });
+        tokens.push({ text: buffer, className: "text-zinc-800 dark:text-zinc-200" });
         buffer = "";
       }
-      tokens.push({ text: word, className: "text-sky-400" });
+      tokens.push({ text: word, className: "text-sky-600 dark:text-sky-400" });
     } else if (/^\d+\.?\d*(?:e[+-]?\d+)?$/.test(word)) {
       if (buffer) {
-        tokens.push({ text: buffer, className: "text-zinc-200" });
+        tokens.push({ text: buffer, className: "text-zinc-800 dark:text-zinc-200" });
         buffer = "";
       }
-      tokens.push({ text: word, className: "text-amber-300" });
+      tokens.push({ text: word, className: "text-amber-600 dark:text-amber-300" });
     } else if (/^@\w+/.test(word)) {
       if (buffer) {
-        tokens.push({ text: buffer, className: "text-zinc-200" });
+        tokens.push({ text: buffer, className: "text-zinc-800 dark:text-zinc-200" });
         buffer = "";
       }
-      tokens.push({ text: word, className: "text-yellow-400" });
+      tokens.push({ text: word, className: "text-yellow-600 dark:text-yellow-400" });
     } else {
       buffer += word;
     }
   }
   if (buffer) {
-    tokens.push({ text: buffer, className: "text-zinc-200" });
+    tokens.push({ text: buffer, className: "text-zinc-800 dark:text-zinc-200" });
   }
   return tokens;
 }
@@ -772,6 +909,7 @@ function tokenizeNonComment(text: string): Token[] {
 function JsonViewer({ data }: { data: unknown }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReturnType<typeof createJSONEditor> | null>(null);
+  const isDark = document.documentElement.classList.contains("dark");
 
   useEffect(() => {
     if (containerRef.current && !editorRef.current) {
@@ -795,7 +933,7 @@ function JsonViewer({ data }: { data: unknown }) {
     };
   }, [data]);
 
-  return <div ref={containerRef} className="jse-theme-dark min-h-[200px]" />;
+  return <div ref={containerRef} className={`${isDark ? "jse-theme-dark" : ""} min-h-[200px]`} />;
 }
 
 function RichOutput({ result }: { result: LogEntry }) {
@@ -809,7 +947,7 @@ function RichOutput({ result }: { result: LogEntry }) {
           return (
             <pre
               key={i}
-              className={`whitespace-pre-wrap ${output.stream_name === "stderr" ? "text-yellow-500" : "text-zinc-200"}`}
+              className={`whitespace-pre-wrap ${output.stream_name === "stderr" ? "text-yellow-500" : "text-zinc-800 dark:text-zinc-200"}`}
             >
               {output.text}
             </pre>
@@ -843,7 +981,7 @@ function RichOutput({ result }: { result: LogEntry }) {
             return (
               <iframe
                 key={i}
-                srcDoc={`<style>body{background:#1a1a2e;color:#eee;font-family:monospace;margin:8px;}</style>${data["text/html"]}`}
+                srcDoc={`<style>body{color-scheme:light dark;font-family:monospace;margin:8px;}@media(prefers-color-scheme:dark){body{background:#1a1a2e;color:#eee;}}@media(prefers-color-scheme:light){body{background:#fff;color:#222;}}</style>${data["text/html"]}`}
                 className="w-full min-h-[120px] border rounded"
                 sandbox=""
               />
@@ -851,7 +989,7 @@ function RichOutput({ result }: { result: LogEntry }) {
           }
           if (data["text/plain"]) {
             return (
-              <pre key={i} className="text-emerald-400 whitespace-pre-wrap">
+              <pre key={i} className="text-emerald-700 dark:text-emerald-400 whitespace-pre-wrap">
                 {data["text/plain"]}
               </pre>
             );
@@ -884,164 +1022,6 @@ function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
-function DebugExecutorSection({
-  gatewayUrl,
-  activeKernels,
-}: {
-  gatewayUrl: string;
-  activeKernels: Array<{ kernel_id: string; session_id: string }>;
-}) {
-  const [kernelId, setKernelId] = useState("");
-  const [code, setCode] = useState("");
-  const [executing, setExecuting] = useState(false);
-  const [result, setResult] = useState<unknown>(null);
-  const [mode, setMode] = useState<"rich" | "json">("rich");
-  const jsonEditorRef = useRef<HTMLDivElement>(null);
-  const editorInstance = useRef<ReturnType<typeof createJSONEditor> | null>(
-    null
-  );
-
-  const execute = async () => {
-    if (!kernelId || !code) return;
-    setExecuting(true);
-    try {
-      const res = await fetch(`${gatewayUrl}${API_PREFIX}/execute`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kernel_id: kernelId, code, description: "debug" }),
-      });
-      const data = await res.json();
-      setResult(data);
-    } catch (err) {
-      setResult({
-        status: "error",
-        error: { name: "FetchError", value: String(err), traceback: [] },
-      });
-    }
-    setExecuting(false);
-  };
-
-  useEffect(() => {
-    if (mode === "json" && jsonEditorRef.current && result) {
-      if (!editorInstance.current) {
-        editorInstance.current = createJSONEditor({
-          target: jsonEditorRef.current,
-          props: {
-            mode: Mode.tree,
-            readOnly: true,
-            content: { json: result },
-          },
-        });
-      } else {
-        editorInstance.current.set({ json: result });
-      }
-    }
-  }, [mode, result]);
-
-  useEffect(() => {
-    return () => {
-      if (editorInstance.current) {
-        editorInstance.current.destroy();
-        editorInstance.current = null;
-      }
-    };
-  }, []);
-
-  return (
-    <section className="rounded-xl border bg-card p-5 space-y-3">
-      <h2 className="font-semibold">Debug 执行器</h2>
-      <div className="flex items-center gap-2">
-        <label className="text-xs shrink-0">Kernel</label>
-        {activeKernels.length > 0 ? (
-          <Select value={kernelId} onValueChange={setKernelId}>
-            <SelectTrigger className="flex-1 h-8 text-xs font-mono">
-              <SelectValue placeholder="选择活跃的 Kernel..." />
-            </SelectTrigger>
-            <SelectContent>
-              {activeKernels.map((k) => (
-                <SelectItem
-                  key={k.kernel_id}
-                  value={k.kernel_id}
-                  className="text-xs font-mono"
-                >
-                  {k.kernel_id.slice(0, 12)}... ({k.session_id})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <input
-            className="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-mono"
-            placeholder="粘贴 kernel id（无活跃 kernel）..."
-            value={kernelId}
-            onChange={(e) => setKernelId(e.target.value)}
-          />
-        )}
-      </div>
-      <div className="rounded-lg border bg-zinc-900 overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-1.5 border-b border-zinc-700/50 bg-zinc-800/50">
-          <span className="text-xs text-zinc-400">Python</span>
-        </div>
-        <textarea
-          className="w-full bg-transparent px-3 py-2 text-sm font-mono min-h-[120px] resize-y text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
-          placeholder="# 输入 Python 代码..."
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              execute();
-            }
-          }}
-        />
-      </div>
-      <div className="flex items-center gap-3">
-        <Button
-          size="sm"
-          onClick={execute}
-          disabled={executing || !kernelId || !code}
-        >
-          <Play className="h-3 w-3 mr-1" />
-          {executing ? "执行中..." : "执行"}
-          <kbd className="ml-2 text-[10px] opacity-60">⌘↵</kbd>
-        </Button>
-        <div className="flex rounded-md border text-xs overflow-hidden">
-          <button
-            className={`px-2.5 py-1 transition-colors ${
-              mode === "rich"
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-muted"
-            }`}
-            onClick={() => setMode("rich")}
-          >
-            <Eye className="h-3 w-3 inline mr-1" />
-            Rich
-          </button>
-          <button
-            className={`px-2.5 py-1 transition-colors ${
-              mode === "json"
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-muted"
-            }`}
-            onClick={() => setMode("json")}
-          >
-            <Code2 className="h-3 w-3 inline mr-1" />
-            JSON
-          </button>
-        </div>
-      </div>
-      {result !== null && (
-        <div className="rounded-lg border bg-muted/30 p-3 max-h-[400px] overflow-auto">
-          {mode === "rich" ? (
-            <RichOutput result={result as LogEntry} />
-          ) : (
-            <div ref={jsonEditorRef} className="jse-theme-dark" />
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
 
 function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
   const [skills, setSkills] = useState<SkillMeta[]>([]);
@@ -1205,7 +1185,7 @@ function McpConfigSection({
     return JSON.stringify(
       {
         mcpServers: {
-          "viben-python": {
+          "viben-python-mcp": {
             url: `${mcpServerUrl}?session_id=${activeSessionId}`,
             transport: "streamable-http",
           },
@@ -1217,15 +1197,16 @@ function McpConfigSection({
   }, [mcpServerUrl, activeSessionId]);
 
   const mcpConfigHeader = useMemo(() => {
-    const headers: Record<string, string> = {};
-    if (activeSessionId) headers["X-Viben-Session-Id"] = activeSessionId;
+    const headers: Record<string, string> = {
+      "X-Viben-Session-Id": activeSessionId ?? "<your-session-id>",
+    };
     return JSON.stringify(
       {
         mcpServers: {
-          "viben-python": {
+          "viben-python-mcp": {
             url: mcpServerUrl,
             transport: "streamable-http",
-            ...(Object.keys(headers).length > 0 ? { headers } : {}),
+            headers,
           },
         },
       },

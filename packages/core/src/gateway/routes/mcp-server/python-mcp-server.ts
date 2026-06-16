@@ -208,6 +208,30 @@ export function registerPythonMcpServerRoutes(fastify: FastifyInstance): void {
     return await sessionManager.getHistory(id);
   });
 
+  fastify.get(`${MANAGEMENT_PREFIX}/kernel/:kernelId/status`, async (request) => {
+    const { kernelId } = request.params as { kernelId: string };
+    const config = await loadConfig();
+    const jupyterUrl = (request.headers["x-jupyter-url"] as string) || config.jupyter_url;
+    const jupyterToken = (request.headers["x-jupyter-token"] as string) || config.jupyter_token;
+    const client = new JupyterClient(jupyterUrl, jupyterToken);
+    try {
+      const status = await client.getKernelStatus(kernelId);
+      return { alive: status === "alive", status };
+    } catch {
+      return { alive: false, status: "dead" };
+    }
+  });
+
+  fastify.post(`${MANAGEMENT_PREFIX}/sessions/temp`, async (request) => {
+    const config = await loadConfig();
+    const jupyterUrl = (request.headers["x-jupyter-url"] as string) || config.jupyter_url;
+    const jupyterToken = (request.headers["x-jupyter-token"] as string) || config.jupyter_token;
+    const client = new JupyterClient(jupyterUrl, jupyterToken);
+    const tempSessionId = `temp-${randomUUID()}`;
+    const kernelId = await sessionManager.getActiveKernel(tempSessionId, client);
+    return { acp_session_id: tempSessionId, kernel_id: kernelId };
+  });
+
   fastify.post(`${MANAGEMENT_PREFIX}/execute`, async (request) => {
     const { kernel_id, code } = request.body as {
       kernel_id: string;
