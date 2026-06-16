@@ -371,3 +371,55 @@ export interface Account {
 export interface AccountsFile {
   accounts: Account[];
 }
+
+// --- Watchlist & Leaderboard types ---
+
+export interface WatchlistSymbolEntry {
+  symbol: string;
+  annotation: string;
+  added_at: string;
+}
+
+export interface WatchlistConfig {
+  id: string;
+  name: string;
+  color: string;
+  refresh_interval: number;
+  refresh_prompt: string;
+  symbols: WatchlistSymbolEntry[];
+  column_config: string[];
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  session_id: string;
+  session_name: string;
+  cumulative_return_pct: number;
+  max_drawdown_pct: number;
+  sharpe_ratio: number;
+  win_rate: number;
+  profit_loss_ratio: number;
+  daily_return_pct: number;
+  nav_history: number[];
+  symbols_count: number;
+  last_trade_time: string;
+  running_days: number;
+  total_trades: number;
+  agent_config: SessionInitEvent["agent_config"];
+}
+
+export interface MarketQuote {
+  symbol: string;
+  last_price: number;
+  open_price: number;
+  high_price: number;
+  low_price: number;
+  prev_close: number;
+  change: number;
+  change_pct: number;
+  volume: number;
+  turnover: number;
+  turnover_rate: number;
+  amplitude: number;
+  [key: string]: unknown;
+}

@@ -202,7 +202,7 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
   }, []);
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white">
+    <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card">
       <div className="flex items-center gap-2">
         <span className={`w-2 h-2 rounded-full ${statusColor} ${status === "running" ? "animate-pulse" : ""}`} />
         <h1 className="text-lg font-semibold">{sessionName}</h1>
@@ -212,14 +212,14 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
         {/* Info group: strategy & account */}
         <button
           onClick={() => setShowStrategy(true)}
-          className="px-3 py-1.5 text-sm rounded-md border border-slate-300 hover:bg-slate-50"
+          className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted"
           title="查看和编辑策略配置"
         >
           策略
         </button>
         <button
           onClick={() => setShowAccounts(true)}
-          className="px-3 py-1.5 text-sm rounded-md border border-slate-300 hover:bg-slate-50"
+          className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted"
           title="管理交易账户"
         >
           账户
@@ -232,7 +232,7 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
           className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
             mode === "replay"
               ? "border-cyan-500 bg-cyan-50 text-cyan-700"
-              : "border-slate-300 hover:bg-slate-50 text-slate-600"
+              : "border-border hover:bg-muted text-muted-foreground"
           }`}
           title={mode === "replay" ? "切回实时模式" : "进入回放模式"}
         >
@@ -240,7 +240,7 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
         </button>
 
         {/* Separator between info and control groups */}
-        <div className="w-px h-6 bg-slate-200" />
+        <div className="w-px h-6 bg-border" />
 
         {/* Control group: cycle, pause/resume, stop */}
         {status === "running" && (
@@ -259,7 +259,7 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
         )}
 
         {cycleResult && (
-          <span className="text-xs text-slate-500 max-w-[200px] truncate" title={cycleResult}>
+          <span className="text-xs text-muted-foreground max-w-[200px] truncate" title={cycleResult}>
             {cycleResult}
           </span>
         )}
@@ -268,7 +268,7 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
           <button
             onClick={handlePause}
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-slate-300 hover:bg-slate-50 disabled:opacity-50 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted disabled:opacity-50 transition-opacity"
             title="暂停策略运行，可随时恢复"
           >
             {isPending ? <Spinner /> : <PauseIcon />}
@@ -306,7 +306,7 @@ export function TopNav({ sessionName, status, tags, sessionId, sessions, agentCo
             {stopConfirm && (
               <button
                 onClick={handleStopCancel}
-                className="ml-1 px-2 py-1.5 text-xs text-slate-500 hover:text-slate-700 rounded-md hover:bg-slate-100 transition-colors"
+                className="ml-1 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
                 title="取消停止操作"
               >
                 取消

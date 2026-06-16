@@ -17,11 +17,11 @@ import { OnboardingDashboard } from "./components/onboarding-dashboard";
 import { ResizableSidebar } from "./components/ui/resizable-sidebar";
 
 interface Props {
-  searchParams: Promise<{ session?: string; create?: string }>;
+  searchParams: Promise<{ session?: string; create?: string; workspace_path?: string }>;
 }
 
 export default async function TradingPage({ searchParams }: Props) {
-  const { session: sessionParam, create } = await searchParams;
+  const { session: sessionParam, create, workspace_path } = await searchParams;
   const sessions = await listSessionSummaries();
 
   if (create === "true") {
@@ -75,6 +75,7 @@ export default async function TradingPage({ searchParams }: Props) {
                 exchange={state.exchange}
                 navHistory={state.nav_history ?? []}
                 initialNav={Object.values(state.initial_balance ?? {}).reduce((s, v) => s + v, 0)}
+                workspacePath={workspace_path}
               />
               <DataPanelWrapper
                 positions={state.positions}

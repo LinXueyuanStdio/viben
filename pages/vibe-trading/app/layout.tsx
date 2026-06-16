@@ -7,8 +7,11 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
-      <body className="min-h-screen bg-white text-slate-900 antialiased">
+    <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=new URLSearchParams(location.search).get('theme');if(t==='dark')document.documentElement.classList.add('dark');})();` }} />
+      </head>
+      <body className="min-h-screen bg-background text-foreground antialiased">
         {children}
       </body>
     </html>

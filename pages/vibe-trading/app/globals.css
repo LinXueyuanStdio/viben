@@ -1,17 +1,60 @@
 @import "tailwindcss";
 
+:root {
+  --background: oklch(98% 0 0);
+  --foreground: oklch(15% 0 0);
+  --card: oklch(100% 0 0);
+  --primary: oklch(55% 0.15 200);
+  --muted: oklch(95% 0.01 260);
+  --muted-foreground: oklch(45% 0.02 260);
+  --accent: oklch(60% 0.15 200);
+  --border: oklch(90% 0.01 260);
+  --ring: oklch(55% 0.15 200);
+  --destructive: oklch(55% 0.2 25);
+  --success: oklch(55% 0.15 145);
+  --warning: oklch(65% 0.15 80);
+  --gain: oklch(55% 0.15 145);
+  --loss: oklch(55% 0.2 25);
+}
+
+.dark {
+  --background: oklch(15% 0.01 260);
+  --foreground: oklch(95% 0 0);
+  --card: oklch(18% 0.01 260);
+  --primary: oklch(65% 0.15 200);
+  --muted: oklch(22% 0.02 260);
+  --muted-foreground: oklch(65% 0.02 260);
+  --accent: oklch(50% 0.15 200);
+  --border: oklch(25% 0.02 260);
+  --ring: oklch(65% 0.15 200);
+  --destructive: oklch(65% 0.2 25);
+  --success: oklch(65% 0.15 145);
+  --warning: oklch(72% 0.15 80);
+  --gain: oklch(65% 0.15 145);
+  --loss: oklch(65% 0.2 25);
+}
+
 @theme {
-  --color-primary: #0891B2;
-  --color-gain: #16a34a;
-  --color-loss: #dc2626;
-  --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro", "Inter", sans-serif;
-  background: var(--color-surface);
-  color: #0f172a;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 /* ─── Flash animations for price changes ─────────────────────────────────── */

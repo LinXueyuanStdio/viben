@@ -4,6 +4,7 @@ import { useMemo, useEffect, useRef } from "react";
 import { useSessionState } from "@/app/context/session-state-context";
 import { useVibenPage } from "@/app/hooks/use-viben-page";
 import { useVibenConnection } from "@/app/context/viben-connection-context";
+import { watchlistEvents } from "@/app/hooks/watchlist-events";
 
 interface VibenActionProviderProps {
   sessionId: string;
@@ -143,6 +144,173 @@ export function VibenActionProvider({ sessionId }: VibenActionProviderProps) {
           const index = p?.index ?? 0;
           replay.seek(index);
           return `Seeked to event #${index + 1}/${replay.totalEvents}`;
+        },
+      },
+
+      "watchlist.getLists": {
+        description: "获取所有自选列表摘要",
+        execute: async () => {
+          const res = await fetch(`/api/watchlist`);
+          const data = await res.json();
+          return data.lists;
+        },
+      },
+
+      "watchlist.getList": {
+        description: "获取单个自选列表详情（标的+配置）",
+        inputSchema: {
+          type: "object",
+          properties: {
+            list_id: { type: "string", description: "列表 ID" },
+          },
+          required: ["list_id"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { list_id: string };
+          const res = await fetch(`/api/watchlist/${p.list_id}`);
+          if (!res.ok) throw new Error("List not found");
+          const data = await res.json();
+          return data.list;
+        },
+      },
+
+      "watchlist.createList": {
+        description: "创建新的自选列表",
+        inputSchema: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "列表名称" },
+            color: { type: "string", description: "标签颜色（hex）" },
+            refresh_interval: { type: "number", description: "刷新周期（秒）" },
+            refresh_prompt: { type: "string", description: "AI 刷新指令" },
+          },
+          required: ["name"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { name: string; color?: string; refresh_interval?: number; refresh_prompt?: string };
+          const res = await fetch("/api/watchlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(p),
+          });
+          const data = await res.json();
+          watchlistEvents.emit();
+          return data.list;
+        },
+      },
+
+      "watchlist.deleteList": {
+        description: "删除自选列表",
+        inputSchema: {
+          type: "object",
+          properties: {
+            list_id: { type: "string", description: "列表 ID" },
+          },
+          required: ["list_id"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { list_id: string };
+          const res = await fetch(`/api/watchlist/${p.list_id}`, { method: "DELETE" });
+          if (!res.ok) throw new Error("Delete failed");
+          watchlistEvents.emit();
+          return "Deleted";
+        },
+      },
+
+      "watchlist.updateList": {
+        description: "修改自选列表配置（名称、颜色、刷新周期、prompt）",
+        inputSchema: {
+          type: "object",
+          properties: {
+            list_id: { type: "string", description: "列表 ID" },
+            name: { type: "string", description: "新名称" },
+            color: { type: "string", description: "新颜色" },
+            refresh_interval: { type: "number", description: "新刷新周期" },
+            refresh_prompt: { type: "string", description: "新 AI 指令" },
+          },
+          required: ["list_id"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { list_id: string; [key: string]: unknown };
+          const { list_id, ...updates } = p;
+          const res = await fetch(`/api/watchlist/${list_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          });
+          const data = await res.json();
+          watchlistEvents.emit();
+          return data.list;
+        },
+      },
+
+      "watchlist.addSymbols": {
+        description: "向自选列表添加标的",
+        inputSchema: {
+          type: "object",
+          properties: {
+            list_id: { type: "string", description: "列表 ID" },
+            symbols: { type: "array", items: { type: "string" }, description: "要添加的标的代码列表" },
+          },
+          required: ["list_id", "symbols"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { list_id: string; symbols: string[] };
+          const res = await fetch(`/api/watchlist/${p.list_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "add_symbols", symbols: p.symbols }),
+          });
+          const data = await res.json();
+          watchlistEvents.emit();
+          return data.list;
+        },
+      },
+
+      "watchlist.removeSymbols": {
+        description: "从自选列表移除标的",
+        inputSchema: {
+          type: "object",
+          properties: {
+            list_id: { type: "string", description: "列表 ID" },
+            symbols: { type: "array", items: { type: "string" }, description: "要移除的标的代码列表" },
+          },
+          required: ["list_id", "symbols"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { list_id: string; symbols: string[] };
+          const res = await fetch(`/api/watchlist/${p.list_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "remove_symbols", symbols: p.symbols }),
+          });
+          const data = await res.json();
+          watchlistEvents.emit();
+          return data.list;
+        },
+      },
+
+      "watchlist.setAnnotation": {
+        description: "设置标的的 AI 标注",
+        inputSchema: {
+          type: "object",
+          properties: {
+            list_id: { type: "string", description: "列表 ID" },
+            symbol: { type: "string", description: "标的代码" },
+            annotation: { type: "string", description: "标注文本" },
+          },
+          required: ["list_id", "symbol", "annotation"],
+        },
+        execute: async (payload: unknown) => {
+          const p = payload as { list_id: string; symbol: string; annotation: string };
+          const res = await fetch(`/api/watchlist/${p.list_id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "set_annotation", symbol: p.symbol, annotation: p.annotation }),
+          });
+          if (!res.ok) throw new Error("Set annotation failed");
+          watchlistEvents.emit();
+          return "Annotation set";
         },
       },
     }),

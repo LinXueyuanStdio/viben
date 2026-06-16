@@ -121,13 +121,13 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-xl shadow-xl w-[560px] max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40">
+      <div className="bg-card rounded-xl shadow-xl w-[560px] max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">账户管理</h2>
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm border border-slate-300 rounded-md hover:bg-slate-50"
+            className="px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted"
           >
             关闭
           </button>
@@ -139,8 +139,8 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
         <div
           className={`mb-4 px-4 py-2 rounded-md text-sm ${
             message.type === "success"
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-gain/10 text-gain border border-gain/30"
+              : "bg-loss/10 text-loss border border-loss/30"
           }`}
         >
           {message.text}
@@ -150,7 +150,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
       {/* Account list */}
       <div className="space-y-3 mb-6">
         {accounts.length === 0 ? (
-          <div className="text-center py-8 text-slate-500 border border-dashed border-slate-300 rounded-md">
+          <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-md">
             暂无账户，点击下方按钮添加
           </div>
         ) : (
@@ -159,13 +159,13 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
             return (
               <div
                 key={account.id}
-                className="border border-slate-200 rounded-md p-4 bg-white"
+                className="border border-border rounded-md p-4 bg-card"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm">{account.name}</span>
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-600">
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-muted text-muted-foreground">
                         {account.exchange.toUpperCase()}
                       </span>
                       {account.is_demo && (

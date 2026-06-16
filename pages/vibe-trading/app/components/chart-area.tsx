@@ -5,9 +5,14 @@ import type { ExchangeId, NavPoint } from "@/lib/types";
 import { toTradingViewSymbol } from "@/lib/tradingview";
 import { NavChart } from "./nav-chart";
 import dynamic from "next/dynamic";
+import { Leaderboard } from "./leaderboard/leaderboard";
+import { Watchlist } from "./watchlist/watchlist";
+import { SymbolDetail } from "./symbol-detail";
 
 const ReplayKlineChart = dynamic(() => import("./replay-kline-chart"), { ssr: false });
 import { useSessionState } from "@/app/context/session-state-context";
+
+type ChartTab = "kline" | "nav" | "leaderboard" | "watchlist" | "detail";
 
 interface ChartAreaProps {
   sessionId: string;
@@ -15,16 +20,17 @@ interface ChartAreaProps {
   exchange: ExchangeId;
   navHistory: NavPoint[];
   initialNav: number;
+  workspacePath?: string;
 }
 
-export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHistory, initialNav: propInitialNav }: ChartAreaProps) {
+export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHistory, initialNav: propInitialNav, workspacePath }: ChartAreaProps) {
   const { state, mode } = useSessionState();
   const navHistory = state.nav_history.length > 0 ? state.nav_history : propNavHistory;
   const initialNav = Object.keys(state.initial_balance).length > 0
     ? Object.values(state.initial_balance).reduce((s, v) => s + v, 0)
     : propInitialNav;
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<"kline" | "nav">("kline");
+  const [activeTab, setActiveTab] = useState<ChartTab>("kline");
   const [selectedSymbol, setSelectedSymbol] = useState((symbols ?? [])[0] ?? "BTCUSDT");
 
   useEffect(() => {
@@ -66,28 +72,46 @@ export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHis
     containerRef.current.appendChild(wrapper);
   }, [activeTab, selectedSymbol, exchange, mode]);
 
+  const tabs: { key: ChartTab; label: string }[] = [
+    { key: "kline", label: "行情图表" },
+    { key: "nav", label: "净值曲线" },
+    { key: "leaderboard", label: "榜单" },
+    { key: "watchlist", label: "自选" },
+  ];
+
   return (
-    <div className="flex-1 min-h-0 flex flex-col border-b border-slate-200">
-      <div className="flex items-center justify-between px-6 py-2 border-b border-slate-100">
+    <div className="flex-1 min-h-0 flex flex-col border-b border-border">
+      <div className="flex items-center justify-between px-6 py-2 border-b border-border">
         <div className="flex gap-4">
-          <button
-            onClick={() => setActiveTab("kline")}
-            className={`text-sm pb-1 ${activeTab === "kline" ? "text-primary border-b-2 border-primary font-medium" : "text-slate-500"}`}
-          >
-            行情图表
-          </button>
-          <button
-            onClick={() => setActiveTab("nav")}
-            className={`text-sm pb-1 ${activeTab === "nav" ? "text-primary border-b-2 border-primary font-medium" : "text-slate-500"}`}
-          >
-            净值曲线
-          </button>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`text-sm pb-1 ${activeTab === tab.key ? "text-primary border-b-2 border-primary font-medium" : "text-muted-foreground"}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          {activeTab === "detail" && (
+            <span className="flex items-center gap-1.5 text-sm pb-1 text-primary border-b-2 border-primary font-medium">
+              {selectedSymbol}
+              <button
+                onClick={() => setActiveTab("watchlist")}
+                className="ml-1 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </span>
+          )}
         </div>
         {activeTab === "kline" && symbols.length > 1 && (
           <select
             value={selectedSymbol}
             onChange={(e) => setSelectedSymbol(e.target.value)}
-            className="text-sm border border-slate-200 rounded px-2 py-1"
+            className="text-sm border border-border rounded px-2 py-1"
           >
             {symbols.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -102,8 +126,17 @@ export function ChartArea({ sessionId, symbols, exchange, navHistory: propNavHis
           ) : (
             <div ref={containerRef} className="h-full w-full" />
           )
-        ) : (
+        ) : activeTab === "nav" ? (
           <NavChart navHistory={navHistory} initialNav={initialNav} />
+        ) : activeTab === "leaderboard" ? (
+          <Leaderboard />
+        ) : activeTab === "detail" ? (
+          <SymbolDetail symbol={selectedSymbol} exchange={exchange} />
+        ) : (
+          <Watchlist
+            workspacePath={workspacePath}
+            onSymbolClick={(sym) => { setSelectedSymbol(sym); setActiveTab("detail"); }}
+          />
         )}
       </div>
     </div>
