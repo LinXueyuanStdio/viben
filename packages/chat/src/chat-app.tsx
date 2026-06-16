@@ -48,6 +48,7 @@ import type {
   MessageAttachment,
   PendingQuestion,
   SubagentOpenContext,
+  SummaryMessageData,
   TaskPlan,
 } from "./types";
 
@@ -100,6 +101,10 @@ export interface ChatAppProps {
   artifacts?: Artifact[];
   onExpandSubagent?: ExpandSubagentHandler;
   onInspectTool?: InspectToolHandler;
+  /** Custom renderer for summary messages. */
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  /** Custom link handler for markdown links. */
+  onLinkClick?: (href: string) => void;
   subagentSheet?: ChatAppSubagentSheetState;
   loadSubagentDetails?: LoadSubagentDetails;
   onArtifactClick?: (artifactId: string) => void;
@@ -147,6 +152,9 @@ export interface ChatAppSubagentSheetState {
   subagentType?: string;
   messages: AgentMessage[];
   liveMessages?: AgentMessage[];
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
+  isStreamingOutput?: boolean;
+  streamingText?: string | null;
   answer?: AgentMessage["output"];
   context?: SubagentOpenContext;
   loadSubagentDetails?: LoadSubagentDetails;
@@ -177,6 +185,8 @@ export interface ChatAppFullscreenMessagePanelProps {
   onExpandSubagent?: ExpandSubagentHandler;
   onInspectTool?: InspectToolHandler;
   onArtifactClick?: (artifactId: string) => void;
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  onLinkClick?: (href: string) => void;
   onApprovePlan?: () => void;
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
@@ -268,6 +278,8 @@ export function ChatApp({
   artifacts,
   onExpandSubagent,
   onInspectTool,
+  renderSummary,
+  onLinkClick,
   subagentSheet,
   loadSubagentDetails,
   onArtifactClick,
@@ -670,6 +682,8 @@ export function ChatApp({
           onExpandSubagent={onExpandSubagent}
           onInspectTool={onInspectTool}
           onArtifactClick={onArtifactClick}
+          renderSummary={renderSummary}
+          onLinkClick={onLinkClick}
           pendingPlan={pendingPlan}
           pendingApproval={pendingApproval}
           pendingQuestion={pendingQuestion}
@@ -772,6 +786,9 @@ export function ChatApp({
             subagentType={subagentSheet.subagentType}
             messages={subagentSheet.messages}
             liveMessages={subagentSheet.liveMessages}
+            messageUpdates={subagentSheet.messageUpdates}
+            isStreamingOutput={subagentSheet.isStreamingOutput}
+            streamingText={subagentSheet.streamingText}
             answer={subagentSheet.answer}
             context={subagentSheet.context}
             loadSubagentDetails={subagentSheet.loadSubagentDetails ?? loadSubagentDetails}
@@ -782,6 +799,8 @@ export function ChatApp({
               assistantAvatar: staticAssistantAvatar,
               artifacts,
               onArtifactClick,
+              renderSummary,
+              onLinkClick,
             }}
           />
         )}
@@ -1037,6 +1056,8 @@ export function ChatAppFullscreenMessagePanel({
   onExpandSubagent,
   onInspectTool,
   onArtifactClick,
+  renderSummary,
+  onLinkClick,
   onApprovePlan,
   onRejectPlan,
   onApprovalDecision,
@@ -1065,6 +1086,8 @@ export function ChatAppFullscreenMessagePanel({
       onExpandSubagent={onExpandSubagent}
       onInspectTool={onInspectTool}
       onArtifactClick={onArtifactClick}
+      renderSummary={renderSummary}
+      onLinkClick={onLinkClick}
       onApprovePlan={onApprovePlan}
       onRejectPlan={onRejectPlan}
       onApprovalDecision={onApprovalDecision}
@@ -1287,6 +1310,8 @@ function ChatAppMessagePanel({
   onExpandSubagent,
   onInspectTool,
   onArtifactClick,
+  renderSummary,
+  onLinkClick,
   onApprovePlan,
   onRejectPlan,
   onApprovalDecision,
@@ -1311,6 +1336,8 @@ function ChatAppMessagePanel({
   onExpandSubagent?: ExpandSubagentHandler;
   onInspectTool?: InspectToolHandler;
   onArtifactClick?: (artifactId: string) => void;
+  renderSummary?: (data: SummaryMessageData, message: AgentMessage) => React.ReactNode;
+  onLinkClick?: (href: string) => void;
   onApprovePlan?: () => void;
   onRejectPlan?: () => void;
   onApprovalDecision?: (decision: string, feedback?: string) => void;
@@ -1339,6 +1366,8 @@ function ChatAppMessagePanel({
       onExpandSubagent={onExpandSubagent}
       onInspectTool={onInspectTool}
       onArtifactClick={onArtifactClick}
+      renderSummary={renderSummary}
+      onLinkClick={onLinkClick}
       onApprovePlan={onApprovePlan}
       onRejectPlan={onRejectPlan}
       onApprovalDecision={onApprovalDecision}

@@ -1613,6 +1613,9 @@ importers:
       '@viben/browse-sdk':
         specifier: workspace:*
         version: link:../browse-sdk
+      '@viben/page-sdk':
+        specifier: workspace:*
+        version: link:../page-sdk
       adm-zip:
         specifier: ^0.5.17
         version: 0.5.17
@@ -2098,6 +2101,28 @@ importers:
       vitest:
         specifier: ^3.2.1
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.8.0)(jiti@2.7.0)(jsdom@28.0.0)(lightningcss@1.32.0)(sass@1.99.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.9.0)
+
+  packages/page-sdk:
+    dependencies:
+      '@noble/ed25519':
+        specifier: ^3.1.0
+        version: 3.1.0
+      socket.io-client:
+        specifier: ^4.8.3
+        version: 4.8.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.8
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   packages/pet:
     dependencies:

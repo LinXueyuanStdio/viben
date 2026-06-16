@@ -51,6 +51,12 @@ export interface SubagentSheetProps {
   messages: AgentMessage[];
   /** Transient messages that update while the parent Agent/Task is still running. */
   liveMessages?: AgentMessage[];
+  /** Per-message live overlays (e.g. tool output progress). */
+  messageUpdates?: Record<string, Partial<AgentMessage>>;
+  /** Whether the subagent is currently streaming output. */
+  isStreamingOutput?: boolean;
+  /** Streaming text content rendered as a separate sibling after the message list. */
+  streamingText?: string | null;
   /** Final answer/output from the Agent/Task tool (tool_result). */
   answer?: AgentMessage["output"];
   context?: SubagentOpenContext;
@@ -95,6 +101,9 @@ export function SubagentSheet({
   subagentType,
   messages,
   liveMessages,
+  messageUpdates,
+  isStreamingOutput,
+  streamingText,
   answer,
   context,
   loadSubagentDetails,
@@ -335,6 +344,9 @@ export function SubagentSheet({
               )}
               <MessageList
                 messages={displayMessages}
+                messageUpdates={messageUpdates}
+                isStreaming={isStreamingOutput}
+                streamingText={streamingText}
                 simpleMode
                 maxMessageWidth="100%"
                 onExpandSubagent={onExpandSubagent}
