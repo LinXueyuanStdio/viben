@@ -309,6 +309,36 @@ function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, 
           query_params: entry.queryParams ?? [],
         })),
       };
+    case "list_navigation_paths":
+      return {
+        name: "list_navigation_paths",
+        description: "List all navigable in-app route patterns with their titles, parameters, and categories.",
+        input_schema: {
+          type: "object",
+          properties: {},
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            content: { type: "array" },
+          },
+        },
+      };
+    case "current_window_state":
+      return {
+        name: "current_window_state",
+        description: "Get current window state as formatted text: open tabs, current URL, workspace info, page tree, navigable paths, auth status, and current time.",
+        input_schema: {
+          type: "object",
+          properties: {},
+        },
+        output_schema: {
+          type: "object",
+          properties: {
+            content: { type: "array" },
+          },
+        },
+      };
     default:
       return null;
   }
@@ -510,6 +540,8 @@ export function getRegistrableBuiltins(): Record<string, {
 }> {
   const readWindow = getBuiltinActionDetail("read_window");
   const navigateTo = getBuiltinActionDetail("navigate_to");
+  const listNavPaths = getBuiltinActionDetail("list_navigation_paths");
+  const windowState = getBuiltinActionDetail("current_window_state");
   return {
     read_window: {
       description: readWindow!.description,
@@ -520,6 +552,16 @@ export function getRegistrableBuiltins(): Record<string, {
       description: navigateTo!.description,
       inputSchema: navigateTo!.input_schema as Record<string, unknown>,
       outputSchema: navigateTo!.output_schema as Record<string, unknown>,
+    },
+    list_navigation_paths: {
+      description: listNavPaths!.description,
+      inputSchema: listNavPaths!.input_schema as Record<string, unknown>,
+      outputSchema: listNavPaths!.output_schema as Record<string, unknown>,
+    },
+    current_window_state: {
+      description: windowState!.description,
+      inputSchema: windowState!.input_schema as Record<string, unknown>,
+      outputSchema: windowState!.output_schema as Record<string, unknown>,
     },
   };
 }
