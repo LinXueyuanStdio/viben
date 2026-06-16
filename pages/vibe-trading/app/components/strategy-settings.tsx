@@ -360,7 +360,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
                       form.indicators.rsi.enabled
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => toggleIndicator("rsi")}
                   >
@@ -379,7 +379,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                         value={form.indicators.rsi.period ?? 14}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => updateIndicatorPeriod("rsi", Number(e.target.value))}
-                        className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs text-center"
+                        className="w-10 px-1 py-0.5 border border-border rounded text-xs text-center"
                       />
                     )}
                   </div>
@@ -389,7 +389,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
                       form.indicators.ema.enabled
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => toggleIndicator("ema")}
                   >
@@ -408,7 +408,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                         value={form.indicators.ema.period ?? 20}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => updateIndicatorPeriod("ema", Number(e.target.value))}
-                        className="w-10 px-1 py-0.5 border border-slate-300 rounded text-xs text-center"
+                        className="w-10 px-1 py-0.5 border border-border rounded text-xs text-center"
                       />
                     )}
                   </div>
@@ -418,7 +418,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
                       form.indicators.macd.enabled
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => toggleIndicator("macd")}
                   >
@@ -436,7 +436,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
                       form.indicators.bollinger.enabled
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => toggleIndicator("bollinger")}
                   >
@@ -454,7 +454,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
                       form.indicators.atr.enabled
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => toggleIndicator("atr")}
                   >
@@ -472,7 +472,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-colors ${
                       form.indicators.volume_ma.enabled
                         ? "border-primary bg-primary/5"
-                        : "border-slate-200 hover:border-primary/50"
+                        : "border-border hover:border-primary/50"
                     }`}
                     onClick={() => toggleIndicator("volume_ma")}
                   >
@@ -515,7 +515,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`px-4 py-2 text-sm rounded-md border transition-colors ${
                       form.market_mode === "simulated"
                         ? "border-amber-400 bg-amber-50 text-amber-700"
-                        : "border-slate-200 text-slate-600 hover:border-amber-300"
+                        : "border-border text-muted-foreground hover:border-warning/50"
                     }`}
                   >
                     模拟市场
@@ -526,14 +526,14 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     className={`px-4 py-2 text-sm rounded-md border transition-colors ${
                       form.market_mode === "real"
                         ? "border-green-400 bg-green-50 text-green-700"
-                        : "border-slate-200 text-slate-600 hover:border-green-300"
+                        : "border-border text-muted-foreground hover:border-gain/50"
                     }`}
                   >
                     真实市场
                   </button>
                 </div>
                 {form.market_mode === "simulated" && (
-                  <div className="mt-2 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                  <div className="mt-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30 text-xs text-warning">
                     模拟模式：使用合成市场数据，不会执行真实交易
                   </div>
                 )}
@@ -588,7 +588,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                 className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                   form.target_tab === "list"
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-slate-200 text-slate-600 hover:border-primary/50"
+                    : "border-border text-muted-foreground hover:border-primary/50"
                 }`}
               >
                 榜单
@@ -598,7 +598,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                 className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                   form.target_tab === "custom"
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-slate-200 text-slate-600 hover:border-primary/50"
+                    : "border-border text-muted-foreground hover:border-primary/50"
                 }`}
               >
                 自选标的
@@ -616,7 +616,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                         selected
                           ? "border-primary bg-primary/5"
-                          : "border-slate-200 hover:border-primary/50"
+                          : "border-border hover:border-primary/50"
                       }`}
                     >
                       <div className="text-sm font-medium mb-1">{card.label}</div>

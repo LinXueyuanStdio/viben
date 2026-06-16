@@ -140,10 +140,10 @@ function TimelineCard({ decision, isFirst }: { decision: DecisionEntry; isFirst:
               {decision.confidence > 0 && (
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-400">置信度</span>
-                    <span className="text-xs text-slate-500 font-mono">{confidencePct}%</span>
+                    <span className="text-xs text-muted-foreground">置信度</span>
+                    <span className="text-xs text-muted-foreground font-mono">{confidencePct}%</span>
                   </div>
-                  <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${confidenceBarColor}`}
                       style={{ width: `${confidencePct}%` }}
@@ -155,7 +155,7 @@ function TimelineCard({ decision, isFirst }: { decision: DecisionEntry; isFirst:
           )}
         </div>
         {(decision.thinking_summary || decision.key_signals) && (
-          <div className="px-3 py-2 border-t border-slate-100">
+          <div className="px-3 py-2 border-t border-border">
             <button
               onClick={() => setExpanded(!expanded)}
               className="text-xs text-primary hover:underline"
@@ -168,7 +168,7 @@ function TimelineCard({ decision, isFirst }: { decision: DecisionEntry; isFirst:
                 maxHeight: expanded ? "500px" : "0px",
               }}
             >
-              <div className="mt-2 text-xs text-slate-500 space-y-1">
+              <div className="mt-2 text-xs text-muted-foreground space-y-1">
                 {decision.thinking_summary && <p>{decision.thinking_summary}</p>}
                 {decision.key_signals?.map((sig, i) => (
                   <p key={i}>
@@ -189,7 +189,7 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
       <svg
-        className="w-12 h-12 text-slate-300 mb-3 float-animation"
+        className="w-12 h-12 text-muted-foreground/60 mb-3 float-animation"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -201,8 +201,8 @@ function EmptyState() {
           d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
         />
       </svg>
-      <p className="text-sm text-slate-500 font-medium mb-1">暂无决策记录</p>
-      <p className="text-xs text-slate-400">AI 将在下一决策周期生成分析</p>
+      <p className="text-sm text-muted-foreground font-medium mb-1">暂无决策记录</p>
+      <p className="text-xs text-muted-foreground/60">AI 将在下一决策周期生成分析</p>
     </div>
   );
 }
