@@ -134,7 +134,10 @@ export function SubagentSheet({
       : (loadedMessages ?? messages);
   const prompt = context?.prompt;
   const displayMessages = useMemo(() => {
-    const merged = mergeToolResultsIntoToolCalls(effectiveMessages);
+    let merged = mergeToolResultsIntoToolCalls(effectiveMessages);
+    if (streamingText && merged.length > 0 && merged[merged.length - 1].type === "text") {
+      merged = merged.slice(0, -1);
+    }
     const result: AgentMessage[] = [];
     if (prompt) {
       result.push({
@@ -157,7 +160,7 @@ export function SubagentSheet({
       }
     }
     return result;
-  }, [effectiveMessages, answer, prompt]);
+  }, [effectiveMessages, answer, prompt, streamingText]);
   const hasDisplayMessages = effectiveMessages.length > 0;
   const effectiveTitle = loadedTitle ?? title;
   const effectiveSubagentType = loadedSubagentType ?? subagentType;
