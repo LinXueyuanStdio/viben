@@ -203,14 +203,14 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-xl shadow-xl w-[640px] max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40">
+      <div className="bg-card rounded-xl shadow-xl w-[640px] max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-lg font-semibold">策略设置</h2>
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-sm border border-slate-300 rounded-md hover:bg-slate-50"
+            className="px-3 py-1.5 text-sm border border-border rounded-md hover:bg-muted"
           >
             关闭
           </button>
@@ -219,19 +219,19 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
         {/* Scrollable content */}
         <div className={`flex-1 overflow-y-auto p-6 space-y-6 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
           {locked && (
-            <div className="pointer-events-auto mb-4 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
+            <div className="pointer-events-auto mb-4 px-4 py-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning">
               策略运行中无法修改配置。如需变更，请先停止当前 session 再创建新 session。
             </div>
           )}
           {/* Section: 账户 */}
-          <section className="border-b border-slate-100 pb-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">账户</h3>
+          <section className="border-b border-border pb-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">账户</h3>
             <div>
-              <label className="block text-sm text-slate-600 mb-1">选择账户</label>
+              <label className="block text-sm text-muted-foreground mb-1">选择账户</label>
               <select
                 value={form.account_id}
                 onChange={(e) => updateForm("account_id", e.target.value)}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                className="w-full px-3 py-1.5 border border-border rounded-md text-sm"
               >
                 <option value="">-- 请选择账户 --</option>
                 {accounts.map((acc) => (
@@ -241,18 +241,18 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                 ))}
               </select>
               {accounts.length === 0 && (
-                <p className="mt-1 text-xs text-slate-400">暂无账户，请先在账户管理中添加</p>
+                <p className="mt-1 text-xs text-muted-foreground">暂无账户，请先在账户管理中添加</p>
               )}
             </div>
           </section>
 
           {/* Section 1: 基础规则 */}
-          <section className="border-b border-slate-100 pb-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">基础规则</h3>
+          <section className="border-b border-border pb-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">基础规则</h3>
             <div className="grid grid-cols-2 gap-4">
               {/* AI决策周期 */}
               <div>
-                <label className="block text-sm text-slate-600 mb-1">AI 决策周期</label>
+                <label className="block text-sm text-muted-foreground mb-1">AI 决策周期</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -260,15 +260,15 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     max={1440}
                     value={form.interval_minutes}
                     onChange={(e) => updateForm("interval_minutes", Math.max(1, Math.min(1440, Number(e.target.value))))}
-                    className="w-20 px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-20 px-3 py-1.5 border border-border rounded-md text-sm"
                   />
-                  <span className="text-sm text-slate-500">min</span>
+                  <span className="text-sm text-muted-foreground">min</span>
                 </div>
               </div>
 
               {/* 硬止损 */}
               <div>
-                <label className="block text-sm text-slate-600 mb-1">硬止损</label>
+                <label className="block text-sm text-muted-foreground mb-1">硬止损</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -276,15 +276,15 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     max={100}
                     value={form.hard_stop_loss_pct}
                     onChange={(e) => updateForm("hard_stop_loss_pct", Math.max(1, Math.min(100, Number(e.target.value))))}
-                    className="w-20 px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-20 px-3 py-1.5 border border-border rounded-md text-sm"
                   />
-                  <span className="text-sm text-slate-500">%</span>
+                  <span className="text-sm text-muted-foreground">%</span>
                 </div>
               </div>
 
               {/* 最大仓位杠杆 */}
               <div>
-                <label className="block text-sm text-slate-600 mb-1">最大仓位杠杆</label>
+                <label className="block text-sm text-muted-foreground mb-1">最大仓位杠杆</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -292,15 +292,15 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     max={125}
                     value={form.max_position_leverage}
                     onChange={(e) => updateForm("max_position_leverage", Math.max(1, Math.min(125, Number(e.target.value))))}
-                    className="w-20 px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-20 px-3 py-1.5 border border-border rounded-md text-sm"
                   />
-                  <span className="text-sm text-slate-500">x</span>
+                  <span className="text-sm text-muted-foreground">x</span>
                 </div>
               </div>
 
               {/* 账户最大杠杆 */}
               <div>
-                <label className="block text-sm text-slate-600 mb-1">账户最大杠杆</label>
+                <label className="block text-sm text-muted-foreground mb-1">账户最大杠杆</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -308,26 +308,26 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     max={100}
                     value={form.max_account_leverage}
                     onChange={(e) => updateForm("max_account_leverage", Math.max(1, Math.min(100, Number(e.target.value))))}
-                    className="w-20 px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-20 px-3 py-1.5 border border-border rounded-md text-sm"
                   />
-                  <span className="text-sm text-slate-500">x</span>
+                  <span className="text-sm text-muted-foreground">x</span>
                 </div>
               </div>
             </div>
           </section>
 
           {/* Section 2: 高级设置 */}
-          <section className="border-b border-slate-100 pb-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">高级设置</h3>
+          <section className="border-b border-border pb-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">高级设置</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 {/* 仓位模式 */}
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">仓位模式</label>
+                  <label className="block text-sm text-muted-foreground mb-1">仓位模式</label>
                   <select
                     value={form.position_mode}
                     onChange={(e) => updateForm("position_mode", e.target.value as PositionMode)}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-full px-3 py-1.5 border border-border rounded-md text-sm"
                   >
                     <option value="cross">全仓</option>
                     <option value="isolated">逐仓</option>
@@ -336,11 +336,11 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
 
                 {/* K线周期 */}
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">K线周期</label>
+                  <label className="block text-sm text-muted-foreground mb-1">K线周期</label>
                   <select
                     value={form.kline_interval}
                     onChange={(e) => updateForm("kline_interval", e.target.value as KlineInterval)}
-                    className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-full px-3 py-1.5 border border-border rounded-md text-sm"
                   >
                     {KLINE_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -353,7 +353,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
 
               {/* 技术指标 */}
               <div>
-                <label className="block text-sm text-slate-600 mb-2">技术指标</label>
+                <label className="block text-sm text-muted-foreground mb-2">技术指标</label>
                 <div className="grid grid-cols-3 gap-2">
                   {/* RSI */}
                   <div
@@ -489,25 +489,25 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
 
               {/* 排除币种 */}
               <div>
-                <label className="block text-sm text-slate-600 mb-1">排除币种</label>
+                <label className="block text-sm text-muted-foreground mb-1">排除币种</label>
                 <input
                   type="text"
                   value={form.excluded_symbols}
                   onChange={(e) => updateForm("excluded_symbols", e.target.value)}
                   placeholder="逗号分隔，如: LUNA, FTT, UST"
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                  className="w-full px-3 py-1.5 border border-border rounded-md text-sm"
                 />
               </div>
             </div>
           </section>
 
           {/* Section 3: 交易范围 */}
-          <section className="border-b border-slate-100 pb-4">
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">交易范围</h3>
+          <section className="border-b border-border pb-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3">交易范围</h3>
             <div className="space-y-4">
               {/* Market Mode */}
               <div>
-                <label className="block text-sm text-slate-600 mb-2">市场模式</label>
+                <label className="block text-sm text-muted-foreground mb-2">市场模式</label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -580,7 +580,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
 
           {/* Section 4: 标的选择 */}
           <section>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">标的选择</h3>
+            <h3 className="text-sm font-semibold text-foreground mb-3">标的选择</h3>
             {/* Sub-tabs */}
             <div className="flex gap-2 mb-4">
               <button

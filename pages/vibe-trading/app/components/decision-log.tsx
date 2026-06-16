@@ -31,7 +31,7 @@ export function DecisionLog({ initialDecisions }: DecisionLogProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-slate-200">
+      <div className="px-4 py-3 border-b border-border">
         <h2 className="text-sm font-semibold mb-2">最近决策</h2>
         {/* Type filter */}
         <div className="flex gap-1 mb-2">
@@ -39,14 +39,14 @@ export function DecisionLog({ initialDecisions }: DecisionLogProps) {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-2 py-0.5 text-xs rounded ${filter === f ? "bg-primary text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`px-2 py-0.5 text-xs rounded ${filter === f ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted"}`}
             >
               {{ all: "全部", order: "下单" }[f]}
             </button>
           ))}
         </div>
         {/* Stats summary */}
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-muted-foreground">
           共 {stats.total} 次决策 · {stats.orderCount} 次下单
         </p>
       </div>
@@ -54,7 +54,7 @@ export function DecisionLog({ initialDecisions }: DecisionLogProps) {
         {filtered.length > 0 ? (
           <div className="relative pl-5">
             {/* Timeline vertical line */}
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-slate-200" />
+            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
             <div className="space-y-3">
               {[...filtered].reverse().map((d, i) => (
                 <TimelineCard key={`${d.cycle}-${i}`} decision={d} isFirst={i === 0} />
@@ -93,7 +93,7 @@ function TimelineCard({ decision, isFirst }: { decision: DecisionEntry; isFirst:
     ? "bg-loss"
     : decision.action === "order" || decision.action === "close" || decision.action === "close_all"
       ? "bg-gain"
-      : "bg-slate-300";
+      : "bg-border";
 
   // Confidence bar color
   const confidencePct = Math.round(decision.confidence * 100);
@@ -109,14 +109,14 @@ function TimelineCard({ decision, isFirst }: { decision: DecisionEntry; isFirst:
       {/* Card */}
       <div
         className={`decision-card rounded-lg border ${
-          isError ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"
+          isError ? "border-loss/30 bg-loss/10" : "border-border bg-card"
         } text-sm`}
       >
-        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-          <span className="text-xs text-slate-400">{time} · 周期 #{decision.cycle}</span>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+          <span className="text-xs text-muted-foreground">{time} · 周期 #{decision.cycle}</span>
           <span
             className={`text-xs px-1.5 py-0.5 rounded ${
-              isError ? "bg-red-100 text-red-600" : "bg-green-50 text-green-600"
+              isError ? "bg-loss/15 text-loss" : "bg-gain/10 text-gain"
             }`}
           >
             {isError ? "失败" : actionLabel}
@@ -128,13 +128,13 @@ function TimelineCard({ decision, isFirst }: { decision: DecisionEntry; isFirst:
           ) : (
             <>
               {decision.orders?.map((o, i) => (
-                <p key={i} className="text-xs text-slate-600">
+                <p key={i} className="text-xs text-muted-foreground">
                   {o.side === "buy" ? "买入" : "卖出"} {o.symbol} · 数量 {o.quantity}
                   {o.price ? ` · 价格 ${o.price}` : ""}
                 </p>
               ))}
               {decision.reasoning && (
-                <p className="text-slate-600 mt-2 leading-relaxed">{decision.reasoning}</p>
+                <p className="text-muted-foreground mt-2 leading-relaxed">{decision.reasoning}</p>
               )}
               {/* Confidence bar */}
               {decision.confidence > 0 && (
