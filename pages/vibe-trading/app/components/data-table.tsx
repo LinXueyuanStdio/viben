@@ -158,17 +158,17 @@ export function DataTable({ positions, trades, sessionId, collapsed, onToggleCol
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="flex items-center justify-between px-6 py-2 border-b border-slate-100 select-none shrink-0">
+      <div className="flex items-center justify-between px-6 py-2 border-b border-border select-none shrink-0">
         <div className="flex items-center gap-4">
           {/* Collapse button */}
           {onToggleCollapse && (
             <button
               onClick={onToggleCollapse}
-              className="p-0.5 rounded hover:bg-slate-100 transition-colors"
+              className="p-0.5 rounded hover:bg-muted transition-colors"
               title={collapsed ? "展开" : "收起"}
             >
               <svg
-                className={`w-4 h-4 text-slate-400 transition-transform ${
+                className={`w-4 h-4 text-muted-foreground transition-transform ${
                   collapsed ? "" : "rotate-180"
                 }`}
                 fill="none"
@@ -188,7 +188,7 @@ export function DataTable({ positions, trades, sessionId, collapsed, onToggleCol
               className={`text-sm pb-1 flex items-center gap-1.5 ${
                 activeTab === tab.id
                   ? "text-primary border-b-2 border-primary font-medium"
-                  : "text-slate-500 hover:text-slate-700"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.label}
@@ -196,7 +196,7 @@ export function DataTable({ positions, trades, sessionId, collapsed, onToggleCol
                 className={`text-xs px-1.5 py-0.5 rounded-full ${
                   activeTab === tab.id
                     ? "bg-primary/10 text-primary"
-                    : "bg-slate-100 text-slate-500"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {tab.count}
@@ -317,7 +317,7 @@ function PositionsTable({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <svg
-          className="w-12 h-12 text-slate-300 mb-3 float-animation"
+          className="w-12 h-12 text-muted-foreground/60 mb-3 float-animation"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -329,8 +329,8 @@ function PositionsTable({
             d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"
           />
         </svg>
-        <p className="text-sm text-slate-500 font-medium mb-1">暂无持仓</p>
-        <p className="text-xs text-slate-400">
+        <p className="text-sm text-muted-foreground font-medium mb-1">暂无持仓</p>
+        <p className="text-xs text-muted-foreground/60">
           AI 将在下一决策周期自动建仓
         </p>
       </div>
@@ -340,8 +340,8 @@ function PositionsTable({
   return (
     <div className="overflow-x-auto h-full">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-white z-10">
-          <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+        <thead className="sticky top-0 bg-card z-10">
+          <tr className="text-left text-xs text-muted-foreground border-b border-border">
             <th className="px-6 py-2 font-medium">币对</th>
             <th className="px-3 py-2 font-medium">方向</th>
             <th className="px-3 py-2 font-medium text-right">数量</th>
@@ -368,8 +368,8 @@ function PositionsTable({
             return (
               <tr
                 key={i}
-                className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${
-                  i % 2 === 1 ? "bg-slate-25" : ""
+                className={`border-b border-border/50 hover:bg-muted transition-colors ${
+                  i % 2 === 1 ? "bg-muted/30" : ""
                 }`}
               >
                 <td className="px-6 py-2 font-medium">
@@ -457,10 +457,10 @@ function PositionsTable({
                     ? `$${pos.liquidation_price.toFixed(2)}`
                     : "-"}
                 </td>
-                <td className="px-3 py-2 text-xs text-slate-500">
+                <td className="px-3 py-2 text-xs text-muted-foreground">
                   {formatDuration(pos.entry_time)}
                 </td>
-                <td className="px-3 py-2 text-right text-xs text-slate-400 font-mono tabular-nums">
+                <td className="px-3 py-2 text-right text-xs text-muted-foreground font-mono tabular-nums">
                   {pos.stop_loss?.toFixed(2) ?? "-"} /{" "}
                   {pos.take_profit?.toFixed(2) ?? "-"}
                 </td>
@@ -537,7 +537,7 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <svg
-          className="w-12 h-12 text-slate-300 mb-3 float-animation"
+          className="w-12 h-12 text-muted-foreground/60 mb-3 float-animation"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -549,7 +549,7 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
             d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5-6L16.5 16.5m0 0L12 10.5m4.5 6V3"
           />
         </svg>
-        <p className="text-sm text-slate-500 font-medium">暂无交易记录</p>
+        <p className="text-sm text-muted-foreground font-medium">暂无交易记录</p>
       </div>
     );
   }
@@ -557,11 +557,11 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
   return (
     <div className="flex flex-col h-full">
       {/* Filter row */}
-      <div className="flex items-center gap-3 px-6 py-2 border-b border-slate-50 bg-slate-50/50">
+      <div className="flex items-center gap-3 px-6 py-2 border-b border-border/50 bg-muted/50">
         <select
           value={symbolFilter}
           onChange={(e) => setSymbolFilter(e.target.value)}
-          className="text-xs px-2 py-1 rounded border border-slate-200 bg-white"
+          className="text-xs px-2 py-1 rounded border border-border bg-card"
         >
           <option value="all">全部币对</option>
           {symbols.map((s) => (
@@ -573,7 +573,7 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
         <select
           value={sideFilter}
           onChange={(e) => setSideFilter(e.target.value as "all" | "buy" | "sell")}
-          className="text-xs px-2 py-1 rounded border border-slate-200 bg-white"
+          className="text-xs px-2 py-1 rounded border border-border bg-card"
         >
           <option value="all">全部方向</option>
           <option value="buy">买入</option>
@@ -584,7 +584,7 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
           onChange={(e) =>
             setSourceFilter(e.target.value as "all" | "agent" | "manual")
           }
-          className="text-xs px-2 py-1 rounded border border-slate-200 bg-white"
+          className="text-xs px-2 py-1 rounded border border-border bg-card"
         >
           <option value="all">全部来源</option>
           <option value="agent">AI</option>
@@ -595,8 +595,8 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
       {/* Table */}
       <div className="flex-1 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="sticky top-0 bg-white z-10">
-            <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+          <thead className="sticky top-0 bg-card z-10">
+            <tr className="text-left text-xs text-muted-foreground border-b border-border">
               <th className="px-6 py-2 font-medium">币对</th>
               <th className="px-3 py-2 font-medium">方向</th>
               <th className="px-3 py-2 font-medium text-right">价格</th>
@@ -614,8 +614,8 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
             {filtered.map((trade, i) => (
               <tr
                 key={trade.order_id}
-                className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${
-                  i % 2 === 1 ? "bg-slate-25" : ""
+                className={`border-b border-border/50 hover:bg-muted transition-colors ${
+                  i % 2 === 1 ? "bg-muted/30" : ""
                 } ${i < newRowCount ? "row-enter" : ""}`}
               >
                 <td className="px-6 py-2 font-medium">{trade.symbol}</td>
@@ -632,7 +632,7 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
                 <td className="px-3 py-2 text-right font-mono tabular-nums">
                   {trade.quantity}
                 </td>
-                <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-500">
+                <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
                   ${trade.fee.toFixed(4)}
                 </td>
                 <td

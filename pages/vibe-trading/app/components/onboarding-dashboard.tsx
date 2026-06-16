@@ -13,8 +13,8 @@ export function OnboardingDashboard() {
       <div className="w-full max-w-3xl">
         {/* Header */}
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-slate-900">Trading Terminal</h1>
-          <p className="mt-2 text-slate-500 text-lg">AI 驱动的智能交易系统</p>
+          <h1 className="text-3xl font-bold text-foreground">Trading Terminal</h1>
+          <p className="mt-2 text-muted-foreground text-lg">AI 驱动的智能交易系统</p>
         </div>
 
         {/* Action Cards */}
@@ -22,7 +22,7 @@ export function OnboardingDashboard() {
           {/* Account Management Card */}
           <div
             onClick={() => setAccountDialogOpen(true)}
-            className="rounded-xl border border-slate-200 p-6 cursor-pointer hover:shadow-md hover:border-primary/30 transition-all bg-white group"
+            className="rounded-xl border border-border p-6 cursor-pointer hover:shadow-md hover:border-primary/30 transition-all bg-card group"
           >
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
               <svg
@@ -39,14 +39,14 @@ export function OnboardingDashboard() {
                 />
               </svg>
             </div>
-            <h3 className="font-semibold text-slate-900 mb-1">账户管理</h3>
-            <p className="text-sm text-slate-500">配置你的交易所 API Key</p>
+            <h3 className="font-semibold text-foreground mb-1">账户管理</h3>
+            <p className="text-sm text-muted-foreground">配置你的交易所 API Key</p>
           </div>
 
           {/* Strategy Settings Card */}
           <div
             onClick={() => alert("策略设置 - 开发中")}
-            className="rounded-xl border border-slate-200 p-6 cursor-pointer hover:shadow-md hover:border-primary/30 transition-all bg-white group"
+            className="rounded-xl border border-border p-6 cursor-pointer hover:shadow-md hover:border-primary/30 transition-all bg-card group"
           >
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
               <svg
@@ -69,8 +69,8 @@ export function OnboardingDashboard() {
                 />
               </svg>
             </div>
-            <h3 className="font-semibold text-slate-900 mb-1">策略设置</h3>
-            <p className="text-sm text-slate-500">设置风控和 AI 参数</p>
+            <h3 className="font-semibold text-foreground mb-1">策略设置</h3>
+            <p className="text-sm text-muted-foreground">设置风控和 AI 参数</p>
           </div>
 
           {/* Start Trading Card */}
@@ -99,14 +99,14 @@ export function OnboardingDashboard() {
                 />
               </svg>
             </div>
-            <h3 className="font-semibold text-slate-900 mb-1">开始交易</h3>
-            <p className="text-sm text-slate-500">创建第一个会话</p>
+            <h3 className="font-semibold text-foreground mb-1">开始交易</h3>
+            <p className="text-sm text-muted-foreground">创建第一个会话</p>
           </div>
         </div>
 
         {/* Quick Start Guide */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
-          <h4 className="font-medium text-slate-700 mb-3 flex items-center gap-2">
+        <div className="rounded-xl border border-border bg-muted p-6">
+          <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
             <svg
               className="w-4 h-4 text-amber-500"
               fill="currentColor"
@@ -120,7 +120,7 @@ export function OnboardingDashboard() {
             </svg>
             快速开始
           </h4>
-          <ol className="space-y-2 text-sm text-slate-600">
+          <ol className="space-y-2 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center mt-0.5">
                 1

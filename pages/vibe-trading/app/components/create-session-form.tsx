@@ -32,7 +32,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             name="session_name"
             required
             placeholder="e.g. BTC趋势跟踪"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           />
         </div>
 
@@ -42,7 +42,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             <select
               name="account_id"
               required
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm"
             >
               <option value="">选择账户...</option>
               {accounts.map((acc) => (
@@ -53,7 +53,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             </select>
           ) : (
             <>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 暂无账户，请先添加账户。
               </p>
               <input type="hidden" name="account_id" value="" />
@@ -66,7 +66,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
           <select
             name="exchange"
             required
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           >
             <option value="binance">Binance</option>
             <option value="okx">OKX</option>
@@ -82,7 +82,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             name="model"
             required
             defaultValue="claude-sonnet-4-20250514"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           />
         </div>
 
@@ -92,7 +92,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             name="strategy_name"
             required
             placeholder="e.g. 动量突破"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           />
         </div>
 
@@ -102,7 +102,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             name="strategy_description"
             rows={3}
             placeholder="描述策略逻辑..."
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           />
         </div>
 
@@ -111,7 +111,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             <label className="block text-sm font-medium mb-1">风险等级</label>
             <select
               name="risk_level"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm"
             >
               <option value="low">低</option>
               <option value="medium">中</option>
@@ -124,7 +124,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
               name="interval_minutes"
               type="number"
               defaultValue={60}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm"
             />
           </div>
         </div>
@@ -136,7 +136,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             required
             defaultValue="BTC/USDT"
             placeholder="BTC/USDT, ETH/USDT"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           />
         </div>
 
@@ -147,7 +147,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
             type="number"
             step="0.01"
             defaultValue={0.5}
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            className="w-full px-3 py-2 border border-border rounded-md text-sm"
           />
         </div>
 
@@ -162,7 +162,7 @@ export function CreateSessionForm({ accounts }: CreateSessionFormProps) {
           <button
             type="button"
             onClick={() => router.push("/")}
-            className="px-4 py-2 border border-slate-300 rounded-md text-sm hover:bg-slate-50"
+            className="px-4 py-2 border border-border rounded-md text-sm hover:bg-muted"
           >
             取消
           </button>
