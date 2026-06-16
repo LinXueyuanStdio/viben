@@ -9,9 +9,9 @@ declare const __VERSION__: string;
 const VERSION = typeof __VERSION__ !== "undefined" ? __VERSION__ : "0.0.0-dev";
 
 /**
- * Create the CLI program
+ * Create the CLI program with lazy-loaded commands
  */
-export function createProgram(): Command {
+export async function createProgram(): Promise<Command> {
   const program = new Command();
 
   program
@@ -26,8 +26,8 @@ export function createProgram(): Command {
     .option("--quiet", "Minimal output")
     .option("--global", "Use global config instead of workspace");
 
-  // Register all commands
-  registerCommands(program);
+  // Register commands (lazy loaded based on argv)
+  await registerCommands(program);
 
   return program;
 }
@@ -36,6 +36,6 @@ export function createProgram(): Command {
  * Run the CLI
  */
 export async function run(args: string[] = process.argv): Promise<void> {
-  const program = createProgram();
+  const program = await createProgram();
   await program.parseAsync(args);
 }

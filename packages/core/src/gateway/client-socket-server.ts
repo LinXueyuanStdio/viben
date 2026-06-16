@@ -10,7 +10,7 @@ const log = globalLogger.child({ module: "client-socket-server" });
 const SOCKET_IO_PATH = "/socket.io/client";
 const DEFAULT_EXECUTE_TIMEOUT_MS = 30000;
 const REQUEST_ID_TTL_MS = 60000;
-const MAX_PAYLOAD_SIZE = 1024 * 1024;
+const MAX_PAYLOAD_SIZE = 10 * 1024 * 1024;
 const RATE_LIMIT_WINDOW_MS = 1000;
 const RATE_LIMIT_MAX_EVENTS = 100;
 

@@ -57,5 +57,20 @@ export default defineConfig({
       }
     }
 
+    // Copy page-sdk assets into dist/assets/ so CLI bundle can find them via fallback paths
+    const pageSdkDir = path.resolve(process.cwd(), "../page-sdk");
+    const distAssets = path.resolve(process.cwd(), "dist/assets");
+    await fs.mkdir(distAssets, { recursive: true });
+    const assetsToCopy = [
+      { src: path.join(pageSdkDir, "dist/assets/viben-page-sdk.js"), dest: path.join(distAssets, "viben-page-sdk.js") },
+      { src: path.join(pageSdkDir, "assets/viben-page-tokens.css"), dest: path.join(distAssets, "viben-page-tokens.css") },
+    ];
+    for (const { src, dest } of assetsToCopy) {
+      try {
+        await fs.copyFile(src, dest);
+      } catch {
+        // page-sdk might not be built yet in some CI steps
+      }
+    }
   },
 });

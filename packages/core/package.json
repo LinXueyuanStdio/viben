@@ -56,7 +56,7 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' tsup",
     "build:sidecar": "tsx scripts/build-sidecar.ts",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",

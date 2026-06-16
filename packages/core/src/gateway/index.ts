@@ -194,7 +194,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   const state = createAppState({ host, port });
 
   // Register routes
-  registerRoutes(app, state);
+  await registerRoutes(app, state);
 
   // Create client socket server (Socket.io) after ready when httpServer is available
   app.addHook("onReady", async () => {

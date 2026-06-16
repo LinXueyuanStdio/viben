@@ -43,7 +43,8 @@ import { registerPackagesRoutes } from "./packages";
 import { registerMcpInspectorRoutes } from "./mcp-inspector";
 import { registerQueueRoutes } from "./queue";
 import { registerGitHubRoutes } from "./github";
-import { registerTauriMcpServerRoutes } from "./mcp-server/tauri-mcp-server";
+// tauri-mcp-server is loaded dynamically — it depends on @hypothesi/tauri-mcp-server
+// which uses runtime fs reads incompatible with single-binary bundling
 import { registerPreferencesRoutes } from "./preferences";
 import { registerTaskEventRoutes } from "./task-events";
 import { registerPreviewRoutes } from "./preview";
@@ -64,7 +65,7 @@ import { registerPythonMcpServerRoutes } from "./mcp-server/python-mcp-server";
 /**
  * Register all routes
  */
-export function registerRoutes(fastify: FastifyInstance, state: AppState): void {
+export async function registerRoutes(fastify: FastifyInstance, state: AppState): Promise<void> {
   registerHealthRoutes(fastify);
   registerAgentRoutes(fastify, state);
   registerTasksRoutes(fastify, state);
@@ -106,7 +107,12 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerMcpInspectorRoutes(fastify);
   registerQueueRoutes(fastify, state);
   registerGitHubRoutes(fastify);
-  registerTauriMcpServerRoutes(fastify);
+  try {
+    const { registerTauriMcpServerRoutes } = await import("./mcp-server/tauri-mcp-server");
+    registerTauriMcpServerRoutes(fastify);
+  } catch {
+    // @hypothesi/tauri-mcp-server unavailable (e.g. in CLI binary builds)
+  }
   registerPreferencesRoutes(fastify);
   registerTaskEventRoutes(fastify);
   registerPreviewRoutes(fastify);
@@ -171,7 +177,6 @@ export {
 } from "./mcp-inspector";
 export { registerQueueRoutes } from "./queue";
 export { registerGitHubRoutes } from "./github";
-export { registerTauriMcpServerRoutes, DEFAULT_WS_PORT as TAURI_MCP_WS_PORT } from "./mcp-server/tauri-mcp-server";
 export { registerPreferencesRoutes } from "./preferences";
 export type { DeveloperPreferences, PreferencesResponse } from "./preferences";
 export { registerTaskEventRoutes } from "./task-events";
