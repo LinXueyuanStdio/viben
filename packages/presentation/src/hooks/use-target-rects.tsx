@@ -221,6 +221,8 @@ export class TargetRectsStore {
 // Context — store only (not the rects Map, avoiding provider-level re-render)
 // ---------------------------------------------------------------------------
 
+const EMPTY_MAP: TargetRectsMap = new Map()
+
 const TargetRectsStoreContext = createContext<TargetRectsStore | null>(null)
 
 /**
@@ -263,10 +265,10 @@ export function useTargetRects(): TargetRectsMap {
     [store],
   )
   const getSnapshot = useCallback(
-    () => store ? store.getSnapshot() : new Map() as TargetRectsMap,
+    () => store ? store.getSnapshot() : EMPTY_MAP,
     [store],
   )
-  return useSyncExternalStore(subscribe, getSnapshot, () => new Map() as TargetRectsMap)
+  return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_MAP)
 }
 
 /**
@@ -319,7 +321,7 @@ export function useTargetRectsFor(targetIds: string[]): TargetRectsMap {
   )
 
   const getSnapshot = useCallback(() => {
-    if (!store) return new Map() as TargetRectsMap
+    if (!store) return EMPTY_MAP
 
     // Check if any of our targets have a newer version
     const cache = cacheRef.current
@@ -343,5 +345,5 @@ export function useTargetRectsFor(targetIds: string[]): TargetRectsMap {
     return result
   }, [store, stableIds])
 
-  return useSyncExternalStore(subscribe, getSnapshot, () => new Map() as TargetRectsMap)
+  return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY_MAP)
 }

@@ -7,6 +7,15 @@ export const effectsCommands: StepCommandDef[] = [
     description: "Particle burst celebration effect",
     category: "effects",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Burst origin {x, y}" },
+        count: { type: "number", description: "Number of particles, default 60" },
+        spread: { type: "number", description: "Spread radius in px, default 250" },
+        colors: { type: "array", description: "Array of color strings for particles" },
+      },
+    },
     parseArgs: (args) => ({
       type: "confetti",
       position: json(args.position, { x: 480, y: 300 }),
@@ -20,6 +29,15 @@ export const effectsCommands: StepCommandDef[] = [
     description: "Large countdown number animation",
     category: "effects",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        from: { type: "number", description: "Starting number to count down from, default 3" },
+        fontSize: { type: "number", description: "Font size in px, default 120" },
+        color: { type: "string", description: "Text color, default #fff" },
+      },
+    },
     parseArgs: (args) => ({
       type: "countdown",
       position: json(args.position, { x: 480, y: 300 }),
@@ -33,6 +51,14 @@ export const effectsCommands: StepCommandDef[] = [
     description: "Mask wipe revealing underlying content",
     category: "effects",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        region: { type: "object", description: "Region to reveal {x, y, width, height}" },
+        direction: { type: "string", description: "Wipe direction: 'left', 'right', 'top', 'bottom', or 'center', default 'center'" },
+        color: { type: "string", description: "Mask color, default #1a1a2e" },
+      },
+    },
     parseArgs: (args) => ({
       type: "reveal",
       region: json(args.region, { x: 200, y: 150, width: 560, height: 300 }),
@@ -45,6 +71,14 @@ export const effectsCommands: StepCommandDef[] = [
     description: "Magnifying lens effect on a region",
     category: "effects",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        region: { type: "object", description: "Region to magnify {x, y, width, height}" },
+        scale: { type: "number", description: "Magnification scale factor, default 2.5" },
+        borderColor: { type: "string", description: "Lens border color, default #6366F1" },
+      },
+    },
     parseArgs: (args) => ({
       type: "zoom",
       region: json(args.region, { x: 340, y: 220, width: 280, height: 180 }),
@@ -57,6 +91,16 @@ export const effectsCommands: StepCommandDef[] = [
     description: "Number / shape morph transition animation",
     category: "effects",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        from: { type: "number", description: "Starting number value, default 0" },
+        to: { type: "number", description: "Ending number value, default 100" },
+        color: { type: "string", description: "Text color, default #6366F1" },
+        fontSize: { type: "number", description: "Font size in px, default 64" },
+      },
+    },
     parseArgs: (args) => ({
       type: "morph",
       position: json(args.position, { x: 420, y: 260 }),

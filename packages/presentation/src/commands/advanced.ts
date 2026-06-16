@@ -7,6 +7,16 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Spider/radar chart with multiple axes",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        axes: { type: "array", description: "Array of {label, value} axes" },
+        color: { type: "string", description: "Fill/stroke color, default #6366F1" },
+        fillOpacity: { type: "number", description: "Fill opacity (0-1), default 0.3" },
+        size: { type: "number", description: "Chart diameter in px, default 220" },
+      },
+    },
     parseArgs: (args) => ({
       type: "radar",
       position: json(args.position, { x: 360, y: 180 }),
@@ -28,6 +38,16 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Flow diagram showing connections and quantities",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        nodes: { type: "array", description: "Array of {id, label} nodes" },
+        links: { type: "array", description: "Array of {source, target, value} flow links" },
+        width: { type: "number", description: "Width in px, default 520" },
+        height: { type: "number", description: "Height in px, default 280" },
+      },
+    },
     parseArgs: (args) => ({
       type: "sankey",
       position: json(args.position, { x: 200, y: 180 }),
@@ -53,6 +73,18 @@ export const advancedCommands: StepCommandDef[] = [
     description: "KPI metric card with trend indicator and sparkline",
     category: "advanced",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        value: { type: "number", description: "KPI numeric value, default 2847000" },
+        label: { type: "string", description: "KPI label text, default 'Monthly Revenue'" },
+        trend: { type: "string", description: "Trend direction: 'up', 'down', or 'flat', default 'up'" },
+        trendValue: { type: "string", description: "Trend value string, default '+12.5%'" },
+        sparkData: { type: "array", description: "Array of numeric values for sparkline" },
+        color: { type: "string", description: "Accent color, default #10B981" },
+      },
+    },
     parseArgs: (args) => ({
       type: "kpi",
       position: json(args.position, { x: 360, y: 240 }),
@@ -69,6 +101,15 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Comparison matrix with yes/no/partial indicators",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        columns: { type: "array", description: "Array of column header strings" },
+        rows: { type: "array", description: "Array of {label, values} where values are 'yes', 'no', or 'partial'" },
+        width: { type: "number", description: "Width in px, default 400" },
+      },
+    },
     parseArgs: (args) => ({
       type: "matrix",
       position: json(args.position, { x: 280, y: 180 }),
@@ -88,6 +129,17 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Before vs after comparison card with delta",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        label: { type: "string", description: "Metric label, default 'Page Load Time'" },
+        before: { type: "number", description: "Before value, default 3200" },
+        after: { type: "number", description: "After value, default 890" },
+        unit: { type: "string", description: "Unit suffix, default 'ms'" },
+        color: { type: "string", description: "Accent color, default #10B981" },
+      },
+    },
     parseArgs: (args) => ({
       type: "stat-card",
       position: json(args.position, { x: 360, y: 240 }),
@@ -103,6 +155,15 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Code snippet with syntax highlighting and line glow",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        code: { type: "string", description: "Code string to display" },
+        language: { type: "string", description: "Language for syntax highlighting, default 'typescript'" },
+        highlightLines: { type: "array", description: "Array of 1-indexed line numbers to highlight" },
+      },
+    },
     parseArgs: (args) => ({
       type: "code-block",
       position: json(args.position, { x: 280, y: 180 }),
@@ -116,6 +177,18 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Banner ribbon with text overlay",
     category: "advanced",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        text: { type: "string", description: "Ribbon text, default 'AWARD WINNER'" },
+        width: { type: "number", description: "Ribbon width in px, default 240" },
+        color: { type: "string", description: "Ribbon background color, default #6366F1" },
+        textColor: { type: "string", description: "Text color, default #FFFFFF" },
+        fontSize: { type: "number", description: "Font size in px, default 14" },
+        variant: { type: "string", description: "Ribbon variant: 'flat' or 'award', default 'award'" },
+      },
+    },
     parseArgs: (args) => ({
       type: "ribbon",
       position: json(args.position, { x: 360, y: 260 }),
@@ -132,6 +205,15 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Polar area chart (rose chart) with animated segments",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        segments: { type: "array", description: "Array of {label, value, color} segments" },
+        size: { type: "number", description: "Chart diameter in px, default 200" },
+        colors: { type: "array", description: "Override color array for segments" },
+      },
+    },
     parseArgs: (args) => ({
       type: "polar-area",
       position: json(args.position, { x: 380, y: 200 }),
@@ -150,6 +232,16 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Horizontal stacked bar chart with labels",
     category: "advanced",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        bars: { type: "array", description: "Array of {label, segments} where segments are {value, color, label}" },
+        width: { type: "number", description: "Bar width in px, default 320" },
+        barHeight: { type: "number", description: "Bar height in px, default 32" },
+        gap: { type: "number", description: "Gap between bars in px, default 12" },
+      },
+    },
     parseArgs: (args) => ({
       type: "stacked-bar",
       position: json(args.position, { x: 280, y: 200 }),
@@ -181,6 +273,18 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Contextual tooltip pointing at a target",
     category: "advanced",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        content: { type: "string", description: "Tooltip text content" },
+        direction: { type: "string", description: "Pointer direction: 'top', 'bottom', 'left', or 'right', default 'top'" },
+        background: { type: "string", description: "Background color" },
+        color: { type: "string", description: "Text color" },
+        maxWidth: { type: "number", description: "Max width in px, default 200" },
+        fontSize: { type: "number", description: "Font size in px, default 12" },
+      },
+    },
     parseArgs: (args) => ({
       type: "tooltip",
       position: json(args.position, { x: 400, y: 280 }),
@@ -197,6 +301,16 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Multiple animated badges in a grid/flow layout",
     category: "advanced",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        badges: { type: "array", description: "Array of {text, background, color} badge objects" },
+        layout: { type: "string", description: "Layout mode: 'flow' or 'grid', default 'flow'" },
+        gap: { type: "number", description: "Gap between badges in px, default 8" },
+        columns: { type: "number", description: "Number of columns for grid layout, default 3" },
+      },
+    },
     parseArgs: (args) => ({
       type: "badge-group",
       position: json(args.position, { x: 320, y: 240 }),
@@ -216,6 +330,22 @@ export const advancedCommands: StepCommandDef[] = [
     description: "Linear meter with gradient fill and animated needle",
     category: "advanced",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        value: { type: "number", description: "Current value, default 72" },
+        min: { type: "number", description: "Minimum value, default 0" },
+        max: { type: "number", description: "Maximum value, default 100" },
+        width: { type: "number", description: "Meter width in px, default 280" },
+        label: { type: "string", description: "Meter label, default 'CPU Usage'" },
+        color: { type: "string", description: "Fill color, default #6366F1" },
+        trackColor: { type: "string", description: "Track background color" },
+        ticks: { type: "number", description: "Number of tick marks, default 5" },
+        unit: { type: "string", description: "Value unit, default '%'" },
+        showNeedle: { type: "boolean", description: "Show needle indicator, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "meter",
       position: json(args.position, { x: 320, y: 280 }),

@@ -4,6 +4,7 @@ import type { PresentationStep } from "../types"
 import { msToFrame } from "../utils/motion"
 import { computeTotalMs, getCurrentStepIndex } from "../utils/timeline"
 import { usePlaybackState } from "../hooks/use-playback-state"
+import { TargetRectsProvider } from "../hooks/use-target-rects"
 import { PresentationOverlay } from "./presentation-overlay"
 import { PerfProfiler } from "./perf-profiler"
 import { OverlayLogger } from "./overlay-logger"
@@ -66,19 +67,19 @@ const OverlayComposition = memo(function OverlayComposition({
 }) {
   if (enablePerfMonitor) {
     return (
-      <>
+      <TargetRectsProvider>
         <PerfProfiler fps={fps} onReport={onPerfReport} showHud>
           <PresentationOverlay steps={steps} />
         </PerfProfiler>
         {enableLogger && <OverlayLogger steps={steps} />}
-      </>
+      </TargetRectsProvider>
     )
   }
   return (
-    <>
+    <TargetRectsProvider>
       <PresentationOverlay steps={steps} />
       {enableLogger && <OverlayLogger steps={steps} />}
-    </>
+    </TargetRectsProvider>
   )
 })
 

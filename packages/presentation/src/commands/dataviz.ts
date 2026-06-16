@@ -7,6 +7,15 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Circular gauge meter with animated needle",
     category: "dataviz",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        value: { type: "number", description: "Gauge value (0-100), default 78" },
+        label: { type: "string", description: "Gauge label, default 'Performance'" },
+        color: { type: "string", description: "Gauge color, default #6366F1" },
+      },
+    },
     parseArgs: (args) => ({
       type: "gauge",
       position: json(args.position, { x: 370, y: 200 }),
@@ -20,6 +29,18 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Compact inline line chart with optional fill",
     category: "dataviz",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        data: { type: "array", description: "Array of numeric values" },
+        width: { type: "number", description: "Width in px, default 280" },
+        height: { type: "number", description: "Height in px, default 80" },
+        color: { type: "string", description: "Line color, default #10B981" },
+        fill: { type: "boolean", description: "Fill area below line, default true" },
+        showEndDot: { type: "boolean", description: "Show dot at end of line, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "sparkline",
       position: json(args.position, { x: 340, y: 250 }),
@@ -36,6 +57,16 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Grid of colored cells showing intensity values",
     category: "dataviz",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        data: { type: "array", description: "2D array of values (0-1) representing cell intensities" },
+        cellSize: { type: "number", description: "Cell size in px, default 48" },
+        rowLabels: { type: "array", description: "Row label strings" },
+        colLabels: { type: "array", description: "Column label strings" },
+      },
+    },
     parseArgs: (args) => ({
       type: "heatmap",
       position: json(args.position, { x: 350, y: 200 }),
@@ -54,6 +85,15 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Vertical funnel / pyramid with stage labels",
     category: "dataviz",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        stages: { type: "array", description: "Array of {label, value, color} funnel stages" },
+        width: { type: "number", description: "Width in px, default 320" },
+        height: { type: "number", description: "Height in px, default 280" },
+      },
+    },
     parseArgs: (args) => ({
       type: "funnel",
       position: json(args.position, { x: 320, y: 140 }),
@@ -72,6 +112,15 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Incremental increase / decrease bar chart",
     category: "dataviz",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        data: { type: "array", description: "Array of {label, value, type} where type is 'total', 'increase', or 'decrease'" },
+        width: { type: "number", description: "Width in px, default 440" },
+        height: { type: "number", description: "Height in px, default 260" },
+      },
+    },
     parseArgs: (args) => ({
       type: "waterfall",
       position: json(args.position, { x: 260, y: 160 }),
@@ -92,6 +141,15 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Rectangular treemap showing hierarchical proportions",
     category: "dataviz",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        data: { type: "array", description: "Array of {label, value, color} items" },
+        width: { type: "number", description: "Width in px, default 360" },
+        height: { type: "number", description: "Height in px, default 220" },
+      },
+    },
     parseArgs: (args) => ({
       type: "treemap",
       position: json(args.position, { x: 300, y: 180 }),
@@ -111,6 +169,15 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Ring chart with animated arc drawing",
     category: "dataviz",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        segments: { type: "array", description: "Array of {label, value, color} segments" },
+        size: { type: "number", description: "Outer diameter in px, default 180" },
+        innerRatio: { type: "number", description: "Inner hole ratio (0-1), default 0.6" },
+      },
+    },
     parseArgs: (args) => ({
       type: "donut",
       position: json(args.position, { x: 380, y: 200 }),
@@ -129,6 +196,20 @@ export const datavizCommands: StepCommandDef[] = [
     description: "Scatter plot with physics-based dot animation",
     category: "dataviz",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        points: { type: "array", description: "Array of {x, y} data points" },
+        width: { type: "number", description: "Width in px, default 280" },
+        height: { type: "number", description: "Height in px, default 200" },
+        color: { type: "string", description: "Dot color, default #6366F1" },
+        dotRadius: { type: "number", description: "Dot radius in px, default 5" },
+        xLabel: { type: "string", description: "X axis label" },
+        yLabel: { type: "string", description: "Y axis label" },
+        showGrid: { type: "boolean", description: "Show grid lines, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "scatter",
       position: json(args.position, { x: 320, y: 180 }),

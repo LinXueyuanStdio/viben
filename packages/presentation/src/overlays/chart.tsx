@@ -33,7 +33,7 @@ export function Chart({ command }: ChartProps) {
     width: _width = 360,
     height: _height = 200,
     chartType,
-    data,
+    data: rawData,
     series,
     dataMulti,
     showGrid = true,
@@ -43,6 +43,7 @@ export function Chart({ command }: ChartProps) {
     innerRadius = 0,
     cardSize: _cardSize,
   } = command
+  const data = Array.isArray(rawData) ? rawData : []
   const position = _position as Point
 
   const cardSizeResult = useCardSize({ width: _width, height: _height, cardSize: _cardSize })

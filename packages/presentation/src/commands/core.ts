@@ -7,6 +7,15 @@ export const coreCommands: StepCommandDef[] = [
     description: "Dark mask with a highlighted region cutout",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        region: { type: "object", description: "Highlighted region {x, y, width, height}" },
+        maskOpacity: { type: "number", description: "Mask opacity (0-1), default 0.75" },
+        borderRadius: { type: "number", description: "Border radius in px, default 12" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "spotlight",
       region: json(args.region, { x: 300, y: 200, width: 360, height: 240 }),
@@ -20,6 +29,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "Animated arrow from one point to another",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "object", description: "Start point {x, y}" },
+        to: { type: "object", description: "End point {x, y}" },
+        color: { type: "string", description: "Arrow color, default #6366F1" },
+        label: { type: "string", description: "Optional label text, default 'Look here'" },
+        strokeWidth: { type: "number", description: "Stroke width in px, default 3" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "arrow",
       from: json(args.from, { x: 200, y: 300 }),
@@ -35,6 +55,16 @@ export const coreCommands: StepCommandDef[] = [
     description: "Text annotation at a given position",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        content: { type: "string", description: "Text content" },
+        color: { type: "string", description: "Text color, default #fff" },
+        fontSize: { type: "number", description: "Font size in px, default 22" },
+        background: { type: "string", description: "Background color, default rgba(99,102,241,0.85)" },
+      },
+    },
     parseArgs: (args) => ({
       type: "text",
       position: json(args.position, { x: 300, y: 260 }),
@@ -49,6 +79,16 @@ export const coreCommands: StepCommandDef[] = [
     description: "Circle annotation around a focal point",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        center: { type: "object", description: "Center point {x, y}" },
+        radius: { type: "number", description: "Radius in px, default 80" },
+        color: { type: "string", description: "Stroke color, default #EF4444" },
+        strokeWidth: { type: "number", description: "Stroke width in px, default 3" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "circle",
       center: json(args.center, { x: 480, y: 300 }),
@@ -63,6 +103,16 @@ export const coreCommands: StepCommandDef[] = [
     description: "Semi-transparent color block over a region",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        region: { type: "object", description: "Region {x, y, width, height}" },
+        color: { type: "string", description: "Fill color, default #F59E0B" },
+        opacity: { type: "number", description: "Opacity (0-1), default 0.25" },
+        borderRadius: { type: "number", description: "Border radius in px, default 8" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "highlight",
       region: json(args.region, { x: 280, y: 200, width: 400, height: 200 }),
@@ -77,6 +127,20 @@ export const coreCommands: StepCommandDef[] = [
     description: "Info card with title and content text",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        width: { type: "number", description: "Card width in px, default 380" },
+        title: { type: "string", description: "Card title, default 'Key Finding'" },
+        content: { type: "string", description: "Card body text" },
+        tag: { type: "string", description: "Tag label, default 'Insight'" },
+        tagColor: { type: "string", description: "Tag color, default #6366F1" },
+        background: { type: "string", description: "Background color, default rgba(15,20,40,0.92)" },
+        borderColor: { type: "string", description: "Border color, default rgba(99,102,241,0.4)" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "card",
       position: json(args.position, { x: 280, y: 180 }),
@@ -95,6 +159,16 @@ export const coreCommands: StepCommandDef[] = [
     description: "Pulsing concentric rings drawing attention",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        center: { type: "object", description: "Center point {x, y}" },
+        radius: { type: "number", description: "Base radius in px, default 30" },
+        color: { type: "string", description: "Ring color, default #EC4899" },
+        rings: { type: "number", description: "Number of rings, default 3" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "pulse",
       center: json(args.center, { x: 480, y: 300 }),
@@ -109,6 +183,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "Animated underline below a region of text",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "object", description: "Start point {x, y}" },
+        to: { type: "object", description: "End point {x, y}" },
+        color: { type: "string", description: "Line color, default #F59E0B" },
+        strokeWidth: { type: "number", description: "Stroke width in px, default 3" },
+        style: { type: "string", description: "Line style: 'straight' or 'wavy', default 'wavy'" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "underline",
       from: json(args.from, { x: 280, y: 310 }),
@@ -124,6 +209,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "Floating label pill / chip annotation",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        text: { type: "string", description: "Badge text, default 'NEW'" },
+        color: { type: "string", description: "Text color, default #fff" },
+        background: { type: "string", description: "Background color, default #6366F1" },
+        size: { type: "string", description: "Badge size: 'sm', 'md', or 'lg', default 'md'" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "badge",
       position: json(args.position, { x: 420, y: 280 }),
@@ -139,6 +235,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "Animated horizontal progress bar",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        width: { type: "number", description: "Bar width in px, default 400" },
+        value: { type: "number", description: "Progress value (0-100), default 73" },
+        color: { type: "string", description: "Fill color, default #10B981" },
+        showLabel: { type: "boolean", description: "Show percentage label, default true" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "progress",
       position: json(args.position, { x: 280, y: 290 }),
@@ -154,6 +261,18 @@ export const coreCommands: StepCommandDef[] = [
     description: "Animated number counting up to a value",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        value: { type: "number", description: "Target number to count up to, default 8742" },
+        prefix: { type: "string", description: "Prefix string, default '$'" },
+        suffix: { type: "string", description: "Suffix string, default 'M'" },
+        color: { type: "string", description: "Text color, default #76B900" },
+        fontSize: { type: "number", description: "Font size in px, default 48" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "counter",
       position: json(args.position, { x: 380, y: 250 }),
@@ -170,6 +289,18 @@ export const coreCommands: StepCommandDef[] = [
     description: "Curly brace grouping two points together",
     category: "core",
     defaultDurationMs: 3000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        from: { type: "object", description: "Start point {x, y}" },
+        to: { type: "object", description: "End point {x, y}" },
+        direction: { type: "string", description: "Brace direction: 'left' or 'right', default 'right'" },
+        color: { type: "string", description: "Brace color, default #A855F7" },
+        strokeWidth: { type: "number", description: "Stroke width in px, default 2" },
+        label: { type: "string", description: "Label text, default 'Group A'" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "bracket",
       from: json(args.from, { x: 380, y: 180 }),
@@ -186,6 +317,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "SVG polyline with optional dots and area fill",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        points: { type: "array", description: "Array of {x, y} points for the line" },
+        color: { type: "string", description: "Line color, default #38BDF8" },
+        strokeWidth: { type: "number", description: "Stroke width in px, default 3" },
+        showDots: { type: "boolean", description: "Show dots at each point, default true" },
+        fillBelow: { type: "string", description: "Area fill color below line, default rgba(56,189,248,0.15)" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "trendline",
       points: json(args.points, [
@@ -207,6 +349,21 @@ export const coreCommands: StepCommandDef[] = [
     description: "Side-by-side bar comparison of two values",
     category: "core",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        width: { type: "number", description: "Total width in px, default 400" },
+        leftLabel: { type: "string", description: "Left bar label, default 'Revenue'" },
+        rightLabel: { type: "string", description: "Right bar label, default 'Expenses'" },
+        leftValue: { type: "number", description: "Left bar value, default 84" },
+        rightValue: { type: "number", description: "Right bar value, default 56" },
+        leftColor: { type: "string", description: "Left bar color, default #10B981" },
+        rightColor: { type: "string", description: "Right bar color, default #EF4444" },
+        unit: { type: "string", description: "Value unit suffix, default '%'" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "comparison",
       position: json(args.position, { x: 280, y: 220 }),
@@ -226,6 +383,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "Text that types itself character by character",
     category: "core",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        content: { type: "string", description: "Text to type out" },
+        fontSize: { type: "number", description: "Font size in px, default 28" },
+        color: { type: "string", description: "Text color, default #fff" },
+        speed: { type: "string", description: "Typing speed: 'slow', 'normal', or 'fast', default 'normal'" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "typewriter",
       position: json(args.position, { x: 240, y: 270 }),
@@ -241,6 +409,20 @@ export const coreCommands: StepCommandDef[] = [
     description: "Professional animated chart (bar, line, area, pie)",
     category: "core",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        width: { type: "number", description: "Chart width in px, default 420" },
+        height: { type: "number", description: "Chart height in px, default 260" },
+        chartType: { type: "string", description: "Chart type: 'line', 'bar', 'area', or 'pie', default 'bar'" },
+        data: { type: "array", description: "Array of {name, value, color} data points" },
+        title: { type: "string", description: "Chart title, default 'Quarterly Revenue'" },
+        showGrid: { type: "boolean", description: "Show grid lines, default true" },
+        showAxis: { type: "boolean", description: "Show axes, default true" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "chart",
       position: json(args.position, { x: 260, y: 160 }),
@@ -264,6 +446,17 @@ export const coreCommands: StepCommandDef[] = [
     description: "Isolated HTML card via iframe srcdoc — renders arbitrary HTML with full style/script encapsulation",
     category: "core",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        html: { type: "string", description: "HTML string to render in iframe" },
+        width: { type: "number", description: "Width in px, default 400" },
+        height: { type: "number", description: "Height in px, default 300" },
+        enterFrom: { type: "string", description: "Enter animation direction: 'left', 'right', 'bottom', or 'top', default 'bottom'" },
+        animate: { type: "boolean", description: "Whether to animate, default true" },
+      },
+    },
     parseArgs: (args) => ({
       type: "html",
       position: json(args.position, { x: 280, y: 180 }),
@@ -279,6 +472,10 @@ export const coreCommands: StepCommandDef[] = [
     description: "Remove all current annotations",
     category: "core",
     defaultDurationMs: 500,
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
     parseArgs: () => ({ type: "clear" }),
   },
   {
@@ -286,6 +483,12 @@ export const coreCommands: StepCommandDef[] = [
     description: "Pause in the timeline",
     category: "core",
     defaultDurationMs: 2000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        ms: { type: "number", description: "Pause duration in milliseconds, default 2000" },
+      },
+    },
     parseArgs: (args) => ({
       type: "wait",
       ms: num(args.ms, 2000),

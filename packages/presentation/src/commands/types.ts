@@ -3,6 +3,13 @@ import type { PresentationCommand } from "../types"
 /** Category for command grouping */
 export type CommandCategory = "core" | "dataviz" | "narrative" | "effects" | "advanced"
 
+/** Minimal JSON Schema object type for describing command input parameters */
+export interface CommandInputSchema {
+  type: "object"
+  properties: Record<string, { type?: string; description?: string; items?: object }>
+  required?: string[]
+}
+
 /**
  * Self-contained definition for a single presentation step command.
  * Each of the 44 command types has one of these.
@@ -21,4 +28,9 @@ export interface StepCommandDef {
    * When called with empty object, produces a demo command with sensible defaults.
    */
   parseArgs: (args: Record<string, unknown>) => PresentationCommand
+  /**
+   * JSON Schema describing the accepted input parameters.
+   * Used by action providers (e.g. MCP clients) to discover what each command accepts.
+   */
+  inputSchema?: CommandInputSchema
 }

@@ -7,6 +7,17 @@ export const narrativeCommands: StepCommandDef[] = [
     description: "Speech bubble pointing to a target area",
     category: "narrative",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        content: { type: "string", description: "Bubble text content" },
+        arrowDirection: { type: "string", description: "Arrow direction: 'top', 'bottom', 'left', or 'right', default 'bottom'" },
+        background: { type: "string", description: "Background color, default rgba(99,102,241,0.95)" },
+        color: { type: "string", description: "Text color" },
+        maxWidth: { type: "number", description: "Max bubble width in px" },
+      },
+    },
     parseArgs: (args) => ({
       type: "callout",
       position: json(args.position, { x: 360, y: 240 }),
@@ -22,6 +33,16 @@ export const narrativeCommands: StepCommandDef[] = [
     description: "Horizontal / vertical timeline with milestones",
     category: "narrative",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        events: { type: "array", description: "Array of {label, description, active?, color?} events" },
+        direction: { type: "string", description: "Layout direction: 'horizontal' or 'vertical', default 'horizontal'" },
+        width: { type: "number", description: "Width in px, default 560" },
+        color: { type: "string", description: "Default dot/line color" },
+      },
+    },
     parseArgs: (args) => ({
       type: "timeline",
       position: json(args.position, { x: 200, y: 260 }),
@@ -41,6 +62,17 @@ export const narrativeCommands: StepCommandDef[] = [
     description: "Connected boxes with directional arrows",
     category: "narrative",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        nodes: { type: "array", description: "Array of {id, label, color?} nodes" },
+        edges: { type: "array", description: "Array of {from, to} edges referencing node ids" },
+        direction: { type: "string", description: "Layout direction: 'horizontal' or 'vertical', default 'horizontal'" },
+        width: { type: "number", description: "Total width in px, default 600" },
+        height: { type: "number", description: "Total height in px" },
+      },
+    },
     parseArgs: (args) => ({
       type: "flowchart",
       position: json(args.position, { x: 180, y: 200 }),
@@ -65,6 +97,16 @@ export const narrativeCommands: StepCommandDef[] = [
     description: "Data table with row-by-row reveal animation",
     category: "narrative",
     defaultDurationMs: 5000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        headers: { type: "array", description: "Array of column header strings" },
+        rows: { type: "array", description: "2D array of cell values (strings)" },
+        highlights: { type: "array", description: "Array of [row, col] pairs to highlight" },
+        rowStagger: { type: "number", description: "Stagger delay between row reveals, default 4" },
+      },
+    },
     parseArgs: (args) => ({
       type: "table",
       position: json(args.position, { x: 260, y: 200 }),
@@ -83,6 +125,17 @@ export const narrativeCommands: StepCommandDef[] = [
     description: "Animated bullet list with staggered reveal",
     category: "narrative",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        items: { type: "array", description: "Array of {text, color?} list items" },
+        listStyle: { type: "string", description: "List style: 'bullet', 'number', 'check', or 'arrow', default 'check'" },
+        stagger: { type: "number", description: "Stagger delay between item reveals, default 5" },
+        color: { type: "string", description: "Default text color" },
+        fontSize: { type: "number", description: "Font size in px" },
+      },
+    },
     parseArgs: (args) => ({
       type: "list",
       position: json(args.position, { x: 320, y: 200 }),
@@ -103,6 +156,15 @@ export const narrativeCommands: StepCommandDef[] = [
     description: "Grouped annotations with connector lines",
     category: "narrative",
     defaultDurationMs: 4000,
+    inputSchema: {
+      type: "object",
+      properties: {
+        position: { type: "object", description: "Position {x, y}" },
+        items: { type: "array", description: "Array of {label, color?} annotation items" },
+        direction: { type: "string", description: "Layout direction: 'horizontal' or 'vertical', default 'vertical'" },
+        connector: { type: "string", description: "Connector style: 'line', 'bracket', or 'dots', default 'bracket'" },
+      },
+    },
     parseArgs: (args) => ({
       type: "annotation-group",
       position: json(args.position, { x: 320, y: 220 }),
