@@ -24,7 +24,6 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { TOOLS } from "@hypothesi/tauri-mcp-server";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { logger as globalLogger } from "../../../telemetry";
 
@@ -54,6 +53,30 @@ export interface TauriMcpRoutesOptions {
 }
 
 // ============================================================================
+// Lazy-loaded TOOLS from @hypothesi/tauri-mcp-server
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _TOOLS: any[] | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _TOOL_DEFINITIONS: any[] | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _TOOL_MAP: Map<string, any> | null = null;
+
+async function loadTools() {
+  if (_TOOLS) return;
+  const mod = await import("@hypothesi/tauri-mcp-server");
+  _TOOLS = mod.TOOLS;
+  _TOOL_DEFINITIONS = _TOOLS!.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: zodToJsonSchema(tool.schema) as Record<string, unknown>,
+    annotations: tool.annotations,
+  }));
+  _TOOL_MAP = new Map(_TOOLS!.map((tool) => [tool.name, tool]));
+}
+
+// ============================================================================
 // Session Management
 // ============================================================================
 
@@ -76,16 +99,6 @@ function getSessionIdFromHeader(request: FastifyRequest): string | undefined {
   return Array.isArray(value) ? value.at(-1) : value;
 }
 
-// Pre-compute tool definitions for ListTools response
-const TOOL_DEFINITIONS = TOOLS.map((tool) => ({
-  name: tool.name,
-  description: tool.description,
-  inputSchema: zodToJsonSchema(tool.schema) as Record<string, unknown>,
-  annotations: tool.annotations,
-}));
-
-const TOOL_MAP = new Map(TOOLS.map((tool) => [tool.name, tool]));
-
 /**
  * Create an MCP Server with all tauri-mcp-server tools registered
  */
@@ -96,11 +109,11 @@ function createTauriMcpServer(): Server {
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
-    tools: TOOL_DEFINITIONS,
+    tools: _TOOL_DEFINITIONS!,
   }));
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const tool = TOOL_MAP.get(request.params.name);
+    const tool = _TOOL_MAP!.get(request.params.name);
     if (!tool) {
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${request.params.name}` }],
@@ -115,7 +128,7 @@ function createTauriMcpServer(): Server {
         return { content: [{ type: "text", text: result }] };
       }
       if (Array.isArray(result)) {
-        return { content: result.map((item) => item.type === "text" ? { type: "text" as const, text: item.text } : { type: "image" as const, data: item.data, mimeType: item.mimeType }) };
+        return { content: result.map((item: { type: string; text?: string; data?: string; mimeType?: string }) => item.type === "text" ? { type: "text" as const, text: item.text } : { type: "image" as const, data: item.data, mimeType: item.mimeType }) };
       }
       if (result.type === "text") {
         return { content: [{ type: "text", text: result.text }] };
@@ -151,10 +164,11 @@ export function getActiveTauriMcpSessionCount(): number {
 // Route Registration
 // ============================================================================
 
-export function registerTauriMcpServerRoutes(
+export async function registerTauriMcpServerRoutes(
   fastify: FastifyInstance,
   options: TauriMcpRoutesOptions = {},
-): void {
+): Promise<void> {
+  await loadTools();
   const port = options.port ?? DEFAULT_WS_PORT;
 
   const createServer = options.createServer ?? (() => createTauriMcpServer());
