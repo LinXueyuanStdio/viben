@@ -14,8 +14,8 @@ import type {
   WaveConfig,
   OverlaySettings,
 } from "@/types/overlay";
-import type { PresentationCommand, PresentationStep, PlayerState } from "@viben/presentation";
-import { describeCommand } from "@viben/presentation";
+import type { PresentationCommand, PresentationStep } from "@viben/presentation";
+import { describeCommand, STEP_COMMAND_MAP } from "@viben/presentation";
 import { PERFORMANCE_LIMITS } from "@/lib/overlay/constants";
 
 interface OverlayState {
@@ -59,8 +59,6 @@ interface OverlayState {
   presentationSessionId: string;
   presentationSteps: PresentationStep[];
   presentationCurrentStep: number;
-  presentationPlayerState: PlayerState;
-  presentationDetailsOpen: boolean;
   /** True when the agent stream has finished sending all presentation steps */
   presentationStreamDone: boolean;
 }
@@ -121,14 +119,6 @@ interface OverlayActions {
   }) => void;
   updateStepStatus: (stepId: string, status: PresentationStep["status"]) => void;
   completePresentationStep: (stepId: string, screenshot: string) => void;
-  playerPlay: () => void;
-  playerPause: () => void;
-  playerGoTo: (stepIndex: number) => void;
-  playerNext: () => void;
-  playerPrev: () => void;
-  playerGoToStart: () => void;
-  playerGoToEnd: () => void;
-  togglePresentationDetails: () => void;
 }
 
 const initialState: OverlayState = {
@@ -183,8 +173,6 @@ const initialState: OverlayState = {
   presentationSessionId: "",
   presentationSteps: [],
   presentationCurrentStep: 0,
-  presentationPlayerState: "idle" as PlayerState,
-  presentationDetailsOpen: false,
   presentationStreamDone: false,
 };
 
@@ -330,8 +318,6 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
       presentationSessionId: sessionId,
       presentationSteps: [],
       presentationCurrentStep: 0,
-      presentationPlayerState: "playing",
-      presentationDetailsOpen: false,
       presentationStreamDone: false,
     }),
     stopPresentation: () => set({
@@ -339,25 +325,41 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
       presentationSessionId: "",
       presentationSteps: [],
       presentationCurrentStep: 0,
-      presentationPlayerState: "idle",
-      presentationDetailsOpen: false,
       presentationStreamDone: false,
     }),
     markPresentationStreamDone: () => set({ presentationStreamDone: true }),
     addPresentationSteps: ({ toolUseId, toolName, toolInput, commands }) => {
-      const newSteps: PresentationStep[] = commands.map((cmd, i) => ({
-        id: `${toolUseId}-${i}`,
-        toolUseId,
-        toolName,
-        toolInput,
-        command: cmd,
-        description: describeCommand(cmd),
-        status: "pending" as const,
-        startMs: 0,
-      }));
-      set((s) => ({
-        presentationSteps: [...s.presentationSteps, ...newSteps],
-      }));
+      set((s) => {
+        const existing = s.presentationSteps;
+        let cursor = 0;
+        if (existing.length > 0) {
+          const last = existing[existing.length - 1];
+          const lastDef = STEP_COMMAND_MAP.get(last.command.type);
+          const lastDuration = lastDef?.defaultDurationMs ?? 3000;
+          cursor = last.startMs + lastDuration;
+        }
+
+        const newSteps: PresentationStep[] = commands.map((cmd, i) => {
+          const def = STEP_COMMAND_MAP.get(cmd.type);
+          const duration = def?.defaultDurationMs ?? 3000;
+          const startMs = cursor;
+          const endMs = startMs + duration;
+          cursor = endMs;
+          return {
+            id: `${toolUseId}-${i}`,
+            toolUseId,
+            toolName,
+            toolInput,
+            command: cmd,
+            description: describeCommand(cmd),
+            status: "pending" as const,
+            startMs,
+            endMs,
+          };
+        });
+
+        return { presentationSteps: [...existing, ...newSteps] };
+      });
     },
     updateStepStatus: (stepId, status) => set((s) => ({
       presentationSteps: s.presentationSteps.map((step) =>
@@ -369,22 +371,5 @@ export const useOverlayStore = create<OverlayState & { actions: OverlayActions }
         step.id === stepId ? { ...step, status: "done" as const, screenshot } : step
       ),
     })),
-    playerPlay: () => set({ presentationPlayerState: "playing" }),
-    playerPause: () => set({ presentationPlayerState: "paused" }),
-    playerGoTo: (stepIndex) => set({ presentationCurrentStep: stepIndex, presentationPlayerState: "paused" }),
-    playerNext: () => set((s) => ({
-      presentationCurrentStep: Math.min(s.presentationCurrentStep + 1, s.presentationSteps.length - 1),
-      presentationPlayerState: "paused" as PlayerState,
-    })),
-    playerPrev: () => set((s) => ({
-      presentationCurrentStep: Math.max(s.presentationCurrentStep - 1, 0),
-      presentationPlayerState: "paused" as PlayerState,
-    })),
-    playerGoToStart: () => set({ presentationCurrentStep: 0, presentationPlayerState: "paused" }),
-    playerGoToEnd: () => set((s) => ({
-      presentationCurrentStep: Math.max(s.presentationSteps.length - 1, 0),
-      presentationPlayerState: "paused",
-    })),
-    togglePresentationDetails: () => set((s) => ({ presentationDetailsOpen: !s.presentationDetailsOpen })),
   },
 }));

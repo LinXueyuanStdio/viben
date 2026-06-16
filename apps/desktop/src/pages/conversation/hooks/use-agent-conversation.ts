@@ -577,7 +577,6 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         } else if (PRESENTATION_CLEAR_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
           if (store.presentationActive) {
-            // Clear is implemented as a step too, so the player can handle it
             store.actions.addPresentationSteps({
               toolUseId: data.id || toolId,
               toolName,
@@ -585,10 +584,26 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
               commands: [{ type: "clear" }],
             });
           }
+          const clearSessionId = sessionIdRef.current || "";
+          if (clearSessionId) {
+            completeClientSideToolOnce(data.id || toolId, clearSessionId, {
+              content: [{ type: "text", text: "Presentation cleared." }],
+            }).catch((err) => {
+              console.error("[Presentation] Failed to complete clear tool:", err);
+            });
+          }
         } else if (PRESENTATION_STOP_TOOL_NAMES.has(toolName)) {
           const store = useOverlayStore.getState();
           if (store.presentationActive) {
             store.actions.stopPresentation();
+          }
+          const stopSessionId = sessionIdRef.current || "";
+          if (stopSessionId) {
+            completeClientSideToolOnce(data.id || toolId, stopSessionId, {
+              content: [{ type: "text", text: "Presentation stopped." }],
+            }).catch((err) => {
+              console.error("[Presentation] Failed to complete stop tool:", err);
+            });
           }
         }
 

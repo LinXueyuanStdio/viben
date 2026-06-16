@@ -4,8 +4,6 @@ import { useActionProvider } from "@/hooks/use-action-provider";
 import { useOverlayStore } from "@/stores/overlay-store";
 import {
   ALL_STEP_COMMANDS,
-  registerCompletionCallback,
-  removeCompletionCallback,
   compilePresentationCommands,
 } from "@viben/presentation";
 import type { ClientToolResult, PresentationToolName } from "@viben/presentation";
@@ -31,7 +29,7 @@ export function createPresentationActions(): Record<string, Omit<ActionDef, "nam
         def.name,
         {
           description: def.description,
-          input_schema: { type: "object", properties: {} },
+          input_schema: def.inputSchema ?? { type: "object", properties: {} },
           execute: (payload: unknown, ctx: ExecutionContext) =>
             executePresentationAction(`presentation_${def.name}` as PresentationToolName, payload, ctx),
         },
@@ -52,14 +50,8 @@ export function createPresentationActions(): Record<string, Omit<ActionDef, "nam
 }
 
 // ============================================================================
-// Helper: Execute a presentation action with async completion
+// Helper: Execute a presentation action
 // ============================================================================
-
-/**
- * Timeout for waiting on presentation completion (matches the backend's 60s for GUI_execute).
- * Slightly less to ensure we respond before the backend times out.
- */
-const PRESENTATION_ACTION_TIMEOUT_MS = 55_000;
 
 async function executePresentationAction(
   toolName: PresentationToolName,
@@ -83,22 +75,6 @@ async function executePresentationAction(
     store.actions.startPresentation(ctx.sessionId);
   }
 
-  // Register completion callback and create a promise
-  const resultPromise = new Promise<ClientToolResult>((resolve) => {
-    const timer = setTimeout(() => {
-      removeCompletionCallback(toolUseId);
-      resolve({
-        content: [{ type: "text", text: "Presentation action timed out waiting for completion." }],
-        isError: true,
-      });
-    }, PRESENTATION_ACTION_TIMEOUT_MS);
-
-    registerCompletionCallback(toolUseId, (result) => {
-      clearTimeout(timer);
-      resolve(result);
-    });
-  });
-
   // Dispatch commands to overlay store
   store.actions.addPresentationSteps({
     toolUseId,
@@ -110,5 +86,7 @@ async function executePresentationAction(
   // Mark stream done for this group so autoFinish triggers
   store.actions.markPresentationStreamDone();
 
-  return resultPromise;
+  return {
+    content: [{ type: "text", text: `Executed ${commands.length} presentation command(s).` }],
+  };
 }
