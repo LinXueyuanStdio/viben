@@ -154,7 +154,23 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         return steps;
       }
 
-      return messageStep("tool_result", {
+      const resultSteps: AcpUiStep[] = [];
+
+      // If the finished update carries rawInput, backfill the tool_use input
+      // (handles MCP/external tools where the initial tool_call had empty input)
+      if (update.rawInput) {
+        resultSteps.push(...messageStep("tool_use", {
+          id: typeof update.toolCallId === "string" ? update.toolCallId : createStepId("tool"),
+          type: "tool_use",
+          name: toolName,
+          toolUseId: update.toolCallId,
+          input: normalizeToolInput(update.rawInput, toolName),
+          subagentId: extractSubagentId(update),
+          timestamp: Date.now(),
+        }));
+      }
+
+      resultSteps.push(...messageStep("tool_result", {
         id: createStepId("tool-result"),
         type: "tool_result",
         toolUseId: update.toolCallId,
@@ -162,7 +178,9 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         isError: update.status === "failed" || update.status === "error",
         subagentId: extractSubagentId(update),
         timestamp: Date.now(),
-      });
+      }));
+
+      return resultSteps;
     }
     case "plan": {
       const plan = updateToPlan(update);

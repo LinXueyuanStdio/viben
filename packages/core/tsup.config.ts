@@ -22,13 +22,10 @@ export default defineConfig({
     "mcp/server/browse-mcp/mcp-server": "src/mcp/server/browse-mcp/mcp-server.ts",
   },
   format: ["cjs", "esm"],
-  dts: {
-    resolve: true,
-  },
+  dts: true,
   splitting: false,
-  sourcemap: true,
+  sourcemap: false,
   clean: true,
-  treeshake: true,
   // Optional dependencies that are dynamically imported at runtime
   // Note: fastify and ws must be external to avoid "Dynamic require of events is not supported" error
   // Note: yaml must be external because yaml@2.8+ uses CJS require("process") which breaks in ESM bundles
@@ -60,13 +57,5 @@ export default defineConfig({
       }
     }
 
-    await fs.cp(
-      path.resolve(process.cwd(), "assets"),
-      path.resolve(process.cwd(), "dist/assets"),
-      { recursive: true },
-    );
-
-    // Note: idea-types and reward-types are loaded directly from templates/viben/
-    // at runtime, no need to copy to dist/
   },
 });
