@@ -63,7 +63,7 @@ export function ResizablePanel({
   return (
     <div
       ref={panelRef}
-      className="flex flex-col border-t border-slate-200 bg-white relative"
+      className="flex flex-col border-t border-border bg-card relative"
       style={{ height: collapsed ? "auto" : height }}
     >
       {/* Drag handle */}
@@ -71,12 +71,12 @@ export function ResizablePanel({
         <div
           onMouseDown={handleMouseDown}
           className={`absolute top-0 left-0 right-0 h-1.5 cursor-row-resize z-20 group flex items-center justify-center ${
-            isDragging ? "bg-primary/20" : "hover:bg-slate-100"
+            isDragging ? "bg-primary/20" : "hover:bg-muted"
           }`}
         >
           <div
             className={`w-8 h-0.5 rounded-full transition-colors ${
-              isDragging ? "bg-primary" : "bg-slate-300 group-hover:bg-slate-400"
+              isDragging ? "bg-primary" : "bg-border group-hover:bg-muted-foreground"
             }`}
           />
         </div>
