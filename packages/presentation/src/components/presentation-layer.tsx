@@ -49,7 +49,7 @@ export const PresentationLayer = memo(function PresentationLayer({
 }: PresentationLayerProps) {
   const playerRef = useRef<PlayerRef>(null)
 
-  if (!presentationActive) return null
+  if (!presentationActive || steps.length === 0) return null
 
   return (
     <PresentationPlayer

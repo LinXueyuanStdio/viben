@@ -9,7 +9,7 @@ import type { JsonInspectorRenderProps, BashEditorRenderProps } from "./types"
 // ---------------------------------------------------------------------------
 // Track grouping helpers
 // ---------------------------------------------------------------------------
-const TRACK_GROUPS: Record<string, string[]> = {
+export const TRACK_GROUPS: Record<string, string[]> = {
   "Text": ["text", "title", "subtitle", "caption", "label", "annotation", "callout", "list"],
   "Shape": ["rect", "circle", "arrow", "line", "polygon", "highlight", "underline"],
   "Data": ["gauge", "sparkline", "heatmap", "funnel", "waterfall", "table", "chart"],
@@ -17,14 +17,14 @@ const TRACK_GROUPS: Record<string, string[]> = {
   "Effect": ["confetti", "spotlight", "zoom", "clear"],
 }
 
-function getTrackGroup(type: string): string {
+export function getTrackGroup(type: string): string {
   for (const [group, types] of Object.entries(TRACK_GROUPS)) {
     if (types.includes(type)) return group
   }
   return "Other"
 }
 
-function computeDensityBuckets(lanes: TimelineLane[], totalDurationMs: number, bucketCount: number): number[] {
+export function computeDensityBuckets(lanes: TimelineLane[], totalDurationMs: number, bucketCount: number): number[] {
   const buckets = new Array(bucketCount).fill(0)
   if (totalDurationMs <= 0 || bucketCount <= 0) return buckets
   const bucketMs = totalDurationMs / bucketCount
@@ -41,13 +41,18 @@ function computeDensityBuckets(lanes: TimelineLane[], totalDurationMs: number, b
 // ---------------------------------------------------------------------------
 // TimelineTracks  (enhanced: zoom, minimap, density, playhead drag, grouping)
 // ---------------------------------------------------------------------------
-function TimelineTracks({
+export function TimelineTracks({
   lanes,
   currentMs,
   totalDurationMs,
   onSeek,
   steps,
   onStepsChange,
+  fps = DEFAULT_FPS,
+  renderJsonInspector,
+  renderBashEditor,
+  stepsToScript,
+  onEditorRun,
 }: {
   lanes: TimelineLane[]
   currentMs: number
@@ -55,6 +60,11 @@ function TimelineTracks({
   onSeek: (ms: number) => void
   steps: PresentationStep[]
   onStepsChange: (steps: PresentationStep[], totalMs: number) => void
+  fps?: number
+  renderJsonInspector?: (props: JsonInspectorRenderProps) => ReactNode
+  renderBashEditor?: (props: BashEditorRenderProps) => ReactNode
+  stepsToScript?: (steps: PresentationStep[]) => string
+  onEditorRun?: (text: string) => Promise<{ steps: PresentationStep[]; totalMs: number; errors: Map<number, string> } | null>
 }) {
   const LABEL_WIDTH = 100
   const DENSITY_BUCKETS = 120
@@ -67,7 +77,7 @@ function TimelineTracks({
   const viewStartMs = Math.max(0, Math.min(totalDurationMs - visibleDurationMs, viewCenterMs - visibleDurationMs / 2))
   const viewEndMs = Math.min(totalDurationMs, viewStartMs + visibleDurationMs)
 
-  const FRAME_MS = 1000 / FPS
+  const FRAME_MS = 1000 / fps
 
   // --- editor mode state ---
   const [timelineMode, setTimelineMode] = useState<"timeline" | "editor">("timeline")
@@ -76,11 +86,22 @@ function TimelineTracks({
   const [isRunning, setIsRunning] = useState(false)
   const [errorLines, setErrorLines] = useState<Map<number, string>>(new Map())
 
-  // Memoize line↔step mapping (only recomputes when script text changes)
-  const lineMapping = useMemo(
-    () => timelineMode === "editor" ? buildLineStepMapping(editorText) : null,
-    [timelineMode, editorText],
-  )
+  // Memoize line↔step mapping (simplified: line N → step N)
+  const lineMapping = useMemo(() => {
+    if (timelineMode !== "editor" || !editorText) return null
+    const lines = editorText.split("\n")
+    const lineToStep = new Map<number, number>()
+    const stepToLine = new Map<number, number>()
+    let stepIdx = 0
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (line === "" || line.startsWith("#")) continue
+      lineToStep.set(i + 1, stepIdx)
+      stepToLine.set(stepIdx, i + 1)
+      stepIdx++
+    }
+    return { lineToStep, stepToLine }
+  }, [timelineMode, editorText])
 
   // Compute active lines per frame (cheap: just iterates steps, no string parsing)
   const activeLines = useMemo(() => {
@@ -97,11 +118,11 @@ function TimelineTracks({
   }, [lineMapping, steps, currentMs])
 
   const switchToEditor = useCallback(() => {
-    setEditorText(stepsToBashScript(steps))
+    setEditorText(stepsToScript ? stepsToScript(steps) : JSON.stringify(steps, null, 2))
     setEditorError(null)
     setErrorLines(new Map())
     setTimelineMode("editor")
-  }, [steps])
+  }, [steps, stepsToScript])
 
   // Clear per-line errors when editor text changes
   useEffect(() => {
