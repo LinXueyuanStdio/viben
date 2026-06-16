@@ -2,12 +2,13 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['esm', 'cjs'],
-  dts: true,
+  format: ['esm'],
+  dts: false,
   clean: true,
   splitting: false,
   sourcemap: false,
-  minify: false,
+  minify: true,
+  treeshake: true,
   target: 'node18',
   outDir: 'dist',
   // Bundle workspace packages (@viben/*) since they are not published to npm separately.

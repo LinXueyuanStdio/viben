@@ -27,13 +27,9 @@
   },
   "type": "module",
   "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
     }
   },
   "bin": {
@@ -49,6 +45,7 @@
   },
   "scripts": {
     "build": "tsup && npm run copy-templates",
+    "build:binary": "bun build src/main.ts --compile --minify --outfile dist/viben --external node-pty --external cloudflared --external node-notifier --external @hypothesi/tauri-mcp-server",
     "copy-templates": "rm -rf dist/templates && cp -r ../../packages/core/templates dist/templates",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
