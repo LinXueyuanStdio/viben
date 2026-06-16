@@ -8,6 +8,7 @@ import { executeGUIAction } from "@/lib/action-system";
 import type { ExecutionContext } from "@/lib/action-system";
 import type { ClientToolResult } from "@/lib/client-side-tool/types";
 import { formatMarkdown, colorizeUrls, createAgentCommand, showWelcome } from "./terminal-parts";
+import { useAppStore } from "@/stores";
 
 const HISTORY_KEY = "viben-console-history";
 const MAX_HISTORY = 100;
@@ -158,6 +159,83 @@ function createGUICommand(): Command {
   });
 }
 
+function createPresentationCommand(): Command {
+  return defineCommand("presentation", async (args) => {
+    const subcommand = args[0];
+
+    if (!subcommand || subcommand === "--help") {
+      return {
+        stdout: [
+          "presentation - control presentation overlay annotations",
+          "",
+          "Usage: presentation <command> [--json '{...}']",
+          "",
+          "Commands:",
+          "  spotlight, arrow, text, circle, highlight, card, pulse,",
+          "  underline, badge, progress, counter, bracket, trendline,",
+          "  comparison, typewriter, chart, html, clear, wait,",
+          "  gauge, sparkline, heatmap, funnel, waterfall, treemap,",
+          "  donut, scatter, callout, timeline, flowchart, table,",
+          "  list, annotation-group, confetti, countdown, reveal,",
+          "  zoom, morph, radar, sankey, kpi, matrix, stat-card,",
+          "  code-block, ribbon, polar-area, stacked-bar, tooltip,",
+          "  badge-group, meter, stop",
+          "",
+          "Examples:",
+          "  presentation clear",
+          "  presentation confetti",
+          "  presentation text --json '{\"text\":\"Hello\",\"position\":{\"x\":100,\"y\":100}}'",
+          "  presentation spotlight --help",
+          "",
+        ].join("\n"),
+        stderr: "",
+        exitCode: 0,
+      };
+    }
+
+    const actionName = `presentation.${subcommand}`;
+    const remainingArgs = args.slice(1);
+
+    if (remainingArgs.includes("--help")) {
+      try {
+        const ctx = createConsoleExecutionContext();
+        const result = await executeGUIAction({ action: "get_action_detail", payload: { action: actionName } }, ctx);
+        if (result.isError) {
+          return { stdout: "", stderr: `${resultToText(result)}\n`, exitCode: 1 };
+        }
+        return { stdout: `${JSON.stringify(resultToExecutorValue(result), null, 2)}\n`, stderr: "", exitCode: 0 };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { stdout: "", stderr: `presentation ${subcommand} --help: ${msg}\n`, exitCode: 1 };
+      }
+    }
+
+    let payload: unknown = undefined;
+    const jsonIndex = remainingArgs.indexOf("--json");
+    if (jsonIndex !== -1 && jsonIndex + 1 < remainingArgs.length) {
+      try {
+        payload = JSON.parse(remainingArgs[jsonIndex + 1]);
+      } catch (err) {
+        return { stdout: "", stderr: `presentation: invalid JSON payload: ${err instanceof Error ? err.message : String(err)}\n`, exitCode: 1 };
+      }
+    }
+
+    try {
+      const ctx = createConsoleExecutionContext();
+      const result = await executeGUIAction({ action: actionName, payload }, ctx);
+
+      if (result.isError) {
+        return { stdout: "", stderr: `${resultToText(result) || "Action failed"}\n`, exitCode: 1 };
+      }
+
+      return { stdout: `${JSON.stringify(resultToExecutorValue(result), null, 2)}\n`, stderr: "", exitCode: 0 };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { stdout: "", stderr: `presentation ${subcommand}: ${msg}\n`, exitCode: 1 };
+    }
+  });
+}
+
 function resultToExecutorValue(result: ClientToolResult): unknown {
   if (result.structuredContent) return result.structuredContent;
   if (result.content.length === 1 && result.content[0].type === "text") {
@@ -192,7 +270,7 @@ function createInputHandler(
   let historyIndex = history.length;
 
   const commands = [
-    "agent", "gui",
+    "agent", "gui", "presentation",
     "cat", "ls", "grep", "head", "tail", "wc", "sort", "uniq", "tr", "cut",
     "sed", "awk", "find", "xargs", "tee", "diff", "mkdir", "rmdir", "rm",
     "cp", "mv", "touch", "chmod", "ln", "basename", "dirname", "date",
@@ -426,8 +504,9 @@ export function ConsoleTerminal({ className }: ConsoleTerminalProps) {
 
     const guiCommand = createGUICommand();
     const agentCommand = createAgentCommand(term);
+    const presentationCommand = createPresentationCommand();
     const bash = new Bash({
-      customCommands: [guiCommand, agentCommand],
+      customCommands: [guiCommand, agentCommand, presentationCommand],
       files,
       cwd: "/home/user",
     });
@@ -438,16 +517,9 @@ export function ConsoleTerminal({ className }: ConsoleTerminalProps) {
       showWelcome(term);
     });
 
-    const colorSchemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const onColorSchemeChange = (e: MediaQueryListEvent) => {
-      term.options.theme = getTheme(e.matches);
-    };
-    colorSchemeQuery.addEventListener("change", onColorSchemeChange);
-
     term.focus();
 
     return () => {
-      colorSchemeQuery.removeEventListener("change", onColorSchemeChange);
       term.dispose();
       terminalInstance.current = null;
     };
@@ -457,6 +529,16 @@ export function ConsoleTerminal({ className }: ConsoleTerminalProps) {
     const cleanup = initTerminal();
     return cleanup;
   }, [initTerminal]);
+
+  const theme = useAppStore((s) => s.theme);
+  useEffect(() => {
+    const term = terminalInstance.current;
+    if (!term) return;
+    const resolved = theme === "system"
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : theme;
+    term.options.theme = getTheme(resolved === "dark");
+  }, [theme]);
 
   return (
     <div

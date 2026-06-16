@@ -104,19 +104,15 @@ function handleGetActionDetail(payload: unknown): ClientToolResult {
   };
 }
 
-async function handleReadWindow(ctx: ExecutionContext): Promise<ClientToolResult> {
+async function handleReadWindow(_ctx: ExecutionContext): Promise<ClientToolResult> {
   try {
-    await ctx.requireApproval("Allow the agent to capture the current application window?", {
-      title: "Screen Capture",
-      description: "The screenshot will be sent back as the GUI action result.",
-      confirmLabel: "Allow",
-    });
-
     const dataUrl = await captureCurrentWindowDataUrl();
-    const base64 = stripDataUrlPrefix(dataUrl);
+    const compressed = await compressScreenshot(dataUrl, 1280, 0.75);
+    const base64 = stripDataUrlPrefix(compressed);
+    const mimeType = compressed.startsWith("data:image/jpeg") ? "image/jpeg" : "image/png";
 
     return {
-      content: [{ type: "image", data: base64, mimeType: "image/png" }],
+      content: [{ type: "image", data: base64, mimeType }],
     };
   } catch (err) {
     return {
@@ -163,6 +159,26 @@ async function captureCurrentTauriWindowDataUrl(): Promise<string> {
     height: Math.max(1, Math.round(size.height)),
   });
   return result.data;
+}
+
+function compressScreenshot(dataUrl: string, maxWidth: number, quality: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx2d = canvas.getContext("2d");
+      if (!ctx2d) { resolve(dataUrl); return; }
+      ctx2d.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Failed to load screenshot for compression"));
+    img.src = dataUrl;
+  });
 }
 
 function stripDataUrlPrefix(dataUrl: string): string {

@@ -17,47 +17,52 @@
  * Solution: Use HEX values directly in @theme for maximum compatibility.
  * These HEX values match the light mode design system colors.
  */
-@theme {
-  /* ===== Core Semantic Colors (HEX for Android WebView compatibility) ===== */
-  --color-background: #fafaf9;
-  --color-foreground: #1c1917;
-  --color-card: #ffffff;
-  --color-card-foreground: #1c1917;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #1c1917;
-  --color-primary: #d97706;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f5f5f4;
-  --color-secondary-foreground: #1c1917;
-  --color-muted: #f5f5f4;
-  --color-muted-foreground: #78716c;
-  --color-accent: #f5f5f4;
-  --color-accent-foreground: #1c1917;
-  --color-destructive: #dc2626;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e7e5e4;
-  --color-input: #e7e5e4;
-  --color-ring: #d97706;
+@theme inline {
+  /* ===== Core Semantic Colors =====
+   * Using `inline` so Tailwind utilities resolve var() at runtime,
+   * enabling dark mode via .dark class overriding these CSS variables.
+   */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
   /* ===== Surface Colors ===== */
-  --color-surface: #ffffff;
-  --color-surface-elevated: #f5f5f4;
-  --color-foreground-secondary: #78716c;
-  --color-foreground-tertiary: #a8a29e;
-  --color-primary-hover: #b45309;
-  --color-border-strong: #d6d3d1;
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-tertiary: var(--foreground-tertiary);
+  --color-primary-hover: var(--primary-hover);
+  --color-border-strong: var(--border-strong);
 
   /* ===== Sidebar Colors ===== */
-  --color-sidebar: #fafaf9;
-  --color-sidebar-foreground: #1c1917;
-  --color-sidebar-primary: #d97706;
-  --color-sidebar-primary-foreground: #ffffff;
-  --color-sidebar-accent: #f5f5f4;
-  --color-sidebar-accent-foreground: #1c1917;
-  --color-sidebar-border: #e7e5e4;
-  --color-sidebar-ring: #d97706;
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
 
-  /* ===== Status Colors ===== */
+@theme {
+  /* ===== Status Colors (static, not theme-switched) ===== */
   --color-success: #22c55e;
   --color-warning: #eab308;
   --color-error: #ef4444;
