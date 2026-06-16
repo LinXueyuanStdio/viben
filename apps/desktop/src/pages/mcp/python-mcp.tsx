@@ -16,6 +16,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,11 +30,22 @@ import {
 import { useTranslation } from "react-i18next";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { useAcpSessionStore } from "@/stores/acp-session-store";
+import { toast } from "@/hooks/use-toast";
 import { createJSONEditor, Mode } from "vanilla-jsoneditor";
 import "vanilla-jsoneditor/themes/jse-theme-dark.css";
 
 const PYTHON_MCP_PATH = "/api/mcp-server/python";
 const API_PREFIX = "/api/python-mcp";
+
+// Module-level constant: string patterns for Python tokenizer (Issue 19)
+const STR_PATTERNS = [
+  /^(.*?)("""[\s\S]*?""")/,
+  /^(.*?)('''[\s\S]*?''')/,
+  /^(.*?)(f"(?:[^"\\]|\\.)*")/,
+  /^(.*?)(f'(?:[^'\\]|\\.)*')/,
+  /^(.*?)("(?:[^"\\]|\\.)*")/,
+  /^(.*?)('(?:[^'\\]|\\.)*')/,
+];
 
 interface PythonMcpConfig {
   jupyter_url: string;
@@ -86,13 +99,17 @@ export function PythonMcpPage() {
   const [copied, setCopied] = useState<string | null>(null);
   const gatewayUrl = useMemo(() => getGatewayUrl(), []);
   const activeSessionId = useAcpSessionStore((s) => s.activeSessionId);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   void t;
+
+  useEffect(() => () => clearTimeout(copyTimerRef.current!), []);
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopied(key);
-    setTimeout(() => setCopied(null), 2000);
+    clearTimeout(copyTimerRef.current!);
+    copyTimerRef.current = setTimeout(() => setCopied(null), 2000);
   };
 
   return (
@@ -128,25 +145,48 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
     "unknown"
   );
   const [saving, setSaving] = useState(false);
+  // Issue 16: config load failure state
+  const [configError, setConfigError] = useState(false);
 
   useEffect(() => {
     fetch(`${gatewayUrl}${API_PREFIX}/config`)
-      .then((r) => r.json())
-      .then((data) => setConfig(data))
-      .catch(() => {});
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        return r.json();
+      })
+      .then((data) => {
+        setConfig(data);
+        setConfigError(false);
+      })
+      .catch(() => setConfigError(true));
   }, [gatewayUrl]);
 
   const saveConfig = async () => {
     setSaving(true);
-    await fetch(`${gatewayUrl}${API_PREFIX}/config`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
-    });
-    setSaving(false);
+    try {
+      const res = await fetch(`${gatewayUrl}${API_PREFIX}/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      if (res.ok) {
+        toast.success("配置已保存");
+      } else {
+        toast.error("保存失败");
+      }
+    } catch {
+      toast.error("保存失败");
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // Issue 17: test connection loading state
+  const [testing, setTesting] = useState(false);
+
+  // Issue 17: wrap with loading state
   const testConnection = async () => {
+    setTesting(true);
     try {
       const res = await fetch(`${config.jupyter_url}/api/kernels`, {
         headers: { Authorization: `token ${config.jupyter_token}` },
@@ -154,8 +194,13 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
       setStatus(res.ok ? "connected" : "disconnected");
     } catch {
       setStatus("disconnected");
+    } finally {
+      setTesting(false);
     }
   };
+
+  // Issue 18: token show/hide toggle
+  const [showToken, setShowToken] = useState(false);
 
   return (
     <section className="rounded-xl border bg-card p-5 space-y-3">
@@ -163,6 +208,10 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
         <Terminal className="h-4 w-4 text-primary" />
         <h2 className="font-semibold">Jupyter 连接配置</h2>
       </div>
+      {/* Issue 16: show error when config fails to load */}
+      {configError && (
+        <p className="text-xs text-destructive">配置加载失败，显示的是默认值</p>
+      )}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <label className="text-xs w-20 shrink-0">Base URL</label>
@@ -174,24 +223,41 @@ function JupyterConfigSection({ gatewayUrl }: { gatewayUrl: string }) {
             }
           />
         </div>
+        {/* Issue 18: token field with show/hide toggle */}
         <div className="flex items-center gap-2">
           <label className="text-xs w-20 shrink-0">Token</label>
-          <input
-            type="password"
-            className="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-mono"
-            value={config.jupyter_token}
-            onChange={(e) =>
-              setConfig((c) => ({ ...c, jupyter_token: e.target.value }))
-            }
-          />
+          <div className="flex-1 flex items-center gap-1">
+            <input
+              type={showToken ? "text" : "password"}
+              className="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-mono"
+              value={config.jupyter_token}
+              onChange={(e) =>
+                setConfig((c) => ({ ...c, jupyter_token: e.target.value }))
+              }
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => setShowToken((v) => !v)}
+            >
+              {showToken ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Button size="sm" onClick={saveConfig} disabled={saving}>
             <Save className="h-3 w-3 mr-1" />
             保存
           </Button>
-          <Button size="sm" variant="outline" onClick={testConnection}>
-            测试连接
+          {/* Issue 17: disable button while testing */}
+          <Button size="sm" variant="outline" onClick={testConnection} disabled={testing}>
+            {testing ? "测试中..." : "测试连接"}
           </Button>
           <span className="text-xs">
             {status === "connected" && (
@@ -239,9 +305,12 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
       });
       if (res.ok) {
         await refresh();
+        toast.success("临时会话已创建");
+      } else {
+        toast.error("创建失败");
       }
     } catch {
-      // ignore
+      toast.error("创建失败");
     }
     setCreatingTemp(false);
   };
@@ -313,7 +382,7 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
         <>
           <div className="space-y-1.5">
             {paged.map((s) => (
-              <SessionRow key={s.acp_session_id} session={s} gatewayUrl={gatewayUrl} />
+              <SessionRow key={s.acp_session_id} session={s} gatewayUrl={gatewayUrl} onDelete={refresh} />
             ))}
           </div>
 
@@ -351,17 +420,31 @@ function SessionMappingSection({ gatewayUrl }: { gatewayUrl: string }) {
   );
 }
 
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return "刚刚";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
+  return `${Math.floor(diff / 86400000)} 天前`;
+}
+
 function SessionRow({
   session,
   gatewayUrl,
+  onDelete,
 }: {
   session: SessionInfo;
   gatewayUrl: string;
+  onDelete: () => void;
 }) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [kernelAlive, setKernelAlive] = useState<boolean | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  useEffect(() => {
+  useEffect(() => () => clearTimeout(copyTimerRef.current!), []);
+
+  // Issue 14: extract fetch into a function so it can be called on demand
+  const checkKernelStatus = () => {
     fetch(`${gatewayUrl}${API_PREFIX}/kernel/${session.current_kernel_id}/status`)
       .then((r) => {
         setKernelAlive(r.ok);
@@ -371,12 +454,34 @@ function SessionRow({
         if (data && data.alive !== undefined) setKernelAlive(data.alive);
       })
       .catch(() => setKernelAlive(false));
+  };
+
+  useEffect(() => {
+    checkKernelStatus();
   }, [gatewayUrl, session.current_kernel_id]);
 
   const copyField = (value: string, field: string) => {
     navigator.clipboard.writeText(value);
     setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 1500);
+    clearTimeout(copyTimerRef.current!);
+    copyTimerRef.current = setTimeout(() => setCopiedField(null), 1500);
+  };
+
+  const deleteSession = async () => {
+    if (!window.confirm(`确定删除 Session "${session.acp_session_id}" 吗？此操作不可撤销。`)) return;
+    try {
+      const res = await fetch(`${gatewayUrl}${API_PREFIX}/sessions/${session.acp_session_id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Session 已删除");
+        onDelete();
+      } else {
+        toast.error("删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
   };
 
   return (
@@ -408,6 +513,16 @@ function SessionRow({
         <code className="text-xs font-mono flex-1 truncate">
           {session.current_kernel_id}
         </code>
+        {/* Issue 14: manual refresh button for kernel status */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 shrink-0"
+          title="刷新状态"
+          onClick={checkKernelStatus}
+        >
+          <RefreshCw className="h-2.5 w-2.5" />
+        </Button>
         <span className="shrink-0">
           {kernelAlive === null ? (
             <Circle className="h-2.5 w-2.5 text-muted-foreground" />
@@ -438,6 +553,9 @@ function SessionRow({
             : kernelAlive
               ? "运行中"
               : "已断开"}
+          {session.last_used_at > 0 && (
+            <> · 最近使用: {formatRelativeTime(session.last_used_at)}</>
+          )}
         </span>
         <div className="flex-1" />
         <HistoryDialog
@@ -450,6 +568,14 @@ function SessionRow({
           sessionId={session.acp_session_id}
           gatewayUrl={gatewayUrl}
         />
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive"
+          onClick={deleteSession}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   );
@@ -467,14 +593,21 @@ function HistoryDialog({
   const [open, setOpen] = useState(false);
   const [histories, setHistories] = useState<KernelHistory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const loadHistory = async () => {
     setLoading(true);
-    const res = await fetch(
-      `${gatewayUrl}${API_PREFIX}/sessions/${sessionId}/history`
-    );
-    if (res.ok) setHistories(await res.json());
-    setLoading(false);
+    setLoadError(false);
+    try {
+      const res = await fetch(
+        `${gatewayUrl}${API_PREFIX}/sessions/${sessionId}/history`
+      );
+      if (res.ok) setHistories(await res.json());
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -497,6 +630,16 @@ function HistoryDialog({
             <code className="text-xs font-normal text-muted-foreground ml-2">
               {kernelId.slice(0, 12)}...
             </code>
+            <div className="flex-1" />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={loadHistory}
+              disabled={loading}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-auto mt-4 space-y-4">
@@ -504,16 +647,29 @@ function HistoryDialog({
             <p className="text-sm text-muted-foreground text-center py-8">
               加载中...
             </p>
+          ) : loadError ? (
+            <p className="text-sm text-destructive text-center py-8">
+              加载失败
+            </p>
           ) : histories.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               暂无执行记录
             </p>
           ) : (
+            // Issue 15: add kernel group headers
             histories.map((kh) => {
               const codeEntries = kh.entries.filter((e) => e.type === "code");
               const resultEntries = kh.entries.filter((e) => e.type === "result");
               return (
                 <div key={kh.kernel_id} className="space-y-3">
+                  {/* Kernel group header */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground border-b pb-1">
+                    <code className="font-mono">{kh.kernel_id.slice(0, 12)}...</code>
+                    <span>·</span>
+                    <span>{new Date(kh.created_at).toLocaleString()}</span>
+                    <span>·</span>
+                    <span>{codeEntries.length} 次执行</span>
+                  </div>
                   {codeEntries.map((entry, idx) => {
                     const result = resultEntries.find(
                       (r) => r.code_id === entry.code_id
@@ -638,6 +794,13 @@ function DebugDialog({
   const [code, setCode] = useState("");
   const [executing, setExecuting] = useState(false);
   const [results, setResults] = useState<Array<{ code: string; result: LogEntry }>>([]);
+  // Issue 12: ref to scroll to latest result
+  const resultsEndRef = useRef<HTMLDivElement>(null);
+
+  // Issue 12: scroll to bottom when results change
+  useEffect(() => {
+    resultsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [results.length]);
 
   const execute = async () => {
     if (!code.trim()) return;
@@ -708,6 +871,8 @@ function DebugDialog({
               cellIndex={idx + 1}
             />
           ))}
+          {/* Issue 12: sentinel div to scroll into view */}
+          <div ref={resultsEndRef} />
         </div>
 
         {/* Input area */}
@@ -816,18 +981,9 @@ function tokenizePythonLine(line: string): Token[] {
       continue;
     }
 
-    // Check strings
-    const strPatterns = [
-      /^(.*?)("""[\s\S]*?""")/,
-      /^(.*?)('''[\s\S]*?''')/,
-      /^(.*?)(f"(?:[^"\\]|\\.)*")/,
-      /^(.*?)(f'(?:[^'\\]|\\.)*')/,
-      /^(.*?)("(?:[^"\\]|\\.)*")/,
-      /^(.*?)('(?:[^'\\]|\\.)*')/,
-    ];
-
+    // Issue 19: use module-level STR_PATTERNS instead of recreating on every call
     let foundStr = false;
-    for (const pat of strPatterns) {
+    for (const pat of STR_PATTERNS) {
       const m = remaining.match(pat);
       if (m && m[2] && m[1].length < earliest.index) {
         earliest = { index: m[1].length, length: m[2].length, className: "text-emerald-600 dark:text-emerald-400", match: m[2] };
@@ -912,25 +1068,27 @@ function JsonViewer({ data }: { data: unknown }) {
   const isDark = document.documentElement.classList.contains("dark");
 
   useEffect(() => {
-    if (containerRef.current && !editorRef.current) {
-      editorRef.current = createJSONEditor({
-        target: containerRef.current,
-        props: {
-          mode: Mode.tree,
-          readOnly: true,
-          content: { json: data },
-        },
-      });
-    } else if (editorRef.current) {
-      editorRef.current.set({ json: data });
-    }
-
+    if (!containerRef.current) return;
+    editorRef.current = createJSONEditor({
+      target: containerRef.current,
+      props: {
+        mode: Mode.tree,
+        readOnly: true,
+        content: { json: data },
+      },
+    });
     return () => {
       if (editorRef.current) {
         editorRef.current.destroy();
         editorRef.current = null;
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.set({ json: data });
+    }
   }, [data]);
 
   return <div ref={containerRef} className={`${isDark ? "jse-theme-dark" : ""} min-h-[200px]`} />;
@@ -1053,22 +1211,41 @@ function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
     const url = isNew
       ? `${gatewayUrl}${API_PREFIX}/skills`
       : `${gatewayUrl}${API_PREFIX}/skills/${editing.name}`;
-    await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editing),
-    });
-    setEditing(null);
-    setIsNew(false);
-    refresh();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editing),
+      });
+      if (res.ok) {
+        toast.success("Skill 已保存");
+        setEditing(null);
+        setIsNew(false);
+        refresh();
+      } else {
+        toast.error("保存失败");
+      }
+    } catch {
+      toast.error("保存失败");
+    }
   };
 
   const deleteSkill = async (name: string) => {
-    await fetch(`${gatewayUrl}${API_PREFIX}/skills/${name}`, {
-      method: "DELETE",
-    });
-    setEditing(null);
-    refresh();
+    if (!window.confirm(`确定删除 Skill "${name}" 吗？此操作不可撤销。`)) return;
+    try {
+      const res = await fetch(`${gatewayUrl}${API_PREFIX}/skills/${name}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Skill 已删除");
+        setEditing(null);
+        refresh();
+      } else {
+        toast.error("删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
   };
 
   return (
@@ -1086,11 +1263,17 @@ function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
             size="sm"
             variant={editing?.name === s.name ? "default" : "outline"}
             onClick={async () => {
-              setEditing({
-                ...s,
-                code_for_interpreter: "",
-                code_for_agent: "",
-              });
+              try {
+                const res = await fetch(`${gatewayUrl}${API_PREFIX}/skills/${s.name}`);
+                if (res.ok) {
+                  const full: SkillConfig = await res.json();
+                  setEditing(full);
+                } else {
+                  setEditing({ name: s.name, description: s.description, code_for_interpreter: "", code_for_agent: "" });
+                }
+              } catch {
+                setEditing({ name: s.name, description: s.description, code_for_interpreter: "", code_for_agent: "" });
+              }
               setIsNew(false);
             }}
           >
@@ -1150,6 +1333,9 @@ function SkillsSection({ gatewayUrl }: { gatewayUrl: string }) {
           <div className="flex gap-2">
             <Button size="sm" onClick={saveSkill}>
               <Save className="h-3 w-3 mr-1" /> 保存
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setEditing(null); setIsNew(false); }}>
+              取消
             </Button>
             {!isNew && (
               <Button
