@@ -108,7 +108,7 @@ export function OnboardingDashboard() {
         <div className="rounded-xl border border-border bg-muted p-6">
           <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
             <svg
-              className="w-4 h-4 text-amber-500"
+              className="w-4 h-4 text-warning"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
