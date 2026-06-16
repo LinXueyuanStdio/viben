@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, appendFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, appendFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { JupyterClient } from "./jupyter-client";
 import type { CodeEntry, ResultEntry, KernelHistory, SessionInfo, LogEntry, OutputItem } from "./types";
@@ -149,6 +149,12 @@ export class SessionManager {
       });
     }
     return sessions;
+  }
+
+  async deleteSession(acpSessionId: string): Promise<void> {
+    this.cache.delete(acpSessionId);
+    const sessionDir = join(this.baseDir, acpSessionId);
+    await rm(sessionDir, { recursive: true, force: true });
   }
 
   clearCache(acpSessionId: string): void {

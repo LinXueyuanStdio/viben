@@ -208,6 +208,17 @@ export function registerPythonMcpServerRoutes(fastify: FastifyInstance): void {
     return await sessionManager.getHistory(id);
   });
 
+  fastify.delete(`${MANAGEMENT_PREFIX}/sessions/:id`, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      await sessionManager.deleteSession(id);
+      return { status: "deleted", id };
+    } catch {
+      reply.code(500);
+      return { error: "Failed to delete session", id };
+    }
+  });
+
   fastify.get(`${MANAGEMENT_PREFIX}/kernel/:kernelId/status`, async (request) => {
     const { kernelId } = request.params as { kernelId: string };
     const config = await loadConfig();
@@ -248,6 +259,16 @@ export function registerPythonMcpServerRoutes(fastify: FastifyInstance): void {
 
   fastify.get(`${MANAGEMENT_PREFIX}/skills`, async () => {
     return await skillRegistry.listSkills();
+  });
+
+  fastify.get(`${MANAGEMENT_PREFIX}/skills/:name`, async (request, reply) => {
+    const { name } = request.params as { name: string };
+    try {
+      return await skillRegistry.getSkill(name);
+    } catch {
+      reply.code(404);
+      return { error: "Skill not found", name };
+    }
   });
 
   fastify.post(`${MANAGEMENT_PREFIX}/skills`, async (request) => {
