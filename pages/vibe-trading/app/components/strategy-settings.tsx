@@ -620,7 +620,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                       }`}
                     >
                       <div className="text-sm font-medium mb-1">{card.label}</div>
-                      <div className="text-xs text-slate-500 leading-relaxed">{card.description}</div>
+                      <div className="text-xs text-muted-foreground leading-relaxed">{card.description}</div>
                     </div>
                   );
                 })}
@@ -632,19 +632,19 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                   onChange={(e) => updateForm("custom_symbols", e.target.value)}
                   placeholder="输入币种，逗号分隔，如: BTC/USDT, ETH/USDT, SOL/USDT"
                   rows={4}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm resize-none"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm resize-none"
                 />
-                <p className="mt-1 text-xs text-slate-400">逗号或换行分隔多个标的</p>
+                <p className="mt-1 text-xs text-muted-foreground">逗号或换行分隔多个标的</p>
               </div>
             )}
           </section>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm border border-slate-300 rounded-md hover:bg-slate-50"
+            className="px-4 py-2 text-sm border border-border rounded-md hover:bg-muted"
           >
             取消
           </button>

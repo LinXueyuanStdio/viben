@@ -24,13 +24,13 @@ export function SidePanel({ initialDecisions }: SidePanelProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
-      <div className="flex items-center border-b border-slate-200 px-2 shrink-0">
+      <div className="flex items-center border-b border-border px-2 shrink-0">
         <button
           onClick={() => setActiveTab("decisions")}
           className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
             activeTab === "decisions"
-              ? "border-slate-800 text-slate-800"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           决策
@@ -39,8 +39,8 @@ export function SidePanel({ initialDecisions }: SidePanelProps) {
           onClick={() => setActiveTab("agent")}
           className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "agent"
-              ? "border-slate-800 text-slate-800"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
           Agent
