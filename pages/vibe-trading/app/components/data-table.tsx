@@ -670,7 +670,7 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
                     ? `${trade.slippage > 0 ? "+" : ""}${(trade.slippage * 10000).toFixed(1)}bp`
                     : "-"}
                 </td>
-                <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-500">
+                <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
                   {trade.trade_duration_ms !== undefined
                     ? `${trade.trade_duration_ms}ms`
                     : "-"}
@@ -679,14 +679,14 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
                   <span
                     className={`text-xs px-1.5 py-0.5 rounded ${
                       trade.source === "agent"
-                        ? "bg-blue-50 text-blue-600"
-                        : "bg-slate-100 text-slate-600"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {trade.source === "agent" ? "AI" : "手动"}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-xs text-slate-400">
+                <td className="px-3 py-2 text-xs text-muted-foreground">
                   {formatRelativeTime(trade.ts)}
                 </td>
               </tr>
@@ -696,9 +696,9 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
       </div>
 
       {/* Summary row */}
-      <div className="flex items-center gap-6 px-6 py-2 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-600">
+      <div className="flex items-center gap-6 px-6 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground">
         <span>
-          共 <strong className="text-slate-900">{summary.count}</strong> 笔
+          共 <strong className="text-foreground">{summary.count}</strong> 笔
         </span>
         <span>
           总盈亏{" "}
@@ -712,12 +712,12 @@ function TradesTable({ trades }: { trades: TradeRecord[] }) {
         </span>
         <span>
           手续费{" "}
-          <strong className="font-mono text-slate-900">
+          <strong className="font-mono text-foreground">
             ${summary.totalFees.toFixed(4)}
           </strong>
         </span>
         <span>
-          胜率 <strong className="text-slate-900">{summary.winRate}%</strong>
+          胜率 <strong className="text-foreground">{summary.winRate}%</strong>
         </span>
       </div>
     </div>
@@ -737,7 +737,7 @@ function OrdersTable({ orders }: { orders: OrderRecord[] }) {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <svg
-          className="w-12 h-12 text-slate-300 mb-3 float-animation"
+          className="w-12 h-12 text-muted-foreground/60 mb-3 float-animation"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -749,7 +749,7 @@ function OrdersTable({ orders }: { orders: OrderRecord[] }) {
             d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
           />
         </svg>
-        <p className="text-sm text-slate-500 font-medium">暂无订单记录</p>
+        <p className="text-sm text-muted-foreground font-medium">暂无订单记录</p>
       </div>
     );
   }
@@ -760,8 +760,8 @@ function OrdersTable({ orders }: { orders: OrderRecord[] }) {
   return (
     <div className="overflow-x-auto h-full">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-white z-10">
-          <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+        <thead className="sticky top-0 bg-card z-10">
+          <tr className="text-left text-xs text-muted-foreground border-b border-border">
             <th className="px-6 py-2 font-medium">订单ID</th>
             <th className="px-3 py-2 font-medium">币对</th>
             <th className="px-3 py-2 font-medium">方向</th>
@@ -778,11 +778,11 @@ function OrdersTable({ orders }: { orders: OrderRecord[] }) {
           {sortedOrders.map((order, i) => (
             <tr
               key={order.order_id}
-              className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${
-                i % 2 === 1 ? "bg-slate-25" : ""
+              className={`border-b border-border/50 hover:bg-muted transition-colors ${
+                i % 2 === 1 ? "bg-muted/30" : ""
               } ${i < newOrderCount ? "order-enter" : ""}`}
             >
-              <td className="px-6 py-2 font-mono text-xs text-slate-500">
+              <td className="px-6 py-2 font-mono text-xs text-muted-foreground">
                 {order.order_id}
               </td>
               <td className="px-3 py-2 font-medium">{order.symbol}</td>
@@ -809,21 +809,21 @@ function OrdersTable({ orders }: { orders: OrderRecord[] }) {
               <td className="px-3 py-2 text-center">
                 <StatusBadge status={order.status} isNew={i < newOrderCount} />
               </td>
-              <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-500">
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
                 {order.latency_ms !== undefined ? `${order.latency_ms}ms` : "-"}
               </td>
               <td className="px-3 py-2">
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded ${
                     order.source === "agent"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-slate-100 text-slate-600"
+                      ? "bg-accent/10 text-accent"
+                      : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {order.source === "agent" ? "AI" : "手动"}
                 </span>
               </td>
-              <td className="px-3 py-2 text-xs text-slate-400">
+              <td className="px-3 py-2 text-xs text-muted-foreground">
                 {formatRelativeTime(order.ts)}
               </td>
             </tr>
@@ -848,11 +848,11 @@ function StatusBadge({
   > = {
     pending: {
       label: "待成交",
-      className: "bg-blue-50 text-blue-600",
+      className: "bg-accent/10 text-accent",
     },
     filled: {
       label: "已成交",
-      className: "bg-green-50 text-green-600",
+      className: "bg-gain/10 text-gain",
     },
     partial_filled: {
       label: "部分成交",
@@ -860,15 +860,15 @@ function StatusBadge({
     },
     rejected: {
       label: "已拒绝",
-      className: "bg-red-50 text-red-600",
+      className: "bg-loss/10 text-loss",
     },
     expired: {
       label: "已过期",
-      className: "bg-slate-100 text-slate-500",
+      className: "bg-muted text-muted-foreground",
     },
     cancelled: {
       label: "已撤销",
-      className: "bg-slate-100 text-slate-500",
+      className: "bg-muted text-muted-foreground",
     },
   };
 

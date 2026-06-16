@@ -44,31 +44,31 @@ export function OrderDialog({ sessionId, onClose }: OrderDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-xl shadow-xl w-[420px] p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40">
+      <div className="bg-card rounded-xl shadow-xl w-[420px] p-6">
         <h2 className="text-lg font-semibold mb-4">手动开仓</h2>
 
         <div className="mb-4">
-          <label className="text-sm text-slate-500 mb-1 block">交易对</label>
+          <label className="text-sm text-muted-foreground mb-1 block">交易对</label>
           <input
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm"
           />
         </div>
 
         <div className="mb-4">
-          <label className="text-sm text-slate-500 mb-1 block">方向</label>
+          <label className="text-sm text-muted-foreground mb-1 block">方向</label>
           <div className="flex gap-2">
             <button
               onClick={() => setSide("buy")}
-              className={`flex-1 py-2 rounded-md text-sm font-medium ${side === "buy" ? "bg-gain text-white" : "border border-slate-200 text-slate-600"}`}
+              className={`flex-1 py-2 rounded-md text-sm font-medium ${side === "buy" ? "bg-gain text-white" : "border border-border text-muted-foreground"}`}
             >
               买入 (做多)
             </button>
             <button
               onClick={() => setSide("sell")}
-              className={`flex-1 py-2 rounded-md text-sm font-medium ${side === "sell" ? "bg-loss text-white" : "border border-slate-200 text-slate-600"}`}
+              className={`flex-1 py-2 rounded-md text-sm font-medium ${side === "sell" ? "bg-loss text-white" : "border border-border text-muted-foreground"}`}
             >
               卖出 (做空)
             </button>
@@ -76,17 +76,17 @@ export function OrderDialog({ sessionId, onClose }: OrderDialogProps) {
         </div>
 
         <div className="mb-4">
-          <label className="text-sm text-slate-500 mb-1 block">类型</label>
+          <label className="text-sm text-muted-foreground mb-1 block">类型</label>
           <div className="flex gap-2">
             <button
               onClick={() => setType("market")}
-              className={`px-4 py-1.5 rounded-md text-sm ${type === "market" ? "bg-slate-900 text-white" : "border border-slate-200 text-slate-600"}`}
+              className={`px-4 py-1.5 rounded-md text-sm ${type === "market" ? "bg-foreground text-card" : "border border-border text-muted-foreground"}`}
             >
               市价
             </button>
             <button
               onClick={() => setType("limit")}
-              className={`px-4 py-1.5 rounded-md text-sm ${type === "limit" ? "bg-slate-900 text-white" : "border border-slate-200 text-slate-600"}`}
+              className={`px-4 py-1.5 rounded-md text-sm ${type === "limit" ? "bg-foreground text-card" : "border border-border text-muted-foreground"}`}
             >
               限价
             </button>
@@ -95,34 +95,34 @@ export function OrderDialog({ sessionId, onClose }: OrderDialogProps) {
 
         {type === "limit" && (
           <div className="mb-4">
-            <label className="text-sm text-slate-500 mb-1 block">价格</label>
+            <label className="text-sm text-muted-foreground mb-1 block">价格</label>
             <input
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               type="number"
               step="any"
-              className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+              className="w-full border border-border rounded-md px-3 py-2 text-sm"
               placeholder="限价价格"
             />
           </div>
         )}
 
         <div className="mb-4">
-          <label className="text-sm text-slate-500 mb-1 block">数量</label>
+          <label className="text-sm text-muted-foreground mb-1 block">数量</label>
           <input
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
             type="number"
             step="any"
-            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+            className="w-full border border-border rounded-md px-3 py-2 text-sm"
             placeholder="下单数量"
           />
         </div>
 
-        {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+        {error && <p className="text-sm text-loss mb-4">{error}</p>}
 
         <div className="flex gap-3 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-slate-200 hover:bg-slate-50">
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-md border border-border hover:bg-muted">
             取消
           </button>
           <button

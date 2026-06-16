@@ -40,8 +40,8 @@ function PauseIcon() {
 function LiveDot() {
   return (
     <span className="relative flex h-2 w-2">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gain opacity-75" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-gain" />
     </span>
   );
 }
@@ -60,12 +60,12 @@ export function PlayerBar() {
   const { isPlaying, speed, currentIndex, totalEvents, play, pause, step, stepBack, seek, setSpeed } = replay;
 
   return (
-    <div className="flex h-10 items-center gap-3 border-t border-slate-200 bg-slate-50 px-4 py-1.5">
+    <div className="flex h-10 items-center gap-3 border-t border-border bg-muted px-4 py-1.5">
       {/* Step Back */}
       <button
         onClick={stepBack}
         disabled={currentIndex <= 0}
-        className="flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted-foreground/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="后退一步"
       >
         <StepBackIcon />
@@ -74,7 +74,7 @@ export function PlayerBar() {
       {/* Play / Pause */}
       <button
         onClick={isPlaying ? pause : play}
-        className="flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-200 transition-colors"
+        className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted-foreground/20 transition-colors"
         title={isPlaying ? "暂停回放" : "开始回放"}
       >
         {isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -84,7 +84,7 @@ export function PlayerBar() {
       <button
         onClick={step}
         disabled={currentIndex >= totalEvents - 1}
-        className="flex h-6 w-6 items-center justify-center rounded text-slate-600 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted-foreground/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         title="前进一步"
       >
         <StepForwardIcon />
@@ -97,17 +97,17 @@ export function PlayerBar() {
         max={totalEvents - 1}
         value={currentIndex}
         onChange={(e) => seek(Number(e.target.value))}
-        className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-slate-200 accent-cyan-600"
+        className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-border accent-cyan-600"
         title={`Event ${currentIndex + 1} / ${totalEvents}`}
       />
 
       {/* Event Count */}
-      <span className="whitespace-nowrap text-xs text-slate-500">
+      <span className="whitespace-nowrap text-xs text-muted-foreground">
         {currentIndex + 1} / {totalEvents}
       </span>
 
       {/* Current Cycle Info */}
-      <span className="whitespace-nowrap text-xs text-slate-400">
+      <span className="whitespace-nowrap text-xs text-muted-foreground/60">
         Cycle {state.current_cycle}
       </span>
 
@@ -120,7 +120,7 @@ export function PlayerBar() {
             className={`h-6 rounded px-1.5 text-xs transition-colors ${
               speed === s
                 ? "bg-cyan-600 text-white"
-                : "text-slate-500 hover:bg-slate-200"
+                : "text-muted-foreground hover:bg-muted-foreground/20"
             }`}
             title={`${s}x 速度`}
           >
@@ -132,7 +132,7 @@ export function PlayerBar() {
       {/* Switch to Live */}
       <button
         onClick={() => setMode("live")}
-        className="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200 transition-colors"
+        className="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted-foreground/20 transition-colors"
         title="切回实时模式"
       >
         <LiveDot />
