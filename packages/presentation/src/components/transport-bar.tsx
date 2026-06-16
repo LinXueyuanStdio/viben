@@ -120,8 +120,8 @@ const PLAY_BTN_STYLE: React.CSSProperties = {
 
 const SCRUBBER_STYLE: React.CSSProperties = {
   flex: 1,
-  height: 4,
-  borderRadius: 2,
+  height: 6,
+  borderRadius: 3,
   background: "rgba(255,255,255,0.12)",
   cursor: "pointer",
   position: "relative",
@@ -150,8 +150,22 @@ const SCRUBBER_FILL_BASE: React.CSSProperties = {
   left: 0,
   top: 0,
   height: "100%",
-  borderRadius: 2,
-  background: "rgba(99,102,241,0.7)",
+  borderRadius: 3,
+  background: "linear-gradient(90deg, rgba(99,102,241,0.7), rgba(139,92,246,0.8))",
+}
+
+const SCRUBBER_THUMB_BASE: React.CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  width: 12,
+  height: 12,
+  borderRadius: "50%",
+  background: "#fff",
+  border: "2px solid rgba(99,102,241,0.9)",
+  boxShadow: "0 0 6px rgba(99,102,241,0.5), 0 1px 3px rgba(0,0,0,0.3)",
+  transform: "translate(-50%, -50%)",
+  pointerEvents: "none",
+  transition: "transform 0.1s ease",
 }
 
 const BAR_STYLE_TOP: React.CSSProperties = { ...BAR_STYLE, top: 8 }
@@ -234,7 +248,6 @@ export const TransportBar = memo(function TransportBar({
 
   const barStyle = position === "top" ? BAR_STYLE_TOP : BAR_STYLE_BOTTOM
 
-  // Scrubber fill: only allocate new style when progress or isPlaying changes
   const scrubberFillStyle = useMemo<React.CSSProperties>(() => ({
     ...SCRUBBER_FILL_BASE,
     width: `${progress * 100}%`,
@@ -266,6 +279,7 @@ export const TransportBar = memo(function TransportBar({
       {/* Scrubber */}
       <div style={SCRUBBER_STYLE} onClick={handleScrubberClick}>
         <div style={scrubberFillStyle} />
+        <div style={{ ...SCRUBBER_THUMB_BASE, left: `${progress * 100}%` }} />
       </div>
 
       <span style={TIME_STYLE}>

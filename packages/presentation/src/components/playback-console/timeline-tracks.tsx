@@ -139,45 +139,26 @@ export function TimelineTracks({
   }, [lineMapping, steps, onSeek])
 
   const handleEditorRun = useCallback(async () => {
+    if (!onEditorRun) return
     setIsRunning(true)
     setEditorError(null)
     setErrorLines(new Map())
     try {
-      const newSteps: PresentationStep[] = []
-      let cursorMs = 0
-      const bash = createPresentationBash({
-        onStep: (step) => newSteps.push(step),
-        getCursorMs: () => cursorMs,
-        setCursorMs: (ms) => { cursorMs = ms },
-      })
-      // Pre-process the script text (fix quoting, join multiline)
-      const processed = fixJsonQuoting(joinMultilineQuotes(editorText))
-      const lines = processed.split("\n")
-      const errors = new Map<number, string>()
-
-      // Execute line by line to track per-line errors
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim()
-        if (line === "" || line.startsWith("#")) continue
-        const result = await bash.exec(lines[i])
-        if (result.exitCode !== 0) {
-          errors.set(i + 1, result.stderr || "Error") // 1-based line number
+      const result = await onEditorRun(editorText)
+      if (result) {
+        setErrorLines(result.errors)
+        if (result.steps.length > 0) {
+          onStepsChange(result.steps, result.totalMs)
+        } else if (result.errors.size === 0) {
+          setEditorError("No steps produced. Check your script.")
         }
-      }
-
-      setErrorLines(errors)
-
-      if (newSteps.length > 0) {
-        onStepsChange(newSteps, cursorMs)
-      } else if (errors.size === 0) {
-        setEditorError("No steps produced. Check your script.")
       }
     } catch (err: unknown) {
       setEditorError(err instanceof Error ? err.message : String(err))
     } finally {
       setIsRunning(false)
     }
-  }, [editorText, onStepsChange])
+  }, [editorText, onStepsChange, onEditorRun])
 
 
   // --- drag / hover state ---
@@ -786,16 +767,22 @@ export function TimelineTracks({
       {/* Editor mode */}
       {timelineMode === "editor" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 }}>
-          <BashEditor
-            value={editorText}
-            onChange={setEditorText}
-            activeLines={activeLines}
-            errorLines={errorLines}
-            onLineClick={handleLineClick}
-            steps={steps}
-            onRun={handleEditorRun}
-            style={{ flex: 1, minHeight: 180, maxHeight: 260 }}
-          />
+          {renderBashEditor ? renderBashEditor({
+            value: editorText,
+            onChange: setEditorText,
+            activeLines,
+            errorLines,
+            onLineClick: handleLineClick,
+            steps,
+            onRun: handleEditorRun,
+            style: { flex: 1, minHeight: 180, maxHeight: 260 },
+          }) : (
+            <textarea
+              value={editorText}
+              onChange={(e) => setEditorText(e.target.value)}
+              style={{ flex: 1, minHeight: 180, maxHeight: 260, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#fff", padding: 8, fontSize: 11, fontFamily: "monospace", resize: "vertical" }}
+            />
+          )}
           {activeLines.length > 0 && (
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
