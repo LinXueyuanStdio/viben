@@ -18,6 +18,7 @@ import {
   Plus,
   PanelLeftClose,
   PanelLeft,
+  Settings,
 } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
@@ -379,6 +380,16 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
     });
   }, [openTab]);
 
+  const handleOpenSettings = useCallback(() => {
+    openTab({
+      navigationState: createTabNavigationState(
+        "/settings",
+        buildColdStartBreadcrumb("/settings"),
+      ),
+      pinned: false,
+    });
+  }, [openTab]);
+
   // Tab IDs for sortable context
   const tabIds = tabs.map((t) => t.id);
 
@@ -683,6 +694,23 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
+      }
+      rightControls={
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+              onClick={handleOpenSettings}
+            >
+              <Settings className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {t("common.settings", "Settings")}
+          </TooltipContent>
+        </Tooltip>
       }
       windowControls={<WindowControls />}
     />
