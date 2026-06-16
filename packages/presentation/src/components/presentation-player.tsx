@@ -157,6 +157,15 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       return () => observer.disconnect()
     }, [])
 
+    // Force play after mount when autoPlay is set (bypasses browser autoplay restrictions)
+    useEffect(() => {
+      if (!autoPlay) return
+      const timer = setTimeout(() => {
+        internalPlayerRef.current?.play()
+      }, 100)
+      return () => clearTimeout(timer)
+    }, [autoPlay])
+
     // Memoize durationMs to avoid O(n) computeTotalMs on every render
     const durationMs = useMemo(
       () => totalDurationMsProp ?? computeTotalMs(steps),

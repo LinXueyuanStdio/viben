@@ -1,9 +1,9 @@
 import { useCallback, memo } from "react"
-import { PresentationLayer as PresentationLayerBase } from "@viben/presentation"
+import { PresentationLayer } from "@viben/presentation"
 import { useOverlayStore } from "@/stores/overlay-store"
 import { DOMZIndex } from "@/types/overlay"
 
-export function PresentationLayer() {
+export function DesktopPresentationLayer() {
   const presentationActive = useOverlayStore((s) => s.presentationActive)
   const steps = useOverlayStore((s) => s.presentationSteps)
   const actions = useOverlayStore((s) => s.actions)
@@ -16,7 +16,7 @@ export function PresentationLayer() {
 
   return (
     <div style={LAYER_CONTAINER_STYLE}>
-      <PresentationLayerBase
+      <PresentationLayer
         presentationActive={presentationActive}
         steps={steps}
         autoPlay

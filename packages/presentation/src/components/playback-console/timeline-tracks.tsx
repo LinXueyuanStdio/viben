@@ -683,40 +683,42 @@ export function TimelineTracks({
       {/* Header with mode toggle and zoom controls */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* Mode toggle buttons */}
-          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
-            <button
-              type="button"
-              onClick={() => setTimelineMode("timeline")}
-              style={{
-                padding: "3px 8px",
-                fontSize: 10,
-                fontWeight: 600,
-                border: "none",
-                cursor: "pointer",
-                background: timelineMode === "timeline" ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.03)",
-                color: timelineMode === "timeline" ? "#76B900" : "rgba(255,255,255,0.45)",
-                borderRight: "1px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              Timeline
-            </button>
-            <button
-              type="button"
-              onClick={switchToEditor}
-              style={{
-                padding: "3px 8px",
-                fontSize: 10,
-                fontWeight: 600,
-                border: "none",
-                cursor: "pointer",
-                background: timelineMode === "editor" ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.03)",
-                color: timelineMode === "editor" ? "#76B900" : "rgba(255,255,255,0.45)",
-              }}
-            >
-              Editor
-            </button>
-          </div>
+          {/* Mode toggle buttons — only show editor toggle when renderBashEditor is provided */}
+          {renderBashEditor ? (
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)" }}>
+              <button
+                type="button"
+                onClick={() => setTimelineMode("timeline")}
+                style={{
+                  padding: "3px 8px",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  background: timelineMode === "timeline" ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.03)",
+                  color: timelineMode === "timeline" ? "#76B900" : "rgba(255,255,255,0.45)",
+                  borderRight: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                Timeline
+              </button>
+              <button
+                type="button"
+                onClick={switchToEditor}
+                style={{
+                  padding: "3px 8px",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  background: timelineMode === "editor" ? "rgba(118,185,0,0.2)" : "rgba(255,255,255,0.03)",
+                  color: timelineMode === "editor" ? "#76B900" : "rgba(255,255,255,0.45)",
+                }}
+              >
+                Editor
+              </button>
+            </div>
+          ) : null}
           {timelineMode === "timeline" && (
             <span style={{ padding: "1px 6px", borderRadius: 4, background: "rgba(255,255,255,0.06)", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>
               {lanes.length} tracks
@@ -822,7 +824,7 @@ export function TimelineTracks({
             <button
               type="button"
               onClick={handleEditorRun}
-              disabled={isRunning || !editorText.trim()}
+              disabled={isRunning || !editorText.trim() || !onEditorRun}
               style={{
                 padding: "5px 14px",
                 fontSize: 11,
@@ -1276,12 +1278,10 @@ function StepJsonPopover({
           </div>
         </div>
       </div>
-      <JsonInspector
-        value={item.step.command}
-        height={200}
-        initialMode="tree"
-        focusPath={["type"]}
-        compact
-      />
+      {renderJsonInspector ? renderJsonInspector({ value: item.step.command, height: 200, initialMode: "tree", focusPath: ["type"], compact: true }) : (
+        <pre style={{ padding: 8, fontSize: 10, color: "rgba(255,255,255,0.5)", overflow: "auto", margin: 0, maxHeight: 200 }}>
+          {JSON.stringify(item.step.command, null, 2)}
+        </pre>
+      )}
     </div>
   )
