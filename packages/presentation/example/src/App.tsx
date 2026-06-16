@@ -14,9 +14,10 @@ import {
   getCurrentStepIndex,
   commandColor,
   formatTime,
+  IsolatedPlaybackConsole,
 } from "@viben/presentation"
 import type { PerfMetrics, TimelineItem, TimelineLane } from "@viben/presentation"
-import type { PresentationStep, PlayerRef } from "@viben/presentation"
+import type { PresentationStep, PlayerRef, PlaybackConsoleScript, JsonInspectorRenderProps, BashEditorRenderProps } from "@viben/presentation"
 import {
   createJSONEditor,
   createValueSelection,
