@@ -250,6 +250,22 @@ export type { TransportBarProps } from "./components/transport-bar"
 export { TimelinePanel } from "./components/timeline-panel"
 export type { TimelinePanelProps } from "./components/timeline-panel"
 
+// Playback Console (full-featured playback control panel)
+export {
+  PlaybackConsole,
+  IsolatedPlaybackConsole,
+  injectConsoleStyles,
+  PLAYBACK_SPEEDS,
+  DEFAULT_FPS,
+} from "./components/playback-console"
+export type {
+  PlaybackConsoleProps,
+  IsolatedPlaybackConsoleProps,
+  PlaybackConsoleScript,
+  JsonInspectorRenderProps,
+  BashEditorRenderProps,
+} from "./components/playback-console"
+
 // Main components
 export { PresentationLayer } from "./components/presentation-layer"
 export type { PresentationLayerProps } from "./components/presentation-layer"
