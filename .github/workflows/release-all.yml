@@ -143,9 +143,6 @@ jobs:
       - name: Build @viben/core
         run: pnpm turbo build --filter=@viben/core
 
-      - name: Build page SDK
-        run: pnpm build:page-sdk
-
       - name: Build viben CLI
         run: pnpm turbo build --filter=viben
 
