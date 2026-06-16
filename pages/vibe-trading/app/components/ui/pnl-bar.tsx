@@ -18,12 +18,12 @@ export function PnlBar({ value, maxRange = 0.1 }: PnlBarProps) {
 
   return (
     <div
-      className="relative rounded-full bg-slate-100 overflow-hidden"
+      className="relative rounded-full bg-muted overflow-hidden"
       style={{ width: 60, height: 6 }}
     >
       {/* Center line indicator */}
       <div
-        className="absolute top-0 bottom-0 w-px bg-slate-300"
+        className="absolute top-0 bottom-0 w-px bg-border"
         style={{ left: "50%" }}
       />
       {/* PnL bar */}
