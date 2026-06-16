@@ -514,7 +514,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     onClick={() => handleMarketModeChange("simulated")}
                     className={`px-4 py-2 text-sm rounded-md border transition-colors ${
                       form.market_mode === "simulated"
-                        ? "border-amber-400 bg-amber-50 text-amber-700"
+                        ? "border-warning/60 bg-warning/10 text-warning"
                         : "border-border text-muted-foreground hover:border-warning/50"
                     }`}
                   >
@@ -525,7 +525,7 @@ export function StrategySettings({ open, onClose, sessionId, currentConfig, lock
                     onClick={() => handleMarketModeChange("real")}
                     className={`px-4 py-2 text-sm rounded-md border transition-colors ${
                       form.market_mode === "real"
-                        ? "border-green-400 bg-green-50 text-green-700"
+                        ? "border-gain/60 bg-gain/10 text-gain"
                         : "border-border text-muted-foreground hover:border-gain/50"
                     }`}
                   >

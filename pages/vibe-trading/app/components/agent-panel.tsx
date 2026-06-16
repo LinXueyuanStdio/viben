@@ -12,10 +12,10 @@ export function AgentPanel() {
   const { connectionState, clientId, logs, registeredActions } = conn;
 
   const statusConfig = {
-    connected: { dot: "bg-green-500", label: "已连接", animate: false },
-    connecting: { dot: "bg-yellow-500", label: "连接中...", animate: true },
+    connected: { dot: "bg-gain", label: "已连接", animate: false },
+    connecting: { dot: "bg-warning", label: "连接中...", animate: true },
     disconnected: { dot: "bg-muted-foreground", label: "未连接", animate: false },
-    error: { dot: "bg-red-500", label: "连接错误", animate: false },
+    error: { dot: "bg-loss", label: "连接错误", animate: false },
   };
 
   const status = statusConfig[connectionState];

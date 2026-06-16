@@ -169,7 +169,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                         {account.exchange.toUpperCase()}
                       </span>
                       {account.is_demo && (
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 font-medium">
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-warning/20 text-warning font-medium">
                           Demo
                         </span>
                       )}
@@ -263,7 +263,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 ))}
               </select>
               {selectedExchange === "okx" && (
-                <p className="mt-1 text-xs text-amber-600">
+                <p className="mt-1 text-xs text-warning">
                   OKX 需要 Passphrase，请确保填写。
                 </p>
               )}
@@ -304,7 +304,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 type="password"
                 placeholder={isDemo ? "demo_key_xxx (自动生成)" : "输入 API Key"}
                 disabled={isDemo}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono disabled:bg-muted disabled:text-muted-foreground"
+                className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
 
@@ -318,21 +318,21 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 type="password"
                 placeholder={isDemo ? "demo_secret_xxx (自动生成)" : "输入 Secret"}
                 disabled={isDemo}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono disabled:bg-muted disabled:text-muted-foreground"
+                className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
 
             {selectedExchange === "okx" && !isDemo && (
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Passphrase <span className="text-red-500">*</span>
+                  Passphrase <span className="text-loss">*</span>
                 </label>
                 <input
                   name="passphrase"
                   required
                   type="password"
                   placeholder="输入 Passphrase"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
                 />
               </div>
             )}
@@ -346,7 +346,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                   name="passphrase"
                   type="password"
                   placeholder="如不需要可留空"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono"
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm font-mono"
                 />
               </div>
             )}
