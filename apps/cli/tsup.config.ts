@@ -11,14 +11,13 @@ export default defineConfig({
   treeshake: true,
   target: 'node18',
   outDir: 'dist',
-  // Bundle workspace packages (@viben/*) since they are not published to npm separately.
-  // All other dependencies listed in package.json are auto-externalized by tsup.
+  banner: {
+    js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+  },
   noExternal: ['@viben/core', '@viben/api-client'],
   external: [
     'cli-progress',
     '@hypothesi/tauri-mcp-server',
   ],
-  // Mark Node.js built-in modules as external
-  // All packages in dependencies are auto-externalized by tsup
   platform: 'node',
 });

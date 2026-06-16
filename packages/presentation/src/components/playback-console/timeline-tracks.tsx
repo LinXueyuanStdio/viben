@@ -1083,7 +1083,7 @@ export function TimelineTracks({
         )}
 
         {hoveredItem && (
-          <StepJsonPopover item={hoveredItem} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} onMouseEnter={handlePopoverEnter} onMouseLeave={handlePopoverLeave} />
+          <StepJsonPopover item={hoveredItem} viewStartMs={viewStartMs} visibleDurationMs={visibleDurationMs} labelWidth={LABEL_WIDTH} onMouseEnter={handlePopoverEnter} onMouseLeave={handlePopoverLeave} renderJsonInspector={renderJsonInspector} />
         )}
       </div>
 
@@ -1100,7 +1100,7 @@ export function TimelineTracks({
 // ---------------------------------------------------------------------------
 // TimelineLaneRow  (zoom-aware, block labels, visual polish)
 // ---------------------------------------------------------------------------
-function TimelineLaneRow({
+export function TimelineLaneRow({
   lane,
   viewStartMs,
   visibleDurationMs,
@@ -1238,13 +1238,14 @@ function TimelineLaneRow({
 // ---------------------------------------------------------------------------
 // StepJsonPopover  (zoom-aware positioning, shown below track area)
 // ---------------------------------------------------------------------------
-function StepJsonPopover({
+export function StepJsonPopover({
   item,
   viewStartMs,
   visibleDurationMs,
   labelWidth,
   onMouseEnter,
   onMouseLeave,
+  renderJsonInspector,
 }: {
   item: TimelineItem
   viewStartMs: number
@@ -1252,6 +1253,7 @@ function StepJsonPopover({
   labelWidth: number
   onMouseEnter: () => void
   onMouseLeave: () => void
+  renderJsonInspector?: (props: JsonInspectorRenderProps) => ReactNode
 }) {
   const color = commandColor(item.step.command.type)
   const itemMidpoint = item.startMs + (item.endMs - item.startMs) / 2
