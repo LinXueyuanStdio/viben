@@ -4,6 +4,9 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { ClientToolResult } from "../client-side-tool/types";
 import type { ActionDetail, ExecutionContext } from "./types";
 import { useActionStore } from "@/stores/action-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import { getCurrentWindowTabStore, getTabViewModel } from "@/stores/tab-store";
 import { navigateToPath } from "./navigation-handler";
 import { ROUTE_ENTRIES, registry } from "@/navigation/route-registry";
 import { queryRemoteActions } from "./gateway-action-socket";
@@ -39,6 +42,10 @@ export async function executeBuiltin(
       return handleReadWindow(ctx);
     case "navigate_to":
       return handleNavigateTo(payload, ctx);
+    case "list_navigation_paths":
+      return handleListNavigationPaths();
+    case "current_window_state":
+      return handleCurrentWindowState();
     default:
       return null; // Not a built-in
   }
@@ -310,7 +317,7 @@ function getBuiltinActionDetail(action: string): (ActionDetail & Record<string, 
 const DESKTOP_MAIN_NAMESPACE = "desktop_main";
 
 // Builtins that are namespace-scoped (registered under desktop_main)
-const NAMESPACED_BUILTINS = ["read_window", "navigate_to"];
+const NAMESPACED_BUILTINS = ["read_window", "navigate_to", "list_navigation_paths", "current_window_state"];
 // Builtins that are global (no namespace prefix)
 const GLOBAL_BUILTINS = ["list_actions", "get_action_detail"];
 
@@ -373,6 +380,116 @@ async function handleNavigateTo(payload: unknown, ctx: ExecutionContext): Promis
       isError: true,
     };
   }
+}
+
+function handleListNavigationPaths(): ClientToolResult {
+  const paths = ROUTE_ENTRIES.map((entry) => {
+    const params = registry.getParamNames(entry.pattern);
+    const title = typeof entry.title === "string" ? entry.title : undefined;
+    return {
+      pattern: entry.pattern,
+      title,
+      titleKey: entry.titleKey,
+      params: params.length > 0 ? params : undefined,
+      queryParams: entry.queryParams,
+      category: entry.dropdownCategory,
+    };
+  });
+
+  const lines = paths.map((p) => {
+    let line = p.pattern;
+    if (p.title) line += `  # ${p.title}`;
+    if (p.params) line += `  [params: ${p.params.join(", ")}]`;
+    if (p.queryParams) line += `  [query: ${p.queryParams.join(", ")}]`;
+    return line;
+  });
+
+  return {
+    content: [{ type: "text", text: lines.join("\n") }],
+  };
+}
+
+function handleCurrentWindowState(): ClientToolResult {
+  const tabStore = getCurrentWindowTabStore();
+  const tabState = tabStore.getState();
+
+  // Tab list
+  const allTabs = tabState.tabs.map((tab) => getTabViewModel(tab));
+  const activeTabId = tabState.activeTabId;
+  const tabLines = allTabs.map((t) => {
+    const marker = t.id === activeTabId ? " *" : "";
+    const pin = t.pinned ? " [pinned]" : "";
+    return `  ${t.label || "(untitled)"}${pin}${marker} → ${t.url || "(empty)"}`;
+  });
+
+  // Current tab URL
+  const currentUrl = activeTabId ? tabState.getCurrentUrl(activeTabId) : null;
+
+  // Workspace
+  const workspaceStore = useWorkspaceStore.getState();
+  const activeWorkspace = workspaceStore.getActiveWorkspace();
+  const workspacePath = activeWorkspace?.path ?? "(none)";
+  const workspaceName = activeWorkspace?.name ?? "(none)";
+
+  // Auth
+  const authState = useAuthStore.getState();
+  const authStatus = authState.isAuthenticated
+    ? `logged in as ${authState.user?.displayName || authState.user?.username || authState.user?.email || "unknown"}`
+    : "not logged in";
+
+  // Current time
+  const now = new Date();
+  const timeStr = now.toLocaleString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+
+  // Navigation paths (compact)
+  const navPaths = ROUTE_ENTRIES
+    .filter((e) => !e.pattern.includes(":") || e.dropdownCategory === "root")
+    .map((e) => {
+      const title = typeof e.title === "string" ? e.title : e.titleKey;
+      return `  ${e.pattern}  # ${title || ""}`;
+    });
+
+  // Page tree (workspace pages if available)
+  let pageTreeSection = "  (no workspace selected)";
+  if (activeWorkspace) {
+    const pagesUrl = `/workspace/${activeWorkspace.id}/page`;
+    pageTreeSection = `  workspace pages: ${pagesUrl}`;
+  }
+
+  const output = [
+    `=== Current Window State ===`,
+    ``,
+    `Time: ${timeStr}`,
+    `Auth: ${authStatus}`,
+    ``,
+    `--- Workspace ---`,
+    `Name: ${workspaceName}`,
+    `Path: ${workspacePath}`,
+    ``,
+    `--- Tabs (${allTabs.length}) ---`,
+    ...tabLines,
+    ``,
+    `--- Current URL ---`,
+    `  ${currentUrl || "(none)"}`,
+    ``,
+    `--- Page Tree ---`,
+    pageTreeSection,
+    ``,
+    `--- Navigation Paths ---`,
+    ...navPaths,
+  ];
+
+  return {
+    content: [{ type: "text", text: output.join("\n") }],
+  };
 }
 
 function normalizeNavigationPath(url: string): string | null {
