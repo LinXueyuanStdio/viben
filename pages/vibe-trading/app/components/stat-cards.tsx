@@ -271,7 +271,7 @@ export function StatCards({ metrics: propMetrics, initialBalance: propBalance }:
       sub: `占盈亏: ${metrics.total_pnl !== 0 ? ((metrics.total_fees / Math.abs(metrics.total_pnl)) * 100).toFixed(1) : "0.0"}%`,
       color: metrics.total_fees > 0 ? "loss" : "neutral",
       trendUp: metrics.total_fees > 0 ? false : null,
-      borderColor: metrics.total_fees > 0 ? "border-l-loss" : "border-l-slate-300",
+      borderColor: metrics.total_fees > 0 ? "border-l-loss" : "border-l-border",
     },
   ];
 

@@ -17,7 +17,7 @@ export function SidePanel({ initialDecisions }: SidePanelProps) {
   const statusDotColor = {
     connected: "bg-green-500",
     connecting: "bg-yellow-500",
-    disconnected: "bg-slate-400",
+    disconnected: "bg-muted-foreground",
     error: "bg-red-500",
   }[conn?.connectionState ?? "disconnected"];
 

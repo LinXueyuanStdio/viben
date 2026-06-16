@@ -133,7 +133,7 @@ function ReplayKlineChartInner({ symbol }: ReplayKlineChartProps) {
     <div className="h-full w-full relative">
       <div ref={containerRef} className="h-full w-full" />
       {candles.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm bg-white/80">
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm bg-card/80">
           暂无行情数据
         </div>
       )}
