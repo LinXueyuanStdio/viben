@@ -56,8 +56,7 @@
     "templates"
   ],
   "scripts": {
-    "build": "tsup && pnpm build:page-sdk",
-    "build:page-sdk": "tsx scripts/build-page-sdk.ts",
+    "build": "tsup",
     "build:sidecar": "tsx scripts/build-sidecar.ts",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
@@ -86,6 +85,7 @@
     "@opentelemetry/semantic-conventions": "^1.41.1",
     "@viben/api-client": "workspace:*",
     "@viben/browse-sdk": "workspace:*",
+    "@viben/page-sdk": "workspace:*",
     "adm-zip": "^0.5.17",
     "bonjour-service": "^1.4.0",
     "chalk": "^5.3.0",

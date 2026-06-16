@@ -6,7 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, "..");
 
 await build({
-  entryPoints: [resolve(rootDir, "src/assets/viben-page-sdk.ts")],
+  entryPoints: [resolve(rootDir, "src/viben-page-sdk.ts")],
   bundle: true,
   minify: true,
   format: "iife",

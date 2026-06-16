@@ -16,8 +16,10 @@
  * - POST /api/page/templates - List available page templates
  */
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+const require = createRequire(import.meta.url);
 import type { FastifyInstance } from "fastify";
 import {
   // CRUD operations
@@ -59,12 +61,30 @@ import type {
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 function readPageSdkAsset(filename: string): string {
+  const mapping: Record<string, string> = {
+    "viben-page-sdk.js": "@viben/page-sdk/assets/viben-page-sdk.js",
+    "viben-page-tokens.css": "@viben/page-sdk/assets/viben-page-tokens.css",
+  };
+
+  const packagePath = mapping[filename];
+  if (packagePath) {
+    try {
+      const resolved = require.resolve(packagePath);
+      return readFileSync(resolved, "utf-8");
+    } catch {
+      // fallback below
+    }
+  }
+
+  // Fallback: search local paths (for development before build)
   const candidates = [
     join(currentDir, "assets", filename),
     join(currentDir, "../assets", filename),
     join(currentDir, "../../assets", filename),
     join(currentDir, "../../../assets", filename),
     join(process.cwd(), "dist/assets", filename),
+    join(process.cwd(), "packages/page-sdk/dist/assets", filename),
+    join(process.cwd(), "packages/page-sdk/assets", filename),
     join(process.cwd(), "packages/core/dist/assets", filename),
     join(process.cwd(), "assets", filename),
     join(process.cwd(), "packages/core/assets", filename),

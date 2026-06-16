@@ -1,0 +1,30 @@
+{
+  "name": "@viben/page-sdk",
+  "version": "1.0.0",
+  "description": "Viben Page SDK - Browser runtime for Viben pages to connect to Gateway",
+  "type": "module",
+  "main": "dist/assets/viben-page-sdk.js",
+  "exports": {
+    "./assets/viben-page-sdk.js": "./dist/assets/viben-page-sdk.js",
+    "./assets/viben-page-tokens.css": "./assets/viben-page-tokens.css"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
