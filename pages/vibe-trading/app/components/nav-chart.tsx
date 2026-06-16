@@ -383,7 +383,7 @@ export function NavChart({ navHistory, initialNav }: NavChartProps) {
       >
         {/* Skeleton chart placeholder */}
         <div className="w-full max-w-[280px] h-[100px] relative overflow-hidden rounded-lg">
-          <div className="absolute inset-0 bg-slate-50 rounded-lg" />
+          <div className="absolute inset-0 bg-muted rounded-lg" />
           <svg
             className="absolute inset-0 w-full h-full animate-pulse"
             viewBox="0 0 280 100"
@@ -416,8 +416,8 @@ export function NavChart({ navHistory, initialNav }: NavChartProps) {
           </svg>
         </div>
         <div className="text-center">
-          <p className="text-xs text-slate-400">等待数据积累...</p>
-          <p className="text-xs text-slate-300 mt-1">
+          <p className="text-xs text-muted-foreground">等待数据积累...</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">
             初始资金: ${initialNav.toFixed(2)}
           </p>
         </div>
@@ -458,11 +458,11 @@ export function NavChart({ navHistory, initialNav }: NavChartProps) {
             top: Math.max(hover.canvasY - 60, 4),
           }}
         >
-          <div className="bg-white rounded-lg shadow-lg border border-slate-100 px-3 py-2 min-w-[140px]">
-            <p className="text-[10px] text-slate-400 mb-1">
+          <div className="bg-card rounded-lg shadow-lg border border-border px-3 py-2 min-w-[140px]">
+            <p className="text-[10px] text-muted-foreground mb-1">
               {formatFullTime(tooltipData.ts)}
             </p>
-            <p className="text-xs font-semibold text-slate-700">
+            <p className="text-xs font-semibold text-foreground">
               NAV: ${tooltipData.nav.toFixed(4)}
             </p>
             <p
