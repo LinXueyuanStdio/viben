@@ -27,9 +27,9 @@ export function showWelcome(term: Terminal) {
 
   term.writeln("\x1b[2mA sandboxed bash environment with AI agent and GUI action support.\x1b[0m");
   term.writeln("");
-  term.writeln("\x1b[2mCommands:\x1b[0m \x1b[36magent\x1b[0m, \x1b[36mgui\x1b[0m, \x1b[36mhelp\x1b[0m");
+  term.writeln("\x1b[2mCommands:\x1b[0m \x1b[36magent\x1b[0m, \x1b[36mgui\x1b[0m, \x1b[36mpresentation\x1b[0m, \x1b[36mhelp\x1b[0m");
   term.writeln(
-    "\x1b[2mTry:\x1b[0m \x1b[36magent hello\x1b[0m, \x1b[36mgui list_actions\x1b[0m, \x1b[36mls\x1b[0m, \x1b[36mecho hello\x1b[0m"
+    "\x1b[2mTry:\x1b[0m \x1b[36magent hello\x1b[0m, \x1b[36mpresentation confetti\x1b[0m, \x1b[36mgui list_actions\x1b[0m"
   );
   term.writeln("");
   term.write("$ ");
