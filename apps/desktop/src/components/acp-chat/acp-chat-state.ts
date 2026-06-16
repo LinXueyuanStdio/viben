@@ -319,14 +319,16 @@ export interface SubagentStreamingState {
   messageUpdates: Record<string, Partial<AgentMessage>>;
 }
 
+const EMPTY_STREAMING_STATE: SubagentStreamingState = { isStreaming: false, streamingText: null, messageUpdates: {} };
+const EMPTY_MESSAGE_UPDATES: Record<string, Partial<AgentMessage>> = {};
+
 export function resolveSubagentStreamingState(
   sessionsById: Record<string, UiSessionState>,
   sheet: SubagentSheetState | null
 ): SubagentStreamingState {
-  const empty: SubagentStreamingState = { isStreaming: false, streamingText: null, messageUpdates: {} };
   const toolUseId = sheet?.context?.toolUseId;
   const subagentId = sheet?.context?.subagentId;
-  if (!toolUseId && !subagentId) return empty;
+  if (!toolUseId && !subagentId) return EMPTY_STREAMING_STATE;
 
   for (const session of Object.values(sessionsById)) {
     const parent = session.uiMessages.find((message) =>
@@ -341,29 +343,26 @@ export function resolveSubagentStreamingState(
     if (!parent?.id) continue;
 
     const parentHasOutput = parent.output !== undefined;
-    const isStreaming = !parentHasOutput && session.promptInFlight;
+    if (parentHasOutput) return EMPTY_STREAMING_STATE;
 
     const subMessages = session.messageUpdates[parent.id]?.subagentMessages;
-    let streamingText: string | null = null;
-    if (isStreaming && subMessages && subMessages.length > 0) {
-      const last = subMessages[subMessages.length - 1];
-      if (last.type === "text" && last.content) {
-        streamingText = last.content;
-      }
+    if (!subMessages || subMessages.length === 0) {
+      if (!session.promptInFlight) return EMPTY_STREAMING_STATE;
+      return { isStreaming: true, streamingText: null, messageUpdates: EMPTY_MESSAGE_UPDATES };
     }
 
-    const subagentMsgUpdates: Record<string, Partial<AgentMessage>> = {};
-    if (subMessages) {
-      for (const msg of subMessages) {
-        if (msg.type === "tool_use" && msg.id && session.messageUpdates[msg.id]) {
-          subagentMsgUpdates[msg.id] = session.messageUpdates[msg.id];
-        }
-      }
-    }
+    // Determine streaming: last message is an in-progress text chunk (not a tool_use/tool_result)
+    const last = subMessages[subMessages.length - 1];
+    const lastIsStreamingText = last.type === "text" && session.promptInFlight;
+    const streamingText = lastIsStreamingText && last.content ? last.content : null;
 
-    return { isStreaming, streamingText, messageUpdates: subagentMsgUpdates };
+    return {
+      isStreaming: session.promptInFlight,
+      streamingText,
+      messageUpdates: EMPTY_MESSAGE_UPDATES,
+    };
   }
-  return empty;
+  return EMPTY_STREAMING_STATE;
 }
 
 function isSubagentChildStep(session: UiSessionState, step: AcpUiStep): boolean {
