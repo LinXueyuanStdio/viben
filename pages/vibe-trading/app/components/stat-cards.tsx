@@ -90,7 +90,7 @@ function TrendArrow({ up }: { up: boolean }) {
 
 function WinRateIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5" />
       <path d="M7 3v4l3 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -99,7 +99,7 @@ function WinRateIcon() {
 
 function PnlIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <path d="M1 10l3-3 3 2 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -107,7 +107,7 @@ function PnlIcon() {
 
 function NavIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
       <path d="M4 9l2-3 2 2 3-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -116,7 +116,7 @@ function NavIcon() {
 
 function PositionIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <rect x="2" y="6" width="2.5" height="5" rx="0.5" fill="currentColor" />
       <rect x="5.75" y="4" width="2.5" height="7" rx="0.5" fill="currentColor" />
       <rect x="9.5" y="2" width="2.5" height="9" rx="0.5" fill="currentColor" />
@@ -126,7 +126,7 @@ function PositionIcon() {
 
 function BalanceIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.5" />
       <path d="M7 4v6M5 5.5h4M5 8.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
@@ -135,7 +135,7 @@ function BalanceIcon() {
 
 function FeeIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-muted-foreground">
       <path d="M2 4h10M2 7h10M2 10h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
@@ -166,12 +166,12 @@ function AnimatedCard({ card }: { card: CardDef }) {
       ? "text-gain"
       : card.color === "loss"
         ? "text-loss"
-        : "text-slate-900";
+        : "text-foreground";
 
   return (
     <div
       className={`
-        relative bg-white rounded-xl p-4 shadow-sm
+        relative bg-card rounded-xl p-4 shadow-sm
         border-l-2 ${card.borderColor}
         transition-all duration-200 ease-out
         hover:-translate-y-0.5 hover:shadow-md
@@ -187,7 +187,7 @@ function AnimatedCard({ card }: { card: CardDef }) {
       {/* Label with icon */}
       <div className="flex items-center gap-1.5 mb-1">
         {card.icon}
-        <p className="text-xs text-slate-500">{card.label}</p>
+        <p className="text-xs text-muted-foreground">{card.label}</p>
       </div>
 
       {/* Animated value */}
@@ -196,7 +196,7 @@ function AnimatedCard({ card }: { card: CardDef }) {
       </p>
 
       {/* Sub text */}
-      <p className="text-xs text-slate-400 mt-1">{card.sub}</p>
+      <p className="text-xs text-muted-foreground mt-1">{card.sub}</p>
     </div>
   );
 }
@@ -251,7 +251,7 @@ export function StatCards({ metrics: propMetrics, initialBalance: propBalance }:
       sub: `${metrics.total_trades} 笔交易`,
       color: "neutral",
       trendUp: null,
-      borderColor: "border-l-slate-300",
+      borderColor: "border-l-border",
     },
     {
       label: "可用余额",
@@ -261,7 +261,7 @@ export function StatCards({ metrics: propMetrics, initialBalance: propBalance }:
       sub: `夏普: ${metrics.sharpe_ratio.toFixed(2)}`,
       color: "neutral",
       trendUp: null,
-      borderColor: "border-l-slate-300",
+      borderColor: "border-l-border",
     },
     {
       label: "手续费",

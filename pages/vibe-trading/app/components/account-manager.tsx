@@ -174,7 +174,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 space-y-0.5">
+                    <div className="text-xs text-muted-foreground space-y-0.5">
                       <div>API Key: {maskApiKey(account.api_key)}</div>
                       <div>创建时间: {formatDate(account.created_at)}</div>
                     </div>
@@ -183,7 +183,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                     <button
                       onClick={() => handleTest(account.id)}
                       disabled={testResult === "loading"}
-                      className="px-3 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                      className="px-3 py-1.5 text-xs rounded-md border border-border hover:bg-muted disabled:opacity-50"
                     >
                       {testResult === "loading" ? "测试中..." : "测试连接"}
                     </button>
@@ -198,7 +198,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                         </button>
                         <button
                           onClick={() => setConfirmingDeleteId(null)}
-                          className="px-2 py-1.5 text-xs rounded-md border border-slate-300 hover:bg-slate-50"
+                          className="px-2 py-1.5 text-xs rounded-md border border-border hover:bg-muted"
                         >
                           取消
                         </button>
@@ -206,7 +206,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                     ) : (
                       <button
                         onClick={() => setConfirmingDeleteId(account.id)}
-                        className="px-3 py-1.5 text-xs rounded-md border border-red-300 text-red-600 hover:bg-red-50"
+                        className="px-3 py-1.5 text-xs rounded-md border border-loss/30 text-loss hover:bg-loss/10"
                       >
                         删除
                       </button>
@@ -218,8 +218,8 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                   <div
                     className={`mt-2 px-3 py-1.5 rounded text-xs ${
                       testResult.ok
-                        ? "bg-green-50 text-green-700"
-                        : "bg-red-50 text-red-700"
+                        ? "bg-gain/10 text-gain"
+                        : "bg-loss/10 text-loss"
                     }`}
                   >
                     {testResult.ok
@@ -242,7 +242,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
           添加账户
         </button>
       ) : (
-        <div className="border border-slate-200 rounded-md p-4 bg-white">
+        <div className="border border-border rounded-md p-4 bg-card">
           <h3 className="text-sm font-semibold mb-4">添加新账户</h3>
           <form action={handleAddAccount} className="space-y-3">
             <input type="hidden" name="is_demo" value={isDemo ? "true" : "false"} />
@@ -254,7 +254,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 required
                 value={selectedExchange}
                 onChange={(e) => setSelectedExchange(e.target.value as ExchangeId)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-border rounded-md text-sm"
               >
                 {EXCHANGES.map((ex) => (
                   <option key={ex.value} value={ex.value}>
@@ -278,10 +278,10 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 onChange={(e) => setIsDemo(e.target.checked)}
                 className="accent-primary"
               />
-              <label htmlFor="is_demo_checkbox" className="text-sm text-slate-700 cursor-pointer">
+              <label htmlFor="is_demo_checkbox" className="text-sm text-foreground cursor-pointer">
                 测试账户 (Demo)
               </label>
-              <span className="text-xs text-slate-400">使用模拟数据，无需真实 API 密钥</span>
+              <span className="text-xs text-muted-foreground">使用模拟数据，无需真实 API 密钥</span>
             </div>
 
             <div>
@@ -290,13 +290,13 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 name="name"
                 required
                 placeholder={isDemo ? "e.g. 模拟账户" : "e.g. 主账户"}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                className="w-full px-3 py-2 border border-border rounded-md text-sm"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                API Key {isDemo && <span className="text-xs text-slate-400">(自动填充)</span>}
+                API Key {isDemo && <span className="text-xs text-muted-foreground">(自动填充)</span>}
               </label>
               <input
                 name="api_key"
@@ -304,13 +304,13 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 type="password"
                 placeholder={isDemo ? "demo_key_xxx (自动生成)" : "输入 API Key"}
                 disabled={isDemo}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Secret {isDemo && <span className="text-xs text-slate-400">(自动填充)</span>}
+                Secret {isDemo && <span className="text-xs text-muted-foreground">(自动填充)</span>}
               </label>
               <input
                 name="secret"
@@ -318,7 +318,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
                 type="password"
                 placeholder={isDemo ? "demo_secret_xxx (自动生成)" : "输入 Secret"}
                 disabled={isDemo}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono disabled:bg-slate-50 disabled:text-slate-400"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm font-mono disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
 
@@ -340,7 +340,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
             {selectedExchange !== "okx" && !isDemo && (
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Passphrase <span className="text-xs text-slate-400">(可选)</span>
+                  Passphrase <span className="text-xs text-muted-foreground">(可选)</span>
                 </label>
                 <input
                   name="passphrase"
@@ -362,7 +362,7 @@ export function AccountManagerDialog({ open, onClose }: AccountManagerDialogProp
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setIsDemo(false); }}
-                className="px-4 py-2 border border-slate-300 rounded-md text-sm hover:bg-slate-50"
+                className="px-4 py-2 border border-border rounded-md text-sm hover:bg-muted"
               >
                 取消
               </button>
