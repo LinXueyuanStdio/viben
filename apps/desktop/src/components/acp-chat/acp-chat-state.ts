@@ -313,6 +313,59 @@ export function resolveLiveSubagentMessages(
   return undefined;
 }
 
+export interface SubagentStreamingState {
+  isStreaming: boolean;
+  streamingText: string | null;
+  messageUpdates: Record<string, Partial<AgentMessage>>;
+}
+
+export function resolveSubagentStreamingState(
+  sessionsById: Record<string, UiSessionState>,
+  sheet: SubagentSheetState | null
+): SubagentStreamingState {
+  const empty: SubagentStreamingState = { isStreaming: false, streamingText: null, messageUpdates: {} };
+  const toolUseId = sheet?.context?.toolUseId;
+  const subagentId = sheet?.context?.subagentId;
+  if (!toolUseId && !subagentId) return empty;
+
+  for (const session of Object.values(sessionsById)) {
+    const parent = session.uiMessages.find((message) =>
+      message.type === "tool_use" &&
+      (message.name === "Task" || message.name === "Agent") &&
+      (
+        (toolUseId && message.toolUseId === toolUseId) ||
+        (subagentId && (message.subagentId === subagentId || message.toolUseId === subagentId))
+      ) &&
+      message.id
+    );
+    if (!parent?.id) continue;
+
+    const parentHasOutput = parent.output !== undefined;
+    const isStreaming = !parentHasOutput && session.promptInFlight;
+
+    const subMessages = session.messageUpdates[parent.id]?.subagentMessages;
+    let streamingText: string | null = null;
+    if (isStreaming && subMessages && subMessages.length > 0) {
+      const last = subMessages[subMessages.length - 1];
+      if (last.type === "text" && last.content) {
+        streamingText = last.content;
+      }
+    }
+
+    const subagentMsgUpdates: Record<string, Partial<AgentMessage>> = {};
+    if (subMessages) {
+      for (const msg of subMessages) {
+        if (msg.type === "tool_use" && msg.id && session.messageUpdates[msg.id]) {
+          subagentMsgUpdates[msg.id] = session.messageUpdates[msg.id];
+        }
+      }
+    }
+
+    return { isStreaming, streamingText, messageUpdates: subagentMsgUpdates };
+  }
+  return empty;
+}
+
 function isSubagentChildStep(session: UiSessionState, step: AcpUiStep): boolean {
   if (step.kind !== "message") return false;
   const message = step.message;

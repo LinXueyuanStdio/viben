@@ -74,6 +74,7 @@ import {
   enqueueUiSteps,
   flushSessionStreamingText,
   resolveLiveSubagentMessages,
+  resolveSubagentStreamingState,
   resolveSessionApproval,
   resolveSessionQuestion,
   updateSession,
@@ -186,6 +187,7 @@ export interface UseAcpSessionReturn {
   // Subagent sheet
   subagentSheet: SubagentSheetState | null;
   liveSubagentMessages: AgentMessage[] | undefined;
+  subagentStreamingState: { isStreaming: boolean; streamingText: string | null; messageUpdates: Record<string, Partial<AgentMessage>> };
   handleExpandSubagent: (title: string, subagentType: string | undefined, messages: AgentMessage[], context?: SubagentSheetState["context"]) => void;
   closeSubagentSheet: () => void;
 
@@ -649,6 +651,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   );
 
   const liveSubagentMessages = useMemo(() => resolveLiveSubagentMessages(sessionsById, subagentSheet), [sessionsById, subagentSheet]);
+  const subagentStreamingState = useMemo(() => resolveSubagentStreamingState(sessionsById, subagentSheet), [sessionsById, subagentSheet]);
 
   const [toolInspectState, setToolInspectState] = useState<{ message: AgentMessage; result?: AgentMessage } | null>(null);
   const [artifactDialogState, setArtifactDialogState] = useState<{ artifact: Artifact; message?: AgentMessage } | null>(null);
@@ -1511,6 +1514,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     setSelectedProviderId,
     subagentSheet,
     liveSubagentMessages,
+    subagentStreamingState,
     handleExpandSubagent,
     closeSubagentSheet,
     // Tool inspect & artifact dialogs
