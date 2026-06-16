@@ -109,7 +109,7 @@ export async function registerRoutes(fastify: FastifyInstance, state: AppState):
   registerGitHubRoutes(fastify);
   try {
     const { registerTauriMcpServerRoutes } = await import("./mcp-server/tauri-mcp-server");
-    registerTauriMcpServerRoutes(fastify);
+    await registerTauriMcpServerRoutes(fastify);
   } catch {
     // @hypothesi/tauri-mcp-server unavailable (e.g. in CLI binary builds)
   }
