@@ -31,16 +31,38 @@ export function useVibenPage(
     ensureVibenSDKLoaded(options?.gatewayUrl, pageUid);
 
     let unsubscribeState: (() => void) | undefined;
+    let unsubscribeTheme: (() => void) | undefined;
     let unregisterActions: (() => void) | undefined;
 
     function bindToSDK(vibenPage: any) {
+      console.log("[vibe-trading] bindToSDK called");
+      console.log("[vibe-trading] vibenPage.state:", vibenPage.state);
+      console.log("[vibe-trading] vibenPage.clientId:", vibenPage.clientId);
+      console.log("[vibe-trading] vibenPage.theme:", vibenPage.theme);
+      console.log("[vibe-trading] vibenPage.gatewayUrl:", vibenPage.gatewayUrl);
+      console.log("[vibe-trading] typeof vibenPage.onThemeChange:", typeof vibenPage.onThemeChange);
+
       setConnected(true);
       setClientId(vibenPage.clientId);
-      unsubscribeState = vibenPage.onStateChange((connectionState: string) =>
-        setConnected(connectionState === "connected")
-      );
+      unsubscribeState = vibenPage.onStateChange((connectionState: string) => {
+        console.log("[vibe-trading] onStateChange:", connectionState);
+        setConnected(connectionState === "connected");
+      });
+      if (vibenPage.theme === "dark") {
+        console.log("[vibe-trading] applying dark theme on connect");
+        document.documentElement.classList.add("dark");
+      }
+      if (typeof vibenPage.onThemeChange === "function") {
+        unsubscribeTheme = vibenPage.onThemeChange((theme: string) => {
+          console.log("[vibe-trading] onThemeChange fired:", theme);
+          document.documentElement.classList.toggle("dark", theme === "dark");
+        });
+      } else {
+        console.warn("[vibe-trading] vibenPage.onThemeChange is not a function!");
+      }
       if (actionsRef.current) {
         unregisterActions = vibenPage.actions.register(pageUid, actionsRef.current);
+        console.log("[vibe-trading] actions registered");
       }
     }
 
@@ -55,6 +77,7 @@ export function useVibenPage(
 
     return () => {
       unsubscribeState?.();
+      unsubscribeTheme?.();
       unregisterActions?.();
     };
   }, [pageUid, enabled]);
@@ -63,12 +86,18 @@ export function useVibenPage(
 }
 
 function ensureVibenSDKLoaded(gatewayUrl?: string, pageUid?: string) {
-  if ((window as any).VibenPage || document.querySelector("[data-viben-sdk]")) return;
+  if ((window as any).VibenPage || document.querySelector("[data-viben-sdk]")) {
+    console.log("[vibe-trading] SDK already loaded or script tag exists, skipping inject");
+    return;
+  }
   const resolvedGatewayUrl =
     gatewayUrl || process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:18790";
+  console.log("[vibe-trading] injecting SDK script from:", `${resolvedGatewayUrl}/api/page/_sdk/v1/viben-page-sdk.js`);
   const scriptElement = document.createElement("script");
   scriptElement.src = `${resolvedGatewayUrl}/api/page/_sdk/v1/viben-page-sdk.js`;
   scriptElement.dataset.vibenSdk = "true";
   if (pageUid) scriptElement.dataset.page = pageUid;
+  scriptElement.onload = () => console.log("[vibe-trading] SDK script loaded successfully");
+  scriptElement.onerror = (e) => console.error("[vibe-trading] SDK script load FAILED:", e);
   document.head.appendChild(scriptElement);
 }
