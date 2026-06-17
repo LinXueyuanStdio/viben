@@ -64,6 +64,7 @@ import {
 } from "@/hooks/use-page-tabs";
 import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import { SortableTabItem } from "./sortable-tab-item";
+import { WakeWordSegment } from "./wake-word-segment";
 import { WindowControls } from "./window-controls";
 import { createTabNavigationState } from "@/navigation/tab-navigation";
 import { buildColdStartBreadcrumb } from "@/navigation/navigate";
@@ -696,21 +697,24 @@ export function GlobalTabBar({ className }: GlobalTabBarProps) {
         </ContextMenu>
       }
       rightControls={
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
-              onClick={handleOpenSettings}
-            >
-              <Settings className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            {t("common.settings", "Settings")}
-          </TooltipContent>
-        </Tooltip>
+        <>
+          <WakeWordSegment isMacOS={isMacOS} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(isMacOS ? "h-6 w-6" : "h-7 w-7")}
+                onClick={handleOpenSettings}
+              >
+                <Settings className={cn(isMacOS ? "h-3.5 w-3.5" : "h-4 w-4")} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {t("common.settings", "Settings")}
+            </TooltipContent>
+          </Tooltip>
+        </>
       }
       windowControls={<WindowControls />}
     />

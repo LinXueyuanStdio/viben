@@ -17,15 +17,6 @@ interface WakeWordTaskButtonProps {
   disabled: boolean;
 }
 
-/**
- * Wake word + chat toggle button for the sidebar bottom area.
- *
- * - Text shows the configured wake word (e.g. "你好微本").
- * - Clicking the button body toggles acp-chat mode between floating and expanded.
- * - A listening-status icon inside the button toggles wake-word
- *   listening on/off. In collapsed mode the whole icon changes color
- *   and glows; in expanded mode a small check badge appears.
- */
 export function WakeWordTaskButton({
   collapsed,
   disabled,
@@ -33,17 +24,14 @@ export function WakeWordTaskButton({
   const { t } = useTranslation();
   const config = useVoiceStore((s) => s.config);
   const toggleChatPopup = useUiStore((s) => s.toggleChatPopup);
+  const [error, setError] = useState<string | null>(null);
 
-  // Toggle chat popup visibility (controlled by isChatPopupOpen in ui-store)
   const handleClick = useCallback(() => {
     toggleChatPopup();
   }, [toggleChatPopup]);
-  const [error, setError] = useState<string | null>(null);
 
   const wakeWord = useWakeWord(
-    () => {
-      // Detection handled internally by the hook (state transitions)
-    },
+    () => {},
     { threshold: config.wakeWordThreshold },
   );
 
@@ -75,7 +63,7 @@ export function WakeWordTaskButton({
     : isActive
       ? t("sidebar.wakeWord.listening", {
           wakeWord: config.wakeWord,
-          defaultValue: "Listening for \"{{wakeWord}}\" - click to stop",
+          defaultValue: 'Listening for "{{wakeWord}}" - click to stop',
         })
       : error
         ? error
@@ -83,9 +71,6 @@ export function WakeWordTaskButton({
 
   const ListeningIcon = isLoading ? Loader2 : AudioWaveform;
 
-  /* ------------------------------------------------------------------ */
-  /*  Collapsed mode — icon changes color + glow, no badge              */
-  /* ------------------------------------------------------------------ */
   if (collapsed) {
     return (
       <div className="grid place-items-center w-full">
@@ -121,9 +106,6 @@ export function WakeWordTaskButton({
     );
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Expanded mode — icon + text centered, check badge on icon         */
-  /* ------------------------------------------------------------------ */
   return (
     <div className="mt-4">
       <button
@@ -135,12 +117,13 @@ export function WakeWordTaskButton({
           "transition-all duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "disabled:pointer-events-none disabled:opacity-50",
-          "border-primary bg-transparent text-primary",
-          "hover:bg-primary/10",
-          "active:translate-y-0",
+          wakeWord.state === "listening" && "border-blue-500 text-blue-500 hover:bg-blue-500/10",
+          wakeWord.state === "detected" && "border-green-500 text-green-500 hover:bg-green-500/10",
+          wakeWord.state === "inactive" && "border-primary text-primary hover:bg-primary/10",
+          isLoading && "border-yellow-500 text-yellow-500 hover:bg-yellow-500/10",
+          "bg-transparent",
         )}
       >
-        {/* Listening toggle icon — inside button, left of text */}
         <TooltipProvider delayDuration={0}>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -183,7 +166,6 @@ export function WakeWordTaskButton({
           </Tooltip>
         </TooltipProvider>
 
-        {/* Wake word text */}
         <span className="truncate">{config.wakeWord}</span>
       </button>
     </div>
