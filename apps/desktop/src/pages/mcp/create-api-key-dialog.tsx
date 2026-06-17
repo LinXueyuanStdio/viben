@@ -16,8 +16,7 @@ import { BrowseSourceStoreDialog } from "./browse-source-store";
 interface SourceItem {
   id: string;
   name: string;
-  category: "builtin" | "installed";
-  provider?: string;
+  category: "builtin";
 }
 
 interface CreateApiKeyDialogProps {
@@ -35,8 +34,6 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
     () => providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
     [providers]
   );
-  const installedSources: { name: string; provider: string; enabled: boolean }[] = [];
-
   const [name, setName] = useState("");
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(true);
@@ -56,20 +53,8 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
   }, [open]);
 
   const allSources = useMemo((): SourceItem[] => {
-    const items: SourceItem[] = [];
-
-    for (const p of builtinProviders) {
-      items.push({ id: p.id, name: p.name, category: "builtin" });
-    }
-
-    for (const s of installedSources) {
-      if (!items.some((item) => item.id === s.name)) {
-        items.push({ id: s.name, name: s.name, category: "installed", provider: s.provider });
-      }
-    }
-
-    return items;
-  }, [builtinProviders, installedSources]);
+    return builtinProviders.map((p) => ({ id: p.id, name: p.name, category: "builtin" as const }));
+  }, [builtinProviders]);
 
   const filteredSources = useMemo(() => {
     if (!searchQuery.trim()) return allSources;
@@ -214,11 +199,6 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
                       className="rounded border-border"
                     />
                     <span>{source.name}</span>
-                    {source.category === "installed" && (
-                      <span className="text-[10px] text-muted-foreground ml-auto px-1.5 py-0.5 rounded bg-muted">
-                        {source.provider}
-                      </span>
-                    )}
                     {source.category === "builtin" && (
                       <span className="text-[10px] text-muted-foreground ml-auto">
                         {t("browseMcp.builtin", "内建")}
