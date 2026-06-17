@@ -497,6 +497,98 @@ window.addEventListener("viben:connected", (event) => {
 });
 ```
 
+### 主题同步
+
+SDK 提供完整的主题同步机制，页面可自动跟随 Viben Desktop 的亮/暗模式切换。
+
+#### 工作原理
+
+```
+Desktop setTheme(dark)
+  → GatewayActionSocket emit "client:theme:set" { theme: "dark" }
+  → Gateway 更新 globalTheme，广播 "client:theme" 给所有其他 socket
+  → Page SDK 收到 "client:theme"，更新 _theme，触发 notifyThemeChange()
+  → notifyThemeChange() 自动 toggle document.documentElement.classList "dark"
+  → 调用所有 onThemeChange 监听器
+```
+
+初始连接时：
+```
+Page SDK socket 连接
+  → emit "client:connect"
+  → Gateway 返回 "client:init" { theme: globalTheme }
+  → SDK 设置 _theme，如果与默认值不同则触发 notifyThemeChange()
+```
+
+#### 页面侧实现（推荐方式）
+
+SDK 的 `notifyThemeChange()` **自动操作 `document.documentElement.classList`**，所以页面只需：
+
+1. 定义 CSS 变量（`:root` 和 `.dark` 两套）
+2. 订阅 `onThemeChange`（保持引用以便清理）
+
+**CSS 变量定义**（使用 oklch，不要用 hsl 包裹）：
+
+```css
+:root {
+  --background: oklch(98% 0 0);
+  --foreground: oklch(15% 0 0);
+  --card: oklch(100% 0 0);
+  --primary: oklch(55% 0.15 200);
+  --border: oklch(90% 0.01 260);
+  --gain: oklch(55% 0.15 145);
+  --loss: oklch(55% 0.2 25);
+}
+.dark {
+  --background: oklch(15% 0.01 260);
+  --foreground: oklch(95% 0 0);
+  --card: oklch(18% 0.01 260);
+  --primary: oklch(65% 0.15 200);
+  --border: oklch(25% 0.02 260);
+  --gain: oklch(65% 0.15 145);
+  --loss: oklch(65% 0.2 25);
+}
+```
+
+**HTML 页面**：
+
+```html
+<script src="http://localhost:18790/api/page/_sdk/v1/viben-page-sdk.js"
+        data-page="my-app"></script>
+<script>
+  // SDK 会自动处理 .dark class toggle，无需额外代码
+  // 如果需要在主题变化时执行自定义逻辑：
+  VibenPage.ready.then(() => {
+    VibenPage.onThemeChange((theme) => {
+      // 自定义逻辑，如更新 chart 配色
+      updateChartColors(theme);
+    });
+  });
+</script>
+```
+
+**React Hook**：
+
+```tsx
+function bindToSDK(vibenPage: any) {
+  // 应用初始主题（client:init 返回的值）
+  if (vibenPage.theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+  // 订阅后续变化（SDK 已自动 toggle .dark，这里仅保持引用以便 cleanup）
+  const unsubscribe = vibenPage.onThemeChange(() => {});
+}
+```
+
+#### 重要注意
+
+- **Server 类型页面**的 SDK 使用独立的 clientId（如 `trading-abc123`），与 Desktop 的 clientId 不同。主题同步通过 Gateway 的全局广播实现，不依赖同一 clientId。
+- **不要用 `?theme=dark` URL 参数作为唯一方案** — 它只能处理初始状态，无法响应运行时切换。应作为 SDK 未加载时的降级方案。
+- **SDK 自动 toggle `.dark` class** — `notifyThemeChange()` 内部已调用 `document.documentElement.classList.toggle("dark", theme === "dark")`，页面代码无需重复此操作。
+- **Tailwind v4 + oklch** — 使用 `@theme` 块映射 CSS 变量到 Tailwind color token，然后在组件中用 `bg-background text-foreground` 等语义类。绝对不要用 `hsl(var(--background))` 包裹 oklch 变量。
+
 ### 关键注意事项
 
 | 问题 | 原因 | 解决方案 |
@@ -505,3 +597,5 @@ window.addEventListener("viben:connected", (event) => {
 | `config_missing` 超时 | iframe 模式下父窗口未发送 postMessage | 检查 Desktop App 版本 |
 | Identity 每次刷新变化 | localStorage 被清除 | 检查浏览器隐私设置 |
 | Action 未注册 | `register()` 在连接前调用 | 使用 `VibenPage.ready.then()` 或 React hook |
+| 主题不同步（始终 light） | Gateway 未收到 Desktop 主题 | 确认 Desktop 和 Gateway 版本一致，重启两者 |
+| `onThemeChange` 不触发 | Gateway 未广播 `client:theme` | 确认 Desktop 连接了 Gateway（检查 GatewayActionSocket state） |
