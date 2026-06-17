@@ -2,7 +2,6 @@ import type React from "react"
 import type { RefObject, ReactNode } from "react"
 import type { PlayerRef } from "@remotion/player"
 import type { PresentationStep } from "../../types"
-import type { TimelineLane } from "../../utils/timeline"
 
 export interface PlaybackConsoleScript {
   id: string
@@ -56,6 +55,8 @@ export interface PlaybackConsoleProps {
   onStepsChange: (steps: PresentationStep[], totalMs: number) => void
   renderJsonInspector?: (props: JsonInspectorRenderProps) => ReactNode
   renderBashEditor?: (props: BashEditorRenderProps) => ReactNode
+  stepsToScript?: (steps: PresentationStep[]) => string
+  onEditorRun?: (text: string) => Promise<{ steps: PresentationStep[]; totalMs: number; errors: Map<number, string> } | null>
 }
 
 export interface IsolatedPlaybackConsoleProps {
@@ -65,4 +66,6 @@ export interface IsolatedPlaybackConsoleProps {
   onStepsChange: (steps: PresentationStep[], totalMs: number) => void
   renderJsonInspector?: (props: JsonInspectorRenderProps) => ReactNode
   renderBashEditor?: (props: BashEditorRenderProps) => ReactNode
+  stepsToScript?: (steps: PresentationStep[]) => string
+  onEditorRun?: (text: string) => Promise<{ steps: PresentationStep[]; totalMs: number; errors: Map<number, string> } | null>
 }

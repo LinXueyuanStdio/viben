@@ -1,23 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo, memo } from "react"
-import { createPortal } from "react-dom"
 import {
   PresentationPlayer,
   TargetRectsProvider,
-  PerfProfiler,
-  formatPerfReport,
   describeCommand,
-  frameToMs,
-  msToFrame,
   computeTotalMs,
-  buildTimelineLanes,
-  getActiveSteps,
-  getCurrentStepIndex,
-  commandColor,
-  formatTime,
   IsolatedPlaybackConsole,
 } from "@viben/presentation"
-import type { PerfMetrics, TimelineItem, TimelineLane } from "@viben/presentation"
-import type { PresentationStep, PlayerRef, PlaybackConsoleScript, JsonInspectorRenderProps, BashEditorRenderProps } from "@viben/presentation"
+import type { PerfMetrics } from "@viben/presentation"
+import type { PresentationStep, PlayerRef, JsonInspectorRenderProps, BashEditorRenderProps } from "@viben/presentation"
 import {
   createJSONEditor,
   createValueSelection,
@@ -30,7 +20,6 @@ import { StepGallery } from "./components/StepGallery"
 import { demoSteps, TOTAL_DURATION_MS } from "./data/demo-steps"
 import { BashEditor } from "./features/bash/BashEditor"
 import { createPresentationBash, joinMultilineQuotes, fixJsonQuoting } from "./features/bash/bash-integration"
-import { buildLineStepMapping } from "./features/bash/editor-active-lines"
 import { stepsToBashScript } from "./features/bash/steps-to-bash"
 
 const FPS = 30
@@ -245,16 +234,6 @@ interface Script {
 }
 
 
-function formatTimeWithFlashingColon(ms: number, isPlaying: boolean): string {
-  const safeMs = Math.max(0, Math.round(ms))
-  const totalSeconds = Math.floor(safeMs / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  const tenths = Math.floor((safeMs % 1000) / 100)
-  const colonVisible = !isPlaying || Math.floor(safeMs / 500) % 2 === 0
-  const colon = colonVisible ? ":" : " "
-  return `${minutes}${colon}${seconds.toString().padStart(2, "0")}.${tenths}`
-}
 
 const SCRIPTS: Script[] = [
   {
@@ -601,6 +580,39 @@ export function App() {
     }, 100)
   }, [])
 
+  const handleEditorRun = useCallback(async (text: string): Promise<{ steps: PresentationStep[]; totalMs: number; errors: Map<number, string> } | null> => {
+    const processed = fixJsonQuoting(joinMultilineQuotes(text))
+    const lines = processed.split("\n")
+    const collectedSteps: PresentationStep[] = []
+    let cursorMs = 0
+    const errors = new Map<number, string>()
+
+    const bash = createPresentationBash({
+      onStep: (step) => { collectedSteps.push(step) },
+      getCursorMs: () => cursorMs,
+      setCursorMs: (ms) => { cursorMs = ms },
+    })
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line || line.startsWith("#")) continue
+      try {
+        const result = await bash.exec(line)
+        if (result.exitCode !== 0 && result.stderr) {
+          errors.set(i + 1, result.stderr.trim())
+        }
+      } catch (err: unknown) {
+        errors.set(i + 1, err instanceof Error ? err.message : String(err))
+      }
+    }
+
+    const totalMs = collectedSteps.length > 0
+      ? Math.max(...collectedSteps.map(s => s.endMs ?? s.startMs + 3000))
+      : 0
+
+    return { steps: collectedSteps, totalMs, errors }
+  }, [])
+
   const handleGalleryDemo = useCallback((steps: PresentationStep[], totalDurationMs: number) => {
     const script: Script = {
       id: `gallery-demo-${Date.now()}`,
@@ -646,7 +658,35 @@ export function App() {
           />
 
           {/* Console layer — isolated rendering, manages own time state */}
-          <IsolatedPlaybackConsole script={activeScript} playerRef={playerRef} onStepsChange={handleStepsChange} />
+          <IsolatedPlaybackConsole
+            script={activeScript}
+            playerRef={playerRef}
+            onStepsChange={handleStepsChange}
+            renderJsonInspector={(props: JsonInspectorRenderProps) => (
+              <JsonInspector
+                value={props.value}
+                height={props.height}
+                initialMode={props.initialMode}
+                focusPath={props.focusPath}
+                compact={props.compact}
+                fillHeight={props.fillHeight}
+              />
+            )}
+            renderBashEditor={(props: BashEditorRenderProps) => (
+              <BashEditor
+                value={props.value}
+                onChange={props.onChange}
+                activeLines={props.activeLines}
+                errorLines={props.errorLines}
+                onLineClick={props.onLineClick}
+                steps={props.steps}
+                onRun={props.onRun}
+                style={props.style}
+              />
+            )}
+            stepsToScript={stepsToBashScript}
+            onEditorRun={handleEditorRun}
+          />
 
           {/* FPS monitor overlay */}
           {fpsMonitorEnabled && <FpsMonitor />}
