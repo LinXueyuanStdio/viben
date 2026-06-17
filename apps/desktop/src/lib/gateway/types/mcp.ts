@@ -75,42 +75,6 @@ export interface PortStatus {
 }
 
 // ============================================================================
-// MCP Proxy Types
-// ============================================================================
-
-/** MCP Proxy status */
-export interface McpProxyStatus {
-  running: boolean;
-  pid: number | null;
-  host: string | null;
-  port: number | null;
-  auth_token: string | null;
-  url: string | null;
-}
-
-/** MCP Proxy config */
-export interface McpProxyConfig {
-  python_path: string;
-  host: string;
-  port: number;
-  auth_token?: string;
-}
-
-/** Port process info */
-export interface PortProcess {
-  pid: number;
-  name: string | null;
-  is_mcp_proxy: boolean;
-}
-
-/** MCP Server port status */
-export interface McpServerPortStatus {
-  status: "running" | "stopped" | "conflict";
-  pid: number | null;
-  process_name: string | null;
-  is_mcp_server: boolean;
-}
-
 // ============================================================================
 // MCP Inspector Types
 // ============================================================================

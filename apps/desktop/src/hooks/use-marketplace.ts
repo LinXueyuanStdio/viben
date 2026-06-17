@@ -14,8 +14,6 @@ export type {
   FlatSource,
 };
 
-// Re-export types for backwards compatibility
-export type { InstalledSource, InstalledProviderInfo, InstalledSourcesResponse } from "@/lib/gateway";
 
 /**
  * Hook for accessing the plugin marketplace

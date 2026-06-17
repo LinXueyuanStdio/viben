@@ -150,15 +150,6 @@ import {
   enableMcpServer,
   disableMcpServer,
 
-  // MCP Proxy module
-  getMcpProxyStatus,
-  checkMcpProxyInstalled,
-  startMcpProxy,
-  stopMcpProxy,
-  installMcpProxy,
-  getPortProcess,
-  killPortProcess,
-  checkMcpServerOnPort,
 
   // MCP Inspector module
   getMcpInspectorHealth,
@@ -221,11 +212,6 @@ import {
   getCliToolsConfig,
   saveCliToolsConfig,
   updateCliToolPath,
-
-  // Sources module
-  getInstalledSources,
-  showInstalledProvider,
-  installProvider,
 
   // Logs module
   initLogs,
@@ -379,10 +365,6 @@ import type {
   // MCP types
   WorkspaceMcpServerConfig,
   WorkspaceMcpServersResponse,
-  McpProxyStatus,
-  McpProxyConfig,
-  PortProcess,
-  McpServerPortStatus,
   McpInspectorHealth,
   McpInspectorToken,
   McpInspectorConfig,
@@ -412,8 +394,6 @@ import type {
   CliToolInfo,
   CliToolsInfo,
   CliToolsConfig,
-  // Sources types
-  InstalledSourcesResponse,
   // Logs types
   LogLevel,
   LogEntry,
@@ -1859,65 +1839,6 @@ export class GatewayClient {
   }
 
   // ==========================================================================
-  // MCP Proxy Module Methods
-  // ==========================================================================
-
-  /**
-   * Get MCP proxy status
-   */
-  async getMcpProxyStatus(): Promise<McpProxyStatus> {
-    return getMcpProxyStatus(this.baseUrl);
-  }
-
-  /**
-   * Check if MCP proxy is installed
-   */
-  async checkMcpProxyInstalled(pythonPath: string): Promise<boolean> {
-    return checkMcpProxyInstalled(this.baseUrl, pythonPath);
-  }
-
-  /**
-   * Start MCP proxy
-   */
-  async startMcpProxy(config: McpProxyConfig): Promise<McpProxyStatus> {
-    return startMcpProxy(this.baseUrl, config);
-  }
-
-  /**
-   * Stop MCP proxy
-   */
-  async stopMcpProxy(): Promise<{ success: boolean }> {
-    return stopMcpProxy(this.baseUrl);
-  }
-
-  /**
-   * Install MCP proxy
-   */
-  async installMcpProxy(pythonPath: string): Promise<{ success: boolean }> {
-    return installMcpProxy(this.baseUrl, pythonPath);
-  }
-
-  /**
-   * Get process using a port
-   */
-  async getPortProcess(port: number): Promise<PortProcess | null> {
-    return getPortProcess(this.baseUrl, port);
-  }
-
-  /**
-   * Kill process using a port
-   */
-  async killPortProcess(port: number): Promise<{ success: boolean }> {
-    return killPortProcess(this.baseUrl, port);
-  }
-
-  /**
-   * Check MCP server on port
-   */
-  async checkMcpServerOnPort(port: number): Promise<McpServerPortStatus> {
-    return checkMcpServerOnPort(this.baseUrl, port);
-  }
-
   // ==========================================================================
   // MCP Inspector Module Methods
   // ==========================================================================
@@ -2376,40 +2297,6 @@ export class GatewayClient {
     path: string | null
   ): Promise<void> {
     return updateCliToolPath(this.baseUrl, tool, path);
-  }
-
-  // ==========================================================================
-  // Sources Module Methods
-  // ==========================================================================
-
-  /**
-   * Get installed sources from browse-mcp-cli
-   */
-  async getInstalledSources(
-    pythonPath: string
-  ): Promise<InstalledSourcesResponse> {
-    return getInstalledSources(this.baseUrl, pythonPath);
-  }
-
-  /**
-   * Show details of a specific provider
-   */
-  async showInstalledProvider(
-    pythonPath: string,
-    provider: string
-  ): Promise<Record<string, unknown>> {
-    return showInstalledProvider(this.baseUrl, pythonPath, provider);
-  }
-
-  /**
-   * Install a provider plugin
-   */
-  async installProvider(
-    pythonPath: string,
-    provider: string,
-    upgrade = false
-  ): Promise<string> {
-    return installProvider(this.baseUrl, pythonPath, provider, upgrade);
   }
 
   // ==========================================================================

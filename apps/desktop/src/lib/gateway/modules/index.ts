@@ -39,8 +39,6 @@ export * from "./mcp-servers";
 // MCP Browse module
 export * from "./mcp-browse";
 
-// MCP Proxy module
-export * from "./mcp-proxy";
 
 // MCP Inspector module
 export * from "./mcp-inspector";
@@ -57,8 +55,6 @@ export * from "./files";
 // System module
 export * from "./system";
 
-// Sources module
-export * from "./sources";
 
 // Logs module
 export * from "./logs";

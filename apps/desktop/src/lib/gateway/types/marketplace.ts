@@ -62,33 +62,6 @@ export interface FlatSource {
 }
 
 // ============================================================================
-// Installed Sources Types
-// ============================================================================
-
-/** Source info from browse-mcp-cli */
-export interface InstalledSource {
-  name: string;
-  provider: string;
-  enabled: boolean;
-}
-
-/** Provider info from browse-mcp-cli */
-export interface InstalledProviderInfo {
-  name: string;
-  description?: string;
-  package?: string;
-  sources: string[];
-  count: number;
-}
-
-/** Response from browse-mcp-cli list */
-export interface InstalledSourcesResponse {
-  providers: Record<string, InstalledProviderInfo>;
-  sources: InstalledSource[];
-  total: number;
-  enabled: number;
-}
-
 // ============================================================================
 // Official Registry Types
 // ============================================================================

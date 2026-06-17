@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/stores";
-import { useInstalledSources } from "@/hooks/use-installed-sources";
 import { BrowseSourceStoreDialog } from "./browse-source-store";
 
 interface SourceItem {
@@ -36,7 +35,7 @@ export function CreateApiKeyDialog({ open, onOpenChange, onCreated, createKey }:
     () => providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
     [providers]
   );
-  const { sources: installedSources } = useInstalledSources();
+  const installedSources: { name: string; provider: string; enabled: boolean }[] = [];
 
   const [name, setName] = useState("");
   const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());

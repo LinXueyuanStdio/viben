@@ -258,6 +258,10 @@ export class ClientStore {
     const existing = client.actionStore.get(fullName);
 
     if (existing && existing.hash === hash) {
+      if (existing.socketId !== socketId) {
+        existing.socketId = socketId;
+        log.info({ clientId, action: fullName, oldSocketId: existing.socketId, newSocketId: socketId }, "Action socketId updated (reconnect)");
+      }
       return { updated: false, fullName };
     }
 

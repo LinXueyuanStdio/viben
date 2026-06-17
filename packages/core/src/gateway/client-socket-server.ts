@@ -501,6 +501,7 @@ export class ClientSocketServer {
 
     const client = this.clientStore.getClient(targetClientId);
     if (!client || client.sockets.size === 0) {
+      log.warn({ targetClientId, namespace, actionName, clientExists: !!client, socketsSize: client?.sockets.size ?? 0 }, "executeAction: client offline");
       return {
         content: [{ type: "text", text: `Client offline: ${targetClientId}` }],
         isError: true,
@@ -509,14 +510,23 @@ export class ClientSocketServer {
 
     const socketInfo = client.sockets.get(action.socketId);
     if (!socketInfo) {
+      const currentSocketIds = [...client.sockets.keys()];
+      log.warn({
+        targetClientId,
+        namespace,
+        actionName,
+        actionSocketId: action.socketId,
+        currentSocketIds,
+      }, "executeAction: action socket disconnected (socketId mismatch — action was registered on a now-stale socket)");
       return {
-        content: [{ type: "text", text: "Action socket disconnected" }],
+        content: [{ type: "text", text: `Action socket disconnected (registered on ${action.socketId}, current sockets: [${currentSocketIds.join(", ")}])` }],
         isError: true,
       };
     }
 
     const socket = this.io.sockets.sockets.get(action.socketId);
     if (!socket) {
+      log.warn({ targetClientId, actionSocketId: action.socketId }, "executeAction: socket.io instance not found");
       return {
         content: [{ type: "text", text: "Socket not found" }],
         isError: true,

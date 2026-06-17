@@ -15,13 +15,10 @@ export { useVibenCli } from "./use-viben-cli";
 export type { UseVibenCliReturn, VibenCliPath, VibenCliSource } from "./use-viben-cli";
 export { useMcp } from "./use-mcp";
 export { useMarketplace } from "./use-marketplace";
-export { useInstalledSources } from "./use-installed-sources";
 export { useApiLogs } from "./use-api-logs";
 export { useTheme } from "./use-theme";
 export { useUnifiedSessions } from "./use-unified-sessions";
 export { useMcpConnection } from "./use-mcp-connection";
-export { useMcpProxy, buildProxyUrl, buildProxyHeaders } from "./use-mcp-proxy";
-export type { McpProxyConfig, McpProxyStatus } from "./use-mcp-proxy";
 
 // Viben Platform Integration
 export {
