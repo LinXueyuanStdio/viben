@@ -1,13 +1,21 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 // Content Security Policy
 // - 'unsafe-inline' is required for Next.js inline scripts and styles
 // - vercel.live is for the Vercel toolbar on preview deployments
 // - va.vercel-scripts.com is for Vercel Analytics
 // - *.pusher.com is for Vercel toolbar real-time features
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(process.env.NODE_ENV === "development" ? ["'unsafe-eval'"] : []),
+  "https://vercel.live",
+].join(" ");
+
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' https://vercel.live;
+  script-src ${scriptSrc};
   style-src 'self' 'unsafe-inline' https://vercel.live;
   img-src 'self' data: blob: https://vercel.live https://vercel.com https://*.vercel.com;
   font-src 'self' https://vercel.live https://assets.vercel.com;
@@ -21,6 +29,15 @@ const cspHeader = `
   .trim();
 
 const nextConfig: NextConfig = {
+  webpack: (config, { isServer, webpack }) => {
+    if (!isServer) {
+      const emptyModule = path.resolve(__dirname, "polyfills/empty.ts");
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:zlib$/, emptyModule)
+      );
+    }
+    return config;
+  },
   serverExternalPackages: [
     "just-bash",
     // just-bash externalizes these in its own bundle; mark them external

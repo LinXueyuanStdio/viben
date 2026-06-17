@@ -3,10 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "generate": "node scripts/generate-terminal-content.mjs",
     "fetch-agent-data": "node scripts/fetch-agent-data.mjs",
-    "dev": "pnpm generate && next dev",
-    "build": "pnpm generate && pnpm fetch-agent-data && next build",
+    "dev": "next dev",
+    "build": "pnpm fetch-agent-data && next build",
     "start": "next start",
     "lint": "eslint"
   },

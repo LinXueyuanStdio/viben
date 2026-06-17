@@ -33,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${GeistMono.variable} antialiased`}>
+      <body className={`${GeistMono.variable} antialiased`} suppressHydrationWarning>
         {children}
         <Analytics/>
       </body>
