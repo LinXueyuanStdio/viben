@@ -534,7 +534,7 @@ async function fetchPageTreeLines(workspacePath: string | undefined): Promise<st
       for (const node of nodes) {
         const indent = "  " + "  ".repeat(depth);
         const typeTag = node.page.type !== "markdown" ? ` [${node.page.type}]` : "";
-        lines.push(`${indent}${node.page.name}${typeTag} (${node.page.uid})`);
+        lines.push(`${indent}${node.page.name}${typeTag} (uid=${node.page.uid})`);
         walk(node.children, depth + 1);
       }
     }
