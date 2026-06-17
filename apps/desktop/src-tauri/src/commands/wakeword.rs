@@ -18,6 +18,14 @@ pub struct WakeWordDetectionEvent {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct WakeWordScoreEvent {
+    pub keyword: String,
+    pub score: f32,
+    pub threshold: f32,
+    pub above_threshold: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct WakeWordStatus {
     pub state: String,
     pub error: Option<String>,
@@ -146,7 +154,7 @@ pub async fn start_wakeword<R: Runtime>(
                             Ok(scores) => {
                                 for (keyword, score) in &scores {
                                     if *score >= threshold {
-                                        eprintln!("[WakeWord] Detected '{}' (score: {:.3})", keyword, score);
+                                        eprintln!("[WakeWord] 🔔 Detected '{}' (score: {:.4})", keyword, score);
                                         let _ = app.emit(
                                             "wakeword-detected",
                                             WakeWordDetectionEvent {
@@ -154,7 +162,18 @@ pub async fn start_wakeword<R: Runtime>(
                                                 score: *score,
                                             },
                                         );
+                                    } else if *score > 0.1 {
+                                        eprintln!("[WakeWord] 📊 keyword=\"{}\" score={:.4} (below threshold {:.2})", keyword, score, threshold);
                                     }
+                                    let _ = app.emit(
+                                        "wakeword-score",
+                                        WakeWordScoreEvent {
+                                            keyword: keyword.clone(),
+                                            score: *score,
+                                            threshold,
+                                            above_threshold: *score >= threshold,
+                                        },
+                                    );
                                 }
                             }
                             Err(e) => {
