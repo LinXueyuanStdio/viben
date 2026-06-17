@@ -279,7 +279,7 @@ function PageTreeItemContent({
                 <TooltipContent
                   side="right"
                   align="start"
-                  sideOffset={72}
+                  sideOffset={4}
                   className="max-w-xs pointer-events-none"
                 >
                   <p className="text-xs">{node.page.description}</p>
