@@ -2,7 +2,6 @@ import { io, type Socket } from "socket.io-client";
 import * as ed from "@noble/ed25519";
 import { useActionStore } from "@/stores/action-store";
 import { executeGUIAction } from "./action-executor";
-import { executeBuiltin } from "./builtins";
 import { getRegistrableBuiltins } from "./builtins";
 import { createSocketExecutionContext, requestLocalApproval } from "./execution-context";
 import { UserCancelledException } from "./errors";
@@ -70,6 +69,7 @@ class GatewayActionSocket {
 
     this.identity = identity;
     this._state = "connecting";
+    console.info("[GatewayActionSocket] Connecting to", gatewayUrl, "clientId:", identity.clientId);
 
     this.socket = io(gatewayUrl, {
       path: "/socket.io/client",
@@ -82,8 +82,15 @@ class GatewayActionSocket {
     });
 
     this.socket.on("connect", () => this.handleConnect());
-    this.socket.on("disconnect", () => this.handleDisconnect());
-    this.socket.io.on("reconnect_attempt", () => {
+    this.socket.on("disconnect", (reason) => {
+      console.warn("[GatewayActionSocket] Socket disconnected, reason:", reason);
+      this.handleDisconnect();
+    });
+    this.socket.on("connect_error", (err) => {
+      console.error("[GatewayActionSocket] connect_error:", err.message);
+    });
+    this.socket.io.on("reconnect_attempt", (attempt) => {
+      console.info("[GatewayActionSocket] Reconnect attempt", attempt);
       this._state = "reconnecting";
     });
     this.socket.on(
@@ -164,6 +171,7 @@ class GatewayActionSocket {
 
   private async handleExecute(data: ActionExecuteEvent): Promise<void> {
     const { requestId, action, payload, context } = data;
+    console.info("[GatewayActionSocket] action:execute", { requestId, action });
     let result: ClientToolResult;
 
     try {
@@ -173,24 +181,7 @@ class GatewayActionSocket {
         (message, options) => this.emitApprovalRequest(requestId, message, options)
       );
 
-      if (action === "read_window" || action === "navigate_to") {
-        const builtinResult = await executeBuiltin(action, payload ?? {}, ctx);
-        result = builtinResult ?? {
-          content: [{ type: "text", text: `Builtin "${action}" returned null` }],
-          isError: true,
-        };
-      } else {
-        // Find the action in local store by name (across all providers)
-        const localAction = this.findLocalAction(action);
-        if (localAction) {
-          result = await executeGUIAction({ action: localAction, payload }, ctx);
-        } else {
-          result = {
-            content: [{ type: "text", text: `Action not found locally: ${action}` }],
-            isError: true,
-          };
-        }
-      }
+      result = await executeGUIAction({ action, payload }, ctx);
     } catch (err) {
       if (err instanceof UserCancelledException) {
         result = { content: [{ type: "text", text: "User rejected" }], isError: true };
@@ -202,30 +193,8 @@ class GatewayActionSocket {
       }
     }
 
+    console.info("[GatewayActionSocket] action:result", { requestId, isError: result.isError });
     this.socket?.emit("action:result", { requestId, result });
-  }
-
-  private findLocalAction(actionName: string): string | undefined {
-    const state = useActionStore.getState();
-    // actionName might be "presentation.spotlight" (sub-namespace.name) or "read_window" (flat builtin)
-    // Try exact match as provider_namespace.action_name first
-    const dotIdx = actionName.indexOf(".");
-    if (dotIdx > 0) {
-      const subNs = actionName.slice(0, dotIdx);
-      const name = actionName.slice(dotIdx + 1);
-      for (const provider of state.registry.values()) {
-        if (provider.namespace === subNs) {
-          const found = provider.actions.find(a => a.name === name);
-          if (found) return `${provider.namespace}.${found.name}`;
-        }
-      }
-    }
-    // Fallback: search by bare name across all providers
-    for (const provider of state.registry.values()) {
-      const found = provider.actions.find(a => a.name === actionName);
-      if (found) return `${provider.namespace}.${found.name}`;
-    }
-    return undefined;
   }
 
   private emitApprovalRequest(
