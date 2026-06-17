@@ -235,7 +235,7 @@ const TargetRectsStoreContext = createContext<TargetRectsStore | null>(null)
  * - MutationObserver only fires when nodes with data-presentation-id are added/removed
  * - Debounced measure to avoid thrashing during Remotion playback
  */
-export function TargetRectsProvider({ children }: { children: ReactNode }) {
+function InternalTargetRectsProvider({ children }: { children: ReactNode }) {
   const storeRef = useRef<TargetRectsStore | null>(null)
   if (!storeRef.current) {
     storeRef.current = new TargetRectsStore()
@@ -252,6 +252,16 @@ export function TargetRectsProvider({ children }: { children: ReactNode }) {
       {children}
     </TargetRectsStoreContext.Provider>
   )
+}
+
+/**
+ * Provides TargetRectsStore context. Idempotent — if an ancestor already
+ * provides the store, this component is a passthrough (no duplicate observers).
+ */
+export function TargetRectsProvider({ children }: { children: ReactNode }) {
+  const existingStore = useContext(TargetRectsStoreContext)
+  if (existingStore) return <>{children}</>
+  return <InternalTargetRectsProvider>{children}</InternalTargetRectsProvider>
 }
 
 /**

@@ -348,6 +348,20 @@ export function createPresentationBash(opts: PresentationBashOptions) {
       }
     }
 
+    // Fallback: try to find the command by name directly in toolMap
+    // This allows flat `presentation <type>` syntax without category prefix
+    const tool = toolMap.get(first)
+    if (tool) {
+      try {
+        const parsedArgs = parseArgs(args.slice(1))
+        const result = tool.execute(parsedArgs)
+        return { stdout: `${result.summary}\n`, stderr: "", exitCode: 0 }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        return { stdout: "", stderr: `presentation ${first}: ${msg}\n`, exitCode: 1 }
+      }
+    }
+
     return {
       stdout: "",
       stderr: `presentation: unknown command '${first}'. Use 'presentation --help' for usage.\n`,

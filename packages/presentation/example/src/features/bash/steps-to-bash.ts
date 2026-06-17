@@ -31,8 +31,8 @@ function stepToLine(step: PresentationStep): string {
   return parts.join(" ")
 }
 
-/** Chars that require quoting in bash context */
-const BASH_SPECIAL = /[\s"'()$%!;&|<>\\`~#{}[\]*?]/
+/** Chars that require quoting in bash context (includes non-ASCII for safety) */
+const BASH_SPECIAL = /[\s"'()$%!;&|<>\\`~#{}[\]*?]|[^\x20-\x7E]/
 
 function formatArg(key: string, value: unknown): string {
   if (typeof value === "number" || typeof value === "boolean") {
@@ -41,8 +41,12 @@ function formatArg(key: string, value: unknown): string {
   if (typeof value === "string") {
     // Strings with bash-special chars get double-quoted
     if (BASH_SPECIAL.test(value)) {
-      // Escape any existing double-quotes inside the value
-      const escaped = value.replace(/"/g, '\\"')
+      // Escape backslashes, double-quotes, dollar signs, and newlines for bash double-quote context
+      const escaped = value
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\$/g, "\\$")
+        .replace(/\n/g, "\\n")
       return `${key}="${escaped}"`
     }
     return `${key}=${value}`
@@ -50,6 +54,6 @@ function formatArg(key: string, value: unknown): string {
   // Objects and arrays: always use double-quote wrapping with escaped inner quotes.
   // Single-quote wrapping breaks if JSON contains literal single quotes (e.g. "Q1'23").
   const json = JSON.stringify(value)
-  const escaped = json.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  const escaped = json.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\$/g, "\\$")
   return `${key}="${escaped}"`
 }

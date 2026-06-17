@@ -173,6 +173,18 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
     )
     const durationInFrames = Math.max(1, msToFrame(durationMs, fps))
 
+    // Resume playback when durationInFrames grows (streaming append scenario)
+    const prevDurationRef = useRef(durationInFrames)
+    useEffect(() => {
+      if (durationInFrames > prevDurationRef.current) {
+        const player = internalPlayerRef.current
+        if (player && !player.isPlaying()) {
+          player.play()
+        }
+      }
+      prevDurationRef.current = durationInFrames
+    }, [durationInFrames])
+
     // Playback state for transport/timeline (useSyncExternalStore-based)
     const playback = usePlaybackState(internalPlayerRef, fps, durationMs)
 

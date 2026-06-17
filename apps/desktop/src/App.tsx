@@ -6,6 +6,7 @@ import { OverlayRoot } from "@/components/overlay";
 import { ActionApprovalDialog } from "@/components/action-system";
 import { PresentationActionProvider } from "@/components/overlay/layers/presentation-action-provider";
 import { PetWindowManager } from "@/components/pet-window-manager";
+import { TargetRectsProvider } from "@viben/presentation";
 import { useGatewayActionSocket } from "@/hooks/use-gateway-action-socket";
 import {
   DashboardPage,
@@ -136,6 +137,7 @@ function App() {
   useGatewayActionSocket();
 
   return (
+    <TargetRectsProvider>
     <AppErrorBoundary>
       <BrowserRouter>
         <Routes>
@@ -254,6 +256,7 @@ function App() {
       <PresentationActionProvider />
       <PetWindowManager />
     </AppErrorBoundary>
+    </TargetRectsProvider>
   );
 }
 

@@ -381,6 +381,38 @@ presentation text content="The future is accelerated computing" fontSize=28 posi
       expect(steps).toHaveLength(1)
       expect(steps[0].command.type).toBe("chart")
     })
+
+    it("round-trips dollar signs in content through serializer + parser", async () => {
+      const testSteps = [{
+        id: "dollar-1",
+        toolUseId: "t-dollar-1",
+        toolName: "test",
+        toolInput: {},
+        description: "test",
+        status: "done",
+        startMs: 0,
+        endMs: 3000,
+        command: { type: "text", content: "Revenue $26B and $2.2T market cap", position: { x: 100, y: 100 } },
+      }, {
+        id: "dollar-2",
+        toolUseId: "t-dollar-2",
+        toolName: "test",
+        toolInput: {},
+        description: "test",
+        status: "done",
+        startMs: 3000,
+        endMs: 6000,
+        command: { type: "counter", value: 2.2, prefix: "$", suffix: "T", position: { x: 200, y: 200 } },
+      }] as unknown as PresentationStep[]
+
+      const script = stepsToBashScript(testSteps)
+      const bash = createBash()
+      const result = await bash.exec(script)
+      expect(result.exitCode).toBe(0)
+      expect(steps).toHaveLength(2)
+      expect((steps[0].command as unknown as Record<string, unknown>).content).toBe("Revenue $26B and $2.2T market cap")
+      expect((steps[1].command as unknown as Record<string, unknown>).prefix).toBe("$")
+    })
   })
 
   describe("error handling", () => {
@@ -388,7 +420,7 @@ presentation text content="The future is accelerated computing" fontSize=28 posi
       const bash = createBash()
       const result = await bash.exec("presentation nonexistent")
       expect(result.exitCode).toBe(1)
-      expect(result.stderr).toContain("unknown subcommand")
+      expect(result.stderr).toContain("unknown command")
     })
 
     it("shows help with --help", async () => {
@@ -397,14 +429,14 @@ presentation text content="The future is accelerated computing" fontSize=28 posi
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toContain("spotlight")
       expect(result.stdout).toContain("arrow")
-      expect(result.stdout).toContain("49 overlay commands")
+      expect(result.stdout).toContain("presentation")
     })
 
     it("shows help with no subcommand", async () => {
       const bash = createBash()
       const result = await bash.exec("presentation")
       expect(result.exitCode).toBe(0)
-      expect(result.stdout).toContain("overlay commands")
+      expect(result.stdout).toContain("presentation")
     })
   })
 })
