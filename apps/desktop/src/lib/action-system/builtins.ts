@@ -10,6 +10,9 @@ import { getCurrentWindowTabStore, getTabViewModel } from "@/stores/tab-store";
 import { navigateToPath } from "./navigation-handler";
 import { ROUTE_ENTRIES, registry } from "@/navigation/route-registry";
 import { queryRemoteActions } from "./gateway-action-socket";
+import { getGatewayUrl, listPages } from "@/lib/gateway";
+import { buildPageTree } from "@/pages/apps/utils";
+import type { PageTreeNode } from "@/pages/apps/utils";
 
 const READ_WINDOW_CAPTURE_TIMEOUT_MS = 10_000;
 
@@ -45,7 +48,7 @@ export async function executeBuiltin(
     case "list_navigation_paths":
       return handleListNavigationPaths();
     case "current_window_state":
-      return handleCurrentWindowState();
+      return await handleCurrentWindowState();
     default:
       return null; // Not a built-in
   }
@@ -439,7 +442,7 @@ function handleListNavigationPaths(): ClientToolResult {
   };
 }
 
-function handleCurrentWindowState(): ClientToolResult {
+async function handleCurrentWindowState(): Promise<ClientToolResult> {
   const tabStore = getCurrentWindowTabStore();
   const tabState = tabStore.getState();
 
@@ -487,12 +490,8 @@ function handleCurrentWindowState(): ClientToolResult {
       return `  ${e.pattern}  # ${title || ""}`;
     });
 
-  // Page tree (workspace pages if available)
-  let pageTreeSection = "  (no workspace selected)";
-  if (activeWorkspace) {
-    const pagesUrl = `/workspace/${activeWorkspace.id}/page`;
-    pageTreeSection = `  workspace pages: ${pagesUrl}`;
-  }
+  // Page tree (fetch from gateway)
+  const pageTreeLines = await fetchPageTreeLines(activeWorkspace?.path);
 
   const output = [
     `=== Current Window State ===`,
@@ -511,7 +510,7 @@ function handleCurrentWindowState(): ClientToolResult {
     `  ${currentUrl || "(none)"}`,
     ``,
     `--- Page Tree ---`,
-    pageTreeSection,
+    ...pageTreeLines,
     ``,
     `--- Navigation Paths ---`,
     ...navPaths,
@@ -520,6 +519,30 @@ function handleCurrentWindowState(): ClientToolResult {
   return {
     content: [{ type: "text", text: output.join("\n") }],
   };
+}
+
+async function fetchPageTreeLines(workspacePath: string | undefined): Promise<string[]> {
+  if (!workspacePath) return ["  (no workspace selected)"];
+
+  try {
+    const result = await listPages(getGatewayUrl(), workspacePath);
+    if (!result.pages || result.pages.length === 0) return ["  (empty)"];
+
+    const tree = buildPageTree(result.pages, result.index);
+    const lines: string[] = [];
+    function walk(nodes: PageTreeNode[], depth: number) {
+      for (const node of nodes) {
+        const indent = "  " + "  ".repeat(depth);
+        const typeTag = node.page.type !== "markdown" ? ` [${node.page.type}]` : "";
+        lines.push(`${indent}${node.page.name}${typeTag} (${node.page.uid})`);
+        walk(node.children, depth + 1);
+      }
+    }
+    walk(tree, 0);
+    return lines;
+  } catch {
+    return ["  (failed to fetch pages)"];
+  }
 }
 
 function normalizeNavigationPath(url: string): string | null {
