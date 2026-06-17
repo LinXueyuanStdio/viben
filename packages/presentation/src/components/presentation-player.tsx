@@ -157,15 +157,6 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
       return () => observer.disconnect()
     }, [])
 
-    // Force play after mount when autoPlay is set (bypasses browser autoplay restrictions)
-    useEffect(() => {
-      if (!autoPlay) return
-      const timer = setTimeout(() => {
-        internalPlayerRef.current?.play()
-      }, 100)
-      return () => clearTimeout(timer)
-    }, [autoPlay])
-
     // Memoize durationMs to avoid O(n) computeTotalMs on every render
     const durationMs = useMemo(
       () => totalDurationMsProp ?? computeTotalMs(steps),
@@ -173,25 +164,45 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
     )
     const durationInFrames = Math.max(1, msToFrame(durationMs, fps))
 
-    // Resume playback when durationInFrames grows (streaming append scenario).
-    // When Remotion Player has ended (frame === oldDuration - 1), calling play()
-    // restarts from frame 0. Instead we seek to where new content begins, then play.
+    // Ensure playback starts after mount (autoPlay) and resumes on duration growth.
+    // Uses a single effect with multiple retries to handle Remotion's async readiness.
     const prevDurationRef = useRef(durationInFrames)
+    const hasStartedRef = useRef(false)
+
     useEffect(() => {
+      const player = internalPlayerRef.current
+      if (!player) return
+
       const prevDuration = prevDurationRef.current
-      if (durationInFrames > prevDuration) {
-        const player = internalPlayerRef.current
-        if (player && !player.isPlaying()) {
-          const currentFrame = player.getCurrentFrame()
-          // If player ended at the old last frame, seek forward to new content
-          if (currentFrame >= prevDuration - 1) {
-            player.seekTo(prevDuration)
-          }
-          player.play()
-        }
-      }
+      const durationGrew = durationInFrames > prevDuration
       prevDurationRef.current = durationInFrames
-    }, [durationInFrames])
+
+      if (durationGrew && !player.isPlaying()) {
+        const currentFrame = player.getCurrentFrame()
+        // If player ended at the old last frame, seek to where new content begins
+        if (currentFrame >= prevDuration - 1) {
+          player.seekTo(prevDuration)
+        }
+        player.play()
+        return
+      }
+
+      // Initial autoPlay: retry until playing or give up after 500ms
+      if (autoPlay && !hasStartedRef.current) {
+        hasStartedRef.current = true
+        let attempts = 0
+        const tryPlay = () => {
+          const p = internalPlayerRef.current
+          if (!p) return
+          if (p.isPlaying()) return
+          p.play()
+          attempts++
+          if (attempts < 5) setTimeout(tryPlay, 100)
+        }
+        const timer = setTimeout(tryPlay, 50)
+        return () => clearTimeout(timer)
+      }
+    }, [durationInFrames, autoPlay])
 
     // Playback state for transport/timeline (useSyncExternalStore-based)
     const playback = usePlaybackState(internalPlayerRef, fps, durationMs)

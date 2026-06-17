@@ -350,7 +350,6 @@ export function SubagentSheet({
                 messageUpdates={messageUpdates}
                 isStreaming={isStreamingOutput}
                 streamingText={streamingText}
-                simpleMode
                 maxMessageWidth="100%"
                 onExpandSubagent={onExpandSubagent}
                 onInspectTool={onInspectTool}

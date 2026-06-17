@@ -631,3 +631,38 @@ export const githubConnectionsRelations = relations(githubConnections, ({ one })
     references: [users.id],
   }),
 }));
+
+// ============================================
+// Published Pages Tables
+// ============================================
+
+export const publishedPages = pgTable(
+  'published_pages',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    uid: text('uid').notNull().unique(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    icon: jsonb('icon').$type<{ type: string; value: string } | null>(),
+    description: text('description'),
+    html: text('html').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index('published_pages_user_id_idx').on(table.userId),
+    uniqueIndex('published_pages_uid_idx').on(table.uid),
+  ]
+);
+
+export const publishedPagesRelations = relations(publishedPages, ({ one }) => ({
+  user: one(users, {
+    fields: [publishedPages.userId],
+    references: [users.id],
+  }),
+}));

@@ -29,22 +29,33 @@ export async function authMiddleware(request: NextRequest) {
 
 // Helper to get session in API routes
 export async function requireAuth(request: NextRequest): Promise<Session> {
-  // 1. Check Bearer Token (API Key) first
+  // 1. Check Bearer Token first
   const authHeader = request.headers.get('authorization');
   if (authHeader?.startsWith('Bearer ')) {
-    const apiKeyToken = authHeader.slice(7);
-    const user = await validateApiKey(apiKeyToken);
-    if (user) {
-      return {
-        userId: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role as Session['role'],
-        expiresAt: 0, // API Key session doesn't expire
-      };
+    const bearerToken = authHeader.slice(7);
+
+    // 1a. Try API Key (bmcp_ prefix)
+    if (bearerToken.startsWith('bmcp_')) {
+      const user = await validateApiKey(bearerToken);
+      if (user) {
+        return {
+          userId: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role as Session['role'],
+          expiresAt: 0,
+        };
+      }
+      throw new AuthError('Invalid API key', 401);
     }
-    // Bearer token provided but invalid - don't fall through
-    throw new AuthError('Invalid API key', 401);
+
+    // 1b. Try JWE session token (used by desktop client)
+    const session = await decryptSession(bearerToken);
+    if (session) {
+      return session;
+    }
+
+    throw new AuthError('Invalid token', 401);
   }
 
   // 2. Check Cookie Session (existing logic)

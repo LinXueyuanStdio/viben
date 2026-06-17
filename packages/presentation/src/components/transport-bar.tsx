@@ -197,9 +197,18 @@ export const TransportBar = memo(function TransportBar({
   const togglePlay = useCallback(() => {
     const player = playerRef.current
     if (!player) return
-    if (playbackRef.current.isPlaying) player.pause()
-    else player.play()
-  }, [playerRef])
+    if (playbackRef.current.isPlaying) {
+      player.pause()
+    } else {
+      // If at the end, seek to start before playing
+      const frame = player.getCurrentFrame()
+      const totalFrames = Math.max(1, msToFrame(totalDurationMs, fps))
+      if (frame >= totalFrames - 1) {
+        player.seekTo(0)
+      }
+      player.play()
+    }
+  }, [playerRef, totalDurationMs, fps])
 
   const seekTo = useCallback((ms: number) => {
     const player = playerRef.current
