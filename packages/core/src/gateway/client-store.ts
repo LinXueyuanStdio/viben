@@ -93,6 +93,7 @@ export class ClientStore {
   private clients = new Map<string, ClientState>();
   private readonly config: Required<ClientStoreConfig>;
   private nameIndex = new Map<string, ActionWithClient[]>();
+  private _globalTheme: "light" | "dark" = "light";
 
   constructor(config: ClientStoreConfig = {}) {
     this.config = {
@@ -100,6 +101,14 @@ export class ClientStore {
       maxActionsPerClient: config.maxActionsPerClient ?? MAX_ACTIONS_PER_CLIENT,
       maxPayloadSize: config.maxPayloadSize ?? MAX_PAYLOAD_SIZE,
     };
+  }
+
+  get globalTheme(): "light" | "dark" {
+    return this._globalTheme;
+  }
+
+  setGlobalTheme(theme: "light" | "dark"): void {
+    this._globalTheme = theme;
   }
 
   getClient(clientId: string): ClientState | undefined {

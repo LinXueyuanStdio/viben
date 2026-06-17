@@ -1,6 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 import * as ed from "@noble/ed25519";
 import { useActionStore } from "@/stores/action-store";
+import { useAppStore } from "@/stores";
 import { executeGUIAction } from "./action-executor";
 import { getRegistrableBuiltins } from "./builtins";
 import { createSocketExecutionContext, requestLocalApproval } from "./execution-context";
@@ -47,11 +48,19 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
+function resolveTheme(theme: "light" | "dark" | "system"): "light" | "dark" {
+  if (theme === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return theme;
+}
+
 class GatewayActionSocket {
   private socket: Socket | null = null;
   private _state: ConnectionState = "disconnected";
   private identity: ClientIdentity | null = null;
   private unsubscribeStore: (() => void) | null = null;
+  private unsubscribeTheme: (() => void) | null = null;
   private pendingApprovals = new Map<
     string,
     { resolve: (v: boolean) => void; reject: (e: unknown) => void }
@@ -120,6 +129,7 @@ class GatewayActionSocket {
 
   disconnect(): void {
     this.stopStoreSubscription();
+    this.stopThemeSubscription();
     this.rejectAllPendingApprovals();
     if (this.socket) {
       this.socket.removeAllListeners();
@@ -154,6 +164,8 @@ class GatewayActionSocket {
           this._state = "connected";
           console.info("[GatewayActionSocket] Connected and authenticated");
           this.syncFullRegistration();
+          this.syncTheme();
+          this.startThemeSubscription();
         } else {
           console.error("[GatewayActionSocket] Auth failed:", ack.error);
           this._state = "disconnected";
@@ -288,6 +300,30 @@ class GatewayActionSocket {
       pending.reject(new UserCancelledException("Socket disconnected"));
     }
     this.pendingApprovals.clear();
+  }
+
+  private syncTheme(): void {
+    const theme = resolveTheme(useAppStore.getState().theme);
+    this.socket?.emit("client:theme:set", { theme });
+  }
+
+  private startThemeSubscription(): void {
+    let lastResolved = resolveTheme(useAppStore.getState().theme);
+    this.unsubscribeTheme = useAppStore.subscribe((state) => {
+      if (this._state !== "connected") return;
+      const resolved = resolveTheme(state.theme);
+      if (resolved !== lastResolved) {
+        lastResolved = resolved;
+        this.socket?.emit("client:theme:set", { theme: resolved });
+      }
+    });
+  }
+
+  private stopThemeSubscription(): void {
+    if (this.unsubscribeTheme) {
+      this.unsubscribeTheme();
+      this.unsubscribeTheme = null;
+    }
   }
 
   private startStoreSubscription(): void {

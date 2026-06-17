@@ -177,6 +177,11 @@ export class ClientSocketServer {
         this.handleApprovalResponse(data);
       });
 
+      socket.on("client:theme:set", (data: { theme: "light" | "dark" }) => {
+        if (!this.checkRateLimit(socket.id)) return;
+        this.handleThemeSet(socket, data);
+      });
+
       socket.on("action:list", (_data: unknown, ack?: (response: { actions: Array<{ namespace: string; name: string; description: string }> }) => void) => {
         if (!this.checkRateLimit(socket.id)) return;
         const clientId = (socket as Socket & { clientId?: string }).clientId;
@@ -243,8 +248,13 @@ export class ClientSocketServer {
 
       socket.join(`client:${data.clientId}`);
 
+      // main_window sets the global theme; pages receive it
+      if (data.source === "main_window" && client.metadata.theme !== "light") {
+        this.clientStore.setGlobalTheme(client.metadata.theme);
+      }
+
       const initData: { theme: string; workspacePath?: string } = {
-        theme: client.metadata.theme,
+        theme: data.source === "main_window" ? client.metadata.theme : this.clientStore.globalTheme,
       };
       if (data.source === "main_window") {
         initData.workspacePath = client.metadata.workspacePath;
@@ -257,6 +267,30 @@ export class ClientSocketServer {
       const message = error instanceof Error ? error.message : "Unknown error";
       log.warn({ clientId: data.clientId, error: message }, "Client connect failed");
       ack?.({ success: false, error: message });
+    }
+  }
+
+  private handleThemeSet(socket: Socket, data: { theme: "light" | "dark" }): void {
+    const clientId = (socket as Socket & { clientId?: string }).clientId;
+    if (!clientId) return;
+
+    const client = this.clientStore.getClient(clientId);
+    if (!client) return;
+
+    // Only main_window can set the global theme
+    const socketInfo = client.sockets.get(socket.id);
+    if (!socketInfo || socketInfo.source !== "main_window") return;
+
+    if (data.theme !== this.clientStore.globalTheme) {
+      this.clientStore.setGlobalTheme(data.theme);
+      log.info({ theme: data.theme }, "Global theme updated");
+
+      // Broadcast to all connected sockets except the sender
+      for (const [, connectedSocket] of this.io.sockets.sockets) {
+        if (connectedSocket.id !== socket.id) {
+          connectedSocket.emit("client:theme", { theme: data.theme });
+        }
+      }
     }
   }
 
