@@ -173,12 +173,20 @@ export const PresentationPlayer = memo(forwardRef<PlayerRef, PresentationPlayerP
     )
     const durationInFrames = Math.max(1, msToFrame(durationMs, fps))
 
-    // Resume playback when durationInFrames grows (streaming append scenario)
+    // Resume playback when durationInFrames grows (streaming append scenario).
+    // When Remotion Player has ended (frame === oldDuration - 1), calling play()
+    // restarts from frame 0. Instead we seek to where new content begins, then play.
     const prevDurationRef = useRef(durationInFrames)
     useEffect(() => {
-      if (durationInFrames > prevDurationRef.current) {
+      const prevDuration = prevDurationRef.current
+      if (durationInFrames > prevDuration) {
         const player = internalPlayerRef.current
         if (player && !player.isPlaying()) {
+          const currentFrame = player.getCurrentFrame()
+          // If player ended at the old last frame, seek forward to new content
+          if (currentFrame >= prevDuration - 1) {
+            player.seekTo(prevDuration)
+          }
           player.play()
         }
       }
