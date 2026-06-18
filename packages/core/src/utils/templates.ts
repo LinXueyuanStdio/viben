@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
  */
 export function getTemplatesDir(metaUrl: string): string {
   const currentDir = dirname(fileURLToPath(metaUrl));
+  const executableDir = dirname(process.execPath);
 
   // Try multiple possible locations
   const candidates = [
@@ -28,6 +29,12 @@ export function getTemplatesDir(metaUrl: string): string {
     resolve(currentDir, "../../templates"),
     // dist/templates (npm package - templates in same dir as bundled code)
     resolve(currentDir, "./templates"),
+    // Standalone sidecar artifact: templates copied next to the compiled binary
+    resolve(executableDir, "templates"),
+    // Tauri resources: sidecar may be in Resources/binaries and templates in Resources/resources/templates
+    resolve(executableDir, "../resources/templates"),
+    // macOS app bundle: sidecar may be in Contents/MacOS and templates in Contents/Resources/resources/templates
+    resolve(executableDir, "../Resources/resources/templates"),
   ];
 
   for (const candidate of candidates) {

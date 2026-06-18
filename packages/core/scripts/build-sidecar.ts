@@ -206,7 +206,7 @@ function buildPlatform(platform: string, outputDir: string): void {
     return;
   }
 
-  const inputFile = join(PACKAGE_ROOT, "dist/cli/bin.cjs");
+  const inputFile = join(PACKAGE_ROOT, "dist/cli/bin.js");
   const extension = platform.startsWith("win") ? ".exe" : "";
   const outputName = `viben-${config.tauriSuffix}${extension}`;
   const outputPath = join(outputDir, outputName);

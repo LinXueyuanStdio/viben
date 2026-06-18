@@ -160,7 +160,7 @@ jobs:
         shell: bash
         run: |
           cd packages/core
-          bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
+          bun build dist/cli/bin.js --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
 
       # Bun-compiled binaries require entitlements for codesign on macOS
       - name: Codesign sidecar binaries (macOS)
@@ -574,6 +574,14 @@ jobs:
       - name: Codesign sidecar binaries (macOS)
         if: matrix.platform == 'macos-latest'
         uses: ./.github/actions/codesign-sidecar
+
+      - name: Prepare desktop bundled templates (macOS)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          rm -rf apps/desktop/src-tauri/resources/templates
+          mkdir -p apps/desktop/src-tauri/resources
+          cp -R packages/core/templates apps/desktop/src-tauri/resources/templates
 
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...

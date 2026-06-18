@@ -42,6 +42,16 @@ success() { echo -e "${GREEN}[PASS]${NC} $1"; }
 fail()    { echo -e "${RED}[FAIL]${NC} $1"; TEST_FAILURES=$((TEST_FAILURES + 1)); }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 
+clear_quarantine() {
+    local path="$1"
+
+    if xattr -cr "$path" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    find "$path" -exec xattr -c {} \; 2>/dev/null || true
+}
+
 section() {
     echo ""
     echo -e "${CYAN}${BOLD}  $1${NC}"
@@ -192,7 +202,7 @@ cp -R "$APP_BUNDLE" /Applications/
 
 # Clear quarantine attribute to allow the app to run
 info "Clearing quarantine attribute..."
-xattr -cr "/Applications/$APP_NAME"
+clear_quarantine "/Applications/$APP_NAME"
 
 success "App installed at /Applications/$APP_NAME"
 

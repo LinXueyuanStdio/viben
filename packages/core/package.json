@@ -1,6 +1,6 @@
 {
   "name": "@viben/core",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Core library for Viben - Agent Swarm × Code Evolution with FileEvo, Multi-Agent orchestration, and XState Task System",
   "type": "module",
   "main": "dist/index.js",

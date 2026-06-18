@@ -309,6 +309,8 @@ docs/index/
 /logs
 
 /resources/page-templates/fullstack/
+/apps/desktop/src-tauri/resources/templates/
+/artifacts/
 
 .claude/scheduled_tasks.json
 .claude.json

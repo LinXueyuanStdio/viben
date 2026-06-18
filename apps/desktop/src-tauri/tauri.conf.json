@@ -6,7 +6,9 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["viben"]
+        "schemes": [
+          "viben"
+        ]
       }
     },
     "updater": {
@@ -92,7 +94,8 @@
       "binaries/viben"
     ],
     "resources": [
-      "resources/ni_hao_wei_ben.onnx"
+      "resources/ni_hao_wei_ben.onnx",
+      "resources/templates"
     ],
     "createUpdaterArtifacts": true,
     "macOS": {
