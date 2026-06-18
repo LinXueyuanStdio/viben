@@ -8,7 +8,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "prepare": "./scripts/install-git-hooks.sh",
+    "prepare": "node scripts/install-git-hooks.js",
     "check:lockfile": "./scripts/check-pnpm-lockfile.sh",
     "clean": "turbo clean && rm -rf node_modules",
     "code-stats": "python scripts/code-stats.py",
