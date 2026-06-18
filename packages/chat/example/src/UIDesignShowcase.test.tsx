@@ -49,11 +49,9 @@ describe("UIShowCasesPage", () => {
         tools={[]}
         skills={[]}
         contextBreakdown={{
-          assistantProfile: 1,
-          skillSettings: 1,
-          historySummary: 1,
-          conversationMessages: 1,
-          totalContext: 4,
+          used: 1,
+          size: 4,
+          cost: null,
         }}
         showToolsPanel={false}
         showSkillsPanel={false}
