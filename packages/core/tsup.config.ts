@@ -30,7 +30,8 @@ export default defineConfig({
   // Note: fastify and ws must be external to avoid "Dynamic require of events is not supported" error
   // Note: yaml must be external because yaml@2.8+ uses CJS require("process") which breaks in ESM bundles
   // Note: archiver is external for pet export (dynamically imported)
-  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws", "yaml", "archiver"],
+  // Note: undici must be external to avoid "Dynamic require of http is not supported" error in ESM bundles
+  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws", "yaml", "archiver", "undici"],
   // Inject version at build time
   define: {
     __VERSION__: JSON.stringify(VERSION),
