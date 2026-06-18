@@ -173,6 +173,7 @@ jobs:
         run: |
           mkdir -p sidecar-artifact
           cp apps/desktop/src-tauri/binaries/viben-* sidecar-artifact/
+          cp -R packages/core/templates sidecar-artifact/templates
           echo "Sidecar artifact contents:"
           ls -la sidecar-artifact/
 
