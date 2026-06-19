@@ -26,7 +26,7 @@ describe("preview dependency installation", () => {
     expect(plan.needsInstall).toBe(true);
     expect(plan.packageManager).toBe("pnpm");
     expect(plan.command).toBe("pnpm");
-    expect(plan.args).toEqual(["install"]);
+    expect(plan.args).toEqual(["install", "--ignore-workspace"]);
     expect(plan.reason).toContain("next");
   });
 

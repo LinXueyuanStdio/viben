@@ -158,6 +158,155 @@ const HEALTH_CHECK_INTERVAL_MS = 10 * 1000; // 10 seconds
 const STARTUP_TIMEOUT_MS = 120 * 1000; // 120 seconds (2 minutes) for npm install + vite start
 const MAX_PORT_RETRY_ATTEMPTS = 10;
 const INITIAL_RETRY_DELAY_MS = 100;
+const INSTALL_TIMEOUT_MS = 120 * 1000;
+
+type PreviewPackageManager = "npm" | "pnpm" | "yarn" | "bun";
+
+export interface PreviewInstallPlan {
+  needsInstall: boolean;
+  packageManager: PreviewPackageManager;
+  command: string;
+  args: string[];
+  reason: string;
+}
+
+interface PackageJson {
+  packageManager?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+}
+
+function detectPackageManager(
+  workDir: string,
+  command?: string,
+  packageJson?: PackageJson
+): PreviewPackageManager {
+  const commandName = command?.trim().split(/\s+/)[0];
+  if (
+    commandName === "pnpm" ||
+    commandName === "npm" ||
+    commandName === "yarn" ||
+    commandName === "bun"
+  ) {
+    return commandName;
+  }
+
+  const configuredManager = packageJson?.packageManager?.split("@")[0];
+  if (
+    configuredManager === "pnpm" ||
+    configuredManager === "npm" ||
+    configuredManager === "yarn" ||
+    configuredManager === "bun"
+  ) {
+    return configuredManager;
+  }
+
+  if (fsSync.existsSync(path.join(workDir, "pnpm-lock.yaml"))) return "pnpm";
+  if (fsSync.existsSync(path.join(workDir, "yarn.lock"))) return "yarn";
+  if (
+    fsSync.existsSync(path.join(workDir, "bun.lockb")) ||
+    fsSync.existsSync(path.join(workDir, "bun.lock"))
+  ) {
+    return "bun";
+  }
+
+  return "npm";
+}
+
+function getInstallCommand(
+  packageManager: PreviewPackageManager
+): { command: string; args: string[] } {
+  if (packageManager === "pnpm") {
+    return { command: "pnpm", args: ["install", "--ignore-workspace"] };
+  }
+
+  return {
+    command: packageManager,
+    args: packageManager === "yarn" ? ["install"] : ["install"],
+  };
+}
+
+function getDeclaredDependencies(packageJson: PackageJson): string[] {
+  return Array.from(
+    new Set([
+      ...Object.keys(packageJson.dependencies ?? {}),
+      ...Object.keys(packageJson.devDependencies ?? {}),
+      ...Object.keys(packageJson.optionalDependencies ?? {}),
+      ...Object.keys(packageJson.peerDependencies ?? {}),
+    ])
+  );
+}
+
+async function readPackageJson(workDir: string): Promise<PackageJson | null> {
+  try {
+    const raw = await fs.readFile(path.join(workDir, "package.json"), "utf-8");
+    return JSON.parse(raw) as PackageJson;
+  } catch {
+    return null;
+  }
+}
+
+export async function getPreviewInstallPlan(
+  workDir: string,
+  command?: string
+): Promise<PreviewInstallPlan> {
+  const packageJson = await readPackageJson(workDir);
+  const packageManager = detectPackageManager(
+    workDir,
+    command,
+    packageJson ?? undefined
+  );
+  const installCommand = getInstallCommand(packageManager);
+
+  const nodeModulesPath = path.join(workDir, "node_modules");
+  if (!fsSync.existsSync(nodeModulesPath)) {
+    return {
+      needsInstall: true,
+      packageManager,
+      ...installCommand,
+      reason: "node_modules not found",
+    };
+  }
+
+  if (!packageJson) {
+    return {
+      needsInstall: false,
+      packageManager,
+      ...installCommand,
+      reason: "package.json not found",
+    };
+  }
+
+  const missingDependencies: string[] = [];
+  for (const dependencyName of getDeclaredDependencies(packageJson)) {
+    const packageJsonPath = path.join(
+      nodeModulesPath,
+      dependencyName,
+      "package.json"
+    );
+    if (!fsSync.existsSync(packageJsonPath)) {
+      missingDependencies.push(dependencyName);
+    }
+  }
+
+  if (missingDependencies.length > 0) {
+    return {
+      needsInstall: true,
+      packageManager,
+      ...installCommand,
+      reason: `Missing or broken dependencies: ${missingDependencies.join(", ")}`,
+    };
+  }
+
+  return {
+    needsInstall: false,
+    packageManager,
+    ...installCommand,
+    reason: "dependencies are installed",
+  };
+}
 
 /**
  * PreviewManager - Manages Vite dev server instances
@@ -560,58 +709,61 @@ export class PreviewManager {
     const timeout = options.timeout ? options.timeout * 1000 : STARTUP_TIMEOUT_MS;
     const readyPattern = options.readyPattern;
 
-    // Install dependencies if node_modules doesn't exist
-    const nodeModulesPath = path.join(workDir, "node_modules");
-    let needsInstall = false;
-    try {
-      await fs.access(nodeModulesPath);
-    } catch {
-      needsInstall = true;
-    }
+    const installPlan = await getPreviewInstallPlan(workDir, command);
 
-    if (needsInstall) {
-      log.info({ workDir }, "node_modules not found, installing dependencies...");
+    if (installPlan.needsInstall) {
+      log.info(
+        { workDir, packageManager: installPlan.packageManager, reason: installPlan.reason },
+        "Preview dependencies need install"
+      );
       onEvent?.({
         type: "log",
-        data: { message: "Installing dependencies..." },
+        data: { message: `Installing dependencies with ${installPlan.packageManager} (${installPlan.reason})...` },
       });
 
       await new Promise<void>((resolve, reject) => {
-        const npmInstall = spawn("npm", ["install"], {
+        const installProcess = spawn(installPlan.command, installPlan.args, {
           cwd: workDir,
           shell: true,
           stdio: "pipe",
         });
 
         let stderr = "";
-        npmInstall.stderr?.on("data", (data: Buffer) => {
+        installProcess.stdout?.on("data", (data: Buffer) => {
+          onEvent?.({
+            type: "log",
+            data: { message: `${installPlan.packageManager}: ${data.toString().trim()}` },
+          });
+        });
+
+        installProcess.stderr?.on("data", (data: Buffer) => {
           stderr += data.toString();
           onEvent?.({
             type: "log",
-            data: { message: `npm: ${data.toString().trim()}` },
+            data: { message: `${installPlan.packageManager}: ${data.toString().trim()}` },
           });
         });
 
         const installTimeout = setTimeout(() => {
-          npmInstall.kill();
-          reject(new Error("npm install timed out after 2 minutes"));
-        }, 120000);
+          installProcess.kill();
+          reject(new Error(`${installPlan.packageManager} install timed out after 2 minutes`));
+        }, INSTALL_TIMEOUT_MS);
 
-        npmInstall.on("close", (code) => {
+        installProcess.on("close", (code) => {
           clearTimeout(installTimeout);
           if (code === 0) {
-            log.info("npm install completed");
+            log.info({ packageManager: installPlan.packageManager }, "Preview dependencies installed");
             onEvent?.({
               type: "log",
               data: { message: "Dependencies installed successfully" },
             });
             resolve();
           } else {
-            reject(new Error(`npm install failed (exit code ${code}): ${stderr}`));
+            reject(new Error(`${installPlan.packageManager} install failed (exit code ${code}): ${stderr}`));
           }
         });
 
-        npmInstall.on("error", (err) => {
+        installProcess.on("error", (err) => {
           clearTimeout(installTimeout);
           reject(err);
         });
@@ -806,28 +958,34 @@ export class PreviewManager {
   ): Promise<void> {
     // Install dependencies if vite is not installed
     const viteBinPath = path.join(workDir, "node_modules", ".bin", "vite");
-    let needsInstall = false;
+    const installPlan = await getPreviewInstallPlan(workDir, "vite");
+    let needsInstall = installPlan.needsInstall;
 
-    try {
-      await fs.access(viteBinPath);
-      log.debug("Vite already installed, skipping npm install");
-    } catch {
-      needsInstall = true;
+    if (!needsInstall) {
+      try {
+        await fs.access(viteBinPath);
+        log.debug("Vite already installed, skipping npm install");
+      } catch {
+        needsInstall = true;
+      }
     }
 
     if (needsInstall) {
-      log.info("Vite not found, installing dependencies...");
+      log.info(
+        { packageManager: installPlan.packageManager, reason: installPlan.reason },
+        "Vite dependencies need install"
+      );
       onEvent?.({
         type: "log",
-        data: { message: "Installing Vite dependencies..." },
+        data: { message: `Installing Vite dependencies with ${installPlan.packageManager}...` },
       });
       const installStart = Date.now();
 
       // Use system npm (Live Preview requires Node.js to be installed)
-      log.debug("Running: npm install");
+      log.debug({ command: `${installPlan.command} ${installPlan.args.join(" ")}` }, "Running package install");
 
       await new Promise<void>((resolve, reject) => {
-        const npmInstall = spawn("npm", ["install"], {
+        const installProcess = spawn(installPlan.command, installPlan.args, {
           cwd: workDir,
           shell: true,
           stdio: "pipe",
@@ -835,34 +993,34 @@ export class PreviewManager {
 
         let stderr = "";
 
-        npmInstall.stdout?.on("data", (data: Buffer) => {
+        installProcess.stdout?.on("data", (data: Buffer) => {
           // Log progress
           const line = data.toString().trim();
           if (line) {
-            log.debug({ output: line }, "npm stdout");
+            log.debug({ output: line, packageManager: installPlan.packageManager }, "package manager stdout");
           }
         });
 
-        npmInstall.stderr?.on("data", (data: Buffer) => {
+        installProcess.stderr?.on("data", (data: Buffer) => {
           stderr += data.toString();
-          // npm often outputs to stderr even for non-errors
+          // Package managers often output to stderr even for non-errors
           const line = data.toString().trim();
           if (line) {
-            log.debug({ output: line }, "npm stderr");
+            log.debug({ output: line, packageManager: installPlan.packageManager }, "package manager stderr");
           }
         });
 
         // Set a timeout for npm install (2 minutes)
         const installTimeoutId = setTimeout(() => {
-          npmInstall.kill();
-          reject(new Error("npm install timed out after 2 minutes"));
-        }, 120000);
+          installProcess.kill();
+          reject(new Error(`${installPlan.packageManager} install timed out after 2 minutes`));
+        }, INSTALL_TIMEOUT_MS);
 
-        npmInstall.on("close", (code) => {
+        installProcess.on("close", (code) => {
           clearTimeout(installTimeoutId);
           const elapsed = ((Date.now() - installStart) / 1000).toFixed(1);
           if (code === 0) {
-            log.info({ elapsed }, "npm install completed");
+            log.info({ elapsed, packageManager: installPlan.packageManager }, "package install completed");
             onEvent?.({
               type: "log",
               data: { message: `Dependencies installed in ${elapsed}s` },
@@ -870,12 +1028,12 @@ export class PreviewManager {
             resolve();
           } else {
             reject(
-              new Error(`npm install failed (exit code ${code}): ${stderr}`)
+              new Error(`${installPlan.packageManager} install failed (exit code ${code}): ${stderr}`)
             );
           }
         });
 
-        npmInstall.on("error", (err) => {
+        installProcess.on("error", (err) => {
           clearTimeout(installTimeoutId);
           reject(err);
         });
