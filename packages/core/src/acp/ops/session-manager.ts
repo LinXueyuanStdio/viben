@@ -608,6 +608,7 @@ export class AcpSessionManager {
       mcpServers: session.mcp_servers,
       ...(session.backend_load_session_id ? { sessionId: session.backend_load_session_id } : {}),
       agent_config: session.agent_config,
+      sandbox_config: session.sandbox_config,
       persist_session_id: session.persist_session_id,
       persist_task_id: session.persist_task_id,
       gateway_url: session.gateway_url,
@@ -619,6 +620,7 @@ export class AcpSessionManager {
       request: startRequest,
       connection: session.connection,
       agentConfig: session.agent_config,
+      sandboxConfig: session.sandbox_config,
       onSessionUpdate: (notification) => {
         this.handleBackendSessionUpdate(session, notification).catch((error) => {
           log.warn({ err: error, sessionId: session.id }, "ACP backend session/update hook failed");
@@ -862,6 +864,8 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
       mcp_servers: config.mcp_servers,
       skills: config.skills,
       approval_mode: config.approval_mode,
+      dangerously_skip_permissions: config.dangerously_skip_permissions,
+      permission_mode: config.permission_mode,
     };
   } catch (error) {
     log.error({ err: error, configPath }, "Failed to load ACP agent config");

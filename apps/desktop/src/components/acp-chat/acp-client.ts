@@ -187,11 +187,19 @@ export type ElicitationResponse =
   | { action: { action: "cancel" } };
 
 export interface AgentConfigPayload {
+  name?: string;
   executor_type?: string;
+  provider?: string;
   model?: string;
+  system_prompt?: string;
   permission_mode?: string;
   append_prompt?: string;
+  temperature?: number;
+  max_tokens?: number;
+  approval_mode?: "bypass" | "rules" | "ai";
+  dangerously_skip_permissions?: boolean;
   mcp_servers?: unknown[];
+  skills?: string[];
   executor_config?: Record<string, unknown>;
 }
 
@@ -200,13 +208,17 @@ export interface SessionCreateParams {
   agent_config_path?: string;
   agent_dir?: string;
   agent_config?: AgentConfigPayload;
+  sandbox_config?: { enabled: boolean; provider?: string };
   mcpServers?: unknown[];
 }
 
 export interface SessionLoadParams {
   session_id: string;
   cwd?: string;
+  agent_config_path?: string;
+  agent_dir?: string;
   agent_config?: AgentConfigPayload;
+  sandbox_config?: { enabled: boolean; provider?: string };
   mcpServers?: unknown[];
 }
 
@@ -424,6 +436,7 @@ export class AcpWebSocketClient {
       agent_config_path: params.agent_config_path || undefined,
       agent_dir: params.agent_dir || undefined,
       agent_config: params.agent_config,
+      sandbox_config: params.sandbox_config,
     }).then((result) => {
       console.log("[ACP-Client] newSession result:", result);
       return result;
@@ -438,7 +451,10 @@ export class AcpWebSocketClient {
       sessionId: params.session_id,
       cwd: params.cwd || undefined,
       mcpServers: params.mcpServers ?? [],
+      agent_config_path: params.agent_config_path || undefined,
+      agent_dir: params.agent_dir || undefined,
       agent_config: params.agent_config,
+      sandbox_config: params.sandbox_config,
     });
   }
 

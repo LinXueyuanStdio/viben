@@ -49,6 +49,7 @@ function createConnection(): AcpConnection & { updates: AcpSessionNotification[]
 describe("CodexAppServerBackendAdapter", () => {
   it("initializes app-server and starts a Codex thread", async () => {
     const proc = createProcess();
+    const sandboxPolicy = { type: "workspaceWrite", networkAccess: false };
     const adapter = new CodexAppServerBackendAdapter({
       spawnProcess: () => proc,
     });
@@ -61,10 +62,14 @@ describe("CodexAppServerBackendAdapter", () => {
       agentConfig: {
         executor_type: "CODEX",
         model: "gpt-5.4",
+        provider: "openai",
         executor_config: {
           command: "fake-codex",
           args: ["app-server"],
           init_timeout_ms: 5000,
+          approval_policy: "never",
+          sandbox: "workspaceWrite",
+          sandbox_policy: sandboxPolicy,
         },
       },
     });
@@ -84,8 +89,11 @@ describe("CodexAppServerBackendAdapter", () => {
       method: "thread/start",
       params: {
         model: "gpt-5.4",
+        modelProvider: "openai",
         cwd: "/tmp/project",
         serviceName: "viben",
+        approvalPolicy: "never",
+        sandbox: "workspaceWrite",
       },
     });
     respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
@@ -94,9 +102,86 @@ describe("CodexAppServerBackendAdapter", () => {
     expect(session.backendSessionId).toBe("thr-1");
   });
 
+  it("passes agent configuration into Codex thread and turn params", async () => {
+    const proc = createProcess();
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: () => proc,
+    });
+
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection: createConnection(),
+      agentConfig: {
+        executor_type: "CODEX",
+        model: "gpt-5.4",
+        provider: "openai",
+        system_prompt: "Use the repo conventions.",
+        append_prompt: "Prefer concise answers.",
+        temperature: 0.2,
+        max_tokens: 4096,
+        approval_mode: "bypass",
+        permission_mode: "plan",
+        executor_config: {
+          reasoning_effort: "high",
+          personality: "concise",
+        },
+      },
+    });
+
+    await waitForWrite(proc, "initialize");
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    expect(proc.writes.find((message) => message.method === "thread/start")).toMatchObject({
+      method: "thread/start",
+      params: {
+        model: "gpt-5.4",
+        modelProvider: "openai",
+        approvalPolicy: "never",
+        personality: "concise",
+        settings: {
+          developer_instructions: "Use the repo conventions.\n\nPrefer concise answers.",
+          reasoning_effort: "high",
+          temperature: 0.2,
+          max_output_tokens: 4096,
+        },
+      },
+    });
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+    const session = await sessionPromise;
+
+    const prompt = session.prompt({
+      sessionId: "thr-1",
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    await waitForWrite(proc, "turn/start");
+    expect(proc.writes.find((message) => message.method === "turn/start")).toMatchObject({
+      method: "turn/start",
+      params: {
+        model: "gpt-5.4",
+        personality: "concise",
+        settings: {
+          developer_instructions: "Use the repo conventions.\n\nPrefer concise answers.",
+          reasoning_effort: "high",
+          temperature: 0.2,
+          max_output_tokens: 4096,
+        },
+      },
+    });
+    respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
+    proc.stdout.write(`${JSON.stringify({
+      method: "turn/completed",
+      params: { threadId: "thr-1", turn: { id: "turn-1", status: "completed" } },
+    })}\n`);
+
+    await expect(prompt).resolves.toEqual({ stopReason: "end_turn" });
+  });
+
   it("starts a turn, forwards stream updates, and resolves when the turn completes", async () => {
     const proc = createProcess();
     const connection = createConnection();
+    const sandboxPolicy = { type: "workspaceWrite", networkAccess: false };
     const adapter = new CodexAppServerBackendAdapter({
       spawnProcess: () => proc,
     });
@@ -105,7 +190,12 @@ describe("CodexAppServerBackendAdapter", () => {
       cwd: "/tmp/project",
       request: { cwd: "/tmp/project", mcpServers: [] },
       connection,
-      agentConfig: { executor_type: "CODEX" },
+      agentConfig: {
+        executor_type: "CODEX",
+        executor_config: {
+          sandbox_policy: sandboxPolicy,
+        },
+      },
     });
     await waitForWrite(proc, "initialize");
     respondTo(proc, "initialize", {});
@@ -123,6 +213,7 @@ describe("CodexAppServerBackendAdapter", () => {
       params: {
         threadId: "thr-1",
         input: [{ type: "text", text: "hello" }],
+        sandboxPolicy: sandboxPolicy,
       },
     });
     respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
@@ -144,6 +235,55 @@ describe("CodexAppServerBackendAdapter", () => {
         content: { type: "text", text: "hello" },
       },
     });
+  });
+
+  it("maps session sandbox config to Codex thread and turn params", async () => {
+    const proc = createProcess();
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: () => proc,
+    });
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: {
+        cwd: "/tmp/project",
+        mcpServers: [],
+        sandbox_config: { enabled: true, provider: "codex" },
+      },
+      connection: createConnection(),
+      sandboxConfig: { enabled: true, provider: "codex" },
+      agentConfig: { executor_type: "CODEX" },
+    });
+    await waitForWrite(proc, "initialize");
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    expect(proc.writes.find((message) => message.method === "thread/start")).toMatchObject({
+      method: "thread/start",
+      params: {
+        sandbox: "workspaceWrite",
+      },
+    });
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+    const session = await sessionPromise;
+
+    const prompt = session.prompt({
+      sessionId: "thr-1",
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    await waitForWrite(proc, "turn/start");
+    expect(proc.writes.find((message) => message.method === "turn/start")).toMatchObject({
+      method: "turn/start",
+      params: {
+        sandboxPolicy: { type: "workspaceWrite" },
+      },
+    });
+    respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
+    proc.stdout.write(`${JSON.stringify({
+      method: "turn/completed",
+      params: { threadId: "thr-1", turn: { id: "turn-1", status: "completed" } },
+    })}\n`);
+
+    await expect(prompt).resolves.toEqual({ stopReason: "end_turn" });
   });
 
   it("uses the existing error path for failed Codex turns", async () => {
@@ -183,6 +323,35 @@ describe("CodexAppServerBackendAdapter", () => {
     })}\n`);
 
     await expect(prompt).rejects.toThrow("boom");
+  });
+
+  it("rejects the active prompt when Codex app-server closes mid-turn", async () => {
+    const proc = createProcess();
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: () => proc,
+    });
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection: createConnection(),
+      agentConfig: { executor_type: "CODEX" },
+    });
+    await waitForWrite(proc, "initialize");
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+    const session = await sessionPromise;
+
+    const prompt = session.prompt({
+      sessionId: "thr-1",
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    await waitForWrite(proc, "turn/start");
+    respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
+    proc.stdout.end();
+
+    await expect(prompt).rejects.toThrow("Codex app-server stdout closed");
   });
 
   it("interrupts a turn that is cancelled before turn/start returns", async () => {
@@ -228,6 +397,90 @@ describe("CodexAppServerBackendAdapter", () => {
     await expect(cancel).resolves.toBeUndefined();
     await expect(prompt).resolves.toEqual({ stopReason: "cancelled" });
   });
+
+  it("returns JSON-RPC errors for unsupported Codex server requests", async () => {
+    const proc = createProcess();
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: () => proc,
+    });
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection: createConnection(),
+      agentConfig: { executor_type: "CODEX" },
+    });
+    await waitForWrite(proc, "initialize");
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+    await sessionPromise;
+
+    proc.stdout.write(`${JSON.stringify({ id: 99, method: "item/tool/call", params: {} })}\n`);
+
+    await waitForResponse(proc, 99);
+    expect(proc.writes.find((message) => message.id === 99)).toEqual({
+      id: 99,
+      error: {
+        code: -32601,
+        message: "Unsupported Codex app-server request: item/tool/call",
+      },
+    });
+  });
+
+  it("dispatches stream updates before resolving prompt completion", async () => {
+    const proc = createProcess();
+    let releaseUpdate: (() => void) | undefined;
+    const connection = createConnection();
+    connection.sessionUpdate = async (notification) => {
+      connection.updates.push(notification);
+      await new Promise<void>((resolve) => {
+        releaseUpdate = resolve;
+      });
+    };
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: () => proc,
+    });
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection,
+      agentConfig: { executor_type: "CODEX" },
+    });
+    await waitForWrite(proc, "initialize");
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+    const session = await sessionPromise;
+
+    const prompt = session.prompt({
+      sessionId: "thr-1",
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    await waitForWrite(proc, "turn/start");
+    respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
+    proc.stdout.write(`${JSON.stringify({
+      method: "item/agentMessage/delta",
+      params: { itemId: "msg-1", delta: "hello" },
+    })}\n`);
+    await waitFor(() => connection.updates.length === 1);
+    proc.stdout.write(`${JSON.stringify({
+      method: "turn/completed",
+      params: { threadId: "thr-1", turn: { id: "turn-1", status: "completed" } },
+    })}\n`);
+
+    let settled = false;
+    prompt.then(() => {
+      settled = true;
+    }).catch(() => {
+      settled = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(settled).toBe(false);
+    releaseUpdate?.();
+    await expect(prompt).resolves.toEqual({ stopReason: "end_turn" });
+  });
 });
 
 async function waitForWrite(proc: { writes: Array<Record<string, unknown>> }, method: string): Promise<void> {
@@ -242,4 +495,12 @@ function respondTo(
   const request = proc.writes.find((message) => message.method === method && typeof message.id !== "undefined");
   if (!request) throw new Error(`No request found for ${method}`);
   proc.stdout.write(`${JSON.stringify({ id: request.id, result })}\n`);
+}
+
+async function waitForResponse(proc: { writes: Array<Record<string, unknown>> }, id: number): Promise<void> {
+  await expect.poll(() => proc.writes.some((message) => message.id === id)).toBe(true);
+}
+
+async function waitFor(predicate: () => boolean): Promise<void> {
+  await expect.poll(predicate).toBe(true);
 }

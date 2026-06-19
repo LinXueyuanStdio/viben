@@ -24,6 +24,125 @@ describe("codex-app-server mapper", () => {
     });
   });
 
+  it("maps completed agent messages to ACP agent message chunks", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/completed",
+      params: {
+        item: {
+          id: "msg-1",
+          type: "agentMessage",
+          text: "final answer",
+        },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "msg-1",
+        content: { type: "text", text: "final answer" },
+      },
+    });
+  });
+
+  it("maps completed reasoning items to ACP thought chunks", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/completed",
+      params: {
+        item: {
+          id: "reasoning-1",
+          type: "reasoning",
+          summary: [{ text: "checked files" }],
+        },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        messageId: "reasoning-1",
+        content: { type: "text", text: "checked files" },
+      },
+    });
+  });
+
+  it("maps plan deltas and completed plan items to ACP thought chunks", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/plan/delta",
+      params: {
+        itemId: "plan-1",
+        delta: "1. Inspect files",
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        messageId: "plan-1",
+        content: { type: "text", text: "1. Inspect files" },
+      },
+    });
+
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/completed",
+      params: {
+        item: {
+          id: "plan-1",
+          type: "plan",
+          text: "1. Inspect files\n2. Patch code",
+        },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        messageId: "plan-1",
+        content: { type: "text", text: "1. Inspect files\n2. Patch code" },
+      },
+    });
+  });
+
+  it("maps completed review items to ACP agent messages", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/completed",
+      params: {
+        item: {
+          id: "review-1",
+          type: "exitedReviewMode",
+          review: "Looks solid.",
+        },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "agent_message_chunk",
+        messageId: "review-1",
+        content: { type: "text", text: "Looks solid." },
+      },
+    });
+  });
+
+  it("maps Codex error notifications to ACP error updates", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "error",
+      params: {
+        error: {
+          message: "upstream failed",
+          codexErrorInfo: { type: "InternalServerError" },
+        },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "error",
+        error: {
+          message: "upstream failed",
+          raw: {
+            message: "upstream failed",
+            codexErrorInfo: { type: "InternalServerError" },
+          },
+        },
+      },
+    });
+  });
+
   it("maps command approval requests with ACP toolCall shape", () => {
     expect(codexApprovalRequestToAcpPermission("outer-session", {
       id: 17,
@@ -95,6 +214,64 @@ describe("codex-app-server mapper", () => {
     });
   });
 
+  it("maps Codex file changes to ACP edit tool updates", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/completed",
+      params: {
+        item: {
+          id: "file-1",
+          type: "fileChange",
+          changes: [{ path: "/tmp/a.ts", kind: "update", diff: "@@" }],
+          status: "completed",
+        },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "tool_call_update",
+        toolCallId: "file-1",
+        title: "File changes",
+        kind: "edit",
+        status: "completed",
+        rawInput: { changes: [{ path: "/tmp/a.ts", kind: "update", diff: "@@" }] },
+        rawOutput: [{ path: "/tmp/a.ts", kind: "update", diff: "@@" }],
+        content: [
+          {
+            type: "diff",
+            path: "/tmp/a.ts",
+            oldText: "",
+            newText: "@@",
+          },
+        ],
+      },
+    });
+  });
+
+  it("maps deprecated file change output deltas to ACP tool updates", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "item/fileChange/outputDelta",
+      params: {
+        itemId: "file-1",
+        delta: "applying patch",
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "tool_call_update",
+        toolCallId: "file-1",
+        title: "File changes",
+        kind: "edit",
+        rawOutput: "applying patch",
+        content: [
+          {
+            type: "content",
+            content: { type: "text", text: "applying patch" },
+          },
+        ],
+      },
+    });
+  });
+
   it("keeps unknown Codex items visible", () => {
     expect(codexNotificationToAcpSessionUpdate("outer-session", {
       method: "item/completed",
@@ -119,5 +296,31 @@ describe("codex-app-server mapper", () => {
     expect(codexTurnToStopReason({ id: "turn-1", status: "completed" })).toBe("end_turn");
     expect(codexTurnToStopReason({ id: "turn-2", status: "interrupted" })).toBe("cancelled");
     expect(codexTurnToStopReason({ id: "turn-3", status: "failed" })).toBeNull();
+  });
+
+  it("maps Codex token usage payloads to ACP usage updates", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "thread/tokenUsage/updated",
+      params: {
+        tokenUsage: {
+          total: {
+            inputTokens: 12,
+            outputTokens: 8,
+            totalTokens: 20,
+          },
+          modelContextWindow: 200000,
+        },
+      },
+    })).toMatchObject({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "usage_update",
+        used: 20,
+        size: 200000,
+        inputTokens: 12,
+        outputTokens: 8,
+        totalTokens: 20,
+      },
+    });
   });
 });

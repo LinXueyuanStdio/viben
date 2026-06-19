@@ -38,6 +38,7 @@ import type {
   AcpConnection,
   AcpLoadSessionRequest,
   AcpNewSessionRequest,
+  AcpSandboxConfig,
   AgentConfigPayload,
 } from "../types";
 
@@ -360,6 +361,7 @@ export interface AcpBackendStartContext {
   request: AcpNewSessionRequest | AcpLoadSessionRequest;
   connection: AcpConnection;
   agentConfig?: AgentConfigPayload;
+  sandboxConfig?: AcpSandboxConfig;
   onSessionUpdate?: (notification: SessionNotification) => void | Promise<void>;
 }
 

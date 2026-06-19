@@ -37,10 +37,14 @@ export function codexNotificationToAcpSessionUpdate(
 ): AcpSessionNotification | null {
   const params = asRecord(notification.params);
   switch (notification.method) {
+    case "error":
+      return errorUpdate(sessionId, params);
     case "item/agentMessage/delta":
       return contentChunk(sessionId, "agent_message_chunk", deltaText(params), itemId(params));
     case "item/reasoning/summaryTextDelta":
     case "item/reasoning/textDelta":
+      return contentChunk(sessionId, "agent_thought_chunk", deltaText(params), itemId(params));
+    case "item/plan/delta":
       return contentChunk(sessionId, "agent_thought_chunk", deltaText(params), itemId(params));
     case "turn/plan/updated":
       return planUpdate(sessionId, params);
@@ -52,6 +56,8 @@ export function codexNotificationToAcpSessionUpdate(
       return itemCompletedUpdate(sessionId, asRecord(params.item), notification);
     case "item/commandExecution/outputDelta":
       return toolDeltaUpdate(sessionId, params, "Command output");
+    case "item/fileChange/outputDelta":
+      return fileChangeDeltaUpdate(sessionId, params);
     case "turn/diff/updated":
       return diffUpdate(sessionId, params);
     case "turn/started":
@@ -146,15 +152,29 @@ function planUpdate(sessionId: string, params: Record<string, unknown>): AcpSess
 
 function usageUpdate(sessionId: string, params: Record<string, unknown>): AcpSessionNotification {
   const usage = asRecord(params.usage);
+  const tokenUsage = asRecord(params.tokenUsage);
+  const total = asRecord(tokenUsage.total);
   return {
     sessionId,
     update: {
       sessionUpdate: "usage_update",
-      used: readNumber(usage.used) ?? readNumber(params.tokensUsed) ?? 0,
-      size: readNumber(usage.size) ?? readNumber(params.contextWindow) ?? 0,
-      inputTokens: readNumber(usage.inputTokens) ?? readNumber(params.inputTokens),
-      outputTokens: readNumber(usage.outputTokens) ?? readNumber(params.outputTokens),
-      totalTokens: readNumber(usage.totalTokens) ?? readNumber(params.totalTokens),
+      used: readNumber(usage.used)
+        ?? readNumber(total.totalTokens)
+        ?? readNumber(params.tokensUsed)
+        ?? 0,
+      size: readNumber(usage.size)
+        ?? readNumber(tokenUsage.modelContextWindow)
+        ?? readNumber(params.contextWindow)
+        ?? 0,
+      inputTokens: readNumber(usage.inputTokens)
+        ?? readNumber(total.inputTokens)
+        ?? readNumber(params.inputTokens),
+      outputTokens: readNumber(usage.outputTokens)
+        ?? readNumber(total.outputTokens)
+        ?? readNumber(params.outputTokens),
+      totalTokens: readNumber(usage.totalTokens)
+        ?? readNumber(total.totalTokens)
+        ?? readNumber(params.totalTokens),
     },
   } as AcpSessionNotification;
 }
@@ -189,6 +209,22 @@ function itemCompletedUpdate(
 ): AcpSessionNotification {
   const id = readString(item.id);
   const type = readString(item.type);
+  if (id && type === "agentMessage") {
+    const text = readString(item.text);
+    return contentChunk(sessionId, "agent_message_chunk", text ?? "", id);
+  }
+  if (id && type === "reasoning") {
+    const text = reasoningText(item);
+    return contentChunk(sessionId, "agent_thought_chunk", text, id);
+  }
+  if (id && type === "plan") {
+    const text = readString(item.text) ?? stableJson(item);
+    return contentChunk(sessionId, "agent_thought_chunk", text, id);
+  }
+  if (id && type === "exitedReviewMode") {
+    const text = readString(item.review) ?? stableJson(item);
+    return contentChunk(sessionId, "agent_message_chunk", text, id);
+  }
   const tool = toolInfo(item);
   if (!id || !type || !tool) {
     return unknownItemUpdate(sessionId, item, notification);
@@ -203,7 +239,7 @@ function itemCompletedUpdate(
     status: normalizeToolStatus(readString(item.status), output.isError),
     rawInput: tool.rawInput,
     rawOutput: output.rawOutput,
-    content: output.text ? [toolTextContent(output.text)] : [],
+    content: type === "fileChange" ? fileChangeContent(item) : output.text ? [toolTextContent(output.text)] : [],
   };
   return { sessionId, update };
 }
@@ -223,6 +259,23 @@ function toolDeltaUpdate(
       toolCallId,
       title: fallbackTitle,
       kind: "execute",
+      rawOutput: text,
+      content: text ? [toolTextContent(text)] : [],
+    },
+  };
+}
+
+function fileChangeDeltaUpdate(sessionId: string, params: Record<string, unknown>): AcpSessionNotification | null {
+  const toolCallId = readString(params.itemId) ?? readString(params.toolCallId);
+  if (!toolCallId) return null;
+  const text = deltaText(params);
+  return {
+    sessionId,
+    update: {
+      sessionUpdate: "tool_call_update",
+      toolCallId,
+      title: "File changes",
+      kind: "edit",
       rawOutput: text,
       content: text ? [toolTextContent(text)] : [],
     },
@@ -327,6 +380,14 @@ function toolInfo(item: Record<string, unknown>): { title: string; kind: ToolKin
 }
 
 function toolOutput(item: Record<string, unknown>): { text: string; rawOutput: unknown; isError: boolean } {
+  if (readString(item.type) === "fileChange") {
+    const changes = Array.isArray(item.changes) ? item.changes : [];
+    return {
+      text: "",
+      rawOutput: changes,
+      isError: readString(item.status) === "failed",
+    };
+  }
   const error = item.error;
   const rawOutput = item.aggregatedOutput ?? item.result ?? item.contentItems ?? item.review ?? item;
   const text = typeof rawOutput === "string" ? rawOutput : stableJson(rawOutput);
@@ -341,6 +402,51 @@ function toolTextContent(text: string): ToolCallContent {
   return {
     type: "content",
     content: textContent(text),
+  };
+}
+
+function fileChangeContent(item: Record<string, unknown>): ToolCallContent[] {
+  const changes = Array.isArray(item.changes) ? item.changes : [];
+  return changes.flatMap((change) => {
+    const record = asRecord(change);
+    const path = readString(record.path);
+    const diff = readString(record.diff);
+    if (!path || !diff) return [];
+    return [{
+      type: "diff" as const,
+      path,
+      oldText: "",
+      newText: diff,
+    }];
+  });
+}
+
+function reasoningText(item: Record<string, unknown>): string {
+  return textParts(item.summary).join("\n") || textParts(item.content).join("\n") || readString(item.text) || "";
+}
+
+function textParts(value: unknown): string[] {
+  if (typeof value === "string") return value ? [value] : [];
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((part) => {
+    if (typeof part === "string") return part ? [part] : [];
+    const record = asRecord(part);
+    const text = readString(record.text) ?? readString(record.summary) ?? readString(record.content);
+    return text ? [text] : [];
+  });
+}
+
+function errorUpdate(sessionId: string, params: Record<string, unknown>): AcpSessionNotification {
+  const error = asRecord(params.error);
+  return {
+    sessionId,
+    update: {
+      sessionUpdate: "error",
+      error: {
+        message: readString(error.message) ?? readString(params.message) ?? "Codex app-server error",
+        raw: Object.keys(error).length > 0 ? error : params,
+      },
+    },
   };
 }
 

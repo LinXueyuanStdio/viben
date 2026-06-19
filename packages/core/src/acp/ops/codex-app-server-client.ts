@@ -33,6 +33,7 @@ interface PendingRequest {
 
 type NotificationHandler = (message: CodexNotification) => void | Promise<void>;
 type ServerRequestHandler = (message: CodexServerRequest) => Promise<unknown>;
+type FailureHandler = (error: Error) => void;
 
 export class CodexJsonRpcResponseError extends Error {
   constructor(
@@ -47,20 +48,22 @@ export class CodexAppServerJsonRpcClient {
   private nextId = 1;
   private readonly pending = new Map<CodexJsonRpcId, PendingRequest>();
   private readonly notificationHandlers = new Set<NotificationHandler>();
+  private readonly failureHandlers = new Set<FailureHandler>();
   private serverRequestHandler: ServerRequestHandler | undefined;
   private closed = false;
+  private terminalError: Error | undefined;
 
   constructor(private readonly processHandle: CodexAppServerProcess) {
     const lines = createInterface({ input: processHandle.stdout });
     lines.on("line", (line) => this.handleLine(line));
     lines.once("close", () => {
       if (!this.closed) {
-        this.rejectAll(new Error("Codex app-server stdout closed"));
+        this.fail(new Error("Codex app-server stdout closed"));
       }
     });
     processHandle.failure?.catch((error: unknown) => {
       const base = error instanceof Error ? error : new Error(String(error));
-      this.rejectAll(base);
+      this.fail(base);
     });
   }
 
@@ -112,7 +115,7 @@ export class CodexAppServerJsonRpcClient {
         closeRequested = true;
         child.kill("SIGTERM");
         setTimeout(() => {
-          if (child.exitCode === null && !child.killed) {
+          if (child.exitCode === null) {
             child.kill("SIGKILL");
           }
         }, 2_000).unref();
@@ -123,6 +126,9 @@ export class CodexAppServerJsonRpcClient {
   request(method: string, params?: unknown): Promise<unknown> {
     if (this.closed) {
       return Promise.reject(new Error("Codex app-server client is closed"));
+    }
+    if (this.terminalError) {
+      return Promise.reject(this.terminalError);
     }
     const id = this.nextId++;
     const message = params === undefined ? { id, method } : { id, method, params };
@@ -140,6 +146,14 @@ export class CodexAppServerJsonRpcClient {
   onNotification(handler: NotificationHandler): () => void {
     this.notificationHandlers.add(handler);
     return () => this.notificationHandlers.delete(handler);
+  }
+
+  onFailure(handler: FailureHandler): () => void {
+    this.failureHandlers.add(handler);
+    if (this.terminalError) {
+      handler(this.terminalError);
+    }
+    return () => this.failureHandlers.delete(handler);
   }
 
   onServerRequest(handler: ServerRequestHandler): void {
@@ -164,7 +178,7 @@ export class CodexAppServerJsonRpcClient {
       message = JSON.parse(line) as CodexJsonRpcMessage;
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      this.rejectAll(new Error(`Failed to parse Codex app-server JSON line: ${detail}`));
+      this.fail(new Error(`Failed to parse Codex app-server JSON line: ${detail}`));
       return;
     }
 
@@ -215,6 +229,16 @@ export class CodexAppServerJsonRpcClient {
       pending.reject(error);
     }
     this.pending.clear();
+  }
+
+  private fail(error: Error): void {
+    if (!this.terminalError) {
+      this.terminalError = error;
+    }
+    this.rejectAll(this.terminalError);
+    for (const handler of this.failureHandlers) {
+      handler(this.terminalError);
+    }
   }
 }
 

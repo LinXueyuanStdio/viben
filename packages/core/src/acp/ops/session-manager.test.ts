@@ -324,6 +324,30 @@ describe("AcpSessionManager", () => {
     expect(adapter.startContext?.request.mcpServers).toEqual(mcpServers);
   });
 
+  it("passes session sandbox_config through to the ACP backend", async () => {
+    const adapter = new CapturingBackendAdapter();
+    const manager = new AcpSessionManager(adapter);
+    const connection = createConnection();
+
+    const session = await manager.createSession(
+      {
+        cwd: "/tmp",
+        mcpServers: [],
+        sandbox_config: { enabled: true, provider: "codex" },
+      },
+      connection
+    );
+    await manager.prompt({
+      sessionId: session.sessionId,
+      prompt: [{ type: "text", text: "hello" }],
+    });
+
+    expect(adapter.startContext?.sandboxConfig).toEqual({ enabled: true, provider: "codex" });
+    expect(adapter.startContext?.request).toMatchObject({
+      sandbox_config: { enabled: true, provider: "codex" },
+    });
+  });
+
   it("loads the matching backend ACP session when session/load is used", async () => {
     const adapter = new CapturingBackendAdapter();
     const manager = new AcpSessionManager(adapter);

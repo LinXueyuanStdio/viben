@@ -140,6 +140,8 @@ export interface AgentInfo {
   temperature?: number;
   /** Max tokens (Viben agents only) */
   max_tokens?: number;
+  /** Executor-specific config (Viben agents only) */
+  executor_config?: Record<string, unknown>;
   /** MCP servers (Viben agents only) */
   mcp_servers?: string[];
   /** Skills (Viben agents only) */

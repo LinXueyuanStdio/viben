@@ -13,7 +13,7 @@ import type {
 } from "./acp-client";
 
 export type AcpUiStep =
-  | { kind: "message"; message: AgentMessage; merge?: "text_chunk" | "thinking_chunk" | "tool_use" | "tool_result" }
+  | { kind: "message"; message: AgentMessage; merge?: "text_chunk" | "thinking_chunk" | "tool_use" | "tool_result" | "tool_result_delta" }
   | { kind: "approval"; approval: PendingExecApproval }
   | { kind: "question"; question: PendingQuestion }
   | { kind: "plan"; plan: TaskPlan }
@@ -37,13 +37,15 @@ export function applyAcpUiStep(current: AgentMessage[], step: AcpUiStep): AgentM
   if (step.kind !== "message") return current;
   switch (step.merge) {
     case "text_chunk":
-      return appendTextChunk(current, "text", step.message.content ?? "");
+      return appendTextChunk(current, "text", step.message.content ?? "", step.message.id);
     case "thinking_chunk":
-      return appendTextChunk(current, "thinking", step.message.content ?? "");
+      return appendTextChunk(current, "thinking", step.message.content ?? "", step.message.id);
     case "tool_use":
       return upsertToolUse(current, step.message);
     case "tool_result":
       return upsertToolResult(current, step.message);
+    case "tool_result_delta":
+      return appendToolResultDelta(current, step.message);
     default:
       return [...current, step.message];
   }
@@ -104,7 +106,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
   switch (update.sessionUpdate) {
     case "agent_message_chunk":
       return messageStep("text_chunk", {
-        id: createStepId("text"),
+        id: readString(update.messageId) ?? createStepId("text"),
         type: "text",
         content: contentBlockToText(update.content),
         subagentId: extractSubagentId(update),
@@ -112,7 +114,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
       });
     case "agent_thought_chunk":
       return messageStep("thinking_chunk", {
-        id: createStepId("thinking"),
+        id: readString(update.messageId) ?? createStepId("thinking"),
         type: "thinking",
         content: contentBlockToText(update.content),
         subagentId: extractSubagentId(update),
@@ -170,7 +172,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
         }));
       }
 
-      resultSteps.push(...messageStep("tool_result", {
+      resultSteps.push(...messageStep(isFinishedToolStatus(readString(update.status)) ? "tool_result" : "tool_result_delta", {
         id: createStepId("tool-result"),
         type: "tool_result",
         toolUseId: update.toolCallId,
@@ -191,7 +193,7 @@ export function acpSessionUpdateToUiSteps(notification: AcpSessionUpdate): AcpUi
       return sdkSessionId ? systemTextToUiSteps(`Backend session: ${sdkSessionId}`) : [];
     }
     case "usage_update":
-      return [];
+      return [{ kind: "summary", summary: update }];
     case "current_mode_update":
       return [{
         kind: "message",
@@ -406,13 +408,27 @@ export function slashCommandsToUiSteps(commands: SlashCommand[]): AcpUiStep[] {
   return [{ kind: "slash_commands", commands }];
 }
 
-function appendTextChunk(current: AgentMessage[], type: "text" | "thinking", text: string): AgentMessage[] {
+function appendTextChunk(current: AgentMessage[], type: "text" | "thinking", text: string, messageId?: string): AgentMessage[] {
   if (!text) return current;
-  const previous = current[current.length - 1];
-  if (previous?.type === type && previous.content !== undefined) {
-    return [...current.slice(0, -1), { ...previous, content: `${previous.content}${text}` }];
+  if (messageId) {
+    const existingIndex = current.findIndex((step) => step.type === type && step.id === messageId);
+    if (existingIndex !== -1) {
+      return current.map((step, index) => (
+        index === existingIndex ? { ...step, content: appendOrReplaceFullText(step.content, text) } : step
+      ));
+    }
   }
-  return [...current, { id: createStepId(type), type, content: text, timestamp: Date.now() }];
+  const previous = current[current.length - 1];
+  if (previous?.type === type && previous.content !== undefined && (!messageId || previous.id === messageId)) {
+    return [...current.slice(0, -1), { ...previous, content: appendOrReplaceFullText(previous.content, text) }];
+  }
+  return [...current, { id: messageId ?? createStepId(type), type, content: text, timestamp: Date.now() }];
+}
+
+function appendOrReplaceFullText(previous: string | undefined, next: string): string {
+  if (!previous) return next;
+  if (next === previous || next.startsWith(previous)) return next;
+  return `${previous}${next}`;
 }
 
 function upsertToolUse(current: AgentMessage[], toolUse: AgentMessage): AgentMessage[] {
@@ -433,6 +449,32 @@ function upsertToolResult(current: AgentMessage[], toolResult: AgentMessage): Ag
     return [...current, toolResult];
   }
   return [...current.slice(0, toolUseIndex + 1), toolResult, ...current.slice(toolUseIndex + 1)];
+}
+
+function appendToolResultDelta(current: AgentMessage[], toolResult: AgentMessage): AgentMessage[] {
+  if (!toolResult.toolUseId) return [...current, toolResult];
+  const existingIndex = current.findIndex((step) => step.type === "tool_result" && step.toolUseId === toolResult.toolUseId);
+  if (existingIndex !== -1) {
+    return current.map((step, index) => (
+      index === existingIndex
+        ? { ...step, ...toolResult, output: appendToolOutput(step.output, toolResult.output) }
+        : step
+    ));
+  }
+  return upsertToolResult(current, toolResult);
+}
+
+function appendToolOutput(previous: AgentMessage["output"], next: AgentMessage["output"]): AgentMessage["output"] {
+  if (typeof previous === "string" && typeof next === "string") return `${previous}${next}`;
+  if (Array.isArray(previous) && Array.isArray(next)) return [...previous, ...next];
+  if (previous === undefined) return next;
+  if (next === undefined) return previous;
+  return `${outputToText(previous)}${outputToText(next)}`;
+}
+
+function outputToText(output: AgentMessage["output"]): string {
+  if (typeof output === "string") return output;
+  return safeJson(output);
 }
 
 function messageStep(merge: MessageStepMerge, message: AgentMessage): AcpUiStep[] {

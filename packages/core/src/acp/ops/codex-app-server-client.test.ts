@@ -88,6 +88,18 @@ describe("CodexAppServerJsonRpcClient", () => {
 
     await expect(request).rejects.toThrow("spawn ENOENT");
   });
+
+  it("rejects future requests after the process reaches a terminal failure", async () => {
+    const proc = createProcess();
+    const client = new CodexAppServerJsonRpcClient({
+      ...proc,
+      failure: Promise.reject(new Error("spawn ENOENT")),
+    });
+    const request = client.request("initialize");
+
+    await expect(request).rejects.toThrow("spawn ENOENT");
+    await expect(client.request("model/list")).rejects.toThrow("spawn ENOENT");
+  });
 });
 
 async function waitForWrites(proc: { writes: unknown[] }, count: number): Promise<void> {

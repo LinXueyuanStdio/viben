@@ -129,6 +129,7 @@ class CodexAppServerBackendSession implements AcpBackendSession {
   private activeTurn: ActiveTurn | undefined;
   private readonly turnCompletedBeforeId = new Map<string, CodexTurn>();
   private notificationQueue: Promise<void> = Promise.resolve();
+  private readonly turnStartParams: Record<string, unknown>;
 
   constructor(
     private readonly outerSessionId: string,
@@ -137,6 +138,13 @@ class CodexAppServerBackendSession implements AcpBackendSession {
     private readonly processHandle: CodexAppServerProcess,
     context: AcpBackendStartContext
   ) {
+    this.turnStartParams = buildTurnStartParams(context);
+    this.client.onFailure((error) => {
+      const activeTurn = this.activeTurn;
+      if (!activeTurn) return;
+      this.activeTurn = undefined;
+      activeTurn.reject(addCodexProcessDiagnostics(error, this.processHandle));
+    });
     this.client.onNotification((notification) => {
       this.notificationQueue = this.notificationQueue
         .then(() => this.handleNotification(notification, context))
@@ -157,6 +165,7 @@ class CodexAppServerBackendSession implements AcpBackendSession {
       this.client.request("turn/start", {
         threadId: this.backendSessionId,
         input,
+        ...this.turnStartParams,
       })
         .then((result) => {
           const turnStarted = expectTurnResult(result);
@@ -280,11 +289,18 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
   if (context.agentConfig?.model) {
     base.model = context.agentConfig.model;
   }
+  if (context.agentConfig?.provider) {
+    base.modelProvider = context.agentConfig.provider;
+  }
   const config = asRecord(context.agentConfig?.executor_config);
-  const approvalPolicy = readString(config.approval_policy) ?? readString(config.approvalPolicy);
+  const approvalPolicy = codexApprovalPolicy(context.agentConfig);
   if (approvalPolicy) base.approvalPolicy = approvalPolicy;
-  const sandboxPolicy = asRecord(config.sandbox_policy);
-  if (Object.keys(sandboxPolicy).length > 0) base.sandboxPolicy = sandboxPolicy;
+  const personality = readString(config.personality);
+  if (personality) base.personality = personality;
+  const sandbox = readString(config.sandbox) ?? sessionSandbox(context);
+  if (sandbox) base.sandbox = sandbox;
+  const settings = agentSettings(context.agentConfig);
+  if (Object.keys(settings).length > 0) base.settings = settings;
   if (isLoadSession(context)) {
     return {
       ...base,
@@ -292,6 +308,88 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
     };
   }
   return base;
+}
+
+function buildTurnStartParams(context: AcpBackendStartContext): Record<string, unknown> {
+  const config = asRecord(context.agentConfig?.executor_config);
+  const params: Record<string, unknown> = {};
+  if (context.agentConfig?.model) {
+    params.model = context.agentConfig.model;
+  }
+  const personality = readString(config.personality);
+  if (personality) params.personality = personality;
+  const settings = agentSettings(context.agentConfig);
+  if (Object.keys(settings).length > 0) {
+    params.settings = settings;
+  }
+  const sandboxPolicy = asRecord(config.sandbox_policy);
+  if (Object.keys(sandboxPolicy).length > 0) {
+    params.sandboxPolicy = sandboxPolicy;
+  } else if (context.sandboxConfig) {
+    params.sandboxPolicy = sessionSandboxPolicy(context);
+  }
+  return params;
+}
+
+function codexApprovalPolicy(agentConfig: AgentConfigPayload | undefined): string | undefined {
+  const config = asRecord(agentConfig?.executor_config);
+  const explicit = readString(config.approval_policy) ?? readString(config.approvalPolicy);
+  if (explicit) return explicit;
+  if (agentConfig?.dangerously_skip_permissions === true || agentConfig?.approval_mode === "bypass") {
+    return "never";
+  }
+  const permissionMode = agentConfig?.permission_mode;
+  switch (permissionMode) {
+    case "bypass":
+    case "none":
+    case "never":
+      return "never";
+    case "plan":
+    case "default":
+    case undefined:
+      return undefined;
+    default:
+      return permissionMode;
+  }
+}
+
+function sessionSandbox(context: AcpBackendStartContext): string | undefined {
+  if (!context.sandboxConfig) return undefined;
+  return context.sandboxConfig.enabled ? "workspaceWrite" : "readOnly";
+}
+
+function sessionSandboxPolicy(context: AcpBackendStartContext): Record<string, unknown> {
+  return context.sandboxConfig?.enabled
+    ? { type: "workspaceWrite" }
+    : { type: "readOnly" };
+}
+
+function agentSettings(agentConfig: AgentConfigPayload | undefined): Record<string, unknown> {
+  const settings: Record<string, unknown> = {};
+  const developerInstructions = developerInstructionsFromAgent(agentConfig);
+  if (developerInstructions) {
+    settings.developer_instructions = developerInstructions;
+  }
+  const executorConfig = asRecord(agentConfig?.executor_config);
+  const reasoningEffort = readString(executorConfig.reasoning_effort) ?? readString(executorConfig.reasoningEffort);
+  if (reasoningEffort) {
+    settings.reasoning_effort = reasoningEffort;
+  }
+  if (typeof agentConfig?.temperature === "number" && Number.isFinite(agentConfig.temperature)) {
+    settings.temperature = agentConfig.temperature;
+  }
+  if (typeof agentConfig?.max_tokens === "number" && Number.isFinite(agentConfig.max_tokens)) {
+    settings.max_output_tokens = agentConfig.max_tokens;
+  }
+  return settings;
+}
+
+function developerInstructionsFromAgent(agentConfig: AgentConfigPayload | undefined): string | undefined {
+  const parts = [
+    readString(agentConfig?.system_prompt),
+    readString(agentConfig?.append_prompt),
+  ].filter((part): part is string => Boolean(part?.trim()));
+  return parts.length > 0 ? parts.join("\n\n") : undefined;
 }
 
 function isLoadSession(context: AcpBackendStartContext): context is AcpBackendStartContext & {

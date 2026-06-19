@@ -37,6 +37,8 @@ export interface AgentConfigFile {
   mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   approval_mode?: "bypass" | "rules" | "ai";
+  dangerously_skip_permissions?: boolean;
+  permission_mode?: string;
   is_template?: boolean;
   template_description?: string;
   /** Template tags for categorization (snake_case for YAML) */
