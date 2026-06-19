@@ -11,10 +11,6 @@ on:
         description: 'Publish to npmjs'
         type: boolean
         default: true
-      publish_github_packages:
-        description: 'Publish to GitHub Packages'
-        type: boolean
-        default: true
       dry_run:
         description: 'Dry run (build, verify, pack only; skip registry publish)'
         type: boolean
@@ -33,7 +29,6 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -100,49 +95,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Check GitHub Packages scope
-        if: ${{ !inputs.dry_run && inputs.publish_github_packages }}
-        run: |
-          PACKAGE_SCOPE="$(node -e "console.log(process.env.PAGE_SDK_NAME.split('/')[0].toLowerCase())")"
-          OWNER_SCOPE="@$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
-          if [ "$PACKAGE_SCOPE" != "$OWNER_SCOPE" ]; then
-            echo "::warning::${PAGE_SDK_NAME} uses scope ${PACKAGE_SCOPE}, but this repository owner scope is ${OWNER_SCOPE}. GitHub Packages publish may require GH_PACKAGES_TOKEN with write:packages permission for ${PACKAGE_SCOPE}."
-          fi
-
-      - name: Check GitHub Packages version
-        if: ${{ !inputs.dry_run && inputs.publish_github_packages }}
-        id: check-github-packages
-        run: |
-          NPM_CONFIG_USERCONFIG="${RUNNER_TEMP}/.npmrc.github-packages"
-          {
-            echo "@viben:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
-          } > "$NPM_CONFIG_USERCONFIG"
-          export NPM_CONFIG_USERCONFIG
-
-          if npm view "${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "${PAGE_SDK_NAME}@${PAGE_SDK_VERSION} is already published to GitHub Packages; skipping."
-          else
-            echo "published=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || github.token }}
-
-      - name: Publish to GitHub Packages
-        if: ${{ !inputs.dry_run && inputs.publish_github_packages && steps.check-github-packages.outputs.published != 'true' }}
-        working-directory: packages/page-sdk
-        run: |
-          NPM_CONFIG_USERCONFIG="${RUNNER_TEMP}/.npmrc.github-packages"
-          {
-            echo "@viben:registry=https://npm.pkg.github.com"
-            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
-          } > "$NPM_CONFIG_USERCONFIG"
-          export NPM_CONFIG_USERCONFIG
-          npm publish --registry https://npm.pkg.github.com
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || github.token }}
-
       - name: Summary
         run: |
           if [ "${{ inputs.dry_run }}" = "true" ]; then
@@ -164,7 +116,6 @@ jobs:
               echo "Package: **${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}**"
               echo ""
               echo "npmjs requested: \`${{ inputs.publish_npm }}\`"
-              echo "GitHub Packages requested: \`${{ inputs.publish_github_packages }}\`"
               echo ""
               echo "Install:"
               echo '```bash'
