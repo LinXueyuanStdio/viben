@@ -33,10 +33,9 @@
     }
   },
   "bin": {
-    "viben": "./bin/viben.js"
+    "viben": "./dist/index.js"
   },
   "files": [
-    "bin",
     "dist",
     "README.md"
   ],
@@ -44,8 +43,11 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsup && npm run copy-templates",
-    "build:binary": "bun build src/main.ts --compile --minify --outfile dist/viben --external node-pty --external cloudflared --external node-notifier --external @hypothesi/tauri-mcp-server",
+    "build": "pnpm build:node",
+    "build:node": "tsup && npm run copy-templates",
+    "build:sidecar": "tsx scripts/build-sidecar.ts",
+    "build:sidecar:current": "tsx scripts/build-sidecar.ts --platform current",
+    "build:sidecar:macos-x64": "tsx scripts/build-sidecar.ts --platform macos-x64",
     "copy-templates": "rm -rf dist/templates && cp -r ../../packages/core/templates dist/templates",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
@@ -82,6 +84,8 @@
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
     "shell-quote": "^1.8.3",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "undici": "^7.22.0",
     "ws": "^8.18.0",
     "xstate": "^5.30.0",

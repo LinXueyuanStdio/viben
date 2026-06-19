@@ -188,12 +188,12 @@ setup_test_environment() {
         PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
         # Check if CLI is built
-        if [ ! -f "$PROJECT_ROOT/apps/cli/bin/viben.js" ]; then
+        if [ ! -f "$PROJECT_ROOT/apps/cli/dist/index.js" ]; then
             echo -e "${RED}Error: CLI not built. Run 'pnpm build' first.${NC}"
             exit 1
         fi
 
-        VIBEN_CMD="node $PROJECT_ROOT/apps/cli/bin/viben.js"
+        VIBEN_CMD="node $PROJECT_ROOT/apps/cli/dist/index.js"
         info "Using local CLI: $VIBEN_CMD"
     else
         # Install from npm (for CI)

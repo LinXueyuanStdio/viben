@@ -5,7 +5,7 @@
 当前发布链路里同时存在两个 CLI 入口：
 
 1. `packages/core/dist/cli/bin.js`
-2. `apps/cli/bin/viben.js` → `apps/cli/dist/index.js`
+2. `apps/cli/dist/index.js`
 
 其中 Desktop sidecar 使用 `packages/core/dist/cli/bin.js` 作为 Bun compile 输入，Node/npm 场景使用 `apps/cli`。这个边界会导致几个问题：
 
@@ -71,7 +71,7 @@ Desktop bundled sidecar 必须来自 `apps/cli` 的 native/sidecar 构建产物�
 - 产出 Node/npm 风味，支持：
   - `npm install -g viben`
   - `npx viben`
-  - `node apps/cli/bin/viben.js`
+  - `node apps/cli/dist/index.js`
 - 产出 native/sidecar 风味，供 Desktop bundle。
 - 统一 CLI version、help、gateway、config 等行为。
 
@@ -79,7 +79,7 @@ Desktop bundled sidecar 必须来自 `apps/cli` 的 native/sidecar 构建产物�
 
 | 风味 | 用途 | 输入 | 输出 |
 | --- | --- | --- | --- |
-| Node/npm | npm、npx、本地 Node 调试 | `apps/cli/src/index.ts` | `apps/cli/dist/index.js` + `apps/cli/bin/viben.js` |
+| Node/npm | npm、npx、本地 Node 调试 | `apps/cli/src/index.ts` | `apps/cli/dist/index.js` |
 | Sidecar/native | Desktop bundled sidecar | `apps/cli` 的 native entry | `apps/desktop/src-tauri/binaries/viben-*` 或中间 artifact |
 
 ### `apps/desktop`
@@ -105,7 +105,7 @@ packages/core
 apps/cli
   └─ viben
       ├─ imports @viben/core
-      ├─ Node/npm flavor: bin/viben.js -> dist/index.js
+      ├─ Node/npm flavor: dist/index.js
       └─ Sidecar flavor: native binary built from apps/cli
 
 apps/desktop
@@ -127,7 +127,6 @@ Node/npm 数据流：
 
 ```
 npx viben / npm global viben
-  -> apps/cli/bin/viben.js
   -> apps/cli/dist/index.js
   -> @viben/core APIs
   -> ~/.viben/*.yaml / workspace files
@@ -142,7 +141,7 @@ Node/npm 风味优先服务可调试性和 npm 依赖解析。
 要求：
 
 - `apps/cli/package.json` 声明运行时需要的 dependencies/optionalDependencies。
-- `apps/cli/bin/viben.js` 只负责加载 `apps/cli/dist/index.js`。
+- `apps/cli/dist/index.js` 是 Node/npm 风味和本地 Node 调试的执行入口。
 - `apps/cli/dist/index.js` 不依赖全局注入的 `createRequire` banner 才能启动。
 - optional/CJS 依赖不应因为 bundle core 而进入启动路径。
 - `viben --version` 和 `viben --help` 不应加载 Feishu/Lark SDK、OpenTelemetry exporter、gateway server 等非必要模块。
@@ -244,7 +243,7 @@ CI 中的 Node CLI integration tests 继续使用：
 ./scripts/test-cli.sh --local
 ```
 
-但它测试的是 `apps/cli/bin/viben.js`，不再依赖 core 内部 CLI 产物。
+但它测试的是 `apps/cli/dist/index.js`，不再依赖 core 内部 CLI 产物。
 
 ### Phase 3：迁移本地发布脚本
 
@@ -277,8 +276,8 @@ CI 中的 Node CLI integration tests 继续使用：
 
 验收要求：
 
-- 没有 banner 时 `node apps/cli/bin/viben.js --version` 正常。
-- 没有 banner 时 `node apps/cli/bin/viben.js --help` 正常。
+- 没有 banner 时 `node apps/cli/dist/index.js --version` 正常。
+- 没有 banner 时 `node apps/cli/dist/index.js --help` 正常。
 - 没有 banner 时 `./scripts/test-cli.sh --local` 正常。
 - `apps/cli/dist/index.js` 的启动路径不触发 `Dynamic require of "http"`。
 
@@ -298,8 +297,8 @@ CI 中的 Node CLI integration tests 继续使用：
 ```bash
 pnpm turbo build --filter=@viben/core
 pnpm turbo build --filter=viben
-node apps/cli/bin/viben.js --version
-node apps/cli/bin/viben.js --help
+node apps/cli/dist/index.js --version
+node apps/cli/dist/index.js --help
 ./scripts/test-cli.sh --local
 ```
 

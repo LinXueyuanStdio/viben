@@ -17,7 +17,6 @@ export default defineConfig({
     "config/index": "src/config/index.ts",
     "telemetry/index": "src/telemetry/index.ts",
     "cli/index": "src/cli/index.ts",
-    "cli/bin": "src/cli/bin.ts",
     "acp/ops/client-side-mcp-server": "src/acp/ops/client-side-mcp-server.ts",
     "mcp/server/browse-mcp/mcp-server": "src/mcp/server/browse-mcp/mcp-server.ts",
   },
@@ -30,7 +29,19 @@ export default defineConfig({
   // Note: fastify and ws must be external to avoid "Dynamic require of events is not supported" error
   // Note: yaml must be external because yaml@2.8+ uses CJS require("process") which breaks in ESM bundles
   // Note: archiver is external for pet export (dynamically imported)
-  external: ["fastify", "@fastify/cors", "@fastify/websocket", "node-pty", "ws", "yaml", "archiver"],
+  external: [
+    "fastify",
+    "@fastify/cors",
+    "@fastify/multipart",
+    "@fastify/swagger",
+    "@fastify/websocket",
+    "node-pty",
+    "ws",
+    "yaml",
+    "archiver",
+    "socket.io",
+    "socket.io-client",
+  ],
   // Inject version at build time
   define: {
     __VERSION__: JSON.stringify(VERSION),
@@ -38,8 +49,6 @@ export default defineConfig({
   onSuccess: async () => {
     // Add shebang to bin.js after build
     const binFiles = [
-      "dist/cli/bin.js",
-      "dist/cli/bin.cjs",
       "dist/acp/ops/client-side-mcp-server.js",
       "dist/acp/ops/client-side-mcp-server.cjs",
       "dist/mcp/server/browse-mcp/mcp-server.js",

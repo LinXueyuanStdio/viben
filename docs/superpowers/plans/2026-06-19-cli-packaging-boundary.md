@@ -244,8 +244,8 @@ Expected: exit 0.
 Run:
 
 ```bash
-node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/bin/viben.js --version
-node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/bin/viben.js --help
+node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/dist/index.js --version
+node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/dist/index.js --help
 ```
 
 Expected:
@@ -348,7 +348,6 @@ Update `Upload CLI build artifact` path from:
 
 ```yaml
           path: |
-            apps/cli/bin/
             apps/cli/dist/
             apps/cli/package.json
             packages/core/dist/
@@ -359,7 +358,6 @@ to:
 
 ```yaml
           path: |
-            apps/cli/bin/
             apps/cli/dist/
             apps/cli/package.json
 ```
@@ -374,7 +372,6 @@ Remove the `packages/core/dist/` listing and core version print from the `Verify
 echo "=== CLI artifacts ==="
 ls -la apps/cli/
 ls -la apps/cli/dist/
-ls -la apps/cli/bin/
 echo "=== Version check ==="
 echo "CLI version: $(jq -r '.version' apps/cli/package.json)"
 ```
@@ -581,8 +578,8 @@ Add before `Verify no workspace protocol references in runtime dependencies`:
 ```yaml
       - name: Test Node CLI package
         run: |
-          node apps/cli/bin/viben.js --version
-          node apps/cli/bin/viben.js --help
+          node apps/cli/dist/index.js --version
+          node apps/cli/dist/index.js --help
           chmod +x scripts/test-cli.sh
           ./scripts/test-cli.sh --local
 ```
@@ -832,8 +829,8 @@ Run:
 ```bash
 pnpm turbo build --filter=@viben/core
 pnpm turbo build --filter=viben
-node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/bin/viben.js --version
-node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/bin/viben.js --help
+node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/dist/index.js --version
+node /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/apps/cli/dist/index.js --help
 NODE_OPTIONS='--no-warnings' /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben/scripts/test-cli.sh --local
 ```
 

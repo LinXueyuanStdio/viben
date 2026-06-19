@@ -65,14 +65,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Update version in package.json
-        run: |
-          cd apps/cli
-          VERSION="${{ needs.prepare.outputs.version }}"
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          echo "Updated version to: $(jq -r '.version' package.json)"
-
       - name: Prepare install.sh for release
         run: |
           # Make install.sh executable
@@ -199,39 +191,43 @@ jobs:
           submodules: true
           token: ${{ secrets.GH_PAT }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
         with:
-          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+      - name: Sync version to package files
+        run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Build @viben/core
+        run: pnpm turbo build --filter=@viben/core
 
-      - name: Build CLI package and dependencies
-        run: pnpm --filter viben... build
+      - name: Build apps/cli package
+        run: pnpm turbo build --filter=viben
 
-      - name: Update version in package.json
+      - name: Test Node CLI package
         run: |
-          cd apps/cli
-          VERSION="${{ needs.prepare.outputs.version }}"
-          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
-          mv package.tmp.json package.json
-          echo "Updated version to: $(jq -r '.version' package.json)"
+          node apps/cli/dist/index.js --version
+          node apps/cli/dist/index.js --help
+          chmod +x scripts/test-cli.sh
+          ./scripts/test-cli.sh --local
+
+      - name: Verify CLI build artifacts
+        run: |
+          echo "=== CLI artifacts ==="
+          ls -la apps/cli/
+          ls -la apps/cli/dist/
+          echo "=== Version check ==="
+          echo "CLI version: $(jq -r '.version' apps/cli/package.json)"
 
       - name: Verify no workspace protocol references in runtime dependencies
         run: |
           cd apps/cli
-          # Check only dependencies and optionalDependencies (not devDependencies)
-          # devDependencies with workspace:* are safe since npm ignores them for registry packages
           WORKSPACE_REFS=$(jq -r '
-            [(.dependencies // {}), (.optionalDependencies // {})] 
-            | map(to_entries[]) 
-            | map(select(.value | test("^workspace:"))) 
-            | map("\(.key): \(.value)") 
+            [(.dependencies // {}), (.optionalDependencies // {})]
+            | map(to_entries[])
+            | map(select(.value | test("^workspace:")))
+            | map("\(.key): \(.value)")
             | .[]' package.json)
           if [ -n "$WORKSPACE_REFS" ]; then
             echo "::error::Runtime dependencies contain workspace: protocol references that will break npm install"
@@ -247,16 +243,27 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Wait for npm propagation
-        run: sleep 30
-
-      - name: Get package SHA256
+      - name: Wait for npm propagation and get SHA256
         id: get-sha256
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          SHA256=$(curl -sL "https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz" | shasum -a 256 | cut -d' ' -f1)
-          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
-          echo "Package SHA256: ${SHA256}"
+          PACKAGE_URL="https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz"
+
+          echo "Waiting for npm package to be available..."
+          for i in {1..60}; do
+            if curl -sf "$PACKAGE_URL" -o /tmp/package.tgz; then
+              echo "Package available after $((i*10)) seconds"
+              SHA256=$(shasum -a 256 /tmp/package.tgz | cut -d' ' -f1)
+              echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+              echo "Package SHA256: ${SHA256}"
+              exit 0
+            fi
+            echo "Waiting for npm propagation... attempt $i/60"
+            sleep 10
+          done
+
+          echo "::error::Package not available after 10 minutes"
+          exit 1
 
   update-homebrew:
     needs: [prepare, publish-npm]

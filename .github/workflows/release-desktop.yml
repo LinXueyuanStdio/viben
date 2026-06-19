@@ -139,24 +139,27 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build @viben/core (for CLI)
+      - name: Build @viben/core
         run: pnpm turbo build --filter=@viben/core
+
+      - name: Build viben CLI
+        run: pnpm turbo build --filter=viben
 
       # Build sidecar binaries
       - name: Build sidecar binary
         shell: bash
         run: |
-          cd packages/core
-          echo "Building sidecar for current platform..."
-          npx tsx scripts/build-sidecar.ts --platform current
+          cd apps/cli
+          echo "Building sidecar for current platform from apps/cli..."
+          pnpm build:sidecar -- --platform current --skip-build
 
       # For macOS, also build x64 version (cross-compile from ARM64)
       - name: Build additional macOS sidecar (x64)
         if: matrix.platform == 'macos-latest'
         shell: bash
         run: |
-          cd packages/core
-          bun build dist/cli/bin.cjs --compile --target bun-darwin-x64 --outfile ../../apps/desktop/src-tauri/binaries/viben-x86_64-apple-darwin
+          cd apps/cli
+          pnpm build:sidecar -- --platform macos-x64 --skip-build
 
       - name: Ad-hoc codesign sidecar binaries (macOS)
         if: matrix.platform == 'macos-latest'
@@ -170,6 +173,14 @@ jobs:
       - name: List sidecar binaries
         shell: bash
         run: ls -la apps/desktop/src-tauri/binaries/
+
+      - name: Prepare desktop bundled templates
+        shell: bash
+        run: |
+          test -d apps/cli/dist/templates
+          rm -rf apps/desktop/src-tauri/resources/templates
+          mkdir -p apps/desktop/src-tauri/resources
+          cp -R apps/cli/dist/templates apps/desktop/src-tauri/resources/templates
 
       - name: Build workspace packages
         run: pnpm turbo build --filter=@viben/desktop^...

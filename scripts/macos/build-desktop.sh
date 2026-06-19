@@ -22,6 +22,7 @@ BINARIES_DIR="$REPO_ROOT/apps/desktop/src-tauri/binaries"
 ENTITLEMENTS="$REPO_ROOT/apps/desktop/src-tauri/entitlements.plist"
 DESKTOP_ARTIFACT_DIR="$REPO_ROOT/artifacts/macos/desktop"
 SIDECAR_ARTIFACT_DIR="$REPO_ROOT/artifacts/macos/sidecar"
+TAURI_TEMPLATES_DIR="$REPO_ROOT/apps/desktop/src-tauri/resources/templates"
 TAURI_SIGNING_PRIVATE_KEY_FILE="${TAURI_SIGNING_PRIVATE_KEY_FILE:-$HOME/.tauri/viben.key}"
 
 VERSION=""
@@ -139,6 +140,11 @@ if [[ "$SKIP_SIDECAR_BUILD" != "true" ]]; then
 elif [[ -d "$SIDECAR_ARTIFACT_DIR" ]]; then
   mkdir -p "$BINARIES_DIR"
   cp "$SIDECAR_ARTIFACT_DIR"/viben-*apple-darwin "$BINARIES_DIR"/
+  test -d "$SIDECAR_ARTIFACT_DIR/templates"
+  rm -rf "$BINARIES_DIR/templates" "$TAURI_TEMPLATES_DIR"
+  mkdir -p "$BINARIES_DIR" "$(dirname "$TAURI_TEMPLATES_DIR")"
+  cp -R "$SIDECAR_ARTIFACT_DIR/templates" "$BINARIES_DIR/templates"
+  cp -R "$SIDECAR_ARTIFACT_DIR/templates" "$TAURI_TEMPLATES_DIR"
 fi
 
 require_sidecar "$BINARIES_DIR/viben-aarch64-apple-darwin"

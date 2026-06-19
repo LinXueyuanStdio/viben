@@ -19,16 +19,17 @@ export default defineConfig({
   external: [
     'cli-progress',
     '@hypothesi/tauri-mcp-server',
+    '@larksuiteoapi/node-sdk',
+    'cloudflared',
+    'node-notifier',
+    'node-pty',
+    'axios',
+    'form-data',
+    'follow-redirects',
+    'socket.io',
+    'socket.io-client',
   ],
   // Mark Node.js built-in modules as external
   // All packages in dependencies are auto-externalized by tsup
   platform: 'node',
-  esbuildOptions(options, context) {
-    if (context.format === 'esm') {
-      options.banner = {
-        ...options.banner,
-        js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
-      };
-    }
-  },
 });

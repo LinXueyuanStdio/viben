@@ -6,9 +6,6 @@
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "viben": "./dist/cli/bin.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -57,7 +54,6 @@
   ],
   "scripts": {
     "build": "tsup",
-    "build:sidecar": "tsx scripts/build-sidecar.ts",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",

@@ -161,6 +161,12 @@ importers:
       shell-quote:
         specifier: ^1.8.3
         version: 1.8.3
+      socket.io:
+        specifier: ^4.8.3
+        version: 4.8.3
+      socket.io-client:
+        specifier: ^4.8.3
+        version: 4.8.3
       undici:
         specifier: ^7.22.0
         version: 7.25.0

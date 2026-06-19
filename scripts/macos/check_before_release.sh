@@ -81,6 +81,11 @@ pnpm install --frozen-lockfile
 
 "$SCRIPT_DIR/build-cli.sh" --version "$VERSION" --skip-install
 
+node "$REPO_ROOT/apps/cli/dist/index.js" --version
+node "$REPO_ROOT/apps/cli/dist/index.js" --help
+"$REPO_ROOT/scripts/test-cli.sh" --local
+test -d "$SIDECAR_ARTIFACT_DIR/templates"
+
 CLI_BINARY="$SIDECAR_ARTIFACT_DIR/viben-aarch64-apple-darwin"
 if [[ "$(uname -m)" == "x86_64" ]]; then
   CLI_BINARY="$SIDECAR_ARTIFACT_DIR/viben-x86_64-apple-darwin"

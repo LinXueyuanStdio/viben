@@ -6,7 +6,7 @@
 #   - sync versions
 #   - build @viben/core
 #   - build the npm CLI package
-#   - compile packages/core/dist/cli/bin.js into both macOS Tauri sidecars
+#   - compile apps/cli/dist/index.js into both macOS Tauri sidecars with Bun
 #   - ad-hoc codesign the sidecars with the Tauri entitlements
 #   - copy the sidecars into artifacts/macos/sidecar
 #
@@ -99,15 +99,9 @@ pnpm turbo build --filter=viben
 mkdir -p "$BINARIES_DIR" "$ARTIFACT_DIR"
 
 (
-  cd "$REPO_ROOT/packages/core"
-  bun build dist/cli/bin.js \
-    --compile \
-    --target bun-darwin-arm64 \
-    --outfile "$BINARIES_DIR/viben-aarch64-apple-darwin"
-  bun build dist/cli/bin.js \
-    --compile \
-    --target bun-darwin-x64 \
-    --outfile "$BINARIES_DIR/viben-x86_64-apple-darwin"
+  cd "$REPO_ROOT/apps/cli"
+  pnpm build:sidecar -- --platform macos-arm64 --skip-build
+  pnpm build:sidecar -- --platform macos-x64 --skip-build
 )
 
 chmod +x "$BINARIES_DIR"/viben-*apple-darwin
@@ -116,11 +110,11 @@ sign_sidecars
 rm -rf "$ARTIFACT_DIR"
 mkdir -p "$ARTIFACT_DIR"
 cp "$BINARIES_DIR"/viben-*apple-darwin "$ARTIFACT_DIR"/
-cp -R "$REPO_ROOT/packages/core/templates" "$ARTIFACT_DIR/templates"
+cp -R "$REPO_ROOT/apps/cli/dist/templates" "$ARTIFACT_DIR/templates"
 
 rm -rf "$TAURI_TEMPLATES_DIR"
 mkdir -p "$(dirname "$TAURI_TEMPLATES_DIR")"
-cp -R "$REPO_ROOT/packages/core/templates" "$TAURI_TEMPLATES_DIR"
+cp -R "$REPO_ROOT/apps/cli/dist/templates" "$TAURI_TEMPLATES_DIR"
 
 echo "==> Sidecar artifacts"
 ls -la "$ARTIFACT_DIR"
