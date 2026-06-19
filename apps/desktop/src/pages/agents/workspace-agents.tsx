@@ -303,9 +303,12 @@ export function WorkspaceAgentsPage({
     setCreating(true);
     const isWorkspaceAgent = createLocation === "workspace" && workspace?.path;
     try {
+      const selectedExecutorType = selectedItemType === "executor" ? selectedExecutor?.type : undefined;
       const newAgent = await createAgent({
         name: newAgentName.trim(),
         description: newAgentDescription.trim() || undefined,
+        executor_type: selectedTemplate?.executor_type ?? selectedExecutorType,
+        executor_config: selectedTemplate?.executor_config,
         // Pass workspace path if creating in workspace, undefined for global
         base_path: isWorkspaceAgent ? workspace.path : undefined,
         // Pass template ID if creating from template

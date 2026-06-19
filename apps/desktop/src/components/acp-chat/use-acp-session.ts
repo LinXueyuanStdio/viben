@@ -77,6 +77,7 @@ import {
   resolveSubagentStreamingState,
   resolveSessionApproval,
   resolveSessionQuestion,
+  stopSessionTurn,
   updateSession,
   type SubagentSheetState,
   type UiSessionState,
@@ -458,6 +459,10 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     () => allAgents.find((a) => a.id === selectedAgentId),
     [allAgents, selectedAgentId]
   );
+  const agentSelectionReady = useMemo(
+    () => !agentsLoading && (allAgents.length === 0 || Boolean(selectedAgent)),
+    [agentsLoading, allAgents.length, selectedAgent]
+  );
 
   // Agent selector options (grouped by source)
   const agentOptions = useMemo<SelectorOption[]>(() => {
@@ -541,7 +546,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
 
   // Auto-select default agent on initial load
   useEffect(() => {
-    if (!agentsLoading && allAgents.length > 0 && !selectedAgentId) {
+    if (!agentsLoading && allAgents.length > 0 && !selectedAgent) {
       // Prefer workspace agent, then first global agent
       const defaultAgent = workspaceAgents[0] ?? globalAgents[0];
       if (defaultAgent) {
@@ -552,7 +557,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
         }
       }
     }
-  }, [agentsLoading, allAgents, selectedAgentId, workspaceAgents, globalAgents, setStoreSelectedAgentId, setExecutorType]);
+  }, [agentsLoading, allAgents, selectedAgent, workspaceAgents, globalAgents, setStoreSelectedAgentId, setExecutorType]);
 
   // Auto-select default provider on initial load or when executor changes
   useEffect(() => {
@@ -886,7 +891,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   // Auto-connect when Gateway is connected (uses store flag to prevent duplicate connections)
   useEffect(() => {
     // Skip if already auto-connected or Gateway not ready
-    if (hasAutoConnected || !gatewayStatus.isConnected) {
+    if (hasAutoConnected || !gatewayStatus.isConnected || !agentSelectionReady) {
       // If already connected, just sync the client reference
       if (globalClientRef && !clientRef.current) {
         clientRef.current = globalClientRef;
@@ -993,7 +998,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       mounted = false;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gatewayStatus.isConnected, hasAutoConnected, ensureClient, wsUrl, status, setHasAutoConnected, setInitializeResult, setError, executorType, model, cwd, setSessionsById, setSessionOrder, setActiveSessionId]);
+  }, [gatewayStatus.isConnected, hasAutoConnected, agentSelectionReady, ensureClient, wsUrl, status, setHasAutoConnected, setInitializeResult, setError, executorType, model, cwd, setSessionsById, setSessionOrder, setActiveSessionId]);
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
     return {
@@ -1208,13 +1213,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       });
       setActiveElicitationDialogId((current) => (current === elicitationDialog.id ? null : current));
     }
-    updateSession(setSessionsById, sessionId, (session) => ({
-      ...session,
-      pendingApproval: null,
-      pendingQuestion: null,
-      pendingPlan: null,
-      lastActiveAt: new Date().toISOString(),
-    }));
+    updateSession(setSessionsById, sessionId, stopSessionTurn);
     try {
       await clientRef.current?.interrupt(sessionId);
     } catch (interruptError) {

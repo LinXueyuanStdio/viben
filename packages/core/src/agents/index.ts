@@ -51,6 +51,97 @@ export {
   type PredefinedVariable,
 } from "./variable-resolver";
 
+function agentConfigFileToAgent(
+  id: string,
+  agentDir: string,
+  config: AgentConfigFile,
+  systemPrompt: string
+): Agent {
+  return {
+    id,
+    name: config.name,
+    path: agentDir,
+    description: config.description,
+    tools: config.tools ?? [],
+    model: config.model,
+    provider: config.provider,
+    systemPrompt: systemPrompt || undefined,
+    appendPrompt: config.append_prompt,
+    temperature: config.temperature,
+    maxTokens: config.max_tokens,
+    executorType: config.executor_type as Agent["executorType"],
+    executorConfig: config.executor_config,
+    mcpServers: config.mcp_servers ?? [],
+    skills: config.skills ?? [],
+    approvalMode: config.approval_mode ?? "rules",
+    isTemplate: config.is_template,
+    templateDescription: config.template_description,
+    templateTags: config.template_tags,
+    customVariables: config.custom_variables?.map(v => ({
+      name: v.name,
+      defaultValue: v.default_value,
+      description: v.description,
+    })),
+    envVariables: config.env_variables,
+    created_at: config.created_at,
+    updated_at: config.updated_at,
+  };
+}
+
+function agentToConfigFile(
+  agent: Agent,
+  overrides: {
+    name?: string;
+    description?: string;
+    tools?: string[];
+    model?: string;
+    provider?: string;
+    appendPrompt?: string;
+    temperature?: number;
+    maxTokens?: number;
+    executorType?: Agent["executorType"];
+    executorConfig?: Record<string, unknown>;
+    mcpServers?: Agent["mcpServers"];
+    skills?: string[];
+    approvalMode?: "bypass" | "rules" | "ai";
+    isTemplate?: boolean;
+    templateDescription?: string;
+    templateTags?: Agent["templateTags"];
+    customVariables?: Agent["customVariables"];
+    envVariables?: string[];
+    created_at?: string;
+    updated_at?: string;
+  }
+): AgentConfigFile {
+  const customVariables = overrides.customVariables ?? agent.customVariables;
+  return {
+    name: overrides.name ?? agent.name,
+    description: overrides.description ?? agent.description,
+    tools: overrides.tools ?? agent.tools,
+    model: overrides.model ?? agent.model,
+    provider: overrides.provider ?? agent.provider,
+    append_prompt: overrides.appendPrompt ?? agent.appendPrompt,
+    temperature: overrides.temperature ?? agent.temperature,
+    max_tokens: overrides.maxTokens ?? agent.maxTokens,
+    executor_type: overrides.executorType ?? agent.executorType,
+    executor_config: overrides.executorConfig ?? agent.executorConfig,
+    mcp_servers: overrides.mcpServers ?? agent.mcpServers,
+    skills: overrides.skills ?? agent.skills,
+    approval_mode: overrides.approvalMode ?? agent.approvalMode,
+    is_template: overrides.isTemplate ?? agent.isTemplate,
+    template_description: overrides.templateDescription ?? agent.templateDescription,
+    template_tags: overrides.templateTags ?? agent.templateTags,
+    custom_variables: customVariables?.map(v => ({
+      name: v.name,
+      default_value: v.defaultValue,
+      description: v.description,
+    })),
+    env_variables: overrides.envVariables ?? agent.envVariables,
+    created_at: overrides.created_at ?? agent.created_at,
+    updated_at: overrides.updated_at ?? agent.updated_at,
+  };
+}
+
 /**
  * AgentManager handles agent CRUD operations
  */
@@ -102,35 +193,7 @@ export class AgentManager {
 
     const { frontmatter: config, body: systemPrompt } = result;
 
-    return {
-      id,
-      name: config.name,
-      path: getAgentDir(id),
-      description: config.description,
-      tools: config.tools ?? [],
-      model: config.model,
-      provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
-      temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType as Agent["executorType"],
-      executorConfig: config.executorConfig,
-      mcpServers: config.mcpServers ?? [],
-      skills: config.skills ?? [],
-      approvalMode: config.approval_mode ?? "rules",
-      isTemplate: config.isTemplate,
-      templateDescription: config.templateDescription,
-      templateTags: config.template_tags,
-      customVariables: config.custom_variables?.map(v => ({
-        name: v.name,
-        defaultValue: v.default_value,
-        description: v.description,
-      })),
-      envVariables: config.env_variables,
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    };
+    return agentConfigFileToAgent(id, getAgentDir(id), config, systemPrompt);
   }
 
   /**
@@ -179,15 +242,15 @@ export class AgentManager {
       tools: options.tools ?? [],
       model: options.model || baseConfig.model,
       provider: options.provider || baseConfig.provider,
-      appendPrompt: options.append_prompt,
+      append_prompt: options.append_prompt ?? baseConfig.appendPrompt,
       temperature: options.temperature ?? baseConfig.temperature,
-      maxTokens: options.max_tokens ?? baseConfig.maxTokens,
-      executorType: options.executor_type,
-      executorConfig: options.executor_config,
-      mcpServers: options.mcp_servers ?? [],
+      max_tokens: options.max_tokens ?? baseConfig.maxTokens,
+      executor_type: options.executor_type ?? baseConfig.executorType,
+      executor_config: options.executor_config ?? baseConfig.executorConfig,
+      mcp_servers: options.mcp_servers ?? baseConfig.mcpServers ?? [],
       skills: options.skills ?? [],
       approval_mode: options.approval_mode ?? "rules",
-      isTemplate: false,
+      is_template: false,
       template_tags: baseConfig.templateTags,
       custom_variables: baseConfig.customVariables?.map(v => ({
         name: v.name,
@@ -207,35 +270,7 @@ export class AgentManager {
     await ensureDir(join(agentDir, ".agent_sessions"));
     await ensureDir(join(agentDir, "memory"));
 
-    return {
-      id,
-      name: config.name,
-      path: agentDir,
-      description: config.description,
-      tools: config.tools ?? [],
-      model: config.model,
-      provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
-      temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType as Agent["executorType"],
-      executorConfig: config.executorConfig,
-      mcpServers: config.mcpServers ?? [],
-      skills: config.skills ?? [],
-      approvalMode: config.approval_mode ?? "rules",
-      isTemplate: config.isTemplate,
-      templateDescription: config.templateDescription,
-      templateTags: config.template_tags,
-      customVariables: config.custom_variables?.map(v => ({
-        name: v.name,
-        defaultValue: v.default_value,
-        description: v.description,
-      })),
-      envVariables: config.env_variables,
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    };
+    return agentConfigFileToAgent(id, agentDir, config, systemPrompt);
   }
 
   /**
@@ -295,67 +330,15 @@ export class AgentManager {
     }
 
     const systemPrompt = updates.systemPrompt ?? agent.systemPrompt ?? "";
-    const templateTags = updates.templateTags ?? agent.templateTags;
-    const customVariables = updates.customVariables ?? agent.customVariables;
-    const envVariables = updates.envVariables ?? agent.envVariables;
-    const config: AgentConfigFile = {
-      name: updates.name ?? agent.name,
-      description: updates.description ?? agent.description,
-      tools: updates.tools ?? agent.tools,
-      model: updates.model ?? agent.model,
-      provider: updates.provider ?? agent.provider,
-      appendPrompt: updates.appendPrompt ?? agent.appendPrompt,
-      temperature: updates.temperature ?? agent.temperature,
-      maxTokens: updates.maxTokens ?? agent.maxTokens,
-      executorType: updates.executorType ?? agent.executorType,
-      executorConfig: updates.executorConfig ?? agent.executorConfig,
-      mcpServers: updates.mcpServers ?? agent.mcpServers,
-      skills: updates.skills ?? agent.skills,
-      approval_mode: updates.approvalMode ?? agent.approvalMode,
-      isTemplate: updates.isTemplate ?? agent.isTemplate,
-      templateDescription: updates.templateDescription ?? agent.templateDescription,
-      template_tags: templateTags,
-      custom_variables: customVariables?.map(v => ({
-        name: v.name,
-        default_value: v.defaultValue,
-        description: v.description,
-      })),
-      env_variables: envVariables,
+    const config = agentToConfigFile(agent, {
+      ...updates,
       created_at: agent.created_at,
       updated_at: new Date().toISOString(),
-    };
+    });
 
     await writeMarkdownConfig(getAgentConfigPath(id), config, systemPrompt);
 
-    return {
-      id,
-      name: config.name,
-      path: getAgentDir(id),
-      description: config.description,
-      tools: config.tools ?? [],
-      model: config.model,
-      provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
-      temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType as Agent["executorType"],
-      executorConfig: config.executorConfig,
-      mcpServers: config.mcpServers ?? [],
-      skills: config.skills ?? [],
-      approvalMode: config.approval_mode ?? "rules",
-      isTemplate: config.isTemplate,
-      templateDescription: config.templateDescription,
-      templateTags: config.template_tags,
-      customVariables: config.custom_variables?.map(v => ({
-        name: v.name,
-        defaultValue: v.default_value,
-        description: v.description,
-      })),
-      envVariables: config.env_variables,
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    };
+    return agentConfigFileToAgent(id, getAgentDir(id), config, systemPrompt);
   }
 
   /**
@@ -455,15 +438,15 @@ export class AgentManager {
       tools: template.tools,
       model: template.model,
       provider: template.provider,
-      appendPrompt: template.appendPrompt,
+      append_prompt: template.appendPrompt,
       temperature: template.temperature,
-      maxTokens: template.maxTokens,
-      executorType: template.executorType,
-      executorConfig: template.executorConfig,
-      mcpServers: template.mcpServers,
+      max_tokens: template.maxTokens,
+      executor_type: template.executorType,
+      executor_config: template.executorConfig,
+      mcp_servers: template.mcpServers,
       skills: template.skills,
       approval_mode: template.approvalMode,
-      isTemplate: false, // New agent is NOT a template
+      is_template: false, // New agent is NOT a template
       template_tags: template.templateTags,
       custom_variables: template.customVariables?.map(v => ({
         name: v.name,
@@ -516,16 +499,16 @@ export class AgentManager {
       tools: agent.tools,
       model: agent.model,
       provider: agent.provider,
-      appendPrompt: agent.appendPrompt,
+      append_prompt: agent.appendPrompt,
       temperature: agent.temperature,
-      maxTokens: agent.maxTokens,
-      executorType: agent.executorType,
-      executorConfig: agent.executorConfig,
-      mcpServers: agent.mcpServers,
+      max_tokens: agent.maxTokens,
+      executor_type: agent.executorType,
+      executor_config: agent.executorConfig,
+      mcp_servers: agent.mcpServers,
       skills: agent.skills,
       approval_mode: agent.approvalMode,
-      isTemplate: true,
-      templateDescription: agent.templateDescription,
+      is_template: true,
+      template_description: agent.templateDescription,
       template_tags: agent.templateTags,
       custom_variables: agent.customVariables?.map(v => ({
         name: v.name,
@@ -753,35 +736,7 @@ export class AgentManager {
 
     const { frontmatter: config, body: systemPrompt } = result;
 
-    return {
-      id,
-      name: config.name,
-      path: agentDir,
-      description: config.description,
-      tools: config.tools ?? [],
-      model: config.model,
-      provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
-      temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType as Agent["executorType"],
-      executorConfig: config.executorConfig,
-      mcpServers: config.mcpServers ?? [],
-      skills: config.skills ?? [],
-      approvalMode: config.approval_mode ?? "rules",
-      isTemplate: config.isTemplate,
-      templateDescription: config.templateDescription,
-      templateTags: config.template_tags,
-      customVariables: config.custom_variables?.map(v => ({
-        name: v.name,
-        defaultValue: v.default_value,
-        description: v.description,
-      })),
-      envVariables: config.env_variables,
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    };
+    return agentConfigFileToAgent(id, agentDir, config, systemPrompt);
   }
 
   /**
@@ -802,67 +757,15 @@ export class AgentManager {
     const configPath = join(agentDir, "AGENTS.md");
 
     const systemPrompt = updates.systemPrompt ?? agent.systemPrompt ?? "";
-    const templateTags = updates.templateTags ?? agent.templateTags;
-    const customVariables = updates.customVariables ?? agent.customVariables;
-    const envVariables = updates.envVariables ?? agent.envVariables;
-    const config: AgentConfigFile = {
-      name: updates.name ?? agent.name,
-      description: updates.description ?? agent.description,
-      tools: updates.tools ?? agent.tools,
-      model: updates.model ?? agent.model,
-      provider: updates.provider ?? agent.provider,
-      appendPrompt: updates.appendPrompt ?? agent.appendPrompt,
-      temperature: updates.temperature ?? agent.temperature,
-      maxTokens: updates.maxTokens ?? agent.maxTokens,
-      executorType: updates.executorType ?? agent.executorType,
-      executorConfig: updates.executorConfig ?? agent.executorConfig,
-      mcpServers: updates.mcpServers ?? agent.mcpServers,
-      skills: updates.skills ?? agent.skills,
-      approval_mode: updates.approvalMode ?? agent.approvalMode,
-      isTemplate: updates.isTemplate ?? agent.isTemplate,
-      templateDescription: updates.templateDescription ?? agent.templateDescription,
-      template_tags: templateTags,
-      custom_variables: customVariables?.map(v => ({
-        name: v.name,
-        default_value: v.defaultValue,
-        description: v.description,
-      })),
-      env_variables: envVariables,
+    const config = agentToConfigFile(agent, {
+      ...updates,
       created_at: agent.created_at,
       updated_at: new Date().toISOString(),
-    };
+    });
 
     await writeMarkdownConfig(configPath, config, systemPrompt);
 
-    return {
-      id,
-      name: config.name,
-      path: agentDir,
-      description: config.description,
-      tools: config.tools ?? [],
-      model: config.model,
-      provider: config.provider,
-      systemPrompt: systemPrompt || undefined,
-      appendPrompt: config.appendPrompt,
-      temperature: config.temperature,
-      maxTokens: config.maxTokens,
-      executorType: config.executorType as Agent["executorType"],
-      executorConfig: config.executorConfig,
-      mcpServers: config.mcpServers ?? [],
-      skills: config.skills ?? [],
-      approvalMode: config.approval_mode ?? "rules",
-      isTemplate: config.isTemplate,
-      templateDescription: config.templateDescription,
-      templateTags: config.template_tags,
-      customVariables: config.custom_variables?.map(v => ({
-        name: v.name,
-        defaultValue: v.default_value,
-        description: v.description,
-      })),
-      envVariables: config.env_variables,
-      created_at: config.created_at,
-      updated_at: config.updated_at,
-    };
+    return agentConfigFileToAgent(id, agentDir, config, systemPrompt);
   }
 
   // ========================================================================

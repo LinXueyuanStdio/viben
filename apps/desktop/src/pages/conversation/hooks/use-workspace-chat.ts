@@ -818,9 +818,15 @@ export function useWorkspaceChat() {
     setCreatingAgent(true);
     const isWorkspaceAgent = createAgentLocation === "workspace" && workspace?.path;
     try {
+      const inheritedExecutorType =
+        selectedAgentTemplate?.executor_type ??
+        selectedSidebarExecutor?.id ??
+        currentAgent?.executor_type;
       const newAgent = await createAgent({
         name: newAgentName.trim(),
         description: newAgentDescription.trim() || undefined,
+        executor_type: inheritedExecutorType,
+        executor_config: selectedAgentTemplate?.executor_config,
         base_path: isWorkspaceAgent ? workspace.path : undefined,
         from_template: selectedAgentTemplate?.id,
       });

@@ -29,16 +29,16 @@ export interface AgentConfigFile {
   tools?: string[];
   model?: string;
   provider?: string;
-  appendPrompt?: string;
+  append_prompt?: string;
   temperature?: number;
-  maxTokens?: number;
-  executorType?: string;
-  executorConfig?: Record<string, unknown>;
-  mcpServers?: (string | AgentMcpServerEntry)[];
+  max_tokens?: number;
+  executor_type?: string;
+  executor_config?: Record<string, unknown>;
+  mcp_servers?: (string | AgentMcpServerEntry)[];
   skills?: string[];
   approval_mode?: "bypass" | "rules" | "ai";
-  isTemplate?: boolean;
-  templateDescription?: string;
+  is_template?: boolean;
+  template_description?: string;
   /** Template tags for categorization (snake_case for YAML) */
   template_tags?: string[];
   /** Custom variables with default values (snake_case for YAML) */

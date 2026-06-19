@@ -95,8 +95,8 @@ const agent = await agentManager.createAgent({
   description: "帮助编写和审查代码",
   model: "claude-sonnet-4-20250514",
   provider: "anthropic",
-  executorType: "CLAUDE_CODE",
-  systemPrompt: "你是一个专业的代码助手...",
+  executor_type: "CLAUDE_CODE",
+  system_prompt: "你是一个专业的代码助手...",
 });
 
 // 获取智能体
@@ -1145,7 +1145,7 @@ viben config --get user.name
 ├── workspaces.yaml          # 已知工作区列表
 ├── agents/                  # 智能体目录 (模板也存储在此，通过 isTemplate 标志区分)
 │   └── <agent-id>/
-│       ├── config.yaml      # 智能体配置 (isTemplate: true 表示这是模板)
+│       ├── config.yaml      # 智能体配置 (is_template: true 表示这是模板)
 │       ├── mcp_servers.json # MCP 服务器配置
 │       ├── memory/          # 智能体记忆
 │       │   ├── CLAUDE.md    # 长期记忆
@@ -1209,7 +1209,7 @@ fallbacks:
 configs:
   claude-sonnet-4-20250514:
     temperature: 0.7
-    maxTokens: 4096
+    max_tokens: 4096
 custom_models: {}
 disabled_models: []
 ```
@@ -1221,22 +1221,22 @@ name: 代码助手
 description: 帮助编写和审查代码
 model: claude-sonnet-4-20250514
 provider: anthropic
-systemPrompt: |
+system_prompt: |
   你是一个专业的代码助手,擅长:
   - 代码编写和优化
   - 代码审查
   - 技术问题解答
 temperature: 0.7
-maxTokens: 4096
-executorType: CLAUDE_CODE
-mcpServers:
+max_tokens: 4096
+executor_type: CLAUDE_CODE
+mcp_servers:
   - filesystem
 skills:
   - code-review
 planMode: false
 approvals: false
-isTemplate: false                # true 表示这是一个模板
-templateDescription: ""          # 模板描述 (仅当 isTemplate=true 时有意义)
+is_template: false               # true 表示这是一个模板
+template_description: ""         # 模板描述 (仅当 is_template=true 时有意义)
 createdAt: "2024-01-01T00:00:00Z"
 updatedAt: "2024-01-01T00:00:00Z"
 ```

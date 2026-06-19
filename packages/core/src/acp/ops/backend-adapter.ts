@@ -82,14 +82,14 @@ const BUILTIN_ACP_BACKENDS: Record<string, AcpBackendTemplate> = {
   CODEX: {
     id: "codex",
     registryId: "codex-acp",
-    command: "npx",
-    args: ["@zed-industries/codex-acp"],
+    command: "codex-acp",
+    args: [],
   },
   CODEX_ACP: {
     id: "codex",
     registryId: "codex-acp",
-    command: "npx",
-    args: ["@zed-industries/codex-acp"],
+    command: "codex-acp",
+    args: [],
   },
   OPENCODE: {
     id: "opencode",

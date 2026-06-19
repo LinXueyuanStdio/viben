@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import type { PromptRequest, PromptResponse } from "@agentclientprotocol/sdk";
@@ -343,12 +344,68 @@ describe("AcpSessionManager", () => {
     expect(manager.getSession("persisted-backend-session")?.sdkSessionId).toBe("persisted-backend-session");
   });
 
+  it("loads snake_case agent config frontmatter before starting the ACP backend", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-agent-config-test-"));
+    try {
+      const configPath = path.join(tempDir, "AGENTS.md");
+      await writeFile(
+        configPath,
+        [
+          "---",
+          "name: Codex Agent",
+          "model: gpt-5-codex",
+          "executor_type: CODEX",
+          "executor_config:",
+          "  command: /usr/local/bin/codex-acp",
+          "---",
+          "You are a coding agent.",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+      const adapter = new CapturingBackendAdapter();
+      const manager = new AcpSessionManager(adapter);
+      const connection = createConnection();
+
+      const session = await manager.createSession(
+        { cwd: "/tmp", mcpServers: [], agent_config_path: configPath },
+        connection
+      );
+      await manager.prompt({
+        sessionId: session.sessionId,
+        prompt: [{ type: "text", text: "hello" }],
+      });
+
+      expect(adapter.startContext?.agentConfig).toMatchObject({
+        executor_type: "CODEX",
+        executor_config: { command: "/usr/local/bin/codex-acp" },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("resolves OpenClaw as a built-in ACP backend", () => {
     expect(resolveBuiltinAcpBackend("OPENCLAW")).toMatchObject({
       executorType: "OPENCLAW",
       id: "openclaw",
       command: "openclaw",
       args: ["acp"],
+    });
+  });
+
+  it("resolves Codex as the installed codex-acp backend", () => {
+    expect(resolveBuiltinAcpBackend("CODEX")).toMatchObject({
+      executorType: "CODEX",
+      id: "codex",
+      command: "codex-acp",
+      args: [],
+    });
+    expect(resolveBuiltinAcpBackend("CODEX_ACP")).toMatchObject({
+      executorType: "CODEX_ACP",
+      id: "codex",
+      command: "codex-acp",
+      args: [],
     });
   });
 

@@ -201,6 +201,17 @@ export function flushSessionStreamingText(
   };
 }
 
+export function stopSessionTurn(session: UiSessionState): UiSessionState {
+  return {
+    ...flushSessionStreamingText(drainSessionUiStepQueue(session)),
+    promptInFlight: false,
+    pendingApproval: null,
+    pendingQuestion: null,
+    pendingPlan: null,
+    lastActiveAt: new Date().toISOString(),
+  };
+}
+
 export function drainSessionUiStepQueue(session: UiSessionState): UiSessionState {
   let next = session;
   while (
