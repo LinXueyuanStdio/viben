@@ -225,7 +225,7 @@ export function ChatInput({
   });
 
   const {
-    isComposing,
+    isComposingEvent,
     handleCompositionStart,
     handleCompositionEnd,
   } = useIMEComposition();
@@ -475,11 +475,16 @@ export function ChatInput({
   // Key down handler
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      const isComposingInput = isComposingEvent(e);
+      if (isComposingInput && e.key === "Enter") {
+        return;
+      }
+
       if (handleSlashKeyDown(e)) {
         return;
       }
 
-      if (e.key === "ArrowUp" && !isComposing && content.trim().length === 0) {
+      if (e.key === "ArrowUp" && !isComposingInput && content.trim().length === 0) {
         e.preventDefault();
         if (queuedInputRecallItems.length > 0) {
           const recalledValue = mergeQueuedInputRecallItems(queuedInputRecallItems, queuedInputRecallJoiner);
@@ -506,7 +511,7 @@ export function ChatInput({
           onRequestExpand();
           return;
         }
-        if (!e.shiftKey && !isComposing) {
+        if (!e.shiftKey && !isComposingInput) {
           e.preventDefault();
           handleSend();
         }
@@ -515,7 +520,7 @@ export function ChatInput({
     [
       content,
       handleSlashKeyDown,
-      isComposing,
+      isComposingEvent,
       isCompactLayout,
       handleSend,
       onRecallQueuedInput,
@@ -727,18 +732,25 @@ export function ChatInput({
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onKeyDown={(e) => {
+                const isComposingInput = isComposingEvent(e);
+                if (isComposingInput && e.key === "Enter") {
+                  return;
+                }
+
                 if (e.key === "Enter") {
                   if (e.shiftKey && onRequestExpand) {
                     e.preventDefault();
                     onRequestExpand();
                     return;
                   }
-                  if (!e.shiftKey) {
+                  if (!e.shiftKey && !isComposingInput) {
                     e.preventDefault();
                     handleSend();
                   }
                 }
               }}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               onPaste={handlePaste as unknown as React.ClipboardEventHandler<HTMLInputElement>}
               placeholder={placeholder || t("chat.inputPlaceholder")}
               disabled={isInputDisabled}

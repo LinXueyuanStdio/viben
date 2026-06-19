@@ -420,6 +420,7 @@ export function useResizableHeight(
 
 export interface UseIMECompositionReturn {
   isComposing: boolean;
+  isComposingEvent: (event?: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => boolean;
   handleCompositionStart: () => void;
   handleCompositionEnd: () => void;
 }
@@ -433,6 +434,7 @@ export function useIMEComposition(): UseIMECompositionReturn {
 
   const handleCompositionStart = useCallback(() => {
     isComposingRef.current = true;
+    forceUpdate({});
   }, []);
 
   const handleCompositionEnd = useCallback(() => {
@@ -443,8 +445,27 @@ export function useIMEComposition(): UseIMECompositionReturn {
     }, 10);
   }, []);
 
+  const isComposingEvent = useCallback(
+    (event?: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
+      const nativeEvent = "nativeEvent" in (event ?? {})
+        ? (event as React.KeyboardEvent<HTMLElement>).nativeEvent
+        : event;
+      const eventWithComposition = nativeEvent as KeyboardEvent & { isComposing?: boolean };
+      const reactEventWithKeyCode = event as React.KeyboardEvent<HTMLElement> & { keyCode?: number };
+
+      return (
+        isComposingRef.current ||
+        eventWithComposition?.isComposing === true ||
+        eventWithComposition?.keyCode === 229 ||
+        reactEventWithKeyCode?.keyCode === 229
+      );
+    },
+    []
+  );
+
   return {
     isComposing: isComposingRef.current,
+    isComposingEvent,
     handleCompositionStart,
     handleCompositionEnd,
   };

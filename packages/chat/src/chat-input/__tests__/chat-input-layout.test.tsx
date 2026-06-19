@@ -94,6 +94,74 @@ describe("ChatInput layout", () => {
     expect(container.querySelector(".viben-chat-input-editor")).toBeInTheDocument();
   });
 
+  test("expanded input does not send while IME composition is active", async () => {
+    const { ChatInput } = await import("../index");
+    const onSend = vi.fn();
+
+    render(
+      <ChatInput
+        defaultValue="ni"
+        onSend={onSend}
+        layoutVariant="expanded"
+      />
+    );
+
+    const textbox = screen.getByRole("textbox");
+
+    fireEvent.compositionStart(textbox);
+    fireEvent.keyDown(textbox, { key: "Enter", code: "Enter" });
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  test("compact input does not send while IME composition is active", async () => {
+    const { ChatInput } = await import("../index");
+    const onSend = vi.fn();
+
+    render(
+      <ChatInput
+        defaultValue="ni"
+        onSend={onSend}
+        layoutVariant="compact"
+      />
+    );
+
+    const input = screen.getByTestId("compact-chat-input-field");
+
+    fireEvent.compositionStart(input);
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  test("expanded input does not send when Enter carries native IME composition flags", async () => {
+    const { ChatInput } = await import("../index");
+    const onSend = vi.fn();
+
+    render(
+      <ChatInput
+        defaultValue="ni"
+        onSend={onSend}
+        layoutVariant="expanded"
+      />
+    );
+
+    const textbox = screen.getByRole("textbox");
+
+    fireEvent.keyDown(textbox, {
+      key: "Enter",
+      code: "Enter",
+      isComposing: true,
+    });
+    fireEvent.keyDown(textbox, {
+      key: "Enter",
+      code: "Enter",
+      keyCode: 229,
+    });
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
   test("custom toolbar content can be provided directly as ReactNode", async () => {
     const { ChatInput } = await import("../index");
 

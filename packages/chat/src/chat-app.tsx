@@ -376,7 +376,7 @@ export function ChatApp({
     isAnyLoading: isAttachmentLoading,
   } = useAttachments();
 
-  const { isComposing, handleCompositionStart, handleCompositionEnd } = useIMEComposition();
+  const { isComposingEvent, handleCompositionStart, handleCompositionEnd } = useIMEComposition();
 
   const compactActivitySummary = compactSummaryContent ?? t("chat_app.activity.ready", "Ready when you are.");
   const hasCompactDraft = content.trim().length > 0;
@@ -508,14 +508,14 @@ export function ChatApp({
         setIsWritingMode(false);
         return;
       }
-      if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !isComposing) {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !isComposingEvent(event)) {
         event.preventDefault();
         if (canSubmit) {
           handleSubmit();
         }
       }
     },
-    [isComposing, canSubmit, handleSubmit]
+    [isComposingEvent, canSubmit, handleSubmit]
   );
 
   // WritingMode paste handler
