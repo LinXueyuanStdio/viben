@@ -527,6 +527,7 @@ jobs:
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
+            libasound2-dev \
             librsvg2-dev \
             patchelf \
             libxdo-dev \
@@ -547,8 +548,7 @@ jobs:
         if: matrix.platform == 'macos-latest'
         uses: ./.github/actions/codesign-sidecar
 
-      - name: Prepare desktop bundled templates (macOS)
-        if: matrix.platform == 'macos-latest'
+      - name: Prepare desktop bundled templates
         shell: bash
         run: |
           test -d apps/desktop/src-tauri/binaries/templates
