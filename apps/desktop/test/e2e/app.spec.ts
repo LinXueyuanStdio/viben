@@ -1,3 +1,5 @@
+import { isMainDesktopWindowUrl } from "./window-selection";
+
 describe("Viben Desktop App", () => {
   before(async () => {
     // Wait for app to initialize
@@ -8,28 +10,32 @@ describe("Viben Desktop App", () => {
     console.log(`Found ${handles.length} window handle(s)`);
 
     // Find the main window by checking URL (main window loads /index.html)
-    let mainWindowHandle = handles[0];
-    let foundMain = false;
+    let mainWindowHandle: string | undefined;
+    const inspectedWindows: string[] = [];
 
     for (const handle of handles) {
       await browser.switchToWindow(handle);
       const title = await browser.getTitle();
       const url = await browser.getUrl();
+      inspectedWindows.push(`"${title}" ${url}`);
       console.log(`Window: "${title}" URL: ${url}`);
 
-      // Main window loads index.html, tray-popup loads tray-popup.html
-      if (url.includes("index.html") || (!url.includes("tray-popup") && !url.includes("pet-window"))) {
+      // Main window loads index.html. Auxiliary windows have their own entrypoints.
+      if (isMainDesktopWindowUrl(url)) {
         // Double check by looking at content
         const html = await $("body").getHTML();
         if (!html.includes("Server Status") && !html.includes("No MCP Servers")) {
           mainWindowHandle = handle;
-          foundMain = true;
           console.log(`  -> Selected as main window (verified by content)`);
           break;
         } else {
-          console.log(`  -> Has tray-popup content, skipping`);
+          console.log(`  -> Has auxiliary window content, skipping`);
         }
       }
+    }
+
+    if (!mainWindowHandle) {
+      throw new Error(`Could not find main desktop window. Inspected windows: ${inspectedWindows.join(", ")}`);
     }
 
     // Switch to main window
@@ -43,13 +49,6 @@ describe("Viben Desktop App", () => {
     const finalTitle = await browser.getTitle();
     const finalUrl = await browser.getUrl();
     console.log(`Final window: "${finalTitle}" URL: ${finalUrl}`);
-
-    if (!foundMain) {
-      console.warn("Warning: Could not find main window with expected content");
-      // Log the actual content for debugging
-      const html = await $("body").getHTML();
-      console.log("Body content preview:", html.substring(0, 500));
-    }
 
     await browser.pause(2000);
   });

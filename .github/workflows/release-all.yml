@@ -329,7 +329,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: cli-build
-          path: .
+          path: apps/cli
 
       - name: Verify CLI build artifacts
         run: |
