@@ -277,7 +277,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: cli-build
-          path: .
+          path: apps/cli
 
       - name: Make Node.js CLI executable (Unix)
         if: matrix.platform == 'ubuntu-22.04'
