@@ -90,7 +90,7 @@ executor_config:
 
 - 把 Codex notification 转换成 ACP `SessionNotification`。
 - 把 server approval request 转发到 `AcpConnection.requestPermission()`。
-- 把 Codex turn 完成状态转换成 ACP `PromptResponse.stopReason`。
+- 把 Codex turn 完成状态转换成 ACP SDK 支持的 `PromptResponse.stopReason`；失败 turn 走现有 `AcpSessionManager` error path，而不是返回非 ACP 的 `stopReason: "error"`。
 
 ## 数据流
 
@@ -124,7 +124,9 @@ executor_config:
 | `item/started` with `mcpToolCall` | `tool_call` |
 | `item/completed` with `mcpToolCall` | `tool_call_update` |
 | `thread/tokenUsage/updated` | `usage_update` |
-| `turn/completed` | resolve prompt |
+| `turn/completed.status: completed` | resolve prompt with `stopReason: "end_turn"` |
+| `turn/completed.status: interrupted` | resolve prompt with `stopReason: "cancelled"` |
+| `turn/completed.status: failed` | emit `sessionUpdate: "error"` and reject the backend prompt |
 
 未知 item 类型不丢弃，转换为系统文本类 update，方便调试。
 
@@ -166,7 +168,7 @@ ACP text block 映射为 Codex `{ type: "text", text }`。图片和 local image 
 - spawn 失败附带 command、args、cwd、stderr、PATH、安装提示。
 - 初始化超时使用 `init_timeout_ms`。
 - JSON parse 失败记录原始 line，并以 backend error 更新当前 session。
-- Codex `turn/completed.status: failed` 转为 ACP `stopReason: "error"` 并发送 `sessionUpdate: "error"`。
+- Codex `turn/completed.status: failed` 转为 ACP `sessionUpdate: "error"` 并 reject 当前 backend prompt，由 `AcpSessionManager` 统一返回 JSON-RPC error。
 - 子进程异常退出时 reject pending request，并推送错误 update。
 
 ## 测试计划
@@ -177,7 +179,7 @@ ACP text block 映射为 Codex `{ type: "text", text }`。图片和 local image 
 - `thread/start`、`thread/resume`、`turn/start`、`turn/interrupt` 请求参数正确。
 - agent message delta、reasoning delta、plan、tool item、usage、error 的事件映射正确。
 - approval request 能从 Codex decision 往返映射。
-- `turn/completed` resolve 正确 stopReason。
+- `turn/completed` 的 completed/interrupted resolve 正确 stopReason，failed 走 error path。
 
 集成测试：
 

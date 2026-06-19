@@ -31,18 +31,24 @@ The backend selector writes `agent_config.executor_type` into `session/new` and
 - `CLAUDE_CODE` -> official Claude ACP package or `claude-agent-acp`
 - `OPENCLAW` -> `openclaw acp`
 - `OPENCODE` -> `opencode acp`
-- `CODEX` -> `npx @zed-industries/codex-acp`
+- `CODEX` -> Viben starts `codex app-server` and adapts Codex app-server JSON-RPC events to ACP
+- `CODEX_APP_SERVER` -> same Codex app-server adapter explicitly
+- `CODEX_ACP` -> legacy `codex-acp`
 - `GEMINI` -> `npx @google/gemini-cli --acp`
 
 Use the Executor Config JSON field to override the backend command if needed:
 
 ```json
 {
-  "command": "/absolute/path/to/custom-acp-backend",
-  "args": [],
+  "command": "/absolute/path/to/codex-or-acp-backend",
+  "args": ["app-server"],
   "init_timeout_ms": 120000
 }
 ```
+
+For `CODEX` and `CODEX_APP_SERVER`, omit `command` and `args` to use the
+default `codex app-server` stdio transport. Use `CODEX_ACP` only when you
+intentionally want to run a separate ACP-compatible Codex wrapper.
 
 The Request MCP Servers JSON field is sent as ACP `mcpServers`. The inline agent
 config also includes `mcp_servers: ["client_side"]` so backend agents can call the
