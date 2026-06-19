@@ -8,6 +8,8 @@ import {
   getPageDropPosition,
   getStaticSortableTransform,
   PAGE_DROP_INTO_THRESHOLD,
+  PAGE_ROOT_DROP_START_UID,
+  PAGE_ROOT_DROP_TAIL_UID,
   PAGE_TREE_DEPTH_STEP_PX,
 } from "./page-section-dnd";
 
@@ -295,6 +297,134 @@ describe("page section drag and drop planning", () => {
       ],
       targetParentUid: null,
       projectedDepth: 0,
+    });
+  });
+
+  it("moves a page to the root start drop zone", () => {
+    const index: PageIndex = {
+      root: ["a"],
+      a: ["b"],
+    };
+
+    const plan = buildPageDropPlan({
+      index,
+      rootUids: ["a"],
+      visibleRows: [
+        { uid: "a", depth: 0, parentUid: null },
+        { uid: "b", depth: 1, parentUid: "a" },
+      ],
+      activeUid: "b",
+      overUid: PAGE_ROOT_DROP_START_UID,
+      dropPosition: "before",
+      projectedDepth: 0,
+    });
+
+    expect(plan).toEqual({
+      nextIndex: {
+        root: ["b", "a"],
+        a: [],
+      },
+      reorderRequests: [
+        { parentUid: "a", orderedUids: [] },
+        { parentUid: null, orderedUids: ["b", "a"] },
+      ],
+      targetParentUid: null,
+      projectedDepth: 0,
+    });
+  });
+
+  it("moves a page to the root tail drop zone", () => {
+    const index: PageIndex = {
+      root: ["a"],
+      a: ["b"],
+    };
+
+    const plan = buildPageDropPlan({
+      index,
+      rootUids: ["a"],
+      visibleRows: [
+        { uid: "a", depth: 0, parentUid: null },
+        { uid: "b", depth: 1, parentUid: "a" },
+      ],
+      activeUid: "b",
+      overUid: PAGE_ROOT_DROP_TAIL_UID,
+      dropPosition: "after",
+      projectedDepth: 0,
+    });
+
+    expect(plan).toEqual({
+      nextIndex: {
+        root: ["a", "b"],
+        a: [],
+      },
+      reorderRequests: [
+        { parentUid: "a", orderedUids: [] },
+        { parentUid: null, orderedUids: ["a", "b"] },
+      ],
+      targetParentUid: null,
+      projectedDepth: 0,
+    });
+  });
+
+  it("previews the root start drop zone with a root line", () => {
+    const index: PageIndex = {
+      root: ["a"],
+      a: ["b"],
+    };
+
+    const preview = buildPageDropPreview({
+      index,
+      rootUids: ["a"],
+      visibleRows: [
+        { uid: "a", depth: 0, parentUid: null },
+        { uid: "b", depth: 1, parentUid: "a" },
+      ],
+      activeUid: "b",
+      overUid: PAGE_ROOT_DROP_START_UID,
+      dropPosition: "before",
+      projectedDepth: 0,
+    });
+
+    expect(preview).toEqual({
+      uid: PAGE_ROOT_DROP_START_UID,
+      position: "before",
+      changesParent: true,
+      targetParentUid: null,
+      projectedDepth: 0,
+      lineUid: PAGE_ROOT_DROP_START_UID,
+      linePosition: "before",
+      lineDepth: 0,
+    });
+  });
+
+  it("previews the root tail drop zone with a root line", () => {
+    const index: PageIndex = {
+      root: ["a"],
+      a: ["b"],
+    };
+
+    const preview = buildPageDropPreview({
+      index,
+      rootUids: ["a"],
+      visibleRows: [
+        { uid: "a", depth: 0, parentUid: null },
+        { uid: "b", depth: 1, parentUid: "a" },
+      ],
+      activeUid: "b",
+      overUid: PAGE_ROOT_DROP_TAIL_UID,
+      dropPosition: "after",
+      projectedDepth: 0,
+    });
+
+    expect(preview).toEqual({
+      uid: PAGE_ROOT_DROP_TAIL_UID,
+      position: "after",
+      changesParent: true,
+      targetParentUid: null,
+      projectedDepth: 0,
+      lineUid: PAGE_ROOT_DROP_TAIL_UID,
+      linePosition: "after",
+      lineDepth: 0,
     });
   });
 

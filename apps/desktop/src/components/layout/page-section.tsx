@@ -28,6 +28,7 @@ import {
   DndContext,
   pointerWithin,
   PointerSensor,
+  useDroppable,
   useSensor,
   useSensors,
   DragOverlay,
@@ -95,6 +96,8 @@ import {
   getStaticSortableTransform,
   getPageProjectedDepth,
   getPageDropPosition,
+  PAGE_ROOT_DROP_START_UID,
+  PAGE_ROOT_DROP_TAIL_UID,
   PAGE_TREE_DEPTH_STEP_PX,
   type PageDropPreview,
   type PageVisibleRow,
@@ -565,6 +568,47 @@ function PageTreeItem(props: PageTreeItemProps) {
   );
 }
 
+function RootDropZone({
+  id,
+  placement,
+  dropPreview,
+}: {
+  id: typeof PAGE_ROOT_DROP_START_UID | typeof PAGE_ROOT_DROP_TAIL_UID;
+  placement: "start" | "tail";
+  dropPreview?: PageDropPreview | null;
+}) {
+  const { setNodeRef } = useDroppable({ id });
+  const isRootTarget = dropPreview?.lineUid === id;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "relative rounded-md transition-colors duration-150",
+        placement === "start" ? "h-1" : "h-2",
+        isRootTarget && "bg-primary/5"
+      )}
+    >
+      {isRootTarget && dropPreview?.linePosition && (
+        <span
+          className={cn(
+            "pointer-events-none absolute left-2 right-2 h-0.5 rounded-full shadow-[0_0_0_1px_color-mix(in_oklch,var(--background)_70%,transparent)]",
+            placement === "start" ? "top-0" : "top-1",
+            dropPreview.isInvalid ? "bg-destructive" : "bg-primary"
+          )}
+        >
+          <span
+            className={cn(
+              "absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-full",
+              dropPreview.isInvalid ? "bg-destructive" : "bg-primary"
+            )}
+          />
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
  * Drag overlay content shown while dragging.
  * Renders a simplified version of the page item.
@@ -732,19 +776,30 @@ export function PageSection({
       return;
     }
 
-    const dropPosition = getPageDropPosition(coordinates.y + delta.y, over.rect);
+    const overId = over.id as string;
+    const isRootStartDrop = overId === PAGE_ROOT_DROP_START_UID;
+    const isRootTailDrop = overId === PAGE_ROOT_DROP_TAIL_UID;
+    const isRootDrop = isRootStartDrop || isRootTailDrop;
+    const dropPosition = isRootStartDrop
+      ? "before"
+      : isRootTailDrop
+        ? "after"
+      : getPageDropPosition(coordinates.y + delta.y, over.rect);
     const preview = buildPageDropPreview({
       index: effectiveIndex,
       activeUid: active.id as string,
-      overUid: over.id as string,
+      overUid: overId,
       dropPosition,
+      rootUids,
       visibleRows,
       projectedDepth: dropPosition === "inside"
         ? undefined
-        : getPageProjectedDepth(activeRow.depth, delta.x),
+        : isRootDrop
+          ? 0
+          : getPageProjectedDepth(activeRow.depth, delta.x),
     });
     setDropPreview(preview);
-  }, [effectiveIndex, visibleRows]);
+  }, [effectiveIndex, rootUids, visibleRows]);
 
   // Handle drag end
   const handleDragEnd = useCallback(
@@ -763,7 +818,14 @@ export function PageSection({
       const activeRow = visibleRows.find((row) => row.uid === activeId);
       if (!activeRow) return;
 
-      const dropPosition = getPageDropPosition(coordinates.y + delta.y, over.rect);
+      const isRootStartDrop = overId === PAGE_ROOT_DROP_START_UID;
+      const isRootTailDrop = overId === PAGE_ROOT_DROP_TAIL_UID;
+      const isRootDrop = isRootStartDrop || isRootTailDrop;
+      const dropPosition = isRootStartDrop
+        ? "before"
+        : isRootTailDrop
+          ? "after"
+        : getPageDropPosition(coordinates.y + delta.y, over.rect);
       const plan = buildPageDropPlan({
         index: effectiveIndex,
         activeUid: activeId,
@@ -773,7 +835,9 @@ export function PageSection({
         visibleRows,
         projectedDepth: dropPosition === "inside"
           ? undefined
-          : getPageProjectedDepth(activeRow.depth, delta.x),
+          : isRootDrop
+            ? 0
+            : getPageProjectedDepth(activeRow.depth, delta.x),
       });
       if (!plan) return;
 
@@ -1032,17 +1096,26 @@ export function PageSection({
         headerAction={headerAction}
       >
         {pageTree.length === 0 ? (
-          <div className="px-2 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-              onClick={handleCreatePage}
-            >
-              <Plus className="h-4 w-4" />
-              {t("page.createPage")}
-            </Button>
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pointerWithin}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="px-2 py-2">
+              <RootDropZone id={PAGE_ROOT_DROP_TAIL_UID} placement="tail" dropPreview={dropPreview} />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+                onClick={handleCreatePage}
+              >
+                <Plus className="h-4 w-4" />
+                {t("page.createPage")}
+              </Button>
+            </div>
+          </DndContext>
         ) : (
           <DndContext
             sensors={sensors}
@@ -1061,6 +1134,7 @@ export function PageSection({
                     "bg-primary/5 shadow-[inset_2px_0_0_var(--primary)]"
                 )}
               >
+                <RootDropZone id={PAGE_ROOT_DROP_START_UID} placement="start" dropPreview={dropPreview} />
                 {pageTree.map((node) => (
                   <PageTreeItem
                     key={node.page.uid}
@@ -1083,6 +1157,7 @@ export function PageSection({
                     dropPreview={dropPreview}
                   />
                 ))}
+                <RootDropZone id={PAGE_ROOT_DROP_TAIL_UID} placement="tail" dropPreview={dropPreview} />
               </nav>
             </SortableContext>
             <DragOverlay dropAnimation={null}>

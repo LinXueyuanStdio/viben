@@ -7,6 +7,8 @@ import type { PageIndex } from "@/lib/gateway/types/page";
 export const PAGE_DROP_INTO_THRESHOLD = 0.25;
 export const PAGE_TREE_DEPTH_STEP_PX = 16;
 export const PAGE_TREE_DEPTH_CHANGE_THRESHOLD_PX = 24;
+export const PAGE_ROOT_DROP_START_UID = "__root_start__";
+export const PAGE_ROOT_DROP_TAIL_UID = "__root_tail__";
 
 export type PageDropPosition = "before" | "inside" | "after";
 
@@ -55,6 +57,7 @@ interface BuildPageDropPreviewOptions {
   activeUid: string;
   overUid: string;
   dropPosition: PageDropPosition;
+  rootUids?: string[];
   visibleRows?: PageVisibleRow[];
   projectedDepth?: number;
 }
@@ -73,7 +76,13 @@ function parentKeyToUid(parentKey: string): string | null {
   return parentKey === "root" ? null : parentKey;
 }
 
+function isRootDropUid(uid: string): boolean {
+  return uid === PAGE_ROOT_DROP_START_UID || uid === PAGE_ROOT_DROP_TAIL_UID;
+}
+
 function findParentKey(index: PageIndex, uid: string): string {
+  if (isRootDropUid(uid)) return "root";
+
   for (const [parentKey, children] of Object.entries(index)) {
     if (children.includes(uid)) {
       return parentKey;
@@ -152,7 +161,12 @@ function getSlotAnchorRow(
   dropPosition: Exclude<PageDropPosition, "inside">
 ): PageVisibleRow | undefined {
   if (dropPosition === "before") {
+    if (overUid === PAGE_ROOT_DROP_START_UID) return undefined;
     return previousVisibleRow(rows, overUid);
+  }
+
+  if (overUid === PAGE_ROOT_DROP_TAIL_UID) {
+    return rows[rows.length - 1];
   }
 
   return activeUid === overUid ? previousVisibleRow(rows, overUid) : findRow(rows, overUid);
@@ -212,6 +226,7 @@ export function buildPageDropPreview({
   activeUid,
   overUid,
   dropPosition,
+  rootUids,
   visibleRows,
   projectedDepth,
 }: BuildPageDropPreviewOptions): PageDropPreview | null {
@@ -242,8 +257,8 @@ export function buildPageDropPreview({
   }
 
   const activeParentKey = findParentKey(index, activeUid);
-  const rootUids = index.root ?? [];
-  if (isDescendant(index, activeUid, overUid)) {
+  const rootChildren = rootUids ?? index.root ?? [];
+  if (!isRootDropUid(overUid) && isDescendant(index, activeUid, overUid)) {
     return {
       uid: overUid,
       position: dropPosition,
@@ -253,7 +268,7 @@ export function buildPageDropPreview({
 
   const projectedDrop = resolveProjectedDrop(
     index,
-    rootUids,
+    rootChildren,
     visibleRows,
     activeUid,
     overUid,
@@ -272,7 +287,7 @@ export function buildPageDropPreview({
     };
   }
 
-  if (activeUid === overUid && activeParentKey === projectedDrop.parentKey) return null;
+  if (!isRootDropUid(overUid) && activeUid === overUid && activeParentKey === projectedDrop.parentKey) return null;
 
   return {
     uid: overUid,
@@ -404,7 +419,7 @@ export function buildPageDropPlan({
     };
   }
 
-  if (isDescendant(index, activeUid, overUid)) return null;
+  if (!isRootDropUid(overUid) && isDescendant(index, activeUid, overUid)) return null;
 
   const sourceSiblings = activeParentKey === "root" ? rootChildren : index[activeParentKey] ?? [];
   const projectedDrop = resolveProjectedDrop(
@@ -433,6 +448,14 @@ export function buildPageDropPlan({
     : targetSiblings.filter((uid) => uid !== activeUid);
   const overIndex = withoutActive.indexOf(overUid);
   const insertIndex = (() => {
+    if (overUid === PAGE_ROOT_DROP_START_UID && targetParentKey === "root") {
+      return 0;
+    }
+
+    if (overUid === PAGE_ROOT_DROP_TAIL_UID && targetParentKey === "root") {
+      return withoutActive.length;
+    }
+
     if (overIndex !== -1) {
       return dropPosition === "before" ? overIndex : overIndex + 1;
     }
