@@ -13,9 +13,6 @@ export default defineConfig({
   outDir: 'dist',
   // Bundle workspace packages (@viben/*) since they are not published to npm separately.
   // All other dependencies listed in package.json are auto-externalized by tsup.
-  // banner: {
-  //   js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
-  // },
   noExternal: ['@viben/core', '@viben/api-client'],
   // Keep cli-progress external to avoid "Dynamic require of readline is not supported"
   // when bundling this CJS package into an ESM output.
@@ -26,4 +23,12 @@ export default defineConfig({
   // Mark Node.js built-in modules as external
   // All packages in dependencies are auto-externalized by tsup
   platform: 'node',
+  esbuildOptions(options, context) {
+    if (context.format === 'esm') {
+      options.banner = {
+        ...options.banner,
+        js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
+      };
+    }
+  },
 });
