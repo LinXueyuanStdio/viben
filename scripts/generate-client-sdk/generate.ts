@@ -12,7 +12,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { writeFile, mkdir, readFile } from "node:fs/promises";
+import { writeFile, mkdir, readFile, rm } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -107,9 +107,39 @@ generate:
   await writeFile(join(outputDir, "gen.yaml"), config, "utf-8");
 }
 
+async function cleanGeneratedOutput(target: "python" | "typescript", outputDir: string): Promise<void> {
+  const commonEntries = [".speakeasy", "docs", "dist", "README.md", "gen.yaml"];
+  const targetEntries =
+    target === "typescript"
+      ? [
+          ...commonEntries,
+          ".tshy-build",
+          "package.json",
+          "package-lock.json",
+          "src",
+          "tsconfig.json",
+        ]
+      : [
+          ...commonEntries,
+          "build",
+          "pyproject.toml",
+          "requirements.txt",
+          "setup.cfg",
+          "setup.py",
+          "src",
+          "tox.ini",
+          "viben_client",
+        ];
+
+  await mkdir(outputDir, { recursive: true });
+  await Promise.all(
+    targetEntries.map((entry) => rm(join(outputDir, entry), { force: true, recursive: true })),
+  );
+}
+
 async function runSpeakeasy(target: "python" | "typescript"): Promise<void> {
   const outputDir = join(OUTPUT_DIR, target);
-  await mkdir(outputDir, { recursive: true });
+  await cleanGeneratedOutput(target, outputDir);
   await writeGenYaml(target, outputDir);
 
   console.log(`\n[generate-client-sdk] Generating ${target} SDK...`);

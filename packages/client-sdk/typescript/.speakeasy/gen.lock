@@ -1,16 +1,16 @@
 lockVersion: 2.0.0
-id: b74069eb-ebeb-4385-91d1-6217dbff8346
+id: 8879c6a6-6eae-4de0-b8f4-ef76550546b6
 management:
   docChecksum: 7e126f120c4c2822c7f12547d3bdac45
   docVersion: 1.0.0
-  speakeasyVersion: 1.778.0
-  generationVersion: 2.904.2
+  speakeasyVersion: 1.784.0
+  generationVersion: 2.911.0
   releaseVersion: 0.2.0
   configChecksum: 2112938d532747ac842c94d9e4ea0706
 persistentEdits:
-  generation_id: ff9c61cb-3a0d-4b4b-8d3c-f7a42ce3bb25
-  pristine_commit_hash: 95e5fc635dfb8360886ad92e84363c3e02182359
-  pristine_tree_hash: 39a7b5faa002a1fa584f4120d32bb563a99b5cea
+  generation_id: b5cd27db-b8e9-4bfe-8150-a58a6d1cb555
+  pristine_commit_hash: f29b289d3dc70cf314380e112d742595dc23a18e
+  pristine_tree_hash: 93e39d445fe788c08170d7e322e369d291ecbb82
 features:
   typescript:
     acceptHeaders: 2.81.2
@@ -26,7 +26,7 @@ features:
     methodArguments: 0.1.2
     nullables: 0.1.1
     responseFormat: 0.3.0
-    retries: 2.83.0
+    retries: 2.83.1
     sdkHooks: 0.4.0
 trackedFiles:
   .gitattributes:
@@ -5359,8 +5359,8 @@ trackedFiles:
     pristine_git_object: 0aebd8b0a4867e35cb3348fc52921c3c0b4725b7
   src/lib/config.ts:
     id: 320761608fb3
-    last_write_checksum: sha1:3934adebbf2960d8adabb202b0c8303261118336
-    pristine_git_object: 015825de5cf12cb678f53b7fb8c8f39e541a4ab6
+    last_write_checksum: sha1:d18bcb26866397590e7a60b2b34e871fe419afe2
+    pristine_git_object: c9c32d5d94deeb7904b746c74ba0e9d3c272ca43
   src/lib/encodings.ts:
     id: 3bd8ead98afd
     last_write_checksum: sha1:50d9b187dcfc3cca8d3bbd9fe074f865d715d2b0
@@ -5387,8 +5387,8 @@ trackedFiles:
     pristine_git_object: 8ce65db0f7c0d6b68f5edc3ebf518121e284e954
   src/lib/retries.ts:
     id: b24a69d15639
-    last_write_checksum: sha1:f3da74dffcbe2756c69393f8600205aa1dc06e68
-    pristine_git_object: e3ce9aba72150fc3c18f3105d39b21aba809377b
+    last_write_checksum: sha1:42c8f6cc4c875be236230a8c760f4f32d8c1ab68
+    pristine_git_object: 21a647e1e9ae64817fcd63b5dd6bb5a51b63d225
   src/lib/schemas.ts:
     id: deb4b531fae1
     last_write_checksum: sha1:b8517a14d3043f488f44e3b10ddd6cabdd22242f
