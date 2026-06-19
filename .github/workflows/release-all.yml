@@ -269,8 +269,6 @@ jobs:
       - name: Setup Node.js + pnpm (for integration tests)
         if: matrix.platform == 'ubuntu-22.04'
         uses: ./.github/actions/setup-node-pnpm
-        with:
-          install: 'false'
 
       - name: Download CLI build artifact
         if: matrix.platform == 'ubuntu-22.04'
