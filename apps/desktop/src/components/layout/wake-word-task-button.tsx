@@ -11,6 +11,7 @@ import { useVoiceStore } from "@/stores/voice-store";
 import { useWakeWord } from "@/hooks/use-wake-word";
 import { useTranslation } from "react-i18next";
 import { useUiStore } from "@/stores/ui-store";
+import { handleWakeWordDetected } from "@/lib/voice/wake-word-actions";
 
 interface WakeWordTaskButtonProps {
   collapsed: boolean;
@@ -30,10 +31,9 @@ export function WakeWordTaskButton({
     toggleChatPopup();
   }, [toggleChatPopup]);
 
-  const wakeWord = useWakeWord(
-    () => {},
-    { threshold: config.wakeWordThreshold },
-  );
+  const wakeWord = useWakeWord(handleWakeWordDetected, {
+    threshold: config.wakeWordThreshold,
+  });
 
   const isActive = wakeWord.state === "listening" || wakeWord.state === "detected";
   const isLoading = wakeWord.state === "loading";

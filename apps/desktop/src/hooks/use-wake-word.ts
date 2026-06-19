@@ -31,6 +31,19 @@ interface UseWakeWordReturn {
 
 let listenerRegistered = false;
 let detectionCount = 0;
+const detectionCallbacks = new Set<DetectionCallback>();
+let unlistenDetectedPromise: Promise<() => void> | null = null;
+let unlistenScorePromise: Promise<() => void> | null = null;
+
+function cleanupGlobalListeners() {
+  if (detectionCallbacks.size > 0) return;
+
+  listenerRegistered = false;
+  unlistenDetectedPromise?.then((fn) => fn());
+  unlistenScorePromise?.then((fn) => fn());
+  unlistenDetectedPromise = null;
+  unlistenScorePromise = null;
+}
 
 export function useWakeWord(
   onDetected: DetectionCallback,
@@ -44,10 +57,20 @@ export function useWakeWord(
   onDetectedRef.current = onDetected;
 
   useEffect(() => {
-    if (listenerRegistered) return;
+    const detectionCallback: DetectionCallback = (detection) => {
+      onDetectedRef.current(detection);
+    };
+    detectionCallbacks.add(detectionCallback);
+
+    if (listenerRegistered) {
+      return () => {
+        detectionCallbacks.delete(detectionCallback);
+        cleanupGlobalListeners();
+      };
+    }
     listenerRegistered = true;
 
-    const unlistenDetected = listen<WakeWordDetectionEvent>("wakeword-detected", (event) => {
+    unlistenDetectedPromise = listen<WakeWordDetectionEvent>("wakeword-detected", (event) => {
       const { keyword, score } = event.payload;
       detectionCount++;
       const ts = new Date().toLocaleTimeString();
@@ -58,11 +81,13 @@ export function useWakeWord(
 
       const { setWakeWordState: setState } = useVoiceStore.getState().actions;
       setState("detected");
-      onDetectedRef.current(event.payload);
+      for (const callback of detectionCallbacks) {
+        callback(event.payload);
+      }
       setTimeout(() => setState("listening"), 1000);
     });
 
-    const unlistenScore = listen<WakeWordScoreEvent>("wakeword-score", (event) => {
+    unlistenScorePromise = listen<WakeWordScoreEvent>("wakeword-score", (event) => {
       const { keyword, score, threshold: th, above_threshold } = event.payload;
       if (above_threshold) return;
       if (score > 0.1) {
@@ -75,9 +100,8 @@ export function useWakeWord(
     });
 
     return () => {
-      listenerRegistered = false;
-      unlistenDetected.then((fn) => fn());
-      unlistenScore.then((fn) => fn());
+      detectionCallbacks.delete(detectionCallback);
+      cleanupGlobalListeners();
     };
   }, []);
 

@@ -10,6 +10,7 @@ import { useVoiceStore } from "@/stores/voice-store";
 import { useWakeWord } from "@/hooks/use-wake-word";
 import { useTranslation } from "react-i18next";
 import { useUiStore } from "@/stores/ui-store";
+import { handleWakeWordDetected } from "@/lib/voice/wake-word-actions";
 
 interface WakeWordSegmentProps {
   isMacOS?: boolean;
@@ -22,10 +23,9 @@ export function WakeWordSegment({ isMacOS = false }: WakeWordSegmentProps) {
   const isChatPopupOpen = useUiStore((s) => s.isChatPopupOpen);
   const [error, setError] = useState<string | null>(null);
 
-  const wakeWord = useWakeWord(
-    () => {},
-    { threshold: config.wakeWordThreshold },
-  );
+  const wakeWord = useWakeWord(handleWakeWordDetected, {
+    threshold: config.wakeWordThreshold,
+  });
 
   const isActive = wakeWord.state === "listening" || wakeWord.state === "detected";
   const isLoading = wakeWord.state === "loading";
