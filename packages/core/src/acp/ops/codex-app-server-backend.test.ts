@@ -93,7 +93,7 @@ describe("CodexAppServerBackendAdapter", () => {
         cwd: "/tmp/project",
         serviceName: "viben",
         approvalPolicy: "never",
-        sandbox: "workspaceWrite",
+        sandbox: "workspace-write",
       },
     });
     respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
@@ -213,7 +213,7 @@ describe("CodexAppServerBackendAdapter", () => {
       params: {
         threadId: "thr-1",
         input: [{ type: "text", text: "hello" }],
-        sandboxPolicy: sandboxPolicy,
+        sandboxPolicy: { type: "workspace-write", networkAccess: false },
       },
     });
     respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
@@ -260,7 +260,7 @@ describe("CodexAppServerBackendAdapter", () => {
     expect(proc.writes.find((message) => message.method === "thread/start")).toMatchObject({
       method: "thread/start",
       params: {
-        sandbox: "workspaceWrite",
+        sandbox: "workspace-write",
       },
     });
     respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
@@ -274,7 +274,7 @@ describe("CodexAppServerBackendAdapter", () => {
     expect(proc.writes.find((message) => message.method === "turn/start")).toMatchObject({
       method: "turn/start",
       params: {
-        sandboxPolicy: { type: "workspaceWrite" },
+        sandboxPolicy: { type: "workspace-write" },
       },
     });
     respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });

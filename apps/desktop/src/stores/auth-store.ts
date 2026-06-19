@@ -52,7 +52,7 @@ interface AuthState {
    * Initiate GitHub OAuth flow
    * Returns the OAuth URL (caller should open in browser)
    */
-  getGitHubOAuthUrl: () => string;
+  getGitHubOAuthUrl: (redirectUri?: string) => string;
 
   /**
    * Handle OAuth callback with authorization code
@@ -163,10 +163,10 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      getGitHubOAuthUrl: () => {
+      getGitHubOAuthUrl: (redirectUri = "viben://oauth") => {
         const client = getApiClient();
         return client.auth.getOAuthUrl("github", {
-          redirectUri: "viben://oauth",
+          redirectUri,
           client: "desktop",
         });
       },

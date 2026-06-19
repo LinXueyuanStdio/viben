@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
@@ -8,6 +9,12 @@ import { toast } from "@/hooks/use-toast";
 
 // Global OAuth listener state - prevents multiple listeners from being registered
 let oauthListenerInitialized = false;
+
+interface OAuthCallbackServerInfo {
+  redirectUri: string;
+  port: number;
+  expiresInMs: number;
+}
 
 /**
  * Decode base64url string to UTF-8 text
@@ -34,20 +41,42 @@ function decodeBase64Url(base64url: string): string {
  * This ensures only one listener handles OAuth callbacks across all components
  */
 function initializeOAuthListeners() {
-  if (oauthListenerInitialized) return;
+  if (oauthListenerInitialized) {
+    console.info("[Auth][OAuth] listeners already initialized");
+    return;
+  }
   oauthListenerInitialized = true;
+  console.info("[Auth][OAuth] initializing listeners");
 
   // Register OAuth callback listener (lives for app lifetime)
   listen<string>("oauth-callback", async (event) => {
     const sessionBase64 = event.payload;
+    console.info("[Auth][OAuth] received oauth-callback", {
+      payloadLength: sessionBase64?.length ?? 0,
+    });
     if (sessionBase64) {
       try {
         // Decode base64url to JSON (properly handles UTF-8)
         const sessionJson = decodeBase64Url(sessionBase64);
+        console.info("[Auth][OAuth] decoded callback payload", {
+          jsonLength: sessionJson.length,
+        });
         const sessionData = JSON.parse(sessionJson);
+        console.info("[Auth][OAuth] parsed callback session", {
+          hasUser: Boolean(sessionData?.user),
+          userId: sessionData?.user?.id,
+          username: sessionData?.user?.username,
+          hasAccessToken: Boolean(sessionData?.accessToken),
+          hasRefreshToken: Boolean(sessionData?.refreshToken),
+          expiresAt: sessionData?.expiresAt,
+        });
 
         // Set session directly from decoded data
         await useAuthStore.getState().setSessionFromOAuth(sessionData);
+        console.info("[Auth][OAuth] session stored", {
+          isAuthenticated: useAuthStore.getState().isAuthenticated,
+          isLoading: useAuthStore.getState().isLoading,
+        });
 
         // Show success toast
         const { user } = useAuthStore.getState();
@@ -56,22 +85,32 @@ function initializeOAuthListeners() {
         });
       } catch (err) {
         console.error("OAuth callback failed:", err);
+        useAuthStore.getState().setLoading(false);
         toast.error(i18n.t("toast.auth.loginFailed"), {
           description: err instanceof Error ? err.message : i18n.t("toast.auth.oauthFailed"),
         });
       }
+    } else {
+      console.warn("[Auth][OAuth] oauth-callback event had empty payload");
+      useAuthStore.getState().setLoading(false);
     }
-  });
+  }).then(
+    () => console.info("[Auth][OAuth] oauth-callback listener registered"),
+    (error) => console.error("[Auth][OAuth] failed to register oauth-callback listener", error)
+  );
 
   // Register OAuth error listener (lives for app lifetime)
   listen<string>("oauth-error", async (event) => {
     const error = event.payload;
-    console.error("OAuth error:", error);
+    console.error("[Auth][OAuth] received oauth-error:", error);
     useAuthStore.getState().setLoading(false);
     toast.error(i18n.t("toast.auth.loginFailed"), {
       description: `OAuth: ${error}`,
     });
-  });
+  }).then(
+    () => console.info("[Auth][OAuth] oauth-error listener registered"),
+    (error) => console.error("[Auth][OAuth] failed to register oauth-error listener", error)
+  );
 }
 
 /**
@@ -177,7 +216,22 @@ export function useAuth() {
     store.clearError();
 
     try {
-      const url = store.getGitHubOAuthUrl();
+      let redirectUri = "viben://oauth";
+      try {
+        const callbackServer = await invoke<OAuthCallbackServerInfo>("start_oauth_callback_server");
+        redirectUri = callbackServer.redirectUri;
+        console.info("[Auth][OAuth] local callback server ready", {
+          port: callbackServer.port,
+          expiresInMs: callbackServer.expiresInMs,
+        });
+      } catch (error) {
+        console.warn("[Auth][OAuth] local callback server unavailable, using deep link fallback", error);
+      }
+
+      const url = store.getGitHubOAuthUrl(redirectUri);
+      console.info("[Auth][OAuth] opening provider authorization URL", {
+        callbackType: redirectUri.startsWith("http://127.0.0.1:") ? "local" : "deep-link",
+      });
       await openUrl(url);
       toast.info(t("toast.auth.openingBrowser"), {
         description: t("toast.auth.completeGitHubAuth"),

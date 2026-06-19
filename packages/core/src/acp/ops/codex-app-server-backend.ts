@@ -297,7 +297,7 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
   if (approvalPolicy) base.approvalPolicy = approvalPolicy;
   const personality = readString(config.personality);
   if (personality) base.personality = personality;
-  const sandbox = readString(config.sandbox) ?? sessionSandbox(context);
+  const sandbox = normalizeCodexSandbox(readString(config.sandbox) ?? sessionSandbox(context));
   if (sandbox) base.sandbox = sandbox;
   const settings = agentSettings(context.agentConfig);
   if (Object.keys(settings).length > 0) base.settings = settings;
@@ -324,7 +324,7 @@ function buildTurnStartParams(context: AcpBackendStartContext): Record<string, u
   }
   const sandboxPolicy = asRecord(config.sandbox_policy);
   if (Object.keys(sandboxPolicy).length > 0) {
-    params.sandboxPolicy = sandboxPolicy;
+    params.sandboxPolicy = normalizeCodexSandboxPolicy(sandboxPolicy);
   } else if (context.sandboxConfig) {
     params.sandboxPolicy = sessionSandboxPolicy(context);
   }
@@ -355,13 +355,34 @@ function codexApprovalPolicy(agentConfig: AgentConfigPayload | undefined): strin
 
 function sessionSandbox(context: AcpBackendStartContext): string | undefined {
   if (!context.sandboxConfig) return undefined;
-  return context.sandboxConfig.enabled ? "workspaceWrite" : "readOnly";
+  return context.sandboxConfig.enabled ? "workspace-write" : "read-only";
 }
 
 function sessionSandboxPolicy(context: AcpBackendStartContext): Record<string, unknown> {
   return context.sandboxConfig?.enabled
-    ? { type: "workspaceWrite" }
-    : { type: "readOnly" };
+    ? { type: "workspace-write" }
+    : { type: "read-only" };
+}
+
+function normalizeCodexSandbox(value: string | undefined): string | undefined {
+  switch (value) {
+    case "readOnly":
+    case "read_only":
+      return "read-only";
+    case "workspaceWrite":
+    case "workspace_write":
+      return "workspace-write";
+    case "dangerFullAccess":
+    case "danger_full_access":
+      return "danger-full-access";
+    default:
+      return value;
+  }
+}
+
+function normalizeCodexSandboxPolicy(policy: Record<string, unknown>): Record<string, unknown> {
+  const type = normalizeCodexSandbox(readString(policy.type));
+  return type ? { ...policy, type } : policy;
 }
 
 function agentSettings(agentConfig: AgentConfigPayload | undefined): Record<string, unknown> {

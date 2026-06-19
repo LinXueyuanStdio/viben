@@ -20,6 +20,122 @@ use tauri::{
 #[cfg(desktop)]
 use tauri_plugin_deep_link::DeepLinkExt;
 
+#[cfg(desktop)]
+#[derive(Debug, PartialEq, Eq)]
+enum DesktopLinkEvent {
+    OAuthCallback(String),
+    OAuthError(String),
+    DesktopDeepLink(String),
+}
+
+#[cfg(desktop)]
+fn describe_desktop_link_event(event: &DesktopLinkEvent) -> String {
+    match event {
+        DesktopLinkEvent::OAuthCallback(session_b64) => {
+            format!("oauth-callback session_len={}", session_b64.len())
+        }
+        DesktopLinkEvent::OAuthError(error) => {
+            format!("oauth-error error_len={} error={}", error.len(), error)
+        }
+        DesktopLinkEvent::DesktopDeepLink(url) => {
+            format!("desktop-deep-link url={}", url)
+        }
+    }
+}
+
+#[cfg(desktop)]
+fn query_keys(url: &tauri::Url) -> Vec<String> {
+    url.query_pairs().map(|(key, _)| key.to_string()).collect()
+}
+
+#[cfg(desktop)]
+fn desktop_link_event_from_url(source: &str, url: &tauri::Url) -> Option<DesktopLinkEvent> {
+    eprintln!(
+        "[DesktopLink] source={} url={} scheme={} host={:?} query_keys={:?}",
+        source,
+        url,
+        url.scheme(),
+        url.host_str(),
+        query_keys(url)
+    );
+
+    if url.scheme() != "viben" {
+        eprintln!(
+            "[DesktopLink] source={} ignored non-viben scheme: {}",
+            source,
+            url.scheme()
+        );
+        return None;
+    }
+
+    let is_oauth = url.host_str() == Some("oauth") || url.path() == "/oauth";
+    if is_oauth {
+        if let Some(error) = url
+            .query_pairs()
+            .find(|(key, _)| key == "error")
+            .map(|(_, value)| value.to_string())
+        {
+            let event = DesktopLinkEvent::OAuthError(error);
+            eprintln!(
+                "[DesktopLink] source={} parsed {}",
+                source,
+                describe_desktop_link_event(&event)
+            );
+            return Some(event);
+        }
+
+        let event = url
+            .query_pairs()
+            .find(|(key, _)| key == "session")
+            .map(|(_, value)| DesktopLinkEvent::OAuthCallback(value.to_string()));
+        match &event {
+            Some(event) => eprintln!(
+                "[DesktopLink] source={} parsed {}",
+                source,
+                describe_desktop_link_event(event)
+            ),
+            None => eprintln!(
+                "[DesktopLink] source={} oauth URL missing session/error",
+                source
+            ),
+        }
+        return event;
+    }
+
+    let event = DesktopLinkEvent::DesktopDeepLink(url.to_string());
+    eprintln!(
+        "[DesktopLink] source={} parsed {}",
+        source,
+        describe_desktop_link_event(&event)
+    );
+    Some(event)
+}
+
+#[cfg(desktop)]
+fn desktop_link_events_from_args(argv: &[String]) -> Vec<DesktopLinkEvent> {
+    eprintln!("[DesktopLink] single-instance argv_count={}", argv.len());
+    argv.iter()
+        .enumerate()
+        .filter_map(|(index, arg)| match tauri::Url::parse(arg) {
+            Ok(url) => Some((index, url)),
+            Err(error) => {
+                if arg.contains("viben://") {
+                    eprintln!(
+                        "[DesktopLink] single-instance arg_index={} failed to parse possible deep link: {}",
+                        index,
+                        error
+                    );
+                }
+                None
+            }
+        })
+        .filter_map(|(index, url)| {
+            let source = format!("single-instance argv[{}]", index);
+            desktop_link_event_from_url(&source, &url)
+        })
+        .collect()
+}
+
 #[cfg(target_os = "macos")]
 #[allow(deprecated)]
 use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
@@ -133,6 +249,9 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // Log for debugging - deep link URLs arrive here on subsequent launches
             eprintln!("[SingleInstance] New instance opened with args: {:?}", argv);
+            for event in desktop_link_events_from_args(&argv) {
+                emit_desktop_link_event(app, event);
+            }
             // Focus the main window when a new instance is attempted
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -201,6 +320,8 @@ pub fn run() {
                 commands::gateway::get_bundled_viben_path,
                 commands::gateway::start_gateway_with_path,
                 commands::gateway::restart_gateway_with_path,
+                // OAuth commands (local callback bridge for desktop login)
+                commands::oauth::start_oauth_callback_server,
                 // CLI installer commands (CLI installation and version management)
                 commands::cli_installer::check_bundled_cli,
                 commands::cli_installer::check_viben_cli,
@@ -294,48 +415,11 @@ pub fn run() {
                 let app_handle = app.handle().clone();
                 app.deep_link().on_open_url(move |event| {
                     let urls = event.urls();
-                    for url in urls {
-                        if url.scheme() != "viben" {
-                            continue;
-                        }
-
-                        if url.host_str() == Some("oauth") {
-                            // Check for error first
-                            if let Some(error) = url.query_pairs().find(|(k, _)| k == "error").map(|(_, v)| v.to_string()) {
-                                // Emit error event to frontend
-                                let _ = app_handle.emit("oauth-error", error);
-
-                                // Focus main window
-                                if let Some(window) = app_handle.get_webview_window("main") {
-                                    let _ = window.unminimize();
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                }
-                                continue;
-                            }
-
-                            // Extract session from query parameters (base64url encoded JSON)
-                            if let Some(session_b64) = url.query_pairs().find(|(k, _)| k == "session").map(|(_, v)| v.to_string()) {
-                                // Emit event to frontend with the session data
-                                let _ = app_handle.emit("oauth-callback", session_b64);
-
-                                // Focus main window
-                                if let Some(window) = app_handle.get_webview_window("main") {
-                                    let _ = window.unminimize();
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                }
-                            }
-
-                            continue;
-                        }
-
-                        let _ = app_handle.emit("desktop-deep-link", url.to_string());
-
-                        if let Some(window) = app_handle.get_webview_window("main") {
-                            let _ = window.unminimize();
-                            let _ = window.show();
-                            let _ = window.set_focus();
+                    eprintln!("[DesktopLink] deep-link on_open_url count={}", urls.len());
+                    for (index, url) in urls.into_iter().enumerate() {
+                        let source = format!("deep-link[{}]", index);
+                        if let Some(link_event) = desktop_link_event_from_url(&source, &url) {
+                            emit_desktop_link_event(&app_handle, link_event);
                         }
                     }
                 });
@@ -345,4 +429,79 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(desktop)]
+fn emit_desktop_link_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: DesktopLinkEvent) {
+    eprintln!(
+        "[DesktopLink] emitting {}",
+        describe_desktop_link_event(&event)
+    );
+    match event {
+        DesktopLinkEvent::OAuthCallback(session_b64) => {
+            match app.emit("oauth-callback", session_b64) {
+                Ok(()) => eprintln!("[DesktopLink] emitted oauth-callback"),
+                Err(error) => eprintln!("[DesktopLink] failed to emit oauth-callback: {}", error),
+            }
+        }
+        DesktopLinkEvent::OAuthError(error) => match app.emit("oauth-error", error) {
+            Ok(()) => eprintln!("[DesktopLink] emitted oauth-error"),
+            Err(error) => eprintln!("[DesktopLink] failed to emit oauth-error: {}", error),
+        },
+        DesktopLinkEvent::DesktopDeepLink(url) => match app.emit("desktop-deep-link", url) {
+            Ok(()) => eprintln!("[DesktopLink] emitted desktop-deep-link"),
+            Err(error) => eprintln!("[DesktopLink] failed to emit desktop-deep-link: {}", error),
+        },
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        eprintln!("[DesktopLink] focusing main window");
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    } else {
+        eprintln!("[DesktopLink] main window not found while focusing");
+    }
+}
+
+#[cfg(all(test, desktop))]
+mod tests {
+    use super::{desktop_link_event_from_url, desktop_link_events_from_args, DesktopLinkEvent};
+
+    #[test]
+    fn parses_oauth_callback_url() {
+        let url = tauri::Url::parse("viben://oauth?session=session-payload").unwrap();
+
+        assert_eq!(
+            desktop_link_event_from_url("test", &url),
+            Some(DesktopLinkEvent::OAuthCallback(
+                "session-payload".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn parses_oauth_error_before_session() {
+        let url = tauri::Url::parse("viben://oauth?session=session-payload&error=denied").unwrap();
+
+        assert_eq!(
+            desktop_link_event_from_url("test", &url),
+            Some(DesktopLinkEvent::OAuthError("denied".to_string()))
+        );
+    }
+
+    #[test]
+    fn extracts_oauth_callback_from_single_instance_args() {
+        let argv = vec![
+            "/Applications/Viben.app/Contents/MacOS/Viben".to_string(),
+            "viben://oauth?session=session-payload".to_string(),
+        ];
+
+        assert_eq!(
+            desktop_link_events_from_args(&argv),
+            vec![DesktopLinkEvent::OAuthCallback(
+                "session-payload".to_string()
+            )]
+        );
+    }
 }

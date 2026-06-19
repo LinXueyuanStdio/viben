@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { db, users, oauthConnections } from '@/lib/db';
 import { setSessionCookie } from '@/lib/auth/cookies';
 import { encryptSession } from '@/lib/auth/jwe';
+import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri } from '@/lib/auth/desktop-redirect';
 import { generateId } from '@/lib/utils';
 import { eq, and } from 'drizzle-orm';
 
@@ -152,7 +153,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if this is a desktop client callback
-    if (desktopRedirectUri?.startsWith('viben://')) {
+    if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
+      console.info('[OAuth][GitHub] redirecting desktop session', describeDesktopRedirectUri(desktopRedirectUri));
       // For desktop client, generate JWT and redirect with session data
       // This avoids the issue of OAuth code being single-use
       const desktopAccessToken = await encryptSession({
@@ -202,7 +204,8 @@ export async function GET(request: NextRequest) {
     console.error('OAuth error:', error);
 
     // If desktop client, redirect with error
-    if (desktopRedirectUri?.startsWith('viben://')) {
+    if (isAllowedDesktopRedirectUri(desktopRedirectUri)) {
+      console.info('[OAuth][GitHub] redirecting desktop oauth error', describeDesktopRedirectUri(desktopRedirectUri));
       const redirectUrl = new URL(desktopRedirectUri);
       redirectUrl.searchParams.set('error', 'oauth_failed');
       return NextResponse.redirect(redirectUrl.toString());

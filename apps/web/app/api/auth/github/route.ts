@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { generateId } from '@/lib/utils';
 import { cookies } from 'next/headers';
+import { describeDesktopRedirectUri, isAllowedDesktopRedirectUri } from '@/lib/auth/desktop-redirect';
 
 export async function GET(request: NextRequest) {
   const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
@@ -32,13 +33,18 @@ export async function GET(request: NextRequest) {
     maxAge: 600, // 10 minutes
   });
 
-  // Store desktop redirect_uri if present (for deep link callback)
-  if (client === 'desktop' && redirectUri?.startsWith('viben://')) {
+  // Store desktop redirect_uri if present (deep link or local loopback callback)
+  if (client === 'desktop' && isAllowedDesktopRedirectUri(redirectUri)) {
+    console.info('[OAuth][GitHub] desktop redirect registered', describeDesktopRedirectUri(redirectUri));
     cookieStore.set('oauth_redirect_uri', redirectUri, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 600, // 10 minutes
+    });
+  } else if (client === 'desktop') {
+    console.warn('[OAuth][GitHub] desktop redirect rejected', {
+      hasRedirectUri: Boolean(redirectUri),
     });
   }
 
