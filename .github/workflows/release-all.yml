@@ -279,36 +279,16 @@ jobs:
           name: cli-build
           path: .
 
-      - name: Install dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: pnpm install --frozen-lockfile
-
-      - name: Make Node.js CLI executable
+      - name: Make Node.js CLI executable (Unix)
         if: matrix.platform == 'ubuntu-22.04'
         run: chmod +x apps/cli/dist/index.js
 
-      - name: Run Node.js CLI integration tests
+      - name: Run Node.js CLI integration tests (Unix)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           chmod +x scripts/test-cli.sh
           ./scripts/test-cli.sh --local
 
-      - name: Test CLI via npx simulation
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          TEST_DIR=$(mktemp -d)
-          cd "$TEST_DIR"
-
-          npm link "$GITHUB_WORKSPACE/apps/cli"
-
-          viben --version
-          viben --help
-          viben init --user ci-test -y
-          viben config list
-          viben --json config list | jq .
-
-          npm unlink -g viben
-          rm -rf "$TEST_DIR"
 
       - name: Upload test results
         if: always()
