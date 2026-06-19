@@ -26,12 +26,13 @@ import {
 } from "lucide-react";
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import {
@@ -39,7 +40,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { getEventCoordinates } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { SidebarSection } from "@/components/layout/sidebar-section";
 import { SidebarIconButton } from "@/components/layout/sidebar-icon-button";
@@ -88,6 +89,16 @@ import {
 } from "@/pages/apps/utils";
 import type { PageTreeNode } from "@/pages/apps/utils";
 import { registry } from "@/navigation/route-registry";
+import {
+  buildPageDropPreview,
+  buildPageDropPlan,
+  getStaticSortableTransform,
+  getPageProjectedDepth,
+  getPageDropPosition,
+  PAGE_TREE_DEPTH_STEP_PX,
+  type PageDropPreview,
+  type PageVisibleRow,
+} from "./page-section-dnd";
 
 // =============================================================================
 // Types
@@ -109,6 +120,8 @@ interface PageTreeItemProps {
   workspacePath: string;
   depth: number;
   ancestors: PageTreeNode[];
+  expandedPageUids: Record<string, boolean>;
+  onToggleExpanded: (uid: string) => void;
   onPageClick: (page: PageConfig) => void;
   onOpenInNewTab: (page: PageConfig) => void;
   onDeleteClick: (page: PageConfig) => void;
@@ -117,6 +130,8 @@ interface PageTreeItemProps {
   onPermissionsClick: (page: PageConfig) => void;
   onCopyLink: (page: PageConfig) => void;
   onDuplicate: (page: PageConfig) => void;
+  isDragActive?: boolean;
+  dropPreview?: PageDropPreview | null;
 }
 
 function PageTreeItemContent({
@@ -125,6 +140,8 @@ function PageTreeItemContent({
   workspacePath,
   depth,
   ancestors,
+  expandedPageUids,
+  onToggleExpanded,
   onPageClick,
   onOpenInNewTab,
   onDeleteClick,
@@ -133,6 +150,8 @@ function PageTreeItemContent({
   onPermissionsClick,
   onCopyLink,
   onDuplicate,
+  isDragActive,
+  dropPreview,
   isDragging,
   sortableStyle,
   sortableRef,
@@ -147,10 +166,10 @@ function PageTreeItemContent({
 }) {
   const { t } = useTranslation();
   const location = useLocation();
-  const [isExpanded, setIsExpanded] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const hasChildren = node.children.length > 0;
+  const isExpanded = expandedPageUids[node.page.uid] ?? true;
 
   // Show action buttons when hovered OR when dropdown menu is open
   const showActions = isHovered || isMenuOpen;
@@ -166,6 +185,17 @@ function PageTreeItemContent({
     currentMatch?.pattern === "/workspace/:workspaceId/page/:uid" &&
     currentMatch.params.workspaceId === workspaceId &&
     currentMatch.params.uid === node.page.uid;
+  const isDropTarget = dropPreview?.uid === node.page.uid;
+  const isInvalidDropTarget = isDropTarget && !!dropPreview?.isInvalid;
+  const isDropIntoTarget = isDropTarget && dropPreview?.position === "inside" && !dropPreview.isInvalid;
+  const isParentChangeTarget =
+    dropPreview?.position !== "inside" &&
+    !!dropPreview?.changesParent &&
+    dropPreview.targetParentUid === node.page.uid;
+  const isDropLineTarget = dropPreview?.lineUid === node.page.uid;
+  const previewDepth = dropPreview?.lineDepth ?? dropPreview?.projectedDepth ?? depth;
+  const rowInset = 8 + depth * PAGE_TREE_DEPTH_STEP_PX;
+  const dropLineInset = 8 + previewDepth * PAGE_TREE_DEPTH_STEP_PX;
 
   // Handle page click - opens page in tab system
   const handlePageClick = useCallback((e: React.MouseEvent) => {
@@ -178,11 +208,11 @@ function PageTreeItemContent({
     e.preventDefault();
     e.stopPropagation();
     if (hasChildren) {
-      setIsExpanded(!isExpanded);
+      onToggleExpanded(node.page.uid);
     } else {
       onPageClick(node.page);
     }
-  }, [hasChildren, isExpanded, node.page, onPageClick]);
+  }, [hasChildren, node.page, onPageClick, onToggleExpanded]);
 
   return (
     <div
@@ -198,6 +228,15 @@ function PageTreeItemContent({
               "group relative flex h-7 items-center gap-1 rounded-md text-sm",
               "transition-all duration-200",
               isDragging && "opacity-50",
+              isInvalidDropTarget && [
+                "bg-destructive/10 text-destructive",
+                "shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--destructive)_55%,transparent)]",
+                "cursor-not-allowed",
+              ],
+              (isDropIntoTarget || isParentChangeTarget) && [
+                "bg-primary/10 text-sidebar-accent-foreground",
+                "shadow-[inset_0_0_0_1px_color-mix(in_oklch,var(--primary)_58%,transparent)]",
+              ],
               isActive
                 ? [
                     "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
@@ -207,10 +246,28 @@ function PageTreeItemContent({
                     "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   ]
             )}
-            style={{ paddingLeft: depth === 0 ? "8px" : `${depth * 8 + 8}px` }}
+            style={{ paddingLeft: `${rowInset}px` }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
+            {isDropLineTarget && dropPreview?.linePosition && (
+              <span
+                className={cn(
+                  "pointer-events-none absolute right-2 h-0.5 rounded-full shadow-[0_0_0_1px_color-mix(in_oklch,var(--background)_70%,transparent)]",
+                  dropPreview.isInvalid ? "bg-destructive" : "bg-primary",
+                  dropPreview.linePosition === "before" ? "top-0" : "bottom-0"
+                )}
+                style={{ left: `${dropLineInset}px` }}
+              >
+                <span
+                  className={cn(
+                    "absolute -left-0.5 -top-0.5 h-1.5 w-1.5 rounded-full",
+                    dropPreview.isInvalid ? "bg-destructive" : "bg-primary"
+                  )}
+                />
+              </span>
+            )}
+
             {/* Combined icon: smooth crossfade between page icon and expand/collapse icon */}
             <span
               role="button"
@@ -457,6 +514,8 @@ function PageTreeItemContent({
               workspacePath={workspacePath}
               depth={depth + 1}
               ancestors={[...ancestors, node]}
+              expandedPageUids={expandedPageUids}
+              onToggleExpanded={onToggleExpanded}
               onPageClick={onPageClick}
               onOpenInNewTab={onOpenInNewTab}
               onDeleteClick={onDeleteClick}
@@ -465,6 +524,8 @@ function PageTreeItemContent({
               onPermissionsClick={onPermissionsClick}
               onCopyLink={onCopyLink}
               onDuplicate={onDuplicate}
+              isDragActive={isDragActive}
+              dropPreview={dropPreview}
             />
           ))}
         </div>
@@ -488,8 +549,8 @@ function PageTreeItem(props: PageTreeItemProps) {
   } = useSortable({ id: props.node.page.uid });
 
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: getStaticSortableTransform(transform, !!props.isDragActive),
+    transition: props.isDragActive ? undefined : transition,
   };
 
   return (
@@ -570,6 +631,8 @@ export function PageSection({
 
   // DnD state
   const [activeUid, setActiveUid] = useState<string | null>(null);
+  const [dropPreview, setDropPreview] = useState<PageDropPreview | null>(null);
+  const [expandedPageUids, setExpandedPageUids] = useState<Record<string, boolean>>({});
 
   // Custom page index (optimistic local state overrides server index during drag)
   const [localIndex, setLocalIndex] = useState<PageIndex | undefined>(undefined);
@@ -603,6 +666,24 @@ export function PageSection({
     return map;
   }, [pageTree]);
 
+  const visibleRows = useMemo(() => {
+    const rows: PageVisibleRow[] = [];
+
+    function walk(nodes: PageTreeNode[], depth: number, parentUid: string | null) {
+      for (const node of nodes) {
+        rows.push({ uid: node.page.uid, depth, parentUid });
+        if (expandedPageUids[node.page.uid] ?? true) {
+          walk(node.children, depth + 1, node.page.uid);
+        }
+      }
+    }
+
+    walk(pageTree, 0, null);
+    return rows;
+  }, [expandedPageUids, pageTree]);
+
+  const visibleUids = useMemo(() => visibleRows.map((row) => row.uid), [visibleRows]);
+
   // The node currently being dragged
   const activeNode = activeUid ? nodeMap.get(activeUid) : undefined;
 
@@ -621,68 +702,98 @@ export function PageSection({
   // Handle drag start
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveUid(event.active.id as string);
+    setDropPreview(null);
   }, []);
+
+  const handleToggleExpanded = useCallback((uid: string) => {
+    setExpandedPageUids((current) => ({
+      ...current,
+      [uid]: !(current[uid] ?? true),
+    }));
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    const { active, activatorEvent, delta, over } = event;
+
+    if (!over) {
+      setDropPreview(null);
+      return;
+    }
+
+    const coordinates = getEventCoordinates(activatorEvent);
+    if (!coordinates) {
+      setDropPreview(null);
+      return;
+    }
+
+    const activeRow = visibleRows.find((row) => row.uid === active.id);
+    if (!activeRow) {
+      setDropPreview(null);
+      return;
+    }
+
+    const dropPosition = getPageDropPosition(coordinates.y + delta.y, over.rect);
+    const preview = buildPageDropPreview({
+      index: effectiveIndex,
+      activeUid: active.id as string,
+      overUid: over.id as string,
+      dropPosition,
+      visibleRows,
+      projectedDepth: dropPosition === "inside"
+        ? undefined
+        : getPageProjectedDepth(activeRow.depth, delta.x),
+    });
+    setDropPreview(preview);
+  }, [effectiveIndex, visibleRows]);
 
   // Handle drag end
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      const { active, over } = event;
+      const { active, activatorEvent, delta, over } = event;
       setActiveUid(null);
+      setDropPreview(null);
 
-      if (!over || active.id === over.id) return;
+      if (!over) return;
 
       const activeId = active.id as string;
       const overId = over.id as string;
+      const coordinates = getEventCoordinates(activatorEvent);
+      if (!coordinates) return;
 
-      // Find which parent these items belong to using the index
-      let activeParent: string | null = null;
-      let overParent: string | null = null;
+      const activeRow = visibleRows.find((row) => row.uid === activeId);
+      if (!activeRow) return;
 
-      for (const [key, children] of Object.entries(effectiveIndex)) {
-        if (children.includes(activeId)) {
-          activeParent = key === "root" ? null : key;
-        }
-        if (children.includes(overId)) {
-          overParent = key === "root" ? null : key;
-        }
-      }
-
-      // Only allow reordering within the same level
-      if (activeParent !== overParent) return;
-
-      // Find the sibling list at this level
-      const parentKey = activeParent ?? "root";
-      let siblings: PageTreeNode[];
-      if (activeParent === null) {
-        siblings = pageTree;
-      } else {
-        const parentNode = nodeMap.get(activeParent);
-        if (!parentNode) return;
-        siblings = parentNode.children;
-      }
-
-      // Find indices
-      const oldIndex = siblings.findIndex((n) => n.page.uid === activeId);
-      const newIndex = siblings.findIndex((n) => n.page.uid === overId);
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      // Compute new order
-      const newUids = siblings.map((n) => n.page.uid);
-      const [moved] = newUids.splice(oldIndex, 1);
-      newUids.splice(newIndex, 0, moved);
-
-      // Optimistic update
-      const newIndex_: PageIndex = { ...effectiveIndex, [parentKey]: newUids };
-      setLocalIndex(newIndex_);
-
-      // Persist to backend
-      reorderPagesMutation.mutate({
-        workspace_path: workspacePath,
-        parent_uid: activeParent,
-        ordered_uids: newUids,
+      const dropPosition = getPageDropPosition(coordinates.y + delta.y, over.rect);
+      const plan = buildPageDropPlan({
+        index: effectiveIndex,
+        activeUid: activeId,
+        overUid: overId,
+        dropPosition,
+        rootUids,
+        visibleRows,
+        projectedDepth: dropPosition === "inside"
+          ? undefined
+          : getPageProjectedDepth(activeRow.depth, delta.x),
       });
+      if (!plan) return;
+
+      if (dropPosition === "inside") {
+        setExpandedPageUids((current) => ({
+          ...current,
+          [overId]: true,
+        }));
+      }
+
+      setLocalIndex(plan.nextIndex);
+      for (const request of plan.reorderRequests) {
+        reorderPagesMutation.mutate({
+          workspace_path: workspacePath,
+          parent_uid: request.parentUid,
+          ordered_uids: request.orderedUids,
+        });
+      }
     },
-    [pageTree, nodeMap, effectiveIndex, reorderPagesMutation, workspacePath]
+    [effectiveIndex, reorderPagesMutation, rootUids, visibleRows, workspacePath]
   );
 
   // Handle delete page
@@ -935,12 +1046,21 @@ export function PageSection({
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={rootUids} strategy={verticalListSortingStrategy}>
-              <nav className="flex flex-col gap-0.5">
+            <SortableContext items={visibleUids} strategy={verticalListSortingStrategy}>
+              <nav
+                className={cn(
+                  "flex flex-col gap-0.5 rounded-md transition-colors duration-150",
+                  dropPreview?.targetParentUid === null &&
+                    dropPreview.changesParent &&
+                    !dropPreview.isInvalid &&
+                    "bg-primary/5 shadow-[inset_2px_0_0_var(--primary)]"
+                )}
+              >
                 {pageTree.map((node) => (
                   <PageTreeItem
                     key={node.page.uid}
@@ -949,6 +1069,8 @@ export function PageSection({
                     workspacePath={workspacePath}
                     depth={0}
                     ancestors={[]}
+                    expandedPageUids={expandedPageUids}
+                    onToggleExpanded={handleToggleExpanded}
                     onPageClick={handlePageClick}
                     onOpenInNewTab={handleOpenInNewTab}
                     onDeleteClick={setPageToDelete}
@@ -957,6 +1079,8 @@ export function PageSection({
                     onPermissionsClick={handlePermissionsClick}
                     onCopyLink={handleCopyLink}
                     onDuplicate={handleDuplicate}
+                    isDragActive={!!activeUid}
+                    dropPreview={dropPreview}
                   />
                 ))}
               </nav>
