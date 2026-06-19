@@ -1,5 +1,5 @@
 #!/bin/bash
-# Restart Viben Gateway (Node.js - packages/core)
+# Restart Viben Gateway (Node.js - apps/cli)
 #
 # Automatically builds workspace dependencies if dist/ is missing,
 # then restarts the gateway.
@@ -123,10 +123,11 @@ log "INFO" "=========================================="
 log_system_info
 
 # ============================================================
-# Build core package dependencies and re-link CLI
+# Build core package, CLI package, and re-link CLI
 # ============================================================
 
 CORE_DIR="$PROJECT_ROOT/packages/core"
+CLI_DIR="$PROJECT_ROOT/apps/cli"
 
 log "INFO" "Building @viben/core workspace dependencies..."
 BUILD_OUTPUT=$("$SCRIPT_DIR/build-deps.sh" "$CORE_DIR" 2>&1) || {
@@ -147,8 +148,17 @@ BUILD_OUTPUT=$(cd "$CORE_DIR" && pnpm build 2>&1) || {
 echo "$BUILD_OUTPUT" >> "$RESTART_LOG"
 log "INFO" "Build successful"
 
+log "INFO" "Building viben CLI..."
+BUILD_OUTPUT=$(cd "$CLI_DIR" && pnpm build 2>&1) || {
+    log "ERROR" "Failed to build viben CLI"
+    echo "$BUILD_OUTPUT" | tee -a "$RESTART_LOG"
+    exit 1
+}
+echo "$BUILD_OUTPUT" >> "$RESTART_LOG"
+log "INFO" "CLI build successful"
+
 log "INFO" "Linking viben CLI..."
-(cd "$CORE_DIR" && npm link 2>/dev/null) || log "WARN" "npm link failed (non-fatal)"
+(cd "$CLI_DIR" && npm link 2>/dev/null) || log "WARN" "npm link failed (non-fatal)"
 
 # ============================================================
 # Stop & Restart Gateway
@@ -158,6 +168,7 @@ log "INFO" "Linking viben CLI..."
 log "INFO" "Stopping existing gateway processes..."
 kill_processes "viben.*gateway.*start" && sleep 0.5 || log "DEBUG" "No viben gateway process found"
 kill_processes "packages/core.*gateway.*start" && sleep 0.5 || log "DEBUG" "No node gateway process found"
+kill_processes "apps/cli.*gateway.*start" && sleep 0.5 || log "DEBUG" "No apps/cli gateway process found"
 sleep 0.5
 
 # Verify port is free
@@ -181,13 +192,13 @@ fi
 
 log "INFO" "Port $PORT is free"
 
-# Change to packages/core directory
-cd "$CORE_DIR"
+# Change to apps/cli directory
+cd "$CLI_DIR"
 log "DEBUG" "Changed to directory: $(pwd)"
 
 # Verify CLI binary exists
-if [ ! -f "./dist/cli/bin.js" ]; then
-    log "ERROR" "CLI binary not found after build: ./dist/cli/bin.js"
+if [ ! -f "./dist/index.js" ]; then
+    log "ERROR" "CLI binary not found after build: ./dist/index.js"
     exit 1
 fi
 
@@ -198,13 +209,13 @@ if $FLAG_FORCE; then
 fi
 
 log "INFO" "Starting Node.js gateway on port $PORT... ${FORCE_FLAG:+(force mode)}"
-log "DEBUG" "Command: node ./dist/cli/bin.js gateway restart --port $PORT $FORCE_FLAG"
+log "DEBUG" "Command: node ./dist/index.js gateway restart --port $PORT $FORCE_FLAG"
 
 # Clear previous runtime log and start gateway
 echo "" > "$RUNTIME_LOG"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Gateway starting..." >> "$RUNTIME_LOG"
 
-node ./dist/cli/bin.js gateway restart --port $PORT $FORCE_FLAG >> "$RUNTIME_LOG" 2>&1 &
+node ./dist/index.js gateway restart --port $PORT $FORCE_FLAG >> "$RUNTIME_LOG" 2>&1 &
 START_CMD_PID=$!
 log "DEBUG" "Start command PID: $START_CMD_PID"
 
