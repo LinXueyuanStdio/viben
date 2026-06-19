@@ -38,6 +38,11 @@ let telemetry: TelemetryInstance | null = null;
 
 // Module-level logger
 const log = globalLogger.child({ module: "gateway" });
+const EXCLUDED_OPENAPI_ROUTE_PREFIXES = ["/api/mcp-server", "/api/python-mcp"];
+
+function shouldExcludeFromOpenApi(url: string): boolean {
+  return EXCLUDED_OPENAPI_ROUTE_PREFIXES.some((prefix) => url === prefix || url.startsWith(`${prefix}/`));
+}
 
 /**
  * Get the gateway logger
@@ -131,6 +136,10 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
           { name: "executors", description: "Executor configuration" },
         ],
       },
+      transform: ({ schema, url }) => ({
+        schema: shouldExcludeFromOpenApi(url) ? { ...schema, hide: true } : schema,
+        url,
+      }),
     });
 
     // Register OpenAPI spec endpoints
