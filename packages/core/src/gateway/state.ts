@@ -67,13 +67,15 @@ export interface AppStateConfig {
   host?: string;
   /** Gateway port (default: 18790) */
   port?: number;
+  /** Start background runtime services */
+  runtime?: boolean;
 }
 
 /**
  * Create application state with default services
  */
 export function createAppState(config: AppStateConfig = {}): AppState {
-  const { host = "127.0.0.1", port = 18790 } = config;
+  const { host = "127.0.0.1", port = 18790, runtime = true } = config;
   const events = new EventService();
   const sessionStore = new SessionStoreService();
   const cron = new CronService(events);
@@ -108,8 +110,9 @@ export function createAppState(config: AppStateConfig = {}): AppState {
     maxFailedSends: 3, // 3 failed sends = dead connection
     cleanupIntervalMs: 60000, // 1 minute cleanup interval
   });
-  // Start heartbeat and cleanup intervals
-  taskSSEManager.startHeartbeat();
+  if (runtime) {
+    taskSSEManager.startHeartbeat();
+  }
 
   // Create task recovery service for stuck task detection
   const taskRecovery = new TaskRecoveryService(taskEventStore, taskSSEManager, {
@@ -149,10 +152,11 @@ export function createAppState(config: AppStateConfig = {}): AppState {
     port,
   });
 
-  // Wire mDNS discovery to mesh auto-connect
-  discovery.onPeerDiscovered((address) => {
-    mesh.connectToPeer(address);
-  });
+  if (runtime) {
+    discovery.onPeerDiscovered((address) => {
+      mesh.connectToPeer(address);
+    });
+  }
 
   return {
     events,

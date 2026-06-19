@@ -15,7 +15,7 @@ import chalk from "chalk";
 import { execSync, spawn } from "node:child_process";
 import * as fs from "node:fs";
 import { createServer } from "node:http";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
 import {
@@ -23,6 +23,7 @@ import {
   successResponse,
   handleCommandError,
 } from "../lib";
+import { createGateway } from "../../gateway";
 import { serviceManager } from "../../services";
 
 const GATEWAY_SERVICE_NAME = "gateway";
@@ -146,6 +147,63 @@ async function runGatewayServer(options: {
     console.warn(`[Gateway] Fastify not available, using simple HTTP server: ${e instanceof Error ? e.message : e}`);
     await runSimpleGatewayServer(options);
   }
+}
+
+async function getOpenApiDocument(format: "json" | "yaml"): Promise<string> {
+  const app = await createGateway({
+    host: DEFAULT_HOST,
+    port: 0,
+    cors: false,
+    telemetry: false,
+    runtime: false,
+  });
+
+  try {
+    await app.ready();
+    const swagger = app.swagger as ((options?: { yaml?: boolean }) => unknown) | undefined;
+    if (!swagger) {
+      throw new Error("Swagger plugin is not registered");
+    }
+
+    if (format === "yaml") {
+      return String(swagger({ yaml: true }));
+    }
+
+    return JSON.stringify(swagger(), null, 2);
+  } finally {
+    await app.close();
+  }
+}
+
+async function exportOpenApi(
+  ctx: OutputContext,
+  options: { out?: string },
+  format: "json" | "yaml"
+): Promise<void> {
+  if (!options.out) {
+    throw new Error("--out is required");
+  }
+
+  const outputPath = resolve(process.cwd(), options.out);
+  const outputDir = dirname(outputPath);
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const content = await getOpenApiDocument(format);
+  fs.writeFileSync(outputPath, content, "utf-8");
+
+  output(
+    ctx,
+    successResponse({
+      path: outputPath,
+      format,
+    }),
+    () => {
+      const label = format === "json" ? "JSON" : "YAML";
+      console.log(chalk.green(`OpenAPI ${label} exported: ${outputPath}`));
+    }
+  );
 }
 
 /**
@@ -734,6 +792,32 @@ export function registerGatewayCommand(program: Command): void {
       } catch (error) {
         console.error(`Gateway error: ${error instanceof Error ? error.message : String(error)}`);
         process.exit(1);
+      }
+    });
+
+  gatewayCmd
+    .command("export-openapi-json")
+    .requiredOption("--out <path>", "Output file path")
+    .description("Export the gateway OpenAPI spec as JSON")
+    .action(async (options: { out?: string }) => {
+      const ctx = getContext(program);
+      try {
+        await exportOpenApi(ctx, options, "json");
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  gatewayCmd
+    .command("export-openapi-yaml")
+    .requiredOption("--out <path>", "Output file path")
+    .description("Export the gateway OpenAPI spec as YAML")
+    .action(async (options: { out?: string }) => {
+      const ctx = getContext(program);
+      try {
+        await exportOpenApi(ctx, options, "yaml");
+      } catch (error) {
+        handleCommandError(ctx, error);
       }
     });
 }

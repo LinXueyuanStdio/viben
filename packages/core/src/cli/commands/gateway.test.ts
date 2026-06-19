@@ -19,6 +19,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 import { registerGatewayCommand } from "./gateway";
 import { execSync } from "node:child_process";
+import * as fs from "node:fs";
+import { createGateway } from "../../gateway";
 
 // Mock execSync for findProcessOnPort
 vi.mock("node:child_process", async () => {
@@ -41,8 +43,14 @@ vi.mock("node:fs", async () => {
     mkdirSync: vi.fn(),
     openSync: vi.fn(() => 1),
     closeSync: vi.fn(),
+    writeFileSync: vi.fn(),
   };
 });
+
+vi.mock("../../gateway", () => ({
+  createGateway: vi.fn(),
+  runGateway: vi.fn(),
+}));
 
 // Mock the services module
 vi.mock("../../services", () => ({
@@ -83,6 +91,20 @@ describe("Gateway CLI Commands", () => {
 
     // Reset all mocks
     vi.mocked(execSync).mockReset();
+    vi.mocked(createGateway).mockReset();
+    vi.mocked(createGateway).mockResolvedValue({
+      ready: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      swagger: vi.fn((options?: { yaml?: boolean }) => (
+        options?.yaml
+          ? "openapi: 3.0.3\ninfo:\n  title: Viben Gateway API\n"
+          : {
+              openapi: "3.0.3",
+              info: { title: "Viben Gateway API" },
+              paths: {},
+            }
+      )),
+    } as never);
   });
 
   afterEach(() => {
@@ -555,7 +577,14 @@ describe("Gateway CLI Commands", () => {
     });
 
     it("should handle restart when gateway is not running (daemon mode)", async () => {
-      mockPortFree();
+      let checks = 0;
+      vi.mocked(execSync).mockImplementation(() => {
+        checks++;
+        if (checks > 1) {
+          return "12345\n";
+        }
+        throw new Error("No process");
+      });
 
       // Restart when not running should just start
       // Use daemon mode to avoid blocking
@@ -563,8 +592,8 @@ describe("Gateway CLI Commands", () => {
 
       const output = getLogOutput();
       const parsed = JSON.parse(output);
-      // Will report failed since no real server starts in test env
       expect(parsed.success).toBe(true);
+      expect(parsed.data.status).toBe("running");
     });
   });
 
@@ -669,6 +698,50 @@ describe("Gateway CLI Commands", () => {
   });
 
   // ============================================================================
+  // gateway export-openapi
+  // ============================================================================
+
+  describe("gateway export-openapi-json", () => {
+    it("should export OpenAPI JSON to the requested file", async () => {
+      await runCommand(["gateway", "export-openapi-json", "--out", "./openapi.json"]);
+
+      expect(createGateway).toHaveBeenCalledWith({
+        host: "127.0.0.1",
+        port: 0,
+        cors: false,
+        telemetry: false,
+        runtime: false,
+      });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining("openapi.json"),
+        expect.stringContaining('"openapi": "3.0.3"'),
+        "utf-8"
+      );
+      expect(getLogOutput()).toContain("OpenAPI JSON exported");
+    });
+  });
+
+  describe("gateway export-openapi-yaml", () => {
+    it("should export OpenAPI YAML to the requested file", async () => {
+      await runCommand(["gateway", "export-openapi-yaml", "--out", "./openapi.yaml"]);
+
+      expect(createGateway).toHaveBeenCalledWith({
+        host: "127.0.0.1",
+        port: 0,
+        cors: false,
+        telemetry: false,
+        runtime: false,
+      });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining("openapi.yaml"),
+        expect.stringContaining("openapi: 3.0.3"),
+        "utf-8"
+      );
+      expect(getLogOutput()).toContain("OpenAPI YAML exported");
+    });
+  });
+
+  // ============================================================================
   // Command registration
   // ============================================================================
 
@@ -687,6 +760,8 @@ describe("Gateway CLI Commands", () => {
       expect(subcommands).toContain("stop");
       expect(subcommands).toContain("restart");
       expect(subcommands).toContain("serve");
+      expect(subcommands).toContain("export-openapi-json");
+      expect(subcommands).toContain("export-openapi-yaml");
     });
 
     it("should have correct description for gateway command", () => {

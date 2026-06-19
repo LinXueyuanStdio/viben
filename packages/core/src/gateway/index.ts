@@ -60,6 +60,8 @@ export interface GatewayConfig {
   telemetry?: boolean;
   /** Telemetry directory */
   telemetryDir?: string;
+  /** Start gateway background runtime services */
+  runtime?: boolean;
 }
 
 /**
@@ -75,6 +77,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     cors = true,
     telemetry: enableTelemetry = process.env.VIBEN_TELEMETRY !== "false",
     telemetryDir = getDefaultTelemetryDir(),
+    runtime = true,
   } = config;
 
   // Initialize telemetry first (before Fastify, so instrumentation works)
@@ -191,166 +194,172 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   }
 
   // Create application state with configured host/port
-  const state = createAppState({ host, port });
+  const state = createAppState({ host, port, runtime });
 
   // Register routes
   await registerRoutes(app, state);
 
   // Create client socket server (Socket.io) after ready when httpServer is available
-  app.addHook("onReady", async () => {
-    const httpServer = app.server;
-    state.clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
-    log.info("Client Socket.io server started");
-  });
+  if (runtime) {
+    app.addHook("onReady", async () => {
+      const httpServer = app.server;
+      state.clientSocketServer = new ClientSocketServer(httpServer, state.clientStore);
+      log.info("Client Socket.io server started");
+    });
+  }
 
   // Set startup configuration for health endpoint
   setGatewayStartupConfig({ host, port, cors });
 
-  // Start cron scheduler
-  try {
-    await state.cron.start();
-    log.info("Cron scheduler started");
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start cron scheduler");
-  }
+  if (runtime) {
+    // Start cron scheduler
+    try {
+      await state.cron.start();
+      log.info("Cron scheduler started");
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start cron scheduler");
+    }
 
-  // Start channel router for message routing to bound agents
-  try {
-    await state.channelRouter.start();
-    log.info("Channel router started");
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start channel router");
-  }
+    // Start channel router for message routing to bound agents
+    try {
+      await state.channelRouter.start();
+      log.info("Channel router started");
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start channel router");
+    }
 
-  // Start channel runtime for long polling (receives messages from external channels)
-  try {
-    await state.channelRuntime.start();
-    const activePollers = state.channelRuntime.getActivePollers();
-    log.info({ activePollerCount: activePollers.length }, "Channel runtime started");
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start channel runtime");
-  }
+    // Start channel runtime for long polling (receives messages from external channels)
+    try {
+      await state.channelRuntime.start();
+      const activePollers = state.channelRuntime.getActivePollers();
+      log.info({ activePollerCount: activePollers.length }, "Channel runtime started");
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start channel runtime");
+    }
 
-  // Start task queue manager
-  try {
-    await state.taskQueue.start();
-    const queueStatus = state.taskQueue.getStatus();
-    log.info(
-      { pending: queueStatus.pending_count, running: queueStatus.running_count },
-      "Task queue manager started"
-    );
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start task queue manager");
-  }
+    // Start task queue manager
+    try {
+      await state.taskQueue.start();
+      const queueStatus = state.taskQueue.getStatus();
+      log.info(
+        { pending: queueStatus.pending_count, running: queueStatus.running_count },
+        "Task queue manager started"
+      );
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start task queue manager");
+    }
 
-  // Start SSE heartbeat and cleanup for dead connection detection
-  try {
-    state.taskSSEManager.startHeartbeat();
-    log.info("Task SSE Manager heartbeat started");
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start SSE heartbeat");
-  }
+    // Start SSE heartbeat and cleanup for dead connection detection
+    try {
+      state.taskSSEManager.startHeartbeat();
+      log.info("Task SSE Manager heartbeat started");
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start SSE heartbeat");
+    }
 
-  // Start command queue (promoter + monitor for detached shell commands)
-  try {
-    await state.commandQueue.start();
-    const queueStatus = state.commandQueue.getStatus();
-    log.info(
-      { pending: queueStatus.pending, running: queueStatus.running, maxConcurrency: queueStatus.max_concurrency },
-      "Command queue started"
-    );
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start command queue");
-  }
+    // Start command queue (promoter + monitor for detached shell commands)
+    try {
+      await state.commandQueue.start();
+      const queueStatus = state.commandQueue.getStatus();
+      log.info(
+        { pending: queueStatus.pending, running: queueStatus.running, maxConcurrency: queueStatus.max_concurrency },
+        "Command queue started"
+      );
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start command queue");
+    }
 
-  // Start mDNS discovery (advertise + browse for peers)
-  try {
-    await state.discovery.start();
-    log.info({ mdnsAvailable: await state.discovery.isMdnsAvailable() }, "Discovery service started");
-  } catch (e) {
-    log.warn({ err: e }, "Failed to start discovery service");
-  }
+    // Start mDNS discovery (advertise + browse for peers)
+    try {
+      await state.discovery.start();
+      log.info({ mdnsAvailable: await state.discovery.isMdnsAvailable() }, "Discovery service started");
+    } catch (e) {
+      log.warn({ err: e }, "Failed to start discovery service");
+    }
 
-  // Reconnect to previously known mesh peers
-  try {
-    await state.mesh.reconnectKnownPeers();
-    log.info("Mesh peer reconnection initiated");
-  } catch (e) {
-    log.warn({ err: e }, "Failed to reconnect known peers");
-  }
+    // Reconnect to previously known mesh peers
+    try {
+      await state.mesh.reconnectKnownPeers();
+      log.info("Mesh peer reconnection initiated");
+    } catch (e) {
+      log.warn({ err: e }, "Failed to reconnect known peers");
+    }
 
-  // Run task recovery on startup for all known workspaces
-  try {
-    const workspaces = await workspaceManager.listWorkspaces();
-    let totalRecovered = 0;
-    let totalChecked = 0;
+    // Run task recovery on startup for all known workspaces
+    try {
+      const workspaces = await workspaceManager.listWorkspaces();
+      let totalRecovered = 0;
+      let totalChecked = 0;
 
-    for (const workspace of workspaces) {
-      try {
-        const summary = await state.taskRecovery.recoverOnStartup(workspace.path);
-        totalChecked += summary.totalChecked;
-        totalRecovered += summary.recovered;
+      for (const workspace of workspaces) {
+        try {
+          const summary = await state.taskRecovery.recoverOnStartup(workspace.path);
+          totalChecked += summary.totalChecked;
+          totalRecovered += summary.recovered;
 
-        if (summary.recovered > 0) {
-          log.info(
-            { workspace: workspace.path, recovered: summary.recovered, checked: summary.totalChecked },
-            "Task recovery completed for workspace"
+          if (summary.recovered > 0) {
+            log.info(
+              { workspace: workspace.path, recovered: summary.recovered, checked: summary.totalChecked },
+              "Task recovery completed for workspace"
+            );
+          }
+        } catch (workspaceError) {
+          log.warn(
+            { workspace: workspace.path, err: workspaceError },
+            "Failed to recover tasks for workspace"
           );
         }
-      } catch (workspaceError) {
-        log.warn(
-          { workspace: workspace.path, err: workspaceError },
-          "Failed to recover tasks for workspace"
+      }
+
+      if (totalChecked > 0) {
+        log.info(
+          { totalChecked, totalRecovered, workspaceCount: workspaces.length },
+          "Task recovery completed"
         );
       }
+    } catch (e) {
+      log.warn({ err: e }, "Failed to run task recovery");
     }
 
-    if (totalChecked > 0) {
-      log.info(
-        { totalChecked, totalRecovered, workspaceCount: workspaces.length },
-        "Task recovery completed"
-      );
+    // Register Observable Gauge callbacks for metrics
+    if (enableTelemetry) {
+      registerGaugeCallbacks({
+        getActiveAgentSessions: () => agentService.getActiveSessionCount(),
+        getActiveWsConnections: () => getActiveWsConnectionCount(),
+        getCronJobCounts: () => state.cron.getJobStats(),
+      });
+      log.info("Metrics gauge callbacks registered");
     }
-  } catch (e) {
-    log.warn({ err: e }, "Failed to run task recovery");
-  }
-
-  // Register Observable Gauge callbacks for metrics
-  if (enableTelemetry) {
-    registerGaugeCallbacks({
-      getActiveAgentSessions: () => agentService.getActiveSessionCount(),
-      getActiveWsConnections: () => getActiveWsConnectionCount(),
-      getCronJobCounts: () => state.cron.getJobStats(),
-    });
-    log.info("Metrics gauge callbacks registered");
   }
 
   // Handle shutdown
-  app.addHook("onClose", async () => {
-    log.info("Shutting down gateway...");
-    state.clientSocketServer?.shutdown();
-    state.clientStore.shutdown();
-    state.channelRouter.stop();
-    await state.channelRuntime.stop();
-    await state.cron.shutdown();
-    // Gracefully shutdown task queue (waits for running tasks)
-    await state.taskQueue.shutdown();
-    // Stop command queue (promoter + monitor)
-    // Note: Running detached processes continue independently
-    await state.commandQueue.stop();
-    // Stop SSE heartbeat and cleanup all SSE connections
-    state.taskSSEManager.stopHeartbeat();
-    state.taskSSEManager.close();
-    // Stop discovery (mDNS unpublish) and mesh connections
-    state.discovery.stop();
-    state.mesh.shutdown();
-    state.container.killAllRunningProcesses();
-    if (telemetry) {
-      await telemetry.shutdown();
-      telemetry = null;
-    }
-    log.info("Shutdown complete");
-  });
+  if (runtime) {
+    app.addHook("onClose", async () => {
+      log.info("Shutting down gateway...");
+      state.clientSocketServer?.shutdown();
+      state.clientStore.shutdown();
+      state.channelRouter.stop();
+      await state.channelRuntime.stop();
+      await state.cron.shutdown();
+      // Gracefully shutdown task queue (waits for running tasks)
+      await state.taskQueue.shutdown();
+      // Stop command queue (promoter + monitor)
+      // Note: Running detached processes continue independently
+      await state.commandQueue.stop();
+      // Stop SSE heartbeat and cleanup all SSE connections
+      state.taskSSEManager.stopHeartbeat();
+      state.taskSSEManager.close();
+      // Stop discovery (mDNS unpublish) and mesh connections
+      state.discovery.stop();
+      state.mesh.shutdown();
+      state.container.killAllRunningProcesses();
+      if (telemetry) {
+        await telemetry.shutdown();
+        telemetry = null;
+      }
+      log.info("Shutdown complete");
+    });
+  }
 
   return app;
 }

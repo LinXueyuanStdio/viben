@@ -45,18 +45,24 @@ jobs:
         if: inputs.regenerate
         run: |
           curl -fsSL https://raw.githubusercontent.com/speakeasy-api/speakeasy/main/install.sh | sh
-          echo "$HOME/.speakeasy" >> $GITHUB_PATH
+          echo "$HOME/.speakeasy" >> "$GITHUB_PATH"
 
       - name: Regenerate SDK from OpenAPI spec
         if: inputs.regenerate
         env:
           SPEAKEASY_API_KEY: ${{ secrets.SPEAKEASY_API_KEY }}
         run: |
-          echo "Building @viben/core..."
-          pnpm turbo build --filter=@viben/core
+          echo "Building Viben CLI dependencies..."
+          pnpm turbo build --filter=@viben/core --filter=@viben/api-client
 
-          echo "Starting gateway and exporting OpenAPI spec..."
-          pnpm generate-client-sdk
+          echo "Building Viben CLI..."
+          pnpm --dir apps/cli build
+
+          echo "Exporting OpenAPI spec..."
+          node apps/cli/dist/index.js gateway export-openapi-json --out packages/client-sdk/openapi.json
+
+          echo "Generating SDK..."
+          OPENAPI_SPEC_PATH=packages/client-sdk/openapi.json pnpm generate-client-sdk
 
       - name: Verify SDK exists
         run: |
@@ -114,17 +120,21 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' packages/client-sdk/typescript/package.json)
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            echo "## 🏗️ Dry Run Complete" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "SDK **@viben/client-sdk@${VERSION}** built successfully." >> $GITHUB_STEP_SUMMARY
-            echo "Re-run with dry_run=false to publish to npm." >> $GITHUB_STEP_SUMMARY
+            {
+              echo "## 🏗️ Dry Run Complete"
+              echo ""
+              echo "SDK **@viben/client-sdk@${VERSION}** built successfully."
+              echo "Re-run with dry_run=false to publish to npm."
+            } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "## 🚀 Published @viben/client-sdk@${VERSION}" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Install:" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo "npm install @viben/client-sdk@${VERSION}" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "[npm package](https://www.npmjs.com/package/@viben/client-sdk)" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "## 🚀 Published @viben/client-sdk@${VERSION}"
+              echo ""
+              echo "Install:"
+              echo '```bash'
+              echo "npm install @viben/client-sdk@${VERSION}"
+              echo '```'
+              echo ""
+              echo "[npm package](https://www.npmjs.com/package/@viben/client-sdk)"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -12,7 +12,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,8 +21,14 @@ const ROOT = join(__dirname, "..", "..");
 const OUTPUT_DIR = join(ROOT, "packages", "client-sdk");
 const SPEC_PATH = join(OUTPUT_DIR, "openapi.json");
 const GATEWAY_URL = process.env.GATEWAY_URL || "http://127.0.0.1:18790";
+const SOURCE_SPEC_PATH = process.env.OPENAPI_SPEC_PATH;
 
 async function downloadSpec(): Promise<Record<string, unknown>> {
+  if (SOURCE_SPEC_PATH) {
+    console.log(`[generate-client-sdk] Reading OpenAPI spec from ${SOURCE_SPEC_PATH}...`);
+    return JSON.parse(await readFile(SOURCE_SPEC_PATH, "utf-8")) as Record<string, unknown>;
+  }
+
   const url = `${GATEWAY_URL}/openapi.json`;
   console.log(`[generate-client-sdk] Downloading OpenAPI spec from ${url}...`);
 
