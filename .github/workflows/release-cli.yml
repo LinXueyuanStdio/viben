@@ -18,6 +18,10 @@ on:
         description: 'Update Homebrew formula'
         type: boolean
         default: true
+      dry_run:
+        description: 'Dry run (build and test only, skip publishing)'
+        type: boolean
+        default: true
 
 # Ensure only one release workflow runs at a time
 concurrency:
@@ -29,161 +33,65 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # =============================================================================
+  # PREPARE: Extract version and determine release targets
+  # =============================================================================
   prepare:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.get-version.outputs.version }}
       tag: ${{ steps.get-version.outputs.tag }}
+      publish_npm: ${{ steps.get-version.outputs.publish_npm }}
+      update_homebrew: ${{ steps.get-version.outputs.update_homebrew }}
+      dry_run: ${{ steps.get-version.outputs.dry_run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Get version
+      - name: Get version and determine release targets
         id: get-version
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             if [[ -n "${{ inputs.version }}" ]]; then
               VERSION="${{ inputs.version }}"
             else
-              VERSION=$(jq -r '.version' apps/cli/package.json)
+              VERSION=$(jq -r '.version' package.json)
             fi
+            PUBLISH_NPM="${{ inputs.publish_npm }}"
+            UPDATE_HOMEBREW="${{ inputs.update_homebrew }}"
+            DRY_RUN="${{ inputs.dry_run }}"
           else
             # Tag trigger - extract version from tag (cli-v0.1.0 -> 0.1.0)
             VERSION="${GITHUB_REF_NAME#cli-v}"
+            PUBLISH_NPM="true"
+            UPDATE_HOMEBREW="true"
+            DRY_RUN="false"
           fi
 
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "tag=cli-v${VERSION}" >> $GITHUB_OUTPUT
-          echo "Building version: ${VERSION}"
+          {
+            echo "version=${VERSION}"
+            echo "tag=cli-v${VERSION}"
+            echo "publish_npm=${PUBLISH_NPM}"
+            echo "update_homebrew=${UPDATE_HOMEBREW}"
+            echo "dry_run=${DRY_RUN}"
+          } >> "$GITHUB_OUTPUT"
 
-  release:
+          echo "=========================================="
+          echo "CLI Release Configuration:"
+          echo "  Version: ${VERSION}"
+          echo "  Tag: cli-v${VERSION}"
+          echo "  Publish npm: ${PUBLISH_NPM}"
+          echo "  Update Homebrew: ${UPDATE_HOMEBREW}"
+          echo "  Dry run: ${DRY_RUN}"
+          echo "=========================================="
+
+  # =============================================================================
+  # BUILD CLI: Build the Node.js/npm CLI package
+  # =============================================================================
+  build-cli:
     needs: prepare
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Prepare install.sh for release
-        run: |
-          # Make install.sh executable
-          chmod +x scripts/install.sh
-
-          # Create release directory
-          mkdir -p release-assets
-
-          # Copy install.sh
-          cp scripts/install.sh release-assets/install.sh
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          name: Viben CLI v${{ needs.prepare.outputs.version }}
-          body: |
-            ## Viben CLI v${{ needs.prepare.outputs.version }}
-
-            ### Installation Methods
-
-            #### 1. Shell Script (macOS/Linux)
-            ```bash
-            curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
-            ```
-
-            #### 2. npx (macOS/Linux/Windows, Node.js 18+)
-            ```bash
-            npx viben
-            ```
-
-            #### 3. npm Global Install (macOS/Linux/Windows)
-            ```bash
-            npm install -g viben
-            viben
-            ```
-
-            #### 4. Homebrew (macOS/Linux)
-            ```bash
-            brew tap LinXueyuanStdio/viben
-            brew install viben
-            ```
-
-            ### Requirements
-            - Node.js 18+
-
-            > 💡 **Windows users**: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
-
-            ### Links
-            - [Documentation](https://github.com/LinXueyuanStdio/viben)
-            - [npm Package](https://www.npmjs.com/package/viben)
-          files: |
-            release-assets/install.sh
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate cli-releases.json
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-          TAG_NAME: ${{ needs.prepare.outputs.tag }}
-        run: |
-          INSTALL_SH_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/install.sh"
-
-          cat > release-assets/cli-releases.json << EOF
-          {
-            "version": "${VERSION}",
-            "tag": "${TAG_NAME}",
-            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "repository": "${{ github.repository }}",
-            "install_methods": {
-              "shell": {
-                "command": "curl -fsSL https://github.com/${{ github.repository }}/releases/latest/download/install.sh | bash",
-                "platforms": ["macos", "linux"]
-              },
-              "npx": {
-                "command": "npx viben",
-                "platforms": ["macos", "linux", "windows"]
-              },
-              "npm": {
-                "command": "npm install -g viben",
-                "platforms": ["macos", "linux", "windows"]
-              },
-              "homebrew": {
-                "command": "brew tap LinXueyuanStdio/viben && brew install viben",
-                "platforms": ["macos", "linux"]
-              }
-            },
-            "assets": {
-              "install_sh": {
-                "url": "${INSTALL_SH_URL}",
-                "name": "install.sh"
-              }
-            },
-            "links": {
-              "npm": "https://www.npmjs.com/package/viben",
-              "documentation": "https://github.com/${{ github.repository }}"
-            }
-          }
-          EOF
-
-          echo "Generated cli-releases.json:"
-          cat release-assets/cli-releases.json
-
-      - name: Upload releases JSON to release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.prepare.outputs.tag }}
-          files: release-assets/cli-releases.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-npm:
-    needs: [prepare, release]
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || inputs.publish_npm == true }}
-    outputs:
-      sha256: ${{ steps.get-sha256.outputs.sha256 }}
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -193,24 +101,99 @@ jobs:
 
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node-pnpm
-        with:
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Sync version to package files
+        shell: bash
         run: ./scripts/sync-version.sh "${{ needs.prepare.outputs.version }}"
 
       - name: Build @viben/core
         run: pnpm turbo build --filter=@viben/core
 
-      - name: Build apps/cli package
+      - name: Build viben CLI
         run: pnpm turbo build --filter=viben
 
-      - name: Test Node CLI package
+      - name: Upload CLI build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-build
+          path: |
+            apps/cli/dist/
+            apps/cli/package.json
+            apps/cli/README.md
+          retention-days: 1
+
+  # =============================================================================
+  # TEST CLI: Verify the Node.js/npm CLI flavor before publishing
+  # =============================================================================
+  test-cli:
+    needs: [prepare, build-cli]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Download CLI build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-build
+          path: apps/cli
+
+      - name: Make Node.js CLI executable
+        run: chmod +x apps/cli/dist/index.js
+
+      - name: Run Node.js CLI integration tests
         run: |
           node apps/cli/dist/index.js --version
           node apps/cli/dist/index.js --help
           chmod +x scripts/test-cli.sh
           ./scripts/test-cli.sh --local
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-test-results
+          path: |
+            test-results/
+            *.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # =============================================================================
+  # RELEASE CLI: Publish the tested CLI artifact to npm
+  # =============================================================================
+  release-cli:
+    needs: [prepare, build-cli, test-cli]
+    if: |
+      needs.prepare.outputs.publish_npm == 'true' &&
+      needs.prepare.outputs.dry_run != 'true' &&
+      needs.test-cli.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      sha256: ${{ steps.get-sha256.outputs.sha256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          install: 'false'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download CLI build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-build
+          path: apps/cli
 
       - name: Verify CLI build artifacts
         run: |
@@ -234,9 +217,22 @@ jobs:
             echo "$WORKSPACE_REFS"
             exit 1
           fi
-          echo "✅ No workspace: protocol references in runtime dependencies"
+          echo "[OK] No workspace: protocol references in runtime dependencies"
+
+      - name: Check npm package version
+        id: check-npm
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          if npm view "viben@${VERSION}" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "viben@${VERSION} is already published; skipping npm publish."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "viben@${VERSION} is not published yet."
+          fi
 
       - name: Publish to npm
+        if: steps.check-npm.outputs.published != 'true'
         run: |
           cd apps/cli
           npm publish --access public
@@ -254,7 +250,7 @@ jobs:
             if curl -sf "$PACKAGE_URL" -o /tmp/package.tgz; then
               echo "Package available after $((i*10)) seconds"
               SHA256=$(shasum -a 256 /tmp/package.tgz | cut -d' ' -f1)
-              echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+              echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
               echo "Package SHA256: ${SHA256}"
               exit 0
             fi
@@ -265,10 +261,189 @@ jobs:
           echo "::error::Package not available after 10 minutes"
           exit 1
 
-  update-homebrew:
-    needs: [prepare, publish-npm]
+      - name: Prepare install.sh for release
+        run: |
+          chmod +x scripts/install.sh
+          mkdir -p release-assets
+          cp scripts/install.sh release-assets/install.sh
+
+      - name: Upload CLI assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-assets
+          path: release-assets/
+          retention-days: 1
+
+  # =============================================================================
+  # GITHUB RELEASE: Create release only after npm publish succeeds
+  # =============================================================================
+  github-release:
+    needs: [prepare, release-cli]
+    if: needs.release-cli.result == 'success'
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name == 'push' || inputs.update_homebrew == true) && needs.publish-npm.outputs.sha256 != '' }}
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Create release directory
+        run: mkdir -p release-assets
+
+      - name: Download CLI assets
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-assets
+          path: release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Viben CLI v${{ needs.prepare.outputs.version }}
+          body: |
+            ## Viben CLI v${{ needs.prepare.outputs.version }}
+
+            ### Installation Methods
+
+            #### Shell Script (macOS/Linux)
+            ```bash
+            curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/download/${{ needs.prepare.outputs.tag }}/install.sh | bash
+            ```
+
+            #### npx (macOS/Linux/Windows, Node.js 18+)
+            ```bash
+            npx viben
+            ```
+
+            #### npm Global Install (macOS/Linux/Windows)
+            ```bash
+            npm install -g viben
+            viben
+            ```
+
+            #### Homebrew (macOS/Linux)
+            ```bash
+            brew tap LinXueyuanStdio/viben
+            brew install viben
+            ```
+
+            ### Requirements
+            - Node.js 18+
+
+            > Windows users: Use `npm install -g viben` or `npx viben`. Requires [Node.js 18+](https://nodejs.org).
+
+            ### Links
+            - [Documentation](https://github.com/LinXueyuanStdio/viben)
+            - [npm Package](https://www.npmjs.com/package/viben)
+          files: |
+            release-assets/install.sh
+          draft: false
+          make_latest: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate releases.json
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
+        run: |
+          INSTALL_SH_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/install.sh"
+
+          cat > release-assets/releases.json << EOF
+          {
+            "version": "${VERSION}",
+            "tag": "${TAG_NAME}",
+            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "repository": "${{ github.repository }}",
+            "components": {
+              "cli": true,
+              "desktop": false
+            },
+            "cli": {
+              "install_methods": {
+                "shell": {
+                  "command": "curl -fsSL ${INSTALL_SH_URL} | bash",
+                  "platforms": ["macos", "linux"]
+                },
+                "npx": {
+                  "command": "npx viben",
+                  "platforms": ["macos", "linux", "windows"]
+                },
+                "npm": {
+                  "command": "npm install -g viben",
+                  "platforms": ["macos", "linux", "windows"]
+                },
+                "homebrew": {
+                  "command": "brew tap LinXueyuanStdio/viben && brew install viben",
+                  "platforms": ["macos", "linux"]
+                }
+              },
+              "assets": {
+                "install_sh": {
+                  "url": "${INSTALL_SH_URL}",
+                  "name": "install.sh"
+                }
+              }
+            },
+            "desktop": {
+              "assets": {
+                "macos": {
+                  "arm64": {
+                    "url": "",
+                    "name": ""
+                  },
+                  "x64": {
+                    "url": "",
+                    "name": ""
+                  }
+                },
+                "windows": {
+                  "msi": {
+                    "url": "",
+                    "name": ""
+                  },
+                  "exe": {
+                    "url": "",
+                    "name": ""
+                  }
+                },
+                "linux": {
+                  "deb": {
+                    "url": "",
+                    "name": ""
+                  }
+                }
+              }
+            },
+            "links": {
+              "npm": "https://www.npmjs.com/package/viben",
+              "documentation": "https://github.com/${{ github.repository }}",
+              "changelog": "https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md"
+            }
+          }
+          EOF
+
+          echo "Generated releases.json:"
+          cat release-assets/releases.json
+
+      - name: Upload releases.json to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/releases.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # HOMEBREW UPDATE: Update formula after npm publish
+  # =============================================================================
+  update-homebrew:
+    needs: [prepare, release-cli]
+    runs-on: ubuntu-latest
+    if: |
+      needs.prepare.outputs.update_homebrew == 'true' &&
+      needs.prepare.outputs.dry_run != 'true' &&
+      needs.release-cli.outputs.sha256 != ''
     steps:
       - name: Checkout homebrew-viben
         uses: actions/checkout@v6
@@ -282,9 +457,9 @@ jobs:
         id: check-tap
         run: |
           if [ -d "homebrew-viben" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Homebrew tap repository not found. Skipping formula update."
           fi
 
@@ -292,23 +467,20 @@ jobs:
         if: steps.check-tap.outputs.exists == 'true'
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
-          SHA256="${{ needs.publish-npm.outputs.sha256 }}"
+          SHA256="${{ needs.release-cli.outputs.sha256 }}"
 
           cd homebrew-viben
-
-          # Create Formula directory if it doesn't exist
           mkdir -p Formula
 
-          # Generate the formula
-          cat > Formula/viben.rb << 'EOF'
+          cat > Formula/viben.rb << EOF
           class Viben < Formula
             desc "Orchestrate AI agent clusters in your local workspace"
             homepage "https://github.com/LinXueyuanStdio/viben"
-            url "https://registry.npmjs.org/viben/-/viben-VERSION_PLACEHOLDER.tgz"
-            sha256 "SHA256_PLACEHOLDER"
+            url "https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz"
+            sha256 "${SHA256}"
             license "MIT"
 
-            depends_on "node@20"
+            depends_on "node"
 
             def install
               system "npm", "install", *std_npm_args
@@ -320,10 +492,6 @@ jobs:
             end
           end
           EOF
-
-          # Replace placeholders
-          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" Formula/viben.rb
-          sed -i "s/SHA256_PLACEHOLDER/${SHA256}/g" Formula/viben.rb
 
           echo "Updated formula:"
           cat Formula/viben.rb
