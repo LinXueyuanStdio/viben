@@ -394,16 +394,25 @@ describe("AcpSessionManager", () => {
     });
   });
 
-  it("resolves Codex as the installed codex-acp backend", () => {
+  it("resolves Codex as the app-server backend while keeping Codex ACP explicit", () => {
     expect(resolveBuiltinAcpBackend("CODEX")).toMatchObject({
       executorType: "CODEX",
       id: "codex",
-      command: "codex-acp",
-      args: [],
+      registryId: "codex-app-server",
+      command: "codex",
+      args: ["app-server"],
+    });
+    expect(resolveBuiltinAcpBackend("CODEX_APP_SERVER")).toMatchObject({
+      executorType: "CODEX_APP_SERVER",
+      id: "codex",
+      registryId: "codex-app-server",
+      command: "codex",
+      args: ["app-server"],
     });
     expect(resolveBuiltinAcpBackend("CODEX_ACP")).toMatchObject({
       executorType: "CODEX_ACP",
       id: "codex",
+      registryId: "codex-acp",
       command: "codex-acp",
       args: [],
     });

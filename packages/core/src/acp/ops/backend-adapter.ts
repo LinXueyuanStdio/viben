@@ -31,6 +31,7 @@ import {
   CLIENT_SIDE_MCP_SERVER_NAME,
   GUI_EXECUTE_TOOL_NAME,
 } from "./client-side-mcp-constants";
+import { CodexAppServerBackendAdapter } from "./codex-app-server-backend";
 import type {
   AcpAgentCapabilities,
   AcpConfigOption,
@@ -81,9 +82,15 @@ const BUILTIN_ACP_BACKENDS: Record<string, AcpBackendTemplate> = {
   },
   CODEX: {
     id: "codex",
-    registryId: "codex-acp",
-    command: "codex-acp",
-    args: [],
+    registryId: "codex-app-server",
+    command: "codex",
+    args: ["app-server"],
+  },
+  CODEX_APP_SERVER: {
+    id: "codex",
+    registryId: "codex-app-server",
+    command: "codex",
+    args: ["app-server"],
   },
   CODEX_ACP: {
     id: "codex",
@@ -380,7 +387,7 @@ export interface AcpBackendInfo {
 }
 
 export function createDefaultAcpBackendAdapter(): AcpBackendAdapter {
-  return new SubprocessAcpBackendAdapter();
+  return new RoutingAcpBackendAdapter();
 }
 
 export function listBuiltinAcpBackends(): AcpBackendInfo[] {
@@ -407,11 +414,32 @@ export function resolveBuiltinAcpBackend(executorType: string | undefined): AcpB
   };
 }
 
+class RoutingAcpBackendAdapter implements AcpBackendAdapter {
+  readonly id = "routing";
+  private readonly subprocess = new SubprocessAcpBackendAdapter();
+  private readonly codexAppServer = new CodexAppServerBackendAdapter();
+
+  async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
+    const backend = await resolveBackendDefinition(context);
+    if (backend.registryId === "codex-app-server") {
+      return await this.codexAppServer.start(context);
+    }
+    return await this.subprocess.startWithDefinition(context, backend);
+  }
+}
+
 class SubprocessAcpBackendAdapter implements AcpBackendAdapter {
   readonly id = "subprocess";
 
   async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
     const backend = await resolveBackendDefinition(context);
+    return await this.startWithDefinition(context, backend);
+  }
+
+  async startWithDefinition(
+    context: AcpBackendStartContext,
+    backend: AcpBackendDefinition
+  ): Promise<AcpBackendSession> {
     const resolvedCommand = resolveBackendCommand(backend.command);
     const child = await spawnBackendProcess(context, backend, resolvedCommand);
     const stream = ndJsonStream(

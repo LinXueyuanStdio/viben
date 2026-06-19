@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import Fastify from "fastify";
 import fastifyWebsocket from "@fastify/websocket";
@@ -148,6 +151,53 @@ describe("Agent ACP WebSocket route", () => {
       client.close();
     }
   }, 15000);
+
+  it("keeps the Gateway ACP protocol stable while using the Codex app-server backend", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-codex-app-server-test-"));
+    const fakeServerPath = path.join(tempDir, "fake-codex-app-server.mjs");
+    await writeFile(fakeServerPath, fakeCodexAppServerScript(), "utf-8");
+
+    const client = await connectAcpClient(port);
+    try {
+      const newSession = await client.request("session/new", {
+        cwd: tempDir,
+        mcpServers: [],
+        agent_config: {
+          name: "codex-agent",
+          executor_type: "CODEX",
+          model: "gpt-5.4",
+          executor_config: {
+            command: process.execPath,
+            args: [fakeServerPath],
+            init_timeout_ms: 5000,
+          },
+        },
+      });
+      const sessionId = String(newSession.sessionId);
+
+      const streamed = client.waitForNotification("session/update");
+      const response = await client.request("session/prompt", {
+        sessionId,
+        prompt: [{ type: "text", text: "hello codex" }],
+      });
+
+      expect(response).toEqual({ stopReason: "end_turn" });
+      await expect(streamed).resolves.toMatchObject({
+        jsonrpc: "2.0",
+        method: "session/update",
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: "agent_message_chunk",
+            content: { type: "text", text: "codex says hello" },
+          },
+        },
+      });
+    } finally {
+      client.close();
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }, 15000);
 });
 
 async function connectAcpClient(port: number): Promise<{
@@ -226,4 +276,42 @@ async function connectAcpClient(port: number): Promise<{
       ws.close();
     },
   };
+}
+
+function fakeCodexAppServerScript(): string {
+  return `
+import readline from "node:readline";
+
+let threadId = "thr_fake";
+let turnId = "turn_fake";
+const rl = readline.createInterface({ input: process.stdin });
+
+function send(message) {
+  process.stdout.write(JSON.stringify(message) + "\\n");
+}
+
+rl.on("line", (line) => {
+  if (!line.trim()) return;
+  const message = JSON.parse(line);
+  if (message.method === "initialize") {
+    send({ id: message.id, result: { userAgent: "fake-codex", platformFamily: "macos", platformOs: "darwin" } });
+    return;
+  }
+  if (message.method === "initialized") {
+    return;
+  }
+  if (message.method === "thread/start") {
+    send({ id: message.id, result: { thread: { id: threadId, sessionId: threadId } } });
+    return;
+  }
+  if (message.method === "turn/start") {
+    send({ id: message.id, result: { turn: { id: turnId, status: "inProgress" } } });
+    send({ method: "turn/started", params: { threadId, turn: { id: turnId, status: "inProgress" } } });
+    send({ method: "item/agentMessage/delta", params: { itemId: "msg_fake", delta: "codex says hello" } });
+    send({ method: "turn/completed", params: { threadId, turn: { id: turnId, status: "completed" } } });
+    return;
+  }
+  send({ id: message.id, result: {} });
+});
+`;
 }
