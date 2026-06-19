@@ -551,9 +551,18 @@ class VibenPageSDK {
   };
 }
 
-// Create and export singleton
-const vibenPage = new VibenPageSDK();
-(window as unknown as { VibenPage?: VibenPageSDK }).VibenPage = vibenPage;
+function createVibenPage(): VibenPageSDK {
+  return new VibenPageSDK();
+}
 
-export { vibenPage as VibenPage, VibenPageSDK };
-export type { ActionDef, ActionDefinition, ActionResult, ExecuteContext, PageIdentity };
+export { createVibenPage, VibenPageSDK };
+export type {
+  ActionDef,
+  ActionDefinition,
+  ActionResult,
+  ConnectionState,
+  ExecuteContext,
+  PageIdentity,
+  Theme,
+  VibenConfig,
+};

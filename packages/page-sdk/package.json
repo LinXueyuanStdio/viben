@@ -3,19 +3,36 @@
   "version": "1.0.0",
   "description": "Viben Page SDK - Browser runtime for Viben pages to connect to Gateway",
   "type": "module",
-  "main": "dist/assets/viben-page-sdk.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LinXueyuanStdio/viben.git",
+    "directory": "packages/page-sdk"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/assets/viben-page-sdk.js",
+  "jsdelivr": "./dist/assets/viben-page-sdk.js",
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
     "./assets/viben-page-sdk.js": "./dist/assets/viben-page-sdk.js",
     "./assets/viben-page-tokens.css": "./assets/viben-page-tokens.css"
   },
   "files": [
     "dist",
-    "assets",
-    "src"
+    "assets"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsx scripts/build.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "tsx scripts/build.ts && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "verify:package": "tsx scripts/verify-package.ts"
   },
   "dependencies": {
     "@noble/ed25519": "^3.1.0",

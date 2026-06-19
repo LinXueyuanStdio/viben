@@ -1,0 +1,179 @@
+name: Release Page SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.1). Leave empty to use packages/page-sdk/package.json'
+        required: false
+        type: string
+      publish_npm:
+        description: 'Publish to npmjs'
+        type: boolean
+        default: true
+      publish_github_packages:
+        description: 'Publish to GitHub Packages'
+        type: boolean
+        default: true
+      dry_run:
+        description: 'Dry run (build, verify, pack only; skip registry publish)'
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-page-sdk
+  cancel-in-progress: false
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  release-page-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node-pnpm
+        with:
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Set version
+        working-directory: packages/page-sdk
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "Setting @viben/page-sdk version to ${VERSION}"
+            jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp
+            mv package.json.tmp package.json
+          fi
+          echo "PAGE_SDK_VERSION=$(jq -r '.version' package.json)" >> "$GITHUB_ENV"
+          echo "PAGE_SDK_NAME=$(jq -r '.name' package.json)" >> "$GITHUB_ENV"
+
+      - name: Typecheck
+        run: pnpm --filter @viben/page-sdk typecheck
+
+      - name: Build
+        run: pnpm --filter @viben/page-sdk build
+
+      - name: Verify package exports
+        run: pnpm --filter @viben/page-sdk verify:package
+
+      - name: Verify package contents
+        working-directory: packages/page-sdk
+        run: |
+          npm pack --dry-run
+          test -f dist/index.js
+          test -f dist/index.cjs
+          test -f dist/index.d.ts
+          test -f dist/assets/viben-page-sdk.js
+          test -f assets/viben-page-tokens.css
+
+      - name: Upload CDN bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: page-sdk-cdn-${{ env.PAGE_SDK_VERSION }}
+          path: packages/page-sdk/dist/assets/viben-page-sdk.js
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Check npmjs version
+        if: ${{ !inputs.dry_run && inputs.publish_npm }}
+        id: check-npmjs
+        run: |
+          if npm view "${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}" version --registry https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "${PAGE_SDK_NAME}@${PAGE_SDK_VERSION} is already published to npmjs; skipping."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npmjs
+        if: ${{ !inputs.dry_run && inputs.publish_npm && steps.check-npmjs.outputs.published != 'true' }}
+        working-directory: packages/page-sdk
+        run: npm publish --access public --registry https://registry.npmjs.org
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Check GitHub Packages scope
+        if: ${{ !inputs.dry_run && inputs.publish_github_packages }}
+        run: |
+          PACKAGE_SCOPE="$(node -e "console.log(process.env.PAGE_SDK_NAME.split('/')[0].toLowerCase())")"
+          OWNER_SCOPE="@$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          if [ "$PACKAGE_SCOPE" != "$OWNER_SCOPE" ]; then
+            echo "::warning::${PAGE_SDK_NAME} uses scope ${PACKAGE_SCOPE}, but this repository owner scope is ${OWNER_SCOPE}. GitHub Packages publish may require GH_PACKAGES_TOKEN with write:packages permission for ${PACKAGE_SCOPE}."
+          fi
+
+      - name: Check GitHub Packages version
+        if: ${{ !inputs.dry_run && inputs.publish_github_packages }}
+        id: check-github-packages
+        run: |
+          NPM_CONFIG_USERCONFIG="${RUNNER_TEMP}/.npmrc.github-packages"
+          {
+            echo "@viben:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
+          } > "$NPM_CONFIG_USERCONFIG"
+          export NPM_CONFIG_USERCONFIG
+
+          if npm view "${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}" version --registry https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "${PAGE_SDK_NAME}@${PAGE_SDK_VERSION} is already published to GitHub Packages; skipping."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || github.token }}
+
+      - name: Publish to GitHub Packages
+        if: ${{ !inputs.dry_run && inputs.publish_github_packages && steps.check-github-packages.outputs.published != 'true' }}
+        working-directory: packages/page-sdk
+        run: |
+          NPM_CONFIG_USERCONFIG="${RUNNER_TEMP}/.npmrc.github-packages"
+          {
+            echo "@viben:registry=https://npm.pkg.github.com"
+            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
+          } > "$NPM_CONFIG_USERCONFIG"
+          export NPM_CONFIG_USERCONFIG
+          npm publish --registry https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN || github.token }}
+
+      - name: Summary
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            {
+              echo "## Page SDK Dry Run Complete"
+              echo ""
+              echo "**${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}** built and packed successfully."
+              echo ""
+              echo "CDN bundle artifact: \`page-sdk-cdn-${PAGE_SDK_VERSION}\`"
+              echo ""
+              echo "npm CDN URLs after publish:"
+              echo "- \`https://unpkg.com/${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}/dist/assets/viben-page-sdk.js\`"
+              echo "- \`https://cdn.jsdelivr.net/npm/${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}/dist/assets/viben-page-sdk.js\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## Page SDK Release Complete"
+              echo ""
+              echo "Package: **${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}**"
+              echo ""
+              echo "npmjs requested: \`${{ inputs.publish_npm }}\`"
+              echo "GitHub Packages requested: \`${{ inputs.publish_github_packages }}\`"
+              echo ""
+              echo "Install:"
+              echo '```bash'
+              echo "npm install ${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}"
+              echo '```'
+              echo ""
+              echo "CDN:"
+              echo '```html'
+              echo "<script src=\"https://unpkg.com/${PAGE_SDK_NAME}@${PAGE_SDK_VERSION}/dist/assets/viben-page-sdk.js\"></script>"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
