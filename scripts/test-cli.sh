@@ -132,13 +132,21 @@ run_test_json() {
     echo -n "  Testing: $name (JSON)... "
 
     set +e
-    output=$(eval "$cmd" 2>&1)
+    local stderr_file
+    stderr_file="$(mktemp)"
+    output=$(eval "$cmd" 2>"$stderr_file")
     exit_code=$?
+    local stderr_output
+    stderr_output="$(cat "$stderr_file")"
+    rm -f "$stderr_file"
 
     if [ "$exit_code" -ne 0 ]; then
         echo -e "${RED}FAILED${NC}"
         fail "$name (command failed with exit code: $exit_code)"
         echo "    Output: $output"
+        if [ -n "$stderr_output" ]; then
+            echo "    Error: $stderr_output"
+        fi
         set -e
         return 0  # Don't return 1 to avoid early exit with set -e
     fi
@@ -153,6 +161,10 @@ run_test_json() {
     else
         echo -e "${RED}FAILED${NC}"
         fail "$name (JSON) (expected: '$expected', got: '$result')"
+        echo "    Output: $output"
+        if [ -n "$stderr_output" ]; then
+            echo "    Error: $stderr_output"
+        fi
         return 0  # Don't return 1 to avoid early exit with set -e
     fi
 }
@@ -458,7 +470,7 @@ test_global_options() {
     run_test "verbose mode" "$VIBEN_CMD --verbose config list"
 
     # JSON mode (already tested above, but verify format)
-    output=$($VIBEN_CMD --json config list 2>&1)
+    output=$($VIBEN_CMD --json config list)
     if echo "$output" | jq . > /dev/null 2>&1; then
         success "JSON output is valid JSON"
     else
