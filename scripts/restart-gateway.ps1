@@ -1,4 +1,7 @@
-# Restart Viben Gateway (Windows PowerShell)
+# Restart Viben Gateway (Windows PowerShell - apps/cli)
+#
+# Automatically builds workspace dependencies if dist/ is missing,
+# then restarts the gateway.
 #
 # Usage: .\scripts\restart-gateway.ps1 [-Force]
 #
@@ -17,6 +20,7 @@ $ErrorActionPreference = "Continue"
 $ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 $CoreDir     = Join-Path $ProjectRoot "packages\core"
+$CliDir      = Join-Path $ProjectRoot "apps\cli"
 $LogDir      = Join-Path $env:USERPROFILE ".viben\logs"
 $RuntimeLog  = Join-Path $LogDir "gateway.log"
 $RestartLog  = Join-Path $LogDir "gateway-restart.log"
@@ -65,7 +69,7 @@ Write-Log "DEBUG" "Node version: $(node --version 2>$null)"
 Write-Log "DEBUG" "Working directory: $ProjectRoot"
 
 # -------------------------------------------------------
-# Build @viben/core dependencies (recursive)
+# Build core package, CLI package, and re-link CLI
 # -------------------------------------------------------
 Write-Log "INFO" "Building @viben/core workspace dependencies..."
 Set-Location $ProjectRoot
@@ -96,24 +100,30 @@ foreach ($dep in $vibenDeps) {
 
 # Always rebuild core itself (gateway needs latest code)
 Write-Log "INFO" "Rebuilding @viben/core..."
-$buildOutput = & pnpm --filter "@viben/core" build 2>&1
+Set-Location $CoreDir
+$buildOutput = & pnpm build 2>&1
 $buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
 $buildOutput | Where-Object { $_ -match "(✓|📦|error|Error|warning|Warning)" } | Write-Host
 if ($LASTEXITCODE -ne 0) {
-    $cliBinCheck = Join-Path $CoreDir "dist\cli\bin.js"
-    if (Test-Path $cliBinCheck) {
-        Write-Log "WARN" "Build exited with code $LASTEXITCODE but dist/cli/bin.js exists — continuing with existing build"
-    } else {
-        Write-Log "ERROR" "Failed to build @viben/core (exit code $LASTEXITCODE) and no dist found"
-        exit 1
-    }
+    Write-Log "ERROR" "Failed to build @viben/core (exit code $LASTEXITCODE)"
+    exit 1
 } else {
     Write-Log "INFO" "Build successful"
 }
 
+Write-Log "INFO" "Building viben CLI..."
+Set-Location $CliDir
+$buildOutput = & pnpm build 2>&1
+$buildOutput | ForEach-Object { Add-Content -Path $RestartLog -Value $_ -Encoding UTF8 }
+if ($LASTEXITCODE -ne 0) {
+    Write-Log "ERROR" "Failed to build viben CLI (exit code $LASTEXITCODE)"
+    exit 1
+}
+Write-Log "INFO" "CLI build successful"
+
 # npm link (non-fatal)
 Write-Log "INFO" "Linking viben CLI..."
-Set-Location $CoreDir
+Set-Location $CliDir
 & npm link 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { Write-Log "WARN" "npm link failed (non-fatal)" }
 
@@ -122,18 +132,27 @@ if ($LASTEXITCODE -ne 0) { Write-Log "WARN" "npm link failed (non-fatal)" }
 # -------------------------------------------------------
 Write-Log "INFO" "Stopping existing gateway processes..."
 
-# Pattern-scoped kill (only gateway-related, not all node processes)
-Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object {
-    $_.CommandLine -like "*gateway*start*" -or $_.CommandLine -like "*gateway*restart*"
-} | ForEach-Object {
-    Write-Log "INFO" "Killing gateway node process (PID $($_.Id))"
-    Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+function Stop-MatchingProcesses {
+    param([string]$Pattern, [string]$EmptyMessage)
+
+    $matches = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.CommandLine -and $_.CommandLine -match $Pattern
+    }
+
+    if ($matches) {
+        foreach ($proc in $matches) {
+            Write-Log "INFO" "Killing process matching '$Pattern' (PID $($proc.ProcessId))"
+            Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+        Start-Sleep -Milliseconds 500
+    } else {
+        Write-Log "DEBUG" $EmptyMessage
+    }
 }
 
-Get-Process -Name "viben" -ErrorAction SilentlyContinue | ForEach-Object {
-    Write-Log "INFO" "Killing viben sidecar (PID $($_.Id))"
-    Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
-}
+Stop-MatchingProcesses "viben.*gateway.*start" "No viben gateway process found"
+Stop-MatchingProcesses "packages[\\/]+core.*gateway.*start" "No node gateway process found"
+Stop-MatchingProcesses "apps[\\/]+cli.*gateway.*start" "No apps/cli gateway process found"
 
 # Kill any remaining processes that own the port (handles SYSTEM/service processes)
 $connections = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
@@ -157,14 +176,14 @@ Write-Log "INFO" "Port $Port is free"
 # -------------------------------------------------------
 # Start gateway
 # -------------------------------------------------------
-Set-Location $CoreDir
-$cliBin = Join-Path $CoreDir "dist\cli\bin.js"
+Set-Location $CliDir
+$cliBin = Join-Path $CliDir "dist\index.js"
 if (-not (Test-Path $cliBin)) {
     Write-Log "ERROR" "CLI binary not found after build: $cliBin"
     exit 1
 }
 
-$nodeArgs = @(".\dist\cli\bin.js", "gateway", "restart", "--port", "$Port")
+$nodeArgs = @(".\dist\index.js", "gateway", "restart", "--port", "$Port")
 if ($Force) { $nodeArgs += "--force" }
 
 Write-Log "INFO" "Starting Node.js gateway on port $Port...$(if ($Force) { ' (force mode)' })"
@@ -173,7 +192,7 @@ Write-Log "DEBUG" "Command: node $($nodeArgs -join ' ')"
 # Clear runtime log
 Set-Content -Path $RuntimeLog -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') Gateway starting..." -Encoding UTF8
 
-Start-Process -FilePath "node" -ArgumentList $nodeArgs -WorkingDirectory $CoreDir -WindowStyle Hidden
+Start-Process -FilePath "node" -ArgumentList $nodeArgs -WorkingDirectory $CliDir -WindowStyle Hidden
 
 # -------------------------------------------------------
 # Wait for gateway health endpoint
