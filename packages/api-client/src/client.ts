@@ -29,6 +29,8 @@ import type {
   OAuthUrlOptions,
   VoiceTokenRequest,
   VoiceTokenResponse,
+  PublishPageRequest,
+  PublishPageResponse,
 } from './types';
 
 /**
@@ -472,6 +474,21 @@ export class VibenClient {
     deleteApiKey: (id: string): Promise<{ success: boolean }> =>
       this.request<{ success: boolean }>(`/api/users/me/api-keys/${id}`, {
         method: 'DELETE',
+      }),
+  };
+
+  // ============================================
+  // Pages API
+  // ============================================
+
+  pages = {
+    /**
+     * Publish a static page HTML document.
+     */
+    publish: (data: PublishPageRequest): Promise<PublishPageResponse> =>
+      this.request<PublishPageResponse>('/api/pages/publish', {
+        method: 'POST',
+        body: JSON.stringify(data),
       }),
   };
 

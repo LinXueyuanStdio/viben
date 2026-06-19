@@ -43,12 +43,16 @@ export type {
   SkillListParams,
   PaginatedResponse,
   Author,
+  IconData,
   // MCP
   McpPackage,
   McpPackageResponse,
   // Skills
   SkillPackage,
   SkillPackageResponse,
+  // Pages
+  PublishPageRequest,
+  PublishPageResponse,
   // User
   User,
   UserResponse,

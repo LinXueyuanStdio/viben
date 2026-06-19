@@ -4,6 +4,17 @@ import { db, publishedPages } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { eq } from 'drizzle-orm';
 
+interface IconPayload {
+  type: string;
+  value: string;
+}
+
+function isIconPayload(value: unknown): value is IconPayload {
+  if (!value || typeof value !== 'object') return false;
+  const icon = value as Record<string, unknown>;
+  return typeof icon.type === 'string' && typeof icon.value === 'string';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await requireAuth(request);
@@ -11,16 +22,23 @@ export async function POST(request: NextRequest) {
 
     const { uid, title, icon, description, html } = body;
 
-    if (!uid || !title || !html) {
+    if (typeof uid !== 'string' || !uid.trim() || typeof title !== 'string' || !title.trim() || typeof html !== 'string' || !html) {
       return NextResponse.json(
         { error: 'Missing required fields: uid, title, html' },
         { status: 400 }
       );
     }
 
-    if (typeof html !== 'string') {
+    if (icon !== undefined && icon !== null && !isIconPayload(icon)) {
       return NextResponse.json(
-        { error: 'html must be a string' },
+        { error: 'icon must be an object with string type and value' },
+        { status: 400 }
+      );
+    }
+
+    if (description !== undefined && description !== null && typeof description !== 'string') {
+      return NextResponse.json(
+        { error: 'description must be a string' },
         { status: 400 }
       );
     }
@@ -52,6 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         page_uid: uid,
+        url: `/page/${encodeURIComponent(uid)}`,
         updated: true,
       });
     }
@@ -69,6 +88,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       page_uid: uid,
+      url: `/page/${encodeURIComponent(uid)}`,
       updated: false,
     });
   } catch (error) {

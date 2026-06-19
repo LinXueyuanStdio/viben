@@ -7,11 +7,13 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FolderOpen, Info, Package } from "lucide-react";
+import { Download, FolderOpen, Info, Package, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
+import { readFile, viewPage } from "@/lib/gateway";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { getApiClient, useAuthStore } from "@/stores/auth-store";
 
 // ============================================================================
 // Types
@@ -43,6 +45,9 @@ export function PageSettingPanel({
 }: PageSettingPanelProps) {
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const accessToken = useAuthStore((state) => state.user?.accessToken);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   const directoryPath = `pages/${pageUid}`;
 
@@ -72,6 +77,45 @@ export function PageSettingPanel({
       toast.error(t("page.downloadFailed", "Download failed"));
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!isAuthenticated || !accessToken) {
+      toast.error(t("page.settings.publishLoginRequired", "Sign in to publish this page"));
+      return;
+    }
+
+    const baseUrl = getGatewayUrl();
+    setIsPublishing(true);
+    try {
+      const { page } = await viewPage(baseUrl, workspacePath, pageUid);
+      if (!page || page.type !== "static") {
+        throw new Error(t("page.settings.publishStaticOnly", "Only static pages can be published"));
+      }
+
+      const entryPath = `${workspacePath}/pages/${pageUid}/${page.file}`;
+      const { content } = await readFile(baseUrl, entryPath);
+      const client = getApiClient();
+      client.setAccessToken(accessToken);
+      const result = await client.pages.publish({
+        uid: page.uid,
+        title: page.name,
+        icon: page.icon ?? null,
+        description: page.description ?? null,
+        html: content,
+      });
+
+      toast.success(t("page.settings.publishSuccess", "Page published"), {
+        description: result.url,
+      });
+    } catch (error) {
+      console.error("[PageSettingPanel] publish failed:", error);
+      toast.error(t("page.settings.publishFailed", "Publish failed"), {
+        description: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -130,6 +174,41 @@ export function PageSettingPanel({
             </div>
           </dl>
         </section>
+
+        {pageType === "static" && (
+          <section className="rounded-lg border border-border bg-card p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <UploadCloud className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold text-foreground">
+                {t("page.settings.publish", "Publish")}
+              </h2>
+            </div>
+
+            <p className="mb-4 text-xs text-muted-foreground">
+              {isAuthenticated
+                ? t(
+                    "page.settings.publishDescription",
+                    "Publish this static HTML page to the cloud."
+                  )
+                : t(
+                    "page.settings.publishLoginDescription",
+                    "Sign in to publish this static HTML page to the cloud."
+                  )}
+            </p>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handlePublish}
+              disabled={isPublishing || !isAuthenticated}
+            >
+              <UploadCloud className="mr-2 h-4 w-4" />
+              {isPublishing
+                ? t("page.settings.publishing", "Publishing...")
+                : t("page.settings.publishButton", "Publish")}
+            </Button>
+          </section>
+        )}
 
         {/* Export Section */}
         <section className="rounded-lg border border-border bg-card p-6">

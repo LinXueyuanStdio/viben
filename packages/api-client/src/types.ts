@@ -48,6 +48,11 @@ export interface Author {
   avatarUrl: string | null;
 }
 
+export interface IconData {
+  type: string;
+  value: string;
+}
+
 // ============================================
 // MCP Package Types
 // ============================================
@@ -124,6 +129,25 @@ export interface SkillPackage {
  */
 export interface SkillPackageResponse {
   package: SkillPackage;
+}
+
+// ============================================
+// Page Types
+// ============================================
+
+export interface PublishPageRequest {
+  uid: string;
+  title: string;
+  icon?: IconData | null;
+  description?: string | null;
+  html: string;
+}
+
+export interface PublishPageResponse {
+  success: boolean;
+  page_uid: string;
+  url: string;
+  updated: boolean;
 }
 
 // ============================================
