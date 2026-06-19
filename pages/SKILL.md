@@ -12,7 +12,7 @@ pages/
   0612-my-app/
     SKILL.md              # 页面配置（YAML frontmatter + Markdown body）
     index.html            # static 类型的入口文件
-    _assets/              # 上传的资源（图片等）
+    assets/              # 上传的资源（图片等）
   0612-docs/
     SKILL.md
   0612-child-page/        # 子页面（层级关系由 index.json 管理）
@@ -324,7 +324,7 @@ metadata:
 2. **层级管理**：使用 `index.json` 管理页面层级，不再使用目录嵌套
 3. **静态页面**：优先使用 CDN 引入库，保持单文件可运行
 4. **全屏应用**：设置 `html, body, #root { width: 100%; height: 100%; overflow: hidden; }`
-5. **资源文件**：上传到 `_assets/` 目录，通过相对路径引用
+5. **资源文件**：上传到 `assets/` 目录，通过相对路径引用
 
 ---
 
