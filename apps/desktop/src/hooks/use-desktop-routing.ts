@@ -683,9 +683,13 @@ export function useDesktopRouting(): DesktopRoutingApi {
         openInNewTab(url);
         return;
       }
+      if (options?.stackMode === "replace") {
+        navigateReplace(url);
+        return;
+      }
       navigateReset(url);
     },
-    [navigateReset, openInNewTab],
+    [navigateReplace, navigateReset, openInNewTab],
   );
 
   const openAgentDetail = useCallback(
