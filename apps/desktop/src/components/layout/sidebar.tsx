@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Lightbulb,
   Home,
+  ArrowLeft,
 } from "lucide-react";
 import { GithubIcon as Github } from "@/components/ui/icons";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,12 @@ import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 import { invoke } from "@tauri-apps/api/core";
 import { PageSection } from "@/components/layout/page-section";
 import { useUiStore } from "@/stores";
+import { SettingsSidebarContent } from "@/pages/settings/settings-sidebar-content";
+import {
+  findPreviousNonSettingsHistoryIndex,
+  isSettingsPathname,
+} from "@/pages/settings/settings-sidebar-utils";
+import { getCurrentWindowTabStore } from "@/stores/tab-store";
 import type { IconData } from "@/components/ui/icon-picker";
 import { normalizeWorkspaceSection } from "@/navigation/navigation-meta";
 
@@ -115,7 +122,14 @@ const githubNavItem: WorkspaceNavItem = {
 export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { openWorkspaceSection, openWorkspaceHome, openPath, openDashboard } = useDesktopRouting();
+  const location = useLocation();
+  const {
+    currentTab,
+    openWorkspaceSection,
+    openWorkspaceHome,
+    openPath,
+    openDashboard,
+  } = useDesktopRouting();
 
   const {
     workspaces,
@@ -230,6 +244,30 @@ export function Sidebar() {
 
   // Whether to show expanded content (either not collapsed, or hovered while collapsed)
   const showExpanded = !collapsed || isHovered;
+  const isSettingsMode = isSettingsPathname(location.pathname);
+
+  const handleReturnFromSettings = useCallback(() => {
+    if (currentTab) {
+      const previousIndex = findPreviousNonSettingsHistoryIndex(
+        currentTab.navigationHistory,
+        currentTab.historyIndex,
+      );
+
+      if (previousIndex !== null) {
+        getCurrentWindowTabStore()
+          .getState()
+          .jumpToHistory(currentTab.id, previousIndex);
+        return;
+      }
+    }
+
+    if (activeWorkspaceId) {
+      openWorkspaceSection(activeWorkspaceId, "chat");
+      return;
+    }
+
+    openDashboard();
+  }, [activeWorkspaceId, currentTab, openDashboard, openWorkspaceSection]);
 
   // Create Task Dialog state (from global UI store for keyboard shortcut support)
   const { isCreateTaskDialogOpen: isCreateTaskOpen, setCreateTaskDialogOpen: setIsCreateTaskOpen } = useUiStore();
@@ -345,6 +383,61 @@ export function Sidebar() {
       toast.error(t("sidebar.taskCreateFailed"));
     }
   };
+
+  const ExpandedSettingsContent = (
+    <>
+      <div className="flex h-10 items-center border-b border-sidebar-border px-2">
+        <Button
+          variant="ghost"
+          className="h-8 w-full justify-start gap-2 px-2 text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={handleReturnFromSettings}
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0" />
+          <span className="truncate text-sm font-medium">{t("common.back", "Back")}</span>
+        </Button>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1 px-2 pt-2">
+        <SettingsSidebarContent collapsed={false} showExpanded />
+      </ScrollArea>
+
+      <div className="px-2 pb-2">
+        <Separator className="mb-2 bg-sidebar-border" />
+        <SidebarBottomDrawer collapsed={false} onOpenChange={handleMenuOpenChange} />
+        <WakeWordTaskButton
+          collapsed={false}
+          disabled={!activeWorkspace}
+        />
+      </div>
+    </>
+  );
+
+  const CollapsedSettingsContent = (
+    <>
+      <div className="flex h-10 items-center justify-center border-b border-sidebar-border px-2">
+        <SidebarIconButton
+          icon={<ArrowLeft className="h-4 w-4" />}
+          tooltip={t("common.back", "Back")}
+          onClick={handleReturnFromSettings}
+        />
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1 px-2 pt-2">
+        <SettingsSidebarContent collapsed showExpanded={false} />
+      </ScrollArea>
+
+      <div className="flex flex-col pb-2">
+        <div className="grid w-full place-items-center py-2">
+          <Separator className="w-10 bg-sidebar-border" />
+        </div>
+        <SidebarBottomDrawer collapsed onOpenChange={handleMenuOpenChange} />
+        <WakeWordTaskButton
+          collapsed
+          disabled={!activeWorkspace}
+        />
+      </div>
+    </>
+  );
 
   // Expanded content component (reused in both modes)
   const ExpandedContent = (
@@ -638,7 +731,13 @@ export function Sidebar() {
               : "w-56"
           )}
         >
-            {showExpanded ? ExpandedContent : CollapsedContent}
+            {isSettingsMode
+              ? showExpanded
+                ? ExpandedSettingsContent
+                : CollapsedSettingsContent
+              : showExpanded
+                ? ExpandedContent
+                : CollapsedContent}
         </aside>
       </div>
 
