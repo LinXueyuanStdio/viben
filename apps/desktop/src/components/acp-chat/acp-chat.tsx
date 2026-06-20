@@ -236,7 +236,7 @@ function AcpHeaderSessionMenu({ title, sessions, currentSessionId, onSelectSessi
 interface AcpHeaderNewSessionMenuProps {
   onCreateSession: () => void;
   onOpenInNewWindow: () => void;
-  onSelectAgent: (agentId: string) => void;
+  onCreateSessionWithAgent: (agentId: string) => void;
   agentOptions: SelectorOption[];
   workspaceName?: string;
 }
@@ -244,7 +244,7 @@ interface AcpHeaderNewSessionMenuProps {
 function AcpHeaderNewSessionMenu({
   onCreateSession,
   onOpenInNewWindow,
-  onSelectAgent,
+  onCreateSessionWithAgent,
   agentOptions,
   workspaceName,
 }: AcpHeaderNewSessionMenuProps) {
@@ -295,7 +295,7 @@ function AcpHeaderNewSessionMenu({
               {workspaceAgents.map((agent) => (
                 <DropdownMenuItem
                   key={agent.id}
-                  onClick={() => onSelectAgent(agent.id)}
+                  onClick={() => onCreateSessionWithAgent(agent.id)}
                   className="gap-2 pl-4"
                 >
                   <MessageSquare className="size-3.5 shrink-0" />
@@ -314,7 +314,7 @@ function AcpHeaderNewSessionMenu({
               {globalAgents.map((agent) => (
                 <DropdownMenuItem
                   key={agent.id}
-                  onClick={() => onSelectAgent(agent.id)}
+                  onClick={() => onCreateSessionWithAgent(agent.id)}
                   className="gap-2 pl-4"
                 >
                   <MessageSquare className="size-3.5 shrink-0" />
@@ -1196,7 +1196,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         ) : (
           // Windows/Linux: 左侧放菜单
           <>
-            <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} workspaceName={workspaceName} />
+            <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onCreateSessionWithAgent={createSession} agentOptions={agentOptions} workspaceName={workspaceName} />
             <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           </>
         )
@@ -1206,7 +1206,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         isMacOS ? (
           // macOS: 右侧放菜单
           <>
-            <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} workspaceName={workspaceName} />
+            <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onCreateSessionWithAgent={createSession} agentOptions={agentOptions} workspaceName={workspaceName} />
             <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
           </>
         ) : (
@@ -1223,7 +1223,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       leftContent={
         <>
           <AcpHeaderSessionMenu title={activeTitle} sessions={sessions} currentSessionId={sessionId ?? undefined} onSelectSession={selectSession} />
-          <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onSelectAgent={setSelectedAgentId} agentOptions={agentOptions} workspaceName={workspaceName} />
+          <AcpHeaderNewSessionMenu onCreateSession={createSession} onOpenInNewWindow={openChatWindow} onCreateSessionWithAgent={createSession} agentOptions={agentOptions} workspaceName={workspaceName} />
         </>
       }
       centerContent={null}

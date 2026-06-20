@@ -336,6 +336,16 @@ export function getPageProjectedDepth(activeDepth: number, deltaX: number): numb
   return Math.max(0, activeDepth + direction * (1 + additionalSteps));
 }
 
+export function getPageProjectedDepthForRow(
+  visibleRows: PageVisibleRow[],
+  overUid: string,
+  fallbackDepth: number,
+  deltaX: number
+): number {
+  const overRow = visibleRows.find((row) => row.uid === overUid);
+  return getPageProjectedDepth(overRow?.depth ?? fallbackDepth, deltaX);
+}
+
 export function getStaticSortableTransform(
   transform: Transform | null,
   isDragActive: boolean

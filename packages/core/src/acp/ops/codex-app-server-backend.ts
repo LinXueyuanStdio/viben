@@ -265,7 +265,7 @@ function resolveCodexDefinition(
   return {
     id: readString(config.id) ?? override?.id ?? "codex",
     command: readString(config.command) ?? override?.command ?? "codex",
-    args: stringArray(config.args) ?? override?.args ?? ["app-server"],
+    args: codexArgs(agentConfig, stringArray(config.args) ?? override?.args ?? ["app-server"]),
     env: {
       ...envRecord(override?.env),
       ...envRecord(config.env),
@@ -275,6 +275,26 @@ function resolveCodexDefinition(
       ?? override?.initTimeoutMs
       ?? DEFAULT_INIT_TIMEOUT_MS,
   };
+}
+
+function codexArgs(agentConfig: AgentConfigPayload | undefined, baseArgs: string[]): string[] {
+  const config = asRecord(agentConfig?.executor_config);
+  const modelProvider = readString(config.model_provider)
+    ?? readString(config.modelProvider)
+    ?? readString(agentConfig?.provider);
+  const baseUrl = readString(config.base_url) ?? readString(config.baseUrl);
+  const args = [...baseArgs];
+  if (modelProvider) {
+    args.push("-c", `model_provider=${tomlString(modelProvider)}`);
+  }
+  if (modelProvider && baseUrl) {
+    args.push("-c", `model_providers.${modelProvider}.base_url=${tomlString(baseUrl)}`);
+  }
+  return args;
+}
+
+function tomlString(value: string): string {
+  return JSON.stringify(value);
 }
 
 function threadMethod(context: AcpBackendStartContext): string {
@@ -360,8 +380,8 @@ function sessionSandbox(context: AcpBackendStartContext): string | undefined {
 
 function sessionSandboxPolicy(context: AcpBackendStartContext): Record<string, unknown> {
   return context.sandboxConfig?.enabled
-    ? { type: "workspace-write" }
-    : { type: "read-only" };
+    ? { type: "workspaceWrite" }
+    : { type: "readOnly" };
 }
 
 function normalizeCodexSandbox(value: string | undefined): string | undefined {
@@ -381,8 +401,24 @@ function normalizeCodexSandbox(value: string | undefined): string | undefined {
 }
 
 function normalizeCodexSandboxPolicy(policy: Record<string, unknown>): Record<string, unknown> {
-  const type = normalizeCodexSandbox(readString(policy.type));
+  const type = normalizeCodexSandboxPolicyType(readString(policy.type));
   return type ? { ...policy, type } : policy;
+}
+
+function normalizeCodexSandboxPolicyType(value: string | undefined): string | undefined {
+  switch (value) {
+    case "read-only":
+    case "read_only":
+      return "readOnly";
+    case "workspace-write":
+    case "workspace_write":
+      return "workspaceWrite";
+    case "danger-full-access":
+    case "danger_full_access":
+      return "dangerFullAccess";
+    default:
+      return value;
+  }
 }
 
 function agentSettings(agentConfig: AgentConfigPayload | undefined): Record<string, unknown> {

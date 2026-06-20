@@ -20,10 +20,8 @@
   - Reusable settings navigation list for the main Desktop sidebar. It supports expanded and collapsed sidebar states.
 - Create `apps/desktop/src/pages/settings/settings-sidebar-content.test.tsx`
   - Component tests for section click behavior and replace-mode settings navigation.
-- Create `apps/desktop/src/hooks/use-desktop-routing.test.tsx`
-  - Hook test proving settings section switches replace the current history entry instead of appending another settings entry.
 - Modify `apps/desktop/src/hooks/use-desktop-routing.ts`
-  - Make `openSettings(section, { stackMode: "replace" })` call `tabActions.replaceUrl()` so in-settings section switches do not add tab history entries.
+  - Make `openSettings(section, { stackMode: "replace" })` call `navigateReplace()` so settings section switches use the same replace navigation primitive as the rest of desktop routing.
 - Modify `apps/desktop/src/pages/settings/index.tsx`
   - Remove the internal left settings nav. Keep only active-section derivation, preload side effects, animation, and detail rendering.
 - Modify `apps/desktop/src/components/layout/sidebar.tsx`
@@ -181,141 +179,15 @@ git commit --no-verify -m "test: add settings sidebar navigation helpers"
 
 **Files:**
 - Modify: `apps/desktop/src/hooks/use-desktop-routing.ts`
-- Create: `apps/desktop/src/hooks/use-desktop-routing.test.tsx`
+- Test: `apps/desktop/src/pages/settings/settings-sidebar-content.test.tsx` in Task 3 verifies callers pass `stackMode: "replace"`.
 
-- [ ] **Step 1: Write the failing hook test**
-
-Create `apps/desktop/src/hooks/use-desktop-routing.test.tsx`:
-
-```tsx
-/**
- * @vitest-environment jsdom
- */
-
-import React from "react";
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useDesktopRouting } from "./use-desktop-routing";
-import { getCurrentWindowTabStore } from "@/stores/tab-store";
-import type { Root } from "react-dom/client";
-
-Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-  }),
-}));
-
-vi.mock("@/components/navigation", () => ({
-  useOptionalNavigationShell: () => null,
-  useNavigationShellHeaderState: () => null,
-}));
-
-let root: Root | null = null;
-let container: HTMLDivElement | null = null;
-
-function render(element: React.ReactElement) {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-  root = createRoot(container);
-
-  act(() => {
-    root?.render(element);
-  });
-}
-
-function RoutingProbe({
-  onReady,
-}: {
-  onReady: (routing: ReturnType<typeof useDesktopRouting>) => void;
-}) {
-  const routing = useDesktopRouting();
-
-  React.useEffect(() => {
-    onReady(routing);
-  }, [onReady, routing]);
-
-  return null;
-}
-
-describe("useDesktopRouting", () => {
-  beforeEach(() => {
-    const store = getCurrentWindowTabStore();
-    store.setState({
-      tabs: [],
-      activeTabId: null,
-      recentlyClosedTabs: [],
-    });
-  });
-
-  afterEach(() => {
-    if (root) {
-      act(() => {
-        root?.unmount();
-      });
-    }
-    container?.remove();
-    root = null;
-    container = null;
-  });
-
-  it("replaces the current history entry when opening a settings section with replace stack mode", () => {
-    const store = getCurrentWindowTabStore();
-    let routing: ReturnType<typeof useDesktopRouting> | null = null;
-
-    act(() => {
-      store.getState().openTab({
-        navigationState: {
-          url: "/workspace/global/chat",
-          breadcrumbStack: [],
-        },
-      });
-    });
-
-    render(<RoutingProbe onReady={(next) => { routing = next; }} />);
-
-    act(() => {
-      routing?.openSettings("general");
-    });
-
-    act(() => {
-      routing?.openSettings("gateway", { stackMode: "replace" });
-    });
-
-    const activeTab = store
-      .getState()
-      .tabs.find((tab) => tab.id === store.getState().activeTabId);
-
-    expect(activeTab?.navigationHistory.map((entry) => entry.url)).toEqual([
-      "/workspace/global/chat",
-      "/settings/gateway",
-    ]);
-    expect(activeTab?.historyIndex).toBe(1);
-  });
-});
-```
-
-- [ ] **Step 2: Run the hook test and verify it fails**
-
-Run:
-
-```bash
-pnpm --filter @viben/desktop test -- src/hooks/use-desktop-routing.test.tsx
-```
-
-Expected: FAIL because `openSettings("gateway", { stackMode: "replace" })` currently ignores `stackMode` and appends a new settings history entry.
-
-- [ ] **Step 3: Update `openSettings` to replace the current history entry**
+- [ ] **Step 1: Update `openSettings` to use `navigateReplace` for replace stack mode**
 
 In `apps/desktop/src/hooks/use-desktop-routing.ts`, replace the body after the `openMode === "new-tab"` branch with:
 
 ```typescript
       if (options?.stackMode === "replace") {
-        tabActions.replaceUrl(url, {
-          breadcrumbStack: buildColdStartBreadcrumb(url),
-        });
+        navigateReplace(url);
         return;
       }
       navigateReset(url);
@@ -330,22 +202,10 @@ Update the dependency array from:
 to:
 
 ```typescript
-    [navigateReset, openInNewTab, tabActions],
+    [navigateReplace, navigateReset, openInNewTab],
 ```
 
-Do not use `navigateReplace(url)` for this behavior. In the current tab store, `replaceNavigation()` replaces only the breadcrumb stack top and still appends a new history entry through `pushLocation()`.
-
-- [ ] **Step 4: Run the hook test and verify it passes**
-
-Run:
-
-```bash
-pnpm --filter @viben/desktop test -- src/hooks/use-desktop-routing.test.tsx
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Run targeted typecheck**
+- [ ] **Step 2: Run targeted typecheck**
 
 Run:
 
@@ -355,12 +215,12 @@ pnpm --filter @viben/desktop typecheck
 
 Expected: no new TypeScript errors from `apps/desktop/src/hooks/use-desktop-routing.ts`.
 
-- [ ] **Step 6: Commit Task 2**
+- [ ] **Step 3: Commit Task 2**
 
 Run:
 
 ```bash
-git add apps/desktop/src/hooks/use-desktop-routing.ts apps/desktop/src/hooks/use-desktop-routing.test.tsx
+git add apps/desktop/src/hooks/use-desktop-routing.ts
 git commit -m "fix: replace settings section navigation"
 ```
 
@@ -904,7 +764,7 @@ Expected: PASS.
 Then run:
 
 ```bash
-pnpm --filter @viben/desktop test -- src/hooks/use-desktop-routing.test.tsx src/pages/settings/settings-sidebar-content.test.tsx
+pnpm --filter @viben/desktop test -- src/pages/settings/settings-sidebar-content.test.tsx
 ```
 
 Expected: PASS.
@@ -964,7 +824,7 @@ Expected: only intentional changes from this plan are present. Do not stage or r
 If Task 6 required code fixes, run:
 
 ```bash
-git add apps/desktop/src/pages/settings apps/desktop/src/hooks/use-desktop-routing.ts apps/desktop/src/hooks/use-desktop-routing.test.tsx apps/desktop/src/components/layout/sidebar.tsx
+git add apps/desktop/src/pages/settings apps/desktop/src/hooks/use-desktop-routing.ts apps/desktop/src/components/layout/sidebar.tsx
 git commit -m "fix: polish desktop settings sidebar behavior"
 ```
 

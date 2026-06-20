@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db, users, mcpPackages, skillPackages } from '@/lib/db';
+import { db, users, mcpPackages, skillPackages, publishedPages } from '@/lib/db';
 import { count } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +11,7 @@ export async function GET() {
     database: { status: 'unknown' },
     mcp_table: { status: 'unknown' },
     skill_table: { status: 'unknown' },
+    published_pages_table: { status: 'unknown' },
   };
 
   // Check environment variables
@@ -62,6 +63,20 @@ export async function GET() {
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+
+    // Check published_pages table
+    try {
+      const [pagesResult] = await db.select({ count: count() }).from(publishedPages);
+      checks.published_pages_table = {
+        status: 'ok',
+        message: `${pagesResult?.count ?? 0} pages`,
+      };
+    } catch (error) {
+      checks.published_pages_table = {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
   } else {
     checks.database = {
       status: 'skipped',
@@ -72,6 +87,10 @@ export async function GET() {
       message: 'Skipped due to missing POSTGRES_URL',
     };
     checks.skill_table = {
+      status: 'skipped',
+      message: 'Skipped due to missing POSTGRES_URL',
+    };
+    checks.published_pages_table = {
       status: 'skipped',
       message: 'Skipped due to missing POSTGRES_URL',
     };

@@ -429,15 +429,16 @@ export class AcpWebSocketClient {
   }
 
   newSession(params: SessionCreateParams): Promise<unknown> {
-    console.log("[ACP-Client] newSession() called", params);
-    return this.request("session/new", {
+    const request = {
       cwd: params.cwd,
       mcpServers: params.mcpServers ?? [],
       agent_config_path: params.agent_config_path || undefined,
       agent_dir: params.agent_dir || undefined,
       agent_config: params.agent_config,
       sandbox_config: params.sandbox_config,
-    }).then((result) => {
+    };
+    console.log("[ACP-Client] session/new request", summarizeSessionRequest(request));
+    return this.request("session/new", request).then((result) => {
       console.log("[ACP-Client] newSession result:", result);
       return result;
     }).catch((error) => {
@@ -447,7 +448,7 @@ export class AcpWebSocketClient {
   }
 
   loadSession(params: SessionLoadParams): Promise<unknown> {
-    return this.request("session/load", {
+    const request = {
       sessionId: params.session_id,
       cwd: params.cwd || undefined,
       mcpServers: params.mcpServers ?? [],
@@ -455,7 +456,9 @@ export class AcpWebSocketClient {
       agent_dir: params.agent_dir || undefined,
       agent_config: params.agent_config,
       sandbox_config: params.sandbox_config,
-    });
+    };
+    console.log("[ACP-Client] session/load request", summarizeSessionRequest(request));
+    return this.request("session/load", request);
   }
 
   prompt(sessionId: string, text: string): Promise<unknown> {
@@ -951,6 +954,66 @@ function safeJson(value: unknown): string {
   } catch {
     return String(value);
   }
+}
+
+function summarizeSessionRequest(params: {
+  sessionId?: string;
+  cwd?: string;
+  agent_config_path?: string;
+  agent_dir?: string;
+  agent_config?: AgentConfigPayload;
+  sandbox_config?: { enabled: boolean; provider?: string };
+  mcpServers?: unknown[];
+}): Record<string, unknown> {
+  return {
+    sessionId: params.sessionId,
+    cwd: params.cwd,
+    agentConfigPath: params.agent_config_path,
+    agentDir: params.agent_dir,
+    sandbox: params.sandbox_config,
+    mcpServerCount: Array.isArray(params.mcpServers) ? params.mcpServers.length : 0,
+    agentConfig: summarizeAgentConfig(params.agent_config),
+  };
+}
+
+function summarizeAgentConfig(config: AgentConfigPayload | undefined): Record<string, unknown> | null {
+  if (!config) return null;
+  return {
+    name: config.name,
+    executorType: config.executor_type,
+    provider: config.provider,
+    model: config.model,
+    approvalMode: config.approval_mode,
+    permissionMode: config.permission_mode,
+    dangerouslySkipPermissions: config.dangerously_skip_permissions,
+    mcpServerCount: Array.isArray(config.mcp_servers) ? config.mcp_servers.length : 0,
+    skillCount: Array.isArray(config.skills) ? config.skills.length : 0,
+    hasSystemPrompt: Boolean(config.system_prompt),
+    hasAppendPrompt: Boolean(config.append_prompt),
+    executorConfig: summarizeExecutorConfig(config.executor_config),
+  };
+}
+
+function summarizeExecutorConfig(config: Record<string, unknown> | undefined): Record<string, unknown> | null {
+  if (!config) return null;
+  return {
+    id: readRecordString(config, "id"),
+    command: readRecordString(config, "command"),
+    argsCount: Array.isArray(config.args) ? config.args.length : undefined,
+    modelProvider: readRecordString(config, "model_provider") ?? readRecordString(config, "modelProvider"),
+    baseUrl: readRecordString(config, "base_url") ?? readRecordString(config, "baseUrl"),
+    approvalPolicy: readRecordString(config, "approval_policy") ?? readRecordString(config, "approvalPolicy"),
+    sandbox: readRecordString(config, "sandbox"),
+    hasSandboxPolicy: typeof config.sandbox_policy === "object" && config.sandbox_policy !== null,
+    reasoningEffort: readRecordString(config, "reasoning_effort") ?? readRecordString(config, "reasoningEffort"),
+    personality: readRecordString(config, "personality"),
+    initTimeoutMs: typeof config.init_timeout_ms === "number" ? config.init_timeout_ms : undefined,
+  };
+}
+
+function readRecordString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 function readGuiAction(input: unknown): string | undefined {

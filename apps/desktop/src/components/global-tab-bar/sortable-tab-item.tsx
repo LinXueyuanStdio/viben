@@ -273,8 +273,8 @@ export const SortableTabItem = memo(function SortableTabItem({
             onClick={handleClick}
             onMouseDown={handleMiddleClick}
             className={cn(
-              "group relative h-7 flex items-center gap-1.5 px-2 rounded-md",
-              "text-muted-foreground transition-all duration-200 max-w-[180px]",
+              "group relative h-7 flex max-w-[180px] items-center gap-1.5 rounded-md px-2",
+              "text-muted-foreground transition-all duration-200",
               "hover:bg-accent hover:text-accent-foreground",
               "cursor-grab active:cursor-grabbing",
               isActive && [
@@ -297,7 +297,9 @@ export const SortableTabItem = memo(function SortableTabItem({
                 )}
               />
             )}
-            <span className="truncate text-[13px]">{tab.titleKey ? t(tab.titleKey, tab.label) : tab.label}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px]">
+              {tab.titleKey ? t(tab.titleKey, tab.label) : tab.label}
+            </span>
 
             {/* Close button - use span with role="button" to avoid nested button error */}
             {canClose && (
@@ -312,7 +314,8 @@ export const SortableTabItem = memo(function SortableTabItem({
                   }
                 }}
                 className={cn(
-                  "shrink-0 h-4 w-4 rounded flex items-center justify-center",
+                  "absolute right-1 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded",
+                  "bg-gradient-to-l from-accent from-70% to-transparent",
                   "opacity-0 group-hover:opacity-100 transition-opacity",
                   "hover:bg-foreground/10 cursor-pointer"
                 )}

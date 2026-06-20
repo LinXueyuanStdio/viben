@@ -206,12 +206,11 @@ function itemCompletedUpdate(
   sessionId: string,
   item: Record<string, unknown>,
   notification: CodexNotification
-): AcpSessionNotification {
+): AcpSessionNotification | null {
   const id = readString(item.id);
   const type = readString(item.type);
   if (id && type === "agentMessage") {
-    const text = readString(item.text);
-    return contentChunk(sessionId, "agent_message_chunk", text ?? "", id);
+    return null;
   }
   if (id && type === "reasoning") {
     const text = reasoningText(item);
@@ -301,14 +300,18 @@ function diffUpdate(sessionId: string, params: Record<string, unknown>): AcpSess
 }
 
 function unknownEventUpdate(sessionId: string, notification: CodexNotification): AcpSessionNotification {
-  const update: Extract<AcpSessionUpdate, { sessionUpdate: "codex_event" }> = {
-    sessionUpdate: "codex_event",
-    method: notification.method,
-    title: notification.method,
-    content: textContent(stableJson(notification)),
-    rawEvent: notification,
+  return {
+    sessionId,
+    update: {
+      sessionUpdate: "current_mode_update",
+      currentModeId: codexEventTitle(notification.method),
+      _meta: {
+        source: "codex_app_server",
+        method: notification.method,
+        rawEvent: notification,
+      },
+    } as Extract<AcpSessionUpdate, { sessionUpdate: "current_mode_update" }>,
   };
-  return { sessionId, update };
 }
 
 function unknownItemUpdate(
@@ -448,6 +451,25 @@ function errorUpdate(sessionId: string, params: Record<string, unknown>): AcpSes
       },
     },
   };
+}
+
+function codexEventTitle(method: string): string {
+  switch (method) {
+    case "thread/started":
+      return "Codex thread started";
+    case "thread/archived":
+      return "Codex thread archived";
+    case "thread/unarchived":
+      return "Codex thread restored";
+    case "thread/deleted":
+      return "Codex thread deleted";
+    case "thread/closed":
+      return "Codex thread closed";
+    case "item/reasoning/summaryPartAdded":
+      return "Codex reasoning updated";
+    default:
+      return `Codex ${method}`;
+  }
 }
 
 function textContent(text: string): AcpTextContent {

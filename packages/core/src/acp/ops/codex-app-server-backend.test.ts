@@ -47,6 +47,50 @@ function createConnection(): AcpConnection & { updates: AcpSessionNotification[]
 }
 
 describe("CodexAppServerBackendAdapter", () => {
+  it("passes custom Codex provider config as app-server CLI overrides", async () => {
+    const proc = createProcess();
+    let spawnedArgs: string[] | undefined;
+    const adapter = new CodexAppServerBackendAdapter({
+      spawnProcess: (definition) => {
+        spawnedArgs = definition.args;
+        return proc;
+      },
+    });
+
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection: createConnection(),
+      agentConfig: {
+        executor_type: "CODEX",
+        provider: "hexin",
+        model: "gpt-5.5",
+        executor_config: {
+          args: ["app-server", "--listen", "stdio://"],
+          model_provider: "hexin",
+          base_url: "http://localhost:8777/v1",
+        },
+      },
+    });
+
+    await waitForWrite(proc, "initialize");
+    expect(spawnedArgs).toEqual([
+      "app-server",
+      "--listen",
+      "stdio://",
+      "-c",
+      'model_provider="hexin"',
+      "-c",
+      'model_providers.hexin.base_url="http://localhost:8777/v1"',
+    ]);
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+
+    await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
+  });
+
   it("initializes app-server and starts a Codex thread", async () => {
     const proc = createProcess();
     const sandboxPolicy = { type: "workspaceWrite", networkAccess: false };
@@ -213,7 +257,7 @@ describe("CodexAppServerBackendAdapter", () => {
       params: {
         threadId: "thr-1",
         input: [{ type: "text", text: "hello" }],
-        sandboxPolicy: { type: "workspace-write", networkAccess: false },
+        sandboxPolicy: { type: "workspaceWrite", networkAccess: false },
       },
     });
     respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
@@ -274,7 +318,7 @@ describe("CodexAppServerBackendAdapter", () => {
     expect(proc.writes.find((message) => message.method === "turn/start")).toMatchObject({
       method: "turn/start",
       params: {
-        sandboxPolicy: { type: "workspace-write" },
+        sandboxPolicy: { type: "workspaceWrite" },
       },
     });
     respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });

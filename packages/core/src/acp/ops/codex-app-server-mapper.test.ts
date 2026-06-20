@@ -24,7 +24,7 @@ describe("codex-app-server mapper", () => {
     });
   });
 
-  it("maps completed agent messages to ACP agent message chunks", () => {
+  it("does not replay completed agent messages after streaming deltas", () => {
     expect(codexNotificationToAcpSessionUpdate("outer-session", {
       method: "item/completed",
       params: {
@@ -34,14 +34,7 @@ describe("codex-app-server mapper", () => {
           text: "final answer",
         },
       },
-    })).toEqual({
-      sessionId: "outer-session",
-      update: {
-        sessionUpdate: "agent_message_chunk",
-        messageId: "msg-1",
-        content: { type: "text", text: "final answer" },
-      },
-    });
+    })).toBeNull();
   });
 
   it("maps completed reasoning items to ACP thought chunks", () => {
@@ -288,6 +281,31 @@ describe("codex-app-server mapper", () => {
         sessionUpdate: "codex_item",
         title: "futureItem",
         itemId: "item-unknown",
+      },
+    });
+  });
+
+  it("maps Codex lifecycle events to UI status steps instead of raw codex events", () => {
+    expect(codexNotificationToAcpSessionUpdate("outer-session", {
+      method: "thread/started",
+      params: {
+        thread: { id: "thr-1" },
+      },
+    })).toEqual({
+      sessionId: "outer-session",
+      update: {
+        sessionUpdate: "current_mode_update",
+        currentModeId: "Codex thread started",
+        _meta: {
+          source: "codex_app_server",
+          method: "thread/started",
+          rawEvent: {
+            method: "thread/started",
+            params: {
+              thread: { id: "thr-1" },
+            },
+          },
+        },
       },
     });
   });

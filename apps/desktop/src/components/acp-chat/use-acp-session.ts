@@ -109,6 +109,35 @@ function executorString(config: Record<string, unknown> | undefined, key: string
   return config ? readString(config[key]) : undefined;
 }
 
+export function buildAcpAgentConfig(params: {
+  agent?: AgentInfo;
+  executorType: string;
+  model: string;
+  providerId: string | null;
+}): AgentConfigPayload {
+  const { agent, executorType, model, providerId } = params;
+  const selectedModel = model.trim() || agent?.model || undefined;
+  const executorConfig = agent?.executor_config;
+  return {
+    name: agent?.name,
+    executor_type: agent?.executor_type ?? executorType,
+    provider: providerId ?? agent?.provider,
+    model: selectedModel,
+    system_prompt: agent?.system_prompt,
+    append_prompt: agent?.append_prompt,
+    temperature: agent?.temperature,
+    max_tokens: agent?.max_tokens,
+    executor_config: executorConfig,
+    approval_mode: agent?.approval_mode,
+    dangerously_skip_permissions: executorBoolean(executorConfig, "dangerously_skip_permissions"),
+    permission_mode: agent?.approval_mode === "bypass"
+      ? "bypass"
+      : executorString(executorConfig, "permission_mode") ?? "default",
+    mcp_servers: mergeAgentMcpServers(agent?.mcp_servers),
+    skills: agent?.skills,
+  };
+}
+
 // Re-export types from store
 export type { PermissionDialogState, ElicitationDialogState, ElicitationFormField } from "@/stores/acp-session-store";
 
@@ -177,7 +206,7 @@ export interface UseAcpSessionReturn {
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
-  createSession: () => Promise<void>;
+  createSession: (agentId?: string) => Promise<void>;
   loadSession: (sessionId: string) => Promise<void>;
   closeActiveSession: () => Promise<void>;
   selectSession: (id: string) => void;
@@ -489,27 +518,13 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
   );
 
   const buildAgentConfig = useCallback((): AgentConfigPayload => {
-    const selectedModel = model.trim() || selectedAgent?.model || undefined;
-    const executorConfig = selectedAgent?.executor_config;
-    return {
-      name: selectedAgent?.name,
-      executor_type: selectedAgent?.executor_type ?? executorType,
-      provider: selectedAgent?.provider,
-      model: selectedModel,
-      system_prompt: selectedAgent?.system_prompt,
-      append_prompt: selectedAgent?.append_prompt,
-      temperature: selectedAgent?.temperature,
-      max_tokens: selectedAgent?.max_tokens,
-      executor_config: executorConfig,
-      approval_mode: selectedAgent?.approval_mode,
-      dangerously_skip_permissions: executorBoolean(executorConfig, "dangerously_skip_permissions"),
-      permission_mode: selectedAgent?.approval_mode === "bypass"
-        ? "bypass"
-        : executorString(executorConfig, "permission_mode") ?? "default",
-      mcp_servers: mergeAgentMcpServers(selectedAgent?.mcp_servers),
-      skills: selectedAgent?.skills,
-    };
-  }, [executorType, model, selectedAgent]);
+    return buildAcpAgentConfig({
+      agent: selectedAgent,
+      executorType,
+      model,
+      providerId: selectedProviderId,
+    });
+  }, [executorType, model, selectedAgent, selectedProviderId]);
   const acpSandboxConfig = useMemo(
     () => sandboxConfig.enabled
       ? { enabled: true, provider: sandboxConfig.provider }
@@ -1067,9 +1082,32 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     }
   }, [ensureClient, wsUrl, setError, setInitializeResult]);
 
-  const createSession = useCallback(async () => {
+  const createSession = useCallback(async (agentId?: string) => {
     setError(null);
     try {
+      const sessionAgent = agentId ? allAgents.find((agent) => agent.id === agentId) : selectedAgent;
+      if (agentId) {
+        setStoreSelectedAgentId(agentId);
+        if (sessionAgent?.executor_type) {
+          setExecutorType(sessionAgent.executor_type);
+        }
+      }
+      const sessionAgentConfig = buildAcpAgentConfig({
+        agent: sessionAgent,
+        executorType: sessionAgent?.executor_type ?? executorType,
+        model,
+        providerId: selectedProviderId,
+      });
+      console.log("[ACP] Creating session with agent config", {
+        requestedAgentId: agentId,
+        selectedAgentId: sessionAgent?.id ?? selectedAgentId,
+        agentName: sessionAgent?.name,
+        agentConfigPath: sessionAgent?.config_path,
+        agentDir: sessionAgent?.agent_dir,
+        cwd,
+        sandbox: acpSandboxConfig,
+        agentConfig: summarizeAgentConfigForLog(sessionAgentConfig),
+      });
       const client = ensureClient();
       await client.connect(wsUrl);
       if (!initializeResult) {
@@ -1077,9 +1115,9 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
       }
       const session = await client.newSession({
         cwd,
-        agent_config_path: selectedAgent?.config_path,
-        agent_dir: selectedAgent?.agent_dir,
-        agent_config: buildAgentConfig(),
+        agent_config_path: sessionAgent?.config_path,
+        agent_dir: sessionAgent?.agent_dir,
+        agent_config: sessionAgentConfig,
         sandbox_config: acpSandboxConfig,
       });
       const id = readSessionId(session);
@@ -1096,7 +1134,7 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
     } catch (sessionError) {
       setError(sessionError instanceof Error ? sessionError.message : String(sessionError));
     }
-  }, [buildAgentConfig, cwd, ensureClient, initializeResult, wsUrl, selectedAgent, acpSandboxConfig, setError, setInitializeResult, setSessionsById, setSessionOrder, setActiveSessionId]);
+  }, [acpSandboxConfig, allAgents, cwd, ensureClient, executorType, initializeResult, model, selectedAgent, selectedAgentId, selectedProviderId, setActiveSessionId, setError, setExecutorType, setInitializeResult, setSessionOrder, setSessionsById, setStoreSelectedAgentId, wsUrl]);
 
   const loadSession = useCallback(
     async (loadSessionId: string) => {
@@ -1116,6 +1154,16 @@ export function useAcpSession(options: UseAcpSessionOptions = {}): UseAcpSession
           agent_dir: selectedAgent?.agent_dir,
           agent_config: buildAgentConfig(),
           sandbox_config: acpSandboxConfig,
+        });
+        console.log("[ACP] Loading session with selected agent config", {
+          sessionId: id,
+          selectedAgentId,
+          agentName: selectedAgent?.name,
+          agentConfigPath: selectedAgent?.config_path,
+          agentDir: selectedAgent?.agent_dir,
+          cwd,
+          sandbox: acpSandboxConfig,
+          agentConfig: summarizeAgentConfigForLog(buildAgentConfig()),
         });
         const loadedId = readSessionId(session) ?? id;
         setSessionsById((current) => ({

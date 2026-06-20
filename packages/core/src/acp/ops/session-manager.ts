@@ -137,7 +137,7 @@ export class AcpSessionManager {
     const sessionId = randomUUID();
     const session = await this.createSessionRecord(sessionId, request, connection, context);
     this.sessions.set(sessionId, session);
-    log.info({ sessionId, cwd: session.cwd, agentConfigPath: session.agent_config_path }, "ACP session created");
+    log.info(sessionLogFields(session, { source: "session/new" }), "ACP session created");
 
     return {
       sessionId,
@@ -222,6 +222,11 @@ export class AcpSessionManager {
       if (!existing.backend) {
         existing.backend_load_session_id = request.sessionId;
       }
+      log.info(sessionLogFields(existing, {
+        source: "session/load",
+        requestedSessionId: request.sessionId,
+        reusedLiveSession: true,
+      }), "ACP session load reused live session");
       return {
         sessionId: existing.id,
         configOptions: existing.config_options,
@@ -245,7 +250,11 @@ export class AcpSessionManager {
     );
     session.backend_load_session_id = request.sessionId;
     this.sessions.set(request.sessionId, session);
-    log.info({ sessionId: request.sessionId, cwd: session.cwd }, "ACP session loaded as new live session");
+    log.info(sessionLogFields(session, {
+      source: "session/load",
+      requestedSessionId: request.sessionId,
+      reusedLiveSession: false,
+    }), "ACP session loaded as new live session");
 
     return {
       sessionId: request.sessionId,
@@ -614,6 +623,11 @@ export class AcpSessionManager {
       gateway_url: session.gateway_url,
     };
 
+    log.info(sessionLogFields(session, {
+      source: session.backend_load_session_id ? "backend/load" : "backend/new",
+      backendLoadSessionId: session.backend_load_session_id,
+    }), "ACP backend session starting");
+
     const backend = await this.backendAdapter.start({
       outerSessionId: session.id,
       cwd: session.cwd,
@@ -632,6 +646,14 @@ export class AcpSessionManager {
     session.sdk_session_id = backend.backendSessionId;
     session.agent_capabilities = backend.agentCapabilities ?? DEFAULT_AGENT_CAPABILITIES;
     session.config_options = backend.configOptions;
+    log.info({
+      ...sessionLogFields(session, {
+        source: session.backend_load_session_id ? "backend/load" : "backend/new",
+        backendLoadSessionId: session.backend_load_session_id,
+      }),
+      backendSessionId: backend.backendSessionId,
+      backendCapabilities: summarizeBackendCapabilities(backend.agentCapabilities),
+    }, "ACP backend session ready");
     return backend;
   }
 
@@ -970,6 +992,74 @@ function isClientToolCallResponse(response: unknown): response is AcpClientToolC
   return typeof response.sessionId === "string" &&
     typeof response.toolCallId === "string" &&
     isCallToolResult(response.result);
+}
+
+function sessionLogFields(
+  session: AcpSession,
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    ...extra,
+    sessionId: session.id,
+    cwd: session.cwd,
+    agentConfigPath: session.agent_config_path,
+    agentDir: session.agent_dir,
+    persistSessionId: session.persist_session_id,
+    persistTaskId: session.persist_task_id,
+    gatewayUrl: session.gateway_url,
+    sandbox: session.sandbox_config,
+    mcpServerCount: session.mcp_servers.length,
+    agentConfig: summarizeAgentConfig(session.agent_config),
+  };
+}
+
+function summarizeAgentConfig(config: AgentConfigPayload | undefined): Record<string, unknown> | null {
+  if (!config) return null;
+  return {
+    name: config.name,
+    executorType: config.executor_type,
+    provider: config.provider,
+    model: config.model,
+    approvalMode: config.approval_mode,
+    permissionMode: config.permission_mode,
+    dangerouslySkipPermissions: config.dangerously_skip_permissions,
+    mcpServerCount: Array.isArray(config.mcp_servers) ? config.mcp_servers.length : 0,
+    skillCount: Array.isArray(config.skills) ? config.skills.length : 0,
+    hasSystemPrompt: Boolean(config.system_prompt),
+    hasAppendPrompt: Boolean(config.append_prompt),
+    executorConfig: summarizeExecutorConfig(config.executor_config),
+  };
+}
+
+function summarizeExecutorConfig(config: Record<string, unknown> | undefined): Record<string, unknown> | null {
+  if (!config) return null;
+  return {
+    id: readConfigString(config, "id"),
+    command: readConfigString(config, "command"),
+    argsCount: Array.isArray(config.args) ? config.args.length : undefined,
+    modelProvider: readConfigString(config, "model_provider") ?? readConfigString(config, "modelProvider"),
+    baseUrl: readConfigString(config, "base_url") ?? readConfigString(config, "baseUrl"),
+    approvalPolicy: readConfigString(config, "approval_policy") ?? readConfigString(config, "approvalPolicy"),
+    sandbox: readConfigString(config, "sandbox"),
+    hasSandboxPolicy: typeof config.sandbox_policy === "object" && config.sandbox_policy !== null,
+    reasoningEffort: readConfigString(config, "reasoning_effort") ?? readConfigString(config, "reasoningEffort"),
+    personality: readConfigString(config, "personality"),
+    initTimeoutMs: typeof config.init_timeout_ms === "number" ? config.init_timeout_ms : undefined,
+  };
+}
+
+function summarizeBackendCapabilities(capabilities: AcpAgentCapabilities | undefined): Record<string, unknown> | null {
+  if (!capabilities) return null;
+  return {
+    loadSession: capabilities.loadSession,
+    hasSessionCapabilities: Boolean(capabilities.sessionCapabilities),
+    modes: capabilities.modes,
+  };
+}
+
+function readConfigString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 interface PersistableUiMessage {

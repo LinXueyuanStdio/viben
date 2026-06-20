@@ -4,6 +4,7 @@ import type { PageIndex } from "@/lib/gateway/types/page";
 import {
   buildPageDropPlan,
   buildPageDropPreview,
+  getPageProjectedDepthForRow,
   getPageProjectedDepth,
   getPageDropPosition,
   getStaticSortableTransform,
@@ -228,6 +229,35 @@ describe("page section drag and drop planning", () => {
       ],
       targetParentUid: "a",
       projectedDepth: 1,
+    });
+  });
+
+  it("keeps the drop between two root pages at root depth without horizontal intent", () => {
+    const index: PageIndex = {
+      root: ["a", "c", "d"],
+    };
+
+    const plan = buildPageDropPlan({
+      index,
+      rootUids: ["a", "c", "d"],
+      visibleRows: [
+        { uid: "a", depth: 0, parentUid: null },
+        { uid: "c", depth: 0, parentUid: null },
+        { uid: "d", depth: 0, parentUid: null },
+      ],
+      activeUid: "d",
+      overUid: "c",
+      dropPosition: "before",
+      projectedDepth: 0,
+    });
+
+    expect(plan).toEqual({
+      nextIndex: {
+        root: ["a", "d", "c"],
+      },
+      reorderRequests: [{ parentUid: null, orderedUids: ["a", "d", "c"] }],
+      targetParentUid: null,
+      projectedDepth: 0,
     });
   });
 
@@ -511,6 +541,17 @@ describe("page section drag and drop planning", () => {
     expect(getPageProjectedDepth(0, 23)).toBe(0);
     expect(getPageProjectedDepth(0, 24)).toBe(1);
     expect(getPageProjectedDepth(0, 24 + PAGE_TREE_DEPTH_STEP_PX)).toBe(2);
+  });
+
+  it("uses the hovered row depth as the projection baseline", () => {
+    const visibleRows = [
+      { uid: "a", depth: 0, parentUid: null },
+      { uid: "b", depth: 1, parentUid: "a" },
+      { uid: "c", depth: 0, parentUid: null },
+    ];
+
+    expect(getPageProjectedDepthForRow(visibleRows, "c", 1, 0)).toBe(0);
+    expect(getPageProjectedDepthForRow(visibleRows, "b", 0, 0)).toBe(1);
   });
 
   it("keeps sortable rows visually static while dragging", () => {

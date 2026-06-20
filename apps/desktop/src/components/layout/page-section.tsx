@@ -94,7 +94,7 @@ import {
   buildPageDropPreview,
   buildPageDropPlan,
   getStaticSortableTransform,
-  getPageProjectedDepth,
+  getPageProjectedDepthForRow,
   getPageDropPosition,
   PAGE_ROOT_DROP_START_UID,
   PAGE_ROOT_DROP_TAIL_UID,
@@ -796,7 +796,7 @@ export function PageSection({
         ? undefined
         : isRootDrop
           ? 0
-          : getPageProjectedDepth(activeRow.depth, delta.x),
+          : getPageProjectedDepthForRow(visibleRows, overId, activeRow.depth, delta.x),
     });
     setDropPreview(preview);
   }, [effectiveIndex, rootUids, visibleRows]);
@@ -837,7 +837,7 @@ export function PageSection({
           ? undefined
           : isRootDrop
             ? 0
-            : getPageProjectedDepth(activeRow.depth, delta.x),
+            : getPageProjectedDepthForRow(visibleRows, overId, activeRow.depth, delta.x),
       });
       if (!plan) return;
 

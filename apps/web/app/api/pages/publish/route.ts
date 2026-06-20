@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { db, publishedPages } from '@/lib/db';
+import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { eq } from 'drizzle-orm';
 
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    await ensurePublishedPagesTable();
 
     // Upsert: update if uid exists for this user, otherwise insert
     const existing = await db.query.publishedPages.findFirst({

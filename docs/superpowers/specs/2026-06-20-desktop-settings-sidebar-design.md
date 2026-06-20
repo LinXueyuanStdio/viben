@@ -40,7 +40,7 @@
 组件职责：
 
 - 根据当前 `location.pathname` 推导 active section。
-- 点击分类时调用设置导航入口，并使用 replace 语义更新当前设置 URL，避免在同一个设置页内切换分类时不断向 tab history 写入 `/settings/*`。
+- 点击分类时调用设置导航入口，并使用 `navigateReplace` 对应的 replace 语义更新当前设置 URL。
 - 当切换到 `channels` 时保留现有 `syncChannels()` 预加载逻辑。
 - 渲染 expanded 和 collapsed 两种形态，适配现有 `Sidebar` 的折叠/悬停展开机制。
 - active 状态样式沿用 sidebar 的导航风格，而不是继续使用设置页内的 `bg-primary text-primary-foreground` 大按钮风格。
@@ -73,7 +73,7 @@
 
 返回按钮行为：
 
-- 首选返回当前 tab history 中最近的非 `/settings` URL，而不是简单调用 `goBack()`。这样用户在设置页内切换多个分类后，点击返回仍会离开设置页，而不是退到上一个设置分类。
+- 首选返回当前 tab history 中最近的非 `/settings` URL，而不是简单调用 `goBack()`。这样即使用户在设置页内切换多个分类后，点击返回仍会离开设置页，而不是退到上一个设置分类。
 - 如果找不到非设置历史，则使用 `useLocalWorkspaces().activeWorkspaceId` 回到当前 active workspace 的 `chat`。
 - 如果没有 active workspace，则回到 dashboard。
 

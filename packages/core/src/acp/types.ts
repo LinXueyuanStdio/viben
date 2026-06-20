@@ -51,7 +51,6 @@ export type AcpSessionUpdate =
   | SessionUpdate
   | AcpErrorSessionUpdate
   | AcpSteerSessionUpdate
-  | AcpCodexEventSessionUpdate
   | AcpCodexItemSessionUpdate;
 export type AcpSessionNotification = Omit<SessionNotification, "update"> & {
   update: AcpSessionUpdate;
@@ -256,15 +255,6 @@ export interface AcpSteerSessionUpdate {
   consumedAt?: string;
   completedAt?: string;
   error?: string;
-  _meta?: Record<string, unknown> | null;
-}
-
-export interface AcpCodexEventSessionUpdate {
-  sessionUpdate: "codex_event";
-  method: string;
-  title: string;
-  content: AcpTextContent;
-  rawEvent: unknown;
   _meta?: Record<string, unknown> | null;
 }
 

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   insertValues: vi.fn(),
   updateSet: vi.fn(),
   updateWhere: vi.fn(),
+  execute: vi.fn(),
   requireAuth: vi.fn(),
 }));
 
@@ -32,6 +33,7 @@ vi.mock('@/lib/db', () => ({
     update: vi.fn(() => ({
       set: mocks.updateSet,
     })),
+    execute: mocks.execute,
   },
   publishedPages: {
     uid: 'uid',
@@ -67,6 +69,7 @@ describe('POST /api/pages/publish', () => {
     mocks.insertValues.mockResolvedValue(undefined);
     mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
     mocks.updateWhere.mockResolvedValue(undefined);
+    mocks.execute.mockResolvedValue(undefined);
   });
 
   it('creates a published page with icon and description', async () => {
@@ -93,6 +96,7 @@ describe('POST /api/pages/publish', () => {
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
     });
+    expect(mocks.execute).toHaveBeenCalled();
   });
 
   it('updates an existing page owned by the current user', async () => {

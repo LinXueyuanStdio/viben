@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tokio::sync::Mutex;
 
 const TARGET_AUDIO_SECONDS: usize = 2;
+const PREDICTION_INTERVAL_MS: u32 = 250;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WakeWordDetectionEvent {
@@ -68,6 +69,18 @@ fn resolve_model_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf, String>
 
 fn chunk_samples_for_rate(sample_rate: u32) -> usize {
     sample_rate as usize * TARGET_AUDIO_SECONDS
+}
+
+fn prediction_step_samples_for_rate(sample_rate: u32) -> usize {
+    (sample_rate as usize * PREDICTION_INTERVAL_MS as usize) / 1000
+}
+
+fn trim_buffer_to_recent_window(buffer: &mut Vec<i16>, window_samples: usize) {
+    if buffer.len() <= window_samples {
+        return;
+    }
+    let excess = buffer.len() - window_samples;
+    buffer.drain(..excess);
 }
 
 fn f32_to_i16(sample: f32) -> i16 {
@@ -156,6 +169,7 @@ pub async fn start_wakeword<R: Runtime>(
         let sample_rate = config.sample_rate.0;
         let channels = usize::from(config.channels);
         let chunk_samples = chunk_samples_for_rate(sample_rate);
+        let prediction_step_samples = prediction_step_samples_for_rate(sample_rate);
 
         let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<i16>>(64);
 
@@ -249,13 +263,19 @@ pub async fn start_wakeword<R: Runtime>(
         let _ = startup_tx.try_send(Ok(()));
 
         let mut buffer: Vec<i16> = Vec::with_capacity(chunk_samples);
+        let mut samples_since_prediction = 0usize;
 
         while running.load(Ordering::Relaxed) {
             match rx.recv_timeout(std::time::Duration::from_millis(100)) {
                 Ok(samples) => {
+                    samples_since_prediction += samples.len();
                     buffer.extend_from_slice(&samples);
+                    trim_buffer_to_recent_window(&mut buffer, chunk_samples);
 
-                    if buffer.len() >= chunk_samples {
+                    if buffer.len() >= chunk_samples
+                        && samples_since_prediction >= prediction_step_samples
+                    {
+                        samples_since_prediction = 0;
                         match model.predict(&buffer) {
                             Ok(scores) => {
                                 for (keyword, score) in &scores {
@@ -286,7 +306,6 @@ pub async fn start_wakeword<R: Runtime>(
                                 eprintln!("[WakeWord] Prediction error: {}", e);
                             }
                         }
-                        buffer.clear();
                     }
                 }
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
@@ -334,12 +353,30 @@ pub async fn get_wakeword_status(state: State<'_, WakeWordState>) -> Result<Wake
 
 #[cfg(test)]
 mod tests {
-    use super::{chunk_samples_for_rate, interleaved_f32_to_mono_i16};
+    use super::{
+        chunk_samples_for_rate, interleaved_f32_to_mono_i16, prediction_step_samples_for_rate,
+        trim_buffer_to_recent_window,
+    };
 
     #[test]
     fn chunk_samples_tracks_two_seconds_at_input_rate() {
         assert_eq!(chunk_samples_for_rate(16_000), 32_000);
         assert_eq!(chunk_samples_for_rate(48_000), 96_000);
+    }
+
+    #[test]
+    fn prediction_step_tracks_quarter_second_at_input_rate() {
+        assert_eq!(prediction_step_samples_for_rate(16_000), 4_000);
+        assert_eq!(prediction_step_samples_for_rate(48_000), 12_000);
+    }
+
+    #[test]
+    fn trim_buffer_keeps_recent_audio_for_sliding_predictions() {
+        let mut buffer = vec![1, 2, 3, 4, 5, 6];
+
+        trim_buffer_to_recent_window(&mut buffer, 4);
+
+        assert_eq!(buffer, vec![3, 4, 5, 6]);
     }
 
     #[test]
