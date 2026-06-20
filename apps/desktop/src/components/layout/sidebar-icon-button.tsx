@@ -68,6 +68,7 @@ export function SidebarIconButton({
         <TooltipTrigger asChild>
           <button
             type="button"
+            aria-label={tooltip}
             onClick={handleClick}
             disabled={disabled}
             className={cn(
