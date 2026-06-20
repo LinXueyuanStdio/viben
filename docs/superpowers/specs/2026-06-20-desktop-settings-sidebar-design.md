@@ -40,10 +40,18 @@
 组件职责：
 
 - 根据当前 `location.pathname` 推导 active section。
-- 点击分类时调用 `openSettings(section)`。
+- 点击分类时调用设置导航入口，并使用 replace 语义更新当前设置 URL，避免在同一个设置页内切换分类时不断向 tab history 写入 `/settings/*`。
 - 当切换到 `channels` 时保留现有 `syncChannels()` 预加载逻辑。
 - 渲染 expanded 和 collapsed 两种形态，适配现有 `Sidebar` 的折叠/悬停展开机制。
 - active 状态样式沿用 sidebar 的导航风格，而不是继续使用设置页内的 `bg-primary text-primary-foreground` 大按钮风格。
+
+组件接口建议：
+
+- `collapsed: boolean`
+- `showExpanded: boolean`
+- `onSectionChange?: (section: SettingsSection) => void`
+
+实现 active 状态时使用条件 className 和 `cn()`，不要依赖 CVA 中的 `data-*` 任意属性变体。Tailwind v4 下语义色彩变量为 oklch 格式，样式中不要写 `hsl(var(--background))`、`hsl(var(--foreground))` 等无效 CSS。
 
 ### 2. Sidebar 根据路由切换内容
 
@@ -58,16 +66,20 @@
 
 - 顶部返回按钮
 - 设置分类列表
-- 底部 Gateway Status
+- 底部 Bottom Drawer / Gateway Status
 - 底部 Wakeword Button
+
+设置模式下保留 bottom drawer 的行为：Gateway Status 仍作为底部入口显示，hover/click 后仍能访问 Documents、Devices、Settings、Console、用户菜单等 drawer 内容。实现可以继续复用 `SidebarBottomDrawer`，也可以抽取内部组件，但不能移除这些入口。
 
 返回按钮行为：
 
-- 首选使用当前 tab 的 back 能力返回进入设置页前的位置。
-- 如果没有可返回历史，则回到当前 active workspace 的 `chat`。
+- 首选返回当前 tab history 中最近的非 `/settings` URL，而不是简单调用 `goBack()`。这样用户在设置页内切换多个分类后，点击返回仍会离开设置页，而不是退到上一个设置分类。
+- 如果找不到非设置历史，则使用 `useLocalWorkspaces().activeWorkspaceId` 回到当前 active workspace 的 `chat`。
 - 如果没有 active workspace，则回到 dashboard。
 
 返回按钮在 collapsed 状态下显示 icon button 和 tooltip；expanded 状态下显示 icon + 文案。
+
+设置列表区域使用独立滚动容器，底部 Gateway Status 和 Wakeword Button 固定在 sidebar 底部；在较矮窗口中，20 个设置分类滚动，不挤压底部状态区。
 
 ### 3. SettingsPage 只负责详情
 
@@ -103,7 +115,6 @@
 
 ## 错误处理与边界
 
-- 未知 section 统一回落到 `general`。
 - `/settings` 无 section 时显示 `general`。
 - 返回按钮没有历史时，不报错，按 active workspace/dashboard fallback 导航。
 - `channels` 数据预加载失败沿用现有 `syncChannels()` 行为，不在布局层新增错误状态。
@@ -114,8 +125,10 @@
 
 - `/settings` 和 `/settings/:section` 下 `Sidebar` 进入设置模式。
 - 非设置路由下 `Sidebar` 保持原工作空间模式。
-- 设置分类点击调用 `openSettings(section)` 并保持 active 高亮。
-- `/settings/unknown` 回落到 general。
+- 设置分类点击使用 replace 语义更新设置 URL，并保持 active 高亮。
+- 用户连续切换多个设置分类后，点击返回应离开设置页，回到最近的非 `/settings` tab history。
+- 设置模式下仍显示 bottom drawer 的 Documents、Devices、Settings、Console、用户菜单等入口，并显示 Gateway Status 和 Wakeword Button。
+- 设置入口传入空 section 时 fallback 到 `/settings/general`。
 
 手动验证：
 
