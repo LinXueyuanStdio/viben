@@ -14,6 +14,7 @@ import i18n from "@/i18n";
 export type ProviderId =
   | "anthropic"
   | "openai"
+  | "openai-responses"
   | "google"
   | "azure"
   | "ollama"
@@ -32,7 +33,7 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   CLAUDE_CODE: ["anthropic"],
 
   // Codex app-server works with OpenAI-compatible model providers
-  CODEX: ["openai", "azure", "openrouter", "ollama", "volcengine", "grok", "aihubmix"],
+  CODEX: ["openai", "openai-responses", "azure", "openrouter", "ollama", "volcengine", "grok", "aihubmix"],
 
   // Gemini only works with Google models
   GEMINI: ["google"],
@@ -44,13 +45,13 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   AMP: ["anthropic", "openai"],
 
   // Qwen Code works with OpenAI-compatible APIs
-  QWEN_CODE: ["openai", "ollama"],
+  QWEN_CODE: ["openai", "openai-responses", "ollama"],
 
   // GitHub Copilot uses OpenAI
   COPILOT: ["openai"],
 
   // OpenCode supports multiple providers
-  OPENCODE: ["anthropic", "openai", "ollama"],
+  OPENCODE: ["anthropic", "openai", "openai-responses", "ollama"],
 
   // Droid supports multiple providers
   DROID: ["anthropic", "openai", "google"],
@@ -59,7 +60,7 @@ export const EXECUTOR_PROVIDER_CONSTRAINTS: Partial<Record<ExecutorType, Provide
   OPENCLAW: [],
 
   // Aider supports multiple providers
-  AIDER: ["anthropic", "openai", "ollama"],
+  AIDER: ["anthropic", "openai", "openai-responses", "ollama"],
 
   // Continue supports multiple providers
   CONTINUE: ["anthropic", "openai", "google", "ollama"],

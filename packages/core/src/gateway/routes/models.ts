@@ -56,23 +56,93 @@ interface ModelsQuery {
   surface?: string;
 }
 
+function hasApiKey(providerType: string, apiKey: string | undefined): boolean {
+  return providerType === "ollama" || Boolean(apiKey);
+}
+
 /**
- * Check if a provider type has any configured provider with API key
+ * Check if a provider instance is configured and available.
  */
-async function isProviderAvailable(providerType: string): Promise<boolean> {
+async function isProviderAvailable(providerId: string | undefined): Promise<boolean> {
+  if (!providerId) return false;
+
   try {
     const providers = await providerManager.listProviders();
-    // Find any enabled provider of this type with API key configured
-    return providers.some((p) => {
-      if (p.type !== providerType) return false;
-      if (!p.enabled) return false;
-      // Ollama doesn't need API key
-      if (p.type === "ollama") return true;
-      return !!p.apiKey;
-    });
+    const provider = providers.find((p) => p.id === providerId);
+    return Boolean(provider?.enabled && hasApiKey(provider.type, provider.apiKey));
   } catch {
     return false;
   }
+}
+
+function filterModels(
+  models: Model[],
+  filters: {
+    provider_id?: string;
+    provider?: string;
+    category?: ModelCategory;
+    surface?: ModelSurface;
+  }
+): Model[] {
+  return models.filter((model) => {
+    if (filters.provider_id && model.provider_id !== filters.provider_id) return false;
+    if (filters.provider && model.provider !== filters.provider) return false;
+    if (filters.category && model.category !== filters.category) return false;
+    if (filters.surface && model.surface !== filters.surface) return false;
+    return true;
+  });
+}
+
+async function findProviderScopedModels(modelId: string): Promise<Model[]> {
+  const models = await modelManager.listModels();
+  return models.filter((model) => model.id === modelId);
+}
+
+function getProviderScopedModel(
+  models: Model[],
+  providerId: string | undefined
+): Model | undefined {
+  if (!providerId) {
+    return models.length === 1 ? models[0] : undefined;
+  }
+  return models.find((model) => model.provider_id === providerId);
+}
+
+function requireProviderId(
+  providerId: string | undefined,
+  reply: FastifyReply
+): providerId is string {
+  if (providerId) return true;
+  reply.code(400);
+  return false;
+}
+
+function toModelConfig(body: SetModelConfigBody): ModelConfig {
+  return {
+    temperature: body.temperature,
+    maxTokens: body.max_tokens ?? body.maxTokens,
+    topP: body.top_p ?? body.topP,
+    frequencyPenalty: body.frequency_penalty ?? body.frequencyPenalty,
+    presencePenalty: body.presence_penalty ?? body.presencePenalty,
+  };
+}
+
+function toSnakeCaseConfig(config: ModelConfig): Record<string, unknown> {
+  const response: Record<string, unknown> = {};
+  if (config.temperature !== undefined) response.temperature = config.temperature;
+  if (config.maxTokens !== undefined) response.max_tokens = config.maxTokens;
+  if (config.topP !== undefined) response.top_p = config.topP;
+  if (config.frequencyPenalty !== undefined) response.frequency_penalty = config.frequencyPenalty;
+  if (config.presencePenalty !== undefined) response.presence_penalty = config.presencePenalty;
+  if (config.provider !== undefined) response.provider = config.provider;
+  if (config.category !== undefined) response.category = config.category;
+  if (config.surface !== undefined) response.surface = config.surface;
+  if (config.capabilities !== undefined) response.capabilities = config.capabilities;
+  if (config.duration_seconds !== undefined) response.duration_seconds = config.duration_seconds;
+  if (config.aspect_ratio !== undefined) response.aspect_ratio = config.aspect_ratio;
+  if (config.size !== undefined) response.size = config.size;
+  if (config.voice_id !== undefined) response.voice_id = config.voice_id;
+  return response;
 }
 
 /**
@@ -83,7 +153,7 @@ async function isProviderAvailable(providerType: string): Promise<boolean> {
  */
 async function toSnakeCaseModel(model: Model): Promise<ModelResponse> {
   const now = new Date().toISOString();
-  const isAvailable = await isProviderAvailable(model.provider);
+  const isAvailable = await isProviderAvailable(model.provider_id);
   return {
     id: model.id,
     name: model.name,
@@ -123,6 +193,7 @@ interface CreateModelBody {
 interface UpdateModelBody {
   name?: string;
   description?: string;
+  provider_id?: string;
   context_window?: number;
   max_output_tokens?: number;
 }
@@ -138,7 +209,12 @@ interface CreateAliasBody {
 }
 
 interface SetModelConfigBody {
+  provider_id?: string;
   temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
   maxTokens?: number;
   topP?: number;
   frequencyPenalty?: number;
@@ -151,6 +227,10 @@ interface SetFallbacksBody {
 
 interface AddFallbackBody {
   model: string;
+}
+
+interface ProviderScopedQuery {
+  provider_id?: string;
 }
 
 // ============================================================================
@@ -403,7 +483,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
           include_global: { type: "string", description: "Include global models (default: true)" },
           include_provider_predefined: { type: "string", description: "Include provider predefined models" },
           provider_id: { type: "string", description: "Filter by provider ID" },
-          provider: { type: "string", description: "Filter by provider type or ID" },
+          provider: { type: "string", description: "Filter by provider type" },
           category: { type: "string", enum: ["llm", "media"], description: "Filter by model category" },
           surface: { type: "string", enum: ["chat", "image", "video", "music", "speech", "sfx"], description: "Filter by media surface" },
         },
@@ -461,14 +541,13 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     // For now, workspace_path is not used as we use global config
     // In future, this could scope models to a specific workspace
 
-    const hasFilters = Boolean(provider_id || provider || category || surface);
-    const models = hasFilters
-      ? await modelManager.listModelsFiltered({
-          provider: provider_id ?? provider,
-          category: category as ModelCategory | undefined,
-          surface: surface as ModelSurface | undefined,
-        })
-      : await modelManager.listModels();
+    const allModels = await modelManager.listModels();
+    const models = filterModels(allModels, {
+      provider_id,
+      provider,
+      category: category as ModelCategory | undefined,
+      surface: surface as ModelSurface | undefined,
+    });
     const defaultModelId = surface
       ? await modelManager.getDefaultForSurface(surface as ModelSurface)
       : await modelManager.getDefault();
@@ -549,22 +628,35 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
   // Enable a model
   fastify.post("/api/models/:id/enable", async (
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: { id: string }; Querystring: ProviderScopedQuery }>,
     reply: FastifyReply
   ) => {
     const { id } = request.params;
+    const { provider_id } = request.query;
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      const model = await modelManager.getModel(resolvedId);
+      const models = await findProviderScopedModels(resolvedId);
+      const model = getProviderScopedModel(models, provider_id);
       if (!model) {
+        if (!provider_id && models.length > 1) {
+          reply.code(400);
+          return {
+            error: "Ambiguous model ID. Provide provider_id or use /api/providers/:provider_id/models/:model_id/enable",
+          };
+        }
         reply.code(404);
         return { error: `Model not found: ${id}` };
+      }
+      if (!model.provider_id) {
+        reply.code(400);
+        return { error: "Provider ID is required" };
       }
       await modelManager.enableModel(resolvedId, model.provider, model.provider_id);
 
       return {
         success: true,
+        provider_id: model.provider_id,
         model_id: resolvedId,
         enabled: true,
       };
@@ -580,22 +672,35 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
   // Disable a model
   fastify.post("/api/models/:id/disable", async (
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: { id: string }; Querystring: ProviderScopedQuery }>,
     reply: FastifyReply
   ) => {
     const { id } = request.params;
+    const { provider_id } = request.query;
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      const model = await modelManager.getModel(resolvedId);
+      const models = await findProviderScopedModels(resolvedId);
+      const model = getProviderScopedModel(models, provider_id);
       if (!model) {
+        if (!provider_id && models.length > 1) {
+          reply.code(400);
+          return {
+            error: "Ambiguous model ID. Provide provider_id or use /api/providers/:provider_id/models/:model_id/disable",
+          };
+        }
         reply.code(404);
         return { error: `Model not found: ${id}` };
+      }
+      if (!model.provider_id) {
+        reply.code(400);
+        return { error: "Provider ID is required" };
       }
       await modelManager.disableModel(resolvedId, model.provider, model.provider_id);
 
       return {
         success: true,
+        provider_id: model.provider_id,
         model_id: resolvedId,
         enabled: false,
       };
@@ -620,24 +725,27 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
       reply.code(400);
       return { error: "Model ID is required" };
     }
+    if (!config.provider_id) {
+      reply.code(400);
+      return { error: "Provider ID is required" };
+    }
 
     try {
       // Check if model already exists
       const existingModel = modelManager.getModelInfo(id);
 
       if (existingModel) {
+        if (existingModel.provider_id && existingModel.provider_id !== config.provider_id) {
+          reply.code(404);
+          return { error: `Model not found for provider: ${config.provider_id}` };
+        }
         // Model exists, set its config
         const modelConfig: ModelConfig = {
           temperature: undefined,
           maxTokens: config.max_output_tokens,
         };
-        await modelManager.setModelConfig(id, modelConfig);
+        await modelManager.setModelConfig(id, modelConfig, config.provider_id);
       } else {
-        if (!config.provider_id) {
-          reply.code(400);
-          return { error: "Provider ID is required" };
-        }
-
         const provider = await providerManager.getProvider(config.provider_id);
         if (!provider) {
           reply.code(400);
@@ -694,7 +802,11 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      const model = modelManager.getModelInfo(resolvedId);
+      if (!requireProviderId(updates.provider_id, reply)) {
+        return { error: "Provider ID is required" };
+      }
+      const models = await findProviderScopedModels(resolvedId);
+      const model = getProviderScopedModel(models, updates.provider_id);
 
       if (!model) {
         reply.code(404);
@@ -702,12 +814,12 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
       }
 
       // Update model config
-      const currentConfig = await modelManager.getModelConfig(resolvedId);
+      const currentConfig = await modelManager.getModelConfig(resolvedId, updates.provider_id);
       const newConfig: ModelConfig = {
         ...currentConfig,
         maxTokens: updates.max_output_tokens ?? currentConfig?.maxTokens,
       };
-      await modelManager.setModelConfig(resolvedId, newConfig);
+      await modelManager.setModelConfig(resolvedId, newConfig, updates.provider_id);
 
       // Reload to get updated model
       await modelManager.reload();
@@ -751,14 +863,18 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
   // Get model-specific configuration
   fastify.get("/api/models/:id/config", async (
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: { id: string }; Querystring: ProviderScopedQuery }>,
     reply: FastifyReply
   ) => {
     const { id } = request.params;
+    const { provider_id } = request.query;
+    if (!requireProviderId(provider_id, reply)) {
+      return { error: "Provider ID is required" };
+    }
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      const config = await modelManager.getModelConfig(resolvedId);
+      const config = await modelManager.getModelConfig(resolvedId, provider_id);
 
       if (!config) {
         reply.code(404);
@@ -766,8 +882,9 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
       }
 
       return {
-        modelId: resolvedId,
-        config,
+        model_id: resolvedId,
+        provider_id,
+        config: toSnakeCaseConfig(config),
       };
     } catch (e) {
       reply.code(400);
@@ -782,15 +899,21 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
   ) => {
     const { id } = request.params;
     const config = request.body;
+    const { provider_id } = config;
+    if (!requireProviderId(provider_id, reply)) {
+      return { error: "Provider ID is required" };
+    }
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      await modelManager.setModelConfig(resolvedId, config);
+      const modelConfig = toModelConfig(config);
+      await modelManager.setModelConfig(resolvedId, modelConfig, provider_id);
 
       return {
         success: true,
-        modelId: resolvedId,
-        config,
+        model_id: resolvedId,
+        provider_id,
+        config: toSnakeCaseConfig(modelConfig),
       };
     } catch (e) {
       reply.code(400);
@@ -800,17 +923,22 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
   // Delete model-specific configuration
   fastify.delete("/api/models/:id/config", async (
-    request: FastifyRequest<{ Params: { id: string } }>,
+    request: FastifyRequest<{ Params: { id: string }; Querystring: ProviderScopedQuery }>,
     reply: FastifyReply
   ) => {
     const { id } = request.params;
+    const { provider_id } = request.query;
+    if (!requireProviderId(provider_id, reply)) {
+      return { error: "Provider ID is required" };
+    }
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      await modelManager.removeModelConfig(resolvedId);
+      await modelManager.removeModelConfig(resolvedId, provider_id);
 
       return {
         success: true,
+        provider_id,
         deleted: resolvedId,
       };
     } catch (e) {

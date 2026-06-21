@@ -129,6 +129,13 @@ interface MockRouteHandler {
   handler: (request: unknown, reply: MockReply) => Promise<unknown>;
 }
 
+interface MockInjectOptions {
+  method: string;
+  url: string;
+  payload?: unknown;
+  body?: unknown;
+}
+
 function createMockFastify() {
   const routes: MockRouteHandler[] = [];
 
@@ -154,8 +161,8 @@ function createMockFastify() {
     }),
     routes,
     // Helper to find and execute a route handler
-    async inject(options: { method: string; url: string; payload?: unknown }) {
-      const { method, url, payload } = options;
+    async inject(options: MockInjectOptions) {
+      const { method, url, payload, body } = options;
       const parsedUrl = new URL(url, "http://localhost");
       const pathname = parsedUrl.pathname;
       const searchParams = Object.fromEntries(parsedUrl.searchParams.entries());
@@ -215,7 +222,7 @@ function createMockFastify() {
       const request = {
         query,
         params,
-        body: payload,
+        body: payload ?? body,
       };
 
       let statusCode = 200;
@@ -338,12 +345,13 @@ describe("Model Routes", () => {
     });
 
     it("should filter media models with snake_case query params", async () => {
-      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue([mockModels[2]]);
+      vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue([]);
       vi.mocked(modelManager.getDefaultForSurface).mockResolvedValue("gpt-image-2");
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/models?category=media&surface=image&provider_id=openai",
+        url: "/api/models?category=media&surface=image&provider_id=openai-default",
       });
 
       expect(response.statusCode).toBe(200);
@@ -359,11 +367,116 @@ describe("Model Routes", () => {
         }),
       ]);
       expect(body.default_model_id).toBe("gpt-image-2");
-      expect(modelManager.listModelsFiltered).toHaveBeenCalledWith({
-        provider: "openai",
-        category: "media",
-        surface: "image",
+      expect(modelManager.listModels).toHaveBeenCalled();
+      expect(modelManager.listModelsFiltered).not.toHaveBeenCalled();
+    });
+
+    it("keeps provider_id and provider type filters separate when names overlap", async () => {
+      const duplicateProviderModels = [
+        createMockModel({
+          id: "shared-model",
+          name: "Shared From Provider ID OpenAI",
+          provider: "anthropic",
+          provider_id: "openai",
+        }),
+        createMockModel({
+          id: "openai-model",
+          name: "OpenAI Main Model",
+          provider: "openai",
+          provider_id: "openai-main",
+        }),
+        createMockModel({
+          id: "openai-alt-model",
+          name: "OpenAI Alt Model",
+          provider: "openai",
+          provider_id: "deepseek-openai",
+        }),
+      ];
+      vi.mocked(modelManager.listModels).mockResolvedValue(duplicateProviderModels);
+      vi.mocked(modelManager.listModelsFiltered).mockResolvedValue([
+        duplicateProviderModels[0],
+        duplicateProviderModels[1],
+        duplicateProviderModels[2],
+      ]);
+      vi.mocked(modelManager.getDefault).mockResolvedValue(null);
+
+      const byProviderId = await fastify.inject({
+        method: "GET",
+        url: "/api/models?provider_id=openai",
       });
+      expect(byProviderId.statusCode).toBe(200);
+      expect(JSON.parse(byProviderId.body).models.map((m: { id: string }) => m.id)).toEqual([
+        "shared-model",
+      ]);
+
+      const byProviderType = await fastify.inject({
+        method: "GET",
+        url: "/api/models?provider=openai",
+      });
+      expect(byProviderType.statusCode).toBe(200);
+      expect(JSON.parse(byProviderType.body).models.map((m: { id: string }) => m.id)).toEqual([
+        "openai-model",
+        "openai-alt-model",
+      ]);
+    });
+
+    it("marks model availability by provider_id instead of provider type", async () => {
+      vi.mocked(modelManager.listModels).mockResolvedValue([
+        createMockModel({
+          id: "gpt-4o-main",
+          provider: "openai",
+          provider_id: "openai-main",
+        }),
+        createMockModel({
+          id: "gpt-4o-disabled",
+          provider: "openai",
+          provider_id: "openai-disabled",
+        }),
+        createMockModel({
+          id: "legacy-openai",
+          provider: "openai",
+        }),
+      ]);
+      vi.mocked(modelManager.getDefault).mockResolvedValue(null);
+      vi.mocked(providerManager.listProviders).mockResolvedValue([
+        {
+          id: "openai-main",
+          type: "openai",
+          category: "llm",
+          name: "OpenAI Main",
+          apiKey: "sk-main",
+          surfaces: ["chat"],
+          isDefault: false,
+          enabled: true,
+          created_at: "2026-01-01T00:00:00.000Z",
+          updated_at: "2026-01-01T00:00:00.000Z",
+        },
+        {
+          id: "openai-disabled",
+          type: "openai",
+          category: "llm",
+          name: "OpenAI Disabled",
+          apiKey: "sk-disabled",
+          surfaces: ["chat"],
+          isDefault: false,
+          enabled: false,
+          created_at: "2026-01-01T00:00:00.000Z",
+          updated_at: "2026-01-01T00:00:00.000Z",
+        },
+      ]);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/models",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.models).toEqual([
+        expect.objectContaining({ id: "gpt-4o-main", is_available: true }),
+        expect.objectContaining({ id: "gpt-4o-disabled", is_available: false }),
+        expect.objectContaining({ id: "legacy-openai", is_available: false }),
+      ]);
     });
   });
 
@@ -385,6 +498,7 @@ describe("Model Routes", () => {
 
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
       vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
+      vi.mocked(modelManager.listModels).mockResolvedValue([mockModel]);
       vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
 
       const response = await fastify.inject({
@@ -971,6 +1085,7 @@ describe("Model Routes", () => {
       const existingModel = createMockModel({
         id: "claude-sonnet",
         name: "Claude Sonnet",
+        provider_id: "anthropic-main",
       });
 
       vi.mocked(modelManager.getModelInfo).mockReturnValue(existingModel);
@@ -983,13 +1098,40 @@ describe("Model Routes", () => {
         payload: {
           id: "claude-sonnet",
           name: "Claude Sonnet",
-          provider: "anthropic",
+          provider_id: "anthropic-main",
           max_output_tokens: 8192,
         },
       });
 
       expect(response.statusCode).toBe(201);
-      expect(modelManager.setModelConfig).toHaveBeenCalled();
+      expect(modelManager.setModelConfig).toHaveBeenCalledWith(
+        "claude-sonnet",
+        expect.objectContaining({ maxTokens: 8192 }),
+        "anthropic-main"
+      );
+    });
+
+    it("should require provider_id when updating an existing model config", async () => {
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(createMockModel({
+        id: "claude-sonnet",
+        name: "Claude Sonnet",
+        provider_id: "anthropic-main",
+      }));
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models",
+        payload: {
+          id: "claude-sonnet",
+          name: "Claude Sonnet",
+          provider: "anthropic",
+          max_output_tokens: 8192,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
+      expect(modelManager.setModelConfig).not.toHaveBeenCalled();
     });
 
     it("should return 400 when model_id is missing", async () => {
@@ -1050,10 +1192,12 @@ describe("Model Routes", () => {
       const mockModel = createMockModel({
         id: "claude-sonnet",
         name: "Claude Sonnet",
+        provider_id: "anthropic-main",
       });
 
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
       vi.mocked(modelManager.getModelInfo).mockReturnValue(mockModel);
+      vi.mocked(modelManager.listModels).mockResolvedValue([mockModel]);
       vi.mocked(modelManager.getModelConfig).mockResolvedValue(mockModelConfig);
       vi.mocked(modelManager.setModelConfig).mockResolvedValue(undefined);
       vi.mocked(modelManager.reload).mockResolvedValue(undefined);
@@ -1062,6 +1206,7 @@ describe("Model Routes", () => {
         method: "PATCH",
         url: "/api/models/claude-sonnet",
         payload: {
+          provider_id: "anthropic-main",
           name: "Updated Claude Sonnet",
           max_output_tokens: 16384,
         },
@@ -1070,17 +1215,44 @@ describe("Model Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.id).toBe("claude-sonnet");
-      expect(modelManager.setModelConfig).toHaveBeenCalled();
+      expect(modelManager.setModelConfig).toHaveBeenCalledWith(
+        "claude-sonnet",
+        expect.objectContaining({ maxTokens: 16384 }),
+        "anthropic-main"
+      );
+    });
+
+    it("should require provider_id when patching model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+      vi.mocked(modelManager.getModelInfo).mockReturnValue(createMockModel({
+        id: "claude-sonnet",
+        name: "Claude Sonnet",
+        provider_id: "anthropic-main",
+      }));
+
+      const response = await fastify.inject({
+        method: "PATCH",
+        url: "/api/models/claude-sonnet",
+        payload: {
+          max_output_tokens: 16384,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
+      expect(modelManager.setModelConfig).not.toHaveBeenCalled();
     });
 
     it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
       vi.mocked(modelManager.getModelInfo).mockReturnValue(undefined);
+      vi.mocked(modelManager.listModels).mockResolvedValue([]);
 
       const response = await fastify.inject({
         method: "PATCH",
         url: "/api/models/nonexistent",
         payload: {
+          provider_id: "anthropic-main",
           name: "Updated Name",
         },
       });
@@ -1141,11 +1313,16 @@ describe("Model Routes", () => {
         provider: "anthropic",
         provider_id: "anthropic-main",
       }));
+      vi.mocked(modelManager.listModels).mockResolvedValue([createMockModel({
+        id: "claude-sonnet",
+        provider: "anthropic",
+        provider_id: "anthropic-main",
+      })]);
       vi.mocked(modelManager.enableModel).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
         method: "POST",
-        url: "/api/models/claude-sonnet/enable",
+        url: "/api/models/claude-sonnet/enable?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(200);
@@ -1162,16 +1339,38 @@ describe("Model Routes", () => {
 
     it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
-      vi.mocked(modelManager.getModel).mockResolvedValue(null);
+      vi.mocked(modelManager.listModels).mockResolvedValue([]);
 
       const response = await fastify.inject({
         method: "POST",
-        url: "/api/models/nonexistent/enable",
+        url: "/api/models/nonexistent/enable?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(404);
       const body = JSON.parse(response.body);
       expect(body.error).toContain("Model not found");
+    });
+
+    it("should reject ambiguous global enable without provider_id", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("gpt-4o");
+      vi.mocked(modelManager.getModel).mockResolvedValue(createMockModel({
+        id: "gpt-4o",
+        provider: "openai",
+        provider_id: "openai-main",
+      }));
+      vi.mocked(modelManager.listModels).mockResolvedValue([
+        createMockModel({ id: "gpt-4o", provider: "openai", provider_id: "openai-main" }),
+        createMockModel({ id: "gpt-4o", provider: "openai", provider_id: "deepseek-openai" }),
+      ]);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models/gpt-4o/enable",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("provider_id");
+      expect(modelManager.enableModel).not.toHaveBeenCalled();
     });
   });
 
@@ -1187,11 +1386,16 @@ describe("Model Routes", () => {
         provider: "anthropic",
         provider_id: "anthropic-main",
       }));
+      vi.mocked(modelManager.listModels).mockResolvedValue([createMockModel({
+        id: "claude-sonnet",
+        provider: "anthropic",
+        provider_id: "anthropic-main",
+      })]);
       vi.mocked(modelManager.disableModel).mockResolvedValue(undefined);
 
       const response = await fastify.inject({
         method: "POST",
-        url: "/api/models/claude-sonnet/disable",
+        url: "/api/models/claude-sonnet/disable?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(200);
@@ -1208,16 +1412,38 @@ describe("Model Routes", () => {
 
     it("should return 404 when model not found", async () => {
       vi.mocked(modelManager.resolveAlias).mockResolvedValue("nonexistent");
-      vi.mocked(modelManager.getModel).mockResolvedValue(null);
+      vi.mocked(modelManager.listModels).mockResolvedValue([]);
 
       const response = await fastify.inject({
         method: "POST",
-        url: "/api/models/nonexistent/disable",
+        url: "/api/models/nonexistent/disable?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(404);
       const body = JSON.parse(response.body);
       expect(body.error).toContain("Model not found");
+    });
+
+    it("should reject ambiguous global disable without provider_id", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("gpt-4o");
+      vi.mocked(modelManager.getModel).mockResolvedValue(createMockModel({
+        id: "gpt-4o",
+        provider: "openai",
+        provider_id: "openai-main",
+      }));
+      vi.mocked(modelManager.listModels).mockResolvedValue([
+        createMockModel({ id: "gpt-4o", provider: "openai", provider_id: "openai-main" }),
+        createMockModel({ id: "gpt-4o", provider: "openai", provider_id: "deepseek-openai" }),
+      ]);
+
+      const response = await fastify.inject({
+        method: "POST",
+        url: "/api/models/gpt-4o/disable",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("provider_id");
+      expect(modelManager.disableModel).not.toHaveBeenCalled();
     });
   });
 
@@ -1232,14 +1458,19 @@ describe("Model Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/models/claude-sonnet/config",
+        url: "/api/models/claude-sonnet/config?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.modelId).toBe("claude-sonnet");
-      expect(body.config).toEqual(mockModelConfig);
-      expect(modelManager.getModelConfig).toHaveBeenCalledWith("claude-sonnet");
+      expect(body.model_id).toBe("claude-sonnet");
+      expect(body.provider_id).toBe("anthropic-main");
+      expect(body.config).toEqual({
+        temperature: 0.7,
+        max_tokens: 4096,
+        top_p: 0.9,
+      });
+      expect(modelManager.getModelConfig).toHaveBeenCalledWith("claude-sonnet", "anthropic-main");
     });
 
     it("should return 404 when no config found", async () => {
@@ -1248,7 +1479,7 @@ describe("Model Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/models/claude-sonnet/config",
+        url: "/api/models/claude-sonnet/config?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(404);
@@ -1268,7 +1499,8 @@ describe("Model Routes", () => {
 
       const newConfig = {
         temperature: 0.8,
-        maxTokens: 8192,
+        max_tokens: 8192,
+        provider_id: "anthropic-main",
       };
 
       const response = await fastify.inject({
@@ -1280,9 +1512,28 @@ describe("Model Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
-      expect(body.modelId).toBe("claude-sonnet");
-      expect(body.config).toEqual(newConfig);
-      expect(modelManager.setModelConfig).toHaveBeenCalledWith("claude-sonnet", newConfig);
+      expect(body.model_id).toBe("claude-sonnet");
+      expect(body.provider_id).toBe("anthropic-main");
+      expect(body.config).toEqual({ temperature: 0.8, max_tokens: 8192 });
+      expect(modelManager.setModelConfig).toHaveBeenCalledWith(
+        "claude-sonnet",
+        { temperature: 0.8, maxTokens: 8192 },
+        "anthropic-main"
+      );
+    });
+
+    it("should require provider_id when setting model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+
+      const response = await fastify.inject({
+        method: "PUT",
+        url: "/api/models/claude-sonnet/config",
+        payload: { temperature: 0.8, max_tokens: 8192 },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
+      expect(modelManager.setModelConfig).not.toHaveBeenCalled();
     });
 
     it("should return 400 when setModelConfig fails", async () => {
@@ -1292,7 +1543,7 @@ describe("Model Routes", () => {
       const response = await fastify.inject({
         method: "PUT",
         url: "/api/models/claude-sonnet/config",
-        payload: { temperature: 2.0 },
+        payload: { provider_id: "anthropic-main", temperature: 2.0 },
       });
 
       expect(response.statusCode).toBe(400);
@@ -1312,14 +1563,28 @@ describe("Model Routes", () => {
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: "/api/models/claude-sonnet/config",
+        url: "/api/models/claude-sonnet/config?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(true);
       expect(body.deleted).toBe("claude-sonnet");
-      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("claude-sonnet");
+      expect(body.provider_id).toBe("anthropic-main");
+      expect(modelManager.removeModelConfig).toHaveBeenCalledWith("claude-sonnet", "anthropic-main");
+    });
+
+    it("should require provider_id when deleting model configuration", async () => {
+      vi.mocked(modelManager.resolveAlias).mockResolvedValue("claude-sonnet");
+
+      const response = await fastify.inject({
+        method: "DELETE",
+        url: "/api/models/claude-sonnet/config",
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.body).error).toContain("Provider ID is required");
+      expect(modelManager.removeModelConfig).not.toHaveBeenCalled();
     });
 
     it("should return 400 when removeModelConfig fails", async () => {
@@ -1328,7 +1593,7 @@ describe("Model Routes", () => {
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: "/api/models/claude-sonnet/config",
+        url: "/api/models/claude-sonnet/config?provider_id=anthropic-main",
       });
 
       expect(response.statusCode).toBe(400);

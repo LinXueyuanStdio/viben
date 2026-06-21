@@ -92,6 +92,7 @@ import {
   getProviderEnabledModels,
   updateProviderEnabledModels,
   listProviderEnabledModels,
+  listProviderConfiguredModels,
   enableProviderModel,
   disableProviderModel,
   enableProvider,
@@ -337,6 +338,7 @@ import type {
   DiscoveredModel,
   DiscoverModelsResponse,
   ProviderEnabledModelsResponse,
+  ProviderModelResponse,
   ApiKeyProvidersResponse,
   // Workspace types
   WorkspaceResponse,
@@ -1339,6 +1341,13 @@ export class GatewayClient {
    */
   async listProviderEnabledModels(providerId: string): Promise<string[]> {
     return listProviderEnabledModels(this.baseUrl, providerId);
+  }
+
+  /**
+   * List configured models for a specific provider, including enabled state
+   */
+  async listProviderConfiguredModels(providerId: string): Promise<ProviderModelResponse[]> {
+    return listProviderConfiguredModels(this.baseUrl, providerId);
   }
 
   /**

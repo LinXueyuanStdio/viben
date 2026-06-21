@@ -13,6 +13,7 @@ import {
   type UnifiedProviderEntry,
 } from "../config/model-provider-storage";
 import type {
+  ModelConfigEntry,
   ModelCategory,
   ModelSurface,
 } from "./types";
@@ -56,11 +57,8 @@ function getMetadata(config: UnifiedModelsFile): Required<Pick<UnifiedModelsMeta
   return metadata;
 }
 
-function setMetadata(config: UnifiedModelsFile, metadata: UnifiedModelsMetadata): void {
-  config[MODELS_METADATA_KEY] = {
-    ...(config[MODELS_METADATA_KEY] ?? {}),
-    ...metadata,
-  };
+function removeMetadata(config: UnifiedModelsFile): void {
+  delete config[MODELS_METADATA_KEY];
 }
 
 function modelFromEntry(
@@ -97,6 +95,12 @@ function ensureProvider(
   providerId: string,
   providerType: string
 ): UnifiedProviderEntry {
+  if (!providerId) {
+    throw new Error("Provider ID is required");
+  }
+  if (!providerType) {
+    throw new Error("Provider type is required");
+  }
   const providers = getUnifiedProviders(config);
   const provider = providers[providerId] ?? {
     id: providerId,
@@ -108,26 +112,92 @@ function ensureProvider(
   return provider;
 }
 
-function findModelInProviders(
+function findModelMatches(
   config: UnifiedModelsFile,
   id: string
-): { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry } | undefined {
+): Array<{ providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry }> {
   const providers = getUnifiedProviders(config);
-  const defaultProvider = config[MODELS_METADATA_KEY]?.default_provider;
+  const matches: Array<{
+    providerId: string;
+    provider: UnifiedProviderEntry;
+    entry: UnifiedModelEntry;
+  }> = [];
 
-  const orderedProviderIds = [
-    ...(defaultProvider && providers[defaultProvider] ? [defaultProvider] : []),
-    ...Object.keys(providers).filter((providerId) => providerId !== defaultProvider),
-  ];
-
-  for (const providerId of orderedProviderIds) {
+  for (const providerId of Object.keys(providers)) {
     const provider = providers[providerId];
     const model = provider.models?.[id];
     if (model) {
-      return { providerId, provider, entry: model };
+      matches.push({ providerId, provider, entry: model });
     }
   }
-  return undefined;
+  return matches;
+}
+
+function requireSingleModelMatch(
+  config: UnifiedModelsFile,
+  id: string
+): { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry } | undefined {
+  const matches = findModelMatches(config, id);
+  if (matches.length > 1) {
+    const providerIds = matches.map((match) => match.providerId).join(", ");
+    throw new Error(
+      `Model "${id}" exists in multiple providers (${providerIds}); pass provider_id to disambiguate`
+    );
+  }
+  return matches[0];
+}
+
+function findModelInProvider(
+  config: UnifiedModelsFile,
+  providerId: string,
+  modelId: string
+): { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry } | undefined {
+  const provider = getUnifiedProviders(config)[providerId];
+  const entry = provider?.models?.[modelId];
+  if (!provider || !entry) {
+    return undefined;
+  }
+  return { providerId, provider, entry };
+}
+
+function requireModelInProvider(
+  config: UnifiedModelsFile,
+  providerId: string,
+  modelId: string
+): { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry } {
+  const found = findModelInProvider(config, providerId, modelId);
+  if (!found) {
+    throw new Error(`Model not found: ${modelId} for provider ${providerId}`);
+  }
+  return found;
+}
+
+function legacyConfigForModel(
+  metadata: UnifiedModelsMetadata,
+  modelId: string,
+  providerId?: string
+): ModelConfig | null {
+  const configs = metadata.configs ?? {};
+  const providerScoped = providerId ? configs[`${providerId}:${modelId}`] : undefined;
+  return providerScoped ?? configs[modelId] ?? null;
+}
+
+function modelConfigEntryFromModelConfig(modelConfig: ModelConfig): ModelConfigEntry {
+  return {
+    temperature: modelConfig.temperature,
+    maxTokens: modelConfig.maxTokens,
+    topP: modelConfig.topP,
+    frequencyPenalty: modelConfig.frequencyPenalty,
+    presencePenalty: modelConfig.presencePenalty,
+    provider: modelConfig.provider,
+    category: modelConfig.category,
+    surface: modelConfig.surface,
+    capabilities: modelConfig.capabilities,
+    duration_seconds: modelConfig.duration_seconds,
+    aspect_ratio: modelConfig.aspect_ratio,
+    size: modelConfig.size,
+    voice_id: modelConfig.voice_id,
+  };
 }
 
 /**
@@ -228,13 +298,31 @@ export class ModelManager {
   async getModel(id: string): Promise<Model | null> {
     const config = await this.loadConfig();
     const metadata = getMetadata(config);
-    const found = findModelInProviders(config, id);
+    const found = requireSingleModelMatch(config, id);
 
     if (found) {
       return modelFromEntry(id, found.entry, found.providerId, found.provider, metadata.default_model);
     }
 
     return null;
+  }
+
+  /**
+   * Get a model scoped to a provider instance ID.
+   */
+  async getModelForProvider(providerId: string, id: string): Promise<Model | null> {
+    const config = await this.loadConfig();
+    const found = findModelInProvider(config, providerId, id);
+    if (!found) {
+      return null;
+    }
+    return modelFromEntry(
+      id,
+      found.entry,
+      found.providerId,
+      found.provider,
+      getMetadata(config).default_model
+    );
   }
 
   /**
@@ -275,9 +363,6 @@ export class ModelManager {
     config[providerId] = provider;
 
     const isDefault = options.setAsDefault ?? false;
-    if (isDefault) {
-      setMetadata(config, { default_model: options.id });
-    }
 
     await this.saveConfig(config);
 
@@ -302,7 +387,7 @@ export class ModelManager {
    */
   async removeModel(id: string): Promise<void> {
     const config = await this.loadConfig();
-    const found = findModelInProviders(config, id);
+    const found = requireSingleModelMatch(config, id);
 
     if (!found) {
       throw new Error(`Model not found: ${id}`);
@@ -311,11 +396,18 @@ export class ModelManager {
     delete found.provider.models?.[id];
     config[found.providerId] = found.provider;
 
-    const metadata = getMetadata(config);
-    if (metadata.default_model === id) {
-      setMetadata(config, { default_model: undefined });
-    }
+    await this.saveConfig(config);
+  }
 
+  /**
+   * Remove a model scoped to a provider instance ID.
+   */
+  async removeModelForProvider(providerId: string, id: string): Promise<void> {
+    const config = await this.loadConfig();
+    const found = requireModelInProvider(config, providerId, id);
+
+    delete found.provider.models?.[id];
+    config[found.providerId] = found.provider;
     await this.saveConfig(config);
   }
 
@@ -333,11 +425,47 @@ export class ModelManager {
   ): Promise<Model> {
     const config = await this.loadConfig();
 
-    const found = findModelInProviders(config, id);
+    const found = requireSingleModelMatch(config, id);
     if (!found) {
       throw new Error(`Model not found: ${id}`);
     }
 
+    const result = await this.updateModelEntry(config, found, id, updates);
+    await this.saveConfig(config);
+    return result;
+  }
+
+  /**
+   * Update a model scoped to a provider instance ID.
+   */
+  async updateModelForProvider(
+    providerId: string,
+    id: string,
+    updates: {
+      name?: string;
+      description?: string;
+      contextWindow?: number;
+      maxOutputTokens?: number;
+    }
+  ): Promise<Model> {
+    const config = await this.loadConfig();
+    const found = requireModelInProvider(config, providerId, id);
+    const result = await this.updateModelEntry(config, found, id, updates);
+    await this.saveConfig(config);
+    return result;
+  }
+
+  private async updateModelEntry(
+    config: UnifiedModelsFile,
+    found: { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry },
+    id: string,
+    updates: {
+      name?: string;
+      description?: string;
+      contextWindow?: number;
+      maxOutputTokens?: number;
+    }
+  ): Promise<Model> {
     const entry = { ...found.entry };
 
     if (updates.name !== undefined) {
@@ -348,8 +476,6 @@ export class ModelManager {
       [id]: entry,
     };
     config[found.providerId] = found.provider;
-
-    await this.saveConfig(config);
 
     const metadata = getMetadata(config);
     return {
@@ -422,9 +548,7 @@ export class ModelManager {
    * Set the default model
    */
   async setDefault(model: string): Promise<void> {
-    const config = await this.loadConfig();
-    setMetadata(config, { default_model: model });
-    await this.saveConfig(config);
+    void model;
   }
 
   async getDefaultForSurface(surface: ModelSurface): Promise<string | undefined> {
@@ -437,20 +561,8 @@ export class ModelManager {
   }
 
   async setDefaultForSurface(surface: ModelSurface, model: string): Promise<void> {
-    const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const defaults = metadata.defaults ?? {};
-    if (surface === "chat") {
-      defaults.llm = model;
-      setMetadata(config, { defaults, default_model: model });
-    } else {
-      defaults.media = {
-        ...(defaults.media ?? {}),
-        [surface]: model,
-      };
-      setMetadata(config, { defaults });
-    }
-    await this.saveConfig(config);
+    void surface;
+    void model;
   }
 
   // ========================================================================
@@ -469,22 +581,15 @@ export class ModelManager {
    * Create or update an alias
    */
   async createAlias(alias: string, model: string): Promise<void> {
-    const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    metadata.aliases[alias] = model;
-    setMetadata(config, { aliases: metadata.aliases });
-    await this.saveConfig(config);
+    void alias;
+    void model;
   }
 
   /**
    * Remove an alias
    */
   async removeAlias(alias: string): Promise<void> {
-    const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    delete metadata.aliases[alias];
-    setMetadata(config, { aliases: metadata.aliases });
-    await this.saveConfig(config);
+    void alias;
   }
 
   /**
@@ -514,53 +619,34 @@ export class ModelManager {
    * Get the fallback chain
    */
   async getFallbacks(): Promise<string[]> {
-    const config = await this.loadConfig();
-    return [...getMetadata(config).fallbacks];
+    return [];
   }
 
   /**
    * Add a model to the fallback chain
    */
   async addFallback(model: string): Promise<void> {
-    const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    if (!metadata.fallbacks.includes(model)) {
-      metadata.fallbacks.push(model);
-      setMetadata(config, { fallbacks: metadata.fallbacks });
-      await this.saveConfig(config);
-    }
+    void model;
   }
 
   /**
    * Remove a model from the fallback chain
    */
   async removeFallback(model: string): Promise<void> {
-    const config = await this.loadConfig();
-    const metadata = getMetadata(config);
-    const index = metadata.fallbacks.indexOf(model);
-    if (index !== -1) {
-      metadata.fallbacks.splice(index, 1);
-      setMetadata(config, { fallbacks: metadata.fallbacks });
-      await this.saveConfig(config);
-    }
+    void model;
   }
 
   /**
    * Clear the fallback chain
    */
   async clearFallbacks(): Promise<void> {
-    const config = await this.loadConfig();
-    setMetadata(config, { fallbacks: [] });
-    await this.saveConfig(config);
   }
 
   /**
    * Reorder fallbacks
    */
   async setFallbacks(fallbacks: string[]): Promise<void> {
-    const config = await this.loadConfig();
-    setMetadata(config, { fallbacks });
-    await this.saveConfig(config);
+    void fallbacks;
   }
 
   // ========================================================================
@@ -570,51 +656,134 @@ export class ModelManager {
   /**
    * Get model-specific configuration
    */
-  async getModelConfig(model: string): Promise<ModelConfig | null> {
+  async getModelConfig(model: string, providerId?: string): Promise<ModelConfig | null> {
+    if (providerId) {
+      return this.getModelConfigForProvider(providerId, model);
+    }
     const config = await this.loadConfig();
     const metadata = getMetadata(config);
     const resolved = metadata.aliases[model] || model;
-    return metadata.configs[resolved] || null;
+    const found = requireSingleModelMatch(config, resolved);
+    if (!found) {
+      return legacyConfigForModel(metadata, resolved);
+    }
+    return found.entry.config ?? legacyConfigForModel(metadata, resolved, found.providerId);
+  }
+
+  /**
+   * Get provider-scoped model configuration.
+   */
+  async getModelConfigForProvider(
+    providerId: string,
+    model: string
+  ): Promise<ModelConfig | null> {
+    const config = await this.loadConfig();
+    const metadata = getMetadata(config);
+    const resolved = metadata.aliases[model] || model;
+    const found = findModelInProvider(config, providerId, resolved);
+    if (!found) {
+      return legacyConfigForModel(metadata, resolved, providerId);
+    }
+    return found.entry.config ?? legacyConfigForModel(metadata, resolved, providerId);
   }
 
   /**
    * Set model-specific configuration
    */
-  async setModelConfig(model: string, modelConfig: ModelConfig): Promise<void> {
+  async setModelConfig(
+    model: string,
+    modelConfig: ModelConfig,
+    providerId?: string
+  ): Promise<void> {
+    if (providerId) {
+      return this.setModelConfigForProvider(providerId, model, modelConfig);
+    }
     const config = await this.loadConfig();
     const metadata = getMetadata(config);
     const resolved = metadata.aliases[model] || model;
+    const found = requireSingleModelMatch(config, resolved);
+    if (!found) {
+      throw new Error(`Model not found: ${resolved}`);
+    }
+    this.setModelConfigEntry(config, found, resolved, modelConfig);
+    removeMetadata(config);
 
-    metadata.configs[resolved] = {
-      temperature: modelConfig.temperature,
-      maxTokens: modelConfig.maxTokens,
-      topP: modelConfig.topP,
-      frequencyPenalty: modelConfig.frequencyPenalty,
-      presencePenalty: modelConfig.presencePenalty,
-      provider: modelConfig.provider,
-      category: modelConfig.category,
-      surface: modelConfig.surface,
-      capabilities: modelConfig.capabilities,
-      duration_seconds: modelConfig.duration_seconds,
-      aspect_ratio: modelConfig.aspect_ratio,
-      size: modelConfig.size,
-      voice_id: modelConfig.voice_id,
-    };
+    await this.saveConfig(config);
+  }
 
-    setMetadata(config, { configs: metadata.configs });
+  /**
+   * Set provider-scoped model configuration.
+   */
+  async setModelConfigForProvider(
+    providerId: string,
+    model: string,
+    modelConfig: ModelConfig
+  ): Promise<void> {
+    const config = await this.loadConfig();
+    const metadata = getMetadata(config);
+    const resolved = metadata.aliases[model] || model;
+    const found = requireModelInProvider(config, providerId, resolved);
+    this.setModelConfigEntry(config, found, resolved, modelConfig);
+    removeMetadata(config);
     await this.saveConfig(config);
   }
 
   /**
    * Remove model-specific configuration
    */
-  async removeModelConfig(model: string): Promise<void> {
+  async removeModelConfig(model: string, providerId?: string): Promise<void> {
+    if (providerId) {
+      return this.removeModelConfigForProvider(providerId, model);
+    }
     const config = await this.loadConfig();
     const metadata = getMetadata(config);
     const resolved = metadata.aliases[model] || model;
-    delete metadata.configs[resolved];
-    setMetadata(config, { configs: metadata.configs });
+    const found = requireSingleModelMatch(config, resolved);
+    if (found) {
+      const entry = { ...found.entry };
+      delete entry.config;
+      found.provider.models = {
+        ...(found.provider.models ?? {}),
+        [resolved]: entry,
+      };
+      config[found.providerId] = found.provider;
+    }
+    removeMetadata(config);
     await this.saveConfig(config);
+  }
+
+  /**
+   * Remove provider-scoped model configuration.
+   */
+  async removeModelConfigForProvider(providerId: string, model: string): Promise<void> {
+    const config = await this.loadConfig();
+    const resolved = getMetadata(config).aliases[model] || model;
+    const found = requireModelInProvider(config, providerId, resolved);
+    const entry = { ...found.entry };
+    delete entry.config;
+    found.provider.models = {
+      ...(found.provider.models ?? {}),
+      [resolved]: entry,
+    };
+    config[found.providerId] = found.provider;
+    removeMetadata(config);
+    await this.saveConfig(config);
+  }
+
+  private setModelConfigEntry(
+    config: UnifiedModelsFile,
+    found: { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry },
+    resolved: string,
+    modelConfig: ModelConfig
+  ): void {
+    found.provider.models = {
+      ...(found.provider.models ?? {}),
+      [resolved]: {
+        ...found.entry,
+        config: modelConfigEntryFromModelConfig(modelConfig),
+      },
+    };
+    config[found.providerId] = found.provider;
   }
 
   // ========================================================================
@@ -629,7 +798,14 @@ export class ModelManager {
 
     if (!this.config) return undefined;
 
-    const found = findModelInProviders(this.config, resolved);
+    let found:
+      | { providerId: string; provider: UnifiedProviderEntry; entry: UnifiedModelEntry }
+      | undefined;
+    try {
+      found = requireSingleModelMatch(this.config, resolved);
+    } catch {
+      return undefined;
+    }
     if (!found) return undefined;
     return modelFromEntry(
       resolved,

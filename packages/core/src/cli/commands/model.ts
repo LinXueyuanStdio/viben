@@ -10,7 +10,6 @@ import {
   outputTable,
   outputKeyValue,
   outputSuccess,
-  outputList,
   handleCommandError,
 } from "../lib";
 import { modelManager, DEFAULT_ALIASES } from "../../models";
@@ -210,7 +209,6 @@ export function registerModelCommand(program: Command): void {
       try {
         const models = await modelManager.listModels();
         const aliases = await modelManager.getAliases();
-        const fallbacks = await modelManager.getFallbacks();
         const defaultModel = await modelManager.getDefault();
 
         const providers = [...new Set(models.map((m) => m.provider))];
@@ -221,7 +219,6 @@ export function registerModelCommand(program: Command): void {
             providers,
             modelCount: models.length,
             aliasCount: Object.keys(aliases).length,
-            fallbackCount: fallbacks.length,
             default: defaultModel,
           }),
           () => {
@@ -232,7 +229,6 @@ export function registerModelCommand(program: Command): void {
               "Known Models": models.length.toString(),
               Providers: providers.join(", "),
               "Configured Aliases": Object.keys(aliases).length.toString(),
-              "Fallback Chain": fallbacks.length.toString(),
               "Default Model": defaultModel || chalk.gray("(not set)"),
             });
 
@@ -439,125 +435,6 @@ export function registerModelCommand(program: Command): void {
           } else {
             console.log(`${aliasName} -> ${resolved}`);
           }
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // model fallback - subcommand group
-  const fallback = model.command("fallback").description("Manage model fallback chain");
-
-  // model fallback list
-  fallback
-    .command("list")
-    .description("List the fallback chain")
-    .action(async function (this: Command) {
-      const ctx = getContext(this);
-      try {
-        const fallbacks = await modelManager.getFallbacks();
-
-        output(ctx, successResponse({ fallbacks }), () => {
-          if (fallbacks.length === 0) {
-            console.log(chalk.gray("No fallback chain configured"));
-            console.log(
-              chalk.gray(
-                "Use 'viben model fallback set <models...>' to configure fallbacks"
-              )
-            );
-            return;
-          }
-
-          console.log(chalk.bold("Fallback Chain:"));
-          fallbacks.forEach((modelName, index) => {
-            const prefix = index === 0 ? "Primary" : `Fallback ${index}`;
-            console.log(`  ${index + 1}. ${chalk.gray(`[${prefix}]`)} ${modelName}`);
-          });
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // model fallback set <models...>
-  fallback
-    .command("set <models...>")
-    .description("Set the fallback chain (comma-separated or space-separated)")
-    .action(async function (this: Command, models: string[]) {
-      const ctx = getContext(this);
-      try {
-        // Handle both comma-separated and space-separated input
-        const modelList = models
-          .flatMap((m) => m.split(","))
-          .map((m) => m.trim())
-          .filter((m) => m.length > 0);
-
-        if (modelList.length === 0) {
-          throw new Error("At least one model must be specified");
-        }
-
-        await modelManager.setFallbacks(modelList);
-
-        output(ctx, successResponse({ fallbacks: modelList }), () => {
-          outputSuccess(ctx, "Set fallback chain:");
-          outputList(ctx, modelList);
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // model fallback add -n <model>
-  fallback
-    .command("add")
-    .description("Add a model to the fallback chain")
-    .requiredOption("-n, --name <model>", "Model ID to add")
-    .action(async function (this: Command, options: { name: string }) {
-      const modelId = options.name;
-      const ctx = getContext(this);
-      try {
-        await modelManager.addFallback(modelId);
-        const fallbacks = await modelManager.getFallbacks();
-
-        output(ctx, successResponse({ added: modelId, fallbacks }), () => {
-          outputSuccess(ctx, `Added "${modelId}" to fallback chain`);
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // model fallback remove -n <model>
-  fallback
-    .command("remove")
-    .alias("rm")
-    .description("Remove a model from the fallback chain")
-    .requiredOption("-n, --name <model>", "Model ID to remove")
-    .action(async function (this: Command, options: { name: string }) {
-      const modelId = options.name;
-      const ctx = getContext(this);
-      try {
-        await modelManager.removeFallback(modelId);
-
-        output(ctx, successResponse({ removed: modelId }), () => {
-          outputSuccess(ctx, `Removed "${modelId}" from fallback chain`);
-        });
-      } catch (error) {
-        handleCommandError(ctx, error);
-      }
-    });
-
-  // model fallback clear
-  fallback
-    .command("clear")
-    .description("Clear the fallback chain")
-    .action(async function (this: Command) {
-      const ctx = getContext(this);
-      try {
-        await modelManager.clearFallbacks();
-
-        output(ctx, successResponse({ cleared: true }), () => {
-          outputSuccess(ctx, "Cleared fallback chain");
         });
       } catch (error) {
         handleCommandError(ctx, error);

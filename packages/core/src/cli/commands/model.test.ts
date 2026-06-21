@@ -4,7 +4,6 @@
  * 测试覆盖:
  * - Model 管理: list, show, status, set-default
  * - Model Alias: list, create, remove, resolve
- * - Model Fallback: list, set, add, remove, clear
  * - Model Config: show, set, remove
  * - Model Providers: providers
  */
@@ -25,11 +24,6 @@ vi.mock("../../models", () => ({
     createAlias: vi.fn(),
     removeAlias: vi.fn(),
     resolveAlias: vi.fn(),
-    getFallbacks: vi.fn(),
-    addFallback: vi.fn(),
-    removeFallback: vi.fn(),
-    clearFallbacks: vi.fn(),
-    setFallbacks: vi.fn(),
     getModelConfig: vi.fn(),
     setModelConfig: vi.fn(),
     removeModelConfig: vi.fn(),
@@ -278,14 +272,12 @@ describe("Model CLI Commands", () => {
 
       vi.mocked(modelManager.listModels).mockResolvedValue(mockModels);
       vi.mocked(modelManager.getAliases).mockResolvedValue({ gpt4: "gpt-4o" });
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["gpt-4o", "claude-3-5-sonnet-20241022"]);
       vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
 
       await runCommand(["model", "status"]);
 
       expect(modelManager.listModels).toHaveBeenCalled();
       expect(modelManager.getAliases).toHaveBeenCalled();
-      expect(modelManager.getFallbacks).toHaveBeenCalled();
       expect(modelManager.getDefault).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Model Status"));
     });
@@ -293,7 +285,6 @@ describe("Model CLI Commands", () => {
     it("should show status without default model", async () => {
       vi.mocked(modelManager.listModels).mockResolvedValue([]);
       vi.mocked(modelManager.getAliases).mockResolvedValue({});
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([]);
       vi.mocked(modelManager.getDefault).mockResolvedValue(undefined);
 
       await runCommand(["model", "status"]);
@@ -450,116 +441,9 @@ describe("Model CLI Commands", () => {
     });
   });
 
-  // ============================================================================
-  // Model Fallback Tests
-  // 规范: viben model fallback list/set/add/remove/clear
-  // ============================================================================
-
-  describe("model fallback list", () => {
-    it("should list the fallback chain", async () => {
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([
-        "gpt-4o",
-        "claude-3-5-sonnet-20241022",
-        "gpt-4o-mini",
-      ]);
-
-      await runCommand(["model", "fallback", "list"]);
-
-      expect(modelManager.getFallbacks).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Fallback Chain"));
-    });
-
-    it("should show message when no fallback chain configured", async () => {
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([]);
-
-      await runCommand(["model", "fallback", "list"]);
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No fallback chain configured"));
-    });
-  });
-
-  describe("model fallback set <models...>", () => {
-    it("should set the fallback chain with space-separated models", async () => {
-      vi.mocked(modelManager.setFallbacks).mockResolvedValue(undefined);
-
-      await runCommand(["model", "fallback", "set", "gpt-4o", "claude-3-5-sonnet-20241022"]);
-
-      expect(modelManager.setFallbacks).toHaveBeenCalledWith(["gpt-4o", "claude-3-5-sonnet-20241022"]);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Set fallback chain"));
-    });
-
-    it("should set the fallback chain with comma-separated models", async () => {
-      vi.mocked(modelManager.setFallbacks).mockResolvedValue(undefined);
-
-      await runCommand(["model", "fallback", "set", "gpt-4o,claude-3-5-sonnet-20241022"]);
-
-      expect(modelManager.setFallbacks).toHaveBeenCalledWith(["gpt-4o", "claude-3-5-sonnet-20241022"]);
-    });
-
-    it("should reject empty model list", async () => {
-      // Test with empty string which gets filtered out
-      await expect(runCommand(["model", "fallback", "set", ""])).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("At least one model"));
-    });
-  });
-
-  describe("model fallback add -n <model>", () => {
-    it("should add a model to the fallback chain", async () => {
-      vi.mocked(modelManager.addFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["gpt-4o", "gpt-4o-mini"]);
-
-      await runCommand(["model", "fallback", "add", "-n", "gpt-4o-mini"]);
-
-      expect(modelManager.addFallback).toHaveBeenCalledWith("gpt-4o-mini");
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Added "gpt-4o-mini"'));
-    });
-
-    it("should support --name option", async () => {
-      vi.mocked(modelManager.addFallback).mockResolvedValue(undefined);
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["gpt-4o", "gpt-4o-mini"]);
-
-      await runCommand(["model", "fallback", "add", "--name", "gpt-4o-mini"]);
-
-      expect(modelManager.addFallback).toHaveBeenCalledWith("gpt-4o-mini");
-    });
-  });
-
-  describe("model fallback remove -n <model>", () => {
-    it("should remove a model from the fallback chain", async () => {
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-
-      await runCommand(["model", "fallback", "remove", "-n", "gpt-4o-mini"]);
-
-      expect(modelManager.removeFallback).toHaveBeenCalledWith("gpt-4o-mini");
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Removed "gpt-4o-mini"'));
-    });
-
-    it("should support --name option", async () => {
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-
-      await runCommand(["model", "fallback", "remove", "--name", "gpt-4o-mini"]);
-
-      expect(modelManager.removeFallback).toHaveBeenCalledWith("gpt-4o-mini");
-    });
-
-    it("should support rm shorthand", async () => {
-      vi.mocked(modelManager.removeFallback).mockResolvedValue(undefined);
-
-      await runCommand(["model", "fallback", "rm", "-n", "gpt-4o-mini"]);
-
-      expect(modelManager.removeFallback).toHaveBeenCalledWith("gpt-4o-mini");
-    });
-  });
-
-  describe("model fallback clear", () => {
-    it("should clear the fallback chain", async () => {
-      vi.mocked(modelManager.clearFallbacks).mockResolvedValue(undefined);
-
-      await runCommand(["model", "fallback", "clear"]);
-
-      expect(modelManager.clearFallbacks).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Cleared fallback chain"));
+  describe("removed fallback command", () => {
+    it("should reject removed model fallback subcommands", async () => {
+      await expect(runCommand(["model", "fallback", "list"])).rejects.toThrow();
     });
   });
 
@@ -761,7 +645,6 @@ describe("Model CLI Commands", () => {
     it("should output JSON for model status", async () => {
       vi.mocked(modelManager.listModels).mockResolvedValue([createMockModel()]);
       vi.mocked(modelManager.getAliases).mockResolvedValue({});
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue([]);
       vi.mocked(modelManager.getDefault).mockResolvedValue("gpt-4o");
 
       await runCommand(["--json", "model", "status"]);
@@ -773,14 +656,6 @@ describe("Model CLI Commands", () => {
       vi.mocked(modelManager.getAliases).mockResolvedValue({ gpt4: "gpt-4o" });
 
       await runCommand(["--json", "model", "alias", "list"]);
-
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
-    });
-
-    it("should output JSON for model fallback list", async () => {
-      vi.mocked(modelManager.getFallbacks).mockResolvedValue(["gpt-4o"]);
-
-      await runCommand(["--json", "model", "fallback", "list"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
     });
@@ -811,14 +686,6 @@ describe("Model CLI Commands", () => {
       vi.mocked(modelManager.createAlias).mockRejectedValue(new Error("Failed to create alias"));
 
       await expect(runCommand(["model", "alias", "create", "-n", "test", "-m", "gpt-4o"])).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
-
-    it("should handle errors in fallback operations", async () => {
-      vi.mocked(modelManager.addFallback).mockRejectedValue(new Error("Failed to add fallback"));
-
-      await expect(runCommand(["model", "fallback", "add", "-n", "gpt-4o"])).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalled();
     });

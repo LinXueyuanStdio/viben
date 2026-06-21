@@ -14,7 +14,6 @@ export type ProviderType =
   | "anthropic"
   | "google"
   | "groq"
-  | "deepseek"
   | "openrouter"
   | "ollama"
   | "azure"
@@ -152,7 +151,7 @@ export interface CreateModelOptions {
   id: string;
   name: string;
   provider: ProviderType;
-  provider_id?: string;
+  provider_id: string;
   category?: ModelCategory;
   surface?: ModelSurface;
   capabilities?: string[];
@@ -203,6 +202,12 @@ export interface DiscoveredModel {
   id: string;
   name: string;
   description?: string;
+  capabilities?: {
+    chat?: boolean;
+    code?: boolean;
+    vision?: boolean;
+    tools?: boolean;
+  };
   context_window?: number;
   max_output_tokens?: number;
   owned_by?: string;
@@ -211,8 +216,10 @@ export interface DiscoveredModel {
 
 /** Response for discovered models */
 export interface DiscoverModelsResponse {
+  provider_id: string;
   models: DiscoveredModel[];
-  total: number;
+  total?: number;
+  error?: string;
 }
 
 /** Provider model with enabled status */

@@ -193,9 +193,6 @@ describe("model command execution", () => {
 default: gpt-4o
 aliases:
   fast: gpt-4o-mini
-fallbacks:
-  - gpt-4o
-  - claude-3-5-sonnet-20241022
 configs: {}
 custom_models: {}
 disabled_models: []
@@ -511,150 +508,11 @@ disabled_models: []
     });
   });
 
-  // ===========================================================================
-  // model fallback execution
-  // ===========================================================================
-
-  describe("model fallback list", () => {
-    it("should show message when no fallbacks configured", async () => {
+  describe("removed model fallback command", () => {
+    it("should not register model fallback subcommands", async () => {
       await ctx.run(["model", "fallback", "list"]);
 
-      expect(ctx.console.hasLog("No fallback chain configured")).toBe(true);
-    });
-
-    it("should list fallbacks from config", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks:
-  - gpt-4o
-  - claude-3-5-sonnet-20241022
-  - gpt-4o-mini
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
-
-      await ctx.run(["model", "fallback", "list"]);
-
-      expect(ctx.console.hasLog("Fallback Chain")).toBe(true);
-      expect(ctx.console.hasLog("gpt-4o")).toBe(true);
-      expect(ctx.console.hasLog("claude-3-5-sonnet-20241022")).toBe(true);
-    });
-  });
-
-  describe("model fallback set", () => {
-    it("should set fallback chain with space-separated models", async () => {
-      await ctx.run(["model", "fallback", "set", "gpt-4o", "gpt-4o-mini"]);
-
-      const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("- gpt-4o");
-      expect(content).toContain("- gpt-4o-mini");
-    });
-
-    it("should set fallback chain with comma-separated models", async () => {
-      await ctx.run(["model", "fallback", "set", "gpt-4o,gpt-4o-mini,claude-3-5-sonnet-20241022"]);
-
-      const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("- gpt-4o");
-      expect(content).toContain("- gpt-4o-mini");
-      expect(content).toContain("- claude-3-5-sonnet-20241022");
-    });
-
-    it("should return JSON on success", async () => {
-      const result = (await ctx.runJson(["model", "fallback", "set", "gpt-4o", "gpt-4o-mini"])) as {
-        success: boolean;
-        data: { fallbacks: string[] };
-      };
-
-      expect(result?.success).toBe(true);
-      expect(result?.data?.fallbacks).toEqual(["gpt-4o", "gpt-4o-mini"]);
-    });
-  });
-
-  describe("model fallback add", () => {
-    it("should add model to existing fallback chain", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks:
-  - gpt-4o
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
-
-      await ctx.run(["model", "fallback", "add", "-n", "gpt-4o-mini"]);
-
-      const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("- gpt-4o");
-      expect(content).toContain("- gpt-4o-mini");
-    });
-
-    it("should not add duplicate model", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks:
-  - gpt-4o
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
-
-      await ctx.run(["model", "fallback", "add", "-n", "gpt-4o"]);
-
-      const content = await ctx.tempDir.readFile("models.yaml");
-      const matches = content.match(/- gpt-4o/g);
-      expect(matches?.length).toBe(1);
-    });
-  });
-
-  describe("model fallback remove", () => {
-    it("should remove model from fallback chain", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks:
-  - gpt-4o
-  - gpt-4o-mini
-  - claude-3-5-sonnet-20241022
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
-
-      await ctx.run(["model", "fallback", "remove", "-n", "gpt-4o-mini"]);
-
-      const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("- gpt-4o");
-      expect(content).not.toContain("- gpt-4o-mini");
-      expect(content).toContain("- claude-3-5-sonnet-20241022");
-    });
-  });
-
-  describe("model fallback clear", () => {
-    it("should clear all fallbacks", async () => {
-      await ctx.writeConfig(
-        `
-aliases: {}
-fallbacks:
-  - gpt-4o
-  - gpt-4o-mini
-configs: {}
-custom_models: {}
-disabled_models: []
-`
-      );
-
-      await ctx.run(["model", "fallback", "clear"]);
-
-      const content = await ctx.tempDir.readFile("models.yaml");
-      expect(content).toContain("fallbacks: []");
+      expect(ctx.console.hasLog("No fallback chain configured")).toBe(false);
     });
   });
 
@@ -786,9 +644,6 @@ disabled_models: []
 default: gpt-4o
 aliases:
   fast: gpt-4o-mini
-fallbacks:
-  - gpt-4o
-  - gpt-4o-mini
 configs: {}
 custom_models: {}
 disabled_models: []
@@ -807,8 +662,6 @@ disabled_models: []
 default: gpt-4o
 aliases:
   fast: gpt-4o-mini
-fallbacks:
-  - gpt-4o
 configs: {}
 custom_models: {}
 disabled_models: []
@@ -820,13 +673,12 @@ disabled_models: []
         data: {
           default: string;
           aliasCount: number;
-          fallbackCount: number;
         };
       };
 
       expect(result?.success).toBe(true);
       expect(result?.data?.default).toBe("gpt-4o");
-      expect(result?.data?.fallbackCount).toBe(1);
+      expect("fallbackCount" in (result?.data ?? {})).toBe(false);
     });
   });
 

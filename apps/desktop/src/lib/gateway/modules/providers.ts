@@ -345,6 +345,17 @@ export async function listProviderEnabledModels(
   baseUrl: string,
   providerId: string
 ): Promise<string[]> {
+  const data = await getProviderEnabledModels(baseUrl, providerId);
+  return data.models.filter((model) => model.enabled).map((model) => model.id);
+}
+
+/**
+ * List configured models for a specific provider, including enabled state
+ */
+export async function listProviderConfiguredModels(
+  baseUrl: string,
+  providerId: string
+): Promise<ProviderModelResponse[]> {
   const response = await fetch(
     `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/models`,
     {
@@ -356,18 +367,13 @@ export async function listProviderEnabledModels(
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
-      `Failed to list provider enabled models: ${errorMessage}`,
+      `Failed to list provider configured models: ${errorMessage}`,
       response.status
     );
   }
 
-  const data = await response.json() as {
-    provider_id: string;
-    models: Array<{ id: string; enabled: boolean }>;
-    total: number;
-  };
-  // Extract enabled model IDs from the models array
-  return data.models.filter(m => m.enabled).map(m => m.id);
+  const data = await response.json() as ProviderEnabledModelsResponse;
+  return data.models;
 }
 
 /**

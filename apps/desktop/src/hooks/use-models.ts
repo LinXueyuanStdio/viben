@@ -21,6 +21,7 @@ import {
   type CreateModelOptions,
   type ModelUpdate,
   type DiscoveredModel,
+  type ProviderModelResponse,
   type ProviderType,
   type ModelCategory,
   type ModelSurface,
@@ -88,6 +89,8 @@ export interface UseModelsReturn {
   discoverProviderModels: (providerId: string) => Promise<DiscoveredModel[]>;
   /** List models enabled for a specific provider */
   listProviderEnabledModels: (providerId: string) => Promise<string[]>;
+  /** List configured models for a specific provider, including enabled state */
+  listProviderConfiguredModels: (providerId: string) => Promise<ProviderModelResponse[]>;
   /** Enable a model for a specific provider */
   enableModelForProvider: (providerId: string, modelId: string) => Promise<void>;
   /** Disable a model for a specific provider */
@@ -95,7 +98,7 @@ export interface UseModelsReturn {
 }
 
 // Re-export types for convenience
-export type { WorkspaceModel, ModelResponse, CreateModelOptions, ModelUpdate, DiscoveredModel, ProviderType };
+export type { WorkspaceModel, ModelResponse, CreateModelOptions, ModelUpdate, DiscoveredModel, ProviderModelResponse, ProviderType };
 export type { ModelCategory, ModelSurface };
 
 // ============================================================================
@@ -323,6 +326,20 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
     []
   );
 
+  const listProviderConfiguredModels = useCallback(
+    async (providerId: string): Promise<ProviderModelResponse[]> => {
+      try {
+        const client = getGatewayClient();
+        return await client.listProviderConfiguredModels(providerId);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
+        throw new Error(message);
+      }
+    },
+    []
+  );
+
   const enableModelForProvider = useCallback(
     async (providerId: string, modelId: string): Promise<void> => {
       setError(null);
@@ -386,6 +403,7 @@ export function useModels(options?: UseModelsOptions): UseModelsReturn {
     // Provider model discovery
     discoverProviderModels,
     listProviderEnabledModels,
+    listProviderConfiguredModels,
     enableModelForProvider,
     disableModelForProvider,
   };

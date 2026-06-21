@@ -20,6 +20,7 @@ vi.mock("../../providers", () => ({
 vi.mock("../../models", () => ({
   modelManager: {
     getModelsByProvider: vi.fn(),
+    getModelsByProviderId: vi.fn(),
     enableModel: vi.fn(),
     disableModel: vi.fn(),
   },
@@ -30,6 +31,7 @@ vi.mock("../../models/discovery", () => ({
 }));
 
 import { providerManager } from "../../providers";
+import { modelManager } from "../../models";
 
 interface MockReply {
   code: ReturnType<typeof vi.fn>;
@@ -249,6 +251,79 @@ describe("Provider Routes", () => {
         surfaces: ["video"],
         supportsCustomModel: false,
       })
+    );
+  });
+
+  it("lists models by provider_id instead of provider type", async () => {
+    vi.mocked(providerManager.getProvider).mockResolvedValue(
+      createMockProvider({ id: "deepseek-openai", type: "openai" })
+    );
+    vi.mocked(modelManager.getModelsByProviderId).mockResolvedValue([
+      {
+        id: "gpt-4o",
+        name: "GPT-4o via DeepSeek",
+        provider: "openai",
+        provider_id: "deepseek-openai",
+        enabled: true,
+      },
+    ]);
+
+    const response = await fastify.inject({
+      method: "GET",
+      url: "/api/providers/deepseek-openai/models",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.provider_id).toBe("deepseek-openai");
+    expect(body.models).toEqual([
+      expect.objectContaining({
+        id: "gpt-4o",
+        provider: "openai",
+        enabled: true,
+      }),
+    ]);
+    expect(modelManager.getModelsByProviderId).toHaveBeenCalledWith("deepseek-openai");
+    expect(modelManager.getModelsByProvider).not.toHaveBeenCalled();
+  });
+
+  it("uses route provider_id when enabling provider-scoped duplicate model ids", async () => {
+    vi.mocked(providerManager.getProvider).mockResolvedValue(
+      createMockProvider({ id: "deepseek-openai", type: "openai" })
+    );
+    vi.mocked(modelManager.enableModel).mockResolvedValue(undefined);
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/api/providers/deepseek-openai/models/gpt-4o/enable",
+      payload: { provider_id: "openai-main" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(modelManager.enableModel).toHaveBeenCalledWith(
+      "gpt-4o",
+      "openai",
+      "deepseek-openai"
+    );
+  });
+
+  it("uses route provider_id when disabling provider-scoped duplicate model ids", async () => {
+    vi.mocked(providerManager.getProvider).mockResolvedValue(
+      createMockProvider({ id: "deepseek-openai", type: "openai" })
+    );
+    vi.mocked(modelManager.disableModel).mockResolvedValue(undefined);
+
+    const response = await fastify.inject({
+      method: "POST",
+      url: "/api/providers/deepseek-openai/models/gpt-4o/disable",
+      payload: { provider_id: "openai-main" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(modelManager.disableModel).toHaveBeenCalledWith(
+      "gpt-4o",
+      "openai",
+      "deepseek-openai"
     );
   });
 });

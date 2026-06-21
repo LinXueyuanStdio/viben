@@ -66,10 +66,14 @@ import {
 } from "@/hooks/use-providers";
 import {
   useModels,
-  type DiscoveredModel,
   type ModelSurface,
 } from "@/hooks/use-models";
 import { getGatewayClient } from "@/lib/gateway";
+import {
+  buildProviderModelList,
+  getProviderSurfaces,
+  type SettingsModel,
+} from "./settings-model-utils";
 
 
 // Easing curves
@@ -78,6 +82,7 @@ const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 // Provider type options
 const PROVIDER_TYPES: ProviderType[] = [
   "openai",
+  "openai-responses",
   "anthropic",
   "azure",
   "ollama",
@@ -161,13 +166,6 @@ function getDefaultSurfaces(type: ProviderType): ProviderSurface[] {
   }
 }
 
-// Extended model type with source information
-interface ExtendedModel extends DiscoveredModel {
-  source: "discovered" | "manual";
-  surface?: ModelSurface;
-  capabilities?: string[];
-}
-
 export function SettingsModelPage() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
@@ -189,7 +187,7 @@ export function SettingsModelPage() {
     defaultModelId,
     setDefaultModel,
     discoverProviderModels,
-    listProviderEnabledModels,
+    listProviderConfiguredModels,
     enableModelForProvider,
     disableModelForProvider,
   } = useModels({
@@ -205,7 +203,7 @@ export function SettingsModelPage() {
   );
 
   // Model discovery state
-  const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
+  const [models, setModels] = useState<SettingsModel[]>([]);
   const [apiDiscoveredIds, setApiDiscoveredIds] = useState<Set<string>>(new Set());
   const [enabledModelIds, setEnabledModelIds] = useState<string[]>([]);
   const [discoveringModels, setDiscoveringModels] = useState(false);
@@ -283,38 +281,25 @@ export function SettingsModelPage() {
     const provider = providers.find((p) => p.id === selectedProviderId);
 
     setDiscoveringModels(true);
-    setDiscoveredModels([]);
+    setModels([]);
     setEnabledModelIds([]);
 
     (async () => {
       try {
-        const [discovered, enabled] = await Promise.all([
-          discoverProviderModels(selectedProviderId).catch(() => [] as DiscoveredModel[]),
-          listProviderEnabledModels(selectedProviderId),
+        const [discovered, configured] = await Promise.all([
+          discoverProviderModels(selectedProviderId).catch(() => []),
+          listProviderConfiguredModels(selectedProviderId),
         ]);
         if (stale) return;
 
-        const providerSurfaceSet = new Set(provider?.surfaces ?? []);
-        const filteredDiscovered = provider && providerSurfaceSet.size > 0
-          ? discovered.filter((model) => {
-              const surface = model.id.toLowerCase();
-              if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) return true;
-              if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) return true;
-              if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) return true;
-              if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) return true;
-              return provider.category === "llm";
-            })
-          : discovered;
-
-        // Merge: enabled models not in discovered list are shown as "manual"
-        const discoveredIds = new Set(filteredDiscovered.map((m) => m.id));
-        const manualModels: DiscoveredModel[] = enabled
-          .filter((id) => !discoveredIds.has(id))
-          .map((id) => ({ id, name: id, description: undefined, context_window: undefined, max_output_tokens: undefined, owned_by: undefined, created: undefined }));
-
-        setApiDiscoveredIds(discoveredIds);
-        setDiscoveredModels([...filteredDiscovered, ...manualModels]);
-        setEnabledModelIds(enabled);
+        const result = buildProviderModelList({
+          provider,
+          discovered,
+          configured,
+        });
+        setApiDiscoveredIds(result.apiDiscoveredIds);
+        setModels(result.models);
+        setEnabledModelIds(result.enabledModelIds);
       } catch (err) {
         if (!stale) {
           console.error("Failed to load provider models:", err);
@@ -327,66 +312,44 @@ export function SettingsModelPage() {
     })();
 
     return () => { stale = true; };
-  }, [selectedProviderId, providers, discoverProviderModels, listProviderEnabledModels]);
+  }, [selectedProviderId, providers, discoverProviderModels, listProviderConfiguredModels]);
 
   // Manual refresh handler
   const loadProviderModels = useCallback(async (providerId: string) => {
     const provider = providers.find((p) => p.id === providerId);
 
     setDiscoveringModels(true);
-    setDiscoveredModels([]);
+    setModels([]);
     setEnabledModelIds([]);
 
     try {
-      const [discovered, enabled] = await Promise.all([
-        discoverProviderModels(providerId).catch(() => [] as DiscoveredModel[]),
-        listProviderEnabledModels(providerId),
+      const [discovered, configured] = await Promise.all([
+        discoverProviderModels(providerId).catch(() => []),
+        listProviderConfiguredModels(providerId),
       ]);
 
-      const providerSurfaceSet = new Set(provider?.surfaces ?? []);
-      const filteredDiscovered = provider && providerSurfaceSet.size > 0
-        ? discovered.filter((model) => {
-            const surface = model.id.toLowerCase();
-            if (providerSurfaceSet.has("image") && /image|dall|flux|stable|sd|nano/.test(surface)) return true;
-            if (providerSurfaceSet.has("video") && /video|veo|seedance|kling|runway/.test(surface)) return true;
-            if (providerSurfaceSet.has("music") && /music|song|suno|udio/.test(surface)) return true;
-            if ((providerSurfaceSet.has("speech") || providerSurfaceSet.has("sfx")) && /voice|speech|tts|sfx|audio/.test(surface)) return true;
-            return provider.category === "llm";
-          })
-        : discovered;
-
-      const discoveredIds = new Set(filteredDiscovered.map((m) => m.id));
-      const manualModels: DiscoveredModel[] = enabled
-        .filter((id) => !discoveredIds.has(id))
-        .map((id) => ({ id, name: id, description: undefined, context_window: undefined, max_output_tokens: undefined, owned_by: undefined, created: undefined }));
-
-      setApiDiscoveredIds(discoveredIds);
-      setDiscoveredModels([...filteredDiscovered, ...manualModels]);
-      setEnabledModelIds(enabled);
+      const result = buildProviderModelList({
+        provider,
+        discovered,
+        configured,
+      });
+      setApiDiscoveredIds(result.apiDiscoveredIds);
+      setModels(result.models);
+      setEnabledModelIds(result.enabledModelIds);
     } catch (err) {
       console.error("Failed to load provider models:", err);
     } finally {
       setDiscoveringModels(false);
     }
-  }, [discoverProviderModels, listProviderEnabledModels, providers]);
-
-  // Combine discovered models with source info
-  const allModels = useMemo((): ExtendedModel[] => {
-    return discoveredModels.map((m) => ({
-      ...m,
-      source: apiDiscoveredIds.has(m.id) ? "discovered" as const : "manual" as const,
-    }));
-  }, [discoveredModels, apiDiscoveredIds]);
+  }, [discoverProviderModels, listProviderConfiguredModels, providers]);
 
   // Sort models: enabled first, then by name
   const sortedModels = useMemo(() => {
-    return [...allModels].sort((a, b) => {
-      const aEnabled = enabledModelIds.includes(a.id);
-      const bEnabled = enabledModelIds.includes(b.id);
-      if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
+    return [...models].sort((a, b) => {
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
-  }, [allModels, enabledModelIds]);
+  }, [models]);
 
   // Filtered models based on search
   const filteredModels = useMemo(() => {
@@ -405,12 +368,8 @@ export function SettingsModelPage() {
 
   // Model counts
   const enabledCount = enabledModelIds.length;
-  const totalCount = allModels.length;
-  const providerSurfaces: ProviderSurface[] = selectedProvider?.surfaces.length
-    ? selectedProvider.surfaces
-    : selectedProvider?.category === "media"
-      ? MEDIA_SURFACES
-      : ["chat"];
+  const totalCount = models.length;
+  const providerSurfaces: ProviderSurface[] = getProviderSurfaces(selectedProvider);
   const currentDefaultModelId = defaultModelId;
 
   // Open add provider dialog
@@ -537,9 +496,15 @@ export function SettingsModelPage() {
       if (enabledModelIds.includes(modelId)) {
         await disableModelForProvider(selectedProviderId, modelId);
         setEnabledModelIds((prev) => prev.filter((id) => id !== modelId));
+        setModels((prev) => prev.map((model) => (
+          model.id === modelId ? { ...model, enabled: false } : model
+        )));
       } else {
         await enableModelForProvider(selectedProviderId, modelId);
         setEnabledModelIds((prev) => [...prev, modelId]);
+        setModels((prev) => prev.map((model) => (
+          model.id === modelId ? { ...model, enabled: true } : model
+        )));
       }
     } catch (err) {
       console.error("Failed to toggle model:", err);
@@ -563,15 +528,25 @@ export function SettingsModelPage() {
           id: modelId,
           name: modelId,
           provider: selectedProvider.provider_type,
-          provider_id: selectedProvider.provider_type,
+          provider_id: selectedProvider.id,
           category: selectedProvider.category,
           surface: selectedSurface as ModelSurface,
-        }).catch(() => undefined);
+        });
       }
       await enableModelForProvider(selectedProviderId, modelId);
-      setDiscoveredModels((prev) => {
+      setModels((prev) => {
         if (prev.some((m) => m.id === modelId)) return prev;
-        return [...prev, { id: modelId, name: modelId, description: undefined, context_window: undefined, max_output_tokens: undefined, owned_by: undefined, created: undefined }];
+        return [...prev, {
+          id: modelId,
+          name: modelId,
+          description: undefined,
+          context_window: undefined,
+          max_output_tokens: undefined,
+          owned_by: undefined,
+          created: undefined,
+          source: apiDiscoveredIds.has(modelId) ? "discovered" : "manual",
+          enabled: true,
+        }];
       });
       setEnabledModelIds((prev) => [...prev, modelId]);
       setNewModelId("");
@@ -597,13 +572,16 @@ export function SettingsModelPage() {
     try {
       await disableModelForProvider(selectedProviderId, modelId);
       setEnabledModelIds((prev) => prev.filter((id) => id !== modelId));
+      setModels((prev) => prev.map((model) => (
+        model.id === modelId ? { ...model, enabled: false } : model
+      )));
     } catch (err) {
       console.error("Failed to delete model:", err);
     }
   };
 
   // Get source icon and tooltip
-  const getSourceInfo = (source: ExtendedModel["source"]) => {
+  const getSourceInfo = (source: SettingsModel["source"]) => {
     switch (source) {
       case "discovered":
         return {
@@ -947,7 +925,7 @@ export function SettingsModelPage() {
                     ) : (
                       <div className="space-y-px">
                         {filteredModels.map((model) => {
-                          const isEnabled = enabledModelIds.includes(model.id);
+                          const isEnabled = model.enabled;
                           const sourceInfo = getSourceInfo(model.source);
                           const SourceIcon = sourceInfo.icon;
                           const isDefault = currentDefaultModelId === model.id;
