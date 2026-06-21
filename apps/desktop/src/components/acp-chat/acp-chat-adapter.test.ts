@@ -205,4 +205,31 @@ describe("ACP chat adapter", () => {
     expect(JSON.stringify(steps)).not.toContain("stack");
     expect(JSON.stringify(steps)).not.toContain("codex app-server");
   });
+
+  it("shows actionable Codex stderr diagnostics instead of generic disconnect messages", () => {
+    const steps = acpSessionUpdateToUiSteps({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "error",
+        error: {
+          message: "Codex app-server stdout closed",
+          stderr: "Error: error loading default config after config error: model_providers.deepseek-openai: provider name must not be empty\nin `model_providers`\n",
+          stack: "Error: Codex app-server stdout closed\n    at internal",
+          command: "codex",
+          args: ["app-server"],
+        },
+      },
+    });
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({
+      kind: "message",
+      message: {
+        type: "error",
+        message: "Error: error loading default config after config error: model_providers.deepseek-openai: provider name must not be empty\nin `model_providers`",
+      },
+    });
+    expect(JSON.stringify(steps)).not.toContain("stack");
+    expect(JSON.stringify(steps)).not.toContain("app-server");
+  });
 });

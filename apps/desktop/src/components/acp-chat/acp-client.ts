@@ -825,9 +825,23 @@ function shouldTimeoutRequest(method: string): boolean {
   return !LONG_RUNNING_REQUEST_METHODS.has(method);
 }
 
-function formatJsonRpcError(error: JsonRpcFailure["error"]): string {
+export function formatJsonRpcError(error: JsonRpcFailure["error"]): string {
+  const diagnostic = jsonRpcErrorDiagnostic(error.data);
+  if (diagnostic) return diagnostic;
   if (error.data === undefined) return error.message;
   return `${error.message}\n${JSON.stringify(error.data, null, 2)}`;
+}
+
+function jsonRpcErrorDiagnostic(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const record = data as Record<string, unknown>;
+  return readNonEmptyString(record.stderr)
+    ?? readNonEmptyString(record.details)
+    ?? readNonEmptyString(record.message);
+}
+
+function readNonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trimEnd() : undefined;
 }
 
 function splitFrames(buffer: string, onFrame: (frame: JsonRpcFrame) => void): string {
@@ -1000,12 +1014,12 @@ function summarizeExecutorConfig(config: Record<string, unknown> | undefined): R
     id: readRecordString(config, "id"),
     command: readRecordString(config, "command"),
     argsCount: Array.isArray(config.args) ? config.args.length : undefined,
-    modelProvider: readRecordString(config, "model_provider") ?? readRecordString(config, "modelProvider"),
-    baseUrl: readRecordString(config, "base_url") ?? readRecordString(config, "baseUrl"),
-    approvalPolicy: readRecordString(config, "approval_policy") ?? readRecordString(config, "approvalPolicy"),
+    modelProvider: readRecordString(config, "model_provider"),
+    baseUrl: readRecordString(config, "base_url"),
+    approvalPolicy: readRecordString(config, "approval_policy"),
     sandbox: readRecordString(config, "sandbox"),
     hasSandboxPolicy: typeof config.sandbox_policy === "object" && config.sandbox_policy !== null,
-    reasoningEffort: readRecordString(config, "reasoning_effort") ?? readRecordString(config, "reasoningEffort"),
+    reasoningEffort: readRecordString(config, "reasoning_effort"),
     personality: readRecordString(config, "personality"),
     initTimeoutMs: typeof config.init_timeout_ms === "number" ? config.init_timeout_ms : undefined,
   };

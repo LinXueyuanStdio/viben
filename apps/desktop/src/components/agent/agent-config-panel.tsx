@@ -26,9 +26,6 @@ import {
   Plus,
   Trash2,
   X,
-  ShieldOff,
-  ShieldCheck,
-  ShieldAlert,
   TerminalSquare,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -51,15 +48,25 @@ import { cn } from "@/lib/utils";
 import type { ExecutorType, AvailabilityInfo } from "@/types/agent";
 import type { WorkspaceSkill } from "@/types";
 import { useModels } from "@/hooks/use-models";
-import { useProviders, PROVIDER_TYPE_LABELS } from "@/hooks/use-providers";
-import type { Provider } from "@/hooks/use-providers";
+import { useProviders } from "@/hooks/use-providers";
 import { filterModelsByExecutor, getAllowedProviders } from "@/lib/executor-constraints";
-import type { ProviderId } from "@/lib/executor-constraints";
 import type { CustomVariable } from "./agent-variables-section";
 import type { AgentMcpEntry } from "@/lib/gateway/types/agent";
+import { ClaudeCodeConfigSection } from "./claude-code-config-section";
 import { CodexConfigSection } from "./codex-config-section";
 import { OpenClawConfigSection } from "./openclaw-config-section";
 import { McpConfigEditor } from "./mcp-config-editor";
+import { ProviderModelSelector } from "./provider-model-selector";
+import {
+  buildClaudeCodeProviderSwitch,
+  compactConfig,
+  filterProviderModels,
+  filterSelectorProviders,
+  isModelForSelectedProvider,
+  readConfigString,
+  readEnvRecord,
+  removeEnvKeys,
+} from "./provider-model-selection";
 
 // Section IDs for scroll navigation
 export type ConfigSectionId = "prompts" | "model" | "capabilities" | "memory" | "variables";
@@ -257,22 +264,52 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     };
 
     const executorConfig = props.executorConfig ?? {};
+    const availableModels = useMemo(() => allModels.filter((candidate) => candidate.is_available), [allModels]);
+
+    const selectedClaudeProviderId = readConfigString(executorConfig.model_provider)
+      ?? readConfigString(executorConfig.modelProvider)
+      ?? "";
+    const claudeAllowedProviderIds = useMemo(() => getAllowedProviders("CLAUDE_CODE") ?? [], []);
+    const claudeProviders = useMemo(
+      () => filterSelectorProviders(providers, claudeAllowedProviderIds),
+      [claudeAllowedProviderIds, providers]
+    );
+    const selectedClaudeProvider = useMemo(
+      () => claudeProviders.find((provider) => provider.id === selectedClaudeProviderId)
+        ?? claudeProviders.find((provider) => provider.is_default)
+        ?? claudeProviders[0],
+      [claudeProviders, selectedClaudeProviderId]
+    );
+    const selectedClaudeProviderKey = selectedClaudeProvider?.id ?? "";
+    const claudeModelsFilteredByExecutor = useMemo(
+      () => filterModelsByExecutor(availableModels, "CLAUDE_CODE"),
+      [availableModels]
+    );
+    const claudeModels = useMemo(
+      () => selectedClaudeProvider
+        ? filterProviderModels(claudeModelsFilteredByExecutor, selectedClaudeProvider.id)
+        : [],
+      [claudeModelsFilteredByExecutor, selectedClaudeProvider]
+    );
+    const claudeModelOptions = useMemo(
+      () => claudeModels.map((candidate) => ({
+        id: candidate.id,
+        name: candidate.name,
+        provider_type: candidate.provider_type,
+        provider_id: candidate.provider_id,
+      })),
+      [claudeModels]
+    );
+    const selectedClaudeModel = claudeModelOptions.some((candidate) => candidate.id === model)
+      ? model
+      : "";
+
     const selectedCodexProviderId = readConfigString(executorConfig.model_provider)
       ?? readConfigString(executorConfig.modelProvider)
       ?? "";
     const codexAllowedProviderIds = useMemo(() => getAllowedProviders("CODEX") ?? [], []);
     const codexProviders = useMemo(
-      () => {
-        const enabledProviders = providers.filter((provider) => provider.enabled);
-        const filteredProviders = codexAllowedProviderIds.length === 0
-          ? enabledProviders
-          : enabledProviders.filter((provider) =>
-              codexAllowedProviderIds.includes(provider.provider_type as ProviderId)
-            );
-        return filteredProviders
-          .filter((provider) => provider.category === "llm" || provider.surfaces.includes("chat"))
-          .sort((a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name));
-      },
+      () => filterSelectorProviders(providers, codexAllowedProviderIds),
       [codexAllowedProviderIds, providers]
     );
     const selectedCodexProvider = useMemo(
@@ -284,10 +321,10 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     const selectedCodexProviderKey = selectedCodexProvider?.id ?? "";
     const selectedCodexBaseUrl = readConfigString(executorConfig.base_url)
       ?? readConfigString(executorConfig.baseUrl);
-    const codexModelsFilteredByExecutor = useMemo(() => {
-      const availableModels = allModels.filter((candidate) => candidate.is_available);
-      return filterModelsByExecutor(availableModels, "CODEX");
-    }, [allModels]);
+    const codexModelsFilteredByExecutor = useMemo(
+      () => filterModelsByExecutor(availableModels, "CODEX"),
+      [availableModels]
+    );
     const codexModels = useMemo(() => {
       if (!selectedCodexProvider) return [];
       return codexModelsFilteredByExecutor.filter(
@@ -303,6 +340,57 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
         ...executorConfig,
         ...updates,
       }));
+    };
+
+    const handleClaudeProviderChange = (providerId: string) => {
+      const providerModels = filterProviderModels(claudeModelsFilteredByExecutor, providerId);
+      const result = buildClaudeCodeProviderSwitch({
+        config: {
+          ...executorConfig,
+          env: readEnvRecord(executorConfig.env),
+        },
+        currentModel: model,
+        providerId,
+        providerModels,
+      });
+
+      props.onExecutorConfigChange?.(result.config);
+      if (result.currentModel && result.currentModel !== model) {
+        onModelChange(result.currentModel);
+      }
+    };
+
+    const handleClaudeModelChange = (modelId: string) => {
+      if (!claudeModels.some((candidate) => candidate.id === modelId)) return;
+      const env = {
+        ...removeEnvKeys(readEnvRecord(executorConfig.env), PROVIDER_OWNED_CLAUDE_ENV_KEYS),
+        ANTHROPIC_MODEL: modelId,
+      };
+      const providerConfig = selectedClaudeProvider
+        ? {
+            model_provider: selectedClaudeProvider.id,
+          }
+        : {};
+
+      updateExecutorConfig({
+        ...providerConfig,
+        env,
+      });
+      onModelChange(modelId);
+    };
+
+    const handleClaudeFamilyModelChange = (envName: string, modelId: string) => {
+      if (!claudeModels.some((candidate) => candidate.id === modelId)) return;
+      updateExecutorConfig({
+        env: {
+          ...removeEnvKeys(readEnvRecord(executorConfig.env), PROVIDER_OWNED_CLAUDE_ENV_KEYS),
+          [envName]: modelId,
+        },
+      });
+    };
+
+    const handleClaudeEnvChange = (env: Record<string, string>) => {
+      updateExecutorConfig({ env: removeEnvKeys(env, PROVIDER_OWNED_CLAUDE_ENV_KEYS) });
     };
 
     const handleCodexProviderChange = (providerId: string) => {
@@ -348,6 +436,32 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       if (codexModels.some((candidate) => candidate.id === model)) return;
       onModelChange(codexModels[0].id);
     }, [codexModels, isCodex, model, onModelChange]);
+
+    useEffect(() => {
+      if (!isClaudeCode || !selectedClaudeProvider) return;
+      if (selectedClaudeProviderId !== selectedClaudeProvider.id) {
+        updateExecutorConfig({
+          model_provider: selectedClaudeProvider.id,
+          env: removeEnvKeys(readEnvRecord(executorConfig.env), PROVIDER_OWNED_CLAUDE_ENV_KEYS),
+        });
+      }
+    }, [executorConfig.env, isClaudeCode, selectedClaudeProvider, selectedClaudeProviderId]);
+
+    useEffect(() => {
+      if (!isClaudeCode || !selectedClaudeProvider || claudeModels.length === 0) return;
+      if (claudeModels.some((candidate) => candidate.id === model)) return;
+      const result = buildClaudeCodeProviderSwitch({
+        config: {
+          ...executorConfig,
+          env: readEnvRecord(executorConfig.env),
+        },
+        currentModel: model,
+        providerId: selectedClaudeProvider.id,
+        providerModels: claudeModels,
+      });
+      props.onExecutorConfigChange?.(result.config);
+      if (result.currentModel) onModelChange(result.currentModel);
+    }, [claudeModels, executorConfig, isClaudeCode, model, onModelChange, selectedClaudeProvider, props.onExecutorConfigChange]);
 
     // Get availability status display
     const getAvailabilityDisplay = () => {
@@ -536,41 +650,19 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
 
               {/* Claude Code Options */}
               {isClaudeCode && (
-                <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    执行器选项
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-normal">审批模式</Label>
-                    <div className="flex h-8 rounded-md border border-border overflow-hidden">
-                      {([
-                        { mode: "bypass" as const, icon: ShieldOff, label: "绕过审批" },
-                        { mode: "rules" as const, icon: ShieldCheck, label: "规则审批" },
-                        { mode: "ai" as const, icon: ShieldAlert, label: "AI 审批" },
-                      ]).map(({ mode, icon: Icon, label }, idx) => {
-                        const isActive = approvalMode === mode;
-                        return (
-                          <button
-                            key={mode}
-                            type="button"
-                            className={cn(
-                              "flex flex-1 items-center justify-center gap-1.5 text-xs transition-colors",
-                              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset",
-                              idx < 2 && "border-r border-border",
-                              isActive
-                                ? "bg-accent text-accent-foreground font-medium"
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                            onClick={() => onApprovalModeChange(mode)}
-                          >
-                            <Icon className="size-3.5" />
-                            <span>{label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                <ClaudeCodeConfigSection
+                  config={props.executorConfig}
+                  providers={claudeProviders}
+                  selectedProviderId={selectedClaudeProviderKey}
+                  models={claudeModelOptions}
+                  selectedModel={selectedClaudeModel}
+                  approvalMode={approvalMode}
+                  onProviderChange={handleClaudeProviderChange}
+                  onModelChange={handleClaudeModelChange}
+                  onFamilyModelChange={handleClaudeFamilyModelChange}
+                  onEnvChange={handleClaudeEnvChange}
+                  onApprovalModeChange={onApprovalModeChange}
+                />
               )}
 
               {/* OpenClaw Options */}
@@ -583,13 +675,17 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
 
               {/* Codex Provider + Model Selection */}
               {isCodex && (
-                <CodexProviderModelSelector
+                <ProviderModelSelector
+                  title="Codex 模型"
+                  badge="OpenAI-compatible"
                   providers={codexProviders}
                   selectedProviderId={selectedCodexProviderKey}
                   models={codexModels}
                   selectedModel={selectedCodexModel}
                   onProviderChange={handleCodexProviderChange}
                   onModelChange={handleCodexModelChange}
+                  emptyProvidersText="Configure an enabled OpenAI-compatible provider first."
+                  showBaseUrl
                 />
               )}
 
@@ -602,7 +698,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
               )}
 
               {/* Model Selection */}
-              {!isCodex && (
+              {!isCodex && !isClaudeCode && (
               <div className="space-y-2">
                 <Label>{t("settingsAgents.model")}</Label>
                 {providerConstraintHint && (
@@ -997,150 +1093,3 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
 );
 
 AgentConfigPanel.displayName = "AgentConfigPanel";
-
-interface CodexProviderModelSelectorProps {
-  providers: Provider[];
-  selectedProviderId: string;
-  models: ModelOption[];
-  selectedModel: string;
-  onProviderChange: (providerId: string) => void;
-  onModelChange: (modelId: string) => void;
-}
-
-function CodexProviderModelSelector({
-  providers,
-  selectedProviderId,
-  models,
-  selectedModel,
-  onProviderChange,
-  onModelChange,
-}: CodexProviderModelSelectorProps) {
-  const selectedProvider = providers.find((provider) => provider.id === selectedProviderId);
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <Label>Codex 模型</Label>
-        <span className="text-xs text-muted-foreground">OpenAI-compatible</span>
-      </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.9fr)_minmax(220px,1.1fr)]">
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Provider</span>
-          <Select
-            value={selectedProviderId}
-            onValueChange={onProviderChange}
-            disabled={providers.length === 0}
-          >
-            <SelectTrigger className="h-auto min-h-10 items-start whitespace-normal py-2 [&>span]:line-clamp-none">
-              {selectedProvider ? (
-                <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="break-words font-medium leading-snug">{selectedProvider.name}</span>
-                    {selectedProvider.is_default && (
-                      <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
-                        Default
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="break-all text-xs leading-snug text-muted-foreground">
-                    {PROVIDER_TYPE_LABELS[selectedProvider.provider_type] ?? selectedProvider.provider_type}
-                    {selectedProvider.base_url ? ` · ${selectedProvider.base_url}` : ""}
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">选择 provider</span>
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {providers.map((provider) => (
-                <SelectItem key={provider.id} value={provider.id}>
-                  <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-medium">{provider.name}</span>
-                      {provider.is_default && (
-                        <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
-                          Default
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {PROVIDER_TYPE_LABELS[provider.provider_type] ?? provider.provider_type}
-                      {provider.base_url ? ` · ${provider.base_url}` : ""}
-                    </span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1">
-          <span className="text-xs text-muted-foreground">Model</span>
-          <Select
-            value={selectedModel}
-            onValueChange={onModelChange}
-            disabled={!selectedProvider || models.length === 0}
-          >
-            <SelectTrigger className="h-auto min-h-10 items-start whitespace-normal py-2 [&>span]:line-clamp-none">
-              {selectedModel ? (
-                <div className="min-w-0 flex-1 space-y-0.5 text-left">
-                  <div className="break-all font-medium leading-snug">
-                    {models.find((candidate) => candidate.id === selectedModel)?.name ?? selectedModel}
-                  </div>
-                  <div className="break-all text-xs leading-snug text-muted-foreground">
-                    {selectedModel}
-                  </div>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">
-                  {selectedProvider ? "选择模型" : "先选择 provider"}
-                </span>
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
-                    <span className="truncate font-medium">{candidate.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{candidate.id}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      {providers.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          Configure an enabled OpenAI-compatible provider first.
-        </p>
-      )}
-      {selectedProvider && models.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          No enabled chat models for {selectedProvider.name}.
-        </p>
-      )}
-      {selectedProvider?.base_url && (
-        <p className="truncate text-xs text-muted-foreground">
-          Base URL: <span className="font-mono">{selectedProvider.base_url}</span>
-        </p>
-      )}
-    </div>
-  );
-}
-
-function readConfigString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
-}
-
-function compactConfig(config: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(config).filter(([, value]) => value !== undefined && value !== "")
-  );
-}
-
-function isModelForSelectedProvider(model: { provider_id?: string }, provider: Provider): boolean {
-  const modelProviderId = model.provider_id?.toLowerCase();
-  const providerId = provider.id.toLowerCase();
-  return modelProviderId === providerId;
-}

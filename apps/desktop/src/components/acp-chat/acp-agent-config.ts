@@ -29,16 +29,13 @@ export function buildAcpAgentConfig(params: {
   providerId: string | null;
   providers?: AcpProviderInfo[];
 }): AgentConfigPayload {
-  const { agent, executorType, model, providerId, providers } = params;
+  const { agent, executorType, model, providerId } = params;
   const selectedModel = model.trim() || agent?.model || undefined;
-  const selectedProvider = providerId
-    ? providers?.find((provider) => provider.id === providerId)
-    : undefined;
   const providerIdValue = providerId ?? agent?.provider_id;
   const executorConfig = withCodexProviderConfig(
     agent?.executor_config,
     agent?.executor_type ?? executorType,
-    selectedProvider
+    providerIdValue
   );
   return {
     name: agent?.name,
@@ -63,24 +60,31 @@ export function buildAcpAgentConfig(params: {
 function withCodexProviderConfig(
   config: Record<string, unknown> | undefined,
   executorType: string,
-  provider: AcpProviderInfo | undefined
+  providerId: string | undefined
 ): Record<string, unknown> | undefined {
   if (executorType !== "CODEX" && executorType !== "CODEX_APP_SERVER") {
     return config;
   }
-  if (!provider?.provider_type && !provider?.base_url) {
+  if (!providerId) {
     return config;
   }
-
-  return {
-    ...config,
-    ...(provider.provider_type && config?.model_provider === undefined && config?.modelProvider === undefined
-      ? { model_provider: provider.id }
-      : {}),
-    ...(provider.base_url && config?.base_url === undefined && config?.baseUrl === undefined
-      ? { base_url: provider.base_url }
-      : {}),
-  };
+  if (!config) return undefined;
+  const {
+    model_provider,
+    base_url,
+    provider_name,
+    wire_api,
+    env_key,
+    experimental_bearer_token,
+    ...rest
+  } = config;
+  void model_provider;
+  void base_url;
+  void provider_name;
+  void wire_api;
+  void env_key;
+  void experimental_bearer_token;
+  return Object.keys(rest).length > 0 ? rest : undefined;
 }
 
 function readString(value: unknown): string | undefined {

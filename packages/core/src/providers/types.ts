@@ -17,6 +17,7 @@ export type {
  */
 export const DEFAULT_BASE_URLS: Record<string, string> = {
   openai: "https://api.openai.com/v1",
+  "openai-responses": "https://api.openai.com/v1",
   anthropic: "https://api.anthropic.com/v1",
   azure: "", // Requires custom endpoint
   ollama: "http://localhost:11434",
@@ -36,7 +37,6 @@ export const DEFAULT_BASE_URLS: Record<string, string> = {
   aihubmix: "https://aihubmix.com/v1",
   suno: "",
   udio: "",
-  custom: "",
 };
 
 /**
@@ -44,6 +44,7 @@ export const DEFAULT_BASE_URLS: Record<string, string> = {
  */
 export const ENV_VAR_NAMES: Record<string, string | undefined> = {
   openai: "OPENAI_API_KEY",
+  "openai-responses": "OPENAI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
   azure: "AZURE_OPENAI_API_KEY",
   ollama: undefined, // No API key needed
@@ -63,7 +64,6 @@ export const ENV_VAR_NAMES: Record<string, string | undefined> = {
   aihubmix: "AIHUBMIX_API_KEY",
   suno: "SUNO_API_KEY",
   udio: "UDIO_API_KEY",
-  custom: undefined,
 };
 
 /**

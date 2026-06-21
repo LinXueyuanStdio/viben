@@ -561,7 +561,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         reply.code(404);
         return { error: `Model not found: ${id}` };
       }
-      await modelManager.enableModel(resolvedId, model.provider);
+      await modelManager.enableModel(resolvedId, model.provider, model.provider_id);
 
       return {
         success: true,
@@ -592,7 +592,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         reply.code(404);
         return { error: `Model not found: ${id}` };
       }
-      await modelManager.disableModel(resolvedId, model.provider);
+      await modelManager.disableModel(resolvedId, model.provider, model.provider_id);
 
       return {
         success: true,
@@ -633,11 +633,26 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         };
         await modelManager.setModelConfig(id, modelConfig);
       } else {
-        // Create new custom model
+        const provider = config.provider_id
+          ? await providerManager.getProvider(config.provider_id)
+          : null;
+        if (config.provider_id && !provider) {
+          reply.code(400);
+          return { error: `Provider not found: ${config.provider_id}` };
+        }
+
+        const providerType = config.provider ?? provider?.type;
+        if (!providerType) {
+          reply.code(400);
+          return { error: "Provider type is required" };
+        }
+
+        // Create a configured model under the selected provider.
         await modelManager.createModel({
           id,
           name: config.name || id,
-          provider: config.provider_id || config.provider || "custom",
+          provider: providerType,
+          provider_id: config.provider_id,
           category: config.category,
           surface: config.surface,
           capabilities: config.capabilities,

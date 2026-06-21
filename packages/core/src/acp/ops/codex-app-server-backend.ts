@@ -31,8 +31,10 @@ import {
   type CodexServerRequest,
   type CodexTurn,
 } from "./codex-app-server-protocol";
+import { providerManager } from "../../providers";
 import type { AgentConfigPayload } from "../types";
 import type { SessionNotification } from "@agentclientprotocol/sdk";
+import type { Provider } from "../../types";
 
 const DEFAULT_INIT_TIMEOUT_MS = 120_000;
 
@@ -46,7 +48,16 @@ export interface CodexAppServerBackendDefinition {
 
 export interface CodexAppServerBackendAdapterOptions {
   definition?: Partial<CodexAppServerBackendDefinition>;
+  lookupProvider?: (providerId: string) => Promise<CodexProviderDetails | null | undefined>;
   spawnProcess?: (definition: CodexAppServerBackendDefinition, context: AcpBackendStartContext) => CodexAppServerProcess;
+}
+
+interface CodexProviderDetails {
+  id: string;
+  name?: string;
+  type?: string;
+  base_url?: string;
+  apiKey?: string;
 }
 
 interface ActiveTurn {
@@ -66,7 +77,7 @@ export class CodexAppServerBackendAdapter implements AcpBackendAdapter {
   constructor(private readonly options: CodexAppServerBackendAdapterOptions = {}) {}
 
   async start(context: AcpBackendStartContext): Promise<AcpBackendSession> {
-    const definition = resolveCodexDefinition(context.agentConfig, this.options.definition);
+    const definition = await resolveCodexDefinition(context.agentConfig, this.options.definition, this.options.lookupProvider);
     const processHandle = this.options.spawnProcess
       ? this.options.spawnProcess(definition, context)
       : CodexAppServerJsonRpcClient.spawn(definition.command, definition.args, context.cwd, definition.env);
@@ -259,46 +270,133 @@ class CodexAppServerBackendSession implements AcpBackendSession {
 
 function resolveCodexDefinition(
   agentConfig: AgentConfigPayload | undefined,
-  override: Partial<CodexAppServerBackendDefinition> | undefined
-): CodexAppServerBackendDefinition {
+  override: Partial<CodexAppServerBackendDefinition> | undefined,
+  lookupProvider: ((providerId: string) => Promise<CodexProviderDetails | null | undefined>) | undefined
+): Promise<CodexAppServerBackendDefinition> {
+  return resolveCodexDefinitionAsync(agentConfig, override, lookupProvider);
+}
+
+async function resolveCodexDefinitionAsync(
+  agentConfig: AgentConfigPayload | undefined,
+  override: Partial<CodexAppServerBackendDefinition> | undefined,
+  lookupProvider: ((providerId: string) => Promise<CodexProviderDetails | null | undefined>) | undefined
+): Promise<CodexAppServerBackendDefinition> {
   const config = asRecord(agentConfig?.executor_config);
+  const provider = await resolveCodexProvider(agentConfig, lookupProvider);
+  const env = {
+    ...envRecord(override?.env),
+    ...envRecord(config.env),
+  };
+  if (provider?.apiKey && !env.OPENAI_API_KEY) {
+    env.OPENAI_API_KEY = provider.apiKey;
+  }
   return {
     id: readString(config.id) ?? override?.id ?? "codex",
     command: readString(config.command) ?? override?.command ?? "codex",
-    args: codexArgs(agentConfig, stringArray(config.args) ?? override?.args ?? ["app-server"]),
-    env: {
-      ...envRecord(override?.env),
-      ...envRecord(config.env),
-    },
+    args: codexArgs(agentConfig, stringArray(config.args) ?? override?.args ?? ["app-server"], provider),
+    env,
     initTimeoutMs: readNumber(config.init_timeout_ms)
-      ?? readNumber(config.initTimeoutMs)
       ?? override?.initTimeoutMs
       ?? DEFAULT_INIT_TIMEOUT_MS,
   };
 }
 
-function codexArgs(agentConfig: AgentConfigPayload | undefined, baseArgs: string[]): string[] {
+async function resolveCodexProvider(
+  agentConfig: AgentConfigPayload | undefined,
+  lookupProvider: ((providerId: string) => Promise<CodexProviderDetails | null | undefined>) | undefined
+): Promise<CodexProviderDetails | undefined> {
+  const providerId = agentConfig?.provider_id;
+  if (!providerId) return undefined;
+  const provider = lookupProvider
+    ? await lookupProvider(providerId)
+    : providerToCodexDetails(await providerManager.getProvider(providerId));
+  return provider ?? undefined;
+}
+
+function providerToCodexDetails(provider: Provider | null): CodexProviderDetails | undefined {
+  if (!provider) return undefined;
+  return {
+    id: provider.id,
+    name: provider.name,
+    type: provider.type,
+    base_url: provider.base_url,
+    apiKey: provider.apiKey,
+  };
+}
+
+function codexArgs(
+  agentConfig: AgentConfigPayload | undefined,
+  baseArgs: string[],
+  provider: CodexProviderDetails | undefined
+): string[] {
   const config = asRecord(agentConfig?.executor_config);
-  const modelProvider = readString(config.model_provider)
-    ?? readString(config.modelProvider)
-    ?? readString(agentConfig?.provider_id);
-  const baseUrl = readString(config.base_url) ?? readString(config.baseUrl);
+  const providerId = codexProviderId(agentConfig);
+  const baseUrl = provider?.base_url ?? readString(config.base_url);
+  const providerName = readString(config.provider_name)
+    ?? provider?.name
+    ?? providerId;
+  const wireApi = readString(config.wire_api) ?? "responses";
+  const envKey = readString(config.env_key) ?? (provider?.apiKey ? "OPENAI_API_KEY" : undefined);
   const args = [...baseArgs];
-  if (modelProvider) {
-    args.push("-c", `model_provider=${tomlString(modelProvider)}`);
+  if (providerId) {
+    args.push("-c", `model_provider=${tomlString(providerId)}`);
   }
-  if (modelProvider && baseUrl) {
-    args.push("-c", `model_providers.${tomlKey(modelProvider)}.base_url=${tomlString(baseUrl)}`);
+  if (providerId && baseUrl && providerName) {
+    if (!isTomlBareKey(providerId)) {
+      args.push("-c", `model_providers=${tomlInlineTable({
+        [providerId]: providerConfigRecord(providerName, wireApi, baseUrl, envKey),
+      })}`);
+      return args;
+    }
+    args.push(
+      "-c",
+      `model_providers.${providerId}.name=${tomlString(providerName)}`,
+      "-c",
+      `model_providers.${providerId}.wire_api=${tomlString(wireApi)}`,
+      "-c",
+      `model_providers.${providerId}.base_url=${tomlString(baseUrl)}`
+    );
+    if (envKey) {
+      args.push("-c", `model_providers.${providerId}.env_key=${tomlString(envKey)}`);
+    }
   }
   return args;
+}
+
+function codexProviderId(agentConfig: AgentConfigPayload | undefined): string | undefined {
+  const config = asRecord(agentConfig?.executor_config);
+  return readString(agentConfig?.provider_id) ?? readString(config.model_provider);
 }
 
 function tomlString(value: string): string {
   return JSON.stringify(value);
 }
 
-function tomlKey(value: string): string {
-  return /^[A-Za-z0-9_-]+$/.test(value) ? value : JSON.stringify(value);
+function providerConfigRecord(
+  name: string,
+  wireApi: string,
+  baseUrl: string,
+  envKey: string | undefined
+): Record<string, string> {
+  return envKey
+    ? { name, wire_api: wireApi, base_url: baseUrl, env_key: envKey }
+    : { name, wire_api: wireApi, base_url: baseUrl };
+}
+
+function tomlInlineTable(record: Record<string, string | Record<string, string>>): string {
+  const entries = Object.entries(record).map(([key, value]) => {
+    const tomlValue = typeof value === "string" ? tomlString(value) : tomlInlineTable(value);
+    return `${tomlInlineKey(key)}=${tomlValue}`;
+  });
+  return `{${entries.join(", ")}}`;
+}
+
+function tomlInlineKey(value: string): string {
+  return isTomlBareKey(value) ? value : tomlString(value);
+}
+
+function isTomlBareKey(value: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(value);
 }
 
 function threadMethod(context: AcpBackendStartContext): string {
@@ -313,8 +411,9 @@ function threadParams(context: AcpBackendStartContext): Record<string, unknown> 
   if (context.agentConfig?.model) {
     base.model = context.agentConfig.model;
   }
-  if (context.agentConfig?.provider_id) {
-    base.modelProvider = context.agentConfig.provider_id;
+  const modelProvider = codexProviderId(context.agentConfig);
+  if (modelProvider) {
+    base.modelProvider = modelProvider;
   }
   const config = asRecord(context.agentConfig?.executor_config);
   const approvalPolicy = codexApprovalPolicy(context.agentConfig);
@@ -340,6 +439,10 @@ function buildTurnStartParams(context: AcpBackendStartContext): Record<string, u
   if (context.agentConfig?.model) {
     params.model = context.agentConfig.model;
   }
+  const modelProvider = codexProviderId(context.agentConfig);
+  if (modelProvider) {
+    params.modelProvider = modelProvider;
+  }
   const personality = readString(config.personality);
   if (personality) params.personality = personality;
   const settings = agentSettings(context.agentConfig);
@@ -357,7 +460,7 @@ function buildTurnStartParams(context: AcpBackendStartContext): Record<string, u
 
 function codexApprovalPolicy(agentConfig: AgentConfigPayload | undefined): string | undefined {
   const config = asRecord(agentConfig?.executor_config);
-  const explicit = readString(config.approval_policy) ?? readString(config.approvalPolicy);
+  const explicit = readString(config.approval_policy);
   if (explicit) return explicit;
   if (agentConfig?.dangerously_skip_permissions === true || agentConfig?.approval_mode === "bypass") {
     return "never";
@@ -432,7 +535,7 @@ function agentSettings(agentConfig: AgentConfigPayload | undefined): Record<stri
     settings.developer_instructions = developerInstructions;
   }
   const executorConfig = asRecord(agentConfig?.executor_config);
-  const reasoningEffort = readString(executorConfig.reasoning_effort) ?? readString(executorConfig.reasoningEffort);
+  const reasoningEffort = readString(executorConfig.reasoning_effort);
   if (reasoningEffort) {
     settings.reasoning_effort = reasoningEffort;
   }

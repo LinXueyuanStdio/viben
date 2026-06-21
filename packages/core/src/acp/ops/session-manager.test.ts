@@ -467,10 +467,80 @@ describe("AcpSessionManager", () => {
           command: "/usr/local/bin/codex",
           args: ["app-server"],
           init_timeout_ms: 15000,
-          model_provider: "hexin",
-          base_url: "http://localhost:8777/v1",
           reasoning_effort: "low",
         },
+      });
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("removes stale Codex provider details from file frontmatter when inline config selects a provider", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-agent-config-stale-provider-test-"));
+    try {
+      const configPath = path.join(tempDir, "AGENTS.md");
+      await writeFile(
+        configPath,
+        [
+          "---",
+          "name: File Codex Agent",
+          "model: gpt-5-codex",
+          "provider_id: old-openai",
+          "executor_type: CODEX",
+          "executor_config:",
+          "  command: /usr/local/bin/codex",
+          "  model_provider: old-openai",
+          "  base_url: http://localhost:8777/v1",
+          "  provider_name: Old OpenAI",
+          "  wire_api: responses",
+          "  env_key: OLD_OPENAI_API_KEY",
+          "  reasoning_effort: high",
+          "---",
+          "You are a coding agent from the file.",
+          "",
+        ].join("\n"),
+        "utf-8"
+      );
+      const adapter = new CapturingBackendAdapter();
+      const manager = new AcpSessionManager(adapter);
+      const connection = createConnection();
+
+      const session = await manager.createSession(
+        {
+          cwd: "/tmp",
+          mcpServers: [],
+          agent_config_path: configPath,
+          agent_config: {
+            model: "deepseek-v4-flash",
+            provider_id: "deepseek-openai",
+            executor_config: {
+              reasoning_effort: "low",
+            },
+          },
+        },
+        connection
+      );
+      await manager.prompt({
+        sessionId: session.sessionId,
+        prompt: [{ type: "text", text: "hello" }],
+      });
+
+      expect(adapter.startContext?.agentConfig).toMatchObject({
+        name: "File Codex Agent",
+        executor_type: "CODEX",
+        model: "deepseek-v4-flash",
+        provider_id: "deepseek-openai",
+        executor_config: {
+          command: "/usr/local/bin/codex",
+          reasoning_effort: "low",
+        },
+      });
+      expect(adapter.startContext?.agentConfig?.executor_config).not.toMatchObject({
+        model_provider: expect.anything(),
+        base_url: expect.anything(),
+        provider_name: expect.anything(),
+        wire_api: expect.anything(),
+        env_key: expect.anything(),
       });
     } finally {
       await rm(tempDir, { recursive: true, force: true });

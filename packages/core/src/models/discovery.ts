@@ -249,7 +249,7 @@ export async function discoverModels(providerId: string): Promise<DiscoveryResul
   if (!provider) {
     return {
       providerId,
-      providerType: "custom",
+      providerType: "openai",
       models: [],
       error: `Provider not found: ${providerId}`,
     };
@@ -264,6 +264,7 @@ export async function discoverModels(providerId: string): Promise<DiscoveryResul
 
     switch (providerType) {
       case "openai":
+      case "openai-responses":
         models = await discoverOpenAI(apiKey, baseUrl);
         break;
       case "anthropic":
@@ -280,11 +281,6 @@ export async function discoverModels(providerId: string): Promise<DiscoveryResul
         break;
       case "azure":
         models = await discoverAzure();
-        break;
-      case "custom":
-        if (baseUrl) {
-          models = await discoverOpenAI(apiKey, baseUrl);
-        }
         break;
       default:
         return {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Settings,
@@ -40,6 +40,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,97 +159,36 @@ export function Sidebar() {
   // Use global UI store for sidebar collapsed state
   const { sidebarCollapsed: collapsed } = useUiStore();
 
-  // Hover state for auto-expand when collapsed
-  const [isHovered, setIsHovered] = useState(false);
-  const [hasOpenMenu, setHasOpenMenu] = useState(false);
-  const enterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const menuCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sidebarRef = useRef<HTMLDivElement>(null);
+  const handleMenuOpenChange = useCallback((_open: boolean) => {}, []);
 
-  // Handle mouse enter - expand after a short delay to avoid accidental triggers
-  const handleMouseEnter = useCallback(() => {
-    if (!collapsed) return;
-    // Clear any pending leave timeout
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-    enterTimeoutRef.current = setTimeout(() => {
-      setIsHovered(true);
-    }, 100);
-  }, [collapsed]);
+  const showExpanded = !collapsed;
+  const isSettingsMode = isSettingsPathname(location.pathname);
+  const [collapsedWorkspaceOpen, setCollapsedWorkspaceOpen] = useState(false);
+  const collapsedWorkspaceCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Handle mouse leave - collapse after a small delay to avoid flicker
-  // Don't collapse if a menu is open (menus render via Portal outside sidebar)
-  const handleMouseLeave = useCallback(() => {
-    if (enterTimeoutRef.current) {
-      clearTimeout(enterTimeoutRef.current);
-      enterTimeoutRef.current = null;
+  const cancelCollapsedWorkspaceClose = useCallback(() => {
+    if (collapsedWorkspaceCloseTimeoutRef.current) {
+      clearTimeout(collapsedWorkspaceCloseTimeoutRef.current);
+      collapsedWorkspaceCloseTimeoutRef.current = null;
     }
-    if (hasOpenMenu) return; // Don't collapse while menu is open
-    leaveTimeoutRef.current = setTimeout(() => {
-      setIsHovered(false);
-    }, 100);
-  }, [hasOpenMenu]);
-
-  // Track menu open state changes
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    setHasOpenMenu(open);
-    // Clear any pending menu close timeout
-    if (menuCloseTimeoutRef.current) {
-      clearTimeout(menuCloseTimeoutRef.current);
-      menuCloseTimeoutRef.current = null;
-    }
-    // When menu closes, check if mouse is still over sidebar
-    if (!open && collapsed) {
-      // Add a one-time mousemove listener to check position after menu closes
-      const checkMousePosition = (e: MouseEvent) => {
-        const rect = sidebarRef.current?.getBoundingClientRect();
-        if (rect) {
-          const isOverSidebar =
-            e.clientX >= rect.left &&
-            e.clientX <= rect.right &&
-            e.clientY >= rect.top &&
-            e.clientY <= rect.bottom;
-          if (!isOverSidebar) {
-            setIsHovered(false);
-          }
-        }
-      };
-      // Small delay to let the menu close animation complete
-      menuCloseTimeoutRef.current = setTimeout(() => {
-        document.addEventListener("mousemove", checkMousePosition, { once: true });
-        menuCloseTimeoutRef.current = null;
-      }, 50);
-    }
-  }, [collapsed]);
-
-  // Cleanup timeouts on unmount to prevent memory leaks
-  React.useEffect(() => {
-    return () => {
-      if (enterTimeoutRef.current) {
-        clearTimeout(enterTimeoutRef.current);
-      }
-      if (leaveTimeoutRef.current) {
-        clearTimeout(leaveTimeoutRef.current);
-      }
-      if (menuCloseTimeoutRef.current) {
-        clearTimeout(menuCloseTimeoutRef.current);
-      }
-    };
   }, []);
 
-  // Reset isHovered when collapsed state changes to avoid stale hover state
-  React.useEffect(() => {
-    if (!collapsed) {
-      setIsHovered(false);
-    }
-  }, [collapsed]);
+  const openCollapsedWorkspace = useCallback(() => {
+    cancelCollapsedWorkspaceClose();
+    setCollapsedWorkspaceOpen(true);
+  }, [cancelCollapsedWorkspaceClose]);
 
-  // Whether to show expanded content (either not collapsed, or hovered while collapsed)
-  const showExpanded = !collapsed || isHovered;
-  const isSettingsMode = isSettingsPathname(location.pathname);
+  const scheduleCollapsedWorkspaceClose = useCallback(() => {
+    cancelCollapsedWorkspaceClose();
+    collapsedWorkspaceCloseTimeoutRef.current = setTimeout(() => {
+      setCollapsedWorkspaceOpen(false);
+      collapsedWorkspaceCloseTimeoutRef.current = null;
+    }, 120);
+  }, [cancelCollapsedWorkspaceClose]);
+
+  useEffect(() => {
+    return () => cancelCollapsedWorkspaceClose();
+  }, [cancelCollapsedWorkspaceClose]);
 
   const handleReturnFromSettings = useCallback(() => {
     if (currentTab) {
@@ -632,25 +576,136 @@ export function Sidebar() {
   );
 
   // Collapsed content component
+  const activeWorkspaceLabel = activeWorkspace?.id === "global"
+    ? t("workspace.global")
+    : (activeWorkspace?.name || t("workspace.selectWorkspace"));
+
   const CollapsedContent = (
     <>
       {/* Workspace icon - Collapsed */}
       <div className="flex h-10 items-center border-b border-sidebar-border justify-center px-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
+        <Popover open={collapsedWorkspaceOpen} onOpenChange={setCollapsedWorkspaceOpen}>
+          <PopoverTrigger asChild>
             <button
               type="button"
-              className="transition-transform duration-200 hover:scale-105 p-2"
+              aria-label={activeWorkspaceLabel}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                "hover:bg-sidebar-accent",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                collapsedWorkspaceOpen && "bg-sidebar-accent text-sidebar-accent-foreground"
+              )}
+              onMouseEnter={openCollapsedWorkspace}
+              onMouseLeave={scheduleCollapsedWorkspaceClose}
             >
-              <FolderOpen className="h-6 w-6 text-primary" />
+              <FolderOpen className="h-5 w-5 text-primary" />
             </button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            {activeWorkspace?.id === "global"
-              ? t("workspace.global")
-              : (activeWorkspace?.name || t("workspace.selectWorkspace"))}
-          </TooltipContent>
-        </Tooltip>
+          </PopoverTrigger>
+          <PopoverContent
+            side="right"
+            align="start"
+            sideOffset={8}
+            className="w-64 overflow-hidden p-0"
+            onMouseEnter={openCollapsedWorkspace}
+            onMouseLeave={scheduleCollapsedWorkspaceClose}
+          >
+            <div className="border-b border-sidebar-border px-3 py-2">
+              <div className="text-sm font-medium text-sidebar-foreground">
+                {t("workspace.workspaces", "Workspaces")}
+              </div>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-2">
+              <div className="flex flex-col gap-0.5">
+                {workspaces.map((ws) => {
+                  const title = ws.id === "global" ? t("workspace.global") : ws.name;
+                  const isActive = ws.id === activeWorkspaceId;
+
+                  return (
+                    <div
+                      key={ws.id}
+                      className={cn(
+                        "group flex min-w-0 items-center gap-1 rounded-md",
+                        isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <button
+                        type="button"
+                        aria-label={title}
+                        className={cn(
+                          "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm",
+                          "transition-colors duration-150",
+                          isActive
+                            ? "font-medium"
+                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                        onClick={() => {
+                          handleSelectWorkspace(ws.id);
+                          setCollapsedWorkspaceOpen(false);
+                        }}
+                      >
+                        <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="min-w-0 flex-1 truncate">{title}</span>
+                        {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t("workspace.configure")}
+                        className="mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/45 opacity-0 transition-all hover:bg-sidebar-accent hover:text-sidebar-foreground group-hover:opacity-100"
+                        onClick={() => {
+                          handleConfigureWorkspace(ws.id);
+                          setCollapsedWorkspaceOpen(false);
+                        }}
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {workspaces.length > 0 && <Separator className="my-1 bg-sidebar-border" />}
+
+                <button
+                  type="button"
+                  className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-primary transition-colors hover:bg-sidebar-accent"
+                  onClick={() => {
+                    handleAddWorkspace();
+                    setCollapsedWorkspaceOpen(false);
+                  }}
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  <span>{t("workspace.addWorkspace")}</span>
+                </button>
+
+                {activeWorkspaceId && (
+                  <>
+                    <button
+                      type="button"
+                      className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      onClick={() => {
+                        handleConfigureWorkspace(activeWorkspaceId);
+                        setCollapsedWorkspaceOpen(false);
+                      }}
+                    >
+                      <Settings className="h-4 w-4 shrink-0" />
+                      <span>{t("workspace.configure")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      onClick={() => {
+                        openWorkspaceHome(activeWorkspaceId);
+                        setCollapsedWorkspaceOpen(false);
+                      }}
+                    >
+                      <Home className="h-4 w-4 shrink-0" />
+                      <span>{t("sidebar.workspaceHome")}</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Main Navigation - Collapsed */}
@@ -711,24 +766,16 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       {/* Container that reserves space - width changes with animation */}
       <div
-        ref={sidebarRef}
         className={cn(
           "relative h-full shrink-0 transition-[width] duration-200 ease-out",
-          collapsed ? "w-16" : "w-56"
+          collapsed ? "w-16" : "w-48"
         )}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
       >
-        {/* Actual sidebar - when collapsed+hovered, overlays as absolute positioned */}
         <aside
           className={cn(
             "flex h-full flex-col border-r border-sidebar-border bg-sidebar",
             "transition-[width,box-shadow] duration-200 ease-out",
-            collapsed
-              ? isHovered
-                ? "absolute inset-y-0 left-0 w-56 z-50 shadow-2xl"
-                : "w-16"
-              : "w-56"
+            collapsed ? "w-16" : "w-48"
           )}
         >
             {isSettingsMode

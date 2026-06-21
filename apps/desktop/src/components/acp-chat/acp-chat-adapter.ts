@@ -786,9 +786,9 @@ function diagnosticToText(value: unknown): string {
   if (value instanceof Error) return value.message;
   if (!isRecord(value)) return readableErrorText(String(value));
   return readableErrorText(
-    readString(value.message) ??
-    readString(value.details) ??
     readString(value.stderr) ??
+    readString(value.details) ??
+    readString(value.message) ??
     readString(value.name) ??
     "ACP request failed"
   );

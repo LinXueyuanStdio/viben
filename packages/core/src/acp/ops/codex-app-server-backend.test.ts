@@ -70,6 +70,7 @@ describe("CodexAppServerBackendAdapter", () => {
           args: ["app-server", "--listen", "stdio://"],
           model_provider: "hexin",
           base_url: "http://localhost:8777/v1",
+          env_key: "HEXIN_API_KEY",
         },
       },
     });
@@ -82,7 +83,13 @@ describe("CodexAppServerBackendAdapter", () => {
       "-c",
       'model_provider="hexin"',
       "-c",
+      'model_providers.hexin.name="hexin"',
+      "-c",
+      'model_providers.hexin.wire_api="responses"',
+      "-c",
       'model_providers.hexin.base_url="http://localhost:8777/v1"',
+      "-c",
+      'model_providers.hexin.env_key="HEXIN_API_KEY"',
     ]);
     respondTo(proc, "initialize", {});
     await waitForWrite(proc, "thread/start");
@@ -91,12 +98,23 @@ describe("CodexAppServerBackendAdapter", () => {
     await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
   });
 
-  it("quotes Codex provider config keys that are not TOML bare keys", async () => {
+  it("resolves Codex provider details from provider id", async () => {
     const proc = createProcess();
     let spawnedArgs: string[] | undefined;
+    let spawnedEnv: Record<string, string> | undefined;
     const adapter = new CodexAppServerBackendAdapter({
+      lookupProvider: async (providerId) => providerId === "deepseek-openai"
+        ? {
+            id: "deepseek-openai",
+            name: "DeepSeek",
+            type: "openai",
+            base_url: "https://api.deepseek.com",
+            apiKey: "sk-deepseek",
+          }
+        : null,
       spawnProcess: (definition) => {
         spawnedArgs = definition.args;
+        spawnedEnv = definition.env;
         return proc;
       },
     });
@@ -108,11 +126,63 @@ describe("CodexAppServerBackendAdapter", () => {
       connection: createConnection(),
       agentConfig: {
         executor_type: "CODEX",
+        provider_id: "deepseek-openai",
         model: "deepseek-v4-flash",
-        executor_config: {
-          model_provider: "本地-openai",
-          base_url: "http://localhost:8777/v1",
-        },
+      },
+    });
+
+    await waitForWrite(proc, "initialize");
+    expect(spawnedArgs).toEqual([
+      "app-server",
+      "-c",
+      'model_provider="deepseek-openai"',
+      "-c",
+      'model_providers.deepseek-openai.name="DeepSeek"',
+      "-c",
+      'model_providers.deepseek-openai.wire_api="responses"',
+      "-c",
+      'model_providers.deepseek-openai.base_url="https://api.deepseek.com"',
+      "-c",
+      'model_providers.deepseek-openai.env_key="OPENAI_API_KEY"',
+    ]);
+    expect(spawnedEnv).toMatchObject({ OPENAI_API_KEY: "sk-deepseek" });
+    respondTo(proc, "initialize", {});
+    await waitForWrite(proc, "thread/start");
+    respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
+
+    await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
+  });
+
+  it("passes provider ids that are not Codex dotted config keys as an inline provider table", async () => {
+    const proc = createProcess();
+    let spawnedArgs: string[] | undefined;
+    let spawnedEnv: Record<string, string> | undefined;
+    const adapter = new CodexAppServerBackendAdapter({
+      lookupProvider: async (providerId) => providerId === "本地-openai"
+        ? {
+            id: "本地-openai",
+            name: "本地 openai",
+            type: "openai",
+            base_url: "http://localhost:8777/v1",
+            apiKey: "sk-local",
+          }
+        : null,
+      spawnProcess: (definition) => {
+        spawnedArgs = definition.args;
+        spawnedEnv = definition.env;
+        return proc;
+      },
+    });
+
+    const sessionPromise = adapter.start({
+      outerSessionId: "outer-session",
+      cwd: "/tmp/project",
+      request: { cwd: "/tmp/project", mcpServers: [] },
+      connection: createConnection(),
+      agentConfig: {
+        executor_type: "CODEX",
+        provider_id: "本地-openai",
+        model: "deepseek-v4-flash",
       },
     });
 
@@ -122,13 +192,38 @@ describe("CodexAppServerBackendAdapter", () => {
       "-c",
       'model_provider="本地-openai"',
       "-c",
-      'model_providers."本地-openai".base_url="http://localhost:8777/v1"',
+      'model_providers={"本地-openai"={name="本地 openai", wire_api="responses", base_url="http://localhost:8777/v1", env_key="OPENAI_API_KEY"}}',
     ]);
+    expect(spawnedEnv).toMatchObject({ OPENAI_API_KEY: "sk-local" });
     respondTo(proc, "initialize", {});
     await waitForWrite(proc, "thread/start");
+    expect(proc.writes.find((message) => message.method === "thread/start")).toMatchObject({
+      method: "thread/start",
+      params: {
+        modelProvider: "本地-openai",
+      },
+    });
     respondTo(proc, "thread/start", { thread: { id: "thr-1" } });
 
-    await expect(sessionPromise).resolves.toMatchObject({ backendSessionId: "thr-1" });
+    const session = await sessionPromise;
+    const prompt = session.prompt({
+      sessionId: "thr-1",
+      prompt: [{ type: "text", text: "hello" }],
+    });
+    await waitForWrite(proc, "turn/start");
+    expect(proc.writes.find((message) => message.method === "turn/start")).toMatchObject({
+      method: "turn/start",
+      params: {
+        modelProvider: "本地-openai",
+      },
+    });
+    respondTo(proc, "turn/start", { turn: { id: "turn-1", status: "inProgress" } });
+    proc.stdout.write(`${JSON.stringify({
+      method: "turn/completed",
+      params: { threadId: "thr-1", turn: { id: "turn-1", status: "completed" } },
+    })}\n`);
+
+    await expect(prompt).resolves.toEqual({ stopReason: "end_turn" });
   });
 
   it("initializes app-server and starts a Codex thread", async () => {
@@ -244,6 +339,7 @@ describe("CodexAppServerBackendAdapter", () => {
       method: "turn/start",
       params: {
         model: "gpt-5.4",
+        modelProvider: "openai",
         personality: "concise",
         settings: {
           developer_instructions: "Use the repo conventions.\n\nPrefer concise answers.",

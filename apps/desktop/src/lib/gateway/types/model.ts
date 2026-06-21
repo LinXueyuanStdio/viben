@@ -10,6 +10,7 @@
 /** Provider type (matching Rust ProviderType) */
 export type ProviderType =
   | "openai"
+  | "openai-responses"
   | "anthropic"
   | "google"
   | "groq"

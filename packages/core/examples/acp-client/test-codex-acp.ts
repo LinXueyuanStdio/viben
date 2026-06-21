@@ -14,6 +14,7 @@
  */
 
 import WebSocket from "ws";
+import * as fs from "node:fs";
 
 const args = process.argv.slice(2);
 function getArg(name: string, defaultValue: string): string {
@@ -21,10 +22,17 @@ function getArg(name: string, defaultValue: string): string {
   return index !== -1 && args[index + 1] ? args[index + 1] : defaultValue;
 }
 
+function getOptionalArg(name: string): string | undefined {
+  const value = getArg(name, "");
+  return value.trim() ? value : undefined;
+}
+
 const WS_URL = getArg("url", "ws://127.0.0.1:18790/ws/agent/acp?cwd=/root/viben");
 const OUTPUT_FILE = getArg("output", "./codex-acp-dump.jsonl");
 const PROMPT = getArg("prompt", "What is 2+2? Just give me the answer.");
 const TIMEOUT = parseInt(getArg("timeout", "120000"), 10);
+const MODEL = getOptionalArg("model");
+const PROVIDER = getOptionalArg("provider");
 
 interface AcpMessage {
   jsonrpc: string;
@@ -34,8 +42,6 @@ interface AcpMessage {
   result?: unknown;
   error?: unknown;
 }
-
-const fs = await import("fs");
 
 fs.writeFileSync(OUTPUT_FILE, "");
 
@@ -55,6 +61,8 @@ async function main() {
   console.log("Output:", OUTPUT_FILE);
   console.log("Prompt:", PROMPT.slice(0, 50) + (PROMPT.length > 50 ? "..." : ""));
   console.log("Executor Type: CODEX");
+  console.log("Provider:", PROVIDER ?? "(default)");
+  console.log("Model:", MODEL ?? "(default)");
   console.log("Timeout:", TIMEOUT / 1000, "seconds");
   console.log("");
 
@@ -112,7 +120,8 @@ async function main() {
         mcpServers: [],
         agent_config: {
           executor_type: "CODEX",
-          max_turns: 10,
+          model: MODEL,
+          provider_id: PROVIDER,
         },
       });
     }

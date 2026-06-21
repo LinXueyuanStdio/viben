@@ -1,29 +1,35 @@
 /**
  * Provider management for Viben
  */
-import { getProvidersPath } from "../config/paths";
-import { readYaml, writeYaml, fileExists } from "../config/yaml";
+import {
+  getUnifiedProviders,
+  loadUnifiedModelsFile,
+  MODELS_METADATA_KEY,
+  saveUnifiedModelsFile,
+  type UnifiedModelsFile,
+  type UnifiedProviderEntry,
+} from "../config/model-provider-storage";
 import type {
+  CreateProviderOptions,
   Provider,
   ProviderCategory,
-  ProviderType,
   ProviderStatus,
   ProviderSurface,
-  CreateProviderOptions,
+  ProviderType,
 } from "../types";
-import type { ProvidersFile, ProviderEntry } from "./types";
+import type { ProviderEntry } from "./types";
 import { DEFAULT_BASE_URLS } from "./types";
 
 export * from "./types";
 
 const LLM_PROVIDER_TYPES = new Set<ProviderType>([
   "openai",
+  "openai-responses",
   "anthropic",
   "azure",
   "ollama",
   "openrouter",
   "google",
-  "custom",
 ]);
 
 function normalizeProviderCategory(
@@ -63,6 +69,38 @@ function providerTypeFromEntry(entry: ProviderEntry): ProviderType {
   return (entry.provider_type ?? entry.type) as ProviderType;
 }
 
+function providerEntryFromUnified(entry: UnifiedProviderEntry): ProviderEntry {
+  return {
+    type: entry.type,
+    provider_type: entry.provider_type ?? entry.type ?? "openai",
+    category: entry.category,
+    name: entry.provider_name ?? entry.name ?? entry.provider_type ?? "Provider",
+    api_key: entry.api_key,
+    base_url: entry.base_url,
+    api_version: entry.api_version,
+    deployment: entry.deployment,
+    timeout: entry.timeout,
+    max_retries: entry.max_retries,
+    headers: entry.headers,
+    surfaces: entry.surfaces,
+    supports_custom_model: entry.supports_custom_model,
+    enabled: entry.enabled ?? true,
+    created_at: entry.created_at ?? new Date().toISOString(),
+    updated_at: entry.updated_at ?? new Date().toISOString(),
+  };
+}
+
+function getDefaultProviderId(config: UnifiedModelsFile): string | undefined {
+  return config[MODELS_METADATA_KEY]?.default_provider;
+}
+
+function setDefaultProviderId(config: UnifiedModelsFile, id: string | undefined): void {
+  config[MODELS_METADATA_KEY] = {
+    ...(config[MODELS_METADATA_KEY] ?? {}),
+    default_provider: id,
+  };
+}
+
 function providerFromEntry(
   id: string,
   entry: ProviderEntry,
@@ -95,32 +133,26 @@ function providerFromEntry(
  * ProviderManager handles provider CRUD operations
  */
 export class ProviderManager {
-  private config: ProvidersFile | undefined;
+  private config: UnifiedModelsFile | undefined;
 
   /**
    * Load the providers configuration
    */
-  private async loadConfig(): Promise<ProvidersFile> {
+  private async loadConfig(): Promise<UnifiedModelsFile> {
     if (this.config) {
       return this.config;
     }
 
-    const path = getProvidersPath();
-    if (!fileExists(path)) {
-      this.config = { providers: {} };
-      return this.config;
-    }
-
-    this.config = await readYaml<ProvidersFile>(path);
-    return this.config || { providers: {} };
+    this.config = await loadUnifiedModelsFile();
+    return this.config;
   }
 
   /**
    * Save the providers configuration
    */
-  private async saveConfig(config: ProvidersFile): Promise<void> {
-    await writeYaml(getProvidersPath(), config);
-    this.config = config;
+  private async saveConfig(config: UnifiedModelsFile): Promise<void> {
+    await saveUnifiedModelsFile(config);
+    this.config = await loadUnifiedModelsFile();
   }
 
   /**
@@ -137,9 +169,11 @@ export class ProviderManager {
   async listProviders(): Promise<Provider[]> {
     const config = await this.loadConfig();
     const providers: Provider[] = [];
+    const entries = getUnifiedProviders(config);
+    const defaultId = getDefaultProviderId(config);
 
-    for (const [id, entry] of Object.entries(config.providers)) {
-      providers.push(providerFromEntry(id, entry, config.default));
+    for (const [id, entry] of Object.entries(entries)) {
+      providers.push(providerFromEntry(id, providerEntryFromUnified(entry), defaultId));
     }
 
     return providers;
@@ -150,13 +184,13 @@ export class ProviderManager {
    */
   async getProvider(id: string): Promise<Provider | null> {
     const config = await this.loadConfig();
-    const entry = config.providers[id];
+    const entry = getUnifiedProviders(config)[id];
 
     if (!entry) {
       return null;
     }
 
-    return providerFromEntry(id, entry, config.default);
+    return providerFromEntry(id, providerEntryFromUnified(entry), getDefaultProviderId(config));
   }
 
   /**
@@ -165,8 +199,9 @@ export class ProviderManager {
   async createProvider(options: CreateProviderOptions): Promise<Provider> {
     const config = await this.loadConfig();
     const id = this.generateProviderId(options.name);
+    const providers = getUnifiedProviders(config);
 
-    if (config.providers[id]) {
+    if (providers[id]) {
       throw new Error(`Provider with ID "${id}" already exists`);
     }
 
@@ -190,11 +225,16 @@ export class ProviderManager {
       updated_at: now,
     };
 
-    config.providers[id] = entry;
+    config[id] = {
+      ...entry,
+      provider_name: entry.name,
+      name: entry.name,
+      models: {},
+    };
 
     // Set as default if requested or if it's the first provider
-    if (options.setAsDefault || Object.keys(config.providers).length === 1) {
-      config.default = id;
+    if (options.setAsDefault || Object.keys(providers).length === 0) {
+      setDefaultProviderId(config, id);
     }
 
     await this.saveConfig(config);
@@ -213,7 +253,7 @@ export class ProviderManager {
       headers: entry.headers,
       surfaces: entry.surfaces as ProviderSurface[],
       supportsCustomModel: entry.supports_custom_model,
-      isDefault: config.default === id,
+      isDefault: getDefaultProviderId(config) === id,
       enabled: true,
       created_at: now,
       updated_at: now,
@@ -228,12 +268,13 @@ export class ProviderManager {
     updates: Partial<Omit<CreateProviderOptions, "setAsDefault">>
   ): Promise<Provider> {
     const config = await this.loadConfig();
-    const entry = config.providers[id];
+    const provider = getUnifiedProviders(config)[id];
 
-    if (!entry) {
+    if (!provider) {
       throw new Error(`Provider "${id}" not found`);
     }
 
+    const entry = providerEntryFromUnified(provider);
     const now = new Date().toISOString();
     const updatedType = updates.type || providerTypeFromEntry(entry);
     const category = normalizeProviderCategory(
@@ -258,10 +299,15 @@ export class ProviderManager {
       updated_at: now,
     };
 
-    config.providers[id] = updated;
+    config[id] = {
+      ...provider,
+      ...updated,
+      provider_name: updated.name,
+      name: updated.name,
+    };
     await this.saveConfig(config);
 
-    return providerFromEntry(id, updated, config.default);
+    return providerFromEntry(id, updated, getDefaultProviderId(config));
   }
 
   /**
@@ -269,17 +315,18 @@ export class ProviderManager {
    */
   async removeProvider(id: string): Promise<void> {
     const config = await this.loadConfig();
+    const providers = getUnifiedProviders(config);
 
-    if (!config.providers[id]) {
+    if (!providers[id]) {
       throw new Error(`Provider "${id}" not found`);
     }
 
-    delete config.providers[id];
+    delete config[id];
 
     // Clear default if removing the default provider
-    if (config.default === id) {
-      const remaining = Object.keys(config.providers);
-      config.default = remaining.length > 0 ? remaining[0] : undefined;
+    if (getDefaultProviderId(config) === id) {
+      const remaining = Object.keys(getUnifiedProviders(config));
+      setDefaultProviderId(config, remaining.length > 0 ? remaining[0] : undefined);
     }
 
     await this.saveConfig(config);
@@ -290,12 +337,13 @@ export class ProviderManager {
    */
   async setDefault(id: string): Promise<void> {
     const config = await this.loadConfig();
+    const providers = getUnifiedProviders(config);
 
-    if (!config.providers[id]) {
+    if (!providers[id]) {
       throw new Error(`Provider "${id}" not found`);
     }
 
-    config.default = id;
+    setDefaultProviderId(config, id);
     await this.saveConfig(config);
   }
 
@@ -304,7 +352,7 @@ export class ProviderManager {
    */
   async getDefault(): Promise<string | undefined> {
     const config = await this.loadConfig();
-    return config.default;
+    return getDefaultProviderId(config);
   }
 
   /**
@@ -312,7 +360,7 @@ export class ProviderManager {
    */
   async setEnabled(id: string, enabled: boolean): Promise<void> {
     const config = await this.loadConfig();
-    const entry = config.providers[id];
+    const entry = getUnifiedProviders(config)[id];
 
     if (!entry) {
       throw new Error(`Provider "${id}" not found`);
@@ -320,6 +368,7 @@ export class ProviderManager {
 
     entry.enabled = enabled;
     entry.updated_at = new Date().toISOString();
+    config[id] = entry;
     await this.saveConfig(config);
   }
 
@@ -351,7 +400,7 @@ export class ProviderManager {
     }
 
     // Check if API key is configured (for providers that need it)
-    const needsApiKey = ["openai", "anthropic", "azure", "openrouter", "google"].includes(
+    const needsApiKey = ["openai", "openai-responses", "anthropic", "azure", "openrouter", "google"].includes(
       provider.type
     );
     if (needsApiKey && !provider.apiKey) {

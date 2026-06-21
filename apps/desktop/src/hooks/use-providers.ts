@@ -11,6 +11,7 @@ import type { ProviderResponse } from "@/lib/gateway";
 
 export type ProviderType =
   | "openai"
+  | "openai-responses"
   | "anthropic"
   | "azure"
   | "ollama"
@@ -127,6 +128,7 @@ function transformProviderResponse(response: ProviderResponse): Provider {
 // Default base URLs for provider types
 export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   openai: "https://api.openai.com/v1",
+  "openai-responses": "https://api.openai.com/v1",
   anthropic: "https://api.anthropic.com/v1",
   azure: "",
   ollama: "http://localhost:11434",
@@ -152,6 +154,7 @@ export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
 // Provider type display names
 export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   openai: "OpenAI",
+  "openai-responses": "OpenAI Responses",
   anthropic: "Anthropic",
   azure: "Azure OpenAI",
   ollama: "Ollama",

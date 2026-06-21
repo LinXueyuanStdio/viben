@@ -885,9 +885,29 @@ function mergeAgentConfig(
       ...(isRecord(base.executor_config) ? base.executor_config : {}),
       ...(isRecord(override.executor_config) ? definedRecord(override.executor_config) : {}),
     };
+    if (shouldDropStaleCodexProviderConfig(base, override)) {
+      for (const key of CODEX_PROVIDER_CONFIG_KEYS) {
+        delete merged.executor_config[key];
+      }
+    }
   }
 
   return merged;
+}
+
+const CODEX_PROVIDER_CONFIG_KEYS = [
+  "model_provider",
+  "base_url",
+  "provider_name",
+  "wire_api",
+  "env_key",
+  "experimental_bearer_token",
+];
+
+function shouldDropStaleCodexProviderConfig(base: AgentConfigPayload, override: AgentConfigPayload): boolean {
+  if (!override.provider_id || override.provider_id === base.provider_id) return false;
+  const executorType = override.executor_type ?? base.executor_type;
+  return executorType === "CODEX" || executorType === "CODEX_APP_SERVER";
 }
 
 function definedRecord(record: Record<string, unknown>): Record<string, unknown> {
@@ -1066,12 +1086,12 @@ function summarizeExecutorConfig(config: Record<string, unknown> | undefined): R
     id: readConfigString(config, "id"),
     command: readConfigString(config, "command"),
     argsCount: Array.isArray(config.args) ? config.args.length : undefined,
-    modelProvider: readConfigString(config, "model_provider") ?? readConfigString(config, "modelProvider"),
-    baseUrl: readConfigString(config, "base_url") ?? readConfigString(config, "baseUrl"),
-    approvalPolicy: readConfigString(config, "approval_policy") ?? readConfigString(config, "approvalPolicy"),
+    modelProvider: readConfigString(config, "model_provider"),
+    baseUrl: readConfigString(config, "base_url"),
+    approvalPolicy: readConfigString(config, "approval_policy"),
     sandbox: readConfigString(config, "sandbox"),
     hasSandboxPolicy: typeof config.sandbox_policy === "object" && config.sandbox_policy !== null,
-    reasoningEffort: readConfigString(config, "reasoning_effort") ?? readConfigString(config, "reasoningEffort"),
+    reasoningEffort: readConfigString(config, "reasoning_effort"),
     personality: readConfigString(config, "personality"),
     initTimeoutMs: typeof config.init_timeout_ms === "number" ? config.init_timeout_ms : undefined,
   };

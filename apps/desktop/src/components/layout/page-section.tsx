@@ -7,7 +7,7 @@
  * Supports right-click context menu with "Copy Link" action.
  */
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ChevronDown,
   MoreHorizontal,
+  Files,
   Trash2,
   Loader2,
   Shield,
@@ -64,6 +65,11 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -135,6 +141,147 @@ interface PageTreeItemProps {
   onDuplicate: (page: PageConfig) => void;
   isDragActive?: boolean;
   dropPreview?: PageDropPreview | null;
+}
+
+interface PageTreePopupProps {
+  pageTree: PageTreeNode[];
+  workspaceId: string;
+  workspacePath: string;
+  onPageClick: (page: PageConfig) => void;
+  onCreatePage: () => void;
+  onOpenChange?: (open: boolean) => void;
+}
+
+function PageTreePopupItem({
+  node,
+  workspaceId,
+  workspacePath,
+  depth,
+  onPageClick,
+}: {
+  node: PageTreeNode;
+  workspaceId: string;
+  workspacePath: string;
+  depth: number;
+  onPageClick: (page: PageConfig) => void;
+}) {
+  const location = useLocation();
+  const hasChildren = node.children.length > 0;
+  const currentMatch = useMemo(
+    () => registry.match(`${location.pathname}${location.search}${location.hash}`),
+    [location.hash, location.pathname, location.search]
+  );
+  const isActive =
+    currentMatch?.pattern === "/workspace/:workspaceId/page/:uid" &&
+    currentMatch.params.workspaceId === workspaceId &&
+    currentMatch.params.uid === node.page.uid;
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={node.page.name}
+        onClick={() => onPageClick(node.page)}
+        className={cn(
+          "group flex h-8 w-full min-w-0 items-center gap-2 rounded-md pr-2 text-left text-sm",
+          "transition-colors duration-150",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+            : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )}
+        style={{ paddingLeft: `${8 + depth * PAGE_TREE_DEPTH_STEP_PX}px` }}
+      >
+        {hasChildren ? (
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/45" />
+        ) : (
+          <span className="h-3.5 w-3.5 shrink-0" />
+        )}
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground group-hover:text-primary">
+          <IconDisplay
+            icon={node.page.icon}
+            size="sm"
+            workspacePath={workspacePath}
+          />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[13px]">
+          {node.page.name}
+        </span>
+      </button>
+
+      {node.children.map((child) => (
+        <PageTreePopupItem
+          key={child.page.uid}
+          node={child}
+          workspaceId={workspaceId}
+          workspacePath={workspacePath}
+          depth={depth + 1}
+          onPageClick={onPageClick}
+        />
+      ))}
+    </>
+  );
+}
+
+function PageTreePopup({
+  pageTree,
+  workspaceId,
+  workspacePath,
+  onPageClick,
+  onCreatePage,
+  onOpenChange,
+}: PageTreePopupProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="w-72">
+      <div className="flex items-center justify-between gap-2 border-b border-sidebar-border px-3 py-2">
+        <div className="text-sm font-medium text-sidebar-foreground">
+          {t("page.pages")}
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("page.createPage")}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => {
+                onCreatePage();
+                onOpenChange?.(false);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {t("page.createPage")}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="max-h-[60vh] overflow-y-auto p-2">
+        {pageTree.length === 0 ? (
+          <div className="px-2 py-3 text-xs text-muted-foreground">
+            {t("page.noPages")}
+          </div>
+        ) : (
+          <nav className="flex flex-col gap-0.5">
+            {pageTree.map((node) => (
+              <PageTreePopupItem
+                key={node.page.uid}
+                node={node}
+                workspaceId={workspaceId}
+                workspacePath={workspacePath}
+                depth={0}
+                onPageClick={(page) => {
+                  onPageClick(page);
+                  onOpenChange?.(false);
+                }}
+              />
+            ))}
+          </nav>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function PageTreeItemContent({
@@ -677,6 +824,32 @@ export function PageSection({
   const [activeUid, setActiveUid] = useState<string | null>(null);
   const [dropPreview, setDropPreview] = useState<PageDropPreview | null>(null);
   const [expandedPageUids, setExpandedPageUids] = useState<Record<string, boolean>>({});
+  const [collapsedPagesOpen, setCollapsedPagesOpen] = useState(false);
+  const collapsedPagesCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelCollapsedPagesClose = useCallback(() => {
+    if (collapsedPagesCloseTimeoutRef.current) {
+      clearTimeout(collapsedPagesCloseTimeoutRef.current);
+      collapsedPagesCloseTimeoutRef.current = null;
+    }
+  }, []);
+
+  const openCollapsedPages = useCallback(() => {
+    cancelCollapsedPagesClose();
+    setCollapsedPagesOpen(true);
+  }, [cancelCollapsedPagesClose]);
+
+  const scheduleCollapsedPagesClose = useCallback(() => {
+    cancelCollapsedPagesClose();
+    collapsedPagesCloseTimeoutRef.current = setTimeout(() => {
+      setCollapsedPagesOpen(false);
+      collapsedPagesCloseTimeoutRef.current = null;
+    }, 120);
+  }, [cancelCollapsedPagesClose]);
+
+  useEffect(() => {
+    return () => cancelCollapsedPagesClose();
+  }, [cancelCollapsedPagesClose]);
 
   // Custom page index (optimistic local state overrides server index during drag)
   const [localIndex, setLocalIndex] = useState<PageIndex | undefined>(undefined);
@@ -995,52 +1168,54 @@ export function PageSection({
       );
     }
 
-    // Error - just show create button (errors are less critical in collapsed mode)
+    // Error - show pages entry without editing actions
     if (error) {
       return (
-        <>
-          <div className="grid place-items-center w-full">
-            <SidebarIconButton
-              icon={<Plus className="h-4 w-4" />}
-              tooltip={t("page.createPage")}
-              onClick={handleCreatePage}
-            />
-          </div>
-          <CreatePageDialog
-            open={createDialogOpen}
-            onOpenChange={setCreateDialogOpen}
-            workspacePath={workspacePath}
-            parentUid={createParentUid}
-            onSuccess={handleCreateSuccess}
+        <div className="grid place-items-center w-full">
+          <SidebarIconButton
+            icon={<Files className="h-4 w-4" />}
+            tooltip={t("page.pages")}
+            onClick={() => {}}
           />
-        </>
+        </div>
       );
     }
 
-    // Normal collapsed state: create button + page icons
     return (
-      <>
-        {/* Create Page Button */}
-        <div className="grid place-items-center w-full">
-          <SidebarIconButton
-            icon={<Plus className="h-4 w-4" />}
-            tooltip={t("page.createPage")}
-            onClick={handleCreatePage}
+        <Popover open={collapsedPagesOpen} onOpenChange={setCollapsedPagesOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={t("page.pages")}
+              className={cn(
+                "mx-auto flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                "hover:bg-sidebar-accent",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                collapsedPagesOpen && "bg-sidebar-accent text-sidebar-accent-foreground"
+              )}
+              onMouseEnter={openCollapsedPages}
+              onMouseLeave={scheduleCollapsedPagesClose}
+            >
+              <Files className="h-4 w-4" />
+            </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="right"
+          align="start"
+          sideOffset={8}
+          className="w-auto overflow-hidden p-0"
+          onMouseEnter={openCollapsedPages}
+          onMouseLeave={scheduleCollapsedPagesClose}
+        >
+          <PageTreePopup
+            pageTree={pageTree}
+            workspaceId={workspaceId}
+            workspacePath={workspacePath}
+            onPageClick={handlePageClick}
+            onCreatePage={handleCreatePage}
+            onOpenChange={setCollapsedPagesOpen}
           />
-        </div>
-        {/* First-level page icons - use page's custom icon */}
-        {pageTree.map((node) => (
-          <div key={node.page.uid} className="grid place-items-center w-full">
-            <SidebarIconButton
-              icon={<IconDisplay icon={node.page.icon} size="md" workspacePath={workspacePath} />}
-              tooltip={node.page.name}
-              onClick={() => {
-                handlePageClick(node.page);
-              }}
-            />
-          </div>
-        ))}
-        {/* Create Page Dialog - must be rendered even in collapsed state */}
+        </PopoverContent>
         <CreatePageDialog
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
@@ -1048,7 +1223,7 @@ export function PageSection({
           parentUid={createParentUid}
           onSuccess={handleCreateSuccess}
         />
-      </>
+      </Popover>
     );
   }
 
