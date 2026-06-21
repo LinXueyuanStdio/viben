@@ -153,7 +153,7 @@ async function main() {
       agent_config: {
         name: "codex-smoke",
         executor_type: "CODEX",
-        ...(provider ? { provider } : {}),
+        ...(provider ? { provider_id: provider } : {}),
         model,
         system_prompt: "Answer briefly. Do not edit files or run commands.",
         approval_mode: "bypass",
@@ -163,7 +163,7 @@ async function main() {
           init_timeout_ms: 120000,
           reasoning_effort: "low",
           sandbox,
-          ...(provider ? { model_provider: provider } : {}),
+          ...(provider ? { provider_id: provider } : {}),
           ...(baseUrl ? { base_url: baseUrl } : {}),
         },
       },

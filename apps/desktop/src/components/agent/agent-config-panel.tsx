@@ -267,7 +267,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     const availableModels = useMemo(() => allModels.filter((candidate) => candidate.is_available), [allModels]);
 
     const claudeEnv = useMemo(() => readEnvRecord(executorConfig.env), [executorConfig.env]);
-    const selectedClaudeProviderId = readConfigString(executorConfig.model_provider) ?? "";
+    const selectedClaudeProviderId = readConfigString(executorConfig.provider_id) ?? "";
     const claudeAllowedProviderIds = useMemo(() => getAllowedProviders("CLAUDE_CODE") ?? [], []);
     const claudeProviders = useMemo(
       () => filterSelectorProviders(providers, claudeAllowedProviderIds),
@@ -304,7 +304,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       ? claudeCurrentModel
       : "";
 
-    const selectedCodexProviderId = readConfigString(executorConfig.model_provider) ?? "";
+    const selectedCodexProviderId = readConfigString(executorConfig.provider_id) ?? "";
     const codexAllowedProviderIds = useMemo(() => getAllowedProviders("CODEX") ?? [], []);
     const codexProviders = useMemo(
       () => filterSelectorProviders(providers, codexAllowedProviderIds),
@@ -365,7 +365,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
       };
       const providerConfig = selectedClaudeProvider
         ? {
-            model_provider: selectedClaudeProvider.id,
+            provider_id: selectedClaudeProvider.id,
           }
         : {};
 
@@ -393,7 +393,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     const handleCodexProviderChange = (providerId: string) => {
       const provider = codexProviders.find((candidate) => candidate.id === providerId);
       updateExecutorConfig({
-        model_provider: providerId,
+        provider_id: providerId,
         base_url: provider?.base_url,
       });
 
@@ -408,7 +408,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
     const handleCodexModelChange = (modelId: string) => {
       if (selectedCodexProvider && !selectedCodexProviderId) {
         updateExecutorConfig({
-          model_provider: selectedCodexProvider.id,
+          provider_id: selectedCodexProvider.id,
           base_url: selectedCodexProvider.base_url,
         });
       }
@@ -422,7 +422,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
         selectedCodexBaseUrl !== selectedCodexProvider.base_url
       ) {
         updateExecutorConfig({
-          model_provider: selectedCodexProvider.id,
+          provider_id: selectedCodexProvider.id,
           base_url: selectedCodexProvider.base_url,
         });
       }

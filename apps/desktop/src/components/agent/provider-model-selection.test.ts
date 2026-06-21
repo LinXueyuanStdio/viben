@@ -116,7 +116,7 @@ describe("provider model selection", () => {
     });
 
     expect(result.currentModel).toBe("claude-sonnet-main");
-    expect(result.config.model_provider).toBe("anthropic-main");
+    expect(result.config.provider_id).toBe("anthropic-main");
     expect(result.config.env).toEqual({
       CLAUDE_CODE_EFFORT_LEVEL: "high",
       CLAUDE_CODE_SUBAGENT_MODEL: "claude-haiku-main",

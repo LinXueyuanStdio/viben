@@ -94,8 +94,8 @@ export interface CodexConfig {
   command?: string;
   /** Codex app-server arguments */
   args?: string[];
-  /** Codex model provider name passed to app-server config */
-  model_provider?: string;
+  /** Provider id used to resolve Codex app-server config */
+  provider_id?: string;
   /** Provider base URL passed to app-server config */
   base_url?: string;
   /** Codex reasoning effort */
