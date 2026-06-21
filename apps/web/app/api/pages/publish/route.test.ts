@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
-  findFirst: vi.fn(),
+  findPublishedPage: vi.fn(),
+  findLatestVersion: vi.fn(),
   insertValues: vi.fn(),
-  updateSet: vi.fn(),
-  updateWhere: vi.fn(),
+  onConflictDoUpdate: vi.fn(),
   execute: vi.fn(),
   requireAuth: vi.fn(),
 }));
@@ -28,26 +28,43 @@ vi.mock('@/lib/db', () => ({
   db: {
     query: {
       publishedPages: {
-        findFirst: mocks.findFirst,
+        findFirst: mocks.findPublishedPage,
+      },
+      publishedPageVersions: {
+        findFirst: mocks.findLatestVersion,
       },
     },
     insert: vi.fn(() => ({
       values: mocks.insertValues,
-    })),
-    update: vi.fn(() => ({
-      set: mocks.updateSet,
     })),
   },
   publishedPages: {
     uid: 'uid',
     userId: 'userId',
     id: 'id',
+    title: 'title',
+    icon: 'icon',
+    description: 'description',
+    html: 'html',
+    updatedAt: 'updatedAt',
+  },
+  publishedPageVersions: {
+    publishedPageId: 'publishedPageId',
+    uid: 'versionUid',
+    userId: 'versionUserId',
+    version: 'version',
+    title: 'versionTitle',
+    icon: 'versionIcon',
+    description: 'versionDescription',
+    html: 'versionHtml',
   },
 }));
 
 vi.mock('drizzle-orm', () => ({
   and: vi.fn((...conditions) => ({ type: 'and', conditions })),
+  desc: vi.fn((field) => ({ direction: 'desc', field })),
   eq: vi.fn((field, value) => ({ field, value })),
+  sql: vi.fn((strings) => ({ type: 'sql', sql: strings.raw.join('?') })),
 }));
 
 import { POST } from './route';
@@ -71,10 +88,16 @@ describe('POST /api/pages/publish', () => {
       role: 'developer',
       expiresAt: Date.now() + 3600000,
     });
-    mocks.findFirst.mockResolvedValue(null);
-    mocks.insertValues.mockResolvedValue(undefined);
-    mocks.updateSet.mockReturnValue({ where: mocks.updateWhere });
-    mocks.updateWhere.mockResolvedValue(undefined);
+    mocks.findPublishedPage.mockResolvedValue({
+      id: 'published-1',
+      uid: 'demo',
+      userId: 'user-1',
+    });
+    mocks.findLatestVersion.mockResolvedValue(null);
+    mocks.insertValues.mockReturnValue({
+      onConflictDoUpdate: mocks.onConflictDoUpdate,
+    });
+    mocks.onConflictDoUpdate.mockResolvedValue(undefined);
     mocks.execute.mockResolvedValue(undefined);
   });
 
@@ -92,7 +115,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/alice/demo',
-      updated: false,
+      updated: true,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
       uid: 'demo',
@@ -102,14 +125,37 @@ describe('POST /api/pages/publish', () => {
       description: 'Demo page',
       html: '<!doctype html><html><body>Demo</body></html>',
     });
+    expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
+      target: ['userId', 'uid'],
+      set: {
+        title: 'Demo',
+        icon: { type: 'lucide', value: 'file-text' },
+        description: 'Demo page',
+        html: '<!doctype html><html><body>Demo</body></html>',
+        updatedAt: { type: 'sql', sql: 'now()' },
+      },
+    });
+    expect(mocks.insertValues).toHaveBeenCalledWith({
+      publishedPageId: 'published-1',
+      uid: 'demo',
+      userId: 'user-1',
+      version: 1,
+      title: 'Demo',
+      icon: { type: 'lucide', value: 'file-text' },
+      description: 'Demo page',
+      html: '<!doctype html><html><body>Demo</body></html>',
+    });
     expect(mocks.execute).toHaveBeenCalled();
   });
 
-  it('updates an existing page owned by the current user', async () => {
-    mocks.findFirst.mockResolvedValue({
+  it('upserts an existing page owned by the current user', async () => {
+    mocks.findPublishedPage.mockResolvedValue({
       id: 'published-1',
       uid: 'demo',
       userId: 'user-1',
+    });
+    mocks.findLatestVersion.mockResolvedValue({
+      version: 3,
     });
 
     const response = await POST(requestWithBody({
@@ -126,7 +172,21 @@ describe('POST /api/pages/publish', () => {
       url: '/page/alice/demo',
       updated: true,
     });
-    expect(mocks.updateSet).toHaveBeenCalledWith({
+    expect(mocks.onConflictDoUpdate).toHaveBeenCalledWith({
+      target: ['userId', 'uid'],
+      set: {
+        title: 'Demo v2',
+        icon: null,
+        description: 'Updated',
+        html: '<html><body>Updated</body></html>',
+        updatedAt: { type: 'sql', sql: 'now()' },
+      },
+    });
+    expect(mocks.insertValues).toHaveBeenLastCalledWith({
+      publishedPageId: 'published-1',
+      uid: 'demo',
+      userId: 'user-1',
+      version: 4,
       title: 'Demo v2',
       icon: null,
       description: 'Updated',
@@ -134,26 +194,13 @@ describe('POST /api/pages/publish', () => {
     });
   });
 
-  it('scopes existing page lookup to the current user and page uid', async () => {
-    const response = await POST(requestWithBody({
-      uid: 'shared-demo',
-      title: 'Shared Demo',
-      html: '<html><body>Shared Demo</body></html>',
-    }));
-
-    expect(response.status).toBe(200);
-    expect(mocks.findFirst).toHaveBeenCalledWith({
-      where: {
-        type: 'and',
-        conditions: [
-          { field: 'userId', value: 'user-1' },
-          { field: 'uid', value: 'shared-demo' },
-        ],
-      },
-    });
-  });
-
   it('allows different users to publish the same page uid', async () => {
+    mocks.findPublishedPage.mockResolvedValue({
+      id: 'published-2',
+      uid: 'demo',
+      userId: 'user-2',
+    });
+    mocks.findLatestVersion.mockResolvedValue(null);
     mocks.requireAuth.mockResolvedValue({
       userId: 'user-2',
       username: 'bob',
@@ -162,7 +209,6 @@ describe('POST /api/pages/publish', () => {
       role: 'developer',
       expiresAt: Date.now() + 3600000,
     });
-    mocks.findFirst.mockResolvedValue(null);
 
     const response = await POST(requestWithBody({
       uid: 'demo',
@@ -175,7 +221,7 @@ describe('POST /api/pages/publish', () => {
       success: true,
       page_uid: 'demo',
       url: '/page/bob_builder/demo',
-      updated: false,
+      updated: true,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
       uid: 'demo',
@@ -202,7 +248,7 @@ describe('POST /api/pages/publish', () => {
   });
 
   it('returns database error details for unexpected publish failures', async () => {
-    mocks.insertValues.mockRejectedValue(
+    mocks.onConflictDoUpdate.mockRejectedValue(
       new Error('duplicate key value violates unique constraint "published_pages_user_id_uid_idx"')
     );
 

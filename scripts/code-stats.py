@@ -55,6 +55,9 @@ EXCLUDE_DIRS = {
     ".cache",
     ".idea",
     ".vscode",
+    "resources",
+    "logs",
+    "pages",
 }
 
 # Files to exclude (lock files, generated files, etc.)

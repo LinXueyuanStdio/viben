@@ -668,3 +668,46 @@ export const publishedPagesRelations = relations(publishedPages, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const publishedPageVersions = pgTable(
+  'published_page_versions',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    publishedPageId: text('published_page_id')
+      .notNull()
+      .references(() => publishedPages.id, { onDelete: 'cascade' }),
+    uid: text('uid').notNull(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    title: text('title').notNull(),
+    icon: jsonb('icon').$type<{ type: string; value: string } | null>(),
+    description: text('description'),
+    html: text('html').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('published_page_versions_page_id_idx').on(table.publishedPageId),
+    index('published_page_versions_user_id_uid_idx').on(table.userId, table.uid),
+    uniqueIndex('published_page_versions_user_id_uid_version_idx').on(
+      table.userId,
+      table.uid,
+      table.version
+    ),
+  ]
+);
+
+export const publishedPageVersionsRelations = relations(
+  publishedPageVersions,
+  ({ one }) => ({
+    publishedPage: one(publishedPages, {
+      fields: [publishedPageVersions.publishedPageId],
+      references: [publishedPages.id],
+    }),
+    user: one(users, {
+      fields: [publishedPageVersions.userId],
+      references: [users.id],
+    }),
+  })
+);

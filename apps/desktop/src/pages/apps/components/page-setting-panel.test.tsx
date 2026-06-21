@@ -495,7 +495,8 @@ describe("PageSettingPanel", () => {
   it("does not enter published state when publish returns a failure", async () => {
     mocks.publishPage.mockResolvedValue({
       success: false,
-      error: "Publish failed",
+      error:
+        "Failed to publish page: column users.user_slug does not exist",
     });
 
     render(
@@ -510,12 +511,13 @@ describe("PageSettingPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Publish failed",
-        expect.objectContaining({ description: "Publish failed" })
-      );
+      expect(mocks.toastError).toHaveBeenCalledWith("Publish failed");
     });
 
+    const entry = Object.values(usePagePublishStore.getState().entries)[0];
+    expect(entry.error).toBe(
+      "Failed to publish page: column users.user_slug does not exist"
+    );
     expect(screen.queryByText("Published")).toBeNull();
     expect(screen.queryByText("/page/alice/demo")).toBeNull();
     expect(screen.getByRole("button", { name: /Publish/i })).toBeTruthy();

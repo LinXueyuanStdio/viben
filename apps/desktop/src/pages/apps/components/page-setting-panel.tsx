@@ -281,9 +281,7 @@ export function PageSettingPanel({
       console.error("[PageSettingPanel] publish failed:", error);
       const message = error instanceof Error ? error.message : String(error);
       publishActions.failPublish(publishKey, message);
-      toast.error(t("page.settings.publishFailed", "Publish failed"), {
-        description: message,
-      });
+      toast.error(t("page.settings.publishFailed", "Publish failed"));
     }
   };
 

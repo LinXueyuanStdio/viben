@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { db, publishedPages } from '@/lib/db';
+import { db, publishedPages, publishedPageVersions } from '@/lib/db';
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 interface IconPayload {
   type: string;
@@ -62,37 +62,51 @@ export async function POST(request: NextRequest) {
 
     await ensurePublishedPagesTable();
 
-    // Upsert: update if uid exists for this user, otherwise insert
-    const existing = await db.query.publishedPages.findFirst({
+    await db
+      .insert(publishedPages)
+      .values({
+        uid,
+        userId: session.userId,
+        title,
+        icon: icon ?? null,
+        description: description ?? null,
+        html,
+      })
+      .onConflictDoUpdate({
+        target: [publishedPages.userId, publishedPages.uid],
+        set: {
+          title,
+          icon: icon ?? null,
+          description: description ?? null,
+          html,
+          updatedAt: sql`now()`,
+        },
+      });
+
+    const publishedPage = await db.query.publishedPages.findFirst({
       where: and(
         eq(publishedPages.userId, session.userId),
         eq(publishedPages.uid, uid)
       ),
     });
 
-    if (existing) {
-      await db
-        .update(publishedPages)
-        .set({
-          title,
-          icon: icon ?? null,
-          description: description ?? null,
-          html,
-        })
-        .where(eq(publishedPages.id, existing.id));
-
-      return NextResponse.json({
-        success: true,
-        page_uid: uid,
-        url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
-        updated: true,
-      });
+    if (!publishedPage) {
+      throw new Error('Published page was not found after upsert');
     }
 
-    // Insert new
-    await db.insert(publishedPages).values({
+    const latestVersion = await db.query.publishedPageVersions.findFirst({
+      where: and(
+        eq(publishedPageVersions.userId, session.userId),
+        eq(publishedPageVersions.uid, uid)
+      ),
+      orderBy: [desc(publishedPageVersions.version)],
+    });
+
+    await db.insert(publishedPageVersions).values({
+      publishedPageId: publishedPage.id,
       uid,
       userId: session.userId,
+      version: (latestVersion?.version ?? 0) + 1,
       title,
       icon: icon ?? null,
       description: description ?? null,
@@ -103,7 +117,7 @@ export async function POST(request: NextRequest) {
       success: true,
       page_uid: uid,
       url: `/page/${encodeURIComponent(session.userSlug)}/${encodeURIComponent(uid)}`,
-      updated: false,
+      updated: true,
     });
   } catch (error) {
     if (error instanceof AuthError) {

@@ -859,7 +859,7 @@ git commit -m "feat(acp): add DetachedConnection for session buffering during WS
 
 ---
 
-## Task 6: `backend-adapter.ts` — 添加 `"auto"` 到 `CLAUDE_PERMISSION_MODES`
+## Task 6: `backend-adapter.ts` — 添加 `"auto"` 并暴露 backend session lifecycle 能力
 
 **Files:**
 - Modify: `packages/core/src/acp/ops/backend-adapter.ts`
@@ -889,7 +889,36 @@ const CLAUDE_PERMISSION_MODES = new Set([
 ]);
 ```
 
-- [ ] **Step 2: 验证编译**
+- [ ] **Step 2: 在 `AcpBackendSession` / adapter 层补显式方法**
+
+在 `packages/core/src/acp/ops/backend-adapter.ts` 的 `AcpBackendSession` 接口中新增可选方法，供 `AcpSessionManager` 调用，避免 type cast 到 SDK client：
+
+```typescript
+export interface AcpBackendSession {
+  backendSessionId?: string;
+  agentCapabilities?: AcpAgentCapabilities;
+  configOptions?: AcpConfigOption[];
+  prompt(request: AcpPromptRequest): Promise<AcpPromptResponse>;
+  cancel(): Promise<void>;
+  close(): Promise<void>;
+  resume?(sessionId: string): Promise<void>;
+  closeBackendSession?(sessionId: string): Promise<void>;
+}
+
+export interface AcpBackendAdapter {
+  createSession(context: AcpBackendSessionContext): Promise<AcpBackendSession>;
+  listSessions?(): Promise<Array<{
+    sessionId: string;
+    cwd?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }>>;
+}
+```
+
+`SubprocessAcpBackendAdapter` 中若 SDK 暂无对应方法，应返回明确的 no-op fallback 并记录 debug 日志；fake backend 测试必须断言支持时 `resume()` / `closeBackendSession()` 被调用，不支持时不会抛错。
+
+- [ ] **Step 3: 验证编译**
 
 ```bash
 pnpm --filter @viben/core typecheck 2>&1 | head -20
@@ -897,7 +926,7 @@ pnpm --filter @viben/core typecheck 2>&1 | head -20
 
 预期：无新增错误。
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add packages/core/src/acp/ops/backend-adapter.ts
@@ -1306,7 +1335,7 @@ git commit -m "feat(acp): add parkSession/resumeSession, persist session lifecyc
 
 ---
 
-## Task 7: `agent-acp.ts` — WS 断开改为 parkSession + listSessions 改为 async
+## Task 8: `agent-acp.ts` — WS 断开改为 parkSession + listSessions 改为 async
 
 **Files:**
 - Modify: `packages/core/src/gateway/routes/agent-acp.ts`
@@ -1325,7 +1354,7 @@ git commit -m "feat(acp): add parkSession/resumeSession, persist session lifecyc
 // 新：
     const cleanup = async () => {
       for (const sessionId of ownedSessionIds) {
-        await acpSessionManager.parkSession(sessionId);
+        await acpSessionManager.parkSession(sessionId, connection);
       }
       log.info({ sessions: ownedSessionIds.size }, "ACP WebSocket disconnected, sessions parked");
     };
@@ -1366,7 +1395,19 @@ git commit -m "feat(acp): add parkSession/resumeSession, persist session lifecyc
     },
 ```
 
-- [ ] **Step 3: 在 gateway 初始化时注入 `AcpSessionStore`**
+- [ ] **Step 3: 修改 `unstable_closeSession` handler，await async closeSession**
+
+```typescript
+    async unstable_closeSession(request: CloseSessionRequest) {
+      if (request.sessionId) {
+        await acpSessionManager.closeSession(request.sessionId);
+        ownedSessionIds.delete(request.sessionId);
+      }
+      return {};
+    },
+```
+
+- [ ] **Step 4: 在 gateway 初始化时注入 `AcpSessionStore`**
 
 定位 `packages/core/src/acp/ops/session-manager.ts` 末尾的单例：
 
@@ -1383,7 +1424,7 @@ export const acpSessionManager = new AcpSessionManager(
 );
 ```
 
-- [ ] **Step 4: 修改 `getActiveAcpSessionCount()` 以兼容 async listSessions**
+- [ ] **Step 5: 修改 `getActiveAcpSessionCount()` 以兼容 async listSessions**
 
 ```typescript
 // 旧：
@@ -1405,7 +1446,7 @@ grep -rn "getActiveAcpSessionCount" --include="*.ts" packages/ apps/ | grep -v "
 
 对找到的每处调用加上 `await`。
 
-- [ ] **Step 5: TypeCheck**
+- [ ] **Step 6: TypeCheck**
 
 ```bash
 pnpm --filter @viben/core typecheck 2>&1 | head -30
@@ -1413,7 +1454,7 @@ pnpm --filter @viben/core typecheck 2>&1 | head -30
 
 预期：无错误。
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add packages/core/src/gateway/routes/agent-acp.ts packages/core/src/acp/ops/session-manager.ts
@@ -1422,7 +1463,7 @@ git commit -m "feat(acp): park sessions on WS disconnect, inject AcpSessionStore
 
 ---
 
-## Task 8: 导出新类型和函数到 `acp/index.ts`
+## Task 9: 导出新类型和函数到 `acp/index.ts`
 
 **Files:**
 - Modify: `packages/core/src/acp/index.ts`
@@ -1440,6 +1481,7 @@ export type {
   AcpSessionStore,
 } from "./ops/session-store";
 export { createDefaultAcpSessionStore, FileSystemAcpSessionStore } from "./ops/session-store";
+export { AcpSessionEventRecorder } from "./ops/session-event-recorder";
 export type { ApprovalDecision, ApprovalHandler } from "./ops/approval-handler";
 export { createDefaultApprovalHandler, DefaultApprovalHandler } from "./ops/approval-handler";
 export { DetachedConnection } from "./ops/detached-connection";
@@ -1464,13 +1506,13 @@ pnpm --filter @viben/core test 2>&1 | tail -30
 - [ ] **Step 4: Commit**
 
 ```bash
-git add packages/core/src/acp/index.ts packages/core/src/acp/types.ts
+git add packages/core/src/acp/index.ts packages/core/src/acp/types.ts packages/core/src/acp/ops/session-event-recorder.ts
 git commit -m "feat(acp): export session persistence types and classes from acp/index.ts"
 ```
 
 ---
 
-## Task 9: Gateway 启动时清理过期 parked sessions
+## Task 10: Gateway 启动时清理过期 parked sessions
 
 **Files:**
 - Modify: `packages/core/src/gateway/index.ts` 或 `routes/index.ts`
@@ -1498,23 +1540,16 @@ export async function cleanupStaleSessions(
 
 - [ ] **Step 2: 在 gateway 启动时调用清理，复用 singleton 的 store 实例**
 
-Task 7 Step 3 已将 `createDefaultAcpSessionStore()` 注入到 `acpSessionManager` 单例。这里**不要再创建第二个实例**（否则两个 store 共享同一磁盘目录但各有独立 `seqCounters`，造成架构混乱）。
+Task 8 Step 4 已将 `createDefaultAcpSessionStore()` 注入到 `acpSessionManager` 单例。这里**不要再创建第二个实例**（否则两个 store 共享同一磁盘目录但各有独立 `seqCounters`，造成架构混乱）。
 
 在 `packages/core/src/gateway/index.ts` 中找到 `startGateway` 函数（约 line 80-120），在调用 `server.listen()` 之前追加：
 
 ```typescript
 import { cleanupStaleSessions } from "../acp/ops/session-store";
-// acpSessionManager 已在 session-manager.ts 末尾的单例中持有 store
-// 通过公开 getter 或直接访问 store 字段来复用
-// 若 AcpSessionManager 未暴露 store，则添加 public readonly store 字段
-// 临时方案（store 未暴露时）：使用 acpSessionManager 的 store 通过类型转换获取
 import { acpSessionManager } from "../acp/ops/session-manager";
 
-// gateway 启动时异步清理（不阻塞启动）
-// 注意：直接访问 store 字段（需在 AcpSessionManager 添加 public readonly store accessor）
-const storeForCleanup = (acpSessionManager as unknown as { store: import("../acp/ops/session-store").AcpSessionStore | null }).store;
-if (storeForCleanup) {
-  cleanupStaleSessions(storeForCleanup).catch((err) => {
+if (acpSessionManager.store) {
+  cleanupStaleSessions(acpSessionManager.store).catch((err) => {
     log.warn({ err }, "Stale session cleanup failed (non-fatal)");
   });
 }
@@ -1536,7 +1571,7 @@ git commit -m "feat(acp): cleanup stale parked sessions on gateway startup"
 
 ---
 
-## Task 10: 前端类型同步 — `permission_mode` 字段
+## Task 11: 前端类型同步 — `permission_mode` 字段
 
 **Files:**
 - Modify: `apps/desktop/src/components/acp-chat/acp-client.ts`
@@ -1553,7 +1588,8 @@ git commit -m "feat(acp): cleanup stale parked sessions on gateway startup"
 ```
 改为：
 ```typescript
-  permission_mode?: "default" | "bypassPermissions" | "auto";
+  approval_mode?: "bypass" | "rules" | "ai"; // legacy read-only
+  permission_mode?: "default" | "bypassPermissions" | "auto" | "acceptEdits" | "dontAsk" | "plan";
 ```
 
 - [ ] **Step 2: 同步 gateway 类型文件（如存在）**
@@ -1583,7 +1619,7 @@ git commit -m "types(desktop): sync permission_mode field to AcpPermissionMode v
 
 ---
 
-## Task 11: `ApprovalHandler` 集成到 `SdkAcpConnection.requestPermission()`
+## Task 12: `ApprovalHandler` 集成到 `SdkAcpConnection.requestPermission()`
 
 Spec 七要求活跃连接下的 `requestPermission` 也先经过 `ApprovalHandler.evaluate()` 过滤，自动通过的请求不打断用户。
 
@@ -1687,7 +1723,7 @@ git commit -m "feat(acp): integrate ApprovalHandler into SdkAcpConnection.reques
 
 ---
 
-## Task 12: 前端 `use-acp-session.ts` — history 批量渲染 + parked 状态展示
+## Task 13: 前端 `use-acp-session.ts` — history 批量渲染 + parked 状态展示
 
 **Files:**
 - Modify: `apps/desktop/src/components/acp-chat/use-acp-session.ts`（或等效 hook 文件）
@@ -1746,7 +1782,7 @@ export function applyUiStepsImmediately(
 **子步骤 3b**：在 `use-acp-session.ts`（或 loadSession 所在文件）中实现 `batchRenderHistory()`：
 
 ```typescript
-import type { AcpSessionEvent } from "@viben/core";
+import type { AcpSessionEvent } from "./acp-client";
 import { acpSessionUpdateToUiSteps, applyUiStepsImmediately } from "./acp-chat-state";
 
 function batchRenderHistory(events: AcpSessionEvent[]): void {
@@ -1803,9 +1839,30 @@ git commit -m "feat(desktop): handle loadSession history batch rendering and par
 
 ---
 
-## Task 13: 端到端验证
+## Task 14: 自动化验证与端到端验证
 
-- [ ] **Step 1: 启动 gateway**
+- [ ] **Step 1: 添加关键自动化测试**
+
+在 `packages/core/src/acp/ops/session-manager.test.ts`、`packages/core/src/acp/ops/session-store.test.ts` 和 `packages/core/src/gateway/routes/agent-acp.integration.test.ts` 中补覆盖：
+
+- 断线超过原 5s flush interval 后重连，`history` 仍包含断线期间所有 `session_update`
+- gateway restart 恢复时 pending permission/tool 事件被 patch 为 `abandoned`
+- 恶意 session id（`../x`、`a/b`、空字符串、超长 ID）被拒绝且不读写 session 根目录外文件
+- `meta.json` 损坏时从 `meta.json.bak` 恢复
+- 并发 100 个 `appendEvent` + `updateEventStatus` 后 seq 无重复，patch last-write-wins
+- 旧 YAML 迁移：`approval_mode` 和 `approvals` 都按矩阵迁移，已有 `permission_mode: "plan"` 不被覆盖
+- 双 WebSocket 接管后旧 socket close 不会 park 新连接
+- `closeSession()` 完成后 `meta.status === "finished"`，detached pending 被 `cancelled`，backend `closeBackendSession()` 被 await
+
+- [ ] **Step 2: 运行核心测试**
+
+```bash
+pnpm --filter @viben/core test 2>&1 | tail -30
+```
+
+预期：新增测试和既有 core 测试全部 PASS。
+
+- [ ] **Step 3: 启动 gateway**
 
 ```bash
 pnpm gateway:restart
@@ -1813,7 +1870,7 @@ pnpm gateway:restart
 
 确认 `http://127.0.0.1:18790/health` 返回 200。
 
-- [ ] **Step 2: 验证 session 目录创建**
+- [ ] **Step 4: 验证 session 目录创建**
 
 在 desktop 中新建一个 ACP chat session，发送一条消息，然后检查：
 
@@ -1823,7 +1880,7 @@ ls ~/.viben/acp/sessions/
 
 预期：出现以 UUID 命名的 session 目录，包含 `meta.json` 和 `events.jsonl`。
 
-- [ ] **Step 3: 验证断线 park**
+- [ ] **Step 5: 验证断线 park**
 
 关闭 desktop 窗口（触发 WS disconnect），检查：
 
@@ -1833,14 +1890,23 @@ cat ~/.viben/acp/sessions/<session-id>/meta.json | grep status
 
 预期：`"status": "parked"`。
 
-- [ ] **Step 4: 验证重连 resume**
+- [ ] **Step 6: 验证重连 resume**
 
 重新打开 desktop，执行 loadSession，检查响应中 `history` 字段是否包含之前的 session_update 事件。
 
-- [ ] **Step 5: 验证 gateway 重启恢复**
+- [ ] **Step 7: 验证 gateway 重启恢复**
 
 ```bash
 pnpm gateway:restart
 ```
 
 在 desktop 中对 parked session 执行 loadSession，预期：从磁盘恢复，返回 history，pending 事件被 abandoned。
+
+- [ ] **Step 8: 全仓验证**
+
+```bash
+pnpm typecheck
+pnpm build
+```
+
+预期：所有 workspace package typecheck/build 成功，包括 `apps/web`、`apps/desktop` 和 `packages/core`。

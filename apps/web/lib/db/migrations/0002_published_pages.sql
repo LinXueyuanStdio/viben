@@ -61,3 +61,22 @@ DROP INDEX IF EXISTS "published_pages_uid_idx";
 CREATE INDEX IF NOT EXISTS "published_pages_user_id_idx" ON "published_pages" USING btree ("user_id");
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "published_pages_user_id_uid_idx" ON "published_pages" USING btree ("user_id", "uid");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "published_page_versions" (
+  "id" text PRIMARY KEY DEFAULT gen_random_uuid()::text NOT NULL,
+  "published_page_id" text NOT NULL REFERENCES "published_pages"("id") ON DELETE CASCADE,
+  "uid" text NOT NULL,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "version" integer NOT NULL,
+  "title" text NOT NULL,
+  "icon" jsonb,
+  "description" text,
+  "html" text NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "published_page_versions_page_id_idx" ON "published_page_versions" USING btree ("published_page_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "published_page_versions_user_id_uid_idx" ON "published_page_versions" USING btree ("user_id", "uid");
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "published_page_versions_user_id_uid_version_idx" ON "published_page_versions" USING btree ("user_id", "uid", "version");
