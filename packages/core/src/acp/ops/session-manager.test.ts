@@ -348,6 +348,29 @@ describe("AcpSessionManager", () => {
     }
   });
 
+  it("stores steer prompts in input history when ACP steer prompt is received", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "viben-acp-steer-input-history-test-"));
+    try {
+      const inputHistory = new InputHistoryService(tempDir);
+      const adapter = new CapturingBackendAdapter();
+      const manager = new AcpSessionManager(adapter, new InMemoryAcpSteerPromptStore(), inputHistory);
+      const connection = createConnection();
+
+      const session = await manager.createSession(
+        { cwd: "/tmp", mcpServers: [] },
+        connection
+      );
+      await manager.steerPrompt({
+        sessionId: session.sessionId,
+        prompt: [{ type: "text", text: "remember this steer" }],
+      });
+
+      await expect(inputHistory.listText()).resolves.toEqual(["remember this steer"]);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("passes session sandbox_config through to the ACP backend", async () => {
     const adapter = new CapturingBackendAdapter();
     const manager = new AcpSessionManager(adapter);

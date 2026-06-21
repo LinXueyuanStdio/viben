@@ -250,6 +250,7 @@ function createMockModel(overrides: Partial<Model> = {}): Model {
     id: "test-model",
     name: "Test Model",
     provider: "test-provider",
+    provider_id: "test-provider-main",
     contextLength: 100000,
     maxOutputTokens: 4096,
     isDefault: false,

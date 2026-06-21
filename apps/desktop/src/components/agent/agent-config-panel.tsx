@@ -75,7 +75,7 @@ export interface ModelOption {
   id: string;
   name: string;
   provider_type?: string;
-  provider_id?: string;
+  provider_id: string;
 }
 
 export interface ExecutorOption {
@@ -718,6 +718,7 @@ export const AgentConfigPanel = React.forwardRef<AgentConfigPanelRef, AgentConfi
                     {Object.entries(
                       models.reduce<Record<string, ModelOption[]>>((groups, m) => {
                         const key = m.provider_id;
+                        if (!key) return groups;
                         (groups[key] ??= []).push(m);
                         return groups;
                       }, {})

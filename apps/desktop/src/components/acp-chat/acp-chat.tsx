@@ -87,6 +87,7 @@ import { useVoiceAgent } from "@/hooks/use-voice-agent";
 import { useChatConfigStore } from "@/stores/chat-config-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useDesktopRouting } from "@/hooks/use-desktop-routing";
+import { getGatewayUrl, getInputHistory } from "@/lib/gateway";
 import { useAcpSession } from "./use-acp-session";
 import { ContextSettingsPopup } from "./context-settings-popup";
 import { useChatDrag } from "@/hooks/use-chat-drag";
@@ -672,6 +673,21 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
 
   // Track input value locally for submit control
   const inputValue = "";
+  const [inputHistoryItems, setInputHistoryItems] = useState<string[]>([]);
+
+  const refreshInputHistory = useCallback(async () => {
+    try {
+      const history = await getInputHistory(getGatewayUrl(), { limit: 200 });
+      setInputHistoryItems(history.entries);
+    } catch (historyError) {
+      console.warn("[AcpChat] Failed to load input history:", historyError);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!connected) return;
+    void refreshInputHistory();
+  }, [connected, refreshInputHistory]);
 
   const handleSend = useCallback(
     (content: string, _messageAttachments?: MessageAttachment[]) => {
@@ -684,9 +700,14 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
         void sendSteerPrompt(content);
         return;
       }
-      void sendPrompt(content);
+      window.setTimeout(() => {
+        void refreshInputHistory();
+      }, 300);
+      void sendPrompt(content).then(refreshInputHistory).catch((sendError) => {
+        console.error("[AcpChat] Failed to send prompt:", sendError);
+      });
     },
-    [isTurnActive, sendPrompt, sendSteerPrompt]
+    [isTurnActive, refreshInputHistory, sendPrompt, sendSteerPrompt]
   );
 
   const handleSlashCommandSelect = useCallback(
@@ -1101,6 +1122,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       onCancel: interrupt,
       queuedInputRecallItems: steerQueueItems,
       onQueuedInputRecall: handleRecallQueue,
+      inputHistoryItems,
       isLoading: isTurnActive,
       allowSendWhileLoading: true,
       sendDisabled: !connected,
@@ -1135,6 +1157,7 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       connected,
       handleRecallQueue,
       handleSend,
+      inputHistoryItems,
       handleSlashCommandSelect,
       interrupt,
       isTurnActive,

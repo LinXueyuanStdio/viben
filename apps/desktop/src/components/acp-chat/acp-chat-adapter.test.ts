@@ -121,6 +121,35 @@ describe("ACP chat adapter", () => {
     });
   });
 
+  it("merges adjacent Claude Code thought chunks even when chunk ids differ", () => {
+    const firstStep = acpSessionUpdateToUiSteps({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        messageId: "thinking-line-1",
+        content: { type: "text", text: "先检查" },
+      },
+    })[0];
+    const secondStep = acpSessionUpdateToUiSteps({
+      sessionId: "session-1",
+      update: {
+        sessionUpdate: "agent_thought_chunk",
+        messageId: "thinking-line-2",
+        content: { type: "text", text: "配置。" },
+      },
+    })[0];
+
+    const afterFirst = applyAcpUiStep([], firstStep);
+    const afterSecond = applyAcpUiStep(afterFirst, secondStep);
+
+    expect(afterSecond).toHaveLength(1);
+    expect(afterSecond[0]).toMatchObject({
+      id: "thinking-line-1",
+      type: "thinking",
+      content: "先检查配置。",
+    });
+  });
+
   it("maps Codex user message items to a readable status step instead of raw JSON", () => {
     const steps = acpSessionUpdateToUiSteps({
       sessionId: "session-1",

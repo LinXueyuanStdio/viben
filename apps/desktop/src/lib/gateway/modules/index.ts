@@ -77,6 +77,9 @@ export * from "./kanban";
 // Preferences module
 export * from "./preferences";
 
+// Input history module
+export * from "./input-history";
+
 // Tasks module
 export * from "./tasks";
 

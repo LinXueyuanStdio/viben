@@ -63,6 +63,7 @@ function createMockModel(overrides: Partial<Model> = {}): Model {
     id: "gpt-4o",
     name: "GPT-4o",
     provider: "openai",
+    provider_id: "openai-main",
     contextLength: 128000,
     maxOutputTokens: 16384,
     inputPrice: 2.5,
