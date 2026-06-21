@@ -83,22 +83,10 @@ export interface CreateProviderOptions {
   max_retries?: number;
   supports_custom_model?: boolean;
   set_as_default?: boolean;
-  /** @deprecated use api_key */
-  apiKey?: string;
-  /** @deprecated use base_url */
-  baseUrl?: string;
-  /** @deprecated use api_version */
-  apiVersion?: string;
   deployment?: string;
   timeout?: number;
-  /** @deprecated use max_retries */
-  maxRetries?: number;
   headers?: Record<string, string>;
   surfaces?: ProviderSurface[];
-  /** @deprecated use supports_custom_model */
-  supportsCustomModel?: boolean;
-  /** @deprecated use set_as_default */
-  setAsDefault?: boolean;
 }
 
 /** Options for updating a provider */
@@ -111,20 +99,10 @@ export interface ProviderUpdate {
   api_version?: string;
   max_retries?: number;
   supports_custom_model?: boolean;
-  /** @deprecated use api_key */
-  apiKey?: string;
-  /** @deprecated use base_url */
-  baseUrl?: string;
-  /** @deprecated use api_version */
-  apiVersion?: string;
   deployment?: string;
   timeout?: number;
-  /** @deprecated use max_retries */
-  maxRetries?: number;
   headers?: Record<string, string>;
   surfaces?: ProviderSurface[];
-  /** @deprecated use supports_custom_model */
-  supportsCustomModel?: boolean;
 }
 
 export interface ProviderListOptions {

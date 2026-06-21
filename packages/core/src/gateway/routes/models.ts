@@ -144,6 +144,12 @@ function toSnakeCaseConfig(config: ModelConfig): Record<string, unknown> {
   return response;
 }
 
+function toNullableSnakeCaseConfig(config: ModelConfig | null): Record<string, unknown> | null {
+  if (!config) return null;
+  const response = toSnakeCaseConfig(config);
+  return Object.keys(response).length > 0 ? response : null;
+}
+
 /**
  * Transform model to API response format (snake_case)
  *
@@ -477,7 +483,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
             is_default: { type: "boolean" },
             enabled: { type: "boolean" },
             is_available: { type: "boolean" },
-            config: { type: "object", additionalProperties: true },
+            config: { type: "object", additionalProperties: true, nullable: true },
           },
         },
         404: {
@@ -518,7 +524,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
     return {
       ...modelResponse,
-      config: modelConfig ? toSnakeCaseConfig(modelConfig) : null,
+      config: toNullableSnakeCaseConfig(modelConfig),
     };
   });
 

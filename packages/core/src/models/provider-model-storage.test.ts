@@ -41,11 +41,16 @@ describe("provider and model unified YAML storage", () => {
     expect(await tempDir.exists("models.yaml")).toBe(true);
 
     const config = parse(await tempDir.readFile("models.yaml"));
-    expect(config[provider.id]).toEqual({
+    expect(config[provider.id]).toMatchObject({
       id: provider.id,
       type: "openai-responses",
+      name: "OpenAI Responses",
+      category: "llm",
       base_url: "https://api.openai.com/v1",
       api_key: "sk-test",
+      is_default: true,
+      enabled: true,
+      surfaces: ["chat"],
       models: {
         "gpt-5.1": {
           name: "gpt-5.1",

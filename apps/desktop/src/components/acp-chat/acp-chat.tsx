@@ -697,7 +697,9 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
       setAttachments([]);
 
       if (isTurnActive) {
-        void sendSteerPrompt(content);
+        void sendSteerPrompt(content).then(refreshInputHistory).catch((steerError) => {
+          console.error("[AcpChat] Failed to send steer prompt:", steerError);
+        });
         return;
       }
       window.setTimeout(() => {
@@ -714,12 +716,14 @@ export function AcpChat({ mode, onModeChange, contained = false, className, wsUr
     (command: SlashCommand, selection: SlashCommandSelection) => {
       if (isTurnActive) {
         const args = selection.args.trim();
-        void sendSteerPrompt(`/${command.name}${args ? ` ${args}` : ""}`);
+        void sendSteerPrompt(`/${command.name}${args ? ` ${args}` : ""}`).then(refreshInputHistory).catch((steerError) => {
+          console.error("[AcpChat] Failed to send steer prompt:", steerError);
+        });
         return;
       }
       handleSlashCommand(command, selection);
     },
-    [handleSlashCommand, isTurnActive, sendSteerPrompt]
+    [handleSlashCommand, isTurnActive, refreshInputHistory, sendSteerPrompt]
   );
 
   const handleRecallQueue = useCallback(

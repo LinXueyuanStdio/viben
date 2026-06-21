@@ -237,16 +237,16 @@ export function useProviders(): UseProvidersReturn {
         type: options.provider_type,
         category: options.category,
         name: options.name,
-        apiKey: options.api_key,
-        baseUrl: options.base_url,
-        apiVersion: options.api_version,
+        api_key: options.api_key,
+        base_url: options.base_url,
+        api_version: options.api_version,
         deployment: options.deployment,
         timeout: options.timeout,
-        maxRetries: options.max_retries,
+        max_retries: options.max_retries,
         headers: options.headers,
         surfaces: options.surfaces,
-        supportsCustomModel: options.supports_custom_model,
-        setAsDefault: options.set_as_default,
+        supports_custom_model: options.supports_custom_model,
+        set_as_default: options.set_as_default,
       });
       const provider = transformProviderResponse(response);
       // Refresh list to get updated state
@@ -269,15 +269,15 @@ export function useProviders(): UseProvidersReturn {
         type: updates.provider_type,
         category: updates.category,
         name: updates.name,
-        apiKey: updates.api_key,
-        baseUrl: updates.base_url,
-        apiVersion: updates.api_version,
+        api_key: updates.api_key,
+        base_url: updates.base_url,
+        api_version: updates.api_version,
         deployment: updates.deployment,
         timeout: updates.timeout,
-        maxRetries: updates.max_retries,
+        max_retries: updates.max_retries,
         headers: updates.headers,
         surfaces: updates.surfaces,
-        supportsCustomModel: updates.supports_custom_model,
+        supports_custom_model: updates.supports_custom_model,
       });
       const provider = transformProviderResponse(response);
       // Update local state

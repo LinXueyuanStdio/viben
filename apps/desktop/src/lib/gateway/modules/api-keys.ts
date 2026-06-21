@@ -23,7 +23,7 @@ export async function setApiKey(
   providerId: string,
   apiKey: string
 ): Promise<void> {
-  await updateProvider(baseUrl, providerId, { apiKey });
+  await updateProvider(baseUrl, providerId, { api_key: apiKey });
 }
 
 /**
@@ -34,7 +34,7 @@ export async function clearApiKey(
   baseUrl: string,
   providerId: string
 ): Promise<void> {
-  await updateProvider(baseUrl, providerId, { apiKey: "" });
+  await updateProvider(baseUrl, providerId, { api_key: "" });
 }
 
 /**

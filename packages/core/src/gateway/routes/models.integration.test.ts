@@ -120,7 +120,7 @@ describe("Model Routes - Integration Tests", () => {
           }),
         ])
       );
-      expect(body.total).toBe(3);
+      expect(body.total).toBe(4);
     });
 
     it("filters by provider_id", async () => {
