@@ -640,7 +640,7 @@ export const publishedPages = pgTable(
   'published_pages',
   {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-    uid: text('uid').notNull().unique(),
+    uid: text('uid').notNull(),
     userId: text('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
@@ -656,7 +656,7 @@ export const publishedPages = pgTable(
   },
   (table) => [
     index('published_pages_user_id_idx').on(table.userId),
-    uniqueIndex('published_pages_uid_idx').on(table.uid),
+    uniqueIndex('published_pages_user_id_uid_idx').on(table.userId, table.uid),
   ]
 );
 

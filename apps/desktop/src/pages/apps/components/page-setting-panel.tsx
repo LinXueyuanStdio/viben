@@ -7,7 +7,14 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, FolderOpen, Info, Package, UploadCloud } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  FolderOpen,
+  Info,
+  Package,
+  UploadCloud,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway/config";
 import { publishPage, readFile, viewPage } from "@/lib/gateway";
@@ -46,6 +53,7 @@ export function PageSettingPanel({
   const { t } = useTranslation();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const accessToken = useAuthStore((state) => state.user?.accessToken);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
@@ -105,6 +113,17 @@ export function PageSettingPanel({
         html: content,
       });
 
+      if (!result.success || !result.url) {
+        throw new Error(
+          result.error ??
+            t(
+              "page.settings.publishMissingUrl",
+              "Publish did not return a page URL"
+            )
+        );
+      }
+
+      setPublishedUrl(result.url);
       toast.success(t("page.settings.publishSuccess", "Page published"), {
         description: result.url,
       });
@@ -195,6 +214,18 @@ export function PageSettingPanel({
                   )}
             </p>
 
+            {publishedUrl && (
+              <div className="mb-4 rounded-md border border-border bg-muted/50 p-3">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  {t("page.settings.published", "Published")}
+                </div>
+                <div className="break-all font-mono text-xs text-muted-foreground">
+                  {publishedUrl}
+                </div>
+              </div>
+            )}
+
             <Button
               variant="default"
               size="sm"
@@ -204,7 +235,9 @@ export function PageSettingPanel({
               <UploadCloud className="mr-2 h-4 w-4" />
               {isPublishing
                 ? t("page.settings.publishing", "Publishing...")
-                : t("page.settings.publishButton", "Publish")}
+                : publishedUrl
+                  ? t("page.settings.updatePublishButton", "Update Publish")
+                  : t("page.settings.publishButton", "Publish")}
             </Button>
           </section>
         )}

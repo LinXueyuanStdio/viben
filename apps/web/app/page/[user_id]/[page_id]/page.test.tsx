@@ -18,10 +18,12 @@ vi.mock('@/lib/db', () => ({
   },
   publishedPages: {
     uid: 'uid',
+    userId: 'userId',
   },
 }));
 
 vi.mock('drizzle-orm', () => ({
+  and: vi.fn((...conditions) => ({ type: 'and', conditions })),
   eq: vi.fn((field, value) => ({ field, value })),
 }));
 
@@ -31,21 +33,34 @@ vi.mock('next/navigation', () => ({
 
 import PublishedPage from './page';
 
-describe('/page/[uid]', () => {
+describe('/page/[user_id]/[page_id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders published HTML in a sandboxed iframe', async () => {
+  it('queries by user id and page id before rendering the sandboxed iframe', async () => {
     mocks.findFirst.mockResolvedValue({
       uid: 'demo',
+      userId: 'user-1',
       title: 'Demo',
       description: 'Demo description',
       html: '<!doctype html><html><body><h1>Demo HTML</h1></body></html>',
     });
 
-    const element = await PublishedPage({ params: Promise.resolve({ uid: 'demo' }) });
+    const element = await PublishedPage({
+      params: Promise.resolve({ user_id: 'user-1', page_id: 'demo' }),
+    });
     render(element);
+
+    expect(mocks.findFirst).toHaveBeenCalledWith({
+      where: {
+        type: 'and',
+        conditions: [
+          { field: 'userId', value: 'user-1' },
+          { field: 'uid', value: 'demo' },
+        ],
+      },
+    });
 
     const iframe = screen.getByTitle('Demo');
     expect(iframe).toHaveAttribute(
@@ -58,11 +73,13 @@ describe('/page/[uid]', () => {
     );
   });
 
-  it('returns not found for unknown uid', async () => {
+  it('returns not found when no page exists for the user and page id', async () => {
     mocks.findFirst.mockResolvedValue(null);
 
     await expect(
-      PublishedPage({ params: Promise.resolve({ uid: 'missing' }) })
+      PublishedPage({
+        params: Promise.resolve({ user_id: 'user-1', page_id: 'missing' }),
+      })
     ).rejects.toThrow('NEXT_NOT_FOUND');
     expect(mocks.notFound).toHaveBeenCalled();
   });

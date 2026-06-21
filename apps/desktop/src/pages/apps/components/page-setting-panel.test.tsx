@@ -9,6 +9,8 @@ import type { ButtonHTMLAttributes } from "react";
 
 const mocks = vi.hoisted(() => ({
   publishPage: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -19,8 +21,8 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/hooks/use-toast", () => ({
   toast: {
-    success: vi.fn(),
-    error: vi.fn(),
+    success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }));
 
@@ -71,7 +73,7 @@ describe("PageSettingPanel", () => {
     mocks.publishPage.mockResolvedValue({
       success: true,
       page_uid: "demo",
-      url: "/page/demo",
+      url: "/page/user-1/demo",
       updated: false,
     });
   });
@@ -124,5 +126,89 @@ describe("PageSettingPanel", () => {
         html: "<html><body>Demo</body></html>",
       });
     });
+  });
+
+  it("shows published status and URL after a successful publish", async () => {
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+
+    expect(await screen.findByText("Published")).toBeTruthy();
+    expect(screen.getByText("/page/user-1/demo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
+  });
+
+  it("updates the published state when publishing again", async () => {
+    mocks.publishPage
+      .mockResolvedValueOnce({
+        success: true,
+        page_uid: "demo",
+        url: "/page/user-1/demo",
+        updated: false,
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        page_uid: "demo",
+        url: "/page/user-1/demo",
+        updated: true,
+      });
+
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+
+    const updateButton = await screen.findByRole("button", {
+      name: /Update Publish/i,
+    });
+    fireEvent.click(updateButton);
+
+    await waitFor(() => {
+      expect(mocks.publishPage).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText("/page/user-1/demo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Update Publish/i })).toBeTruthy();
+  });
+
+  it("does not enter published state when publish returns a failure", async () => {
+    mocks.publishPage.mockResolvedValue({
+      success: false,
+      error: "Publish failed",
+    });
+
+    render(
+      <PageSettingPanel
+        workspacePath="/tmp/workspace"
+        pageUid="demo"
+        pageName="Demo"
+        pageType="static"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Publish/i }));
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Publish failed",
+        expect.objectContaining({ description: "Publish failed" })
+      );
+    });
+
+    expect(screen.queryByText("Published")).toBeNull();
+    expect(screen.queryByText("/page/user-1/demo")).toBeNull();
+    expect(screen.getByRole("button", { name: /Publish/i })).toBeTruthy();
   });
 });

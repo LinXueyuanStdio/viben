@@ -20,6 +20,10 @@ vi.mock('@/lib/auth/middleware', () => ({
   requireAuth: mocks.requireAuth,
 }));
 
+vi.mock('@/lib/db/published-pages', () => ({
+  ensurePublishedPagesTable: mocks.execute,
+}));
+
 vi.mock('@/lib/db', () => ({
   db: {
     query: {
@@ -33,15 +37,16 @@ vi.mock('@/lib/db', () => ({
     update: vi.fn(() => ({
       set: mocks.updateSet,
     })),
-    execute: mocks.execute,
   },
   publishedPages: {
     uid: 'uid',
+    userId: 'userId',
     id: 'id',
   },
 }));
 
 vi.mock('drizzle-orm', () => ({
+  and: vi.fn((...conditions) => ({ type: 'and', conditions })),
   eq: vi.fn((field, value) => ({ field, value })),
 }));
 
@@ -85,7 +90,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
-      url: '/page/demo',
+      url: '/page/user-1/demo',
       updated: false,
     });
     expect(mocks.insertValues).toHaveBeenCalledWith({
@@ -117,7 +122,7 @@ describe('POST /api/pages/publish', () => {
     await expect(response.json()).resolves.toEqual({
       success: true,
       page_uid: 'demo',
-      url: '/page/demo',
+      url: '/page/user-1/demo',
       updated: true,
     });
     expect(mocks.updateSet).toHaveBeenCalledWith({
@@ -128,24 +133,56 @@ describe('POST /api/pages/publish', () => {
     });
   });
 
-  it('rejects updates for a page owned by another user', async () => {
-    mocks.findFirst.mockResolvedValue({
-      id: 'published-1',
-      uid: 'demo',
-      userId: 'user-2',
+  it('scopes existing page lookup to the current user and page uid', async () => {
+    const response = await POST(requestWithBody({
+      uid: 'shared-demo',
+      title: 'Shared Demo',
+      html: '<html><body>Shared Demo</body></html>',
+    }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.findFirst).toHaveBeenCalledWith({
+      where: {
+        type: 'and',
+        conditions: [
+          { field: 'userId', value: 'user-1' },
+          { field: 'uid', value: 'shared-demo' },
+        ],
+      },
     });
+  });
+
+  it('allows different users to publish the same page uid', async () => {
+    mocks.requireAuth.mockResolvedValue({
+      userId: 'user-2',
+      username: 'bob',
+      email: 'bob@example.com',
+      role: 'developer',
+      expiresAt: Date.now() + 3600000,
+    });
+    mocks.findFirst.mockResolvedValue(null);
 
     const response = await POST(requestWithBody({
       uid: 'demo',
-      title: 'Demo',
-      html: '<html><body>Demo</body></html>',
+      title: 'Bob Demo',
+      html: '<html><body>Bob Demo</body></html>',
     }));
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      error: 'You do not own this page',
+      success: true,
+      page_uid: 'demo',
+      url: '/page/user-2/demo',
+      updated: false,
     });
-    expect(mocks.updateSet).not.toHaveBeenCalled();
+    expect(mocks.insertValues).toHaveBeenCalledWith({
+      uid: 'demo',
+      userId: 'user-2',
+      title: 'Bob Demo',
+      icon: null,
+      description: null,
+      html: '<html><body>Bob Demo</body></html>',
+    });
   });
 
   it('rejects an invalid icon payload', async () => {

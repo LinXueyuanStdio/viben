@@ -38,7 +38,7 @@ describe("Page publish route", () => {
     mocks.publish.mockResolvedValue({
       success: true,
       page_uid: "demo",
-      url: "/page/demo",
+      url: "/page/user-1/demo",
       updated: false,
     });
     app = Fastify({ logger: false });
@@ -68,7 +68,7 @@ describe("Page publish route", () => {
     expect(JSON.parse(response.body)).toEqual({
       success: true,
       page_uid: "demo",
-      url: "/page/demo",
+      url: "/page/user-1/demo",
       updated: false,
     });
     expect(mocks.constructor).toHaveBeenCalledWith({

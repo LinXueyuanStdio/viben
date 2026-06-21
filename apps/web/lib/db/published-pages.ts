@@ -15,17 +15,23 @@ export function ensurePublishedPagesTable(): Promise<void> {
         "description" text,
         "html" text NOT NULL,
         "created_at" timestamp DEFAULT now() NOT NULL,
-        "updated_at" timestamp DEFAULT now() NOT NULL,
-        CONSTRAINT "published_pages_uid_unique" UNIQUE("uid")
+        "updated_at" timestamp DEFAULT now() NOT NULL
       )
+    `);
+    await db.execute(sql`
+      ALTER TABLE "published_pages"
+      DROP CONSTRAINT IF EXISTS "published_pages_uid_unique"
+    `);
+    await db.execute(sql`
+      DROP INDEX IF EXISTS "published_pages_uid_idx"
     `);
     await db.execute(sql`
       CREATE INDEX IF NOT EXISTS "published_pages_user_id_idx"
       ON "published_pages" USING btree ("user_id")
     `);
     await db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS "published_pages_uid_idx"
-      ON "published_pages" USING btree ("uid")
+      CREATE UNIQUE INDEX IF NOT EXISTS "published_pages_user_id_uid_idx"
+      ON "published_pages" USING btree ("user_id", "uid")
     `);
   })().catch((error) => {
     ensurePublishedPagesTablePromise = null;

@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { db, publishedPages } from '@/lib/db';
 import { ensurePublishedPagesTable } from '@/lib/db/published-pages';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 interface IconPayload {
   type: string;
@@ -48,18 +48,13 @@ export async function POST(request: NextRequest) {
 
     // Upsert: update if uid exists for this user, otherwise insert
     const existing = await db.query.publishedPages.findFirst({
-      where: eq(publishedPages.uid, uid),
+      where: and(
+        eq(publishedPages.userId, session.userId),
+        eq(publishedPages.uid, uid)
+      ),
     });
 
     if (existing) {
-      // Only the owner can update
-      if (existing.userId !== session.userId) {
-        return NextResponse.json(
-          { error: 'You do not own this page' },
-          { status: 403 }
-        );
-      }
-
       await db
         .update(publishedPages)
         .set({
@@ -73,7 +68,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         page_uid: uid,
-        url: `/page/${encodeURIComponent(uid)}`,
+        url: `/page/${encodeURIComponent(session.userId)}/${encodeURIComponent(uid)}`,
         updated: true,
       });
     }
@@ -91,7 +86,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       page_uid: uid,
-      url: `/page/${encodeURIComponent(uid)}`,
+      url: `/page/${encodeURIComponent(session.userId)}/${encodeURIComponent(uid)}`,
       updated: false,
     });
   } catch (error) {
