@@ -462,7 +462,7 @@ describe("AcpSessionManager", () => {
         name: "File Codex Agent",
         executor_type: "CODEX",
         model: "deepseek-v4-flash",
-        provider: "hexin",
+        provider_id: "hexin",
         executor_config: {
           command: "/usr/local/bin/codex",
           args: ["app-server"],

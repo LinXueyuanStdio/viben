@@ -11,7 +11,6 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
-  CheckCircle2,
   ChevronRight,
   Code2,
   Copy,
