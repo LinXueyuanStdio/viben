@@ -119,7 +119,7 @@ export function buildClaudeCodeProviderSwitch({
     currentModel: nextCurrentModel,
     config: compactConfig({
       ...config,
-      model_provider: providerId,
+      provider_id: providerId,
       env: Object.keys(env).length > 0 ? env : undefined,
     }),
   };
